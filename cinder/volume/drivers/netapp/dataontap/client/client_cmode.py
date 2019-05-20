@@ -95,7 +95,7 @@ class Client(client_base.Client):
             return int(api_result_element.get_child_content('num-records'))
         except TypeError:
             msg = _('Missing record count for NetApp iterator API invocation.')
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
 
     def set_vserver(self, vserver):
         self.vserver = vserver
@@ -124,7 +124,7 @@ class Client(client_base.Client):
         attributes_list = result.get_child_by_name('attributes-list')
         if not attributes_list:
             msg = _('Missing attributes list for API %s.') % api_name
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
 
         # Get remaining pages, saving data into first page
         while next_tag is not None:
@@ -895,7 +895,7 @@ class Client(client_base.Client):
         if self._get_record_count(result) != 1:
             msg = _('Volume %s not found.')
             msg_args = flexvol_path or flexvol_name
-            raise exception.NetAppDriverException(msg % msg_args)
+            raise na_utils.NetAppDriverException(msg % msg_args)
 
         attributes_list = result.get_child_by_name('attributes-list')
         volume_attributes = attributes_list.get_child_by_name(
@@ -1946,7 +1946,7 @@ class Client(client_base.Client):
         """Verify support for SnapMirror control plane v2."""
         if not self.features.SNAPMIRROR_V2:
             msg = _('SnapMirror features require Data ONTAP 8.2 or later.')
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
 
     def create_snapmirror(self, source_vserver, source_volume,
                           destination_vserver, destination_volume,

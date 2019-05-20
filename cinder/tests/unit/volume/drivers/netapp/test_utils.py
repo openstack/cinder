@@ -582,7 +582,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
               "2001:db8::1:/wrong_export",
               "[2001:db8::1:/wrong_export", "2001:db8::1]:/wrong_export")
     def test_get_export_host_junction_path_with_invalid_exports(self, share):
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           na_utils.get_export_host_junction_path,
                           share)
 

@@ -101,7 +101,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         api_response = netapp_api.NaElement(
             fake_client.INVALID_GET_ITER_RESPONSE_NO_RECORDS)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client._get_record_count,
                           api_response)
 
@@ -210,7 +210,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                          'send_request',
                          return_value=api_response)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client.send_iter_request,
                           'storage-disk-get-iter')
 
@@ -1432,7 +1432,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.mock_send_request.return_value = netapp_api.NaElement(
             fake_client.NO_RECORDS_RESPONSE)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client.get_flexvol_capacity,
                           flexvol_path='fake_path')
 
@@ -2966,7 +2966,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.client.features.add_feature('SNAPMIRROR_V2', supported=False)
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client._ensure_snapmirror_v2)
 
     @ddt.data({'schedule': 'fake_schedule', 'policy': 'fake_policy'},

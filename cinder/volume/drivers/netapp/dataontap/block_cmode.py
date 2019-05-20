@@ -106,7 +106,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             msg = _('No pools are available for provisioning volumes. '
                     'Ensure that the configuration option '
                     'netapp_pool_name_search_pattern is set correctly.')
-            raise exception.NetAppDriverException(msg)
+            raise na_utils.NetAppDriverException(msg)
         self._add_looping_tasks()
         super(NetAppBlockStorageCmodeLibrary, self).check_for_setup_error()
 
@@ -506,7 +506,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         except Exception as ex:
             err_msg = (_("Create group snapshot failed (%s).") % ex)
             LOG.exception(err_msg, resource=group_snapshot)
-            raise exception.NetAppDriverException(err_msg)
+            raise na_utils.NetAppDriverException(err_msg)
 
         return None, None
 

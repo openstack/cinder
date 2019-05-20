@@ -17,7 +17,6 @@ import ddt
 import mock
 from oslo_config import cfg
 
-from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
 from cinder.volume import configuration
@@ -27,6 +26,7 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
 from cinder.volume.drivers.netapp.dataontap.utils import utils
 from cinder.volume.drivers.netapp import options as na_opts
+from cinder.volume.drivers.netapp import utils as na_utils
 
 
 CONF = cfg.CONF
@@ -517,7 +517,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_client_call = self.mock_object(
             self.mock_dest_client, 'create_flexvol')
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.dm_mixin.create_destination_flexvol,
                           self.src_backend, self.dest_backend,
                           self.src_flexvol_name, self.dest_flexvol_name)
@@ -734,7 +734,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.mock_object(self.dm_mixin, 'update_snapmirrors')
         self.mock_object(self.dm_mixin, 'break_snapmirrors')
 
-        self.assertRaises(exception.NetAppDriverException,
+        self.assertRaises(na_utils.NetAppDriverException,
                           self.dm_mixin._complete_failover,
                           self.src_backend, replication_backends, flexvols,
                           [], failover_target=None)

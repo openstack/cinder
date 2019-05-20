@@ -60,6 +60,10 @@ DEFAULT_CHAP_USER_NAME = 'NetApp_iSCSI_CHAP_Username'
 API_TRACE_PATTERN = '(.*)'
 
 
+class NetAppDriverException(exception.VolumeDriverException):
+    message = _("NetApp Cinder Driver exception.")
+
+
 def validate_instantiation(**kwargs):
     """Checks if a driver is instantiated other than by the unified driver.
 
@@ -375,9 +379,8 @@ def get_export_host_junction_path(share):
             host = re.search(r'\[(.*)\]', share).group(1)
             junction_path = share.split(':')[-1]
         except AttributeError:
-            raise exception.NetAppDriverException(_("Share '%s' is "
-                                                    "not in a valid "
-                                                    "format.") % share)
+            raise NetAppDriverException(_("Share '%s' is not in a valid "
+                                          "format.") % share)
     else:
         # ipv4
         path = share.split(':')
@@ -385,9 +388,8 @@ def get_export_host_junction_path(share):
             host = path[0]
             junction_path = path[1]
         else:
-            raise exception.NetAppDriverException(_("Share '%s' is "
-                                                    "not in a valid "
-                                                    "format.") % share)
+            raise NetAppDriverException(_("Share '%s' is not in a valid "
+                                          "format.") % share)
 
     return host, junction_path
 
