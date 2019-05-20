@@ -586,6 +586,11 @@ class TestKaminarioISCSI(TestKaminarioCommon):
         result = self.driver.terminate_connection(self.vol, CONNECTOR)
         self.assertIsNone(result)
 
+    def test_terminate_connection_without_connector(self):
+        """Test terminate_connection_without_connector."""
+        result = self.driver.terminate_connection(self.vol, None)
+        self.assertIsNone(result)
+
 
 class TestKaminarioFC(TestKaminarioCommon):
 
@@ -612,6 +617,11 @@ class TestKaminarioFC(TestKaminarioCommon):
     def test_terminate_connection(self):
         """Test terminate_connection."""
         result = self.driver.terminate_connection(self.vol, CONNECTOR)
+        self.assertIn('data', result)
+
+    def test_terminate_connection_without_connector(self):
+        """Test terminate_connection_without_connector."""
+        result = self.driver.terminate_connection(self.vol, None)
         self.assertIn('data', result)
 
     def test_get_initiator_host_name_unique(self):
