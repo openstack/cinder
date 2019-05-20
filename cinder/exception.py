@@ -1002,19 +1002,6 @@ class NfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
-# Smbfs driver
-class SmbfsException(RemoteFSException):
-    message = _("Unknown SMBFS exception.")
-
-
-class SmbfsNoSharesMounted(RemoteFSNoSharesMounted):
-    message = _("No mounted SMBFS shares found.")
-
-
-class SmbfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
-    message = _("There is no share which can host %(volume_size)sG.")
-
-
 # Virtuozzo Storage Driver
 
 class VzStorageException(RemoteFSException):

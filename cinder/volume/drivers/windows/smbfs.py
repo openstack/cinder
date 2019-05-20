@@ -64,6 +64,18 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
+class SmbfsException(exception.RemoteFSException):
+    message = _("Unknown SMBFS exception.")
+
+
+class SmbfsNoSharesMounted(exception.RemoteFSNoSharesMounted):
+    message = _("No mounted SMBFS shares found.")
+
+
+class SmbfsNoSuitableShareFound(exception.RemoteFSNoSuitableShareFound):
+    message = _("There is no share which can host %(volume_size)sG.")
+
+
 @interface.volumedriver
 class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                          remotefs_drv.RemoteFSPoolMixin,
@@ -139,16 +151,16 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         if not config:
             msg = (_("SMBFS config file not set (smbfs_shares_config)."))
             LOG.error(msg)
-            raise exception.SmbfsException(msg)
+            raise SmbfsException(msg)
         if not os.path.exists(config):
             msg = (_("SMBFS config file at %(config)s doesn't exist.") %
                    {'config': config})
             LOG.error(msg)
-            raise exception.SmbfsException(msg)
+            raise SmbfsException(msg)
         if not os.path.isabs(self.base):
             msg = _("Invalid mount point base: %s") % self.base
             LOG.error(msg)
-            raise exception.SmbfsException(msg)
+            raise SmbfsException(msg)
 
         self.shares = {}  # address : options
         self._ensure_shares_mounted()
@@ -163,7 +175,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         if duplicate_pools:
             msg = _("Found multiple mappings for pools %(pools)s. "
                     "Requested pool mappings: %(pool_mappings)s")
-            raise exception.SmbfsException(
+            raise SmbfsException(
                 msg % dict(pools=duplicate_pools,
                            pool_mappings=self._pool_mappings))
 
@@ -221,7 +233,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         if sys.platform != 'win32':
             _msg = _("This system platform (%s) is not supported. This "
                      "driver supports only Win32 platforms.") % sys.platform
-            raise exception.SmbfsException(_msg)
+            raise SmbfsException(_msg)
 
     def _get_total_allocated(self, smbfs_share):
         pool_name = self._get_pool_name_from_share(smbfs_share)
@@ -276,7 +288,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                 volume_format = ext
             else:
                 # Hyper-V relies on file extensions so we're enforcing them.
-                raise exception.SmbfsException(
+                raise SmbfsException(
                     _("Invalid image file extension: %s") % ext)
         else:
             volume_format = (
@@ -635,7 +647,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         if not share:
             msg = _("Could not find any share for pool %(pool_name)s. "
                     "Pool mappings: %(pool_mappings)s.")
-            raise exception.SmbfsException(
+            raise SmbfsException(
                 msg % dict(pool_name=pool_name,
                            pool_mappings=self._pool_mappings))
         return share
