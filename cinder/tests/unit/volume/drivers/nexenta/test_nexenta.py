@@ -22,7 +22,6 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import db
-from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta import iscsi
@@ -216,7 +215,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         # Check that exception not raised if snapshot does not exist
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
         self.nms_mock.snapshot.destroy.side_effect = (
-            exception.NexentaException('does not exist'))
+            utils.NexentaException('does not exist'))
         self.nms_mock.snapshot.destroy.assert_called_with(
             'cinder/volume1@snapshot1', '')
 
@@ -236,7 +235,7 @@ class TestNexentaISCSIDriver(test.TestCase):
     def _stub_all_export_methods(self):
         self.nms_mock.scsidisk.lu_exists.return_value = False
         self.nms_mock.scsidisk.lu_shared.side_effect = (
-            exception.NexentaException(['does not exist for zvol']))
+            utils.NexentaException(['does not exist for zvol']))
         self.nms_mock.scsidisk.create_lu.return_value = {'lun': 0}
         self.nms_mock.stmf.list_targets.return_value = []
         self.nms_mock.stmf.list_targetgroups.return_value = []
@@ -480,12 +479,12 @@ class TestNexentaNfsDriver(test.TestCase):
         mock_chmod.assert_called_with(
             'chmod ugo+rw /volumes/stack/share/volume-1/volume')
         mock_truncate = self.nms_mock.appliance.execute
-        mock_truncate.side_effect = exception.NexentaException(
+        mock_truncate.side_effect = utils.NexentaException(
             'fake_exception')
         self.nms_mock.server.get_prop.return_value = '/volumes'
         self.nms_mock.folder.get_child_props.return_value = {
             'available': 1, 'used': 1}
-        self.assertRaises(exception.NexentaException,
+        self.assertRaises(utils.NexentaException,
                           self.drv._do_create_volume, volume)
 
     def test_create_sparsed_file(self):
@@ -637,7 +636,7 @@ class TestNexentaNfsDriver(test.TestCase):
         # Check that exception not raised if folder does not exist on
         # NexentaStor appliance.
         mock = self.nms_mock.folder.destroy
-        mock.side_effect = exception.NexentaException('Folder does not exist')
+        mock.side_effect = utils.NexentaException('Folder does not exist')
         self.drv.delete_volume({
             'id': '1',
             'name': 'volume-1',

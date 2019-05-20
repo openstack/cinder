@@ -136,7 +136,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 data['X-ISCSI-TargetName'], data['X-ISCSI-TargetID'])
             if 'X-VIPS' in data:
                 if self.target_vip not in data['X-VIPS']:
-                    raise exception.NexentaException(
+                    raise nexenta_utils.NexentaException(
                         'Configured client IP address does not match any VIP'
                         ' provided by iSCSI service %s' % self.iscsi_service)
                 else:
@@ -302,13 +302,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.create_snapshot(snapshot)
         try:
             self.create_volume_from_snapshot(volume, snapshot)
-        except exception.NexentaException:
+        except nexenta_utils.NexentaException:
             LOG.error('Volume creation failed, deleting created snapshot '
                       '%s', '@'.join([snapshot['volume_name'],
                                      snapshot['name']]))
             try:
                 self.delete_snapshot(snapshot)
-            except (exception.NexentaException, exception.SnapshotIsBusy):
+            except (nexenta_utils.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning('Failed to delete zfs snapshot '
                             '%s', '@'.join([snapshot['volume_name'],
                                             snapshot['name']]))

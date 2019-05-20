@@ -201,7 +201,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         dst = ':'.join([dst_host, dst_volume.split('/volumes/')[1]])
         try:
             nms.appliance.execute(self._get_zfs_send_recv_cmd(src, dst))
-        except exception.NexentaException as exc:
+        except utils.NexentaException as exc:
             LOG.warning("Cannot send source snapshot %(src)s to "
                         "destination %(dst)s. Reason: %(exc)s",
                         {'src': src, 'dst': dst, 'exc': exc})
@@ -209,13 +209,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         finally:
             try:
                 self.delete_snapshot(snapshot)
-            except exception.NexentaException as exc:
+            except utils.NexentaException as exc:
                 LOG.warning("Cannot delete temporary source snapshot "
                             "%(src)s on NexentaStor Appliance: %(exc)s",
                             {'src': src, 'exc': exc})
         try:
             self.delete_volume(volume)
-        except exception.NexentaException as exc:
+        except utils.NexentaException as exc:
             LOG.warning("Cannot delete source volume %(volume)s on "
                         "NexentaStor Appliance: %(exc)s",
                         {'volume': volume['name'], 'exc': exc})
@@ -225,7 +225,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                      volume['name'], snapshot['name'])
         try:
             dst_nms.snapshot.destroy(dst_snapshot, '')
-        except exception.NexentaException as exc:
+        except utils.NexentaException as exc:
             LOG.warning("Cannot delete temporary destination snapshot "
                         "%(dst)s on NexentaStor Appliance: %(exc)s",
                         {'dst': dst_snapshot, 'exc': exc})
@@ -320,7 +320,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     nms.folder.set_child_prop(
                         folder, options[opt], new)
                     retyped = True
-                except exception.NexentaException:
+                except utils.NexentaException:
                     LOG.error('Error trying to change %(opt)s'
                               ' from %(old)s to %(new)s',
                               {'opt': opt, 'old': old, 'new': new})
@@ -371,10 +371,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                                      volume)
                 self._ensure_share_mounted(sub_share, mnt_path)
             self._get_capacity_info(nfs_share)
-        except exception.NexentaException:
+        except utils.NexentaException:
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
-            except exception.NexentaException:
+            except utils.NexentaException:
                 LOG.warning("Cannot destroy created folder: "
                             "%(vol)s/%(folder)s",
                             {'vol': vol, 'folder': folder})
@@ -401,10 +401,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         try:
             self._share_folder(nms, vol, folder)
-        except exception.NexentaException:
+        except utils.NexentaException:
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder), '')
-            except exception.NexentaException:
+            except utils.NexentaException:
                 LOG.warning("Cannot destroy cloned folder: "
                             "%(vol)s/%(folder)s",
                             {'vol': vol, 'folder': folder})
@@ -438,12 +438,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.create_snapshot(snapshot)
         try:
             return self.create_volume_from_snapshot(volume, snapshot)
-        except exception.NexentaException:
+        except utils.NexentaException:
             LOG.error('Volume creation failed, deleting created snapshot '
                       '%(volume_name)s@%(name)s', snapshot)
             try:
                 self.delete_snapshot(snapshot)
-            except (exception.NexentaException, exception.SnapshotIsBusy):
+            except (utils.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning('Failed to delete zfs snapshot '
                             '%(volume_name)s@%(name)s', snapshot)
             raise
@@ -465,7 +465,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             try:
                 props = nms.folder.get_child_props(folder, 'origin') or {}
                 nms.folder.destroy(folder, '-r')
-            except exception.NexentaException as exc:
+            except utils.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
                     LOG.info('Folder %s does not exist, it was '
                              'already deleted.', folder)
@@ -476,7 +476,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             if origin and self._is_clone_snapshot_name(origin):
                 try:
                     nms.snapshot.destroy(origin, '')
-                except exception.NexentaException as exc:
+                except utils.NexentaException as exc:
                     if 'does not exist' in exc.args[0]:
                         LOG.info('Snapshot %s does not exist, it was '
                                  'already deleted.', origin)
@@ -536,7 +536,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         folder = '%s/%s/%s' % (vol, dataset, volume['name'])
         try:
             nms.snapshot.destroy('%s@%s' % (folder, snapshot['name']), '')
-        except exception.NexentaException as exc:
+        except utils.NexentaException as exc:
             if 'does not exist' in exc.args[0]:
                 LOG.info('Snapshot %(folder)s@%(snapshot)s does not '
                          'exist, it was already deleted.',

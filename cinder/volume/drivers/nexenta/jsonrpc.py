@@ -17,8 +17,8 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import requests
 
-from cinder import exception
 from cinder.utils import retry
+from cinder.volume.drivers.nexenta import utils
 
 LOG = logging.getLogger(__name__)
 TIMEOUT = 60
@@ -82,5 +82,5 @@ class NexentaJSONProxy(object):
         LOG.debug('Got response: %s', response)
         if response.get('error') is not None:
             message = response['error'].get('message', '')
-            raise exception.NexentaException(message)
+            raise utils.NexentaException(message)
         return response.get('result')
