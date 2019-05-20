@@ -26,8 +26,8 @@ from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_utils import encodeutils
 
-from cinder import exception
 from cinder.i18n import _
+from cinder.zonemanager.drivers.brocade import exception as b_exception
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 
@@ -117,7 +117,7 @@ class BrcdHTTPFCZoneClient(object):
                 msg = _("Error while querying page %(url)s on the switch, "
                         "reason %(error)s.") % {'url': url,
                                                 'error': response.reason}
-                raise exception.BrocadeZoningHttpException(msg)
+                raise b_exception.BrocadeZoningHttpException(msg)
             else:
                 return response.text
         except requests.exceptions.ConnectionError as e:
@@ -127,8 +127,8 @@ class BrcdHTTPFCZoneClient(object):
                       'protocol': self.protocol,
                       'error': six.text_type(e)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
-        except exception.BrocadeZoningHttpException as ex:
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
+        except b_exception.BrocadeZoningHttpException as ex:
             msg = (_("Unexpected status code from the switch %(switch_id)s "
                      "with protocol %(protocol)s for url %(page)s. "
                      "Error: %(error)s")
@@ -137,7 +137,7 @@ class BrcdHTTPFCZoneClient(object):
                       'page': requestURL,
                       'error': six.text_type(ex)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def create_auth_token(self):
         """Create the authentication token.
@@ -176,7 +176,7 @@ class BrcdHTTPFCZoneClient(object):
             msg = (_("Error while creating authentication token: %s")
                    % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return auth_header
 
     def authenticate(self):
@@ -216,12 +216,12 @@ class BrcdHTTPFCZoneClient(object):
                 msg = (_("Authentication failed, verify the switch "
                          "credentials, error code %s.") % auth_error_code)
                 LOG.error(msg)
-                raise exception.BrocadeZoningHttpException(reason=msg)
+                raise b_exception.BrocadeZoningHttpException(reason=msg)
         except Exception as e:
             msg = (_("Error while authenticating with switch: %s.")
                    % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def get_session_info(self):
         """Get the session information from the switch
@@ -238,7 +238,7 @@ class BrcdHTTPFCZoneClient(object):
             msg = (_("Error while getting session information %s.")
                    % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return response
 
     def get_parsed_data(self, data, delim1, delim2):
@@ -257,7 +257,7 @@ class BrcdHTTPFCZoneClient(object):
         except ValueError as e:
             msg = (_("Error while parsing the data: %s.") % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def get_nvp_value(self, data, keyname):
         """Get the value for the key passed.
@@ -275,7 +275,7 @@ class BrcdHTTPFCZoneClient(object):
         except ValueError as e:
             msg = (_("Error while getting nvp value: %s.") % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def get_managable_vf_list(self, session_info):
         """List of VFIDs that can be managed.
@@ -291,11 +291,11 @@ class BrcdHTTPFCZoneClient(object):
                                          zone_constant.MANAGEABLE_VF)
             if vf_list:
                 vf_list = vf_list.split(",")  # convert the string to list
-        except exception.BrocadeZoningHttpException as e:
+        except b_exception.BrocadeZoningHttpException as e:
             msg = (_("Error while checking whether "
                      "VF is available for management %s.") % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return vf_list[:-1]
 
     def change_vf_context(self, vfid, session_data):
@@ -328,7 +328,7 @@ class BrcdHTTPFCZoneClient(object):
                 else:
                     msg = _("Cannot change VF context in the session.")
                     LOG.error(msg)
-                    raise exception.BrocadeZoningHttpException(reason=msg)
+                    raise b_exception.BrocadeZoningHttpException(reason=msg)
 
             else:
                 msg = (_("Cannot change VF context, "
@@ -336,11 +336,11 @@ class BrcdHTTPFCZoneClient(object):
                          "in the manageable VF list %(vf_list)s.")
                        % {'vf_list': managable_vf_list})
                 LOG.error(msg)
-                raise exception.BrocadeZoningHttpException(reason=msg)
-        except exception.BrocadeZoningHttpException as e:
+                raise b_exception.BrocadeZoningHttpException(reason=msg)
+        except b_exception.BrocadeZoningHttpException as e:
             msg = (_("Error while changing VF context %s.") % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def get_zone_info(self):
         """Parse all the zone information and store it in the dictionary."""
@@ -415,7 +415,7 @@ class BrcdHTTPFCZoneClient(object):
         except Exception as e:
             msg = (_("Error while changing VF context %s.") % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def is_supported_firmware(self):
         """Check firmware version is v6.4 or higher.
@@ -453,7 +453,7 @@ class BrcdHTTPFCZoneClient(object):
             msg = (_("Error while checking the firmware version %s.")
                    % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return isfwsupported
 
     def get_active_zone_set(self):
@@ -495,7 +495,7 @@ class BrcdHTTPFCZoneClient(object):
             msg = (_("Failed getting active zone set from fabric %s.")
                    % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def add_zones(self, add_zones_info, activate, active_zone_set=None):
         """Add zone configuration.
@@ -555,7 +555,7 @@ class BrcdHTTPFCZoneClient(object):
                    % {'err_code': error_code, 'err_msg': error_msg})
 
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def update_zones(self, zone_info, activate, operation,
                      active_zone_set=None):
@@ -612,7 +612,7 @@ class BrcdHTTPFCZoneClient(object):
                    % {'err_code': error_code, 'err_msg': error_msg})
 
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def form_zone_string(self, cfgs, active_cfg,
                          zones, alias, qlps, ifas, activate):
@@ -661,7 +661,7 @@ class BrcdHTTPFCZoneClient(object):
             msg = (_("Exception while forming the zone string: %s.")
                    % six.text_type(e))
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         # Reconstruct the zoneString to type base string for OpenSSL
         return encodeutils.safe_encode(zoneString)
 
@@ -708,7 +708,7 @@ class BrcdHTTPFCZoneClient(object):
                      "in the zone string. Error %(description)s.")
                    % {'description': six.text_type(e)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return zones, cfgs, active_cfg
 
     def _update_zones(self, zones, updated_zones_info, operation):
@@ -744,7 +744,7 @@ class BrcdHTTPFCZoneClient(object):
                      "in the zone string. Error %(description)s.")
                    % {'description': six.text_type(e)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return zones
 
     def is_vf_enabled(self):
@@ -759,7 +759,7 @@ class BrcdHTTPFCZoneClient(object):
         try:
             is_vf_enabled = bool(self.get_nvp_value(
                 parsed_data, zone_constant.VF_ENABLED))
-        except exception.BrocadeZoningHttpException:
+        except b_exception.BrocadeZoningHttpException:
             is_vf_enabled = False
             parsed_data = None
         return is_vf_enabled, parsed_data
@@ -827,7 +827,7 @@ class BrcdHTTPFCZoneClient(object):
                      "in the zone string: %(description)s.")
                    % {'description': six.text_type(e)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
         return zones, cfgs, active_cfg
 
     def delete_zones(self, delete_zones_info, activate, active_zone_set=None):
@@ -869,7 +869,7 @@ class BrcdHTTPFCZoneClient(object):
                      "(error code=%(err_code)s error msg=%(err_msg)s.")
                    % {'err_code': error_code, 'err_msg': error_msg})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def post_zone_data(self, data):
         """Send POST request to the switch with the payload.
@@ -930,14 +930,14 @@ class BrcdHTTPFCZoneClient(object):
             if self.vfid is None:
                 msg = _("No VF ID is defined in the configuration file.")
                 LOG.error(msg)
-                raise exception.BrocadeZoningHttpException(reason=msg)
+                raise b_exception.BrocadeZoningHttpException(reason=msg)
             elif self.vfid != 128:
                 self.change_vf_context(self.vfid, session_data)
         else:
             if self.vfid is not None:
                 msg = _("VF is not enabled.")
                 LOG.error(msg)
-                raise exception.BrocadeZoningHttpException(reason=msg)
+                raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def _disconnect(self):
         """Disconnect from the switch using HTTP/HTTPS protocol.
@@ -957,8 +957,8 @@ class BrcdHTTPFCZoneClient(object):
                       'protocol': self.protocol,
                       'error': six.text_type(e)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
-        except exception.BrocadeZoningHttpException as ex:
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
+        except b_exception.BrocadeZoningHttpException as ex:
             msg = (_("Unexpected status code from the switch %(switch_id)s "
                      "with protocol %(protocol)s for url %(page)s. "
                      "Error: %(error)s")
@@ -967,7 +967,7 @@ class BrcdHTTPFCZoneClient(object):
                       'page': zone_constant.LOGOUT_PAGE,
                       'error': six.text_type(ex)})
             LOG.error(msg)
-            raise exception.BrocadeZoningHttpException(reason=msg)
+            raise b_exception.BrocadeZoningHttpException(reason=msg)
 
     def cleanup(self):
         """Close session."""

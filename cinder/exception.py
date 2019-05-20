@@ -1051,18 +1051,6 @@ class ZoneManagerNotInitialized(CinderException):
     message = _("Fibre Channel Zone Manager not initialized")
 
 
-class BrocadeZoningCliException(CinderException):
-    message = _("Brocade Fibre Channel Zoning CLI error: %(reason)s")
-
-
-class BrocadeZoningHttpException(CinderException):
-    message = _("Brocade Fibre Channel Zoning HTTP error: %(reason)s")
-
-
-class BrocadeZoningRestException(CinderException):
-    message = _("Brocade Fibre Channel Zoning REST error: %(reason)s")
-
-
 class CiscoZoningCliException(CinderException):
     message = _("Cisco Fibre Channel Zoning CLI error: %(reason)s")
 
