@@ -917,9 +917,14 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 volume = volume_rs.hits[0]
         else:
             vol_name = volume.name
-
-        # Get host object.
-        host_name = self.get_initiator_host_name(connector)
+        host_name = ""
+        if connector is None:
+            vol_map_rs = self.client.search("mappings", {"volume": volume})
+            if hasattr(vol_map_rs, "hits") and vol_map_rs.total != 0:
+                host_name = vol_map_rs.hits[0].host.name
+        else:
+            # Get host object.
+            host_name = self.get_initiator_host_name(connector)
         host_rs = self.client.search("hosts", name=host_name)
         if hasattr(host_rs, "hits") and host_rs.total != 0 and volume:
             host = host_rs.hits[0]
