@@ -83,9 +83,30 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         fczm_utils.add_fc_zone(conn_info)
         return conn_info
 
+    def get_hostname_initiator_pwwn(self, volume):
+        init_host = None
+        init_host_name = ""
+        init_pwwn = []
+        vol_map_rs = self.client.search("mappings", {"volume": volume})
+        if hasattr(vol_map_rs, "hits") and vol_map_rs.total != 0:
+            init_host = vol_map_rs.hits[0].host
+            init_host_name = init_host.name
+        if init_host is not None:
+            host_fc_ports = self.client.search("host_fc_ports", host=init_host)
+            if hasattr(host_fc_ports, "hits") and host_fc_ports.total != 0:
+                for port in host_fc_ports.hits:
+                    if port.pwwn:
+                        init_pwwn.append((port.pwwn).replace(':', ''))
+        return init_host_name, init_pwwn
+
     @utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):
+        if connector is None:
+            host_name, init_pwwn = self.get_hostname_initiator_pwwn(volume)
+        else:
+            host_name = self.get_initiator_host_name(connector)
+
         # To support replication failback
         temp_client = None
         if (hasattr(volume, 'replication_status') and
@@ -94,13 +115,14 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
             self.client = self.target
         super(KaminarioFCDriver, self).terminate_connection(volume, connector)
         properties = {"driver_volume_type": "fibre_channel", "data": {}}
-        host_name = self.get_initiator_host_name(connector)
         host_rs = self.client.search("hosts", name=host_name)
         # In terminate_connection, host_entry is deleted if host
         # is not attached to any volume
         if host_rs.total == 0:
             # Get target wwpns.
             target_wwpns = self.get_target_info(volume)
+            if connector is None:
+                connector = {'wwpns': init_pwwn}
             target_wwpns, init_target_map = self._build_initiator_target_map(
                 connector, target_wwpns)
             properties["data"] = {"target_wwn": target_wwpns,
