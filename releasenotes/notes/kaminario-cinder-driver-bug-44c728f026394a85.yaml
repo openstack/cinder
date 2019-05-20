@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Kaminario FC and iSCSI drivers: Fixed `bug 1829398
+    <https://bugs.launchpad.net/cinder/+bug/1829398>`_ where
+    force detach would fail.
