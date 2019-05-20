@@ -134,6 +134,11 @@ EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 EXTRA_SPECS_MULTIATTACH = "multiattach"
 
 
+# RBD
+class RBDDriverException(exception.VolumeDriverException):
+    message = _("RBD Cinder driver failure: %(reason)s")
+
+
 class RBDVolumeProxy(object):
     """Context manager for dealing with an existing rbd volume.
 
@@ -788,7 +793,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         if want_replication and want_multiattach:
             msg = _('Replication and Multiattach are mutually exclusive.')
-            raise exception.RBDDriverException(reason=msg)
+            raise RBDDriverException(reason=msg)
 
         if want_replication:
             return self._enable_replication(volume)
@@ -1201,7 +1206,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         # feautures to restore.
         if self._is_multiattach_type(volume.volume_type):
             msg = _('Retyping from multiattach is not supported.')
-            raise exception.RBDDriverException(reason=msg)
+            raise RBDDriverException(reason=msg)
 
         old_vol_replicated = self._is_replicated_type(volume.volume_type)
         new_vol_replicated = self._is_replicated_type(new_type)
