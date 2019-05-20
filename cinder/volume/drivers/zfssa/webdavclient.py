@@ -59,6 +59,12 @@ propertyupdate_data = """<?xml version="1.0"?>
     </D:propertyupdate>"""
 
 
+class WebDAVClientError(exception.VolumeDriverException):
+    message = _("The WebDAV request failed. Reason: %(msg)s, "
+                "Return code/reason: %(code)s, Source Volume: %(src)s, "
+                "Destination Volume: %(dst)s, Method: %(method)s.")
+
+
 class ZFSSAWebDAVClient(object):
     def __init__(self, url, auth_str, **kwargs):
         """Initialize WebDAV Client"""
@@ -129,17 +135,16 @@ class ZFSSAWebDAVClient(object):
                         continue
 
                 msg = self._lookup_error(err.code)
-                raise exception.WebDAVClientError(msg=msg, code=err.code,
-                                                  src=src_file, dst=dst_file,
-                                                  method=method)
+                raise WebDAVClientError(msg=msg, code=err.code,
+                                        src=src_file, dst=dst_file,
+                                        method=method)
 
             except http_client.BadStatusLine as err:
                 msg = self._lookup_error('BadStatusLine')
                 code = 'http_client.BadStatusLine'
-                raise exception.WebDAVClientError(msg=msg,
-                                                  code=code,
-                                                  src=src_file, dst=dst_file,
-                                                  method=method)
+                raise WebDAVClientError(msg=msg, code=code,
+                                        src=src_file, dst=dst_file,
+                                        method=method)
 
             except urllib.error.URLError as err:
                 reason = ''
@@ -147,9 +152,9 @@ class ZFSSAWebDAVClient(object):
                     reason = err.reason
 
                 msg = self._lookup_error('Bad_Gateway')
-                raise exception.WebDAVClientError(msg=msg,
-                                                  code=reason, src=src_file,
-                                                  dst=dst_file, method=method)
+                raise WebDAVClientError(msg=msg, code=reason,
+                                        src=src_file,
+                                        dst=dst_file, method=method)
 
             break
         return response
