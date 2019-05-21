@@ -103,7 +103,7 @@ class VZStorageTestCase(test.TestCase):
     @mock.patch('os.path.exists')
     def test_setup_missing_shares_conf(self, mock_exists):
         mock_exists.side_effect = self._path_dont_exists
-        self.assertRaises(exception.VzStorageException,
+        self.assertRaises(vzstorage.VzStorageException,
                           self._vz_driver.do_setup,
                           mock.sentinel.context)
 
@@ -111,7 +111,7 @@ class VZStorageTestCase(test.TestCase):
     def test_setup_invalid_usage_ratio(self, mock_exists):
         mock_exists.side_effect = self._path_exists
         self._vz_driver.configuration.vzstorage_used_ratio = 1.2
-        self.assertRaises(exception.VzStorageException,
+        self.assertRaises(vzstorage.VzStorageException,
                           self._vz_driver.do_setup,
                           mock.sentinel.context)
 
@@ -119,7 +119,7 @@ class VZStorageTestCase(test.TestCase):
     def test_setup_invalid_usage_ratio2(self, mock_exists):
         mock_exists.side_effect = self._path_exists
         self._vz_driver.configuration.vzstorage_used_ratio = 0
-        self.assertRaises(exception.VzStorageException,
+        self.assertRaises(vzstorage.VzStorageException,
                           self._vz_driver.do_setup,
                           mock.sentinel.context)
 
@@ -128,7 +128,7 @@ class VZStorageTestCase(test.TestCase):
         mock_exists.side_effect = self._path_exists
         self._cfg.vzstorage_mount_point_base = './tmp'
         vz_driver = vzstorage.VZStorageDriver(configuration=self._cfg)
-        self.assertRaises(exception.VzStorageException,
+        self.assertRaises(vzstorage.VzStorageException,
                           vz_driver.do_setup,
                           mock.sentinel.context)
 
@@ -138,7 +138,7 @@ class VZStorageTestCase(test.TestCase):
         exc = OSError()
         exc.errno = errno.ENOENT
         self._vz_driver._execute.side_effect = exc
-        self.assertRaises(exception.VzStorageException,
+        self.assertRaises(vzstorage.VzStorageException,
                           self._vz_driver.do_setup,
                           mock.sentinel.context)
 
@@ -164,7 +164,7 @@ class VZStorageTestCase(test.TestCase):
         self.assertEqual(expected, ret)
 
     def test_ensure_share_mounted_invalid_share(self):
-        self.assertRaises(exception.VzStorageException,
+        self.assertRaises(vzstorage.VzStorageException,
                           self._vz_driver._ensure_share_mounted, ':')
 
     @mock.patch.object(remotefs.RemoteFsClient, 'mount')
@@ -197,14 +197,14 @@ class VZStorageTestCase(test.TestCase):
     def test_find_share_no_shares_mounted(self):
         drv = self._vz_driver
         with mock.patch.object(drv, '_is_share_eligible', return_value=True):
-            self.assertRaises(exception.VzStorageNoSharesMounted,
+            self.assertRaises(vzstorage.VzStorageNoSharesMounted,
                               drv._find_share, self.vol)
 
     def test_find_share_no_shares_suitable(self):
         drv = self._vz_driver
         drv._mounted_shares = [self._FAKE_SHARE]
         with mock.patch.object(drv, '_is_share_eligible', return_value=False):
-            self.assertRaises(exception.VzStorageNoSuitableShareFound,
+            self.assertRaises(vzstorage.VzStorageNoSuitableShareFound,
                               drv._find_share, self.vol)
 
     def test_is_share_eligible_false(self):

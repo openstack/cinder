@@ -73,6 +73,18 @@ DISK_FORMAT_QCOW2 = 'qcow2'
 DISK_FORMAT_PLOOP = 'ploop'
 
 
+class VzStorageException(exception.RemoteFSException):
+    message = _("Unknown Virtuozzo Storage exception")
+
+
+class VzStorageNoSharesMounted(exception.RemoteFSNoSharesMounted):
+    message = _("No mounted Virtuozzo Storage shares found")
+
+
+class VzStorageNoSuitableShareFound(exception.RemoteFSNoSuitableShareFound):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
 class PloopDevice(object):
     """Setup a ploop device for ploop image
 
@@ -239,19 +251,19 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             msg = (_("VzStorage config file at %(config)s doesn't exist.") %
                    {'config': config})
             LOG.error(msg)
-            raise exception.VzStorageException(msg)
+            raise VzStorageException(msg)
 
         if not os.path.isabs(self.base):
             msg = _("Invalid mount point base: %s.") % self.base
             LOG.error(msg)
-            raise exception.VzStorageException(msg)
+            raise VzStorageException(msg)
 
         used_ratio = self.configuration.vzstorage_used_ratio
         if not ((used_ratio > 0) and (used_ratio <= 1)):
             msg = _("VzStorage config 'vzstorage_used_ratio' invalid. "
                     "Must be > 0 and <= 1.0: %s.") % used_ratio
             LOG.error(msg)
-            raise exception.VzStorageException(msg)
+            raise VzStorageException(msg)
 
         self.shares = {}
 
@@ -265,7 +277,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 msg = _('%s is not installed.') % package
-                raise exception.VzStorageException(msg)
+                raise VzStorageException(msg)
             else:
                 raise
 
@@ -278,7 +290,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             msg = (_("Invalid Virtuozzo Storage share specification: %r. "
                      "Must be: [MDS1[,MDS2],...:/]<CLUSTER NAME>[:PASSWORD].")
                    % share)
-            raise exception.VzStorageException(msg)
+            raise VzStorageException(msg)
         cluster_name = m.group(2)
 
         if share in self.shares:
@@ -306,13 +318,13 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         """
 
         if not self._mounted_shares:
-            raise exception.VzStorageNoSharesMounted()
+            raise VzStorageNoSharesMounted()
 
         for share in self._mounted_shares:
             if self._is_share_eligible(share, volume.size):
                 break
         else:
-            raise exception.VzStorageNoSuitableShareFound(
+            raise VzStorageNoSuitableShareFound(
                 volume_size=volume.size)
 
         LOG.debug('Selected %s as target VzStorage share.', share)
@@ -619,7 +631,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         elif active_file != snap_file:
             msg = (_("Expected higher file exists for snapshot %s") %
                    snapshot.id)
-            raise exception.VzStorageException(msg)
+            raise VzStorageException(msg)
 
         img_info = self._qemu_img_info(snap_file, snapshot.volume.name)
         base_file = os.path.join(self._local_volume_dir(snapshot.volume),
