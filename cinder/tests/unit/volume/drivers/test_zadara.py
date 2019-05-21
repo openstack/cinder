@@ -569,7 +569,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.create_volume(volume2)
         self.driver.initialize_connection(volume1, connector1)
         self.driver.initialize_connection(volume2, connector2)
-        self.assertRaises(exception.ZadaraServerNotFound,
+        self.assertRaises(zadara.ZadaraServerNotFound,
                           self.driver.terminate_connection,
                           volume1, connector3)
         self.assertRaises(exception.VolumeNotFound,
@@ -653,7 +653,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
         connector = dict(initiator='test_iqn.1')
         self.driver.create_volume(volume)
-        self.assertRaises(exception.ZadaraVPSANoActiveController,
+        self.assertRaises(zadara.ZadaraVPSANoActiveController,
                           self.driver.initialize_connection,
                           volume, connector)
 
@@ -690,7 +690,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
 
-        self.assertRaises(exception.ZadaraVolumeNotFound,
+        self.assertRaises(zadara.ZadaraVolumeNotFound,
                           self.driver.extend_volume,
                           volume2, 15)
         self.assertRaises(exception.InvalidInput,

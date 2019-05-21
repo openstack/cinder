@@ -74,6 +74,30 @@ CONF = cfg.CONF
 CONF.register_opts(zadara_opts, group=configuration.SHARED_CONF_GROUP)
 
 
+class ZadaraServerCreateFailure(exception.VolumeDriverException):
+    message = _("Unable to create server object for initiator %(name)s")
+
+
+class ZadaraServerNotFound(exception.NotFound):
+    message = _("Unable to find server object for initiator %(name)s")
+
+
+class ZadaraVPSANoActiveController(exception.VolumeDriverException):
+    message = _("Unable to find any active VPSA controller")
+
+
+class ZadaraAttachmentsNotFound(exception.NotFound):
+    message = _("Failed to retrieve attachments for volume %(name)s")
+
+
+class ZadaraInvalidAttachmentInfo(exception.Invalid):
+    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
+
+
+class ZadaraVolumeNotFound(exception.VolumeDriverException):
+    message = "%(reason)s"
+
+
 class ZadaraVPSAConnection(object):
     """Executes volume driver commands on VPSA."""
 
@@ -566,7 +590,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             msg = (_('Volume %(name)s could not be found. '
                      'It might be already deleted') % {'name': name})
             LOG.error(msg)
-            raise exception.ZadaraVolumeNotFound(reason=msg)
+            raise ZadaraVolumeNotFound(reason=msg)
 
         if new_size < size:
             raise exception.InvalidInput(
@@ -604,7 +628,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         initiator_name = connector['initiator']
         vpsa_srv = self._create_vpsa_server(initiator_name)
         if not vpsa_srv:
-            raise exception.ZadaraServerCreateFailure(name=initiator_name)
+            raise ZadaraServerCreateFailure(name=initiator_name)
 
         # Get volume name
         name = self.configuration.zadara_vol_name_template % volume['name']
@@ -615,7 +639,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         # Get Active controller details
         ctrl = self._get_active_controller_details()
         if not ctrl:
-            raise exception.ZadaraVPSANoActiveController()
+            raise ZadaraVPSANoActiveController()
 
         xml_tree = self.vpsa.send_cmd('list_vol_attachments',
                                       vpsa_vol=vpsa_vol)
@@ -632,11 +656,11 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         server = self._xml_parse_helper(xml_tree, 'servers',
                                         ('iqn', initiator_name))
         if server is None:
-            raise exception.ZadaraAttachmentsNotFound(name=name)
+            raise ZadaraAttachmentsNotFound(name=name)
         target = server.findtext('target')
         lun = int(server.findtext('lun'))
         if target is None or lun is None:
-            raise exception.ZadaraInvalidAttachmentInfo(
+            raise ZadaraInvalidAttachmentInfo(
                 name=name,
                 reason=_('target=%(target)s, lun=%(lun)s') %
                 {'target': target, 'lun': lun})
@@ -663,7 +687,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         initiator_name = connector['initiator']
         vpsa_srv = self._get_server_name(initiator_name)
         if not vpsa_srv:
-            raise exception.ZadaraServerNotFound(name=initiator_name)
+            raise ZadaraServerNotFound(name=initiator_name)
 
         # Get volume name
         name = self.configuration.zadara_vol_name_template % volume['name']
