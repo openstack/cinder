@@ -115,6 +115,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
                 (bp/powermax-storage-assisted-inuse-retype)
         4.1.0 - Changing from 90 to 91 rest endpoints
               - Support for Rapid TDEV Delete (bp powermax-tdev-deallocation)
+              - PowerMax OS Metro formatted volumes fix (bug #1829876)
     """
 
     VERSION = "4.1.0"
