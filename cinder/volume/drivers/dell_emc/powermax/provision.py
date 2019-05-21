@@ -401,7 +401,7 @@ class PowerMaxProvision(object):
             @coordination.synchronized('emc-rg-{rdf_group}')
             def _extend_replicated_volume(rdf_group):
                 self.rest.extend_volume(array, device_id,
-                                        new_size, extra_specs)
+                                        new_size, extra_specs, rdf_group)
             _extend_replicated_volume(rdf_group)
         else:
             self.rest.extend_volume(array, device_id, new_size, extra_specs)

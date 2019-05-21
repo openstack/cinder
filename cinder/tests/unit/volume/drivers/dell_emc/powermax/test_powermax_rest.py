@@ -544,22 +544,31 @@ class PowerMaxRestTest(test.TestCase):
             self.rest._modify_volume, self.data.array,
             device_id, payload)
 
-    def test_extend_volume(self):
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_job')
+    def test_extend_volume(self, mck_wait):
+        array = self.data.array
         device_id = self.data.device_id
         new_size = '3'
+        extra_specs = self.data.extra_specs,
+        rdfg_num = self.data.rdf_group_no
+
         extend_vol_payload = {'executionOption': 'ASYNCHRONOUS',
                               'editVolumeActionParam': {
                                   'expandVolumeParam': {
                                       'volumeAttribute': {
                                           'volume_size': new_size,
-                                          'capacityUnit': 'GB'}}}}
+                                          'capacityUnit': 'GB'},
+                                      'rdfGroupNumber': rdfg_num}}}
+
         with mock.patch.object(
                 self.rest, '_modify_volume',
-                return_value=(202, self.data.job_list[0])) as mock_modify:
-            self.rest.extend_volume(self.data.array, device_id, new_size,
-                                    self.data.extra_specs)
-            mock_modify.assert_called_once_with(
-                self.data.array, device_id, extend_vol_payload)
+                return_value=(202, self.data.job_list[0])) as mck_modify:
+
+            self.rest.extend_volume(array, device_id, new_size, extra_specs,
+                                    rdfg_num)
+
+            mck_modify.assert_called_once_with(array, device_id,
+                                               extend_vol_payload)
 
     def test_legacy_delete_volume(self):
         device_id = self.data.device_id
@@ -1731,3 +1740,10 @@ class PowerMaxRestTest(test.TestCase):
         self.rest.u4p_failover_targets = []
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.rest._handle_u4p_failover)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_detail',
+                       return_value=tpd.PowerMaxData.powermax_model_details)
+    def test_get_array_ucode(self, mck_ucode):
+        array = self.data.array
+        ucode = self.rest.get_array_ucode_version(array)
+        self.assertEqual(self.data.powermax_model_details['ucode'], ucode)

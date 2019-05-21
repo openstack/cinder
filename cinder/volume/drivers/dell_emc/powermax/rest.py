@@ -671,6 +671,18 @@ class PowerMaxRest(object):
                 is_next_gen = True
         return array_model, is_next_gen
 
+    def get_array_ucode_version(self, array):
+        """Get the PowerMax/VMAX uCode version.
+
+        :param array: the array serial number
+        :return: the PowerMax/VMAX uCode version
+        """
+        ucode_version = None
+        system_info = self.get_array_detail(array)
+        if system_info:
+            ucode_version = system_info['ucode']
+        return ucode_version
+
     def is_compression_capable(self, array):
         """Check if array is compression capable.
 
@@ -1239,20 +1251,26 @@ class PowerMaxRest(object):
         return self.modify_resource(array, SLOPROVISIONING, 'volume',
                                     payload, resource_name=device_id)
 
-    def extend_volume(self, array, device_id, new_size, extra_specs):
+    def extend_volume(self, array, device_id, new_size, extra_specs,
+                      rdf_grp_no=None):
         """Extend a PowerMax/VMAX volume.
 
         :param array: the array serial number
         :param device_id: volume device id
         :param new_size: the new required size for the device
         :param extra_specs: the extra specifications
+        :param rdf_grp_no: the RDG group number
         """
-        extend_vol_payload = {"executionOption": "ASYNCHRONOUS",
-                              "editVolumeActionParam": {
-                                  "expandVolumeParam": {
-                                      "volumeAttribute": {
-                                          "volume_size": new_size,
-                                          "capacityUnit": "GB"}}}}
+        extend_vol_payload = {'executionOption': 'ASYNCHRONOUS',
+                              'editVolumeActionParam': {
+                                  'expandVolumeParam': {
+                                      'volumeAttribute': {
+                                          'volume_size': new_size,
+                                          'capacityUnit': 'GB'}}}}
+
+        if rdf_grp_no:
+            extend_vol_payload['editVolumeActionParam'][
+                'expandVolumeParam'].update({'rdfGroupNumber': rdf_grp_no})
 
         status_code, job = self._modify_volume(
             array, device_id, extend_vol_payload)
@@ -2320,7 +2338,6 @@ class PowerMaxRest(object):
                 extra_specs[utils.RDF_CONS_EXEMPT] = False
             payload = self.get_metro_payload_info(
                 array, payload, rdf_group_no, extra_specs)
-
         resource_type = ("rdf_group/%(rdf_num)s/volume"
                          % {'rdf_num': rdf_group_no})
         status_code, job = self.create_resource(array, REPLICATION,

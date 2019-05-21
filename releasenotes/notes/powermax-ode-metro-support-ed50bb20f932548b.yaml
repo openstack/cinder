@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    PowerMax for Cinder driver now supports extending in-use Metro RDF enabled
+    volumes.
