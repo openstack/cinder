@@ -1354,23 +1354,81 @@ class PowerMaxRestTest(test.TestCase):
             self.data.device_id2, self.data.remote_array, extra_specs)
         self.assertEqual(ref_dict, rdf_dict)
 
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_job')
+    @mock.patch.object(rest.PowerMaxRest, 'create_resource',
+                       return_value=(200, 'job'))
+    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
+                       side_effect=[True, True, False, False])
+    def test_test_create_rdf_device_pair_metro_cons_exempt(
+            self, mck_nxt_gen, mck_create, mck_wait):
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_METRO
+        extra_specs[utils.METROBIAS] = True
+
+        ref_payload = ({
+            "deviceNameListSource": [{"name": self.data.device_id}],
+            "deviceNameListTarget": [{"name": self.data.device_id2}],
+            "replicationMode": 'Active',
+            "establish": 'true',
+            "rdfType": 'RDF1'})
+
+        get_payload_true = {'rdfType': 'RDF1', 'consExempt': 'true'}
+        get_payload_false = {'rdfType': 'RDF1', 'consExempt': 'false'}
+
+        with mock.patch.object(
+                self.rest, 'get_metro_payload_info',
+                side_effect=[get_payload_true,
+                             get_payload_false]) as mock_payload:
+            ref_extra_specs = deepcopy(extra_specs)
+
+            ref_extra_specs[utils.RDF_CONS_EXEMPT] = True
+            self.rest.create_rdf_device_pair(
+                self.data.array, self.data.device_id, self.data.rdf_group_no,
+                self.data.device_id2, self.data.remote_array, extra_specs)
+            mock_payload.assert_called_once_with(
+                self.data.array, ref_payload, self.data.rdf_group_no,
+                ref_extra_specs)
+
+            mock_payload.reset_mock()
+
+            ref_extra_specs[utils.RDF_CONS_EXEMPT] = False
+            self.rest.create_rdf_device_pair(
+                self.data.array, self.data.device_id, self.data.rdf_group_no,
+                self.data.device_id2, self.data.remote_array, extra_specs)
+            mock_payload.assert_called_once_with(
+                self.data.array, ref_payload, self.data.rdf_group_no,
+                ref_extra_specs)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
                        side_effect=[{'numDevices': 0}, {'numDevices': 0},
-                                    {'numDevices': 1}])
+                                    {'numDevices': 1}, {'numDevices': 1}])
     def test_get_metro_payload_info(self, mock_rdfg):
-        ref_payload = {'establish': 'true', 'rdfType': 'RDF1'}
-        payload1 = self.rest.get_metro_payload_info(
-            self.data.array, ref_payload, self.data.rdf_group_no, {})
-        self.assertEqual(ref_payload, payload1)
-        payload2 = self.rest.get_metro_payload_info(
-            self.data.array, ref_payload, self.data.rdf_group_no,
+        payload_in = {'establish': 'true', 'rdfType': 'RDF1'}
+
+        # First volume out, Metro use bias not set
+        act_payload_1 = self.rest.get_metro_payload_info(
+            self.data.array, payload_in.copy(), self.data.rdf_group_no, {})
+        self.assertEqual(payload_in, act_payload_1)
+
+        # First volume out, Metro use bias set
+        act_payload_2 = self.rest.get_metro_payload_info(
+            self.data.array, payload_in.copy(), self.data.rdf_group_no,
             {'metro_bias': True})
-        self.assertEqual('true', payload2['metroBias'])
-        ref_payload2 = {'establish': 'true', 'rdfType': 'RDF1'}
-        payload3 = self.rest.get_metro_payload_info(
-            self.data.array, ref_payload2, self.data.rdf_group_no, {})
-        ref_payload3 = {'rdfType': 'NA', 'format': 'true'}
-        self.assertEqual(ref_payload3, payload3)
+        self.assertEqual('true', act_payload_2['metroBias'])
+
+        # Not first vol in RDFG, consistency exempt not set
+        act_payload_3 = self.rest.get_metro_payload_info(
+            self.data.array, payload_in.copy(), self.data.rdf_group_no,
+            {'consExempt': False})
+        ref_payload_3 = {'rdfType': 'NA', 'format': 'true'}
+        self.assertEqual(ref_payload_3, act_payload_3)
+
+        # Not first vol in RDFG, consistency exempt set
+        act_payload_4 = self.rest.get_metro_payload_info(
+            self.data.array, payload_in.copy(), self.data.rdf_group_no,
+            {'consExempt': True})
+        ref_payload_4 = {'rdfType': 'RDF1', 'consExempt': 'true'}
+        self.assertEqual(ref_payload_4, act_payload_4)
 
     def test_modify_rdf_device_pair(self):
         resource_name = '70/volume/00001'

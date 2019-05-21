@@ -2273,8 +2273,17 @@ class PowerMaxRest(object):
             payload_update = self._get_async_payload_info(array, rdf_group_no)
             payload.update(payload_update)
         elif rep_mode == 'Active':
+            # Check if arrays are next gen to support add data vol to existing
+            # metro enabled rdfg, else format drive before adding
+            r1_nxt_gen = self.is_next_gen_array(array)
+            r2_nxt_gen = self.is_next_gen_array(remote_array)
+            if r1_nxt_gen and r2_nxt_gen:
+                extra_specs[utils.RDF_CONS_EXEMPT] = True
+            else:
+                extra_specs[utils.RDF_CONS_EXEMPT] = False
             payload = self.get_metro_payload_info(
                 array, payload, rdf_group_no, extra_specs)
+
         resource_type = ("rdf_group/%(rdf_num)s/volume"
                          % {'rdf_num': rdf_group_no})
         status_code, job = self.create_resource(array, REPLICATION,
@@ -2320,10 +2329,19 @@ class PowerMaxRest(object):
                     and extra_specs[utils.METROBIAS] is True):
                 payload.update({'metroBias': 'true'})
         else:
-            # Need to format subsequent volumes
-            payload['format'] = 'true'
+            if (extra_specs.get(utils.RDF_CONS_EXEMPT)
+                    and extra_specs[utils.RDF_CONS_EXEMPT] is True):
+                payload['consExempt'] = 'true'
+                payload['rdfType'] = 'RDF1'
+            else:
+                LOG.warning("Adding HyperMax OS volumes to an existing RDFG "
+                            "requires the volumes to be formatted in advance,"
+                            "please upgrade to PowerMax OS to bypass this "
+                            "restriction.")
+                payload['format'] = 'true'
+                payload['rdfType'] = 'NA'
+
             payload.pop('establish')
-            payload['rdfType'] = 'NA'
         return payload
 
     def modify_rdf_device_pair(
