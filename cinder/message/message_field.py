@@ -27,6 +27,7 @@ from cinder.i18n import _
 class Resource(object):
 
     VOLUME = 'VOLUME'
+    VOLUME_SNAPSHOT = 'VOLUME_SNAPSHOT'
 
 
 class Action(object):
@@ -40,6 +41,10 @@ class Action(object):
     EXTEND_VOLUME = ('007', _('extend volume'))
     CREATE_VOLUME_FROM_BACKEND = ('008',
                                   _('create volume from backend storage'))
+    SNAPSHOT_CREATE = ('009', _('create snapshot'))
+    SNAPSHOT_DELETE = ('010', _('delete snapshot'))
+    SNAPSHOT_UPDATE = ('011', _('update snapshot'))
+    SNAPSHOT_METADATA_UPDATE = ('012', _('update snapshot metadata'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
@@ -48,7 +53,11 @@ class Action(object):
            COPY_IMAGE_TO_VOLUME,
            UNMANAGE_VOLUME,
            EXTEND_VOLUME,
-           CREATE_VOLUME_FROM_BACKEND
+           CREATE_VOLUME_FROM_BACKEND,
+           SNAPSHOT_CREATE,
+           SNAPSHOT_DELETE,
+           SNAPSHOT_UPDATE,
+           SNAPSHOT_METADATA_UPDATE,
            )
 
 
@@ -85,6 +94,12 @@ class Detail(object):
     DRIVER_FAILED_CREATE = (
         '012',
         _('Driver failed to create the volume.'))
+    SNAPSHOT_CREATE_ERROR = ('013', _("Snapshot failed to create."))
+    SNAPSHOT_UPDATE_METADATA_FAILED = (
+        '014',
+        _("Volume snapshot update metadata failed."))
+    SNAPSHOT_IS_BUSY = ('015', _("Snapshot is busy."))
+    SNAPSHOT_DELETE_ERROR = ('016', _("Snapshot failed to delete."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -97,7 +112,12 @@ class Detail(object):
            NOTIFY_COMPUTE_SERVICE_FAILED,
            DRIVER_FAILED_EXTEND,
            SIGNATURE_VERIFICATION_FAILED,
-           DRIVER_FAILED_CREATE)
+           DRIVER_FAILED_CREATE,
+           SNAPSHOT_CREATE_ERROR,
+           SNAPSHOT_UPDATE_METADATA_FAILED,
+           SNAPSHOT_IS_BUSY,
+           SNAPSHOT_DELETE_ERROR,
+           )
 
     # Exception and detail mappings
     EXCEPTION_DETAIL_MAPPINGS = {
@@ -108,6 +128,7 @@ class Detail(object):
                        'BackupLimitExceeded',
                        'SnapshotLimitExceeded'],
         NOT_ENOUGH_SPACE_FOR_IMAGE: ['ImageTooBig'],
+        SNAPSHOT_IS_BUSY: ['SnapshotIsBusy'],
     }
 
 

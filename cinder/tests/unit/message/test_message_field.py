@@ -30,10 +30,31 @@ class MessageFieldTest(test.TestCase):
         action_ids = [x[0] for x in message_field.Action.ALL]
         self.assertEqual(len(action_ids), len(set(action_ids)))
 
+    def test_all_action_fields_in_ALL(self):
+        """Assert that all and only defined fields are in the ALL tuple"""
+        defined_fields = [k for k in message_field.Action.__dict__.keys()
+                          if k != 'ALL' and not k.startswith('__')]
+        for d in defined_fields:
+            self.assertIn(getattr(message_field.Action, d),
+                          message_field.Action.ALL)
+        self.assertEqual(len(message_field.Action.ALL),
+                         len(defined_fields))
+
     def test_unique_detail_ids(self):
         """Assert that no detail_id is duplicated."""
         detail_ids = [x[0] for x in message_field.Detail.ALL]
         self.assertEqual(len(detail_ids), len(set(detail_ids)))
+
+    def test_all_detail_fields_in_ALL(self):
+        """Assert that all and only defined fields are in the ALL tuple"""
+        defined_fields = [k for k in message_field.Detail.__dict__.keys()
+                          if k != 'ALL' and not k.startswith('__')
+                          and k != 'EXCEPTION_DETAIL_MAPPINGS']
+        for d in defined_fields:
+            self.assertIn(getattr(message_field.Detail, d),
+                          message_field.Detail.ALL)
+        self.assertEqual(len(message_field.Detail.ALL),
+                         len(defined_fields))
 
     known_exceptions = [
         name for name, _ in
