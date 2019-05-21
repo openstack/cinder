@@ -161,21 +161,6 @@
               - ^tox.ini$
     experimental:
       jobs:
-        - legacy-tempest-dsvm-full-sheepdog-src-os-brick:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
         - legacy-tempest-dsvm-zeromq-multibackend:
             irrelevant-files:
               - ^(test-|)requirements.txt$
@@ -237,21 +222,6 @@
               - ^tools/.*$
               - ^tox.ini$
         - legacy-tempest-dsvm-neutron-pg-full:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - legacy-tempest-dsvm-full-sheepdog:
             irrelevant-files:
               - ^(test-|)requirements.txt$
               - ^.*\.rst$
