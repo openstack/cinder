@@ -15,10 +15,16 @@ import abc
 from oslo_log import log as logging
 
 from cinder import exception
+from cinder.i18n import _
 from cinder.volume.targets import driver
 
 
 LOG = logging.getLogger(__name__)
+
+
+class UnsupportedNVMETProtocol(exception.Invalid):
+    message = _("An invalid 'target_protocol' "
+                "value was provided: %(protocol)s")
 
 
 class NVMeOF(driver.Target):
@@ -44,7 +50,7 @@ class NVMeOF(driver.Target):
             self.nvme_transport_type = self.target_protocol_map[
                 target_protocol]
         else:
-            raise exception.UnsupportedNVMETProtocol(
+            raise UnsupportedNVMETProtocol(
                 protocol=target_protocol
             )
 
