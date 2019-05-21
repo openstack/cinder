@@ -74,9 +74,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 timeouts, connection retries and backoff factor.
               - Added configuration parameter for LUN writeback cache.
               - Improved collection of backend statistics.
+        1.4.1 - Added retries on timeouts, network connection errors,
+                SSL errors, proxy and NMS errors.
     """
 
-    VERSION = '1.4.0'
+    VERSION = '1.4.1'
     CI_WIKI_NAME = "Nexenta_CI"
 
     vendor_name = 'Nexenta'
@@ -91,12 +93,22 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                          'backend configuration not found')
                        % {'product_name': self.product_name,
                           'storage_protocol': self.storage_protocol})
-            raise jsonrpc.NmsException(code='ENODATA', message=message)
+            raise jsonrpc.NmsException(code='EINVAL', message=message)
         self.configuration.append_config_values(
             options.NEXENTA_CONNECTION_OPTS)
         self.configuration.append_config_values(options.NEXENTA_ISCSI_OPTS)
         self.configuration.append_config_values(options.NEXENTA_DATASET_OPTS)
-        self.configuration.append_config_values(options.NEXENTA_RRMGR_OPTS)
+        required_options = ['nexenta_host', 'nexenta_volume', 'nexenta_user',
+                            'nexenta_password']
+        for option in required_options:
+            if not self.configuration.safe_get(option):
+                message = (_('%(product_name)s %(storage_protocol)s '
+                             'backend configuration is missing '
+                             'required option: %(option)s')
+                           % {'product_name': self.product_name,
+                              'storage_protocol': self.storage_protocol,
+                              'option': option})
+                raise jsonrpc.NmsException(code='EINVAL', message=message)
         self.nms = None
         self.mappings = {}
         self.driver_name = self.__class__.__name__

@@ -16,6 +16,7 @@
 import hashlib
 import json
 
+from eventlet import greenthread
 from oslo_log import log as logging
 import requests
 import six
@@ -70,9 +71,8 @@ class NmsException(exception.VolumeDriverException):
         for key in defaults:
             if key not in kwargs:
                 kwargs[key] = defaults[key]
-        message = (_('%(message)s (source: %(source)s, '
-                     'name: %(name)s, code: %(code)s)')
-                   % kwargs)
+        message = ('%(message)s (source: %(source)s, '
+                   'name: %(name)s, code: %(code)s)') % kwargs
         del kwargs['message']
         self.code = kwargs['code']
         super(NmsException, self).__init__(message, **kwargs)
@@ -90,6 +90,10 @@ class NmsParser(html_parser.HTMLParser, object):
         if data:
             self.data.append(data)
 
+    @property
+    def text(self):
+        return ' '.join(self.data)
+
 
 class NmsRequest(object):
 
@@ -100,88 +104,120 @@ class NmsRequest(object):
     @synchronized
     def __call__(self, *args):
         timeout = self.nms.proxy.timeout
-        url = self.nms.proxy.url
+        attempts = self.nms.proxy.retries + 1
+        if self.nms.proxy.auto:
+            attempts *= 2
         payload = {
             self.nms.kind: self.nms.name,
             'method': self.method,
             'params': args
         }
         LOG.debug('NMS request start: post %(url)s %(payload)s',
-                  {'url': url, 'payload': payload})
+                  {'url': self.nms.proxy.url, 'payload': payload})
         data = json.dumps(payload)
-        try:
-            response = self.nms.proxy.session.post(url, data=data,
-                                                   timeout=timeout)
-        except requests.exceptions.ConnectionError as error:
-            if not self.nms.proxy.auto:
-                raise
-            if self.nms.proxy.scheme == 'http':
-                self.nms.proxy.scheme == 'https'
-            else:
-                self.nms.proxy.scheme == 'http'
-            url = self.nms.proxy.url
-            LOG.error('Try to failover to %(scheme)s scheme: %(url)s',
-                      {'scheme': self.nms.proxy.scheme, 'url': url})
-            response = self.nms.proxy.session.post(url, data=data,
-                                                   timeout=timeout)
-        LOG.debug('NMS request done: post %(url)s %(payload)s, '
-                  'response status: %(status)s, response reason: '
-                  '%(reason)s, response time: %(time)s seconds, '
-                  'response content: %(content)s',
-                  {'url': url, 'payload': payload,
-                   'status': response.status_code,
-                   'reason': response.reason,
-                   'time': response.elapsed.total_seconds(),
-                   'content': response.content})
-
-        if not response.content:
-            message = 'No content %(status)s %(reason)s' % {
-                'status': response.status_code,
-                'reason': response.reason
-            }
-            raise NmsException(code='EPROTO', source=url, message=message)
-
-        try:
-            content = json.loads(response.content)
-        except (TypeError, ValueError) as error:
-            LOG.debug('Failed to parse JSON %(content)s: %(error)s',
-                      {'content': response.content, 'error': error})
+        message = None
+        for attempt in range(attempts):
+            if attempt == attempts - 1:
+                raise NmsException(code='EAGAIN', message=message)
+            if message:
+                self.nms.proxy.delay(attempt, message)
+                LOG.warning('NMS request retry %(attempt)s: post %(url)s '
+                            '%(payload)s, reason: %(message)s ',
+                            {'attempt': attempt, 'url': self.nms.proxy.url,
+                             'payload': payload, 'message': message})
             try:
-                parser = NmsParser()
-                parser.feed(response.content)
-                message = ', '.join(parser.data)
-            except html_parser.HTMLParseError as error:
-                LOG.debug('Failed to parse HTML %(content)s: %(error)s',
-                          {'content': response.content, 'error': error})
-                message = response.content
-            raise NmsException(code='EBADMSG', source=url, message=message)
-
-        if not (response.ok and isinstance(content, dict)):
-            message = '%(status)s %(reason)s %(content)s' % {
-                'status': response.status_code,
-                'reason': response.reason,
-                'content': content
-            }
-            raise NmsException(code='EPROTO', source=url, message=message)
-
-        if 'error' in content and content['error'] is not None:
-            error = content['error']
-            if isinstance(error, dict) and 'message' in error:
-                message = error['message']
-            else:
+                response = self.nms.proxy.session.post(self.nms.proxy.url,
+                                                       data=data,
+                                                       timeout=timeout)
+            except requests.exceptions.Timeout as error:
                 message = error
-            self.check_error(url, message)
+                continue
+            except requests.exceptions.SSLError as error:
+                if self.nms.proxy.auto:
+                    self.nms.proxy.scheme = 'http'
+                    message = '%(error)s, failover to %(url)s' % {
+                        'error': error,
+                        'url': self.nms.proxy.url
+                    }
+                else:
+                    message = '%(error)s, please check SSL options' % {
+                        'error': error
+                    }
+                continue
+            except requests.exceptions.ConnectionError as error:
+                if self.nms.proxy.auto and self.nms.proxy.scheme == 'http':
+                    self.nms.proxy.scheme = 'https'
+                    message = '%(error)s, failover to %(url)s' % {
+                        'error': error,
+                        'url': self.nms.proxy.url
+                    }
+                else:
+                    message = error
+                continue
 
-        if 'result' in content and content['result'] is not None:
-            result = content['result']
-        else:
-            result = None
+            LOG.debug('NMS request done: post %(url)s %(payload)s, '
+                      'response status: %(status)s, response reason: '
+                      '%(reason)s, response time: %(time)s seconds, '
+                      'response content: %(content)s',
+                      {'url': self.nms.proxy.url,
+                       'payload': payload,
+                       'status': response.status_code,
+                       'reason': response.reason,
+                       'time': response.elapsed.total_seconds(),
+                       'content': response.content})
 
-        LOG.debug('NMS request result for %(payload)s: %(result)s',
-                  {'payload': payload, 'result': result})
-        return result
+            if not response.content:
+                message = 'no content %(status)s %(reason)s' % {
+                    'status': response.status_code,
+                    'reason': response.reason
+                }
+                continue
 
-    def check_error(self, url, message):
+            try:
+                content = json.loads(response.content)
+            except (TypeError, ValueError) as error:
+                text = response.content
+                try:
+                    parser = NmsParser()
+                    parser.feed(response.content)
+                    text = parser.text
+                except html_parser.HTMLParseError:
+                    pass
+                message = 'failed to parse JSON %(text)s: %(error)s' % {
+                    'text': text,
+                    'error': error
+                }
+                continue
+
+            if not (response.ok and isinstance(content, dict)):
+                message = '%(status)s %(reason)s %(content)s' % {
+                    'status': response.status_code,
+                    'reason': response.reason,
+                    'content': content
+                }
+                continue
+
+            if 'error' in content and content['error'] is not None:
+                error = content['error']
+                if isinstance(error, dict) and 'message' in error:
+                    message = error['message']
+                else:
+                    message = error
+                if self.check_error(message):
+                    continue
+
+            if 'result' in content and content['result'] is not None:
+                result = content['result']
+            else:
+                result = None
+
+            LOG.debug('NMS request result for %(payload)s: %(result)s',
+                      {'payload': payload, 'result': result})
+
+            return result
+
+    def check_error(self, message):
+        source = self.nms.proxy.url
         if 'already exists' in message:
             code = 'EEXIST'
         elif 'already configured' in message:
@@ -192,6 +228,8 @@ class NmsRequest(object):
             code = 'EBUSY'
         elif 'does not exist' in message:
             code = 'ENOENT'
+        elif 'not receive a reply' in message:
+            code = 'EAGAIN'
         else:
             code = 'EPROTO'
         ignored = {
@@ -218,8 +256,10 @@ class NmsRequest(object):
             LOG.debug('Ignore %(kind)s %(name)s %(method)s error: %(error)s',
                       {'kind': self.nms.kind, 'name': self.nms.name,
                        'method': self.method, 'error': message})
-            return
-        raise NmsException(code=code, source=url, message=message)
+            return False
+        elif code == 'EAGAIN':
+            return True
+        raise NmsException(code=code, source=source, message=message)
 
 
 class NmsObject(object):
@@ -271,18 +311,16 @@ class NmsProxy(object):
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
         }
+        self.retries = conf.nexenta_rest_retry_count
+        self.backoff_factor = conf.nexenta_rest_backoff_factor
         self.timeout = (conf.nexenta_rest_connect_timeout,
                         conf.nexenta_rest_read_timeout)
-        max_retries = requests.packages.urllib3.util.retry.Retry(
-            total=conf.nexenta_rest_retry_count,
-            backoff_factor=conf.nexenta_rest_backoff_factor)
-        adapter = requests.adapters.HTTPAdapter(max_retries=max_retries)
         self.session = requests.Session()
         self.session.auth = (conf.nexenta_user, conf.nexenta_password)
         self.session.verify = conf.driver_ssl_cert_verify
+        if self.session.verify and conf.driver_ssl_cert_path:
+            self.session.verify = conf.driver_ssl_cert_path
         self.session.headers.update(self.headers)
-        self.session.mount('http://', adapter)
-        self.session.mount('https://', adapter)
         if not conf.driver_ssl_cert_verify:
             requests.packages.urllib3.disable_warnings()
         self.update_lock()
@@ -377,3 +415,9 @@ class NmsProxy(object):
     @property
     def url(self):
         return '%s://%s:%s/rest/nms' % (self.scheme, self.host, self.port)
+
+    def delay(self, attempt, message):
+        interval = int(self.backoff_factor * (2 ** (attempt - 1)))
+        LOG.debug('Waiting for %(interval)s seconds, reason: %(message)s',
+                  {'interval': interval, 'message': message})
+        greenthread.sleep(interval)
