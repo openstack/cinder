@@ -138,6 +138,14 @@ HOST_CREATE_MAX_RETRIES = 5
 USER_AGENT_BASE = 'OpenStack Cinder'
 
 
+class PureDriverException(exception.VolumeDriverException):
+    message = _("Pure Storage Cinder driver failure: %(reason)s")
+
+
+class PureRetryableException(exception.VolumeBackendAPIException):
+    message = _("Retryable Pure Storage Exception encountered")
+
+
 def pure_driver_debug_trace(f):
     """Log the method entrance and exit including active backend name.
 
@@ -262,7 +270,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     req_api_versions = SYNC_REPLICATION_REQUIRED_API_VERSIONS
                 else:
                     msg = _('Invalid replication type specified:') % repl_type
-                    raise exception.PureDriverException(reason=msg)
+                    raise PureDriverException(reason=msg)
 
                 if api_version not in req_api_versions:
                     msg = _('Unable to do replication with Purity REST '
@@ -272,7 +280,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                         'required_versions':
                             ASYNC_REPLICATION_REQUIRED_API_VERSIONS
                     }
-                    raise exception.PureDriverException(reason=msg)
+                    raise PureDriverException(reason=msg)
 
                 target_array_info = target_array.get()
                 target_array.array_name = target_array_info["array_name"]
@@ -301,7 +309,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         if purestorage is None:
             msg = _("Missing 'purestorage' python module, ensure the library"
                     " is installed and available.")
-            raise exception.PureDriverException(msg)
+            raise PureDriverException(msg)
 
         # Raises PureDriverException if unable to connect and PureHTTPError
         # if unable to authenticate.
@@ -411,7 +419,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         if not snap_name:
             msg = _('Unable to determine snapshot name in Purity for snapshot '
                     '%(id)s.') % {'id': snapshot['id']}
-            raise exception.PureDriverException(reason=msg)
+            raise PureDriverException(reason=msg)
 
         current_array = self._get_current_array()
 
@@ -1264,7 +1272,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 'api_version': api_version,
                 'required_versions': MANAGE_SNAP_REQUIRED_API_VERSIONS
             }
-            raise exception.PureDriverException(reason=msg)
+            raise PureDriverException(reason=msg)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings an existing backend storage object under Cinder management.
@@ -1501,7 +1509,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         if len(parts) != 2 or not parts[0]:
             # Can't parse this.. Should never happen though, would mean a
             # break to the API contract with Purity.
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 _("Unable to determine pod for volume %s") % volume_name)
         return parts[0]
 
@@ -1635,7 +1643,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         except purestorage.PureHTTPError as err:
             if err.code == 400 and ERR_MSG_HOST_NOT_EXIST in err.text:
                 LOG.debug('Unable to attach volume to host: %s', err.text)
-                raise exception.PureRetryableException()
+                raise PureRetryableException()
             with excutils.save_and_reraise_exception() as ctxt:
                 if (err.code == 400 and
                         ERR_MSG_ALREADY_EXISTS in err.text):
@@ -1653,7 +1661,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                             connection = host_info
                             break
         if not connection:
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 reason=_("Unable to connect or find connection to host"))
 
         return connection
@@ -1839,7 +1847,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         # If we *still* don't have a secondary array it means we couldn't
         # determine one to use. Stop now.
         if not secondary_array:
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 reason=_("Unable to find viable secondary array from "
                          "configured targets: %(targets)s.") %
                 {"targets": six.text_type(self._replication_target_arrays)}
@@ -1921,7 +1929,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             # Any unexpected exception to be handled by caller.
 
     @pure_driver_debug_trace
-    @utils.retry(exception.PureDriverException,
+    @utils.retry(PureDriverException,
                  REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL,
                  REPL_SETTINGS_PROPAGATE_MAX_RETRIES)
     def _wait_until_target_group_setting_propagates(
@@ -1930,12 +1938,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         if self._does_pgroup_exist(target_array, pgroup_name_on_target):
             return
         else:
-            raise exception.PureDriverException(message=
-                                                _('Protection Group not '
-                                                  'ready.'))
+            raise PureDriverException(message=
+                                      _('Protection Group not ready.'))
 
     @pure_driver_debug_trace
-    @utils.retry(exception.PureDriverException,
+    @utils.retry(PureDriverException,
                  REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL,
                  REPL_SETTINGS_PROPAGATE_MAX_RETRIES)
     def _wait_until_source_array_allowed(self, source_array, pgroup_name):
@@ -1943,8 +1950,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         if result["targets"][0]["allowed"]:
             return
         else:
-            raise exception.PureDriverException(message=_('Replication not '
-                                                          'allowed yet.'))
+            raise PureDriverException(message=_('Replication not '
+                                                'allowed yet.'))
 
     def _get_pgroup_name_on_target(self, source_array_name, pgroup_name):
         return "%s:%s" % (source_array_name, pgroup_name)
@@ -2087,7 +2094,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def _create_pod_if_not_exist(self, source_array, name):
         if not name:
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 reason=_("Empty string passed for Pod name."))
         try:
             source_array.create_pod(name)
@@ -2110,7 +2117,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def _create_protection_group_if_not_exist(self, source_array, pgname):
         if not pgname:
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 reason=_("Empty string passed for PG name."))
         try:
             source_array.create_pgroup(pgname)
@@ -2135,7 +2142,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _find_async_failover_target(self):
         if not self._replication_target_arrays:
-                raise exception.PureDriverException(
+                raise PureDriverException(
                     reason=_("Unable to find failover target, no "
                              "secondary targets configured."))
         secondary_array = None
@@ -2159,7 +2166,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 secondary_array = None
 
         if not pg_snap:
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 reason=_("Unable to find viable pg snapshot to use for "
                          "failover on selected secondary array: %(id)s.") %
                 {"id": secondary_array.backend_id if secondary_array else None}
@@ -2415,7 +2422,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         ports = array.list_ports()
         iscsi_ports = [port for port in ports if port["iqn"]]
         if not iscsi_ports:
-            raise exception.PureDriverException(
+            raise PureDriverException(
                 reason=_("No iSCSI-enabled ports on target array."))
         return iscsi_ports
 
@@ -2446,7 +2453,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
         return username, password
 
-    @utils.retry(exception.PureRetryableException,
+    @utils.retry(PureRetryableException,
                  retries=HOST_CREATE_MAX_RETRIES)
     def _connect(self, array, vol_name, connector,
                  chap_username, chap_password):
@@ -2466,7 +2473,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                               "to resolve this issue.",
                               {"host_name": host_name,
                                "iqn": connector["initiator"]})
-                    raise exception.PureDriverException(
+                    raise PureDriverException(
                         reason=_("Unable to re-use a host that is not "
                                  "managed by Cinder with use_chap_auth=True,"))
                 elif chap_username is None or chap_password is None:
@@ -2474,7 +2481,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                               "Cinder but CHAP credentials could not be "
                               "retrieved from the Cinder database.",
                               {"host_name": host_name})
-                    raise exception.PureDriverException(
+                    raise PureDriverException(
                         reason=_("Unable to re-use host with unknown CHAP "
                                  "credentials configured."))
         else:
@@ -2491,7 +2498,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         'api_version': api_version,
                         'required_versions': PERSONALITY_REQUIRED_API_VERSIONS
                     }
-                    raise exception.PureDriverException(reason=msg)
+                    raise PureDriverException(reason=msg)
 
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with IQN:"
@@ -2505,7 +2512,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                     # If someone created it before we could just retry, we will
                     # pick up the new host.
                     LOG.debug('Unable to create host: %s', err.text)
-                    raise exception.PureRetryableException()
+                    raise PureRetryableException()
 
             if personality:
                 try:
@@ -2517,7 +2524,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         # ok, we will just retry and snag a new host.
                         LOG.debug('Unable to set host personality: %s',
                                   err.text)
-                        raise exception.PureRetryableException()
+                        raise PureRetryableException()
 
             if self.configuration.use_chap_auth:
                 try:
@@ -2530,7 +2537,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         # If the host disappeared out from under us that's ok,
                         # we will just retry and snag a new host.
                         LOG.debug('Unable to set CHAP info: %s', err.text)
-                        raise exception.PureRetryableException()
+                        raise PureRetryableException()
 
         # TODO(patrickeast): Ensure that the host has the correct preferred
         # arrays configured for it.
@@ -2620,7 +2627,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         fczm_utils.add_fc_zone(properties)
         return properties
 
-    @utils.retry(exception.PureRetryableException,
+    @utils.retry(PureRetryableException,
                  retries=HOST_CREATE_MAX_RETRIES)
     def _connect(self, array, vol_name, connector):
         """Connect the host and volume; return dict describing connection."""
@@ -2645,7 +2652,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                     # If someone created it before we could just retry, we will
                     # pick up the new host.
                     LOG.debug('Unable to create host: %s', err.text)
-                    raise exception.PureRetryableException()
+                    raise PureRetryableException()
 
         # TODO(patrickeast): Ensure that the host has the correct preferred
         # arrays configured for it.

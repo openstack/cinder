@@ -958,15 +958,6 @@ class DellDriverUnknownSpec(VolumeDriverException):
     message = _("Dell driver failure: %(reason)s")
 
 
-# Pure Storage
-class PureDriverException(VolumeDriverException):
-    message = _("Pure Storage Cinder driver failure: %(reason)s")
-
-
-class PureRetryableException(VolumeBackendAPIException):
-    message = _("Retryable Pure Storage Exception encountered")
-
-
 # RemoteFS drivers
 class RemoteFSException(VolumeDriverException):
     message = _("Unknown RemoteFS exception")

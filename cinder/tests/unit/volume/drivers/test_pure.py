@@ -520,9 +520,9 @@ class PureDriverTestCase(test.TestCase):
         func(*args, **kwargs)
         for mock_func in mocks:
             original_side_effect = mock_func.side_effect
-            mock_func.side_effect = [exception.PureDriverException(
+            mock_func.side_effect = [pure.PureDriverException(
                 reason='reason')]
-            self.assertRaises(exception.PureDriverException,
+            self.assertRaises(pure.PureDriverException,
                               func, *args, **kwargs)
             mock_func.side_effect = original_side_effect
 
@@ -2067,7 +2067,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_manage_existing_snapshot_bad_api_version(self):
         self.array.get_rest_version.return_value = '1.3'
         snap, _ = self.new_fake_snap()
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver.manage_existing_snapshot,
                           snap, {'name': PURE_SNAPSHOT['name']})
 
@@ -2125,7 +2125,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_manage_existing_snapshot_get_size_bad_api_version(self):
         snap, _ = self.new_fake_snap()
         self.array.get_rest_version.return_value = '1.3'
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver.manage_existing_snapshot_get_size,
                           snap, {'name': PURE_SNAPSHOT['name']})
 
@@ -2159,7 +2159,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_unmanage_snapshot_bad_api_version(self):
         snap, _ = self.new_fake_snap()
         self.array.get_rest_version.return_value = '1.3'
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver.unmanage_snapshot,
                           snap)
 
@@ -2562,7 +2562,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                                                   mock_exists):
         mock_exists.return_value = False
         self.assertRaises(
-            exception.PureDriverException,
+            pure.PureDriverException,
             self.driver._wait_until_target_group_setting_propagates,
             self.array,
             "some_pgroup"
@@ -2577,7 +2577,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_wait_until_source_array_allowed_not_ready(self):
         self.array.get_pgroup.return_value = PGROUP_ON_TARGET_NOT_ALLOWED
         self.assertRaises(
-            exception.PureDriverException,
+            pure.PureDriverException,
             self.driver._wait_until_source_array_allowed,
             self.array,
             "some_pgroup",
@@ -2614,7 +2614,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_find_async_failover_target_no_repl_targets(self):
         self.driver._replication_target_arrays = []
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver._find_async_failover_target)
 
     @mock.patch(BASE_DRIVER_OBJ + '._get_latest_replicated_pg_snap')
@@ -2654,7 +2654,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver._replication_target_arrays = [mock_backend]
         mock_get_snap.return_value = None
 
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver._find_async_failover_target)
 
     @mock.patch(BASE_DRIVER_OBJ + '._get_latest_replicated_pg_snap')
@@ -3190,14 +3190,14 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
     def test_get_target_iscsi_ports_with_no_ports(self):
         # Should raise an exception if there are no ports
         self.array.list_ports.return_value = []
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver._get_target_iscsi_ports,
                           self.array)
 
     def test_get_target_iscsi_ports_with_only_fc_ports(self):
         # Should raise an exception of there are no iscsi ports
         self.array.list_ports.return_value = PORTS_WITHOUT
-        self.assertRaises(exception.PureDriverException,
+        self.assertRaises(pure.PureDriverException,
                           self.driver._get_target_iscsi_ports,
                           self.array)
 
@@ -3256,7 +3256,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         self.mock_config.safe_get.return_value = 'oracle-vm-server'
 
         # Branch where we fail due to invalid version for setting personality
-        self.assertRaises(exception.PureDriverException, self.driver._connect,
+        self.assertRaises(pure.PureDriverException, self.driver._connect,
                           self.array, vol_name, ISCSI_CONNECTOR, None, None)
         self.assertFalse(self.array.create_host.called)
         self.assertFalse(self.array.set_host.called)
@@ -3298,7 +3298,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                 code=http_client.BAD_REQUEST,
                 text="Connection already exists"
             )
-        self.assertRaises(exception.PureDriverException, self.driver._connect,
+        self.assertRaises(pure.PureDriverException, self.driver._connect,
                           self.array, vol_name, ISCSI_CONNECTOR, None, None)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(bool(self.array.list_volume_private_connections))
@@ -3335,7 +3335,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
 
         # Because we mocked out retry make sure we are raising the right
         # exception to allow for retries to happen.
-        self.assertRaises(exception.PureRetryableException,
+        self.assertRaises(pure.PureRetryableException,
                           self.driver._connect,
                           self.array, vol_name, ISCSI_CONNECTOR, None, None)
 
@@ -3351,7 +3351,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
 
         # Because we mocked out retry make sure we are raising the right
         # exception to allow for retries to happen.
-        self.assertRaises(exception.PureRetryableException,
+        self.assertRaises(pure.PureRetryableException,
                           self.driver._connect,
                           self.array, vol_name, ISCSI_CONNECTOR, None, None)
 
@@ -3366,7 +3366,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
 
         # Because we mocked out retry make sure we are raising the right
         # exception to allow for retries to happen.
-        self.assertRaises(exception.PureRetryableException,
+        self.assertRaises(pure.PureRetryableException,
                           self.driver._connect,
                           self.array, vol_name, ISCSI_CONNECTOR, None, None)
 
@@ -3395,7 +3395,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         self.mock_utils.get_driver_initiator_data.side_effect = [
             [],
             [{'key': pure.CHAP_SECRET_KEY, 'value': expected_password}],
-            exception.PureDriverException(reason='this should never be hit'),
+            pure.PureDriverException(reason='this should never be hit'),
         ]
 
         username, password = self.driver._get_chap_credentials(host,
@@ -3545,7 +3545,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
                 code=http_client.BAD_REQUEST,
                 text="Connection already exists"
             )
-        self.assertRaises(exception.PureDriverException, self.driver._connect,
+        self.assertRaises(pure.PureDriverException, self.driver._connect,
                           self.array, vol_name, FC_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(bool(self.array.list_volume_private_connections))
@@ -3580,7 +3580,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
 
         # Because we mocked out retry make sure we are raising the right
         # exception to allow for retries to happen.
-        self.assertRaises(exception.PureRetryableException,
+        self.assertRaises(pure.PureRetryableException,
                           self.driver._connect,
                           self.array, vol_name, FC_CONNECTOR)
 
