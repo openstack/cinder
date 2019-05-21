@@ -454,6 +454,10 @@ class SheepdogDriver(driver.VolumeDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cinder_Jenkins"
 
+    # TODO(jsbryant) Remove this driver in the 'U' release as it is no
+    # longer maintained.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(sheepdog_opts)
