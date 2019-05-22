@@ -1062,7 +1062,6 @@ class VolumeOpsTestCase(test.TestCase):
         value = mock.sentinel.value
         extra_config = {key: value,
                         volumeops.BACKING_UUID_KEY: mock.sentinel.uuid}
-        disks_to_clone = [mock.sentinel.disk_uuid]
         ret = self.vops._get_clone_spec(datastore,
                                         disk_move_type,
                                         snapshot,

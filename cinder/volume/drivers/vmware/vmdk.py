@@ -340,9 +340,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'free_capacity_gb': 'unknown'}
         client_factory = self.session.vim.client.factory
         object_specs = []
-        if self._storage_policy_enabled and self.configuration.vmware_storage_profile:
-            # Get all available storage profiles on the vCenter and extract the IDs
-            # of those that we want to observe
+        if (self._storage_policy_enabled and
+                self.configuration.vmware_storage_profile):
+            # Get all available storage profiles on the vCenter and extract
+            # the IDs of those that we want to observe
             profiles_ids = []
             for profile in pbm.get_all_profiles(self.session):
                 if profile.name in self.configuration.vmware_storage_profile:
@@ -350,29 +351,41 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # Get all matching Datastores for each profile
             datastores = {}
             for profile_id in profiles_ids:
-                for hub in pbm.filter_hubs_by_profile(self.session, None, profile_id):
-                    if hub.hubType != "Datastore":
+                for h in pbm.filter_hubs_by_profile(self.session,
+                                                    None,
+                                                    profile_id):
+                    if h.hubType != "Datastore":
                         # We are not interested in Datastore Clusters for now
                         continue
-                    if hub.hubId not in datastores:
-                        # Reconstruct a managed object reference to that datastore
-                        datastores[hub.hubId] = vim_util.get_moref(hub.hubId, "Datastore")
+                    if h.hubId not in datastores:
+                        # Reconstruct a managed object reference to that
+                        # datastore
+                        datastores[h.hubId] = vim_util.get_moref(h.hubId,
+                                                                 "Datastore")
             # Build property collector object specs out of them
             for datastore_ref in six.itervalues(datastores):
-                object_specs.append(vim_util.build_object_spec(client_factory, datastore_ref, []))
+                object_specs.append(
+                    vim_util.build_object_spec(
+                        client_factory,
+                        datastore_ref,
+                        []))
         else:
             # Build a catch-all object spec that would reach all datastores
-            object_specs.append(vim_util.build_object_spec(client_factory,
-                                    self.session.vim.service_content.rootFolder,
-                                    [vim_util.build_recursive_traversal_spec(client_factory)]))
-        prop_spec = vim_util.build_property_spec(client_factory, 'Datastore', ['summary'])
-        filter_spec = vim_util.build_property_filter_spec(client_factory, prop_spec, object_specs)
+            object_specs.append(
+                vim_util.build_object_spec(
+                    client_factory,
+                    self.session.vim.service_content.rootFolder,
+                    [vim_util.build_recursive_traversal_spec(client_factory)]))
+        prop_spec = vim_util.build_property_spec(
+            client_factory, 'Datastore', ['summary'])
+        filter_spec = vim_util.build_property_filter_spec(
+            client_factory, prop_spec, object_specs)
         options = client_factory.create('ns0:RetrieveOptions')
         options.maxObjects = self.configuration.vmware_max_objects_retrieval
         result = self.session.vim.RetrievePropertiesEx(
-                self.session.vim.service_content.propertyCollector,
-                specSet=[filter_spec],
-                options=options)
+            self.session.vim.service_content.propertyCollector,
+            specSet=[filter_spec],
+            options=options)
         global_capacity = 0
         global_free = 0
         while True:
@@ -382,7 +395,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 global_free += summary.freeSpace
             if getattr(result, 'token', None):
                 result = self.session.vim.ContinueRetrievePropertiesEx(
-                        self.session.vim.service_content.propertyCollector, result.token)
+                    self.session.vim.service_content.propertyCollector,
+                    result.token)
             else:
                 break
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
@@ -1355,12 +1369,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 image_adapter_type = properties['vmware_adaptertype']
 
             try:
-                    volumeops.VirtualDiskAdapterType.validate(image_adapter_type)
+                volumeops.VirtualDiskAdapterType.validate(image_adapter_type)
 
-                    self._fetch_stream_optimized_image(context, volume,
-                                                       image_service, image_id,
-                                                       image_meta['size'],
-                                                       image_adapter_type)
+                self._fetch_stream_optimized_image(context, volume,
+                                                   image_service, image_id,
+                                                   image_meta['size'],
+                                                   image_adapter_type)
             except (exceptions.VimException,
                     exceptions.VMwareDriverException):
                 with excutils.save_and_reraise_exception():
