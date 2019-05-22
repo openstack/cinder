@@ -235,7 +235,7 @@ def list_opts():
                 cinder_quota.quota_opts,
                 cinder_scheduler_driver.scheduler_driver_opts,
                 cinder_scheduler_hostmanager.host_manager_opts,
-                [cinder_scheduler_manager.scheduler_driver_opt],
+                cinder_scheduler_manager.scheduler_manager_opts,
                 [cinder_scheduler_scheduleroptions.
                     scheduler_json_config_location_opt],
                 cinder_scheduler_weights_capacity.capacity_weight_opts,

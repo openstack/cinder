@@ -137,6 +137,13 @@ volume_manager_opts = [
                     'Query results will be obtained in batches from the '
                     'database and not in one shot to avoid extreme memory '
                     'usage. Set 0 to turn off this functionality.'),
+    cfg.IntOpt('backend_stats_polling_interval',
+               default=60,
+               min=3,
+               help='Time in seconds between requests for usage statistics '
+                    'from the backend.  Be aware that generating usage '
+                    'statistics is expensive for some backends, so setting '
+                    'this value too low may adversely affect performance.'),
 ]
 
 volume_backend_opts = [
@@ -2655,7 +2662,7 @@ class VolumeManager(manager.CleanableManager,
 
         return volume_stats
 
-    @periodic_task.periodic_task(spacing=CONF.periodic_interval)
+    @periodic_task.periodic_task(spacing=CONF.backend_stats_polling_interval)
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish."""
         self._report_driver_status(context)

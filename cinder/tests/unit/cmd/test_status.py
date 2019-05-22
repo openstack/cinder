@@ -95,3 +95,17 @@ class TestCinderStatus(testtools.TestCase):
 
         self.assertEqual(uc.Code.WARNING, result.code)
         self.assertIn(policy_path, result.details)
+
+    def test_check_periodic_interval_default(self):
+        # default value is 60
+        self._set_config('periodic_interval', 60)
+        result = self.checks._check_periodic_interval()
+        self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    def test_check_periodic_interval_not_default(self):
+        # default value is 60
+        self._set_config('periodic_interval', 22)
+        result = self.checks._check_periodic_interval()
+        self.assertEqual(uc.Code.WARNING, result.code)
+        self.assertIn('New configuration options have been introduced',
+                      result.details)

@@ -82,6 +82,22 @@ class SchedulerManagerTestCase(test.TestCase):
         self.assertEqual(2, sleep_mock.call_count)
         self.assertFalse(self.manager._startup_delay)
 
+    @mock.patch('cinder.scheduler.driver.Scheduler.is_first_receive')
+    @mock.patch('eventlet.sleep')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.publish_service_capabilities')
+    @ddt.data(71, 17)
+    def test_init_host_with_rpc_delay_uses_new_config(
+            self, new_cfg_value, publish_capabilities_mock, sleep_mock,
+            is_first_receive_mock):
+        # previously used CONF.periodic_interval; see Bug #1828748
+        new_cfg_name = 'scheduler_driver_init_wait_time'
+
+        self.addCleanup(CONF.clear_override, new_cfg_name)
+        CONF.set_override(new_cfg_name, new_cfg_value)
+        is_first_receive_mock.return_value = False
+        self.manager.init_host_with_rpc()
+        self.assertEqual(new_cfg_value, sleep_mock.call_count)
+
     @mock.patch('cinder.scheduler.driver.Scheduler.backend_passes_filters')
     @mock.patch(
         'cinder.scheduler.host_manager.BackendState.consume_from_volume')

@@ -1,0 +1,35 @@
+---
+features:
+  - |
+    Added new configuration options to allow more specific control over
+    some periodic processes.  See the 'Upgrade' section for details.
+upgrade:
+  - |
+    The ``periodic_interval`` configuration option was being used in too
+    many places, and as a result, it had become difficult to tune specific
+    periodic tasks without affecting other functionality.  The following
+    configuration options should now be used in place of ``periodic_interval``:
+
+    * ``backup_driver_init_check_interval``
+    * ``backup_driver_status_check_interval``
+    * ``scheduler_driver_init_wait_time``
+    * ``backend_stats_polling_interval``
+
+    See the help text for these options for more information.  The default
+    value of each option is 60, which has been the default value of
+    ``periodic_interval``.
+
+    * If you *have not* modified ``periodic_interval``, you should see no
+      differences from current behavior.
+    * If you *have* modified ``periodic_interval``, please review the new
+      options to determine which one(s) should be adjusted.  Also, you should
+      consider setting ``periodic_interval`` back to its default value of 60.
+
+    A warning has been added to the ``cinder-status upgrade check`` CLI
+    to detect whether the ``periodic_interval`` option has been modified
+    from its default value to remind you which of the above situations
+    currently applies to you.
+
+    The ``periodic_interval`` configuration option still exists but its
+    use is now restricted to providing a default periodicity for objects
+    created from the ``cinder.service.Service`` class.
