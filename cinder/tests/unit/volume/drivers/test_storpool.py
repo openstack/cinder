@@ -192,7 +192,7 @@ class StorPoolTestCase(test.TestCase):
     @ddt.data(
         (5, TypeError),
         ({'no-host': None}, KeyError),
-        ({'host': 'sbad'}, exception.StorPoolConfigurationInvalid),
+        ({'host': 'sbad'}, driver.StorPoolConfigurationInvalid),
         ({'host': 's01'}, None),
         ({'host': 'none'}, None),
     )
@@ -208,7 +208,7 @@ class StorPoolTestCase(test.TestCase):
     @ddt.data(
         (5, TypeError),
         ({'no-host': None}, KeyError),
-        ({'host': 'sbad'}, exception.StorPoolConfigurationInvalid),
+        ({'host': 'sbad'}, driver.StorPoolConfigurationInvalid),
     )
     @ddt.unpack
     def test_initialize_connection_bad(self, conn, exc):
