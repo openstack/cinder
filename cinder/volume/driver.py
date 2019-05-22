@@ -725,6 +725,7 @@ class BaseVD(object):
         return properties, 'abcd'
         """
 
+        LOG.info("Driver hasn't implemented _init_vendor_properties()")
         return {}, None
 
     def init_capabilities(self):
