@@ -585,9 +585,9 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
     def fake_attach_volume(self, ctxt, volume, instance_uuid, host_name,
                            mountpoint, mode):
-            tests_utils.attach_volume(ctxt, volume.id,
-                                      instance_uuid, host_name,
-                                      '/dev/vda')
+        tests_utils.attach_volume(ctxt, volume.id,
+                                  instance_uuid, host_name,
+                                  '/dev/vda')
 
     def _test_migrate_volume_completion(self, status='available',
                                         instance_uuid=None, attached_host=None,

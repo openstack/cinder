@@ -10167,6 +10167,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 expected +
                 self.standard_logout)
 
+
 VLUNS5_RET = ({'members':
                [{'portPos': {'node': 0, 'slot': 8, 'cardPort': 2},
                  'active': True},

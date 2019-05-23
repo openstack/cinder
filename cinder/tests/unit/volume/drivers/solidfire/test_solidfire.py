@@ -56,6 +56,7 @@ class mock_vref(object):
     def get(self, item, arg2 = None):
         return self.__dict__[item]
 
+
 f_uuid = ['262b9ce2-a71a-4fbe-830c-c20c5596caea',
           '362b9ce2-a71a-4fbe-830c-c20c5596caea']
 

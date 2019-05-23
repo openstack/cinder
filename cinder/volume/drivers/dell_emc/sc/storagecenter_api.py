@@ -1219,8 +1219,8 @@ class SCApi(object):
         # at least give failback a shot.
         if lv and (self.is_swapped(provider_id, lv) and not self.failed_over
                    and self._autofailback(lv)):
-                lv = self.get_live_volume(provider_id)
-                LOG.info('After failback %s', lv)
+            lv = self.get_live_volume(provider_id)
+            LOG.info('After failback %s', lv)
         # Make sure we still have a LV.
         if lv:
             # At this point if the secondaryRole is Active we have

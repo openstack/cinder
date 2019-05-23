@@ -261,8 +261,8 @@ def get_configuration(persona):
     except (exception.ErrorInSendingMsg,
             exception.UnableToExecuteHyperScaleCmd,
             exception.UnableToProcessHyperScaleCmdOutput):
-            LOG.exception("Failed to get configuration from controller")
-            raise exception.ErrorInFetchingConfiguration(persona=persona)
+        LOG.exception("Failed to get configuration from controller")
+        raise exception.ErrorInFetchingConfiguration(persona=persona)
 
     return configuration
 

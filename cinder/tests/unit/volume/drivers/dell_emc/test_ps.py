@@ -426,22 +426,22 @@ class PSSeriesISCSIDriverTestCase(test.TestCase):
             self.assert_volume_stats(stats)
 
     def assert_volume_stats(self, stats):
-            thin_enabled = self.configuration.san_thin_provision
-            self.assertEqual(float('111.0'), stats['total_capacity_gb'])
-            self.assertEqual(float('11.0'), stats['free_capacity_gb'])
-            self.assertEqual(100, stats['total_volumes'])
+        thin_enabled = self.configuration.san_thin_provision
+        self.assertEqual(float('111.0'), stats['total_capacity_gb'])
+        self.assertEqual(float('11.0'), stats['free_capacity_gb'])
+        self.assertEqual(100, stats['total_volumes'])
 
-            if thin_enabled:
-                self.assertEqual(80.0, stats['provisioned_capacity_gb'])
-            else:
-                space = stats['total_capacity_gb'] - stats['free_capacity_gb']
-                self.assertEqual(space, stats['provisioned_capacity_gb'])
+        if thin_enabled:
+            self.assertEqual(80.0, stats['provisioned_capacity_gb'])
+        else:
+            space = stats['total_capacity_gb'] - stats['free_capacity_gb']
+            self.assertEqual(space, stats['provisioned_capacity_gb'])
 
-            self.assertEqual(thin_enabled, stats['thin_provisioning_support'])
-            self.assertEqual(not thin_enabled,
-                             stats['thick_provisioning_support'])
-            self.assertEqual('Dell EMC', stats['vendor_name'])
-            self.assertFalse(stats['multiattach'])
+        self.assertEqual(thin_enabled, stats['thin_provisioning_support'])
+        self.assertEqual(not thin_enabled,
+                         stats['thick_provisioning_support'])
+        self.assertEqual('Dell EMC', stats['vendor_name'])
+        self.assertFalse(stats['multiattach'])
 
     def test_get_space_in_gb(self):
         self.assertEqual(123.0, self.driver._get_space_in_gb('123.0GB'))

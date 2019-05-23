@@ -802,8 +802,8 @@ class XIVProxy(proxy.IBMStorageProxy):
                         volume, not failback)
 
         if result:
-                status = goal_status
-                group_updated['replication_status'] = status
+            status = goal_status
+            group_updated['replication_status'] = status
         else:
             status = 'error'
         updates = {'status': vol_goal_status}

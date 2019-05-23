@@ -146,6 +146,7 @@ class DS8KConnectionPool(connectionpool.HTTPSConnectionPool):
             url = 'https://' + url[12:]
         return super(DS8KConnectionPool, self).urlopen(method, url, **kwargs)
 
+
 if hasattr(poolmanager, 'key_fn_by_scheme'):
     poolmanager.key_fn_by_scheme["httpsds8k"] = (
         poolmanager.key_fn_by_scheme["https"])

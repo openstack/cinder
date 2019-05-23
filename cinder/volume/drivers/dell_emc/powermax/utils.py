@@ -479,9 +479,9 @@ class PowerMaxUtils(object):
         """
         if volume is not None:
             if volume.get('replication_status') and (
-                volume.replication_status ==
+                    volume.replication_status ==
                     fields.ReplicationStatus.FAILED_OVER):
-                    return True
+                return True
         return False
 
     @staticmethod

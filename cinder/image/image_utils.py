@@ -338,9 +338,9 @@ def verify_glance_image_signature(context, image_service, image_id, path):
                                img_sig_cert_uuid,
                                img_sig_hash_method,
                                img_sig_key_type]):
-            LOG.error('Image signature metadata for image %s is '
-                      'incomplete.', image_id)
-            raise exception.InvalidSignatureImage(image_id=image_id)
+        LOG.error('Image signature metadata for image %s is '
+                  'incomplete.', image_id)
+        raise exception.InvalidSignatureImage(image_id=image_id)
 
     try:
         verifier = signature_utils.get_verifier(

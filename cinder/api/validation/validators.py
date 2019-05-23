@@ -171,11 +171,11 @@ def _validate_status(param_value):
         msg = _("The 'status' can not be empty.")
         raise exception.InvalidGroupSnapshotStatus(reason=msg)
     elif param_value.lower() not in c_fields.GroupSnapshotStatus.ALL:
-            msg = _("Group snapshot status: %(status)s is invalid, "
-                    "valid statuses are: "
-                    "%(valid)s.") % {'status': param_value,
-                                     'valid': c_fields.GroupSnapshotStatus.ALL}
-            raise exception.InvalidGroupSnapshotStatus(reason=msg)
+        msg = _("Group snapshot status: %(status)s is invalid, "
+                "valid statuses are: "
+                "%(valid)s.") % {'status': param_value,
+                                 'valid': c_fields.GroupSnapshotStatus.ALL}
+        raise exception.InvalidGroupSnapshotStatus(reason=msg)
     return True
 
 

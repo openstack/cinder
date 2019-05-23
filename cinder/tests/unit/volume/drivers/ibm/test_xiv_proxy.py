@@ -760,29 +760,29 @@ class XIVProxyTest(test.TestCase):
                 "xiv_replication.VolumeReplication.create_replication",
                 mock.MagicMock())
     def test_create_volume_with_consistency_group_diff_state(self):
-            """Test Create volume with consistency_group but diff state"""
-            driver = mock.MagicMock()
-            driver.VERSION = "VERSION"
+        """Test Create volume with consistency_group but diff state"""
+        driver = mock.MagicMock()
+        driver.VERSION = "VERSION"
 
-            p = self.proxy(
-                self.default_storage_info,
-                mock.MagicMock(),
-                test_mock.cinder.exception,
-                driver)
+        p = self.proxy(
+            self.default_storage_info,
+            mock.MagicMock(),
+            test_mock.cinder.exception,
+            driver)
 
-            p.ibm_storage_cli = mock.MagicMock()
-            p._cg_name_from_volume = mock.MagicMock(return_value="cg")
+        p.ibm_storage_cli = mock.MagicMock()
+        p._cg_name_from_volume = mock.MagicMock(return_value="cg")
 
-            vol_type = testutils.create_volume_type(self.ctxt, name='WTF')
-            volume = testutils.create_volume(
-                self.ctxt, size=16, volume_type_id=vol_type.id,
-                host=self._get_test_host()['name'])
+        vol_type = testutils.create_volume_type(self.ctxt, name='WTF')
+        volume = testutils.create_volume(
+            self.ctxt, size=16, volume_type_id=vol_type.id,
+            host=self._get_test_host()['name'])
 
-            grp = self._create_test_group('WTF')
-            grp['replication_status'] = 'enabled'
-            volume.group = grp
-            ex = getattr(p, "_get_exception")()
-            self.assertRaises(ex, p.create_volume, volume)
+        grp = self._create_test_group('WTF')
+        grp['replication_status'] = 'enabled'
+        volume.group = grp
+        ex = getattr(p, "_get_exception")()
+        self.assertRaises(ex, p.create_volume, volume)
 
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_replication.VolumeReplication.create_replication",
