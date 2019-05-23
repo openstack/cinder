@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    A new check is added to the ``cinder-status upgrade check`` CLI to check
+    for the use of the deprecated ``cinder.quota.NestedDbQuotaDriver``. This
+    driver will be replaced by a new, OpenStack-wide, nested quota management.
+deprecations:
+  - |
+    The ``cinder.quota.NestedDbQuotaDriver`` quota driver for handling nested
+    projects is now deprecated. There is an OpenStack-wide effort to move to
+    "unified limits" that will require changes in how quotas are handled for
+    these types of configurations. The ``NestedDbQuotaDriver`` will continue
+    to work until it is replaced with this new mechanism.

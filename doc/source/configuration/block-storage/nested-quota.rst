@@ -2,6 +2,13 @@
 Nested quotas
 =============
 
+.. warning::
+
+   The current nested quota driver is deprecated in the Cinder "Train" release
+   and will be removed. Configuration for handling nested project quotas will
+   change in a future release.
+
+
 Nested quota is a change in how OpenStack services (such as Block Storage and
 Compute) handle their quota resources by being hierarchy-aware. The main
 reason for this change is to fully appreciate the hierarchical multi-tenancy

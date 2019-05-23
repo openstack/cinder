@@ -12,6 +12,7 @@
 
 """Unit tests for the cinder-status CLI interfaces."""
 
+import ddt
 import mock
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
@@ -22,6 +23,7 @@ from cinder.cmd import status
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class TestCinderStatus(testtools.TestCase):
     """Test cases for the cinder-status upgrade check command."""
 
@@ -109,3 +111,15 @@ class TestCinderStatus(testtools.TestCase):
         self.assertEqual(uc.Code.WARNING, result.code)
         self.assertIn('New configuration options have been introduced',
                       result.details)
+
+    @ddt.data(['cinder.quota.DbQuotaDriver', True],
+              ['cinder.quota.NestedDbQuotaDriver', False])
+    @ddt.unpack
+    def test_nested_quota_driver(self, driver, should_pass):
+        self._set_config('quota_driver', driver)
+        result = self.checks._check_nested_quota()
+        if should_pass:
+            expected = uc.Code.SUCCESS
+        else:
+            expected = uc.Code.WARNING
+        self.assertEqual(expected, result.code)

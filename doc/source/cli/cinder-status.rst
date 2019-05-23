@@ -95,6 +95,7 @@ Upgrade
   * Check added to make operators aware of new finer-grained configuration
     options affecting the periodicity of various Cinder tasks.  Triggered
     when the the ``periodic_interval`` option is not set to its default value.
+  * Added check for use of deprecated ``cinder.quota.NestedDbQuotaDriver``.
 
 See Also
 ========
