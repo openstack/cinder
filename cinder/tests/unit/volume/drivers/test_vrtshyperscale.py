@@ -20,6 +20,7 @@ from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.veritas import exception as v_exception
 from cinder.volume.drivers.veritas import vrtshyperscale as vrts
 
 
@@ -170,7 +171,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         The test case checks happy path execution when driver version 1.0.0
         is installed.
         """
-        mock_ghv.side_effect = exception.ErrorInHyperScaleVersion(
+        mock_ghv.side_effect = v_exception.ErrorInHyperScaleVersion(
             cmd_error="mock error")
 
         # check the driver for setup errors
@@ -223,7 +224,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         """Failure case for delete_volume one node in data plane."""
         mock_gvmv.side_effect = None
         self.driver.delete_volume(self.volume)
-        mock_mdp.side_effect = exception.UnableToProcessHyperScaleCmdOutput(
+        mock_mdp.side_effect = v_exception.UnableToProcessHyperScaleCmdOutput(
             cmd_out='mock error')
         self.assertRaises(exception.VolumeIsBusy, self.driver.delete_volume,
                           self.volume)
@@ -237,7 +238,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         """failure case for delete_volume with more than one data nodes."""
         mock_gvmv.side_effect = VRTSHyperScaleDriverTestCase.gvmv_side_effect
 
-        mock_mdp.side_effect = exception.UnableToProcessHyperScaleCmdOutput(
+        mock_mdp.side_effect = v_exception.UnableToProcessHyperScaleCmdOutput(
             cmd_out='mock error')
 
         self.assertRaises(exception.VolumeIsBusy, self.driver.delete_volume,
@@ -340,9 +341,9 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         """Test case throws exception when command failed to execute."""
         vol_a = _stub_volume()
         vol_b = _stub_volume()
-        mock_mdp.side_effect = exception.UnableToExecuteHyperScaleCmd(
+        mock_mdp.side_effect = v_exception.UnableToExecuteHyperScaleCmd(
             command='mock error')
-        self.assertRaises(exception.UnableToExecuteHyperScaleCmd,
+        self.assertRaises(v_exception.UnableToExecuteHyperScaleCmd,
                           self.driver.create_cloned_volume, vol_b, vol_a)
 
     @mock.patch('cinder.volume.drivers.veritas.utils'
@@ -393,7 +394,7 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
                 '.message_data_plane')
     def test_extend_volume_with_exception(self, mock_mdp):
         """Test case extend volume to the given size in GB."""
-        mock_mdp.side_effect = exception.UnableToProcessHyperScaleCmdOutput(
+        mock_mdp.side_effect = v_exception.UnableToProcessHyperScaleCmdOutput(
             cmd_out='mock error')
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.extend_volume, _stub_volume(), 256)
@@ -410,9 +411,9 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
     def test_create_volume_from_snapshot_with_exception(self, mock_mdp):
         """Test case create volume from snapshot thorws exception."""
         fake_volume, fake_snapshot = _stub_volume(), _stub_snapshot()
-        mock_mdp.side_effect = exception.UnableToExecuteHyperScaleCmd(
+        mock_mdp.side_effect = v_exception.UnableToExecuteHyperScaleCmd(
             command='mock error')
-        self.assertRaises(exception.UnableToExecuteHyperScaleCmd,
+        self.assertRaises(v_exception.UnableToExecuteHyperScaleCmd,
                           self.driver.create_volume_from_snapshot, fake_volume,
                           fake_snapshot)
 
@@ -484,10 +485,10 @@ class VRTSHyperScaleDriverTestCase(test.TestCase):
         mock_gvmv.side_effect = VRTSHyperScaleDriverTestCase.gvmv_side_effect
         mock_es_obj = {'payload': {'update': False}}
         mock_es.return_value = mock_es_obj
-        mock_mcp.side_effect = exception.UnableToExecuteHyperScaleCmd(
+        mock_mcp.side_effect = v_exception.UnableToExecuteHyperScaleCmd(
             command='mock error')
         fake_snapshot = _stub_snapshot()
-        self.assertRaises(exception.UnableToExecuteHyperScaleCmd,
+        self.assertRaises(v_exception.UnableToExecuteHyperScaleCmd,
                           self.driver.create_snapshot, fake_snapshot)
 
     @mock.patch('cinder.volume.drivers.veritas.utils'

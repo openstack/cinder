@@ -19,8 +19,8 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
-from cinder import exception
 from cinder.privsep import hscli
+from cinder.volume.drivers.veritas import exception
 from cinder.volume.drivers.veritas import hs_constants as constants
 
 LOG = logging.getLogger(__name__)

@@ -1143,28 +1143,6 @@ class AttachmentSpecsNotFound(NotFound):
                 "key %(specs_key)s.")
 
 
-# Veritas driver
-class UnableToExecuteHyperScaleCmd(VolumeDriverException):
-    message = _("Failed HyperScale command for '%(command)s'")
-
-
-class UnableToProcessHyperScaleCmdOutput(VolumeDriverException):
-    message = _("Failed processing command output '%(cmd_out)s'"
-                " for HyperScale command")
-
-
-class ErrorInFetchingConfiguration(VolumeDriverException):
-    message = _("Error in fetching configuration for '%(persona)s'")
-
-
-class ErrorInSendingMsg(VolumeDriverException):
-    message = _("Error in sending message '%(cmd_error)s'")
-
-
-class ErrorInHyperScaleVersion(VolumeDriverException):
-    message = _("Error in getting HyperScale version '%(cmd_error)s'")
-
-
 class InvalidName(Invalid):
     message = _("An invalid 'name' value was provided. %(reason)s")
 

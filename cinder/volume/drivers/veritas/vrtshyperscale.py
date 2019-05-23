@@ -28,6 +28,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume.drivers.veritas import exception as v_exception
 from cinder.volume.drivers.veritas import hs_constants as constants
 from cinder.volume.drivers.veritas import utils as util
 
@@ -103,8 +104,8 @@ class HyperScaleDriver(driver.VolumeDriver):
             if version != HYPERSCALE_VERSION:
                 raise exception.VolumeBackendAPIException(
                     data=(_("Unsupported version: %s") % version))
-        except (exception.ErrorInHyperScaleVersion,
-                exception.UnableToExecuteHyperScaleCmd):
+        except (v_exception.ErrorInHyperScaleVersion,
+                v_exception.UnableToExecuteHyperScaleCmd):
             err_msg = _('Exception in getting HyperScale version')
             LOG.exception(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -172,8 +173,8 @@ class HyperScaleDriver(driver.VolumeDriver):
             LOG.debug("In init vsa_map %s", self.vsa_map)
             LOG.debug("In init compute_meta_map %s", self.compute_meta_map)
 
-        except (exception.UnableToProcessHyperScaleCmdOutput,
-                exception.ErrorInFetchingConfiguration):
+        except (v_exception.UnableToProcessHyperScaleCmdOutput,
+                v_exception.ErrorInFetchingConfiguration):
             err_msg = _("Unable to initialise the Veritas cinder driver")
             LOG.exception(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -246,8 +247,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 metadata_update['Potential_secondary_key'] = rt_key
                 metadata_update['Potential_secondary_ip'] = rt_dn_ip
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Exception in clone volume', exc_info=True)
         except exception.InvalidMetadataType:
@@ -278,8 +279,8 @@ class HyperScaleDriver(driver.VolumeDriver):
             payload = cmd_out.get('payload')
             data = payload.get('of_membership')
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception("Failed to get datanode config "
                               "information from controller")
@@ -372,8 +373,8 @@ class HyperScaleDriver(driver.VolumeDriver):
             LOG.debug("Create volume sent to reflection target data node")
 
         except (exception.VolumeNotFound,
-                exception.UnableToProcessHyperScaleCmdOutput,
-                exception.ErrorInSendingMsg):
+                v_exception.UnableToProcessHyperScaleCmdOutput,
+                v_exception.ErrorInSendingMsg):
             LOG.error("Exception in creating replica", exc_info=True)
             metadata_update['Secondary_datanode_key'] = 'NA'
             metadata_update['Secondary_datanode_ip'] = 'NA'
@@ -472,8 +473,8 @@ class HyperScaleDriver(driver.VolumeDriver):
             model_update = {'provider_location': volume['provider_location'],
                             'metadata': volume_metadata}
 
-        except (exception.UnableToProcessHyperScaleCmdOutput,
-                exception.ErrorInSendingMsg):
+        except (v_exception.UnableToProcessHyperScaleCmdOutput,
+                v_exception.ErrorInSendingMsg):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Unable to create hyperscale volume')
 
@@ -524,8 +525,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 'hyperscale.storage.dm.volume.delete',
                 **message_body)
 
-        except (exception.UnableToProcessHyperScaleCmdOutput,
-                exception.ErrorInSendingMsg):
+        except (v_exception.UnableToProcessHyperScaleCmdOutput,
+                v_exception.ErrorInSendingMsg):
             LOG.error('Exception while deleting volume', exc_info=True)
             raise exception.VolumeIsBusy(volume_name=volume['name'])
 
@@ -582,8 +583,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 meta['datanode_ip'] = self.datanode_ip
 
             except (exception.VolumeNotFound,
-                    exception.UnableToExecuteHyperScaleCmd,
-                    exception.UnableToProcessHyperScaleCmdOutput):
+                    v_exception.UnableToExecuteHyperScaleCmd,
+                    v_exception.UnableToProcessHyperScaleCmdOutput):
                 with excutils.save_and_reraise_exception():
                     LOG.exception('Exception in create snapshot')
 
@@ -675,8 +676,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                     **message_body)
 
         except (exception.VolumeNotFound,
-                exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+                v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Exception in create snapshot')
 
@@ -728,8 +729,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 'hyperscale.storage.dm.version.delete',
                 **message_body)
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Exception in delete snapshot')
 
@@ -802,8 +803,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 metadata_update['Potential_secondary_key'] = rt_key
                 metadata_update['Potential_secondary_ip'] = rt_dn_ip
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Exception in creating volume from snapshot')
         except exception.InvalidMetadataType:
@@ -847,8 +848,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 LOG.debug("Response Message from Controller: %s",
                           cmd_out)
 
-            except (exception.UnableToExecuteHyperScaleCmd,
-                    exception.UnableToProcessHyperScaleCmdOutput):
+            except (v_exception.UnableToExecuteHyperScaleCmd,
+                    v_exception.UnableToProcessHyperScaleCmdOutput):
                 with excutils.save_and_reraise_exception():
                     LOG.exception('Exception during fetch stats')
 
@@ -871,8 +872,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                 'hyperscale.storage.dm.volume.extend',
                 **message_body)
 
-        except (exception.UnableToProcessHyperScaleCmdOutput,
-                exception.ErrorInSendingMsg):
+        except (v_exception.UnableToProcessHyperScaleCmdOutput,
+                v_exception.ErrorInSendingMsg):
             msg = _('Exception in extend volume %s') % volume['name']
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -917,8 +918,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                     data['total_capacity_gb'] = float(total_capacity)
                     data['free_capacity_gb'] = float(free_capacity)
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Exception during fetch stats')
 
@@ -977,8 +978,8 @@ class HyperScaleDriver(driver.VolumeDriver):
                                                         'hs_image_id')
             util.update_image(path, volume['id'], hs_img_id)
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to copy_image_to_volume')
 
@@ -1002,7 +1003,7 @@ class HyperScaleDriver(driver.VolumeDriver):
                                       image_meta,
                                       path)
 
-        except (exception.UnableToExecuteHyperScaleCmd,
-                exception.UnableToProcessHyperScaleCmdOutput):
+        except (v_exception.UnableToExecuteHyperScaleCmd,
+                v_exception.UnableToProcessHyperScaleCmdOutput):
             with excutils.save_and_reraise_exception():
                 LOG.exception('Failed to copy_volume_to_image')
