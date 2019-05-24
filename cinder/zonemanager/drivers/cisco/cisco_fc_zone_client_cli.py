@@ -31,6 +31,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
+from cinder.zonemanager.drivers.cisco import exception as c_exception
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
 
 LOG = logging.getLogger(__name__)
@@ -88,7 +89,7 @@ class CiscoFCZoneClientCLI(object):
             switch_data = self._get_switch_info(
                 [ZoneConstant.GET_ACTIVE_ZONE_CFG, self.fabric_vsan,
                  ' | no-more'])
-        except exception.CiscoZoningCliException:
+        except c_exception.CiscoZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed getting active zone set "
                           "from fabric %s", self.switch_ip)
@@ -194,7 +195,7 @@ class CiscoFCZoneClientCLI(object):
                     "(Zone set=%(zoneset)s error=%(err)s)."
                     ) % {'zoneset': cfg_name, 'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.CiscoZoningCliException(reason=msg)
+            raise c_exception.CiscoZoningCliException(reason=msg)
 
     def update_zones(self, zones, activate, fabric_vsan, operation,
                      active_zone_set, zone_status):
@@ -260,7 +261,7 @@ class CiscoFCZoneClientCLI(object):
                      "(Zone set=%(zoneset)s error=%(err)s).")
                    % {'zoneset': cfg_name, 'err': six.text_type(e)})
             LOG.error(msg)
-            raise exception.CiscoZoningCliException(reason=msg)
+            raise c_exception.CiscoZoningCliException(reason=msg)
 
     def activate_zoneset(self, cfgname, fabric_vsan, zone_status):
         """Method to Activate the zone config. Param cfgname - ZonesetName."""
@@ -284,7 +285,7 @@ class CiscoFCZoneClientCLI(object):
         try:
             switch_data = self._get_switch_info(
                 [ZoneConstant.GET_ZONE_STATUS, self.fabric_vsan])
-        except exception.CiscoZoningCliException:
+        except c_exception.CiscoZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed getting zone status "
                           "from fabric %s", self.switch_ip)
@@ -350,7 +351,7 @@ class CiscoFCZoneClientCLI(object):
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
                     ) % {'cmd': cmds, 'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.CiscoZoningCliException(reason=msg)
+            raise c_exception.CiscoZoningCliException(reason=msg)
 
     def get_nameserver_info(self):
         """Get name server data from fabric.
@@ -365,7 +366,7 @@ class CiscoFCZoneClientCLI(object):
         try:
             cli_output = self._get_switch_info([ZoneConstant.FCNS_SHOW,
                                                 self.fabric_vsan])
-        except exception.CiscoZoningCliException:
+        except c_exception.CiscoZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed collecting fcns database "
                           "info for fabric %s", self.switch_ip)
@@ -395,7 +396,7 @@ class CiscoFCZoneClientCLI(object):
                     "error=%(err)s).") % {'cmd': cmd_list,
                                           'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.CiscoZoningCliException(reason=msg)
+            raise c_exception.CiscoZoningCliException(reason=msg)
 
     def _parse_ns_output(self, switch_data):
         """Parses name server data.

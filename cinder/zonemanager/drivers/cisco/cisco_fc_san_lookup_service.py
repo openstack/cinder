@@ -28,6 +28,7 @@ from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
+from cinder.zonemanager.drivers.cisco import exception as c_exception
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as zone_constant
 from cinder.zonemanager import fc_san_lookup_service as fc_service
 from cinder.zonemanager import utils as zm_utils
@@ -207,7 +208,7 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                     "error=%(err)s).") % {'cmd': cmd_list,
                                           'err': six.text_type(e)}
             LOG.error(msg)
-            raise exception.CiscoZoningCliException(reason=msg)
+            raise c_exception.CiscoZoningCliException(reason=msg)
 
     def _parse_ns_output(self, switch_data):
         """Parses name server data.
