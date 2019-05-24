@@ -1129,15 +1129,6 @@ class NotSupportedOperation(Invalid):
     code = 405
 
 
-# Kaminario K2
-class KaminarioCinderDriverException(VolumeDriverException):
-    message = _("KaminarioCinderDriver failure: %(reason)s")
-
-
-class KaminarioRetryableException(VolumeDriverException):
-    message = _("Kaminario retryable exception: %(reason)s")
-
-
 class AttachmentSpecsNotFound(NotFound):
     message = _("Attachment %(attachment_id)s has no "
                 "key %(specs_key)s.")

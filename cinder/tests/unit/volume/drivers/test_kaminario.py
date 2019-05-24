@@ -78,10 +78,10 @@ class FakeSaveObject(FakeK2Obj):
 
 class FakeSaveObjectExp(FakeSaveObject):
     def save(self):
-        raise exception.KaminarioCinderDriverException("test")
+        raise kaminario_common.KaminarioCinderDriverException("test")
 
     def delete(self):
-        raise exception.KaminarioCinderDriverException("test")
+        raise kaminario_common.KaminarioCinderDriverException("test")
 
 
 class FakeSearchObject(object):
@@ -159,7 +159,7 @@ class TestKaminarioCommon(test.TestCase):
     def test_create_volume_with_exception(self):
         """Test create_volume_with_exception."""
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.create_volume, self.vol)
 
     def test_delete_volume(self):
@@ -170,7 +170,7 @@ class TestKaminarioCommon(test.TestCase):
     def test_delete_volume_with_exception(self):
         """Test delete_volume_with_exception."""
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.delete_volume, self.vol)
 
     def test_create_snapshot(self):
@@ -189,7 +189,7 @@ class TestKaminarioCommon(test.TestCase):
     def test_create_snapshot_with_exception(self):
         """Test create_snapshot_with_exception."""
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.create_snapshot, self.snap)
 
     def test_delete_snapshot(self):
@@ -200,7 +200,7 @@ class TestKaminarioCommon(test.TestCase):
     def test_delete_snapshot_with_exception(self):
         """Test delete_snapshot_with_exception."""
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.delete_snapshot, self.snap)
 
     @mock.patch.object(utils, 'brick_get_connector_properties')
@@ -222,7 +222,7 @@ class TestKaminarioCommon(test.TestCase):
         mock_brick_get.return_value = CONNECTOR
         mock_copy_volume.return_value = None
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.create_volume_from_snapshot, self.vol,
                           self.snap)
 
@@ -245,7 +245,7 @@ class TestKaminarioCommon(test.TestCase):
         mock_copy_volume.return_value = None
         self.driver.terminate_connection = mock.Mock()
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.create_cloned_volume, self.vol, self.vol)
 
     def test_extend_volume(self):
@@ -258,13 +258,13 @@ class TestKaminarioCommon(test.TestCase):
         """Test extend_volume_with_exception."""
         self.driver.client = FakeKrestException()
         new_size = 256
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.extend_volume, self.vol, new_size)
 
     def test_initialize_connection_with_exception(self):
         """Test initialize_connection_with_exception."""
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.initialize_connection, self.vol,
                           CONNECTOR)
 
@@ -354,7 +354,7 @@ class TestKaminarioCommon(test.TestCase):
         rep = Replication()
         self.driver.replica = rep
         self.driver.client = FakeKrestException()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver._create_volume_replica, self.vol,
                           vg, vg, rep.rpo)
 
@@ -425,7 +425,7 @@ class TestKaminarioCommon(test.TestCase):
         self.driver.replica = Replication()
         self.driver.target = FakeKrestException()
         self.driver._check_for_status = mock.Mock()
-        self.assertRaises(exception.KaminarioCinderDriverException,
+        self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver._delete_volume_replica, self.vol,
                           'test', 'test')
 

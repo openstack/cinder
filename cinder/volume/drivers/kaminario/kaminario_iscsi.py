@@ -16,7 +16,6 @@
 from oslo_log import log as logging
 
 from cinder import coordination
-from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
@@ -109,7 +108,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         if not iscsi_portals:
             msg = _("Unable to get ISCSI IP address from K2.")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise common.KaminarioCinderDriverException(reason=msg)
         LOG.debug("Searching system state for target iqn in K2.")
         sys_state_rs = self.client.search("system/state")
 
@@ -120,7 +119,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         if not target_iqns:
             msg = _("Unable to get target iqn from K2.")
             LOG.error(msg)
-            raise exception.KaminarioCinderDriverException(reason=msg)
+            raise common.KaminarioCinderDriverException(reason=msg)
         return iscsi_portals, target_iqns
 
     @utils.trace
@@ -143,7 +142,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                 self._delete_host_by_name(host_name)
                 LOG.exception("Unable to create host: %s in K2.",
                               host_name)
-                raise exception.KaminarioCinderDriverException(reason=ex)
+                raise common.KaminarioCinderDriverException(reason=ex)
         else:
             LOG.debug("Use existing initiator hostname: %s in K2.", host_name)
             host = host_rs.hits[0]
