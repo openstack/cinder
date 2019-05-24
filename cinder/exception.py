@@ -948,16 +948,6 @@ class VolumeDeviceNotFound(CinderException):
     message = _('Volume device not found at %(device)s.')
 
 
-# Driver specific exceptions
-# Dell
-class DellDriverRetryableException(VolumeBackendAPIException):
-    message = _("Retryable Dell Exception encountered")
-
-
-class DellDriverUnknownSpec(VolumeDriverException):
-    message = _("Dell driver failure: %(reason)s")
-
-
 # RemoteFS drivers
 class RemoteFSException(VolumeDriverException):
     message = _("Unknown RemoteFS exception")

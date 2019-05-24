@@ -31,6 +31,10 @@ from cinder import utils
 LOG = logging.getLogger(__name__)
 
 
+class DellDriverRetryableException(exception.VolumeBackendAPIException):
+    message = _("Retryable Dell Exception encountered")
+
+
 class PayloadFilter(object):
     """PayloadFilter
 
@@ -229,7 +233,7 @@ class HttpClient(object):
         return rest_response
 
     @utils.retry(exceptions=(requests.ConnectionError,
-                             exception.DellDriverRetryableException))
+                             DellDriverRetryableException))
     def get(self, url):
         LOG.debug('get: %(url)s', {'url': url})
         rest_response = self.session.get(self.__formatUrl(url),
@@ -240,7 +244,7 @@ class HttpClient(object):
         if (rest_response and rest_response.status_code == (
                 http_client.BAD_REQUEST)) and (
                     'Unhandled Exception' in rest_response.text):
-            raise exception.DellDriverRetryableException()
+            raise DellDriverRetryableException()
         return rest_response
 
     @utils.retry(exceptions=(requests.ConnectionError,))
