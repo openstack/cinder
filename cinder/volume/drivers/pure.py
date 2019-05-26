@@ -19,6 +19,7 @@ This driver requires Purity version 4.0.0 or later.
 """
 
 import functools
+import ipaddress
 import math
 import platform
 import re
@@ -83,6 +84,10 @@ PURE_OPTS = [
     cfg.StrOpt("pure_replication_pod_name", default="cinder-pod",
                help="Pure Pod name to use for sync replication "
                     "(will be created if it does not exist)."),
+    cfg.StrOpt("pure_iscsi_cidr", default="0.0.0.0/0",
+               help="CIDR of FlashArray iSCSI targets hosts are allowed to "
+                    "connect to. Default will allow connection to any "
+                    "IP address."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
@@ -2330,7 +2335,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "8.0.0"
+    VERSION = "9.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -2398,6 +2403,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         target_luns = []
         target_iqns = []
         target_portals = []
+        valid_portals = []
 
         # Aggregate all targets together, we may end up with different LUNs
         # for different target iqn/portal sets (ie. it could be a unique LUN
@@ -2409,11 +2415,29 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 target_iqns.append(port["iqn"])
                 target_portals.append(port["portal"])
 
+        # Check to ensure all returned portal IP addresses
+        # are in iSCSI target CIDR
+        if not isinstance(self.configuration.pure_iscsi_cidr, six.text_type):
+            cidr = self.configuration.pure_iscsi_cidr.decode('utf8')
+        else:
+            cidr = self.configuration.pure_iscsi_cidr
+        check_cidr = ipaddress.IPv4Network(cidr)
+        for target_portal in target_portals:
+            if not isinstance(target_portal.split(":")[0], six.text_type):
+                portal = (target_portal.split(":")[0]).decode('utf8')
+            else:
+                portal = target_portal.split(":")[0]
+            check_ip = ipaddress.IPv4Address(portal)
+            if check_ip in check_cidr:
+                valid_portals.append(target_portal)
+        LOG.info("iSCSI target portals that match CIDR range: '%s'",
+                 valid_portals)
+
         # If we have multiple ports always report them.
-        if target_luns and target_iqns and target_portals:
+        if target_luns and target_iqns and valid_portals:
             props["data"]["target_luns"] = target_luns
             props["data"]["target_iqns"] = target_iqns
-            props["data"]["target_portals"] = target_portals
+            props["data"]["target_portals"] = valid_portals
 
         return props
 
