@@ -3,7 +3,7 @@
       - openstack-lower-constraints-jobs
       - openstack-python-jobs
       - openstack-python36-jobs
-      - openstack-python37-jobs-nonvoting
+      - openstack-python37-jobs
       - publish-openstack-docs-pti
       - periodic-stable-jobs
       - check-requirements
