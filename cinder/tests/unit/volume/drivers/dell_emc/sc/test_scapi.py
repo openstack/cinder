@@ -8954,7 +8954,8 @@ class DellHttpClientTestCase(test.TestCase):
                        'get')
     def test_wait_for_async_complete_get_raises(self,
                                                 mock_get):
-        mock_get.side_effect = (exception.DellDriverRetryableException())
+        mock_get.side_effect = (
+            storagecenter_api.DellDriverRetryableException())
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.httpclient._wait_for_async_complete,
                           self.ASYNCTASK)
