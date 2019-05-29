@@ -1087,35 +1087,6 @@ class BadResetResourceStatus(CinderException):
     message = _("Bad reset resource status : %(reason)s")
 
 
-# DOTHILL drivers
-class DotHillInvalidBackend(VolumeDriverException):
-    message = _("Backend doesn't exist (%(backend)s)")
-
-
-class DotHillConnectionError(VolumeDriverException):
-    message = "%(message)s"
-
-
-class DotHillAuthenticationError(VolumeDriverException):
-    message = "%(message)s"
-
-
-class DotHillNotEnoughSpace(VolumeDriverException):
-    message = _("Not enough space on backend (%(backend)s)")
-
-
-class DotHillRequestError(VolumeDriverException):
-    message = "%(message)s"
-
-
-class DotHillNotTargetPortal(VolumeDriverException):
-    message = _("No active iSCSI portals with supplied iSCSI IPs")
-
-
-class DotHillDriverNotSupported(VolumeDriverException):
-    message = _("The Dot Hill driver is no longer supported.")
-
-
 class MetadataAbsent(CinderException):
     message = _("There is no metadata in DB object.")
 

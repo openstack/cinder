@@ -27,8 +27,8 @@ import requests
 import six
 
 from cinder import coordination
-from cinder import exception
 from cinder.i18n import _
+from cinder.volume.drivers.dothill import exception as dh_exception
 
 LOG = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class DotHillClient(object):
                 self._session_key = session_key
         except Exception as e:
             msg = _("Cannot parse session key: %s") % e.msg
-            raise exception.DotHillConnectionError(message=msg)
+            raise dh_exception.DotHillConnectionError(message=msg)
 
     def login(self):
         if self._session_key is None:
@@ -85,7 +85,7 @@ class DotHillClient(object):
             LOG.debug("Logged in to array %s at %s (session %s)",
                       self._array_name, self._base_url, self._session_key)
             return
-        except exception.DotHillConnectionError:
+        except dh_exception.DotHillConnectionError:
             not_responding = self._curr_ip_addr
             LOG.exception('session_login failed to connect to %s',
                           self._curr_ip_addr)
@@ -98,11 +98,11 @@ class DotHillClient(object):
                 try:
                     self._get_session_key()
                     return
-                except exception.DotHillConnectionError:
+                except dh_exception.DotHillConnectionError:
                     LOG.error('Failed to connect to %s',
                               self._curr_ip_addr)
                     continue
-        raise exception.DotHillConnectionError(
+        raise dh_exception.DotHillConnectionError(
             message=_("Failed to log in to management controller"))
 
     @coordination.synchronized('{self._driver_name}-{self._array_name}')
@@ -122,12 +122,12 @@ class DotHillClient(object):
         except requests.exceptions.RequestException:
             msg = _("Failed to obtain MC session key")
             LOG.exception(msg)
-            raise exception.DotHillConnectionError(message=msg)
+            raise dh_exception.DotHillConnectionError(message=msg)
 
         self._get_auth_token(xml.text.encode('utf8'))
         LOG.debug("session key = %s", self._session_key)
         if self._session_key is None:
-            raise exception.DotHillAuthenticationError
+            raise dh_exception.DotHillAuthenticationError
 
     def _assert_response_ok(self, tree):
         """Parses the XML returned by the device to check the return code.
@@ -139,7 +139,7 @@ class DotHillClient(object):
         # if it is not present.
         return_code = tree.findtext(".//PROPERTY[@name='return-code']")
         if not return_code:
-            raise exception.DotHillRequestError(message="No status found")
+            raise dh_exception.DotHillRequestError(message="No status found")
 
         # If no error occurred, just return.
         if return_code == '0':
@@ -149,7 +149,7 @@ class DotHillClient(object):
         msg = "%s (%s)" % (tree.findtext(".//PROPERTY[@name='response']"),
                            return_code)
 
-        raise exception.DotHillRequestError(message=msg)
+        raise dh_exception.DotHillRequestError(message=msg)
 
     def _build_request_url(self, path, *args, **kargs):
         url = self._base_url + path
@@ -177,14 +177,14 @@ class DotHillClient(object):
         while tries_left > 0:
             try:
                 return self._api_request(path, *args, **kargs)
-            except exception.DotHillConnectionError as e:
+            except dh_exception.DotHillConnectionError as e:
                 if tries_left < 1:
                     LOG.error("Array Connection error: "
                               "%s (no more retries)", e.msg)
                     raise
                 # Retry on any network connection errors, SSL errors, etc
                 LOG.error("Array Connection error: %s (retrying)", e.msg)
-            except exception.DotHillRequestError as e:
+            except dh_exception.DotHillRequestError as e:
                 if tries_left < 1:
                     LOG.error("Array Request error: %s (no more retries)",
                               e.msg)
@@ -220,7 +220,7 @@ class DotHillClient(object):
         except Exception as e:
             message = _("Exception handling URL %(url)s: %(msg)s") % {
                 'url': url, 'msg': e}
-            raise exception.DotHillConnectionError(message=message)
+            raise dh_exception.DotHillConnectionError(message=message)
 
         if path == "/show/volumecopy-status":
             return tree
@@ -252,7 +252,7 @@ class DotHillClient(object):
 
         try:
             self._request("/create/volume", name, **path_dict)
-        except exception.DotHillRequestError as e:
+        except dh_exception.DotHillRequestError as e:
             # -10186 => The specified name is already in use.
             # This can occur during controller failover.
             if '(-10186)' in e.msg:
@@ -265,7 +265,7 @@ class DotHillClient(object):
     def delete_volume(self, name):
         try:
             self._request("/delete/volumes", name)
-        except exception.DotHillRequestError as e:
+        except dh_exception.DotHillRequestError as e:
             # -10075 => The specified volume was not found.
             # This can occur during controller failover.
             if '(-10075)' in e.msg:
@@ -281,7 +281,7 @@ class DotHillClient(object):
     def create_snapshot(self, volume_name, snap_name):
         try:
             self._request("/create/snapshots", snap_name, volumes=volume_name)
-        except exception.DotHillRequestError as e:
+        except dh_exception.DotHillRequestError as e:
             # -10186 => The specified name is already in use.
             # This can occur during controller failover.
             if '(-10186)' in e.msg:
@@ -295,7 +295,7 @@ class DotHillClient(object):
                 self._request("/delete/snapshot", "cleanup", snap_name)
             else:
                 self._request("/delete/snapshot", snap_name)
-        except exception.DotHillRequestError as e:
+        except dh_exception.DotHillRequestError as e:
             # -10050 => The volume was not found on this system.
             # This can occur during controller failover.
             if '(-10050)' in e.msg:
@@ -311,7 +311,7 @@ class DotHillClient(object):
                 path = "/show/pools"
             self._request(path, backend_name)
             return True
-        except exception.DotHillRequestError:
+        except dh_exception.DotHillRequestError:
             return False
 
     def _get_size(self, size):
@@ -377,7 +377,7 @@ class DotHillClient(object):
                           firsthost, lun)
                 return lun
             lun += 1
-        raise exception.DotHillRequestError(
+        raise dh_exception.DotHillRequestError(
             message=_("No LUNs available for mapping to host %s.") % host)
 
     @coordination.synchronized('{self._driver_name}-{self._array_name}-map')
@@ -392,7 +392,7 @@ class DotHillClient(object):
                 hostname = self._safe_hostname(connector['host'])
                 try:
                     self._request("/create/host", hostname, id=host)
-                except exception.DotHillRequestError as e:
+                except dh_exception.DotHillRequestError as e:
                     # -10058: The host identifier or nickname is already in use
                     if '(-10058)' in e.msg:
                         LOG.error("While trying to create host nickname"
@@ -411,7 +411,7 @@ class DotHillClient(object):
                               host=host,
                               access="rw")
                 return lun
-            except exception.DotHillRequestError as e:
+            except dh_exception.DotHillRequestError as e:
                 # -3177 => "The specified LUN overlaps a previously defined LUN
                 if '(-3177)' in e.msg:
                     LOG.info("Unable to map volume"
@@ -430,7 +430,7 @@ class DotHillClient(object):
                           e)
                 raise
 
-        raise exception.DotHillRequestError(
+        raise dh_exception.DotHillRequestError(
             message=_("Failed to find a free LUN for host %s") % host)
 
     def unmap_volume(self, volume_name, connector, connector_element):
@@ -440,7 +440,7 @@ class DotHillClient(object):
             host = connector['initiator']
         try:
             self._request("/unmap/volume", volume_name, host=host)
-        except exception.DotHillRequestError as e:
+        except dh_exception.DotHillRequestError as e:
             # -10050 => The volume was not found on this system.
             # This can occur during controller failover.
             if '(-10050)' in e.msg:
@@ -496,7 +496,7 @@ class DotHillClient(object):
             else:
                 if count >= 5:
                     LOG.error('Error in copying volume: %s', src_name)
-                    raise exception.DotHillRequestError
+                    raise dh_exception.DotHillRequestError
 
                 time.sleep(1)
                 count += 1

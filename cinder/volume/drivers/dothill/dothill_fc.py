@@ -15,9 +15,9 @@
 #    under the License.
 #
 
-from cinder import exception
 import cinder.volume.driver
 from cinder.volume.drivers.dothill import dothill_common
+from cinder.volume.drivers.dothill import exception as dh_exception
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
 
@@ -50,7 +50,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
         # Make sure we're not invoked directly
         if type(self) == DotHillFCDriver:
-            raise exception.DotHillDriverNotSupported
+            raise dh_exception.DotHillDriverNotSupported
         super(DotHillFCDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(san.san_opts)
