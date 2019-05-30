@@ -483,8 +483,7 @@ class GPFSDriver(driver.CloneableImageVD,
             # Check if GPFS is mounted
             self._verify_gpfs_path_state(directory)
 
-            filesystem, fslevel = \
-                self._get_gpfs_fs_release_level(directory)
+            filesystem, fslevel = self._get_gpfs_fs_release_level(directory)
             if fslevel < GPFS_CLONE_MIN_RELEASE:
                 msg = (_('The GPFS filesystem %(fs)s is not at the required '
                          'release level.  Current level is %(cur)s, must be '

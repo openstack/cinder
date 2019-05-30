@@ -194,16 +194,15 @@ class Client(object):
         try:
             result = self.connection.invoke_successfully(lun_geo, True)
             geometry['size'] = result.get_child_content("size")
-            geometry['bytes_per_sector'] =\
-                result.get_child_content("bytes-per-sector")
-            geometry['sectors_per_track'] =\
-                result.get_child_content("sectors-per-track")
-            geometry['tracks_per_cylinder'] =\
-                result.get_child_content("tracks-per-cylinder")
-            geometry['cylinders'] =\
-                result.get_child_content("cylinders")
-            geometry['max_resize'] =\
-                result.get_child_content("max-resize-size")
+            geometry['bytes_per_sector'] = result.get_child_content(
+                "bytes-per-sector")
+            geometry['sectors_per_track'] = result.get_child_content(
+                "sectors-per-track")
+            geometry['tracks_per_cylinder'] = result.get_child_content(
+                "tracks-per-cylinder")
+            geometry['cylinders'] = result.get_child_content("cylinders")
+            geometry['max_resize'] = result.get_child_content(
+                "max-resize-size")
         except Exception as e:
             LOG.error("LUN %(path)s geometry failed. Message - %(msg)s",
                       {'path': path, 'msg': six.text_type(e)})
