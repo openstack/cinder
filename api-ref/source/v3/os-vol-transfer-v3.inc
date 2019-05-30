@@ -33,7 +33,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-transfer-accept-request.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfer-accept-request.json
    :language: javascript
 
 Response Parameters
@@ -50,7 +50,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-transfer-accept-response.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfer-accept-response.json
    :language: javascript
 
 
@@ -88,7 +88,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/volume-transfer-create-request.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfer-create-request.json
    :language: javascript
 
 
@@ -107,7 +107,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-transfer-create-response.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfer-create-response.json
    :language: javascript
 
 
@@ -149,7 +149,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-transfers-list-response.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfers-list-response.json
    :language: javascript
 
 
@@ -192,7 +192,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-transfer-show-response.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfer-show-response.json
    :language: javascript
 
 
@@ -257,5 +257,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume-transfers-list-detailed-response.json
+.. literalinclude:: ./samples/volume_transfer/volume-transfers-list-detailed-response.json
    :language: javascript

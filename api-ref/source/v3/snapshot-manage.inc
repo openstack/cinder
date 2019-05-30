@@ -49,7 +49,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/snapshot-manage-request.json
+.. literalinclude:: ./samples/snapshot_manage_extensions/snapshot-manage-request.json
    :language: javascript
 
 
