@@ -14,6 +14,7 @@
 
 import ddt
 import mock
+
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 import testtools
@@ -49,6 +50,10 @@ class TestCinderStatus(testtools.TestCase):
     def _set_config(self, key, value, group=None):
         CONF.set_override(key, value, group=group)
         self.addCleanup(CONF.clear_override, key, group=group)
+
+    def _set_backup_driver(self, driver_path):
+        CONF.set_override('backup_driver', driver_path)
+        self.addCleanup(CONF.clear_override, 'backup_driver')
 
     def _set_volume_driver(self, volume_driver, enabled_backend):
         CONF.register_opts(volume_manager.volume_backend_opts,
@@ -154,4 +159,53 @@ class TestCinderStatus(testtools.TestCase):
     def test_check_legacy_win_conf_no_drivers(self):
         self._set_config('enabled_backends', None)
         result = self.checks._check_legacy_windows_config()
+        self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    def test_check_removed_drivers(self):
+        self._set_volume_driver(
+            'cinder.volume.drivers.lvm.LVMVolumeDriver',
+            'winiscsi')
+        result = self.checks._check_removed_drivers()
+        self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    @ddt.data('cinder.volume.drivers.coprhd.fc.EMCCoprHDFCDriver',
+              'cinder.volume.drivers.coprhd.iscsi.EMCCoprHDISCSIDriver',
+              'cinder.volume.drivers.coprhd.scaleio.EMCCoprHDScaleIODriver',
+              'cinder.volume.drivers.disco.disco.DiscoDriver',
+              'cinder.volume.drivers.hgst.HGSTDriver')
+    def test_check_removed_drivers_fail(self, volume_driver):
+        self._set_volume_driver(
+            volume_driver,
+            'testDriver')
+        result = self.checks._check_removed_drivers()
+        self.assertEqual(uc.Code.FAILURE, result.code)
+        self.assertIn(volume_driver, result.details)
+        # Check for singular version of result message
+        self.assertIn('This driver has been removed', result.details)
+
+    def test_check_multiple_removed_drivers_fail(self):
+        d1 = 'cinder.volume.drivers.coprhd.fc.EMCCoprHDFCDriver'
+        d3 = 'cinder.volume.drivers.coprhd.scaleio.EMCCoprHDScaleIODriver'
+        d5 = 'cinder.volume.drivers.hgst.HGSTDriver'
+        d2 = 'cinder.volume.drivers.foo.iscsi.FooDriver'
+        d4 = 'cinder.volume.drivers.bar.fc.BarFCDriver'
+        self._set_volume_driver(d1, 'b1')
+        self._set_volume_driver(d2, 'b2')
+        self._set_volume_driver(d3, 'b3')
+        self._set_volume_driver(d4, 'b4')
+        self._set_volume_driver(d5, 'b5')
+        CONF.set_override('enabled_backends', 'b1,b2,b3,b4,b5')
+        result = self.checks._check_removed_drivers()
+        self.assertEqual(uc.Code.FAILURE, result.code)
+        self.assertIn(d1, result.details)
+        self.assertIn(d3, result.details)
+        self.assertIn(d5, result.details)
+        self.assertNotIn(d2, result.details)
+        self.assertNotIn(d4, result.details)
+        # check for plural version of result message
+        self.assertIn('The following drivers', result.details)
+
+    def test_check_removed_drivers_no_drivers(self):
+        self._set_config('enabled_backends', None)
+        result = self.checks._check_removed_drivers()
         self.assertEqual(uc.Code.SUCCESS, result.code)

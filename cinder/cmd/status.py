@@ -37,6 +37,9 @@ CONF = cfg.CONF
 SUCCESS = uc.Code.SUCCESS
 FAILURE = uc.Code.FAILURE
 WARNING = uc.Code.WARNING
+REMOVED_DRVRS = ["coprhd",
+                 "disco",
+                 "hgst", ]
 
 
 def _get_enabled_drivers():
@@ -197,11 +200,42 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
+    def _check_removed_drivers(self):
+        """Checks to ensure that no removed drivers are configured.
+
+        Checks start with drivers removed in the Stein release.
+        """
+        removed_drivers = []
+        for volume_driver in _get_enabled_drivers():
+            for removed_driver in REMOVED_DRVRS:
+                if removed_driver in volume_driver:
+                    removed_drivers.append(volume_driver)
+
+        if removed_drivers:
+            if len(removed_drivers) > 1:
+                return uc.Result(
+                    FAILURE,
+                    'The following drivers, which no longer exist, were found '
+                    'configured in your cinder.conf file:\n%s.\n'
+                    'These drivers have been removed and all data should '
+                    'be migrated off of the associated backends before '
+                    'upgrading Cinder.' % ",\n".join(removed_drivers))
+            else:
+                return uc.Result(
+                    FAILURE,
+                    'Found driver %s configured in your cinder.conf file. '
+                    'This driver has been removed and all data should '
+                    'be migrated off of this backend before upgrading '
+                    'Cinder.' % removed_drivers[0])
+
+        return uc.Result(SUCCESS)
+
     _upgrade_checks = (
         # added in Stein
         ('Backup Driver Path', _check_backup_module),
         ('Use of Policy File', _check_policy_file),
         ('Windows Driver Path', _check_legacy_windows_config),
+        ('Removed Drivers', _check_removed_drivers),
         # added in Train
         ('Periodic Interval Use', _check_periodic_interval),
         ('Use of Nest Quota Driver', _check_nested_quota),
