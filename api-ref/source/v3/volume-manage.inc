@@ -70,7 +70,7 @@ Response
 
    - volume: volume
    - status: status_vol
-   - migration_status: migration_status_req
+   - migration_status: migration_status
    - user_id: user_id
    - attachments: attachments
    - links: links_vol

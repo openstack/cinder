@@ -1064,13 +1064,7 @@ migration_policy:
   type: string
 migration_status:
   description: |
-    The volume migration status.
-  in: body
-  required: true
-  type: string
-migration_status_1:
-  description: |
-    The volume migration status.
+    The volume migration status. Admin only.
   in: body
   required: false
   type: string
