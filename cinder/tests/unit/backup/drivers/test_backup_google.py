@@ -49,17 +49,17 @@ class FakeMD5(object):
         pass
 
     @classmethod
-    def digest(self):
+    def digest(cls):
         return 'gcscindermd5'
 
     @classmethod
-    def hexdigest(self):
+    def hexdigest(cls):
         return 'gcscindermd5'
 
 
 class FakeObjectName(object):
     @classmethod
-    def _fake_generate_object_name_prefix(self, backup):
+    def _fake_generate_object_name_prefix(cls, backup):
         az = 'az_fake'
         backup_name = '%s_backup_%s' % (az, backup.id)
         volume = 'volume_%s' % (backup.volume_id)

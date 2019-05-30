@@ -30,7 +30,7 @@ class FakeSwiftClient(object):
         pass
 
     @classmethod
-    def Connection(self, *args, **kargs):
+    def Connection(cls, *args, **kargs):
         return FakeSwiftConnection()
 
 
