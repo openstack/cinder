@@ -405,3 +405,56 @@ easier for future additions::
             if target_version < version:
                 for obj_field in remove_fields:
                     primitive.pop(obj_field, None)
+
+Upgrade Checks
+--------------
+
+Starting with the Stein release of OpenStack, Cinder has added support for
+Upgrade Checks.  Upgrade checks provide a release-specific readiness check
+before restarting services with new code. Details on how to run an Upgrade
+Check can be seen in the `CLI interface for cinder status commands
+<https://docs.openstack.org/cinder/latest/cli/cinder-status.html>`_ page.
+
+Upgrade checks are intended to help identify changes between releases that
+may impact the deployment environment. As a result, developers should take time
+to consider if the operator would benefit from having an Upgrade Check added
+along with changes they are proposing.  The following are a few examples of
+changes that would require an Upgrade Check:
+
+* Changes to Configuration Options
+  * Removal
+  * Change in Behavior
+* Driver Removal
+* Changes to Configuration File Locations
+* Deprecations
+
+To add an Upgrade Check edit the `cinder/cmd/status.py` file.  Add a new
+function that contains the check you wish to implement. Functions need
+to return either a `uc.Result` where the result can be one of:
+
+* SUCCESS
+* FAILURE, <Failure explanation>
+* WARNING, <Warning explanation>
+
+Your new function should should then be added to the `_upgrade_checks`
+tuple. For your check give the name of the Upgrade Check to be displayed
+to end users upon success or failure as well as the name of the
+function used to implement your check. Upgrade Checks should be submitted
+with Unit Tests.
+
+The `doc/source/cli/cinder-status.rst` documentation should be updated to
+indicate the release for which your Upgrade Check was released and to
+explain the reason or limitations of your check, if appropriate. A release
+note should also be created with an explanation of the Upgrade Check in the
+`upgrade` section.
+
+It is preferable to have Upgrade Checks submitted as part of the patch that
+is making the change in question. The checks, however, can be submitted as
+a separate patch and are appropriate for backport if they are being created
+after a release has been cut.
+
+For additional details on Upgrade Checks please see `Nova's Upgrade Checks
+Documentation
+<https://docs.openstack.org/nova/latest/reference/upgrade-checks.html>`_ .
+
+
