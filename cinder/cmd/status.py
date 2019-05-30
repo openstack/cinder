@@ -38,6 +38,7 @@ SUCCESS = uc.Code.SUCCESS
 FAILURE = uc.Code.FAILURE
 WARNING = uc.Code.WARNING
 REMOVED_DRVRS = ["coprhd",
+                 "drbdmanage",
                  "disco",
                  "hgst", ]
 
