@@ -67,6 +67,7 @@ class CommonAdapter(replication.ReplicationAdapter):
         self.destroy_empty_sg = None
         self.itor_auto_dereg = None
         self.queue_path = None
+        self.async_migrate = None
 
     def _build_client_from_config(self, config, queue_path=None):
         return client.Client(
@@ -104,6 +105,7 @@ class CommonAdapter(replication.ReplicationAdapter):
         self.protocol = self.config.storage_protocol
         self.destroy_empty_sg = self.config.destroy_empty_storage_group
         self.itor_auto_dereg = self.config.initiator_auto_deregistration
+        self.async_migrate = self.config.vnx_async_migrate
         self.set_extra_spec_defaults()
 
     def _normalize_config(self):
@@ -349,7 +351,8 @@ class CommonAdapter(replication.ReplicationAdapter):
             volume_metadata['snapcopy'] = 'True'
             volume_metadata['async_migrate'] = 'False'
         else:
-            async_migrate, provision = utils.calc_migrate_and_provision(volume)
+            async_migrate, provision = utils.calc_migrate_and_provision(
+                volume, default_async_migrate=self.async_migrate)
             new_snap_name = (
                 utils.construct_snap_name(volume) if async_migrate else None)
             new_lun_id = emc_taskflow.create_volume_from_snapshot(
@@ -404,7 +407,8 @@ class CommonAdapter(replication.ReplicationAdapter):
             volume_metadata['snapcopy'] = 'True'
             volume_metadata['async_migrate'] = 'False'
         else:
-            async_migrate, provision = utils.calc_migrate_and_provision(volume)
+            async_migrate, provision = utils.calc_migrate_and_provision(
+                volume, default_async_migrate=self.async_migrate)
             new_lun_id = emc_taskflow.create_cloned_volume(
                 client=self.client,
                 snap_name=snap_name,
@@ -779,7 +783,8 @@ class CommonAdapter(replication.ReplicationAdapter):
 
     def delete_volume(self, volume):
         """Deletes an EMC volume."""
-        async_migrate = utils.is_async_migrate_enabled(volume)
+        async_migrate = utils.is_async_migrate_enabled(
+            volume, default=self.async_migrate)
         snap_copy = (utils.construct_snap_name(volume) if
                      utils.is_snapcopy_enabled(volume) else None)
         self.cleanup_lun_replication(volume)

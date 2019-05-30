@@ -433,6 +433,16 @@ Ignore pool full threshold
 If ``ignore_pool_full_threshold`` is set to ``True``, driver will force LUN
 creation even if the full threshold of pool is reached. Default to ``False``.
 
+Default value for async migration
+---------------------------------
+
+Option ``vnx_async_migrate`` is used to set the default value of async
+migration for the backend. The default value of this option is `True` if it
+isn't set in ``cinder.conf`` to preserve compatibility. If ``async_migrate`` is
+not set in metadata of volume, the value of this option will be used.
+Otherwise, ``async_migrate`` value in metadata will override the value of this
+option. For more detail, refer to `asynchronous migration support`_.
+
 Extra spec options
 ~~~~~~~~~~~~~~~~~~
 
@@ -791,8 +801,14 @@ as the default cloning method. The driver will return immediately after the
 migration session starts on the VNX, which dramatically reduces the time before
 a volume is available for use.
 
-To disable this feature, user can add ``--metadata async_migrate=False`` when
-creating new volume from source.
+To disable this feature, user needs to do any one of below actions:
+
+- Configure ``vnx_async_migrate = False`` for the backend in ``cinder.conf``,
+  then restart Cinder services.
+- Add ``--metadata async_migrate=False`` when creating new volume from source.
+
+Be aware, ``async_migrate`` in metadata overrides the option
+``vnx_async_migrate`` when both are set.
 
 **Constraints**
 
