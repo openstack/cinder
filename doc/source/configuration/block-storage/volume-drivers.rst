@@ -25,56 +25,10 @@ Driver Configuration Reference
 .. and the drivers for proprietary components
 
 .. toctree::
+   :glob:
    :maxdepth: 1
 
    drivers/ceph-rbd-volume-driver
    drivers/lvm-volume-driver
    drivers/nfs-volume-driver
-   drivers/sheepdog-driver
-   drivers/datera-volume-driver
-   drivers/dell-equallogic-driver
-   drivers/dell-storagecenter-driver
-   drivers/dell-emc-unity-driver
-   drivers/dell-emc-vnx-driver
-   drivers/dell-emc-powermax-driver
-   drivers/dell-emc-vxflex-driver
-   drivers/dell-emc-xtremio-driver
-   drivers/drbd-driver
-   drivers/fujitsu-eternus-dx-driver
-   drivers/hpe-3par-driver
-   drivers/hpe-lefthand-driver
-   drivers/hp-msa-driver
-   drivers/huawei-storage-driver
-   drivers/ibm-flashsystem-volume-driver
-   drivers/ibm-gpfs-volume-driver
-   drivers/ibm-storage-volume-driver
-   drivers/ibm-storwize-svc-driver
-   drivers/infinidat-volume-driver
-   drivers/inspur-as13000-driver
-   drivers/inspur-instorage-driver
-   drivers/kaminario-driver
-   drivers/lenovo-driver
-   drivers/linstor-driver
-   drivers/nec-storage-m-series-driver
-   drivers/netapp-volume-driver
-   drivers/nimble-volume-driver
-   drivers/nexentaedge-driver
-   drivers/nexentastor4-driver
-   drivers/nexentastor5-driver
-   drivers/prophetstor-dpl-driver
-   drivers/pure-storage-driver
-   drivers/quobyte-driver
-   drivers/solidfire-volume-driver
-   drivers/spdk-volume-driver
-   drivers/storpool-volume-driver
-   drivers/synology-dsm-driver
-   drivers/tintri-volume-driver
-   drivers/veritas-access-iscsi-driver
-   drivers/vzstorage-driver
-   drivers/vmware-vmdk-driver
-   drivers/windows-iscsi-volume-driver
-   drivers/windows-smb-volume-driver
-   drivers/zadara-volume-driver
-   drivers/zfssa-iscsi-driver
-   drivers/zfssa-nfs-driver
-   drivers/hedvig-volume-driver
+   drivers/*
