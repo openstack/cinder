@@ -138,8 +138,12 @@
     parent: rally-task-cinder
     timeout: 7800
     vars:
+      devstack_localrc:
+        OSPROFILER_COLLECTOR: redis
       devstack_plugins:
+        osprofiler: https://opendev.org/openstack/osprofiler
         rally-openstack: https://opendev.org/openstack/rally-openstack
       rally_task: rally-jobs/cinder.yaml
     required-projects:
       - openstack/rally-openstack
+      - openstack/osprofiler
