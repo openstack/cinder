@@ -603,6 +603,23 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 'is_public': is_public,
                 }
 
+    @mock.patch.object(VMDK_DRIVER, 'copy_image_to_volume')
+    def test_clone_image(self, copy_image_to_volume):
+        model_update = mock.sentinel.model_update
+        copy_image_to_volume.return_value = model_update
+
+        context = mock.sentinel.context
+        volume = mock.sentinel.volume
+        image_meta = self._create_image_meta()
+        image_service = mock.sentinel.image_service
+
+        ret = self._driver.clone_image(
+            context, volume, mock.sentinel.image_location, image_meta,
+            image_service)
+        self.assertEqual((model_update, True), ret)
+        copy_image_to_volume.assert_called_once_with(
+            context, volume, image_service, image_meta['id'])
+
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_validate_disk_format')
     def test_copy_image_to_volume_with_invalid_container(self,
