@@ -416,6 +416,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nas_mount_options = None
         self.configuration.volume_dd_blocksize = '1M'
 
+
         self.mock_object(vutils, 'get_max_over_subscription_ratio',
                          return_value=1)
 
@@ -710,9 +711,8 @@ class NfsDriverTestCase(test.TestCase):
     def test_create_sparsed_volume(self):
         self._set_driver()
         drv = self._driver
+        self.configuration.nfs_sparsed_volumes = True
         volume = self._simple_volume()
-
-        self.override_config('nfs_sparsed_volumes', True)
 
         with mock.patch.object(
                 drv, '_create_sparsed_file') as mock_create_sparsed_file:
@@ -729,8 +729,6 @@ class NfsDriverTestCase(test.TestCase):
         drv = self._driver
         self.configuration.nfs_sparsed_volumes = False
         volume = self._simple_volume()
-
-        self.override_config('nfs_sparsed_volumes', False)
 
         with mock.patch.object(
                 drv, '_create_regular_file') as mock_create_regular_file:
