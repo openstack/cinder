@@ -416,7 +416,6 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nas_mount_options = None
         self.configuration.volume_dd_blocksize = '1M'
 
-
         self.mock_object(vutils, 'get_max_over_subscription_ratio',
                          return_value=1)
 
