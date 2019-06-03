@@ -224,6 +224,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     RBD_FEATURE_OBJECT_MAP = 8
     RBD_FEATURE_FAST_DIFF = 16
     RBD_FEATURE_JOURNALING = 64
+    STORAGE_PROTOCOL = 'ceph'
 
     def __init__(self, active_backend_id=None, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
@@ -608,7 +609,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         stats = {
             'vendor_name': 'Open Source',
             'driver_version': self.VERSION,
-            'storage_protocol': 'ceph',
+            'storage_protocol': self.STORAGE_PROTOCOL,
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
             'reserved_percentage': (

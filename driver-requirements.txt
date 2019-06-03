@@ -27,6 +27,9 @@ pyxcli>=1.1.5 # Apache-2.0
 rados # LGPLv2.1
 rbd # LGPLv2.1
 
+# RBD-iSCSI
+rbd-iscsi-client # Apache-2.0
+
 # Dell EMC VNX and Unity
 storops>=1.2.3 # Apache-2.0
 

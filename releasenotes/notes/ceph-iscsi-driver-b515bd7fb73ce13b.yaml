@@ -1,0 +1,6 @@
+---
+features:
+  - |
+      Added new Ceph iSCSI driver rbd_iscsi.  This new driver is derived from
+      the rbd driver and allows all the same features as the rbd driver.
+      The only difference is that volume attachments are done via iSCSI.

@@ -104,6 +104,7 @@ python-swiftclient==3.10.1
 pytz==2020.1
 pyudev==0.22.0
 PyYAML==5.3.1
+rbd-iscsi-client==0.1.8
 reno==3.2.0
 repoze.lru==0.7
 requests==2.23.0
