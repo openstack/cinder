@@ -88,6 +88,9 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
     DRIVER_VOLUME_TYPE = 'iSCSI'
     LUN_FOUND_INTERVAL = 30  # seconds
 
+    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         # Parent sets db, host, _execute and base config
         super(ACCESSIscsiDriver, self).__init__(*args, **kwargs)
