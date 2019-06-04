@@ -62,7 +62,7 @@ class NestedQuotasTest(functional_helpers._FunctionalTestBase):
     over_quota_exception = client.OpenStackApiException413
 
     def _create_project_hierarchy(self):
-        """Sets up the nested hierarchy show below.
+        r"""Sets up the nested hierarchy show below.
 
         +-----------+
         |     A     |

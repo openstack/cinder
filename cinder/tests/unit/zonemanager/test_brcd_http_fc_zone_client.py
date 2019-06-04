@@ -104,7 +104,8 @@ zone_string_to_post_no_activate = "zonecfginfo=openstack_cfg "\
     "&saveonly=true"
 zone_string_to_post_invalid_request = "zonecfginfo=openstack_cfg "\
     "openstack50060b0000c26604201900051ee8e32900000000000000000000000000;"\
-    "zone1;zone2 openstack50060b0000c26604201900051ee8e329000000000000000000000"\
+    "zone1;zone2 "\
+    "openstack50060b0000c26604201900051ee8e329000000000000000000000"\
     "00000 50:06:0b:00:00:c2:66:04;20:19:00:05:1e:e8:e3:29 "\
     "zone1 20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11 "\
     "zone2 20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11 &saveonly=true"

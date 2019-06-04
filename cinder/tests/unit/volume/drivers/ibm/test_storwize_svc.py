@@ -2959,8 +2959,6 @@ port_speed!N/A
         vol_name = kwargs['obj'].strip('\'\"')
         site1_volume_info = self._volumes_list[vol_name]
         site2_volume_info = self._volumes_list['site2' + vol_name]
-        site1_volume_fc_info = self._volumes_list['fcsite1' + vol_name]
-        site2_volume_fc_info = self._volumes_list['fcsite2' + vol_name]
 
         del self._rcrelationship_list[self._volumes_list[vol_name]['RC_name']]
         site1fcmap = None
@@ -2977,10 +2975,8 @@ port_speed!N/A
 
         if site1fcmap:
             del self._fcmappings_list[site1fcmap['id']]
-            del site1_volume_fc_info
         if site2fcmap:
             del self._fcmappings_list[site2fcmap['id']]
-            del site2_volume_fc_info
 
         del site2_volume_info
         site1_volume_info['RC_name'] = ''

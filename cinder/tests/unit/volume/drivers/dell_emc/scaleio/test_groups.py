@@ -185,7 +185,9 @@ class TestGroups(scaleio.TestScaleIODriver):
                 source_group=self.group, source_vols=self.volumes))
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          result_model_update['status'])
-        get_pid = lambda snapshot: snapshot['provider_id']
+
+        def get_pid(snapshot):
+            return snapshot['provider_id']
         volume_provider_list = list(map(get_pid, result_volumes_model_update))
         self.assertListEqual(volume_provider_list, ['sid1', 'sid2'])
 
@@ -210,7 +212,9 @@ class TestGroups(scaleio.TestScaleIODriver):
                 snapshots=self.snapshots))
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          result_model_update['status'])
-        get_pid = lambda snapshot: snapshot['provider_id']
+
+        def get_pid(snapshot):
+            return snapshot['provider_id']
         volume_provider_list = list(map(get_pid, result_volumes_model_update))
         self.assertListEqual(volume_provider_list, ['sid1', 'sid2'])
 
@@ -272,7 +276,9 @@ class TestGroups(scaleio.TestScaleIODriver):
                          result_model_update['status'])
         self.assertTrue(all(snapshot['status'] == 'available' for snapshot in
                             result_snapshot_model_update))
-        get_pid = lambda snapshot: snapshot['provider_id']
+
+        def get_pid(snapshot):
+            return snapshot['provider_id']
         snapshot_provider_list = list(map(get_pid,
                                           result_snapshot_model_update))
 

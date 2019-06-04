@@ -1201,7 +1201,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         with mock.patch.object(rtslib_fb, 'NetworkPortal') as network_portal, \
                 mock.patch.object(rtslib_fb, 'LUN') as lun, \
                 mock.patch.object(rtslib_fb, 'TPG') as tpg, \
-                mock.patch.object(rtslib_fb, 'FabricModule') as fabric_module, \
+                mock.patch.object(rtslib_fb, 'FabricModule') as fabric_mod, \
                 mock.patch.object(rtslib_fb, 'Target') as target, \
                 mock.patch.object(rtslib_fb, 'BlockStorageObject') as \
                 block_storage_object, \
@@ -1210,7 +1210,7 @@ class TestCinderRtstoolCmd(test.TestCase):
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
             target.return_value = mock.sentinel.target_new
-            fabric_module.return_value = mock.sentinel.fabric_new
+            fabric_mod.return_value = mock.sentinel.fabric_new
             tpg_new = tpg.return_value
             lun.return_value = mock.sentinel.lun_new
 
@@ -1235,7 +1235,7 @@ class TestCinderRtstoolCmd(test.TestCase):
                 name=mock.sentinel.name, dev=mock.sentinel.backing_device)
             target.assert_called_once_with(mock.sentinel.fabric_new,
                                            mock.sentinel.name, 'create')
-            fabric_module.assert_called_once_with('iscsi')
+            fabric_mod.assert_called_once_with('iscsi')
             tpg.assert_called_once_with(mock.sentinel.target_new,
                                         mode='create')
             tpg_new.set_attribute.assert_called_once_with('authentication',
@@ -1261,7 +1261,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         with mock.patch.object(rtslib_fb, 'NetworkPortal') as network_portal, \
                 mock.patch.object(rtslib_fb, 'LUN') as lun, \
                 mock.patch.object(rtslib_fb, 'TPG') as tpg, \
-                mock.patch.object(rtslib_fb, 'FabricModule') as fabric_module, \
+                mock.patch.object(rtslib_fb, 'FabricModule') as fabric_mod, \
                 mock.patch.object(rtslib_fb, 'Target') as target, \
                 mock.patch.object(rtslib_fb, 'BlockStorageObject') as \
                 block_storage_object, \
@@ -1270,7 +1270,7 @@ class TestCinderRtstoolCmd(test.TestCase):
             rts_root.return_value = root_new
             block_storage_object.return_value = mock.sentinel.so_new
             target.return_value = mock.sentinel.target_new
-            fabric_module.return_value = mock.sentinel.fabric_new
+            fabric_mod.return_value = mock.sentinel.fabric_new
             tpg_new = tpg.return_value
             lun.return_value = mock.sentinel.lun_new
 
@@ -1285,7 +1285,7 @@ class TestCinderRtstoolCmd(test.TestCase):
                 name=mock.sentinel.name, dev=mock.sentinel.backing_device)
             target.assert_called_once_with(mock.sentinel.fabric_new,
                                            mock.sentinel.name, 'create')
-            fabric_module.assert_called_once_with('iscsi')
+            fabric_mod.assert_called_once_with('iscsi')
             tpg.assert_called_once_with(mock.sentinel.target_new,
                                         mode='create')
             tpg_new.set_attribute.assert_called_once_with('authentication',
