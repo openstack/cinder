@@ -216,6 +216,13 @@
             "links": [],
             "name": "Scheduler_stats",
             "updated": "%(extension_update)s"
+        },
+        {
+            "alias": "OS-SCH-HNT",
+            "description": "Pass arbitrary key/value pairs to the scheduler.",
+            "links": [],
+            "name": "SchedulerHints",
+            "updated": "%(extension_update)s"
         }
     ]
 }
