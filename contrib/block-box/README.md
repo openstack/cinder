@@ -44,7 +44,7 @@ regulary (although they will be in the future) so we require you
 to build images before running docker-compose up.
 
 For more information and options, check out the openstack/loci page
-on [github](https://github.com/openstack/loci).
+on [opendev.org](https://opendev.org/openstack/loci).
 
 **NOTE** The loci project is moving fairly quickly, and it may or may not
 continue to be a straight forward light weight method of building container

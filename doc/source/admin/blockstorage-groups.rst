@@ -34,7 +34,7 @@ to solve this problem.
 
 There is a plan to migrate existing consistency group operations to use
 generic volume group operations in future releases. More information can be
-found in `Cinder specs <https://github.com/openstack/cinder-specs/blob/master/specs/newton/group-snapshots.rst>`_.
+found in `Cinder specs <https://specs.openstack.org/openstack/cinder-specs/specs/newton/group-snapshots.html>`_.
 
 .. note::
 

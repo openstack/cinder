@@ -19,8 +19,8 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 * Must be running compatible versions of OpenStack and Datera EDF.
-  Please visit `here <https://github.com/Datera/cinder>`_ to determine the
-  correct version.
+  Please visit `here <https://github.com/datera/cinder-driver>`_ to determine
+  the correct version.
 
 * All nodes must have access to Datera EDF through the iSCSI block protocol.
 

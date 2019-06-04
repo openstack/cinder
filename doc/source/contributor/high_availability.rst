@@ -1155,7 +1155,7 @@ another node's.
 .. _Cleanup spec: https://specs.openstack.org/openstack/cinder-specs/specs/newton/ha-aa-cleanup.html
 .. _synchronized method's documentation: https://docs.openstack.org/cinder/latest/contributor/api/cinder.coordination.html#module-cinder.coordination
 .. _Format Specification Mini-Language: https://docs.python.org/2.7/library/string.html#formatspec
-.. _Tooz library: https://github.com/openstack/tooz
+.. _Tooz library: https://opendev.org/openstack/tooz
 .. _replacing local locks with Tooz: https://specs.openstack.org/openstack/cinder-specs/specs/mitaka/ha-aa-tooz-locks.html
 .. _manager local locks: https://specs.openstack.org/openstack/cinder-specs/specs/newton/ha-aa-manager_locks.html
 .. _Active-Active replication spec: https://specs.openstack.org/openstack/cinder-specs/specs/ocata/ha-aa-replication.html
