@@ -216,6 +216,13 @@
             "links": [],
             "name": "Scheduler_stats",
             "updated": "2014-09-07T00:00:00+00:00"
+        },
+        {
+            "alias": "OS-SCH-HNT",
+            "description": "Pass arbitrary key/value pairs to the scheduler.",
+            "links": [],
+            "name": "SchedulerHints",
+            "updated": "2013-04-18T00:00:00+00:00"
         }
     ]
 }
