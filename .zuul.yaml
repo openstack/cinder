@@ -88,8 +88,6 @@
       jobs:
         - tempest-cinder-v2-api:
             irrelevant-files: *gate-irrelevant-files
-        - legacy-tempest-dsvm-full-sheepdog-src-os-brick:
-            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-zeromq-multibackend:
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
@@ -103,8 +101,6 @@
         - tempest-pg-full:
             irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3-opensuse150:
-            irrelevant-files: *gate-irrelevant-files
-        - legacy-tempest-dsvm-full-sheepdog:
             irrelevant-files: *gate-irrelevant-files
 
 - job:
