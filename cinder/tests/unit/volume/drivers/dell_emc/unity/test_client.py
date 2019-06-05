@@ -14,6 +14,7 @@
 # under the License.
 import unittest
 
+import ddt
 from mock import mock
 from oslo_utils import units
 
@@ -21,6 +22,7 @@ from cinder import coordination
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
 from cinder.volume.drivers.dell_emc.unity import client
+
 
 ########################
 #
@@ -50,6 +52,9 @@ class MockResource(object):
         self.host_cache = []
         self.is_thin = None
         self.is_all_flash = True
+        self.description = None
+        self.luns = None
+        self.lun = None
 
     @property
     def id(self):
@@ -220,6 +225,14 @@ class MockResourceList(object):
     def name(self):
         return map(lambda i: i.name, self.resources)
 
+    @property
+    def list(self):
+        return self.resources
+
+    @list.setter
+    def list(self, value):
+        self.resources = []
+
     def __iter__(self):
         return self.resources.__iter__()
 
@@ -327,6 +340,7 @@ def get_client():
 #   Start of Tests
 #
 ########################
+@ddt.ddt
 @mock.patch.object(client, 'storops_ex', new=ex)
 class ClientTest(unittest.TestCase):
     def setUp(self):
@@ -591,3 +605,146 @@ class ClientTest(unittest.TestCase):
         self.client.host_cache['empty-host-in-cache'] = host
         self.client.delete_host_wo_lock(host)
         self.assertNotIn(host.name, self.client.host_cache)
+
+    @ddt.data(('cg_1', 'cg_1_description', [MockResource(_id='sv_1')]),
+              ('cg_2', None, None),
+              ('cg_3', None, [MockResource(_id='sv_2')]),
+              ('cg_4', 'cg_4_description', None))
+    @ddt.unpack
+    def test_create_cg(self, cg_name, cg_description, lun_add):
+        created_cg = MockResource(_id='cg_1')
+        with mock.patch.object(self.client.system, 'create_cg',
+                               create=True, return_value=created_cg
+                               ) as mocked_create:
+            ret = self.client.create_cg(cg_name, description=cg_description,
+                                        lun_add=lun_add)
+            mocked_create.assert_called_once_with(cg_name,
+                                                  description=cg_description,
+                                                  lun_add=lun_add)
+            self.assertEqual(created_cg, ret)
+
+    def test_create_cg_existing_name(self):
+        existing_cg = MockResource(_id='cg_1')
+        with mock.patch.object(
+                self.client.system, 'create_cg',
+                side_effect=ex.UnityConsistencyGroupNameInUseError,
+                create=True) as mocked_create, \
+                mock.patch.object(self.client.system, 'get_cg',
+                                  create=True,
+                                  return_value=existing_cg) as mocked_get:
+            ret = self.client.create_cg('existing_name')
+            mocked_create.assert_called_once_with('existing_name',
+                                                  description=None,
+                                                  lun_add=None)
+            mocked_get.assert_called_once_with(name='existing_name')
+            self.assertEqual(existing_cg, ret)
+
+    def test_get_cg(self):
+        existing_cg = MockResource(_id='cg_1')
+        with mock.patch.object(self.client.system, 'get_cg',
+                               create=True,
+                               return_value=existing_cg) as mocked_get:
+            ret = self.client.get_cg('existing_name')
+            mocked_get.assert_called_once_with(name='existing_name')
+            self.assertEqual(existing_cg, ret)
+
+    def test_get_cg_not_found(self):
+        with mock.patch.object(self.client.system, 'get_cg',
+                               create=True,
+                               side_effect=ex.UnityResourceNotFoundError
+                               ) as mocked_get:
+            ret = self.client.get_cg('not_found_name')
+            mocked_get.assert_called_once_with(name='not_found_name')
+            self.assertIsNone(ret)
+
+    def test_delete_cg(self):
+        existing_cg = MockResource(_id='cg_1')
+        with mock.patch.object(existing_cg, 'delete', create=True
+                               ) as mocked_delete, \
+                mock.patch.object(self.client, 'get_cg',
+                                  create=True,
+                                  return_value=existing_cg) as mocked_get:
+            ret = self.client.delete_cg('cg_1_name')
+            mocked_get.assert_called_once_with('cg_1_name')
+            mocked_delete.assert_called_once()
+            self.assertIsNone(ret)
+
+    def test_update_cg(self):
+        existing_cg = MockResource(_id='cg_1')
+        lun_1 = MockResource(_id='sv_1')
+        lun_2 = MockResource(_id='sv_2')
+        lun_3 = MockResource(_id='sv_3')
+
+        def _mocked_get_lun(lun_id):
+            if lun_id == 'sv_1':
+                return lun_1
+            if lun_id == 'sv_2':
+                return lun_2
+            if lun_id == 'sv_3':
+                return lun_3
+
+        with mock.patch.object(existing_cg, 'update_lun', create=True
+                               ) as mocked_update, \
+                mock.patch.object(self.client, 'get_cg',
+                                  create=True,
+                                  return_value=existing_cg) as mocked_get, \
+                mock.patch.object(self.client, 'get_lun',
+                                  side_effect=_mocked_get_lun):
+            ret = self.client.update_cg('cg_1_name', ['sv_1', 'sv_2'],
+                                        ['sv_3'])
+            mocked_get.assert_called_once_with('cg_1_name')
+            mocked_update.assert_called_once_with(add_luns=[lun_1, lun_2],
+                                                  remove_luns=[lun_3])
+            self.assertIsNone(ret)
+
+    def test_update_cg_empty_lun_ids(self):
+        existing_cg = MockResource(_id='cg_1')
+        with mock.patch.object(existing_cg, 'update_lun', create=True
+                               ) as mocked_update, \
+                mock.patch.object(self.client, 'get_cg',
+                                  create=True,
+                                  return_value=existing_cg) as mocked_get:
+            ret = self.client.update_cg('cg_1_name', set(), set())
+            mocked_get.assert_called_once_with('cg_1_name')
+            mocked_update.assert_called_once_with(add_luns=[], remove_luns=[])
+            self.assertIsNone(ret)
+
+    def test_create_cg_group(self):
+        existing_cg = MockResource(_id='cg_1')
+        created_snap = MockResource(_id='snap_cg_1', name='snap_name_cg_1')
+        with mock.patch.object(existing_cg, 'create_snap', create=True,
+                               return_value=created_snap) as mocked_create, \
+                mock.patch.object(self.client, 'get_cg',
+                                  create=True,
+                                  return_value=existing_cg) as mocked_get:
+            ret = self.client.create_cg_snap('cg_1_name',
+                                             snap_name='snap_name_cg_1')
+            mocked_get.assert_called_once_with('cg_1_name')
+            mocked_create.assert_called_once_with(name='snap_name_cg_1',
+                                                  is_auto_delete=False)
+            self.assertEqual(created_snap, ret)
+
+    def test_create_cg_group_none_name(self):
+        existing_cg = MockResource(_id='cg_1')
+        created_snap = MockResource(_id='snap_cg_1')
+        with mock.patch.object(existing_cg, 'create_snap', create=True,
+                               return_value=created_snap) as mocked_create, \
+                mock.patch.object(self.client, 'get_cg',
+                                  create=True,
+                                  return_value=existing_cg) as mocked_get:
+            ret = self.client.create_cg_snap('cg_1_name')
+            mocked_get.assert_called_once_with('cg_1_name')
+            mocked_create.assert_called_once_with(name=None,
+                                                  is_auto_delete=False)
+            self.assertEqual(created_snap, ret)
+
+    def test_filter_snaps_in_cg_snap(self):
+        snaps = [MockResource(_id='snap_{}'.format(n)) for n in (1, 2)]
+        snap_list = mock.MagicMock()
+        snap_list.list = snaps
+        with mock.patch.object(self.client.system, 'get_snap',
+                               create=True,
+                               return_value=snap_list) as mocked_get:
+            ret = self.client.filter_snaps_in_cg_snap('snap_cg_1')
+            mocked_get.assert_called_once_with(snap_group='snap_cg_1')
+            self.assertEqual(snaps, ret)

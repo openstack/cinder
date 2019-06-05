@@ -92,3 +92,7 @@ class UnityThinCloneNotAllowedError(StoropsException):
 
 class SystemAPINotSupported(StoropsException):
     pass
+
+
+class UnityConsistencyGroupNameInUseError(StoropsException):
+    pass

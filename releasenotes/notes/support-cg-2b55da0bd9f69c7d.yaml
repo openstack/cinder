@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Dell EMC Unity driver: Add consistent group support. Users could create a
+    group type supporting consistent groups with specification
+    `'consistent_group_snapshot_enabled': <is> True`, then any groups created
+    of that group type are consistent groups, otherwise they are generic
+    groups. The supported operations are: create/delete consistent groups, add
+    volumes to and remove volumes from consistent groups, create/delete
+    consistent group snapshots, create consistent groups from snapshots, clone
+    consistent groups.

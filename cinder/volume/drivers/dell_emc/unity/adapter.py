@@ -26,6 +26,7 @@ from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.dell_emc.unity import client
 from cinder.volume.drivers.dell_emc.unity import utils
@@ -59,6 +60,7 @@ class VolumeParams(object):
         self._io_limit_policy = None
         self._is_thick = None
         self._is_compressed = None
+        self._is_in_cg = None
 
     @property
     def volume_id(self):
@@ -133,13 +135,29 @@ class VolumeParams(object):
     def is_compressed(self, value):
         self._is_compressed = value
 
+    @property
+    def is_in_cg(self):
+        if self._is_in_cg is None:
+            self._is_in_cg = (self._volume.group and
+                              vol_utils.is_group_a_cg_snapshot_type(
+                                  self._volume.group))
+        return self._is_in_cg
+
+    @property
+    def cg_id(self):
+        if self.is_in_cg:
+            return self._volume.group_id
+        return None
+
     def __eq__(self, other):
         return (self.volume_id == other.volume_id and
                 self.name == other.name and
                 self.size == other.size and
                 self.io_limit_policy == other.io_limit_policy and
                 self.is_thick == other.is_thick and
-                self.is_compressed == other.is_compressed)
+                self.is_compressed == other.is_compressed and
+                self.is_in_cg == other.is_in_cg and
+                self.cg_id == other.cg_id)
 
 
 class CommonAdapter(object):
@@ -302,22 +320,30 @@ class CommonAdapter(object):
             'pool': params.pool,
             'io_limit_policy': params.io_limit_policy,
             'is_thick': params.is_thick,
-            'is_compressed': params.is_compressed
+            'is_compressed': params.is_compressed,
+            'cg_id': params.cg_id
         }
 
         LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
                  '%(description)s, pool: %(pool)s, io limit policy: '
                  '%(io_limit_policy)s, thick: %(is_thick)s, '
-                 '%(is_compressed)s.', log_params)
+                 'compressed: %(is_compressed)s, cg_group: %(cg_id)s.',
+                 log_params)
 
-        return self.makeup_model(
-            self.client.create_lun(name=params.name,
-                                   size=params.size,
-                                   pool=params.pool,
-                                   description=params.description,
-                                   io_limit_policy=params.io_limit_policy,
-                                   is_thin=False if params.is_thick else None,
-                                   is_compressed=params.is_compressed))
+        lun = self.client.create_lun(
+            name=params.name,
+            size=params.size,
+            pool=params.pool,
+            description=params.description,
+            io_limit_policy=params.io_limit_policy,
+            is_thin=False if params.is_thick else None,
+            is_compressed=params.is_compressed)
+        if params.cg_id:
+            LOG.debug('Adding lun %(lun)s to cg %(cg)s.',
+                      {'lun': lun.get_id(), 'cg': params.cg_id})
+            self.client.update_cg(params.cg_id, [lun.get_id()], ())
+
+        return self.makeup_model(lun)
 
     def delete_volume(self, volume):
         lun_id = self.get_lun_id(volume)
@@ -442,12 +468,11 @@ class CommonAdapter(object):
             lun_id=lun_id,
             version=self.version)
 
+    @utils.append_capabilities
     def update_volume_stats(self):
         return {
             'volume_backend_name': self.volume_backend_name,
             'storage_protocol': self.protocol,
-            'thin_provisioning_support': True,
-            'thick_provisioning_support': True,
             'pools': self.get_pools_stats(),
         }
 
@@ -459,6 +484,7 @@ class CommonAdapter(object):
     def pools(self):
         return self.storage_pools_map.values()
 
+    @utils.append_capabilities
     def _get_pool_stats(self, pool):
         return {
             'pool_name': pool.name,
@@ -470,8 +496,6 @@ class CommonAdapter(object):
             'location_info': ('%(pool_name)s|%(array_serial)s' %
                               {'pool_name': pool.name,
                                'array_serial': self.serial_number}),
-            'thin_provisioning_support': True,
-            'thick_provisioning_support': True,
             'compression_support': pool.is_all_flash,
             'max_over_subscription_ratio': (
                 self.max_over_subscription_ratio),
@@ -643,9 +667,7 @@ class CommonAdapter(object):
                 if src_lun is None:
                     # If size is not specified, need to get the size from LUN
                     # of snapshot.
-                    lun = self.client.get_lun(
-                        lun_id=src_snap.storage_resource.get_id())
-                    size_in_m = utils.byte_to_mib(lun.size_total)
+                    size_in_m = utils.byte_to_mib(src_snap.size)
                 else:
                     size_in_m = utils.byte_to_mib(src_lun.size_total)
                 vol_utils.copy_volume(
@@ -813,6 +835,95 @@ class CommonAdapter(object):
         LOG.debug('Volume migrated failed. Falling back to '
                   'host-assisted migration.')
         return False, None
+
+    def create_group(self, group):
+        """Creates a generic group.
+
+        :param group: group information
+        """
+        cg_name = group.id
+        description = group.description if group.description else group.name
+
+        LOG.info('Create group: %(name)s, description: %(description)s',
+                 {'name': cg_name, 'description': description})
+
+        self.client.create_cg(cg_name, description=description)
+        return {'status': fields.GroupStatus.AVAILABLE}
+
+    def delete_group(self, group):
+        """Deletes the generic group.
+
+        :param group: the group to delete
+        """
+
+        # Deleting cg will also delete all the luns in it.
+        self.client.delete_cg(group.id)
+        return None, None
+
+    def update_group(self, group, add_volumes, remove_volumes):
+        add_lun_ids = (set(map(self.get_lun_id, add_volumes)) if add_volumes
+                       else set())
+        remove_lun_ids = (set(map(self.get_lun_id, remove_volumes))
+                          if remove_volumes else set())
+        self.client.update_cg(group.id, add_lun_ids, remove_lun_ids)
+        return {'status': fields.GroupStatus.AVAILABLE}, None, None
+
+    def copy_luns_in_group(self, group, volumes, src_cg_snap, src_volumes):
+        # Use dd to copy data here. The reason why not using thinclone is:
+        # 1. Cannot use cg thinclone due to the tight couple between source
+        # group and cloned one.
+        # 2. Cannot use lun thinclone due to clone lun in cg is not supported.
+
+        lun_snaps = self.client.filter_snaps_in_cg_snap(src_cg_snap.id)
+
+        # Make sure the `lun_snaps` is as order of `src_volumes`
+        src_lun_ids = [self.get_lun_id(volume) for volume in src_volumes]
+        lun_snaps.sort(key=lambda snap: src_lun_ids.index(snap.lun.id))
+
+        dest_luns = [self._dd_copy(VolumeParams(self, dest_volume), lun_snap)
+                     for dest_volume, lun_snap in zip(volumes, lun_snaps)]
+
+        self.client.create_cg(group.id, lun_add=dest_luns)
+        return ({'status': fields.GroupStatus.AVAILABLE},
+                [{'id': dest_volume.id, 'status': fields.GroupStatus.AVAILABLE}
+                 for dest_volume in volumes])
+
+    def create_group_from_snap(self, group, volumes,
+                               group_snapshot, snapshots):
+        src_cg_snap = self.client.get_snap(group_snapshot.id)
+        src_vols = ([snap.volume for snap in snapshots] if snapshots else [])
+        return self.copy_luns_in_group(group, volumes, src_cg_snap, src_vols)
+
+    def create_cloned_group(self, group, volumes, source_group, source_vols):
+        src_group_snap_name = 'snap_clone_group_{}'.format(source_group.id)
+        create_snap_func = functools.partial(self.client.create_cg_snap,
+                                             source_group.id,
+                                             src_group_snap_name)
+        with utils.assure_cleanup(create_snap_func,
+                                  self.client.delete_snap,
+                                  True) as src_cg_snap:
+            LOG.debug('Internal group snapshot for clone is created, '
+                      'name: %(name)s, id: %(id)s.',
+                      {'name': src_group_snap_name,
+                       'id': src_cg_snap.get_id()})
+            source_vols = source_vols if source_vols else []
+            return self.copy_luns_in_group(group, volumes, src_cg_snap,
+                                           source_vols)
+
+    def create_group_snapshot(self, group_snapshot, snapshots):
+        self.client.create_cg_snap(group_snapshot.group_id,
+                                   snap_name=group_snapshot.id)
+
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+        snapshots_model_update = [{'id': snapshot.id,
+                                   'status': fields.SnapshotStatus.AVAILABLE}
+                                  for snapshot in snapshots]
+        return model_update, snapshots_model_update
+
+    def delete_group_snapshot(self, group_snapshot):
+        cg_snap = self.client.get_snap(group_snapshot.id)
+        self.client.delete_snap(cg_snap)
+        return None, None
 
 
 class ISCSIAdapter(CommonAdapter):
