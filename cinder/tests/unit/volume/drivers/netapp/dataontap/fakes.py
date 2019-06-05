@@ -502,6 +502,7 @@ class test_volume(object):
     def __getitem__(self, key):
         return getattr(self, key)
 
+
 test_volume = test_volume()
 test_volume.id = {'vserver': 'openstack', 'name': 'vola'}
 test_volume.aggr = {
@@ -528,6 +529,7 @@ class test_snapshot(object):
 
     def __getitem__(self, key):
         return getattr(self, key)
+
 
 test_snapshot = test_snapshot()
 test_snapshot.id = 'fake_snap_id'

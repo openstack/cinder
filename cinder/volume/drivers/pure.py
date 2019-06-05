@@ -1527,12 +1527,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         if volume_type and volume_type.is_replicated():
             specs = volume_type.get("extra_specs")
             if specs and EXTRA_SPECS_REPL_TYPE in specs:
-                    replication_type_spec = specs[EXTRA_SPECS_REPL_TYPE]
-                    # Do not validate settings, ignore invalid.
-                    if replication_type_spec == "<in> async":
-                        return REPLICATION_TYPE_ASYNC
-                    elif replication_type_spec == "<in> sync":
-                        return REPLICATION_TYPE_SYNC
+                replication_type_spec = specs[EXTRA_SPECS_REPL_TYPE]
+                # Do not validate settings, ignore invalid.
+                if replication_type_spec == "<in> async":
+                    return REPLICATION_TYPE_ASYNC
+                elif replication_type_spec == "<in> sync":
+                    return REPLICATION_TYPE_SYNC
             else:
                 # if no type was specified but replication is enabled assume
                 # that async replication is enabled
@@ -2147,9 +2147,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _find_async_failover_target(self):
         if not self._replication_target_arrays:
-                raise PureDriverException(
-                    reason=_("Unable to find failover target, no "
-                             "secondary targets configured."))
+            raise PureDriverException(
+                reason=_("Unable to find failover target, no "
+                         "secondary targets configured."))
         secondary_array = None
         pg_snap = None
         for array in self._replication_target_arrays:

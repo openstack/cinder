@@ -38,6 +38,7 @@ def generate_type(type_id, is_public):
         'is_public': bool(is_public)
     }
 
+
 VOLUME_TYPES = {
     fake.VOLUME_TYPE_ID: generate_type(fake.VOLUME_TYPE_ID, True),
     fake.VOLUME_TYPE2_ID: generate_type(fake.VOLUME_TYPE2_ID, True),

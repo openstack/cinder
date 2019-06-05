@@ -299,6 +299,7 @@ class RemoteFsDriverTestCase(test.TestCase):
         ret_flag = drv.secure_file_operations_enabled()
         self.assertFalse(ret_flag)
 
+
 # NFS configuration scenarios
 NFS_CONFIG1 = {'max_over_subscription_ratio': 1.0,
                'reserved_percentage': 0,

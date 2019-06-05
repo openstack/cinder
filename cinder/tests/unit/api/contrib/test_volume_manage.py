@@ -69,6 +69,7 @@ def service_get(context, service_id, backend_match_level=None, host=None,
                 'uuid': '4200b32b-0bf9-436c-86b2-0675f6ac218e'}
     raise exception.ServiceNotFound(service_id=host)
 
+
 # Some of the tests check that volume types are correctly validated during a
 # volume manage operation.  This data structure represents an existing volume
 # type.

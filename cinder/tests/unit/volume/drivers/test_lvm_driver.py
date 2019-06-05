@@ -610,11 +610,11 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                'rename_volume') as mock_rename_volume, \
                 mock.patch.object(self.volume.driver.vg, 'get_volume',
                                   self._get_manage_existing_lvs):
-                mock_rename_volume.return_value = _rename_volume
-                size = self.volume.driver.manage_existing_get_size(vol, ref)
-                self.assertEqual(2, size)
-                model_update = self.volume.driver.manage_existing(vol, ref)
-                self.assertIsNone(model_update)
+            mock_rename_volume.return_value = _rename_volume
+            size = self.volume.driver.manage_existing_get_size(vol, ref)
+            self.assertEqual(2, size)
+            model_update = self.volume.driver.manage_existing(vol, ref)
+            self.assertIsNone(model_update)
 
     def test_lvm_manage_existing_bad_size(self):
         """Make sure correct exception on bad size returned from LVM.
@@ -673,13 +673,13 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                'rename_volume') as mock_rename_volume, \
                 mock.patch.object(self.volume.driver.vg, 'get_volume',
                                   self._get_manage_existing_lvs):
-                mock_rename_volume.return_value = _rename_volume
-                size = self.volume.driver.manage_existing_snapshot_get_size(
-                    snp, ref)
-                self.assertEqual(2, size)
-                model_update = self.volume.driver.manage_existing_snapshot(
-                    snp, ref)
-                self.assertIsNone(model_update)
+            mock_rename_volume.return_value = _rename_volume
+            size = self.volume.driver.manage_existing_snapshot_get_size(
+                snp, ref)
+            self.assertEqual(2, size)
+            model_update = self.volume.driver.manage_existing_snapshot(
+                snp, ref)
+            self.assertIsNone(model_update)
 
     def test_lvm_manage_existing_snapshot_bad_ref(self):
         """Error case where specified LV snapshot doesn't exist.

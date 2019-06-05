@@ -114,11 +114,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ]
 
         def my_side_effect(*args, **kwargs):
-                return {'data': {
-                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
-                    'X-ISCSI-TargetID': 1,
-                    'X-VIPS': json.dumps(vips)}
-                }
+            return {'data': {
+                'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                'X-ISCSI-TargetID': 1,
+                'X-VIPS': json.dumps(vips)}
+            }
 
         self.mock_api.side_effect = my_side_effect
         self.driver.do_setup(self.context)
@@ -132,11 +132,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ]
 
         def my_side_effect(*args, **kwargs):
-                return {'data': {
-                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
-                    'X-ISCSI-TargetID': 1,
-                    'X-VIPS': json.dumps(vips)}
-                }
+            return {'data': {
+                'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                'X-ISCSI-TargetID': 1,
+                'X-VIPS': json.dumps(vips)}
+            }
 
         self.mock_api.side_effect = my_side_effect
         self.assertRaises(utils.NexentaException,

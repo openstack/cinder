@@ -572,10 +572,10 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 excluded_lss.add(lun.pool_lss_pair['source'][1])
                 if lun.group and (lun.group.consisgroup_snapshot_enabled or
                                   lun.group.consisgroup_replication_enabled):
-                        msg = _("The reserve LSS for CG is full. "
-                                "Volume can not be created on it.")
-                        LOG.error(msg)
-                        raise exception.VolumeDriverException(message=msg)
+                    msg = _("The reserve LSS for CG is full. "
+                            "Volume can not be created on it.")
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
                 else:
                     LOG.warning("LSS %s is full, find another one.",
                                 lun.pool_lss_pair['source'][1])

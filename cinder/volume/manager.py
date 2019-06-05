@@ -4132,8 +4132,8 @@ class VolumeManager(manager.CleanableManager,
                 new_volume.update(model_update_new)
                 new_volume.save()
         with volume.obj_as_admin():
-                volume.update(model_update_default)
-                volume.save()
+            volume.update(model_update_default)
+            volume.save()
 
     # Replication V2.1 and a/a method
     def failover(self, context, secondary_backend_id=None):

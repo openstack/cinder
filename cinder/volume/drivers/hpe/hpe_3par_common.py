@@ -3523,9 +3523,9 @@ class HPE3PARCommon(object):
         # Check to see if the user requested to failback.
         if (secondary_backend_id and
            secondary_backend_id == self.FAILBACK_VALUE):
-                failover = False
-                target_id = None
-                group_target_id = self.FAILBACK_VALUE
+            failover = False
+            target_id = None
+            group_target_id = self.FAILBACK_VALUE
         else:
             # Find the failover target.
             failover_target = None
@@ -4136,11 +4136,11 @@ class HPE3PARCommon(object):
             if not retype:
                 self.client.deleteVolume(vol_name)
         except hpeexceptions.HTTPConflict as ex:
-                if ex.get_code() == 34:
-                    # This is a special case which means the
-                    # volume is part of a volume set.
-                    self._delete_vvset(volume)
-                    self.client.deleteVolume(vol_name)
+            if ex.get_code() == 34:
+                # This is a special case which means the
+                # volume is part of a volume set.
+                self._delete_vvset(volume)
+                self.client.deleteVolume(vol_name)
         except Exception:
             pass
 

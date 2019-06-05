@@ -1046,11 +1046,11 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         mock_usage.side_effect = self._fake_quota_usage_get_all_by_project
 
         class FakeUsage(object):
-                def __init__(self, in_use, reserved):
-                    self.in_use = in_use
-                    self.reserved = reserved
-                    self.until_refresh = None
-                    self.total = self.reserved + self.in_use
+            def __init__(self, in_use, reserved):
+                self.in_use = in_use
+                self.reserved = reserved
+                self.until_refresh = None
+                self.total = self.reserved + self.in_use
 
         def _fake__get_quota_usages(context, session, project_id,
                                     resources=None):

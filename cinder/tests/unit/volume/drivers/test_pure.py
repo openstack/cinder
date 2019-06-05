@@ -38,6 +38,7 @@ def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
         return f
     return _decorator
 
+
 patch_retry = mock.patch('cinder.utils.retry', fake_retry)
 patch_retry.start()
 sys.modules['purestorage'] = mock.Mock()

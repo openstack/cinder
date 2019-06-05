@@ -489,7 +489,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
             body = self._read_template(name) % self.subs
             sample = self._get_sample(name)
             if self.generate_samples and not os.path.exists(sample):
-                    self._write_sample(name, body)
+                self._write_sample(name, body)
         return self._get_response(url, method, body, headers=headers)
 
     def _do_put(self, url, name=None, subs=None, headers=None):

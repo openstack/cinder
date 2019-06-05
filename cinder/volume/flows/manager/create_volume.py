@@ -752,8 +752,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
                         if should_create_cache_entry:
                             if virtual_size and virtual_size != original_size:
-                                    volume.size = virtual_size
-                                    volume.save()
+                                volume.size = virtual_size
+                                volume.save()
                         model_update = self._create_from_image_download(
                             context,
                             volume,

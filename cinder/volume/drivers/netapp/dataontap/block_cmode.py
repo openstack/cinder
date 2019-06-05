@@ -511,26 +511,26 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         return None, None
 
     def _create_consistent_group_snapshot(self, group_snapshot, snapshots):
-            flexvols = set()
-            for snapshot in snapshots:
-                flexvols.add(volume_utils.extract_host(
-                    snapshot['volume']['host'], level='pool'))
+        flexvols = set()
+        for snapshot in snapshots:
+            flexvols.add(volume_utils.extract_host(
+                snapshot['volume']['host'], level='pool'))
 
-            self.zapi_client.create_cg_snapshot(flexvols, group_snapshot['id'])
+        self.zapi_client.create_cg_snapshot(flexvols, group_snapshot['id'])
 
-            for snapshot in snapshots:
-                self._clone_lun(snapshot['volume']['name'], snapshot['name'],
-                                source_snapshot=group_snapshot['id'])
+        for snapshot in snapshots:
+            self._clone_lun(snapshot['volume']['name'], snapshot['name'],
+                            source_snapshot=group_snapshot['id'])
 
-            for flexvol in flexvols:
-                try:
-                    self.zapi_client.wait_for_busy_snapshot(
-                        flexvol, group_snapshot['id'])
-                    self.zapi_client.delete_snapshot(
-                        flexvol, group_snapshot['id'])
-                except exception.SnapshotIsBusy:
-                    self.zapi_client.mark_snapshot_for_deletion(
-                        flexvol, group_snapshot['id'])
+        for flexvol in flexvols:
+            try:
+                self.zapi_client.wait_for_busy_snapshot(
+                    flexvol, group_snapshot['id'])
+                self.zapi_client.delete_snapshot(
+                    flexvol, group_snapshot['id'])
+            except exception.SnapshotIsBusy:
+                self.zapi_client.mark_snapshot_for_deletion(
+                    flexvol, group_snapshot['id'])
 
     def delete_group_snapshot(self, group_snapshot, snapshots):
         """Delete LUNs backing each snapshot in the group snapshot.

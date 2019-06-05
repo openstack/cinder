@@ -221,6 +221,7 @@ class EvalBoolOrOp(object):
         right = self.value[2].eval()
         return left or right
 
+
 _parser = None
 _vars = {}
 
