@@ -848,7 +848,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # attachments on the same host are still accessing the volume.
         attachments = volume.volume_attachment
         if volume.multiattach:
-            if sum(1 for a in attachments if a.connector == connector) > 1:
+            if sum(1 for a in attachments if a.connector and
+                    a.connector['initiator'] == connector['initiator']) > 1:
                 return True
 
         self.target_driver.terminate_connection(volume, connector, **kwargs)
