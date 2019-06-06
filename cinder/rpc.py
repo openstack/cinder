@@ -139,7 +139,8 @@ class RequestContextSerializer(messaging.Serializer):
 
 
 def get_client(target, version_cap=None, serializer=None):
-    assert TRANSPORT is not None
+    if TRANSPORT is None:
+        raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
     return messaging.RPCClient(TRANSPORT,
                                target,
@@ -148,7 +149,8 @@ def get_client(target, version_cap=None, serializer=None):
 
 
 def get_server(target, endpoints, serializer=None):
-    assert TRANSPORT is not None
+    if TRANSPORT is None:
+        raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
     access_policy = dispatcher.DefaultRPCAccessPolicy
     return messaging.get_rpc_server(TRANSPORT,
@@ -161,7 +163,8 @@ def get_server(target, endpoints, serializer=None):
 
 @utils.if_notifications_enabled
 def get_notifier(service=None, host=None, publisher_id=None):
-    assert NOTIFIER is not None
+    if NOTIFIER is None:
+        raise AssertionError('RPC Notifier is not initialized.')
     if not publisher_id:
         publisher_id = "%s.%s" % (service, host or CONF.host)
     return NOTIFIER.prepare(publisher_id=publisher_id)
