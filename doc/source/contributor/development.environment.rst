@@ -105,7 +105,7 @@ Getting the code
 ----------------
 Grab the code::
 
-    git clone https://github.com/openstack/cinder.git
+    git clone https://opendev.org/openstack/cinder.git
     cd cinder
 
 

@@ -19,7 +19,7 @@ Cinder Driver Support Matrix
 
 The following support matrix reflects the drivers that are currently
 available or are available in
-`Cinder's driver tree <https://github.com/openstack/cinder/tree/master/cinder/volume/drivers>`_
+`Cinder's driver tree <https://opendev.org/openstack/cinder/src/branch/master/cinder/volume/drivers>`_
 at the time of release.
 
 .. note::
