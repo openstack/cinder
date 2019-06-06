@@ -138,7 +138,7 @@ class DatastoreSelector(object):
                     ds_ref.value in hard_anti_affinity_ds):
                 return False
 
-            if summary.freeSpace < size_bytes:
+            if summary.capacity == 0 or summary.freeSpace < size_bytes:
                 return False
 
             if (valid_hosts and
