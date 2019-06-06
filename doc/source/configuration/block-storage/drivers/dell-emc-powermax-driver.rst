@@ -1775,8 +1775,33 @@ appearing that they all point to the one device. In order to do this,
 there needs to be multipath software running to manage writing to the
 multiple paths.
 
+.. note::
+
+   There is an known issue on Unisphere for PowerMax where volumes are
+   formatted when added to existing metro RDF Groups. The issue will only
+   be addressed on arrays with PowerMax OS as the option not to format a metro
+   volume is not available on HyperMax OS. Please refrain on cloning metro
+   volumes until further notice. If in any doubt please contact your Dell EMC
+   Representative.
+
+
 Known issues
 ~~~~~~~~~~~~
+
+.. note::
+
+   Due to to nature of SRDF/Metro and issues around extending and cloning
+   Metro devices we cannot support image_volume_cache_enabled=True on bootable
+   Metro devices.
+
+.. note::
+
+   There is an known issue on Unisphere for PowerMax where volumes are
+   formatted when added to existing metro RDF Groups. The issue will only
+   be addressed on arrays with PowerMax OS as the option not to format a metro
+   volume is not available on HyperMax OS. Please refrain on cloning metro
+   volumes until further notice. If in any doubt please contact your Dell EMC
+   Representative.
 
 .. note::
 
