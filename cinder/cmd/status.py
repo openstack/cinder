@@ -15,13 +15,14 @@
 
 """CLI interface for cinder status commands."""
 
+import os
 import sys
 
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 
+from cinder.policy import DEFAULT_POLICY_FILENAME
 import cinder.service  # noqa
-
 
 CONF = cfg.CONF
 
@@ -32,6 +33,10 @@ WARNING = uc.Code.WARNING
 
 class Checks(uc.UpgradeCommands):
     """Upgrade checks to run."""
+
+    def _file_exists(self, path):
+        """Helper for mocking check of os.path.exists."""
+        return os.path.exists(path)
 
     def _check_backup_module(self):
         """Checks for the use of backup driver module paths.
@@ -55,14 +60,71 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
+    def _check_policy_file(self):
+        """Checks if a policy.json file is present.
+
+        With the switch to policy-in-code, policy files should be policy.yaml
+        and should only be present if overriding default policy. Just checks
+        and warns if the old file is present to make sure they are aware it is
+        not being used.
+        """
+        # make sure we know where to look for the policy file
+        config_dir = CONF.find_file('cinder.conf')
+        if not config_dir:
+            return uc.Result(
+                WARNING,
+                'Cannot locate your cinder configuration directory. '
+                'Please re-run using the --config-dir <dirname> option.')
+
+        policy_file = CONF.oslo_policy.policy_file
+        json_file = os.path.join(os.path.dirname(config_dir), 'policy.json')
+
+        if policy_file == DEFAULT_POLICY_FILENAME:
+            # Default is being used, check for old json file
+            if self._file_exists(json_file):
+                return uc.Result(
+                    WARNING,
+                    'policy.json file is present. Make sure any changes from '
+                    'the default policies are present in a policy.yaml file '
+                    'instead. If you really intend to use a policy.json file, '
+                    'make sure that its absolute path is set as the value of '
+                    "the 'policy_file' configuration option in the "
+                    '[oslo_policy] section of your cinder.conf file.')
+
+        else:
+            # They have configured a custom policy file. It is OK if it does
+            # not exist, but we should check and warn about it while we're
+            # checking.
+            if not policy_file.startswith('/'):
+                # policy_file is relative to config_dir
+                policy_file = os.path.join(os.path.dirname(config_dir),
+                                           policy_file)
+            if not self._file_exists(policy_file):
+                return uc.Result(
+                    WARNING,
+                    "Configured policy file '%s' does not exist. This may be "
+                    "expected, but default policies will be used until any "
+                    "desired overrides are added to the configured file." %
+                    policy_file)
+
+        return uc.Result(SUCCESS)
+
     _upgrade_checks = (
         ('Backup Driver Path', _check_backup_module),
+        ('Use of Policy File', _check_policy_file),
     )
 
 
 def main():
-    return uc.main(CONF, 'cinder', Checks())
-
+    # TODO(rosmaita): need to do this because we suggest using the
+    # --config-dir option, and if the user gives a bogus value, we
+    # get a stacktrace.  Needs to be fixed in oslo_upgradecheck
+    try:
+        return uc.main(CONF, 'cinder', Checks())
+    except cfg.ConfigDirNotFoundError:
+        return('ERROR: cannot read the cinder configuration directory.\n'
+               'Please re-run using the --config-dir <dirname> option '
+               'with a valid cinder configuration directory.')
 
 if __name__ == '__main__':
     sys.exit(main())
