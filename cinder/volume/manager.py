@@ -89,27 +89,16 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
-CGQUOTAS = quota.CGQUOTAS
 GROUP_QUOTAS = quota.GROUP_QUOTAS
-VALID_REMOVE_VOL_FROM_CG_STATUS = (
-    'available',
-    'in-use',
-    'error',
-    'error_deleting')
 VALID_REMOVE_VOL_FROM_GROUP_STATUS = (
     'available',
     'in-use',
     'error',
     'error_deleting')
-VALID_ADD_VOL_TO_CG_STATUS = (
-    'available',
-    'in-use')
 VALID_ADD_VOL_TO_GROUP_STATUS = (
     'available',
     'in-use')
-VALID_CREATE_CG_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 VALID_CREATE_GROUP_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
-VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
 VALID_CREATE_GROUP_SRC_GROUP_STATUS = ('available',)
 VA_LIST = objects.VolumeAttachmentList
 
