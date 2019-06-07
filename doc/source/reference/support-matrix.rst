@@ -53,6 +53,13 @@ matrix we include the list of required functions here for reference.
   Since the above functions are required their support is assumed and the
   matrix only includes support for optional functionality.
 
+.. note::
+  This matrix is not dynamically generated. It is maintained by the Cinder
+  team and Vendor driver maintainers. While every effort is made to ensure
+  the accuracy of the data in this matrix, discrepancies with actual
+  functionality are possible. Please refer to your vendor's support
+  documentation for additional information.
+
 .. _driver_support_matrix:
 
 .. support_matrix:: support-matrix.ini
