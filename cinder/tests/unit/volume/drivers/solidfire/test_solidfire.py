@@ -314,6 +314,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                     }]
                 }
             }
+        elif method == 'ListSnapshots':
+            raise exception.VolumeNotFound('test clone unconfigured image')
         else:
             # Crap, unimplemented API call in Fake
             return None
@@ -347,12 +349,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         return {'fake': 'fake-model'}
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
     def test_create_volume_with_qos_type(self,
-                                         _mock_create_template_account,
                                          _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
-        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -411,12 +410,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                              sfv.create_volume(testvol)['qos'])
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
     def test_create_volume(self,
-                           _mock_create_template_account,
                            _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
-        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -440,12 +436,9 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertIsNone(model_update.get('provider_geometry', None))
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
     def test_create_volume_non_512e(self,
-                                    _mock_create_template_account,
                                     _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
-        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -500,12 +493,9 @@ class SolidFireVolumeTestCase(test.TestCase):
             sfv.delete_snapshot(testsnap)
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
     def test_create_clone(self,
-                          _mock_create_template_account,
                           _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
-        _mock_create_template_account.return_value = 1
         _fake_get_snaps = [{'snapshotID': 5, 'name': 'testvol'}]
         _fake_get_volume = (
             {'volumeID': 99,
@@ -1218,12 +1208,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertEqual(2, size)
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
     def test_create_volume_for_migration(self,
-                                         _mock_create_template_account,
                                          _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
-        _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -1258,81 +1245,6 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                              sf_vol_object['name'])
 
-    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
-    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_image_volume')
-    def test_verify_image_volume_out_of_date(self,
-                                             _mock_create_image_volume,
-                                             _mock_get_sf_volume,
-                                             _mock_get_sfaccount,
-                                             _mock_issue_api_request,
-                                             _mock_update_cluster_status):
-        fake_sf_vref = {
-            'status': 'active', 'volumeID': 1,
-            'attributes': {
-                'image_info':
-                    {'image_updated_at': '2014-12-17T00:16:23+00:00',
-                     'image_id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
-                     'image_name': 'fake-image',
-                     'image_created_at': '2014-12-17T00:16:23+00:00'}}}
-
-        _mock_update_cluster_status.return_value = None
-        _mock_issue_api_request.side_effect = (
-            self.fake_issue_api_request)
-        _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
-                                            'accountID': 7777}
-        _mock_get_sf_volume.return_value = fake_sf_vref
-        _mock_create_image_volume.return_value = fake_sf_vref
-
-        image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
-                      'updated_at': datetime.datetime(2013, 9, 28,
-                                                      15, 27, 36,
-                                                      325355)}
-        image_service = 'null'
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv._verify_image_volume(self.ctxt, image_meta, image_service)
-        self.assertTrue(_mock_create_image_volume.called)
-
-    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
-    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_image_volume')
-    def test_verify_image_volume_ok(self,
-                                    _mock_create_image_volume,
-                                    _mock_get_sf_volume,
-                                    _mock_get_sfaccount,
-                                    _mock_issue_api_request,
-                                    _mock_update_cluster_status):
-
-        _mock_issue_api_request.side_effect = self.fake_issue_api_request
-        _mock_update_cluster_status.return_value = None
-        _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
-                                            'accountID': 7777}
-        _mock_get_sf_volume.return_value =\
-            {'status': 'active', 'volumeID': 1,
-             'attributes': {
-                 'image_info':
-                     {'image_updated_at': '2013-09-28T15:27:36.325355',
-                      'image_id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
-                      'image_name': 'fake-image',
-                      'image_created_at': '2014-12-17T00:16:23+00:00'}}}
-        _mock_create_image_volume.return_value = None
-
-        image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
-                      'updated_at': datetime.datetime(2013, 9, 28,
-                                                      15, 27, 36,
-                                                      325355)}
-        image_service = 'null'
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-
-        sfv._verify_image_volume(self.ctxt, image_meta, image_service)
-        self.assertFalse(_mock_create_image_volume.called)
-
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     def test_clone_image_not_configured(self, _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
@@ -1344,129 +1256,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                                          'fake',
                                          self.fake_image_meta,
                                          'fake'))
-
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_image_volume')
-    def test_clone_image_authorization(self,
-                                       _mock_create_image_volume,
-                                       _mock_create_template_account):
-        fake_sf_vref = {
-            'status': 'active', 'volumeID': 1,
-            'attributes': {
-                'image_info':
-                    {'image_updated_at': '2014-12-17T00:16:23+00:00',
-                     'image_id': '155d900f-4e14-4e4c-a73d-069cbf4541e6',
-                     'image_name': 'fake-image',
-                     'image_created_at': '2014-12-17T00:16:23+00:00'}}}
-        _mock_create_image_volume.return_value = fake_sf_vref
-        _mock_create_template_account.return_value = 1
-
-        self.configuration.sf_allow_template_caching = True
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-
-        # Make sure if it's NOT public and we're NOT the owner it
-        # doesn't try and cache
-        timestamp = datetime.datetime(2011, 1, 1, 1, 2, 3)
-        _fake_image_meta = {
-            'id': '155d900f-4e14-4e4c-a73d-069cbf4541e6',
-            'name': 'fakeimage123456',
-            'created_at': timestamp,
-            'updated_at': timestamp,
-            'deleted_at': None,
-            'deleted': False,
-            'status': 'active',
-            'visibility': 'private',
-            'protected': False,
-            'container_format': 'raw',
-            'disk_format': 'raw',
-            'owner': 'wrong-owner',
-            'properties': {'kernel_id': 'nokernel',
-                           'ramdisk_id': 'nokernel',
-                           'architecture': 'x86_64'}}
-
-        with mock.patch.object(sfv, '_do_clone_volume',
-                               return_value=('fe', 'fi', 'fo')):
-            self.assertEqual((None, False),
-                             sfv.clone_image(self.ctxt,
-                                             self.mock_volume,
-                                             'fake',
-                                             _fake_image_meta,
-                                             self.fake_image_service))
-
-            # And is_public False, but the correct owner does work
-            _fake_image_meta['owner'] = 'testprjid'
-            self.assertEqual(
-                ('fo', True),
-                sfv.clone_image(
-                    self.ctxt,
-                    self.mock_volume,
-                    'fake',
-                    _fake_image_meta,
-                    self.fake_image_service))
-
-            # And is_public True, even if not the correct owner
-            _fake_image_meta['is_public'] = True
-            _fake_image_meta['owner'] = 'wrong-owner'
-            self.assertEqual(
-                ('fo', True),
-                sfv.clone_image(self.ctxt,
-                                self.mock_volume,
-                                'fake',
-                                _fake_image_meta,
-                                self.fake_image_service))
-            # And using the new V2 visibility tag
-            _fake_image_meta['visibility'] = 'public'
-            _fake_image_meta['owner'] = 'wrong-owner'
-            self.assertEqual(
-                ('fo', True),
-                sfv.clone_image(self.ctxt,
-                                self.mock_volume,
-                                'fake',
-                                _fake_image_meta,
-                                self.fake_image_service))
-
-    def test_create_template_no_account(self):
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-
-        def _fake_issue_api_req(method, params, version=0):
-            if 'GetAccountByName' in method:
-                raise solidfire.SolidFireAPIException
-            return {'result': {'accountID': 1}}
-
-        with mock.patch.object(sfv,
-                               '_issue_api_request',
-                               side_effect=_fake_issue_api_req):
-            self.assertEqual(1,
-                             sfv._create_template_account('foo'))
-
-    def test_configured_svip(self):
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-
-        def _fake_get_volumes(account_id, endpoint=None):
-            return [{'volumeID': 1,
-                     'iqn': ''}]
-
-        def _fake_get_cluster_info():
-            return {'clusterInfo': {'svip': '10.10.10.10',
-                                    'mvip': '1.1.1.1'}}
-
-        with mock.patch.object(sfv,
-                               '_get_volumes_by_sfaccount',
-                               side_effect=_fake_get_volumes),\
-                mock.patch.object(sfv,
-                                  '_issue_api_request',
-                                  side_effect=self.fake_issue_api_request):
-
-            sfaccount = {'targetSecret': 'yakitiyak',
-                         'accountID': 5,
-                         'username': 'bobthebuilder'}
-            v = sfv._get_model_info(sfaccount, 1)
-            self.assertEqual('1.1.1.1:3260  0', v['provider_location'])
-
-            configured_svip = '9.9.9.9:6500'
-            sfv.active_cluster['svip'] = configured_svip
-            v = sfv._get_model_info(sfaccount, 1)
-            self.assertEqual('%s  0' % configured_svip, v['provider_location'])
 
     def test_init_volume_mappings(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
