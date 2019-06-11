@@ -711,10 +711,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         except NotImplementedError:
             LOG.warning('Backend does not support creating image-volume '
                         'clone. Image will be downloaded from Glance.')
-        except exception.CinderException as e:
-            LOG.warning('Failed to create volume from image-volume cache, '
-                        'image will be downloaded from Glance. Error: '
-                        '%(exception)s', {'exception': e})
         return None, False
 
     @coordination.synchronized('{image_id}')
@@ -787,13 +783,25 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 LOG.info('Unable to get Cinder internal context, will '
                          'not use image-volume cache.')
             else:
-                model_update, cloned = self._create_from_image_cache(
-                    context,
-                    internal_context,
-                    volume,
-                    image_id,
-                    image_meta
-                )
+                try:
+                    model_update, cloned = self._create_from_image_cache(
+                        context,
+                        internal_context,
+                        volume,
+                        image_id,
+                        image_meta
+                    )
+                except exception.CinderException as e:
+                    LOG.warning('Failed to create volume from image-volume '
+                                'cache, image will be downloaded from Glance. '
+                                'Error: %(exception)s',
+                                {'exception': e})
+
+                    # If an exception occurred when cloning the image-volume,
+                    # it may be the image-volume reached its snapshot limit.
+                    # Create another "fresh" cache entry.
+                    update_cache = True
+
                 # Don't cache unless directed.
                 if not cloned and update_cache:
                     should_create_cache_entry = True

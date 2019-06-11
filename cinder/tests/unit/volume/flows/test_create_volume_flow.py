@@ -1495,19 +1495,34 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
-    @ddt.data(
-        NotImplementedError('Driver does not support clone'),
-        exception.CinderException('Error during cloning'))
+    @ddt.data(False, True)
+    @mock.patch('cinder.image.image_utils.check_available_space')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_clone_failure(
-            self, effect, mock_get_internal_context,
+            self, cloning_supported, mock_qemu_info, mock_check_space,
+            mock_get_internal_context,
             mock_create_from_img_dl, mock_create_from_src,
             mock_handle_bootable, mock_fetch_img):
-        mock_get_internal_context.return_value = None
-        volume = fake_volume.fake_volume_obj(self.ctxt)
-        mock_create_from_src.side_effect = effect
-
+        image_location = 'someImageLocationStr'
         image_id = fakes.IMAGE_ID
-        image_meta = {'virtual_size': '1073741824'}
+        image_meta = mock.MagicMock()
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+
+        self.flags(verify_glance_signatures='disabled')
+
+        if cloning_supported:
+            mock_create_from_src.side_effect = exception.CinderException(
+                'Error during cloning')
+        else:
+            mock_create_from_src.side_effect = NotImplementedError(
+                'Driver does not support clone')
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -1516,14 +1531,28 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_volume_cache=self.mock_cache
         )
 
-        model, result = manager._create_from_image_cache(self.ctxt,
-                                                         None,
-                                                         volume,
-                                                         image_id,
-                                                         image_meta)
+        model_update = manager._create_from_image_cache_or_download(
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service,
+            update_cache=False)
 
-        self.assertIsNone(model)
-        self.assertFalse(result)
+        # Ensure cloning was attempted and that it failed
+        mock_create_from_src.assert_called_once()
+        mock_create_from_img_dl.assert_called_once()
+        self.assertEqual(mock_create_from_img_dl.return_value, model_update)
+
+        # Ensure a new cache entry is created when cloning fails, but
+        # only when the driver supports cloning.
+        if cloning_supported:
+            (self.mock_volume_manager.
+             _create_image_cache_volume_entry.assert_called_once())
+        else:
+            (self.mock_volume_manager.
+             _create_image_cache_volume_entry.assert_not_called())
 
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
