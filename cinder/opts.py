@@ -87,8 +87,6 @@ from cinder.volume.drivers.dell_emc.vnx import common as \
     cinder_volume_drivers_dell_emc_vnx_common
 from cinder.volume.drivers.dell_emc import xtremio as \
     cinder_volume_drivers_dell_emc_xtremio
-from cinder.volume.drivers import drbdmanagedrv as \
-    cinder_volume_drivers_drbdmanagedrv
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common as \
     cinder_volume_drivers_fujitsu_eternus_dx_eternusdxcommon
 from cinder.volume.drivers.fusionstorage import dsware as \
@@ -297,7 +295,6 @@ def list_opts():
                 cinder_volume_drivers_dell_emc_unity_driver.UNITY_OPTS,
                 cinder_volume_drivers_dell_emc_vnx_common.VNX_OPTS,
                 cinder_volume_drivers_dell_emc_xtremio.XTREMIO_OPTS,
-                cinder_volume_drivers_drbdmanagedrv.drbd_opts,
                 cinder_volume_drivers_fujitsu_eternus_dx_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,

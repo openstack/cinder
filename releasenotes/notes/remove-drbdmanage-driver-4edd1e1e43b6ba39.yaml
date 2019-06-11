@@ -1,0 +1,12 @@
+---
+upgrade:
+  - The DRBDManage driver is now removed.  Customers using the
+    DRBDManage driver should not upgrade Cinder without first
+    migrating all volumes from their DRBDManage backend to a
+    supported storage backend such as LINSTOR.  Failure to migrate
+    volumes will result in not being able to access volumes backed
+    by the DRBDManage storage backend.
+deprecations:
+  - The DRBDManage driver is deprecated as of the Stein release and
+    is removed in the Train release.  Users should use the new
+    LINSTOR driver instead.

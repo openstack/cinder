@@ -2,9 +2,6 @@
 # certain drivers.  This file is not managed by
 # requirements tools.
 
-# DRBD
-dbus # MIT
-
 # HPE 3PAR
 python-3parclient>=4.1.0 # Apache-2.0
 
