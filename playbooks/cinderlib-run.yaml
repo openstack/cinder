@@ -1,0 +1,49 @@
+# Variables: devstack_base_dir, cinderlib_log_file, cinderlib_ignore_errors
+- hosts: "{{ cinderlib_hosts | default('all') }}"
+  become: True
+  vars:
+    base_dir: "{{ devstack_base_dir | default('/opt/stack/new') }}"
+    default_log_file: "{{ ansible_user_dir }}/zuul-output/logs/cinderlib.txt"
+
+  tasks:
+    - name: Find cinderlib location in required-projects
+      set_fact:
+        cinderlib_location: "{{ ansible_user_dir }}/{{ item.src_dir}}"
+      with_items: "{{ zuul.projects.values() | list }}"
+      when:
+        - cinderlib_location is not defined
+        - item.short_name == 'cinderlib'
+
+    - name: Default cinderlib location to devstack directory
+      set_fact:
+        cinderlib_location: "{{ base_dir }}/cinderlib"
+      when:
+        - cinderlib_location is not defined
+
+    - name: Install cinderlib
+      pip:
+        name: ./
+        editable: yes
+        extra_args: --no-cache-dir
+        chdir: "{{ cinderlib_location }}"
+
+    - name: Locate unit2 binary location
+      shell:
+        cmd: which unit2
+      register: unit2_which
+
+    - name: Add sudoers role for cinderlib unit2
+      copy:
+        dest: /etc/sudoers.d/zuul-sudo-unit2
+        content: "zuul ALL = NOPASSWD:{{ unit2_which.stdout }} discover -v -s cinderlib/tests/functional\n"
+        mode: 0440
+
+    - name: Validate sudoers config after edits
+      command: "/usr/sbin/visudo -c"
+
+    - name: Run cinderlib functional tests
+      shell:
+        cmd: "set -o pipefail && {{ unit2_which.stdout }} discover -v -s cinderlib/tests/functional 2>&1 | tee {{ cinderlib_log_file | default(default_log_file)}}"
+        chdir: "{{ cinderlib_location }}"
+        executable: /bin/bash
+      ignore_errors: "{{ cinderlib_ignore_errors | default(false) | bool}}"

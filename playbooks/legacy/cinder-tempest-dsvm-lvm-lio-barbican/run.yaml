@@ -82,3 +82,7 @@
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
       environment: '{{ zuul | zuul_legacy_vars }}'
+
+- import_playbook: ../../cinderlib-run.yaml
+  vars:
+    default_log_file: "{{ ansible_user_dir }}/workspace/logs/cinderlib.txt"
