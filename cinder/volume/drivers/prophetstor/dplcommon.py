@@ -668,6 +668,9 @@ class DPLCOMMONDriver(driver.CloneableImageVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "ProphetStor_CI"
 
+    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         cert_path = None
         cert_verify = False
