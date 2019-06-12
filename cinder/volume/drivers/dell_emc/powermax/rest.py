@@ -38,6 +38,7 @@ SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
 U4V_VERSION = '91'
+MIN_U4P_VERSION = '9.1.0.1054'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 # HTTP constants
@@ -584,8 +585,13 @@ class PowerMaxRest(object):
 
         :returns: version dict
         """
-        version_url = "/%s/system/info" % U4V_VERSION
-        version_dict = self._get_request(version_url, 'info')
+        post_90_endpoint = '/version'
+        pre_91_endpoint = '/system/version'
+
+        status_code, version_dict = self.request(post_90_endpoint, GET)
+        if status_code is not STATUS_200:
+            status_code, version_dict = self.request(pre_91_endpoint, GET)
+
         if not version_dict:
             LOG.error("Unisphere version info not found.")
         return version_dict
@@ -2637,3 +2643,34 @@ class PowerMaxRest(object):
                 pass
 
         return iterator_result
+
+    def validate_unisphere_version(self):
+        """Validate that the running Unisphere version meets min requirement
+
+        :returns: unisphere_meets_min_req -- boolean
+        """
+        running_version, _ = self.get_uni_version()
+        minimum_version = MIN_U4P_VERSION
+        unisphere_meets_min_req = False
+
+        if running_version and (running_version[0].isalpha()):
+            # remove leading letter
+            version = running_version[1:]
+            unisphere_meets_min_req = version >= minimum_version
+
+        if unisphere_meets_min_req:
+            LOG.info("Unisphere version %(running_version)s meets minimum "
+                     "requirement of version %(minimum_version)s.",
+                     {'running_version': running_version,
+                      'minimum_version': minimum_version})
+        elif running_version:
+            LOG.error("Unisphere version %(running_version)s does not meet "
+                      "minimum requirement for use with this release, please "
+                      "upgrade to Unisphere %(minimum_version)s at minimum.",
+                      {'running_version': running_version,
+                       'minimum_version': minimum_version})
+        else:
+            LOG.warning("Unable to validate Unisphere instance meets minimum "
+                        "requirements.")
+
+        return unisphere_meets_min_req
