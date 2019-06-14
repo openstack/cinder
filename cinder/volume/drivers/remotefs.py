@@ -838,8 +838,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
     def _read_info_file(self, info_path, empty_if_missing=False):
         """Return dict of snapshot information.
 
-           :param: info_path: path to file
-           :param: empty_if_missing: True=return empty dict if no file
+           :param info_path: path to file
+           :param empty_if_missing: True=return empty dict if no file
         """
 
         if not os.path.exists(info_path):
