@@ -1699,7 +1699,7 @@ class PowerMaxRest(object):
            "snapVxCapable": true,
            "rdfCapable": true}
 
-        :param: array
+        :param array
         :returns: capabilities dict for the given array
         """
         array_capabilities = None
