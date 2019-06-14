@@ -318,7 +318,7 @@ section, the driver will move the volumes out of the storage groups and then
 delete them if the user tries to delete the volumes that remain in the storage
 group on the VNX array.
 
-The default value of ``force_delete_lun_in_storagegroup`` is ``False``.
+The default value of ``force_delete_lun_in_storagegroup`` is ``True``.
 
 Over subscription in thin provisioning
 --------------------------------------
