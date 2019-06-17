@@ -31,7 +31,7 @@
             voting: false
             timeout: 5400
             irrelevant-files: *functional-irrelevant-files
-        - devstack-plugin-ceph-tempest:
+        - cinder-plugin-ceph-tempest:
             voting: false
             irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
@@ -143,3 +143,11 @@
     required-projects:
       - openstack/rally-openstack
       - openstack/osprofiler
+
+- job:
+    name: cinder-plugin-ceph-tempest
+    parent: devstack-plugin-ceph-tempest
+    run: playbooks/tempest-and-cinderlib-run.yaml
+    required-projects:
+      - openstack/cinderlib
+      - openstack/tempest
