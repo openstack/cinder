@@ -147,7 +147,6 @@ from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
 from cinder.volume.drivers import storpool as cinder_volume_drivers_storpool
 from cinder.volume.drivers.synology import synology_common as \
     cinder_volume_drivers_synology_synologycommon
-from cinder.volume.drivers import tintri as cinder_volume_drivers_tintri
 from cinder.volume.drivers.veritas_access import veritas_iscsi as \
     cinder_volume_drivers_veritas_access_veritasiscsi
 from cinder.volume.drivers.vmware import vmdk as \
@@ -352,7 +351,6 @@ def list_opts():
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
                 cinder_volume_drivers_solidfire.sf_opts,
                 cinder_volume_drivers_synology_synologycommon.cinder_opts,
-                cinder_volume_drivers_tintri.tintri_opts,
                 cinder_volume_drivers_vmware_vmdk.vmdk_opts,
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_windows_iscsi.windows_opts,

@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    The Tintri storage driver has been removed after completion of its
+    deprecation period without a reliable 3rd Party CI system being
+    supported.  Customers using the Tintri driver should not upgrade
+    Cinder without first migrating all volumes from their Tintri backend
+    to a supported storage backend.  Failure to migrate volumes will
+    result in no longer being able to access volumes backed by the Tintri
+    storage backend.
+other:
+  - |
+    The Tintri storage driver was marked unsupported in Stein due to
+    3rd Party CI not meeting Cinder's requirements.  As a result the
+    driver is removed starting from the Train release.
