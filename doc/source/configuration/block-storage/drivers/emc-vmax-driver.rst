@@ -27,9 +27,11 @@ System requirements
 The Dell EMC VMAX Cinder driver supports the VMAX-3 hybrid series and VMAX
 All-Flash arrays.
 
-The array operating system software, Solutions Enabler 8.4.0.7 or later, and
-Unisphere for VMAX 8.4.0.15 or later are required to run Dell EMC VMAX Cinder
-driver.
+The array operating system software, Solutions Enabler 8.4.0.x series
+(minimum 8.4.0.7), and Unisphere for VMAX 8.4.0.x series (minimum 8.4.0.15)
+are required to run Dell EMC VMAX Cinder driver. There was a post
+qualification on Solutions Enabler 9.0.x and Unisphere for PowerMax 9.0.x to
+support PowerMax OS on the PowerMax and All Flash arrays.
 
 You can download Solutions Enabler and Unisphere from the Dell EMC's support
 web site (login is required). See the ``Solutions Enabler 8.4.0 Installation
