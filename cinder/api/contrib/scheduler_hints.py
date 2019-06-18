@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.api import extensions
 from cinder.api.schemas import scheduler_hints
 from cinder.api import validation
 
@@ -31,3 +32,13 @@ def create(req, body):
         _validate_scheduler_hints(req=req, body=scheduler_hints_body)
         body['volume']['scheduler_hints'] = scheduler_hints_body.get(attr)
     return body
+
+
+# NOTE: This class is added to include "OS-SCH-HNT" in the list extensions
+# response and "OS-SCH-HNT" is still not loaded as a standard extension.
+class Scheduler_hints(extensions.ExtensionDescriptor):
+    """Pass arbitrary key/value pairs to the scheduler."""
+
+    name = "SchedulerHints"
+    alias = "OS-SCH-HNT"
+    updated = "2013-04-18T00:00:00+00:00"
