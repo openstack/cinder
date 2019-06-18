@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    A new check is added to the ``cinder-status upgrade check`` CLI to check
+    for the configuration of CoprHD, HGST or ITRI DISCO drivers.  These
+    drivers were removed in the Stein release and should not be
+    configured at the time of upgrade.
