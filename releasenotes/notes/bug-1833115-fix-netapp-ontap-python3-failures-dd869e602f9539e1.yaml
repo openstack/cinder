@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix python 3 incompatibility issues preventing NetApp cDOT driver from
+    generating EMS logging messages (Bug #1833115).
