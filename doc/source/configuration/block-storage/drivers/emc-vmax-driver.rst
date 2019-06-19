@@ -17,8 +17,8 @@ System requirements
 
 The Cinder driver supports the VMAX-3 series and VMAX All-Flash arrays.
 
-Solutions Enabler 8.4.0.7 or later, and Unisphere for VMAX 8.4.0.15 or later
-are required.
+Solutions Enabler 8.4.0.x series (minimum 8.4.0.7), and Unisphere for VMAX
+8.4.0.x series (minimum 8.4.0.15) are required.
 
 .. note::
 
