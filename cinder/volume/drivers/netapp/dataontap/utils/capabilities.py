@@ -99,8 +99,9 @@ class CapabilitiesLibrary(object):
 
     def get_ssc_flexvol_names(self):
         """Get the names of the FlexVols in the Storage Service Catalog."""
+
         ssc = self.get_ssc()
-        return ssc.keys()
+        return list(ssc.keys())
 
     def get_ssc_for_flexvol(self, flexvol_name):
         """Get map of Storage Service Catalog entries for a single flexvol."""
