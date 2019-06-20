@@ -1291,7 +1291,7 @@ class PowerMaxCommonTest(test.TestCase):
             self.common._clone_check(array, device_id, extra_specs)
             mock_break.assert_called_with(
                 array, target, device_id, temp_snap_name, extra_specs, 0)
-            mock_delete.asset_not_called()
+            mock_delete.assert_not_called()
 
         sessions1 = [{'source_vol': device_id,
                       'snap_name': temp_snap_name, 'generation': 0,
@@ -1304,7 +1304,7 @@ class PowerMaxCommonTest(test.TestCase):
                                    return_value=sessions1):
                 self.common._clone_check(array, device_id, extra_specs)
                 mock_break.assert_not_called()
-                mock_delete.asset_not_called()
+                mock_delete.assert_not_called()
 
     @mock.patch.object(provision.PowerMaxProvision,
                        'break_replication_relationship')
