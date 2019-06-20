@@ -2118,6 +2118,20 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             self.assertEqual('available', fake_snapshot['status'])
             self.assertEqual(2, fake_volume['size'])
 
+    def test_cannot_revert_to_snapshot_in_use(self):
+        """Test volume can't be reverted to snapshot in in-use status."""
+        fake_volume = tests_utils.create_volume(self.context,
+                                                status='in-use')
+        fake_snapshot = tests_utils.create_snapshot(self.context,
+                                                    fake_volume.id,
+                                                    status='available')
+
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.revert_to_snapshot,
+                          self.context,
+                          fake_volume,
+                          fake_snapshot)
+
     def test_cannot_delete_volume_with_snapshots(self):
         """Test volume can't be deleted with dependent snapshots."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
