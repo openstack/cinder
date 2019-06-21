@@ -130,6 +130,7 @@ Response Parameters
    - created_at: created_at
    - volumes: volumes
    - volume_type: volume_type_vol
+   - volume_type_id: volume_type_id_363
    - group_id: group_id_optional
    - volumes_links: links_vol_optional
    - count: count
@@ -375,6 +376,7 @@ Response Parameters
    - bootable: bootable_response
    - created_at: created_at
    - volume_type: volume_type_vol
+   - volume_type_id: volume_type_id_363
    - service_uuid: service_uuid
    - shared_targets: shared_targets
    - cluster_name: cluster_name

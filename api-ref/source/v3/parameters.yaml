@@ -3121,6 +3121,13 @@ volume_type_detail:
   in: body
   required: false
   type: string
+volume_type_id_363:
+  description: |
+    The associated volume type ID for the volume.
+  in: body
+  required: true
+  type: object
+  min_version: 3.63
 volume_type_id_body:
   description: |
     The UUID of the volume type.
@@ -3129,7 +3136,7 @@ volume_type_id_body:
   type: string
 volume_type_vol:
   description: |
-    The associated volume type for the volume.
+    The associated volume type name for the volume.
   in: body
   required: true
   type: string

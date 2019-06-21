@@ -479,3 +479,9 @@ Active/Active HA mode.
 Add support for set, get, and unset a default volume type for a specific
 project. Setting this default overrides the configured default_volume_type
 value.
+
+3.63
+----
+Includes volume type ID in the volume-show and volume-detail-list JSON
+responses. Before this microversion, Cinder returns only the volume type name
+in the volume details.

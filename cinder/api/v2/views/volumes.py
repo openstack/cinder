@@ -75,7 +75,7 @@ class ViewBuilder(common.ViewBuilder):
                 'updated_at': volume.get('updated_at'),
                 'name': volume.get('display_name'),
                 'description': volume.get('display_description'),
-                'volume_type': self._get_volume_type(volume),
+                'volume_type': self._get_volume_type(request, volume),
                 'snapshot_id': volume.get('snapshot_id'),
                 'source_volid': volume.get('source_volid'),
                 'metadata': self._get_volume_metadata(volume),
@@ -138,8 +138,8 @@ class ViewBuilder(common.ViewBuilder):
         """Retrieve the metadata of the volume object."""
         return volume.metadata
 
-    def _get_volume_type(self, volume):
-        """Retrieve the type the volume object."""
+    def _get_volume_type(self, request, volume):
+        """Retrieve the type of the volume object."""
         if volume['volume_type_id'] and volume.get('volume_type'):
             return volume['volume_type']['name']
         else:

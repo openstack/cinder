@@ -66,6 +66,10 @@ class ViewBuilder(views_v2.ViewBuilder):
             volume_ref['volume']['cluster_name'] = volume.get(
                 'cluster_name', None)
 
+        if req_version.matches(mv.VOLUME_TYPE_ID_IN_VOLUME_DETAIL, None):
+            volume_ref[
+                'volume']["volume_type_id"] = volume['volume_type'].get('id')
+
         return volume_ref
 
     def _list_view(self, func, request, volumes, volume_count,
@@ -96,3 +100,18 @@ class ViewBuilder(views_v2.ViewBuilder):
             volumes_dict['count'] = volume_count
 
         return volumes_dict
+
+    def _get_volume_type(self, request, volume):
+        """Returns the volume type of the volume.
+
+        Retrieves the volume type name for microversion 3.63.
+        Otherwise, it uses the default implementation from super.
+        """
+
+        req_version = request.api_version_request
+        if req_version.matches(mv.VOLUME_TYPE_ID_IN_VOLUME_DETAIL):
+            if volume.get('volume_type'):
+                return volume['volume_type']['name']
+            return None
+
+        return super(ViewBuilder, self)._get_volume_type(request, volume)
