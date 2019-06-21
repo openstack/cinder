@@ -86,6 +86,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                          '_issue_api_request',
                          self.fake_issue_api_request)
 
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_get_provisioned_capacity_iops',
+                         return_value=(0, 0))
+
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
@@ -146,14 +150,41 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def fake_issue_api_request(obj, method, params, version='1.0',
                                endpoint=None):
-        if method is 'GetClusterCapacity' and version == '1.0':
-            data = {'result':
-                    {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
-                                         'usedSpace': 1073741824,
-                                         'compressionPercent': 100,
-                                         'deDuplicationPercent': 100,
-                                         'thinProvisioningPercent': 100,
-                                         'maxUsedSpace': 53687091200}}}
+        if method is 'GetClusterCapacity':
+            data = {}
+            if version == '1.0':
+                data = {'result': {'clusterCapacity': {
+                        'maxProvisionedSpace': 107374182400,
+                        'usedSpace': 1073741824,
+                        'compressionPercent': 100,
+                        'deDuplicationPercent': 100,
+                        'thinProvisioningPercent': 100,
+                        'maxUsedSpace': 53687091200}}}
+            elif version == '8.0':
+                data = {'result': {'clusterCapacity': {
+                        'usedMetadataSpaceInSnapshots': 16476454912,
+                        'maxUsedMetadataSpace': 432103337164,
+                        'activeBlockSpace': 616690857535,
+                        'uniqueBlocksUsedSpace': 628629229316,
+                        'totalOps': 7092186135,
+                        'peakActiveSessions': 0,
+                        'uniqueBlocks': 519489473,
+                        'maxOverProvisionableSpace': 276546135777280,
+                        'zeroBlocks': 8719571984,
+                        'provisionedSpace': 19938551005184,
+                        'maxUsedSpace': 8402009333760,
+                        'peakIOPS': 0,
+                        'timestamp': '2019-04-24T12:08:22Z',
+                        'currentIOPS': 0,
+                        'usedSpace': 628629229316,
+                        'activeSessions': 0,
+                        'nonZeroBlocks': 1016048624,
+                        'maxProvisionedSpace': 55309227155456,
+                        'usedMetadataSpace': 16476946432,
+                        'averageIOPS': 0,
+                        'snapshotNonZeroBlocks': 1606,
+                        'maxIOPS': 200000,
+                        'clusterRecentIOSize': 0}}}
             return data
 
         elif method is 'GetClusterInfo':
@@ -1152,34 +1183,42 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request)
+
+        driver_defined_stats = ['volume_backend_name', 'vendor_name',
+                                'driver_version', 'storage_protocol',
+                                'consistencygroup_support',
+                                'consistent_group_snapshot_enabled',
+                                'replication_enabled', 'active_cluster_mvip',
+                                'reserved_percentage', 'QoS_support',
+                                'multiattach', 'total_capacity_gb',
+                                'free_capacity_gb', 'compression_percent',
+                                'deduplicaton_percent',
+                                'thin_provision_percent', 'provisioned_iops',
+                                'current_iops', 'average_iops', 'max_iops',
+                                'peak_iops']
+
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         sfv._update_cluster_status()
-        self.assertEqual(99.0, sfv.cluster_stats['free_capacity_gb'])
-        self.assertEqual(100.0, sfv.cluster_stats['total_capacity_gb'])
+
+        for key in driver_defined_stats:
+            if sfv.cluster_stats.get(key, None) is None:
+                msg = 'Key %s should be present at driver stats.' % key
+                raise exception.CinderException(message=msg)
 
         sfv.configuration.sf_provisioning_calc = 'usedSpace'
         sfv._update_cluster_status()
-        self.assertEqual(49.0, sfv.cluster_stats['free_capacity_gb'])
-        self.assertEqual(50.0, sfv.cluster_stats['total_capacity_gb'])
-        self.assertTrue(sfv.cluster_stats['thin_provisioning_support'])
-        self.assertEqual(self.configuration.max_over_subscription_ratio,
-                         sfv.cluster_stats['max_over_subscription_ratio'])
+        driver_defined_stats += ['thin_provisioning_support',
+                                 'provisioned_capacity_gb',
+                                 'max_over_subscription_ratio']
 
-    def test_get_provisioned_capacity(self):
-        self.mock_object(solidfire.SolidFireDriver,
-                         '_issue_api_request',
-                         self.fake_issue_api_request)
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        prov_cap = sfv._get_provisioned_capacity()
-        # Sum of totalSize of the volumes mocked is
-        # (int(1.75 * units.Gi)) * 2 = 3758096384
-        self.assertEqual(3758096384, prov_cap)
+        for key in driver_defined_stats:
+            self.assertIn(key, driver_defined_stats)
 
     def test_update_cluster_status_mvip_unreachable(self):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request)
+
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
                                '_issue_api_request',

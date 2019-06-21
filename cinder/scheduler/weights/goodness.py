@@ -44,8 +44,8 @@ class GoodnessWeigher(weights.BaseHostWeigher):
         stats = self._generate_stats(host_state, weight_properties)
         LOG.debug("Checking host '%s'", stats['host_stats']['host'])
         result = self._check_goodness_function(stats)
-        LOG.debug("Goodness: %s", result)
-        LOG.debug("Done checking host '%s'", stats['host_stats']['host'])
+        LOG.debug("Goodness weight for %(host)s: %(res)s",
+                  {'res': result, 'host': stats['host_stats']['host']})
 
         return result
 

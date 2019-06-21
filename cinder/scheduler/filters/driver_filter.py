@@ -75,6 +75,16 @@ class DriverFilter(filters.BaseBackendFilter):
         qos_specs = stats['qos_specs']
         volume_stats = stats['volume_stats']
 
+        LOG.debug('Running evaluator: extra_specs: %(extra)s\n'
+                  'stats: %(stats)s\n'
+                  'capabilities: %(capabilities)s\n'
+                  'volume: %(volume)s\n'
+                  'qos: %(qos)s', {'extra': extra_specs,
+                                   'stats': backend_stats,
+                                   'capabilities': backend_caps,
+                                   'volume': volume_stats,
+                                   'qos': qos_specs})
+
         result = evaluator.evaluate(
             func,
             extra=extra_specs,
