@@ -931,21 +931,28 @@ class PowerMaxRest(object):
                     found_device_id = device_id
         return found_device_id
 
-    def add_vol_to_sg(self, array, storagegroup_name, device_id, extra_specs):
+    def add_vol_to_sg(self, array, storagegroup_name, device_id, extra_specs,
+                      force=False):
         """Add a volume to a storage group.
 
         :param array: the array serial number
         :param storagegroup_name: storage group name
         :param device_id: the device id
         :param extra_specs: extra specifications
+        :param force: add force argument to call
         """
         if not isinstance(device_id, list):
             device_id = [device_id]
+
+        force_add = "true" if force else "false"
+
         payload = ({"executionOption": "ASYNCHRONOUS",
                     "editStorageGroupActionParam": {
                         "expandStorageGroupParam": {
                             "addSpecificVolumeParam": {
-                                "volumeId": device_id}}}})
+                                "volumeId": device_id,
+                                "remoteSymmSGInfoParam": {
+                                    "force": force_add}}}}})
         status_code, job = self.modify_storage_group(
             array, storagegroup_name, payload)
 
@@ -961,12 +968,17 @@ class PowerMaxRest(object):
         :param device_id: the device id
         :param extra_specs: the extra specifications
         """
+
+        force_vol_remove = ("true" if "force_vol_remove" in extra_specs
+                            else "false")
         if not isinstance(device_id, list):
             device_id = [device_id]
         payload = ({"executionOption": "ASYNCHRONOUS",
                     "editStorageGroupActionParam": {
                         "removeVolumeParam": {
-                            "volumeId": device_id}}})
+                            "volumeId": device_id,
+                            "remoteSymmSGInfoParam": {
+                                "force": force_vol_remove}}}})
         status_code, job = self.modify_storage_group(
             array, storagegroup_name, payload)
 
@@ -1267,23 +1279,47 @@ class PowerMaxRest(object):
         self._modify_volume(array, device_id, rename_vol_payload)
 
     def delete_volume(self, array, device_id):
-        """Deallocate or delete a volume.
+        """Delete a volume.
 
         :param array: the array serial number
         :param device_id: volume device id
         """
-        # Deallocate volume. Can fail if there are no tracks allocated.
-        payload = {"editVolumeActionParam": {
-            "freeVolumeParam": {"free_volume": 'true'}}}
-        try:
-            self._modify_volume(array, device_id, payload)
-            # Rename volume, removing the OS-<cinderUUID>
-            self.rename_volume(array, device_id, None)
-        except Exception as e:
-            LOG.warning('Deallocate volume failed with %(e)s.'
-                        'Attempting delete.', {'e': e})
-            # Try to delete the volume if deallocate failed.
-            self.delete_resource(array, SLOPROVISIONING, "volume", device_id)
+        array_details = self.get_array_detail(array)
+        ucode_major_level = 0
+        ucode_minor_level = 0
+
+        if array_details:
+            split_ucode_level = array_details['ucode'].split('.')
+            ucode_level = [int(level) for level in split_ucode_level]
+            ucode_major_level = ucode_level[0]
+            ucode_minor_level = ucode_level[1]
+
+        if ((ucode_major_level >= utils.UCODE_5978)
+                and (ucode_minor_level > utils.UCODE_5978_ELMSR)):
+            # Use Rapid TDEV Deallocation to delete after ELMSR
+            try:
+                # Rename volume, removing the OS-<cinderUUID>
+                self.rename_volume(array, device_id, None)
+                self.delete_resource(array, SLOPROVISIONING,
+                                     "volume", device_id)
+            except Exception as e:
+                LOG.warning('Delete volume failed with %(e)s.', {'e': e})
+                raise
+        else:
+            # Pre-Foxtail, deallocation and delete are separate calls
+            payload = {"editVolumeActionParam": {
+                "freeVolumeParam": {"free_volume": 'true'}}}
+            try:
+                # Rename volume, removing the OS-<cinderUUID>
+                self.rename_volume(array, device_id, None)
+                self._modify_volume(array, device_id, payload)
+                pass
+            except Exception as e:
+                LOG.warning('Deallocate volume failed with %(e)s.'
+                            'Attempting delete.', {'e': e})
+                # Try to delete the volume if deallocate failed.
+                self.delete_resource(array, SLOPROVISIONING,
+                                     "volume", device_id)
 
     def find_mv_connections_for_vol(self, array, maskingview, device_id):
         """Find the host_lun_id for a volume in a masking view.
@@ -2324,7 +2360,7 @@ class PowerMaxRest(object):
             # Need to format subsequent volumes
             payload['format'] = 'true'
             payload.pop('establish')
-            payload['rdfType'] = 'NA'
+            payload['rdfType'] = 'RDF1'
         return payload
 
     def modify_rdf_device_pair(
@@ -2347,7 +2383,7 @@ class PowerMaxRest(object):
                     and extra_specs[utils.REP_MODE] == utils.REP_ASYNC):
                 common_opts.update({"immediate": 'false',
                                     "consExempt": 'true'})
-            payload = {"action": "Suspend",
+            payload = {"action": "SUSPEND",
                        "executionOption": "ASYNCHRONOUS",
                        "suspend": common_opts}
 
@@ -2379,7 +2415,7 @@ class PowerMaxRest(object):
         resource_name = ("%(rdf_num)s/volume/%(device_id)s"
                          % {'rdf_num': rdf_group, 'device_id': device_id})
         self.delete_resource(array, REPLICATION, 'rdf_group', resource_name,
-                             private="/private", params=params)
+                             params=params)
 
     def get_storage_group_rep(self, array, storage_group_name):
         """Given a name, return storage group details wrt replication.

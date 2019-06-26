@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    PowerMax driver - Volume deallocate and volume delete functionality
+    have been combined into a single workflow.

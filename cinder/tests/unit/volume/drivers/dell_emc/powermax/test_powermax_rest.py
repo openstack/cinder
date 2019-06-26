@@ -561,17 +561,36 @@ class PowerMaxRestTest(test.TestCase):
             mock_modify.assert_called_once_with(
                 self.data.array, device_id, extend_vol_payload)
 
-    def test_delete_volume(self):
+    def test_legacy_delete_volume(self):
         device_id = self.data.device_id
         vb_except = exception.VolumeBackendAPIException
-        with mock.patch.object(self.rest, 'delete_resource') as mock_delete, \
+        with mock.patch.object(self.rest, 'delete_resource') as mock_delete, (
                 mock.patch.object(
                     self.rest, '_modify_volume',
-                    side_effect=[None, None, None, vb_except]) as mock_modify:
-            for x in range(0, 2):
+                    side_effect=[None, None, None, vb_except])) as mock_modify:
+            for _ in range(0, 2):
                 self.rest.delete_volume(self.data.array, device_id)
             mod_call_count = mock_modify.call_count
             self.assertEqual(4, mod_call_count)
+            mock_delete.assert_called_once_with(
+                self.data.array, 'sloprovisioning', 'volume', device_id)
+
+    def test_delete_volume(self):
+        device_id = self.data.device_id
+        ucode_5978_foxtail = tpd.PowerMaxData.ucode_5978_foxtail
+        with mock.patch.object(
+            self.rest, 'delete_resource') as mock_delete, (
+                mock.patch.object(
+                    self.rest, '_modify_volume')) as mock_modify, (
+                mock.patch.object(
+                    self.rest, 'get_array_detail',
+                    return_value=ucode_5978_foxtail))as mock_det:
+
+            self.rest.delete_volume(self.data.array, device_id)
+            detail_call_count = mock_det.call_count
+            mod_call_count = mock_modify.call_count
+            self.assertEqual(1, detail_call_count)
+            self.assertEqual(1, mod_call_count)
             mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'volume', device_id)
 
@@ -1369,14 +1388,14 @@ class PowerMaxRestTest(test.TestCase):
         ref_payload2 = {'establish': 'true', 'rdfType': 'RDF1'}
         payload3 = self.rest.get_metro_payload_info(
             self.data.array, ref_payload2, self.data.rdf_group_no, {})
-        ref_payload3 = {'rdfType': 'NA', 'format': 'true'}
+        ref_payload3 = {'rdfType': 'RDF1', 'format': 'true'}
         self.assertEqual(ref_payload3, payload3)
 
     def test_modify_rdf_device_pair(self):
         resource_name = '70/volume/00001'
         common_opts = {'force': 'false', 'symForce': 'false', 'star': 'false',
                        'hop2': 'false', 'bypass': 'false'}
-        suspend_payload = {'action': 'Suspend',
+        suspend_payload = {'action': 'SUSPEND',
                            'executionOption': 'ASYNCHRONOUS',
                            'suspend': common_opts}
 

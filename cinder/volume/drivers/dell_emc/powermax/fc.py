@@ -109,6 +109,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for storage-assisted in-use retype
                 (bp/powermax-storage-assisted-inuse-retype)
         4.1.0 - Changing from 90 to 91 rest endpoints
+              - Support for Rapid TDEV Delete (bp powermax-tdev-deallocation)
     """
 
     VERSION = "4.1.0"
