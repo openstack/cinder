@@ -73,6 +73,7 @@ RDF_FAILEDOVER_STATE = 'failed over'
 RDF_ACTIVE = 'active'
 RDF_ACTIVEACTIVE = 'activeactive'
 RDF_ACTIVEBIAS = 'activebias'
+RDF_CONS_EXEMPT = 'consExempt'
 METROBIAS = 'metro_bias'
 DEFAULT_PORT = 8443
 CLONE_SNAPSHOT_NAME = "snapshot_for_clone"
