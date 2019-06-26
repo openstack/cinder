@@ -49,13 +49,14 @@ class PowerMaxMasking(object):
     def setup_masking_view(
             self, serial_number, volume, masking_view_dict, extra_specs):
 
-        @coordination.synchronized("emc-mv-{maskingview_name}")
-        def do_get_or_create_masking_view_and_map_lun(maskingview_name):
+        @coordination.synchronized("emc-mv-{maskingview_name}-{serial_number}")
+        def do_get_or_create_masking_view_and_map_lun(
+                maskingview_name, serial_number):
             return self.get_or_create_masking_view_and_map_lun(
                 serial_number, volume, maskingview_name, masking_view_dict,
                 extra_specs)
         return do_get_or_create_masking_view_and_map_lun(
-            masking_view_dict[utils.MV_NAME])
+            masking_view_dict[utils.MV_NAME], serial_number)
 
     def get_or_create_masking_view_and_map_lun(
             self, serial_number, volume, maskingview_name, masking_view_dict,
@@ -351,9 +352,9 @@ class PowerMaxMasking(object):
         """
         start_time = time.time()
 
-        @coordination.synchronized("emc-sg-{child_sg}")
-        @coordination.synchronized("emc-sg-{parent_sg}")
-        def do_add_sg_to_sg(child_sg, parent_sg):
+        @coordination.synchronized("emc-sg-{child_sg}-{serial_number}")
+        @coordination.synchronized("emc-sg-{parent_sg}-{serial_number}")
+        def do_add_sg_to_sg(child_sg, parent_sg, serial_number):
             # Check if another process has added the child to the
             # parent sg while this process was waiting for the lock
             if self.rest.is_child_sg_in_parent_sg(
@@ -363,7 +364,7 @@ class PowerMaxMasking(object):
                 self.rest.add_child_sg_to_parent_sg(
                     serial_number, child_sg, parent_sg, extra_specs)
 
-        do_add_sg_to_sg(child_sg_name, parent_sg_name)
+        do_add_sg_to_sg(child_sg_name, parent_sg_name, serial_number)
 
         LOG.debug("Add child to storagegroup took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
@@ -473,8 +474,10 @@ class PowerMaxMasking(object):
 
         return child_sg_name, msg
 
-    @coordination.synchronized("emc-sg-{source_storagegroup_name}")
-    @coordination.synchronized("emc-sg-{target_storagegroup_name}")
+    @coordination.synchronized(
+        "emc-sg-{source_storagegroup_name}-{serial_number}")
+    @coordination.synchronized(
+        "emc-sg-{target_storagegroup_name}-{serial_number}")
     def move_volume_between_storage_groups(
             self, serial_number, device_id, source_storagegroup_name,
             target_storagegroup_name, extra_specs):
@@ -640,8 +643,8 @@ class PowerMaxMasking(object):
         """
         start_time = time.time()
 
-        @coordination.synchronized("emc-sg-{sg_name}")
-        def do_add_volume_to_sg(sg_name):
+        @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
+        def do_add_volume_to_sg(sg_name, serial_number):
             # Check if another process has added the volume to the
             # sg while this process was waiting for the lock
             if self.rest.is_volume_in_storagegroup(
@@ -653,7 +656,7 @@ class PowerMaxMasking(object):
             else:
                 self.rest.add_vol_to_sg(serial_number, sg_name,
                                         device_id, extra_specs)
-        do_add_volume_to_sg(storagegroup_name)
+        do_add_volume_to_sg(storagegroup_name, serial_number)
 
         LOG.debug("Add volume to storagegroup took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
@@ -677,8 +680,8 @@ class PowerMaxMasking(object):
         start_time = time.time()
         temp_device_id_list = list_device_id
 
-        @coordination.synchronized("emc-sg-{sg_name}")
-        def do_add_volume_to_sg(sg_name):
+        @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
+        def do_add_volume_to_sg(sg_name, serial_number):
             # Check if another process has added any volume to the
             # sg while this process was waiting for the lock
             volume_list = self.rest.get_volumes_in_storage_group(
@@ -693,7 +696,7 @@ class PowerMaxMasking(object):
                     temp_device_id_list.remove(volume)
             self.rest.add_vol_to_sg(serial_number, storagegroup_name,
                                     temp_device_id_list, extra_specs)
-        do_add_volume_to_sg(storagegroup_name)
+        do_add_volume_to_sg(storagegroup_name, serial_number)
 
         LOG.debug("Add volumes to storagegroup took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
@@ -745,8 +748,8 @@ class PowerMaxMasking(object):
         """
         start_time = time.time()
 
-        @coordination.synchronized("emc-sg-{sg_name}")
-        def do_remove_volumes_from_storage_group(sg_name):
+        @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
+        def do_remove_volumes_from_storage_group(sg_name, serial_number):
             self.rest.remove_vol_from_sg(
                 serial_number, storagegroup_name,
                 list_of_device_ids, extra_specs)
@@ -767,7 +770,8 @@ class PowerMaxMasking(object):
                     LOG.error(exception_message)
                     raise exception.VolumeBackendAPIException(
                         message=exception_message)
-        return do_remove_volumes_from_storage_group(storagegroup_name)
+        return do_remove_volumes_from_storage_group(
+            storagegroup_name, serial_number)
 
     def find_initiator_names(self, connector):
         """Check the connector object for initiators(ISCSI) or wwpns(FC).
@@ -1109,8 +1113,8 @@ class PowerMaxMasking(object):
             LOG.debug("No masking views associated with storage group "
                       "%(sg_name)s", {'sg_name': storagegroup_name})
 
-            @coordination.synchronized("emc-sg-{sg_name}")
-            def do_remove_volume_from_sg(sg_name):
+            @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
+            def do_remove_volume_from_sg(sg_name, serial_number):
                 # Make sure volume hasn't been recently removed from the sg
                 if self.rest.is_volume_in_storagegroup(
                         serial_number, device_id, sg_name):
@@ -1136,7 +1140,7 @@ class PowerMaxMasking(object):
                              "member of %(sg)s.",
                              {'dev': device_id, 'sg': sg_name})
 
-            return do_remove_volume_from_sg(storagegroup_name)
+            return do_remove_volume_from_sg(storagegroup_name, serial_number)
         else:
             # Need to lock masking view when we are locking the storage
             # group to avoid possible deadlock situations from concurrent
@@ -1145,10 +1149,11 @@ class PowerMaxMasking(object):
             parent_sg_name = self.rest.get_element_from_masking_view(
                 serial_number, masking_name, storagegroup=True)
 
-            @coordination.synchronized("emc-mv-{parent_name}")
-            @coordination.synchronized("emc-mv-{mv_name}")
-            @coordination.synchronized("emc-sg-{sg_name}")
-            def do_remove_volume_from_sg(mv_name, sg_name, parent_name):
+            @coordination.synchronized("emc-mv-{parent_name}-{serial_number}")
+            @coordination.synchronized("emc-mv-{mv_name}-{serial_number}")
+            @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
+            def do_remove_volume_from_sg(
+                    mv_name, sg_name, parent_name, serial_number):
                 # Make sure volume hasn't been recently removed from the sg
                 is_vol = self.rest.is_volume_in_storagegroup(
                     serial_number, device_id, sg_name)
@@ -1178,7 +1183,7 @@ class PowerMaxMasking(object):
                              {'dev': device_id, 'sg': sg_name})
 
             return do_remove_volume_from_sg(masking_name, storagegroup_name,
-                                            parent_sg_name)
+                                            parent_sg_name, serial_number)
 
     def _last_vol_in_sg(self, serial_number, device_id, volume_name,
                         storagegroup_name, extra_specs, move, connector=None):
@@ -1439,12 +1444,13 @@ class PowerMaxMasking(object):
             rep_enabled, rep_mode)
         if src_sg is not None:
             # Need to lock the default storage group
-            @coordination.synchronized("emc-sg-{default_sg_name}")
-            def _move_vol_to_default_sg(default_sg_name):
+            @coordination.synchronized(
+                "emc-sg-{default_sg_name}-{serial_number}")
+            def _move_vol_to_default_sg(default_sg_name, serial_number):
                 self.rest.move_volume_between_storage_groups(
                     serial_number, device_id, src_sg,
                     default_sg_name, extra_specs, force=True)
-            _move_vol_to_default_sg(storagegroup_name)
+            _move_vol_to_default_sg(storagegroup_name, serial_number)
         else:
             self._check_adding_volume_to_storage_group(
                 serial_number, device_id, storagegroup_name, volume_name,
@@ -1604,8 +1610,9 @@ class PowerMaxMasking(object):
                     self.rest.get_masking_views_by_initiator_group(
                         serial_number, initiatorgroup_name))
                 if not maskingview_names:
-                    @coordination.synchronized("emc-ig-{ig_name}")
-                    def _delete_ig(ig_name):
+                    @coordination.synchronized(
+                        "emc-ig-{ig_name}-{serial_number}")
+                    def _delete_ig(ig_name, serial_number):
                         # Check initiator group hasn't been recently deleted
                         ig_details = self.rest.get_initiator_group(
                             serial_number, ig_name)
@@ -1617,7 +1624,7 @@ class PowerMaxMasking(object):
                                 {'initiatorgroup_name': initiatorgroup_name})
                             self.rest.delete_initiator_group(
                                 serial_number, initiatorgroup_name)
-                    _delete_ig(initiatorgroup_name)
+                    _delete_ig(initiatorgroup_name, serial_number)
                 else:
                     LOG.warning("Initiator group %(ig_name)s is associated "
                                 "with masking views and can't be deleted. "
