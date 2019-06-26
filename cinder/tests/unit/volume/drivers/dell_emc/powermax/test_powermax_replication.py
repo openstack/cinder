@@ -1006,3 +1006,73 @@ class PowerMaxReplicationTest(test.TestCase):
                 self.data.test_volume.name, utils.REP_SYNC,
                 True, self.data.extra_specs)
         mock_retype.assert_called_once()
+
+
+class PowerMaxReplicationDebugTest(test.TestCase):
+    def setUp(self):
+        self.data = tpd.PowerMaxData()
+        super(PowerMaxReplicationDebugTest, self).setUp()
+        mock_logging = self.mock_object(common, 'LOG')
+        mock_log = mock.Mock()
+        mock_log.isEnabledFor = True
+        mock_logging.getLogger = mock.Mock(return_value=mock_log)
+        self.replication_device = {
+            'target_device_id': self.data.remote_array,
+            'remote_port_group': self.data.port_group_name_f,
+            'remote_pool': self.data.srp2,
+            'rdf_group_label': self.data.rdf_group_name,
+            'allow_extend': 'True'}
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonReplicationDebugTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_f],
+            replication_device=self.replication_device,
+            debug=True)
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
+            return_value=tpfo.FakeRequestsSession())
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
+        self.driver = driver
+        self.common = self.driver.common
+        self.masking = self.common.masking
+        self.provision = self.common.provision
+        self.rest = self.common.rest
+        self.utils = self.common.utils
+        self.utils.get_volumetype_extra_specs = (
+            mock.Mock(
+                return_value=self.data.vol_type_extra_specs_rep_enabled))
+        self.extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        self.extra_specs['retries'] = 1
+        self.extra_specs['interval'] = 1
+        self.extra_specs['rep_mode'] = 'Synchronous'
+
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
+    @mock.patch.object(common.PowerMaxCommon, '_create_volume')
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=('VMAX250F', False))
+    def test_setup_volume_replication_target_debug(
+            self, mock_model, mock_create, mock_rm):
+        rep_status, rep_data, rep_info_dict = (
+            self.common.setup_volume_replication(
+                self.data.array, self.data.test_volume, self.data.device_id,
+                self.extra_specs, self.data.device_id2))
+        self.assertEqual(fields.ReplicationStatus.ENABLED, rep_status)
+        self.assertEqual({'array': self.data.remote_array,
+                          'device_id': self.data.device_id2}, rep_data)
+        self.assertEqual('VMAX250F', rep_info_dict['target_array_model'])
+        mock_create.assert_not_called()
+
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=('VMAX250F', False))
+    def test_setup_volume_replication_no_target_debug(
+            self, mock_model, mock_rm):
+        rep_status, rep_data, rep_info_dict = (
+            self.common.setup_volume_replication(
+                self.data.array, self.data.test_volume, self.data.device_id,
+                self.extra_specs))
+        self.assertEqual(fields.ReplicationStatus.ENABLED, rep_status)
+        self.assertEqual({'array': self.data.remote_array,
+                          'device_id': self.data.device_id}, rep_data)
+        self.assertEqual('VMAX250F', rep_info_dict['target_array_model'])
