@@ -229,7 +229,7 @@ class FakeRequestsSession(object):
                 if job['jobId'] in url:
                     return_object = job
                     break
-        elif 'version' in url:
+        elif 'info' in url:
             return_object = self.data.version_details
         else:
             for symm in self.data.symmetrix:

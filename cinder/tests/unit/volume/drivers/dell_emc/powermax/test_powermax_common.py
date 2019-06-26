@@ -1072,8 +1072,10 @@ class PowerMaxCommonTest(test.TestCase):
     def test_get_ip_and_iqn(self):
         ref_ip_iqn = [{'iqn': self.data.initiator,
                        'ip': self.data.ip}]
+        director = self.data.portgroup[1]['symmetrixPortKey'][0]['directorId']
         port = self.data.portgroup[1]['symmetrixPortKey'][0]['portId']
-        ip_iqn_list = self.common._get_ip_and_iqn(self.data.array, port)
+        dirport = "%s:%s" % (director, port)
+        ip_iqn_list = self.common._get_ip_and_iqn(self.data.array, dirport)
         self.assertEqual(ref_ip_iqn, ip_iqn_list)
 
     def test_find_ip_and_iqns(self):

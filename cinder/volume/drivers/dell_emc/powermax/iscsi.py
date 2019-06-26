@@ -113,9 +113,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Fix for PowerMax OS replication settings (bug #1812685)
               - Support for storage-assisted in-use retype
                 (bp/powermax-storage-assisted-inuse-retype)
+        4.1.0 - Changing from 90 to 91 rest endpoints
     """
 
-    VERSION = "4.0.0"
+    VERSION = "4.1.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
