@@ -1097,6 +1097,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         context = mock.sentinel.context
         volume = self._create_volume_dict(size=3)
+        volume_size_kb = 3 * units.Gi / units.Ki
         image_service = mock.sentinel.image_service
         image_id = mock.sentinel.image_id
         image_size = 2 * units.Gi
@@ -1115,8 +1116,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         select_ds_for_volume.assert_called_once_with(volume)
         vops.get_create_spec.assert_called_once_with(
-            volume['name'], 0, disk_type, summary.name, profile_id=profile_id,
-            adapter_type=adapter_type, extra_config=extra_config)
+            volume['name'], volume_size_kb, disk_type, summary.name,
+            profile_id=profile_id, adapter_type=adapter_type,
+            extra_config=extra_config)
         self.assertEqual(vm_create_spec, import_spec.configSpec)
         download_image.assert_called_with(
             context,

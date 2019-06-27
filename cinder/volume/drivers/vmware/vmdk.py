@@ -1285,13 +1285,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         profile_id = self._get_storage_profile_id(volume)
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
 
-        # The size of stream optimized glance image is often suspect,
-        # so better let vCenter figure out the disk capacity during import.
-        dummy_disk_size = 0
+        size_kb = size_gb * units.Gi / units.Ki
         extra_config = self._get_extra_config(volume)
         vm_create_spec = self.volumeops.get_create_spec(
             volume['name'],
-            dummy_disk_size,
+            size_kb,
             disk_type,
             summary.name,
             profile_id=profile_id,
