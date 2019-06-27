@@ -1413,7 +1413,7 @@ def _quota_reservations(session, context, reservations):
                        read_deleted="no",
                        session=session).\
         filter(models.Reservation.uuid.in_(reservations)).\
-        with_lockmode('update').\
+        with_for_update().\
         all()
 
 
