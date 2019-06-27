@@ -86,8 +86,6 @@ For details of each command, see the NEC Storage Manager Command Reference
   #. Set IP addresses of each iSCSI port. (iSMcfg setiscsiport)
   #. Create LD Sets for each node.
      (iSMcfg addldset)
-  #. Delete some iSCSI portal settings of each LD Sets to set to
-     ``nec_iscsi_portals_per_cont`` parameter. (iSMcfg delldsetportal)
   #. Register initiator names of each node to the corresponding LD Set.
      (iSMcfg addldsetinitiator)
 

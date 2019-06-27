@@ -343,6 +343,11 @@ xml_out = '''
      <UNIT name="LUN(h)">0000</UNIT>
      <UNIT name="LDN(h)">0000</UNIT>
     </SECTION>
+    <SECTION name="Target Information For Multi-Target Mode">
+     <UNIT name="Target Name">iqn.2001-03.target0001</UNIT>
+     <UNIT name="LUN(h)">0001</UNIT>
+     <UNIT name="LDN(h)">0006</UNIT>
+    </SECTION>
    </OBJECT>
   </CHAPTER>
  <RETURN_MSG>Command Completed Successfully!!</RETURN_MSG>
@@ -359,12 +364,18 @@ class DummyVolume(object):
         self.id = volid
         self.size = volsize
         self.status = None
-        self.migration_status = None
-        self.volume_id = None
         self.volume_type_id = None
         self.attach_status = None
         self.volume_attachment = None
         self.provider_location = None
+
+
+class DummySnapshot(object):
+
+    def __init__(self, snapid):
+        super(DummySnapshot, self).__init__()
+        self.id = snapid
+        self.volume_id = None
 
 
 @ddt.ddt
@@ -375,13 +386,12 @@ class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.mock_object(self, '_create_ismview_dir')
         self._set_config(conf.Configuration(None), 'dummy', 'dummy')
         self.do_setup(None)
-        self.vol = DummyVolume(constants.VOLUME_ID)
 
     @ddt.data(("AAAAAAAA", "LX:37mA82"), ("BBBBBBBB", "LX:3R9ZwR"))
     @ddt.unpack
     def test_volumeid_should_change_62scale(self, volid, ldname):
-        self.vol.id = volid
-        actual = self._convert_id2name(self.vol)
+        vol = DummyVolume(volid)
+        actual = self._convert_id2name(vol)
         self.assertEqual(ldname, actual,
                          "ID:%(volid)s should be change to %(ldname)s" %
                          {'volid': volid, 'ldname': ldname})
@@ -389,21 +399,21 @@ class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, test.TestCase):
     @ddt.data(("AAAAAAAA", "LX:37mA82"), ("BBBBBBBB", "LX:3R9ZwR"))
     @ddt.unpack
     def test_snap_volumeid_should_change_62scale_andpostfix(self,
-                                                            volid,
+                                                            snapid,
                                                             ldname):
-        self.vol.id = volid
-        actual = self._convert_id2snapname(self.vol)
+        snap = DummySnapshot(snapid)
+        actual = self._convert_id2snapname(snap)
         self.assertEqual(ldname, actual,
-                         "ID:%(volid)s should be change to %(ldname)s" %
-                         {'volid': volid, 'ldname': ldname})
+                         "ID:%(snapid)s should be change to %(ldname)s" %
+                         {'snapid': snapid, 'ldname': ldname})
 
     @ddt.data(("AAAAAAAA", "LX:37mA82_m"), ("BBBBBBBB", "LX:3R9ZwR_m"))
     @ddt.unpack
     def test_ddrsnap_volumeid_should_change_62scale_and_m(self,
                                                           volid,
                                                           ldname):
-        self.vol.id = volid
-        actual = self._convert_id2migratename(self.vol)
+        vol = DummyVolume(volid)
+        actual = self._convert_id2migratename(vol)
         self.assertEqual(ldname, actual,
                          "ID:%(volid)s should be change to %(ldname)s" %
                          {'volid': volid, 'ldname': ldname})
@@ -439,7 +449,6 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         for var in range(0, 1025):
             pool_data['ld_list'].append(volume)
         self.test_pools = [pool_data]
-        self.vol = DummyVolume(constants.VOLUME_ID, 10)
 
     def test_getxml(self):
         self.assertIsNotNone(self.xml, "iSMview xml should not be None")
@@ -449,15 +458,16 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(2, ldn, "selected ldn should be XXX")
 
     def test_selectpool_for_normalvolume(self):
-        pool = self._select_leastused_poolnumber(self.vol,
+        vol = DummyVolume(constants.VOLUME_ID, 10)
+        pool = self._select_leastused_poolnumber(vol,
                                                  self.pools,
                                                  self.xml)
         self.assertEqual(1, pool, "selected pool should be 1")
         # config:pool_pools=[1]
-        self.vol.size = 999999999999
+        vol.size = 999999999999
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'No available pools found.'):
-            pool = self._select_leastused_poolnumber(self.vol,
+            pool = self._select_leastused_poolnumber(vol,
                                                      self.pools,
                                                      self.xml)
 
@@ -465,24 +475,25 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(1, self._return_poolnumber(self.test_pools))
 
     def test_selectpool_for_migratevolume(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b")
+        self.VERSION = '9.99.9'
         dummyhost = {}
         dummyhost['capabilities'] = self._update_volume_status()
-        pool = self._select_migrate_poolnumber(self.vol,
+        pool = self._select_migrate_poolnumber(vol,
                                                self.pools,
                                                self.xml,
                                                dummyhost)
         self.assertEqual(1, pool, "selected pool should be 1")
-        self.vol.id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
-        pool = self._select_migrate_poolnumber(self.vol,
+        vol.id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
+        pool = self._select_migrate_poolnumber(vol,
                                                self.pools,
                                                self.xml,
                                                dummyhost)
         self.assertEqual(-1, pool, "selected pool is the same pool(return -1)")
-        self.vol.size = 999999999999
+        vol.size = 999999999999
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'No available pools found.'):
-            pool = self._select_migrate_poolnumber(self.vol,
+            pool = self._select_migrate_poolnumber(vol,
                                                    self.pools,
                                                    self.xml,
                                                    dummyhost)
@@ -490,7 +501,8 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
     def test_selectpool_for_snapvolume(self):
         savePool1 = self.pools[1]['free']
         self.pools[1]['free'] = 0
-        pool = self._select_dsv_poolnumber(self.vol, self.pools)
+        vol = DummyVolume(constants.VOLUME_ID, 10)
+        pool = self._select_dsv_poolnumber(vol, self.pools)
         self.assertEqual(2, pool, "selected pool should be 2")
         # config:pool_backup_pools=[2]
         self.pools[1]['free'] = savePool1
@@ -502,17 +514,18 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
             self.pools[3]['free'] = 0
             with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                         'No available pools found.'):
-                pool = self._select_dsv_poolnumber(self.vol, self.pools)
+                pool = self._select_dsv_poolnumber(vol, self.pools)
             self.pools[2]['free'] = savePool2
             self.pools[3]['free'] = savePool3
 
-        self.vol.size = 999999999999
-        pool = self._select_dsv_poolnumber(self.vol, self.pools)
+        vol.size = 999999999999
+        pool = self._select_dsv_poolnumber(vol, self.pools)
         self.assertEqual(2, pool, "selected pool should be 2")
         # config:pool_backup_pools=[2]
 
     def test_selectpool_for_ddrvolume(self):
-        pool = self._select_ddr_poolnumber(self.vol,
+        vol = DummyVolume(constants.VOLUME_ID, 10)
+        pool = self._select_ddr_poolnumber(vol,
                                            self.pools,
                                            self.xml,
                                            10)
@@ -525,23 +538,24 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.pools[3]['free'] = 0
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'No available pools found.'):
-            pool = self._select_ddr_poolnumber(self.vol,
+            pool = self._select_ddr_poolnumber(vol,
                                                self.pools,
                                                self.xml,
                                                10)
         self.pools[2]['free'] = savePool2
         self.pools[3]['free'] = savePool3
 
-        self.vol.size = 999999999999
+        vol.size = 999999999999
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'No available pools found.'):
-            pool = self._select_ddr_poolnumber(self.vol,
+            pool = self._select_ddr_poolnumber(vol,
                                                self.pools,
                                                self.xml,
                                                999999999999)
 
     def test_selectpool_for_volddrvolume(self):
-        pool = self._select_volddr_poolnumber(self.vol,
+        vol = DummyVolume(constants.VOLUME_ID, 10)
+        pool = self._select_volddr_poolnumber(vol,
                                               self.pools,
                                               self.xml,
                                               10)
@@ -554,17 +568,17 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.pools[1]['free'] = 0
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'No available pools found.'):
-            pool = self._select_volddr_poolnumber(self.vol,
+            pool = self._select_volddr_poolnumber(vol,
                                                   self.pools,
                                                   self.xml,
                                                   10)
         self.pools[0]['free'] = savePool0
         self.pools[1]['free'] = savePool1
 
-        self.vol.size = 999999999999
+        vol.size = 999999999999
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'No available pools found.'):
-            pool = self._select_volddr_poolnumber(self.vol,
+            pool = self._select_volddr_poolnumber(vol,
                                                   self.pools,
                                                   self.xml,
                                                   999999999999)
@@ -610,35 +624,36 @@ class VolumeCreateTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
         self.xml = xml_out
-        self.vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
 
     def test_validate_migrate_volume(self):
-        self.vol.status = 'available'
-        self._validate_migrate_volume(self.vol, self.xml)
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
+        vol.status = 'available'
+        self._validate_migrate_volume(vol, self.xml)
 
-        self.vol.status = 'creating'
+        vol.status = 'creating'
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'Specified Logical Disk'
                                     ' LX:287RbQoP7VdwR1WsPC2fZT'
                                     ' is not available.'):
-            self._validate_migrate_volume(self.vol, self.xml)
+            self._validate_migrate_volume(vol, self.xml)
 
-        self.vol.id = "AAAAAAAA"
-        self.vol.status = 'available'
+        vol.id = "AAAAAAAA"
+        vol.status = 'available'
         with self.assertRaisesRegex(exception.NotFound,
                                     'Logical Disk `LX:37mA82`'
                                     ' could not be found.'):
-            self._validate_migrate_volume(self.vol, self.xml)
+            self._validate_migrate_volume(vol, self.xml)
 
     def test_extend_volume(self):
-        self.vol.status = 'available'
-        self.extend_volume(self.vol, 10)
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
+        vol.status = 'available'
+        self.extend_volume(vol, 10)
 
-        self.vol.id = "00046058-d38e-7f60-67b7-59ed65e54225"  # RV
+        vol.id = "00046058-d38e-7f60-67b7-59ed65e54225"  # RV
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     'RPL Attribute Error. '
                                     'RPL Attribute = RV.'):
-            self.extend_volume(self.vol, 10)
+            self.extend_volume(vol, 10)
 
 
 class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
@@ -652,27 +667,28 @@ class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
         self.mock_object(self, '_bind_ld', return_value=(0, 0, 0))
-        self.vol = DummyVolume(constants.VOLUME_ID, 1)
 
     def test_bindld_CreateVolume(self):
-        self.vol.migration_status = "success"
-        self.create_volume(self.vol)
+        vol = DummyVolume(constants.VOLUME_ID, 1)
+        vol.migration_status = "success"
+        self.create_volume(vol)
         self._bind_ld.assert_called_once_with(
-            self.vol, self.vol.size, None,
+            vol, vol.size, None,
             self._convert_id2name,
             self._select_leastused_poolnumber)
 
     def test_bindld_CreateCloneVolume(self):
-        self.vol.migration_status = "success"
-        self.src = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
+        vol = DummyVolume(constants.VOLUME_ID, 1)
+        vol.migration_status = "success"
+        src = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 1)
         self.mock_object(self._cli, 'query_BV_SV_status',
                          return_value='snap/active')
         self.mock_object(self._cli, 'query_MV_RV_name',
                          return_value='separated')
         self.mock_object(self._cli, 'backup_restore')
-        self.create_cloned_volume(self.vol, self.src)
+        self.create_cloned_volume(vol, src)
         self._bind_ld.assert_called_once_with(
-            self.vol, self.vol.size, None,
+            vol, vol.size, None,
             self._convert_id2name,
             self._select_leastused_poolnumber)
 
@@ -682,16 +698,16 @@ class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(60, cli.get_sleep_time_for_clone(19))
 
     def test_delete_volume(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        detached = self._detach_from_all(self.vol)
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b")
+        detached = self._detach_from_all(vol)
         self.assertTrue(detached)
-        self.vol.id = constants.VOLUME_ID
-        detached = self._detach_from_all(self.vol)
+        vol.id = constants.VOLUME_ID
+        detached = self._detach_from_all(vol)
         self.assertFalse(detached)
-        self.vol.id = constants.VOLUME2_ID
+        vol.id = constants.VOLUME2_ID
         with mock.patch.object(self, '_detach_from_all') as detach_mock:
-            self.delete_volume(self.vol)
-            detach_mock.assert_called_once_with(self.vol)
+            self.delete_volume(vol)
+            detach_mock.assert_called_once_with(vol)
 
 
 class BindLDTest_Snap(volume_helper.MStorageDSVDriver, test.TestCase):
@@ -706,25 +722,25 @@ class BindLDTest_Snap(volume_helper.MStorageDSVDriver, test.TestCase):
         self.do_setup(None)
         self.mock_object(self, '_bind_ld', return_value=(0, 0, 0))
         self.mock_object(self, '_create_snapshot')
-        self.vol = DummyVolume(constants.VOLUME_ID)
-        self.snap = DummyVolume(constants.SNAPSHOT_ID)
 
     def test_bindld_CreateSnapshot(self):
-        self.snap.volume_id = constants.VOLUME_ID
-        self.create_snapshot(self.snap)
+        snap = DummySnapshot(constants.SNAPSHOT_ID)
+        snap.volume_id = constants.VOLUME_ID
+        self.create_snapshot(snap)
         self._create_snapshot.assert_called_once_with(
-            self.snap, self._properties['diskarray_name'])
+            snap, self._properties['diskarray_name'])
 
     def test_bindld_CreateFromSnapshot(self):
-        self.vol.migration_status = "success"
-        self.snap.id = "63410c76-2f12-4473-873d-74a63dfcd3e2"
-        self.snap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
+        vol = DummyVolume(constants.VOLUME_ID)
+        vol.migration_status = "success"
+        snap = DummySnapshot("63410c76-2f12-4473-873d-74a63dfcd3e2")
+        snap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
         self.mock_object(self._cli, 'query_BV_SV_status',
                          return_value='snap/active')
         self.mock_object(self._cli, 'backup_restore')
-        self.create_volume_from_snapshot(self.vol, self.snap)
+        self.create_volume_from_snapshot(vol, snap)
         self._bind_ld.assert_called_once_with(
-            self.vol, 1, None,
+            vol, 1, None,
             self._convert_id2name,
             self._select_volddr_poolnumber, 1)
 
@@ -739,50 +755,57 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
                          return_value=('success', 0, 0))
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b", 10)
-
-    def test_iscsi_portal(self):
-        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
-        self.iscsi_do_export(None, self.vol, connector,
-                             self._properties['diskarray_name'])
-
-    def test_fc_do_export(self):
-        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
-        self.fc_do_export(None, self.vol, connector)
 
     def test_iscsi_initialize_connection(self):
-        loc = "127.0.0.1:3260:1 iqn.2010-10.org.openstack:volume-00000001 88"
-        self.vol.provider_location = loc
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b")
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
                      'multipath': False}
-        info = self._iscsi_initialize_connection(self.vol, connector)
+        info = self.iscsi_initialize_connection(vol, connector)
         self.assertEqual('iscsi', info['driver_volume_type'])
-        self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
-                         info['data']['target_iqn'])
-        self.assertEqual('127.0.0.1:3260', info['data']['target_portal'])
-        self.assertEqual(88, info['data']['target_lun'])
+        self.assertEqual('iqn.2001-03.target0000', info['data']['target_iqn'])
+        self.assertIn(info['data']['target_portal'],
+                      ['192.168.1.90:3260', '192.168.1.91:3260',
+                       '192.168.2.92:3260', '192.168.2.93:3260'])
+        self.assertEqual(0, info['data']['target_lun'])
+
+        vol.id = "87d8d42f-7550-4f43-9a2b-fe722bf86941"
+        with self.assertRaisesRegex(exception.NotFound,
+                                    'Logical Disk `LX:48L3QCi4npuqxPX0Lyeu8H`'
+                                    ' could not be found.'):
+            self.iscsi_initialize_connection(vol, connector)
 
     def test_iscsi_multipath_initialize_connection(self):
-        self.vol.id = "46045673-41e7-44a7-9333-02f07feab04b"
-        loc = ("1.1.1.1:3260;2.2.2.2:3260,1 "
-               "iqn.2010-10.org.openstack:volume-00000001 88")
-        self.vol.provider_location = loc
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b")
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
                      'multipath': True}
-        info = self._iscsi_initialize_connection(self.vol, connector)
+        info = self.iscsi_initialize_connection(vol, connector)
         self.assertEqual('iscsi', info['driver_volume_type'])
-        self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
+        self.assertEqual('iqn.2001-03.target0000',
                          info['data']['target_iqn'])
-        self.assertEqual('1.1.1.1:3260', info['data']['target_portal'])
-        self.assertEqual(88, info['data']['target_lun'])
-        self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
+        self.assertIn(info['data']['target_portal'],
+                      ['192.168.1.90:3260', '192.168.1.91:3260',
+                       '192.168.2.92:3260', '192.168.2.93:3260'])
+        self.assertEqual(0, info['data']['target_lun'])
+        self.assertEqual('iqn.2001-03.target0000',
                          info['data']['target_iqns'][0])
-        self.assertEqual('iqn.2010-10.org.openstack:volume-00000001',
+        self.assertEqual('iqn.2001-03.target0000',
                          info['data']['target_iqns'][1])
-        self.assertEqual('1.1.1.1:3260', info['data']['target_portals'][0])
-        self.assertEqual('2.2.2.2:3260', info['data']['target_portals'][1])
-        self.assertEqual(88, info['data']['target_luns'][0])
-        self.assertEqual(88, info['data']['target_luns'][1])
+        self.assertEqual('iqn.2001-03.target0000',
+                         info['data']['target_iqns'][2])
+        self.assertEqual('iqn.2001-03.target0000',
+                         info['data']['target_iqns'][3])
+        self.assertEqual(info['data']['target_portals'][0],
+                         '192.168.1.90:3260')
+        self.assertEqual(info['data']['target_portals'][1],
+                         '192.168.1.91:3260')
+        self.assertEqual(info['data']['target_portals'][2],
+                         '192.168.2.92:3260')
+        self.assertEqual(info['data']['target_portals'][3],
+                         '192.168.2.93:3260')
+        self.assertEqual(0, info['data']['target_luns'][0])
+        self.assertEqual(0, info['data']['target_luns'][1])
+        self.assertEqual(0, info['data']['target_luns'][2])
+        self.assertEqual(0, info['data']['target_luns'][3])
 
     def test_iscsi_terminate_connection(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -1019,25 +1042,6 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         ret = self._is_multi_attachment(vol, connector)
         self.assertFalse(ret)
 
-    def test_iscsi_portal_with_controller_node_name(self):
-        self.vol.status = 'downloading'
-        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
-        self._properties['ldset_controller_node_name'] = 'LX:OpenStack1'
-        self._properties['portal_number'] = 2
-        location = self.iscsi_do_export(None, self.vol, connector,
-                                        self._properties['diskarray_name'])
-        self.assertEqual('192.168.1.90:3260;192.168.1.91:3260;'
-                         '192.168.2.92:3260;192.168.2.93:3260'
-                         ',1 iqn.2001-03.target0000 0',
-                         location['provider_location'])
-
-    def test_fc_do_export_with_controller_node_name(self):
-        self.vol.status = 'downloading'
-        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
-        self._properties['ldset_controller_node_name'] = 'LX:OpenStack0'
-        location = self.fc_do_export(None, self.vol, connector)
-        self.assertIsNone(location)
-
 
 class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
                            test.TestCase):
@@ -1050,13 +1054,13 @@ class DeleteDSVVolume_test(volume_helper.MStorageDSVDriver,
                          return_value=('success', 0, 0))
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.vol = DummyVolume(constants.SNAPSHOT_ID)
-        self.vol.volume_id = constants.VOLUME_ID
 
     def test_delete_snapshot(self):
         self.mock_object(self._cli, 'query_BV_SV_status',
                          return_value='snap/active')
-        ret = self.delete_snapshot(self.vol)
+        snap = DummySnapshot(constants.SNAPSHOT_ID)
+        snap.volume_id = constants.VOLUME_ID
+        ret = self.delete_snapshot(snap)
         self.assertIsNone(ret)
 
 
@@ -1070,8 +1074,9 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         self.mock_object(self._cli, '_execute',
                          return_value=('success', 0, 0))
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         return_value='snap/active')
         self.do_setup(None)
-        self.vol = DummyVolume('46045673-41e7-44a7-9333-02f07feab04b')
         self.xml = xml_out
         (self.pools,
          self.lds,
@@ -1081,15 +1086,16 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
          self.max_ld_count) = self.configs(self.xml)
 
     def test_validate_ld_exist(self):
+        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b")
         ldname = self._validate_ld_exist(
-            self.lds, self.vol.id, self._properties['ld_name_format'])
+            self.lds, vol.id, self._properties['ld_name_format'])
         self.assertEqual('LX:287RbQoP7VdwR1WsPC2fZT', ldname)
-        self.vol.id = "00000000-0000-0000-0000-6b6d96553b4b"
+        vol.id = "00000000-0000-0000-0000-6b6d96553b4b"
         with self.assertRaisesRegex(exception.NotFound,
                                     'Logical Disk `LX:XXXXXXXX`'
                                     ' could not be found.'):
             self._validate_ld_exist(
-                self.lds, self.vol.id, self._properties['ld_name_format'])
+                self.lds, vol.id, self._properties['ld_name_format'])
 
     def test_validate_iscsildset_exist(self):
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
@@ -1137,7 +1143,6 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
         ldset = self._validate_iscsildset_exist(self.ldsets, connector)
         self.assertEqual('LX:OpenStack0', ldset['ldsetname'])
-        self._properties['portal_number'] = 2
         portal = self._enumerate_iscsi_portals(self.hostports, ldset)
         self.assertEqual('192.168.1.90:3260', portal[0])
         self.assertEqual('192.168.1.91:3260', portal[1])
@@ -1145,50 +1150,52 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         self.assertEqual('192.168.2.93:3260', portal[3])
 
     def test_initialize_connection_snapshot(self):
-        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
-        loc = "127.0.0.1:3260:1 iqn.2010-10.org.openstack:volume-00000001 88"
-        self.vol.provider_location = loc
-        ret = self.iscsi_initialize_connection_snapshot(self.vol, connector)
+        snap = DummySnapshot('46045673-41e7-44a7-9333-02f07feab04b')
+        snap.volume_id = "92dbc7f4-dbc3-4a87-aef4-d5a2ada3a9af"
+        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
+                     'multipath': True}
+        ret = self.iscsi_initialize_connection_snapshot(snap, connector)
         self.assertIsNotNone(ret)
         self.assertEqual('iscsi', ret['driver_volume_type'])
 
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
-        ret = self.fc_initialize_connection_snapshot(self.vol, connector)
+        ret = self.fc_initialize_connection_snapshot(snap, connector)
         self.assertIsNotNone(ret)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
     def test_terminate_connection_snapshot(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        vol = fake_volume_obj(ctx, id="46045673-41e7-44a7-9333-02f07feab04b")
+        snap = fake_volume_obj(ctx, id="46045673-41e7-44a7-9333-02f07feab04b")
         connector = {'initiator': 'iqn.1994-05.com.redhat:d1d8e8f23255',
                      'host': 'DummyHost'}
         attachment = {
             'id': constants.ATTACHMENT_ID,
-            'volume_id': vol.id,
+            'volume_id': snap.id,
             'connector': connector
         }
         attach_object = volume_attachment.VolumeAttachment(**attachment)
         attachment = volume_attachment.VolumeAttachmentList(
             objects=[attach_object])
-        vol.volume_attachment = attachment
-        self.iscsi_terminate_connection_snapshot(vol, connector)
+        snap.volume_attachment = attachment
+        self.iscsi_terminate_connection_snapshot(snap, connector)
 
         connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"],
                      'host': 'DummyHost'}
         attachment = {
             'id': constants.ATTACHMENT_ID,
-            'volume_id': vol.id,
+            'volume_id': snap.id,
             'connector': connector
         }
         attach_object = volume_attachment.VolumeAttachment(**attachment)
         attachment = volume_attachment.VolumeAttachmentList(
             objects=[attach_object])
-        vol.volume_attachment = attachment
-        ret = self.fc_terminate_connection_snapshot(vol, connector)
+        snap.volume_attachment = attachment
+        ret = self.fc_terminate_connection_snapshot(snap, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
     def test_remove_export_snapshot(self):
-        self.remove_export_snapshot(None, self.vol)
+        snap = DummySnapshot('46045673-41e7-44a7-9333-02f07feab04b')
+        self.remove_export_snapshot(None, snap)
 
     def test_backup_use_temp_snapshot(self):
         ret = self.backup_use_temp_snapshot()
@@ -1204,6 +1211,7 @@ class VolumeStats_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self._properties['cli_fip'] = '10.0.0.1'
         self._properties['pool_pools'] = {0, 1}
         self._properties['pool_backup_pools'] = {2, 3}
+        self.VERSION = '9.99.9'
 
     def test_update_volume_status(self):
         self.mock_object(volume_common.MStorageVolumeCommon, 'parse_xml',
@@ -1270,12 +1278,12 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
                          return_value=('success', 0, 0))
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
         self.do_setup(None)
-        self.newvol = DummyVolume(constants.VOLUME_ID)
-        self.sourcevol = DummyVolume(constants.VOLUME2_ID)
 
     def test_update_migrate_volume(self):
-        update_data = self.update_migrated_volume(None, self.sourcevol,
-                                                  self.newvol, 'available')
+        newvol = DummyVolume(constants.VOLUME_ID)
+        sourcevol = DummyVolume(constants.VOLUME2_ID)
+        update_data = self.update_migrated_volume(None, sourcevol,
+                                                  newvol, 'available')
         self.assertIsNone(update_data['_name_id'])
         self.assertIsNone(update_data['provider_location'])
 
@@ -1290,7 +1298,6 @@ class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.do_setup(None)
         self._properties['pool_pools'] = {0}
         self._properties['pool_backup_pools'] = {1}
-        self.newvol = DummyVolume(constants.VOLUME_ID)
 
     def test_is_manageable_volume(self):
         ld_ok_iv = {'pool_num': 0, 'RPL Attribute': 'IV', 'Purpose': '---'}
@@ -1335,22 +1342,24 @@ class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
         current_volumes = []
         volumes = self.get_manageable_volumes(current_volumes, None,
                                               100, 0, ['reference'], ['dec'])
-        self.manage_existing(self.newvol, volumes[4]['reference'])
+        newvol = DummyVolume(constants.VOLUME_ID)
+        self.manage_existing(newvol, volumes[4]['reference'])
         self._cli.changeldname.assert_called_once_with(
             None, 'LX:vD03hJCiHvGpvP4iSevKk', '  :20000009910200140009')
         with self.assertRaisesRegex(exception.ManageExistingInvalidReference,
                                     'Specified resource is already in-use.'):
-            self.manage_existing(self.newvol, volumes[3]['reference'])
+            self.manage_existing(newvol, volumes[3]['reference'])
         volume = {'source-name': 'LX:yEUHrXa5AHMjOZZLb93eP'}
         with self.assertRaisesRegex(exception.ManageExistingVolumeTypeMismatch,
                                     'Volume type is unmatched.'):
-            self.manage_existing(self.newvol, volume)
+            self.manage_existing(newvol, volume)
 
     def test_manage_existing_get_size(self):
         current_volumes = []
         volumes = self.get_manageable_volumes(current_volumes, None,
                                               100, 0, ['reference'], ['dec'])
-        size_in_gb = self.manage_existing_get_size(self.newvol,
+        newvol = DummyVolume(constants.VOLUME_ID)
+        size_in_gb = self.manage_existing_get_size(newvol,
                                                    volumes[3]['reference'])
         self.assertEqual(10, size_in_gb)
 
@@ -1365,8 +1374,6 @@ class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.do_setup(None)
         self._properties['pool_pools'] = {0}
         self._properties['pool_backup_pools'] = {1}
-        self.newsnap = DummyVolume('46045673-41e7-44a7-9333-02f07feab04b')
-        self.newsnap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
 
     def test_is_manageable_snapshot(self):
         ld_ok_sv1 = {'pool_num': 1, 'RPL Attribute': 'SV', 'Purpose': 'INV'}
@@ -1400,23 +1407,25 @@ class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
         current_snapshots = []
         snaps = self.get_manageable_snapshots(current_snapshots, None,
                                               100, 0, ['reference'], ['asc'])
-        self.manage_existing_snapshot(self.newsnap, snaps[0]['reference'])
+        newsnap = DummySnapshot('46045673-41e7-44a7-9333-02f07feab04b')
+        newsnap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
+        self.manage_existing_snapshot(newsnap, snaps[0]['reference'])
         self._cli.changeldname.assert_called_once_with(
             None,
             'LX:287RbQoP7VdwR1WsPC2fZT',
             'LX:4T7JpyqI3UuPlKeT9D3VQF')
 
-        self.newsnap.volume_id = "AAAAAAAA"
+        newsnap.volume_id = "AAAAAAAA"
         with self.assertRaisesRegex(exception.ManageExistingInvalidReference,
                                     'Snapshot source is unmatch.'):
-            self.manage_existing_snapshot(self.newsnap, snaps[0]['reference'])
+            self.manage_existing_snapshot(newsnap, snaps[0]['reference'])
 
         self._cli.get_bvname.return_value = "2000000991020012000C"
-        self.newsnap.volume_id = "00046058-d38e-7f60-67b7-59ed6422520c"
+        newsnap.volume_id = "00046058-d38e-7f60-67b7-59ed6422520c"
         snap = {'source-name': '  :2000000991020012000B'}
         with self.assertRaisesRegex(exception.ManageExistingVolumeTypeMismatch,
                                     'Volume type is unmatched.'):
-            self.manage_existing_snapshot(self.newsnap, snap)
+            self.manage_existing_snapshot(newsnap, snap)
 
     def test_manage_existing_snapshot_get_size(self):
         self.mock_object(self._cli, 'get_bvname',
@@ -1424,7 +1433,9 @@ class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
         current_snapshots = []
         snaps = self.get_manageable_snapshots(current_snapshots, None,
                                               100, 0, ['reference'], ['asc'])
+        newsnap = DummySnapshot('46045673-41e7-44a7-9333-02f07feab04b')
+        newsnap.volume_id = "1febb976-86d0-42ed-9bc0-4aa3e158f27d"
         size_in_gb = self.manage_existing_snapshot_get_size(
-            self.newsnap,
+            newsnap,
             snaps[0]['reference'])
         self.assertEqual(6, size_in_gb)
