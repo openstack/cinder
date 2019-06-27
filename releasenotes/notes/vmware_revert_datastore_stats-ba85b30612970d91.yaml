@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The config option ``vmware_storage_profile`` is now deprecated
+    and ignored. Setting this option results in performance degradation
+    of the controller and put lot of load on vCenter server.
