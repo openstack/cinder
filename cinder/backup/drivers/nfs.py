@@ -19,6 +19,7 @@
 import os
 import stat
 
+from os_brick import exception as brick_exception
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
@@ -42,6 +43,11 @@ nfsbackup_service_opts = [
     cfg.StrOpt('backup_mount_options',
                help=('Mount options passed to the NFS client. See NFS '
                      'man page for details.')),
+    cfg.IntOpt('backup_mount_attempts',
+               min=1,
+               default=3,
+               help='The number of attempts to mount NFS shares before '
+                    'raising an error.'),
 ]
 
 CONF = cfg.CONF
@@ -83,8 +89,14 @@ class NFSBackupDriver(posix.PosixBackupDriver):
             self._root_helper,
             nfs_mount_point_base=self.backup_mount_point_base,
             nfs_mount_options=self.mount_options)
-        remotefsclient.mount(self.backup_share)
 
+        @utils.retry(
+            (brick_exception.BrickException, putils.ProcessExecutionError),
+            retries=CONF.backup_mount_attempts)
+        def mount():
+            remotefsclient.mount(self.backup_share)
+
+        mount()
         # Ensure we can write to this share
         mount_path = remotefsclient.get_mount_point(self.backup_share)
 
