@@ -19,10 +19,10 @@ from cinder import context
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 
 
-class TestInitializeConnectionSnapshot(scaleio.TestScaleIODriver):
+class TestInitializeConnectionSnapshot(vxflexos.TestVxFlexOSDriver):
 
     def setUp(self):
         super(TestInitializeConnectionSnapshot, self).setUp()
@@ -62,7 +62,7 @@ class TestInitializeConnectionSnapshot(scaleio.TestScaleIODriver):
     def test_initialize_connection_with_size(self):
         """Test initializing when we know the snapshot size.
 
-        ScaleIO can determine QOS specs based upon volume/snapshot size
+        VxFlex OS can determine QOS specs based upon volume/snapshot size
         The QOS keys should always be returned
         """
         snapshot = fake_snapshot.fake_snapshot_obj(

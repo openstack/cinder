@@ -79,12 +79,12 @@ from cinder.volume.drivers.dell_emc import ps as \
     cinder_volume_drivers_dell_emc_ps
 from cinder.volume.drivers.dell_emc.sc import storagecenter_common as \
     cinder_volume_drivers_dell_emc_sc_storagecentercommon
-from cinder.volume.drivers.dell_emc.scaleio import driver as \
-    cinder_volume_drivers_dell_emc_scaleio_driver
 from cinder.volume.drivers.dell_emc.unity import driver as \
     cinder_volume_drivers_dell_emc_unity_driver
 from cinder.volume.drivers.dell_emc.vnx import common as \
     cinder_volume_drivers_dell_emc_vnx_common
+from cinder.volume.drivers.dell_emc.vxflexos import driver as \
+    cinder_volume_drivers_dell_emc_vxflexos_driver
 from cinder.volume.drivers.dell_emc import xtremio as \
     cinder_volume_drivers_dell_emc_xtremio
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common as \
@@ -290,9 +290,9 @@ def list_opts():
                 cinder_volume_drivers_dell_emc_ps.eqlx_opts,
                 cinder_volume_drivers_dell_emc_sc_storagecentercommon.
                 common_opts,
-                cinder_volume_drivers_dell_emc_scaleio_driver.scaleio_opts,
                 cinder_volume_drivers_dell_emc_unity_driver.UNITY_OPTS,
                 cinder_volume_drivers_dell_emc_vnx_common.VNX_OPTS,
+                cinder_volume_drivers_dell_emc_vxflexos_driver.vxflexos_opts,
                 cinder_volume_drivers_dell_emc_xtremio.XTREMIO_OPTS,
                 cinder_volume_drivers_fujitsu_eternus_dx_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,

@@ -19,13 +19,13 @@ import ddt
 import mock
 
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 
 
 VOLUME_ID = "abcdabcd-1234-abcd-1234-abcdabcdabcd"
 PROVIDER_ID = "0000000000000001"
 
-MANAGEABLE_SCALEIO_VOLS = [
+MANAGEABLE_VXFLEXOS_VOLS = [
     {
         "volumeType": "ThinProvisioned",
         "storagePoolId": "6c6dc54500000000",
@@ -52,7 +52,7 @@ MANAGEABLE_SCALEIO_VOLS = [
     }
 ]
 
-SCALEIO_SNAPSHOT = {
+VXFLEXOS_SNAPSHOT = {
     "volumeType": "Snapshot",
     "storagePoolId": "6c6dc54500000000",
     "sizeInKb": 8388608,
@@ -61,7 +61,7 @@ SCALEIO_SNAPSHOT = {
     "mappedSdcInfo": [],
 }
 
-MANAGEABLE_SCALEIO_VOL_REFS = [
+MANAGEABLE_VXFLEXOS_VOL_REFS = [
     {
         'reference': {'source-id': PROVIDER_ID},
         'size': 8,
@@ -99,15 +99,15 @@ MANAGEABLE_SCALEIO_VOL_REFS = [
 
 
 @ddt.ddt
-class ScaleIOManageableCase(scaleio.TestScaleIODriver):
+class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
 
     def setUp(self):
         """Setup a test case environment."""
-        super(ScaleIOManageableCase, self).setUp()
+        super(VxFlexOSManageableCase, self).setUp()
 
     def _test_get_manageable_things(self,
-                                    scaleio_objects=MANAGEABLE_SCALEIO_VOLS,
-                                    expected_refs=MANAGEABLE_SCALEIO_VOL_REFS,
+                                    vxflexos_objects=MANAGEABLE_VXFLEXOS_VOLS,
+                                    expected_refs=MANAGEABLE_VXFLEXOS_VOL_REFS,
                                     cinder_objs=list()):
         marker = mock.Mock()
         limit = mock.Mock()
@@ -119,7 +119,7 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
             self.RESPONSE_MODE.Valid: {
                 'instances/StoragePool::{}/relationships/Volume'.format(
                     self.STORAGE_POOL_ID
-                ): scaleio_objects,
+                ): vxflexos_objects,
                 'types/Pool/instances/getByName::{},{}'.format(
                     self.PROT_DOMAIN_ID,
                     self.STORAGE_POOL_NAME
@@ -151,7 +151,7 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
     def test_get_manageable_volumes(self):
         """Default success case.
 
-        Given a list of scaleio volumes from the REST API, give back a list
+        Given a list of VxFlex OS volumes from the REST API, give back a list
         of volume references.
         """
 
@@ -159,12 +159,12 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
 
     def test_get_manageable_volumes_connected_vol(self):
         """Make sure volumes connected to hosts are flagged as unsafe."""
-        mapped_sdc = deepcopy(MANAGEABLE_SCALEIO_VOLS)
+        mapped_sdc = deepcopy(MANAGEABLE_VXFLEXOS_VOLS)
         mapped_sdc[0]['mappedSdcInfo'] = ["host1"]
         mapped_sdc[1]['mappedSdcInfo'] = ["host1", "host2"]
 
         # change up the expected results
-        expected_refs = deepcopy(MANAGEABLE_SCALEIO_VOL_REFS)
+        expected_refs = deepcopy(MANAGEABLE_VXFLEXOS_VOL_REFS)
         for x in range(len(mapped_sdc)):
             sdc = mapped_sdc[x]['mappedSdcInfo']
             if sdc and len(sdc) > 0:
@@ -173,7 +173,7 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
                     = 'Volume mapped to %d host(s).' % len(sdc)
 
         self._test_get_manageable_things(expected_refs=expected_refs,
-                                         scaleio_objects=mapped_sdc)
+                                         vxflexos_objects=mapped_sdc)
 
     def test_get_manageable_volumes_already_managed(self):
         """Make sure volumes already owned by cinder are flagged as unsafe."""
@@ -183,7 +183,7 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
         cinders_vols = [cinder_vol]
 
         # change up the expected results
-        expected_refs = deepcopy(MANAGEABLE_SCALEIO_VOL_REFS)
+        expected_refs = deepcopy(MANAGEABLE_VXFLEXOS_VOL_REFS)
         expected_refs[0]['reference'] = {'source-id': PROVIDER_ID}
         expected_refs[0]['safe_to_manage'] = False
         expected_refs[0]['reason_not_safe'] = 'Volume already managed.'
@@ -194,12 +194,12 @@ class ScaleIOManageableCase(scaleio.TestScaleIODriver):
 
     def test_get_manageable_volumes_no_snapshots(self):
         """Make sure refs returned do not include snapshots."""
-        volumes = deepcopy(MANAGEABLE_SCALEIO_VOLS)
-        volumes.append(SCALEIO_SNAPSHOT)
+        volumes = deepcopy(MANAGEABLE_VXFLEXOS_VOLS)
+        volumes.append(VXFLEXOS_SNAPSHOT)
 
-        self._test_get_manageable_things(scaleio_objects=volumes)
+        self._test_get_manageable_things(vxflexos_objects=volumes)
 
-    def test_get_manageable_volumes_no_scaleio_volumes(self):
-        """Expect no refs to be found if no volumes are on ScaleIO."""
-        self._test_get_manageable_things(scaleio_objects=[],
+    def test_get_manageable_volumes_no_vxflexos_volumes(self):
+        """Expect no refs to be found if no volumes are on VxFlex OS."""
+        self._test_get_manageable_things(vxflexos_objects=[],
                                          expected_refs=[])

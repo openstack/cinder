@@ -20,13 +20,13 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
-from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration
 
 
 @ddt.ddt
-class TestMisc(scaleio.TestScaleIODriver):
+class TestMisc(vxflexos.TestVxFlexOSDriver):
 
     DOMAIN_ID = '1'
     POOL_ID = '1'
@@ -159,7 +159,7 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.driver._check_volume_size(1)
 
     def test_volume_size_round_false(self):
-        self.override_config('sio_round_volume_capacity', False,
+        self.override_config('vxflexos_round_volume_capacity', False,
                              configuration.SHARED_CONF_GROUP)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._check_volume_size, 1)
@@ -243,7 +243,7 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.driver.get_volume_stats(True)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
+        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
         '_rename_volume',
         return_value=None)
     def test_update_migrated_volume(self, mock_rename):
@@ -254,7 +254,7 @@ class TestMisc(scaleio.TestScaleIODriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
+        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
         '_rename_volume',
         return_value=None)
     def test_update_unavailable_migrated_volume(self, mock_rename):
@@ -266,7 +266,7 @@ class TestMisc(scaleio.TestScaleIODriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver.'
+        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
         '_rename_volume',
         side_effect=exception.VolumeBackendAPIException(data='Error!'))
     def test_fail_update_migrated_volume(self, mock_rename):
@@ -309,7 +309,7 @@ class TestMisc(scaleio.TestScaleIODriver):
                                             expected_provisioning_type):
         self.override_config('san_thin_provision', config_provisioning_type,
                              configuration.SHARED_CONF_GROUP)
-        self.driver = mocks.ScaleIODriver(configuration=self.configuration)
+        self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
         empty_storage_type = {}
         self.assertEqual(
             expected_provisioning_type,

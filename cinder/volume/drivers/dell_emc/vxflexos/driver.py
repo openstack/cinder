@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2019 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Driver for Dell EMC ScaleIO based on ScaleIO remote CLI.
+Driver for Dell EMC VxFlex OS (formerly named Dell EMC ScaleIO).
 """
 
 import base64
@@ -43,79 +43,21 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
-from cinder.volume.drivers.dell_emc.scaleio import simplecache
+from cinder.volume.drivers.dell_emc.vxflexos import options
+from cinder.volume.drivers.dell_emc.vxflexos import simplecache
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
-
 CONF = cfg.CONF
+
+vxflexos_opts = options.deprecated_opts + options.actual_opts
+
+CONF.register_opts(vxflexos_opts, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 
-scaleio_opts = [
-    cfg.StrOpt('sio_rest_server_port',
-               default='443',
-               help='Gateway REST server port.'),
-    cfg.BoolOpt('sio_verify_server_certificate',
-                default=False,
-                help='Verify server certificate.'),
-    cfg.StrOpt('sio_server_certificate_path',
-               help='Server certificate path.'),
-    cfg.BoolOpt('sio_round_volume_capacity',
-                default=True,
-                help='Round volume sizes up to 8GB boundaries. '
-                     'VxFlex OS/ScaleIO requires volumes to be sized '
-                     'in multiples of 8GB. If set to False, volume '
-                     'creation will fail for volumes not sized properly'),
-    cfg.BoolOpt('sio_unmap_volume_before_deletion',
-                default=False,
-                help='Unmap volumes before deletion.'),
-    cfg.StrOpt('sio_storage_pools',
-               help='Storage Pools. Comma separated list of storage '
-                    'pools used to provide volumes. Each pool should '
-                    'be specified as a '
-                    'protection_domain_name:storage_pool_name value'),
-    cfg.StrOpt('sio_protection_domain_id',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by sio_storage_pools option",
-               deprecated_since="Pike",
-               help='DEPRECATED: Protection Domain ID.'),
-    cfg.StrOpt('sio_protection_domain_name',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by sio_storage_pools option",
-               deprecated_since="Pike",
-               help='DEPRECATED: Protection Domain name.'),
-    cfg.StrOpt('sio_storage_pool_name',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by sio_storage_pools option",
-               deprecated_since="Pike",
-               help='DEPRECATED: Storage Pool name.'),
-    cfg.StrOpt('sio_storage_pool_id',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by sio_storage_pools option",
-               deprecated_since="Pike",
-               help='DEPRECATED: Storage Pool ID.'),
-    cfg.StrOpt('sio_server_api_version',
-               help='VxFlex OS/ScaleIO API version. This value should be '
-                    'left as the default value unless otherwise instructed '
-                    'by technical support.'),
-    cfg.FloatOpt('sio_max_over_subscription_ratio',
-                 # This option exists to provide a default value for the
-                 # ScaleIO driver which is different than the global default.
-                 default=10.0,
-                 help='max_over_subscription_ratio setting for the driver. '
-                      'Maximum value allowed is 10.0.'),
-    cfg.BoolOpt('sio_allow_non_padded_volumes',
-                default=False,
-                help='Allow volumes to be created in Storage Pools '
-                     'when zero padding is disabled. This option should '
-                     'not be enabled if multiple tenants will utilize '
-                     'volumes from a shared Storage Pool.'),
-]
-
-CONF.register_opts(scaleio_opts, group=configuration.SHARED_CONF_GROUP)
 
 STORAGE_POOL_NAME = 'sio:sp_name'
 STORAGE_POOL_ID = 'sio:sp_id'
@@ -132,37 +74,38 @@ QOS_BANDWIDTH_PER_GB = 'maxBWSperGB'
 
 BLOCK_SIZE = 8
 VOLUME_NOT_FOUND_ERROR = 79
-# This code belongs to older versions of ScaleIO
+# This code belongs to older versions of VxFlex OS
 OLD_VOLUME_NOT_FOUND_ERROR = 78
 VOLUME_NOT_MAPPED_ERROR = 84
 ILLEGAL_SYNTAX = 0
 VOLUME_ALREADY_MAPPED_ERROR = 81
 MIN_BWS_SCALING_SIZE = 128
-SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
+VXFLEXOS_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 
 
 @interface.volumedriver
-class ScaleIODriver(driver.VolumeDriver):
-    """Cinder ScaleIO Driver
+class VxFlexOSDriver(driver.VolumeDriver):
+    """Cinder VxFlex OS(formerly named Dell EMC ScaleIO) Driver
 
     .. code-block:: none
 
-      ScaleIO Driver version history:
-        2.0.1: Added support for SIO 1.3x in addition to 2.0.x
-        2.0.2: Added consistency group support to generic volume groups
-        2.0.3: Added cache for storage pool and protection domains info
-        2.0.4: Added compatibility with os_brick>1.15.3
+      Version history:
+          2.0.1 - Added support for SIO 1.3x in addition to 2.0.x
+          2.0.2 - Added consistency group support to generic volume groups
+          2.0.3 - Added cache for storage pool and protection domains info
+          2.0.4 - Added compatibility with os_brick>1.15.3
+          2.0.5 - Change driver name, rename config file options
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DELL_EMC_ScaleIO_CI"
 
-    scaleio_qos_keys = (QOS_IOPS_LIMIT_KEY, QOS_BANDWIDTH_LIMIT,
-                        QOS_IOPS_PER_GB, QOS_BANDWIDTH_PER_GB)
+    vxflexos_qos_keys = (QOS_IOPS_LIMIT_KEY, QOS_BANDWIDTH_LIMIT,
+                         QOS_IOPS_PER_GB, QOS_BANDWIDTH_PER_GB)
 
     def __init__(self, *args, **kwargs):
-        super(ScaleIODriver, self).__init__(*args, **kwargs)
+        super(VxFlexOSDriver, self).__init__(*args, **kwargs)
 
         # simple caches for PD and SP properties
         self.spCache = simplecache.SimpleCache("Storage Pool",
@@ -171,21 +114,26 @@ class ScaleIODriver(driver.VolumeDriver):
                                                age_minutes=5)
 
         self.configuration.append_config_values(san.san_opts)
-        self.configuration.append_config_values(scaleio_opts)
+        self.configuration.append_config_values(vxflexos_opts)
         self.server_ip = self.configuration.san_ip
-        self.server_port = self.configuration.sio_rest_server_port
+        self.server_port = self.configuration.vxflexos_rest_server_port
         self.server_username = self.configuration.san_login
         self.server_password = self.configuration.san_password
         self.server_token = None
-        self.server_api_version = self.configuration.sio_server_api_version
+        self.server_api_version = (
+            self.configuration.vxflexos_server_api_version)
         # list of statistics/properties to query from SIO
         self.statisticProperties = None
         self.verify_server_certificate = (
-            self.configuration.sio_verify_server_certificate)
+            self.configuration.safe_get("sio_verify_server_certificate") or
+            self.configuration.safe_get("driver_ssl_cert_verify"))
         self.server_certificate_path = None
         if self.verify_server_certificate:
             self.server_certificate_path = (
-                self.configuration.sio_server_certificate_path)
+                self.configuration.safe_get(
+                    "sio_server_certificate_path") or
+                self.configuration.safe_get(
+                    "driver_ssl_cert_path"))
         LOG.info("REST server IP: %(ip)s, port: %(port)s, username: %("
                  "user)s. Verify server's certificate: %(verify_cert)s.",
                  {'ip': self.server_ip,
@@ -195,10 +143,10 @@ class ScaleIODriver(driver.VolumeDriver):
 
         # starting in Pike, prefer the sio_storage_pools option
         self.storage_pools = None
-        if self.configuration.sio_storage_pools:
+        if self.configuration.vxflexos_storage_pools:
             self.storage_pools = [
                 e.strip() for e in
-                self.configuration.sio_storage_pools.split(',')]
+                self.configuration.vxflexos_storage_pools.split(',')]
         LOG.info("Storage pools names: %(pools)s.",
                  {'pools': self.storage_pools})
 
@@ -216,7 +164,7 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info("Default provisioning type: %(provisioning_type)s.",
                  {'provisioning_type': self.provisioning_type})
         self.configuration.max_over_subscription_ratio = (
-            self.configuration.sio_max_over_subscription_ratio)
+            self.configuration.vxflexos_max_over_subscription_ratio)
         self.connector = initiator.connector.InitiatorConnector.factory(
             initiator.SCALEIO, utils.get_root_helper(),
             self.configuration.num_volume_device_scan_tries
@@ -236,7 +184,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
     @staticmethod
     def get_driver_options():
-        return scaleio_opts
+        return vxflexos_opts
 
     def check_for_setup_error(self):
         # make sure both domain name and id are not specified
@@ -281,27 +229,28 @@ class ScaleIODriver(driver.VolumeDriver):
         # validate oversubscription ration
         if (self.configuration.max_over_subscription_ratio is not None and
             (self.configuration.max_over_subscription_ratio -
-             SIO_MAX_OVERSUBSCRIPTION_RATIO > 1)):
+             VXFLEXOS_MAX_OVERSUBSCRIPTION_RATIO > 1)):
             msg = (_("Max over subscription is configured to %(ratio)1f "
-                     "while ScaleIO support up to %(sio_ratio)s.") %
-                   {'sio_ratio': SIO_MAX_OVERSUBSCRIPTION_RATIO,
+                     "while VxFlex OS support up to %(vxflexos_ratio)s.") %
+                   {'vxflexos_ratio': VXFLEXOS_MAX_OVERSUBSCRIPTION_RATIO,
                     'ratio': self.configuration.max_over_subscription_ratio})
             raise exception.InvalidInput(reason=msg)
 
-        # validate that version of ScaleIO is supported
+        # validate that version of VxFlex OS is supported
         server_api_version = self._get_server_api_version(fromcache=False)
         if not self._version_greater_than_or_equal(
                 server_api_version, "2.0.0"):
-            # we are running against a pre-2.0.0 ScaleIO instance
-            msg = (_("Using ScaleIO versions less than v2.0.0 has been "
-                     "deprecated and will be removed in a future version"))
+            # we are running against a pre-2.0.0 VxFlex OS(ScaleIO) instance
+            msg = (_("Using VxFlex OS(ScaleIO) versions less "
+                     "than v2.0.0 has been deprecated and will be "
+                     "removed in a future version"))
             versionutils.report_deprecated_feature(LOG, msg)
 
         # we have enough information now to validate pools
         self.storage_pools = self._build_storage_pool_list()
         if not self.storage_pools:
             msg = (_("Must specify storage pools. Option: "
-                     "sio_storage_pools."))
+                     "vxflexos_storage_pools."))
             raise exception.InvalidInput(reason=msg)
 
         # validate the storage pools and check if zero padding is enabled
@@ -327,7 +276,7 @@ class ScaleIODriver(driver.VolumeDriver):
                 LOG.warning("Zero padding is disabled for pool, %s. "
                             "This could lead to existing data being "
                             "accessible on new provisioned volumes. "
-                            "Consult the ScaleIO product documentation "
+                            "Consult the VxFlex OS product documentation "
                             "for information on how to enable zero padding "
                             "and prevent this from occurring.",
                             pool)
@@ -388,8 +337,8 @@ class ScaleIODriver(driver.VolumeDriver):
                            "querySelectedStatistics") % req_vars
                 params = {'ids': [sio_id],
                           'properties': ["thinCapacityAllocatedInKb"]}
-                r, response = self._execute_scaleio_post_request(params,
-                                                                 request)
+                r, response = self._execute_vxflexos_post_request(params,
+                                                                  request)
                 if r.status_code == http_client.OK:
                     # is it valid, use it
                     self.statisticProperties.append(
@@ -482,7 +431,7 @@ class ScaleIODriver(driver.VolumeDriver):
     @staticmethod
     def _id_to_base64(id):
         # Base64 encode the id to get a volume name less than 32 characters due
-        # to ScaleIO limitation.
+        # to VxFlex OS limitation.
         name = six.text_type(id).replace("-", "")
         try:
             name = base64.b16decode(name.upper())
@@ -494,7 +443,7 @@ class ScaleIODriver(driver.VolumeDriver):
         encoded_name = base64.b64encode(encoded_name)
         if six.PY3:
             encoded_name = encoded_name.decode('ascii')
-        LOG.debug("Converted id %(id)s to scaleio name %(name)s.",
+        LOG.debug("Converted id %(id)s to VxFlex OS name %(name)s.",
                   {'id': id, 'name': encoded_name})
         return encoded_name
 
@@ -507,7 +456,7 @@ class ScaleIODriver(driver.VolumeDriver):
         being read off of a newly created volume.
         """
         # if we have been told to allow unsafe volumes
-        if self.configuration.sio_allow_non_padded_volumes:
+        if self.configuration.vxflexos_allow_non_padded_volumes:
             # Enabled regardless of type, so safe to proceed
             return True
 
@@ -527,7 +476,7 @@ class ScaleIODriver(driver.VolumeDriver):
         return False
 
     def create_volume(self, volume):
-        """Creates a scaleIO volume."""
+        """Creates a VxFlex OS volume."""
         self._check_volume_size(volume.size)
 
         volname = self._id_to_base64(volume.id)
@@ -614,7 +563,7 @@ class ScaleIODriver(driver.VolumeDriver):
                       "zero padding being disabled for pool, %s:%s. "
                       "This behaviour can be changed by setting "
                       "the configuration option "
-                      "sio_allow_non_padded_volumes = True.",
+                      "vxflexos_allow_non_padded_volumes = True.",
                       protection_domain_name,
                       storage_pool_name)
             msg = _("Volume creation rejected due to "
@@ -634,7 +583,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'server_port': self.server_port}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/types/Volume/instances") % req_vars
-        r, response = self._execute_scaleio_post_request(params, request)
+        r, response = self._execute_vxflexos_post_request(params, request)
 
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Error creating volume: %s.") % response['message'])
@@ -651,7 +600,7 @@ class ScaleIODriver(driver.VolumeDriver):
     def _check_volume_size(self, size):
         if size % 8 != 0:
             round_volume_capacity = (
-                self.configuration.sio_round_volume_capacity)
+                self.configuration.vxflexos_round_volume_capacity)
             if not round_volume_capacity:
                 exception_msg = (_(
                                  "Cannot create volume of size %s: "
@@ -660,7 +609,7 @@ class ScaleIODriver(driver.VolumeDriver):
                 raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def create_snapshot(self, snapshot):
-        """Creates a scaleio snapshot."""
+        """Creates a VxFlex OS snapshot."""
         volume_id = snapshot.volume.provider_id
         snapname = self._id_to_base64(snapshot.id)
         return self._snapshot_volume(volume_id, snapname)
@@ -674,7 +623,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'server_port': self.server_port}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/System/action/snapshotVolumes") % req_vars
-        r, response = self._execute_scaleio_post_request(params, request)
+        r, response = self._execute_vxflexos_post_request(params, request)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for volume %(volname)s: "
                      "%(response)s.") %
@@ -685,7 +634,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
         return {'provider_id': response['volumeIdList'][0]}
 
-    def _execute_scaleio_post_request(self, params, request):
+    def _execute_vxflexos_post_request(self, params, request):
         r = requests.post(
             request,
             data=json.dumps(params),
@@ -709,8 +658,9 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info("Token is invalid, going to re-login and get "
                      "a new one.")
             login_request = (
-                "https://" + self.server_ip +
-                ":" + self.server_port + "/api/login")
+                "https://%(server_ip)s:%(server_port)s/api/login" % {
+                    "server_ip": self.server_ip,
+                    "server_port": self.server_port})
             verify_cert = self._get_verify_cert()
             r = requests.get(
                 login_request,
@@ -753,9 +703,10 @@ class ScaleIODriver(driver.VolumeDriver):
     def _get_server_api_version(self, fromcache=True):
         if self.server_api_version is None or fromcache is False:
             request = (
-                "https://" + self.server_ip +
-                ":" + self.server_port + "/api/version")
-            r, unused = self._execute_scaleio_get_request(request)
+                "https://%(server_ip)s:%(server_port)s/api/version" % {
+                    "server_ip": self.server_ip,
+                    "server_port": self.server_port})
+            r, unused = self._execute_vxflexos_get_request(request)
 
             if r.status_code == http_client.OK:
                 self.server_api_version = r.text.replace('\"', '')
@@ -777,15 +728,15 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        # We interchange 'volume' and 'snapshot' because in ScaleIO
+        # We interchange 'volume' and 'snapshot' because in VxFlex OS
         # snapshot is a volume: once a snapshot is generated it
         # becomes a new unmapped volume in the system and the user
         # may manipulate it in the same manner as any other volume
         # exposed by the system
         volume_id = snapshot.provider_id
         snapname = self._id_to_base64(volume.id)
-        LOG.info("ScaleIO create volume from snapshot: snapshot %(snapname)s "
-                 "to volume %(volname)s.",
+        LOG.info("VxFlex OS create volume from snapshot: "
+                 "snapshot %(snapname)s to volume %(volname)s.",
                  {'volname': volume_id,
                   'snapname': snapname})
 
@@ -810,7 +761,7 @@ class ScaleIODriver(driver.VolumeDriver):
         return verify_cert
 
     def extend_volume(self, volume, new_size):
-        """Extends the size of an existing available ScaleIO volume.
+        """Extends the size of an existing available VxFlex OS volume.
 
         This action will round up the volume to the nearest size that is
         a granularity of 8 GBs.
@@ -821,7 +772,8 @@ class ScaleIODriver(driver.VolumeDriver):
     def _extend_volume(self, volume_id, old_size, new_size):
         vol_id = volume_id
         LOG.info(
-            "ScaleIO extend volume: volume %(volname)s to size %(new_size)s.",
+            "VxFlex OS extend volume: "
+            "volume %(volname)s to size %(new_size)s.",
             {'volname': vol_id,
              'new_size': new_size})
 
@@ -834,20 +786,21 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info("Change volume capacity request: %s.", request)
 
         # Round up the volume size so that it is a granularity of 8 GBs
-        # because ScaleIO only supports volumes with a granularity of 8 GBs.
+        # because VxFlex OS only supports volumes with a granularity of 8 GBs.
         volume_new_size = self._round_to_num_gran(new_size)
         volume_real_old_size = self._round_to_num_gran(old_size)
         if volume_real_old_size == volume_new_size:
             return
 
-        round_volume_capacity = self.configuration.sio_round_volume_capacity
+        round_volume_capacity = (
+            self.configuration.vxflexos_round_volume_capacity)
         if not round_volume_capacity and not new_size % 8 == 0:
-            LOG.warning("ScaleIO only supports volumes with a granularity "
+            LOG.warning("VxFlex OS only supports volumes with a granularity "
                         "of 8 GBs. The new volume size is: %d.",
                         volume_new_size)
 
         params = {'sizeInGB': six.text_type(volume_new_size)}
-        r, response = self._execute_scaleio_post_request(params, request)
+        r, response = self._execute_vxflexos_post_request(params, request)
         if r.status_code != http_client.OK:
             response = r.json()
             msg = (_("Error extending volume %(vol)s: %(err)s.")
@@ -870,7 +823,7 @@ class ScaleIODriver(driver.VolumeDriver):
         """Creates a cloned volume."""
         volume_id = src_vref['provider_id']
         snapname = self._id_to_base64(volume.id)
-        LOG.info("ScaleIO create cloned volume: source volume %(src)s to "
+        LOG.info("VxFlex OS create cloned volume: source volume %(src)s to "
                  "target volume %(tgt)s.",
                  {'src': volume_id,
                   'tgt': snapname})
@@ -892,7 +845,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'vol_id': six.text_type(vol_id)}
 
         unmap_before_delete = (
-            self.configuration.sio_unmap_volume_before_deletion)
+            self.configuration.vxflexos_unmap_volume_before_deletion)
         # Ensure that the volume is not mapped to any SDC before deletion in
         # case unmap_before_deletion is enabled.
         if unmap_before_delete:
@@ -903,13 +856,13 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info("Trying to unmap volume from all sdcs"
                      " before deletion: %s.",
                      request)
-            r, unused = self._execute_scaleio_post_request(params, request)
+            r, unused = self._execute_vxflexos_post_request(params, request)
 
         params = {'removeMode': 'ONLY_ME'}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/Volume::%(vol_id)s"
                    "/action/removeVolume") % req_vars
-        r, response = self._execute_scaleio_post_request(params, request)
+        r, response = self._execute_vxflexos_post_request(params, request)
 
         if r.status_code != http_client.OK:
             error_code = response['errorCode']
@@ -918,7 +871,7 @@ class ScaleIODriver(driver.VolumeDriver):
                             " Volume not found.", vol_id)
             elif vol_id is None:
                 LOG.warning("Volume does not have provider_id thus does not "
-                            "map to a ScaleIO volume. "
+                            "map to a VxFlex OS volume. "
                             "Allowing deletion to proceed.")
             else:
                 msg = (_("Error deleting volume %(vol)s: %(err)s.") %
@@ -928,9 +881,9 @@ class ScaleIODriver(driver.VolumeDriver):
                 raise exception.VolumeBackendAPIException(data=msg)
 
     def delete_snapshot(self, snapshot):
-        """Deletes a ScaleIO snapshot."""
+        """Deletes a VxFlex OS snapshot."""
         snap_id = snapshot.provider_id
-        LOG.info("ScaleIO delete snapshot.")
+        LOG.info("VxFlex OS delete snapshot.")
         return self._delete_volume(snap_id)
 
     def initialize_connection(self, volume, connector, **kwargs):
@@ -939,7 +892,7 @@ class ScaleIODriver(driver.VolumeDriver):
     def _initialize_connection(self, vol_or_snap, connector, vol_size):
         """Initializes a connection and returns connection info.
 
-        The scaleio driver returns a driver_volume_type of 'scaleio'.
+        The VxFlex OS driver returns a driver_volume_type of 'scaleio'.
         """
 
         try:
@@ -989,7 +942,7 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info("bandwidth per gb is: %s", bw_per_gb)
             if bw_per_gb is None:
                 return max_bandwidth
-            # Since ScaleIO volumes size is in 8GB granularity
+            # Since VxFlex OS volumes size is in 8GB granularity
             # and BWS limitation is in 1024 KBs granularity, we need to make
             # sure that scaled_bw_limit is in 128 granularity.
             scaled_bw_limit = (size *
@@ -1030,7 +983,7 @@ class ScaleIODriver(driver.VolumeDriver):
     def _terminate_connection(self, volume_or_snap, connector):
         """Terminate connection to a volume or snapshot
 
-        With ScaleIO, snaps and volumes are terminated identically
+        With VxFlex OS, snaps and volumes are terminated identically
         """
         try:
             ip = connector['ip']
@@ -1046,7 +999,7 @@ class ScaleIODriver(driver.VolumeDriver):
         stats = {}
 
         backend_name = self.configuration.safe_get('volume_backend_name')
-        stats['volume_backend_name'] = backend_name or 'scaleio'
+        stats['volume_backend_name'] = backend_name or 'vxflexos'
         stats['vendor_name'] = 'Dell EMC'
         stats['driver_version'] = self.VERSION
         stats['storage_protocol'] = 'scaleio'
@@ -1079,10 +1032,11 @@ class ScaleIODriver(driver.VolumeDriver):
             props = self._get_queryable_statistics("StoragePool", pool_id)
             params = {'ids': [pool_id], 'properties': props}
 
-            r, response = self._execute_scaleio_post_request(params, request)
+            r, response = self._execute_vxflexos_post_request(params, request)
             LOG.info("Query capacity stats response: %s.", response)
             for res in response.values():
-                # Divide by two because ScaleIO creates a copy for each volume
+                # Divide by two because VxFlex OS creates
+                # a copy for each volume
                 total_capacity_kb = (
                     (res['capacityLimitInKb'] - res['spareCapacityInKb']) / 2)
                 total_capacity_gb = (self._round_down_to_num_gran
@@ -1103,7 +1057,8 @@ class ScaleIODriver(driver.VolumeDriver):
                 except (TypeError, KeyError):
                     pass
 
-                # Divide by two because ScaleIO creates a copy for each volume
+                # Divide by two because VxFlex OS creates
+                # a copy for each volume
                 provisioned_capacity = (
                     ((res['thickCapacityInUseInKb'] +
                       res['snapCapacityInUseInKb'] +
@@ -1181,13 +1136,13 @@ class ScaleIODriver(driver.VolumeDriver):
             else:
                 specs = {}
             for key, value in specs.items():
-                if key in self.scaleio_qos_keys:
+                if key in self.vxflexos_qos_keys:
                     qos[key] = value
         return qos
 
     def _sio_attach_volume(self, volume):
         """Call connector.connect_volume() and return the path. """
-        LOG.debug("Calling os-brick to attach ScaleIO volume.")
+        LOG.debug("Calling os-brick to attach VxFlex OS volume.")
         connection_properties = dict(self.connection_properties)
         connection_properties['scaleIO_volname'] = self._id_to_base64(
             volume.id)
@@ -1197,7 +1152,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def _sio_detach_volume(self, volume):
         """Call the connector.disconnect() """
-        LOG.info("Calling os-brick to detach ScaleIO volume.")
+        LOG.info("Calling os-brick to detach VxFlex OS volume.")
         connection_properties = dict(self.connection_properties)
         connection_properties['scaleIO_volname'] = self._id_to_base64(
             volume.id)
@@ -1206,8 +1161,8 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        LOG.info("ScaleIO copy_image_to_volume volume: %(vol)s image service: "
-                 "%(service)s image id: %(id)s.",
+        LOG.info("VxFlex OS copy_image_to_volume volume: "
+                 "%(vol)s image service: %(service)s image id: %(id)s.",
                  {'vol': volume,
                   'service': six.text_type(image_service),
                   'id': six.text_type(image_id)})
@@ -1225,8 +1180,8 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        LOG.info("ScaleIO copy_volume_to_image volume: %(vol)s image service: "
-                 "%(service)s image meta: %(meta)s.",
+        LOG.info("VxFlex OS copy_volume_to_image volume: "
+                 "%(vol)s image service: %(service)s image meta: %(meta)s.",
                  {'vol': volume,
                   'service': six.text_type(image_service),
                   'meta': six.text_type(image_meta)})
@@ -1240,11 +1195,11 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
-        """Return the update from ScaleIO migrated volume.
+        """Return the update from VxFlex OS migrated volume.
 
-        This method updates the volume name of the new ScaleIO volume to
+        This method updates the volume name of the new VxFlex OS volume to
         match the updated volume ID.
-        The original volume is renamed first since ScaleIO does not allow
+        The original volume is renamed first since VxFlex OS does not allow
         multiple volumes to have the same name.
         """
         name_id = None
@@ -1283,10 +1238,10 @@ class ScaleIODriver(driver.VolumeDriver):
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/Volume::%(id)s/action/setVolumeName" %
                    req_vars)
-        LOG.info("ScaleIO rename volume request: %s.", request)
+        LOG.info("VxFlex OS rename volume request: %s.", request)
 
         params = {'newName': new_name}
-        r, response = self._execute_scaleio_post_request(params, request)
+        r, response = self._execute_vxflexos_post_request(params, request)
 
         if r.status_code != http_client.OK:
             error_code = response['errorCode']
@@ -1294,7 +1249,7 @@ class ScaleIODriver(driver.VolumeDriver):
                  error_code == OLD_VOLUME_NOT_FOUND_ERROR or
                  error_code == ILLEGAL_SYNTAX)):
                 LOG.info("Ignoring renaming action because the volume "
-                         "%(vol)s is not a ScaleIO volume.",
+                         "%(vol)s is not a VxFlex OS volume.",
                          {'vol': vol_id})
             else:
                 msg = (_("Error renaming volume %(vol)s: %(err)s.") %
@@ -1302,13 +1257,14 @@ class ScaleIODriver(driver.VolumeDriver):
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         else:
-            LOG.info("ScaleIO volume %(vol)s was renamed to "
+            LOG.info("VxFlex OS volume %(vol)s was renamed to "
                      "%(new_name)s.",
                      {'vol': vol_id, 'new_name': new_name})
 
-    def _query_scaleio_volume(self, volume, existing_ref):
-        request = self._create_scaleio_get_volume_request(volume, existing_ref)
-        r, response = self._execute_scaleio_get_request(request)
+    def _query_vxflexos_volume(self, volume, existing_ref):
+        request = self._create_vxflexos_get_volume_request(volume,
+                                                           existing_ref)
+        r, response = self._execute_vxflexos_get_request(request)
         self._manage_existing_check_legal_response(r, existing_ref)
         return response
 
@@ -1332,7 +1288,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'pool_id': pool_id}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/StoragePool::%(pool_id)s") % req_vars
-        r, response = self._execute_scaleio_get_request(request)
+        r, response = self._execute_vxflexos_get_request(request)
 
         if r.status_code != http_client.OK:
             msg = (_("Error getting pool name from id %(pool_id)s: "
@@ -1359,7 +1315,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'domain_id': domain_id}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/ProtectionDomain::%(domain_id)s") % req_vars
-        r, response = self._execute_scaleio_get_request(request)
+        r, response = self._execute_vxflexos_get_request(request)
 
         if r.status_code != http_client.OK:
             msg = (_("Error getting domain name from id %(domain_id)s: "
@@ -1392,7 +1348,7 @@ class ScaleIODriver(driver.VolumeDriver):
                    "/api/types/Domain/instances/getByName::"
                    "%(encoded_domain_name)s") % req_vars
 
-        r, domain_id = self._execute_scaleio_get_request(request)
+        r, domain_id = self._execute_vxflexos_get_request(request)
 
         if not domain_id:
             msg = (_("Domain with name %s wasn't found.")
@@ -1413,7 +1369,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'domain_id': domain_id}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/ProtectionDomain::%(domain_id)s") % req_vars
-        r, response = self._execute_scaleio_get_request(request)
+        r, response = self._execute_vxflexos_get_request(request)
 
         if r.status_code != http_client.OK:
             msg = (_("Error getting domain properties from id %(domain_id)s: "
@@ -1451,8 +1407,8 @@ class ScaleIODriver(driver.VolumeDriver):
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/types/Pool/instances/getByName::"
                    "%(domain_id)s,%(encoded_pool_name)s") % req_vars
-        LOG.debug("ScaleIO get pool id by name request: %s.", request)
-        r, pool_id = self._execute_scaleio_get_request(request)
+        LOG.debug("VxFlex OS get pool id by name request: %s.", request)
+        r, pool_id = self._execute_vxflexos_get_request(request)
 
         if not pool_id:
             msg = (_("Pool with name %(pool_name)s wasn't found in "
@@ -1476,7 +1432,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'pool_id': pool_id}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/StoragePool::%(pool_id)s") % req_vars
-        r, response = self._execute_scaleio_get_request(request)
+        r, response = self._execute_vxflexos_get_request(request)
 
         if r.status_code != http_client.OK:
             msg = (_("Error getting pool properties from id %(pool_id)s: "
@@ -1498,8 +1454,8 @@ class ScaleIODriver(driver.VolumeDriver):
 
         return response['id']
 
-    def _get_all_scaleio_volumes(self):
-        """Gets list of all SIO volumes in PD and SP"""
+    def _get_all_vxflexos_volumes(self):
+        """Gets list of all VxFlex OS volumes in PD and SP"""
 
         all_volumes = []
         # check for every storage pool configured
@@ -1516,7 +1472,7 @@ class ScaleIODriver(driver.VolumeDriver):
             request = ("https://%(server_ip)s:%(server_port)s"
                        "/api/instances/StoragePool::%(storage_pool_id)s"
                        "/relationships/Volume") % req_vars
-            r, volumes = self._execute_scaleio_get_request(request)
+            r, volumes = self._execute_vxflexos_get_request(request)
 
             if r.status_code != http_client.OK:
                 msg = (_("Error calling api "
@@ -1536,7 +1492,7 @@ class ScaleIODriver(driver.VolumeDriver):
         Return references of the volume ids for any others.
         """
 
-        all_sio_volumes = self._get_all_scaleio_volumes()
+        all_sio_volumes = self._get_all_vxflexos_volumes()
 
         # Put together a map of existing cinder volumes on the array
         # so we can lookup cinder id's to SIO id
@@ -1583,25 +1539,25 @@ class ScaleIODriver(driver.VolumeDriver):
         return False
 
     def manage_existing(self, volume, existing_ref):
-        """Manage an existing ScaleIO volume.
+        """Manage an existing VxFlex OS volume.
 
         existing_ref is a dictionary of the form:
-        {'source-id': <id of ScaleIO volume>}
+        {'source-id': <id of VxFlex OS volume>}
         """
-        response = self._query_scaleio_volume(volume, existing_ref)
+        response = self._query_vxflexos_volume(volume, existing_ref)
         return {'provider_id': response['id']}
 
     def manage_existing_get_size(self, volume, existing_ref):
         return self._get_volume_size(volume, existing_ref)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
-        """Manage an existing ScaleIO snapshot.
+        """Manage an existing VxFlex OS snapshot.
 
         :param snapshot: the snapshot to manage
         :param existing_ref: dictionary of the form:
-            {'source-id': <id of ScaleIO snapshot>}
+            {'source-id': <id of VxFlex OS snapshot>}
         """
-        response = self._query_scaleio_volume(snapshot, existing_ref)
+        response = self._query_vxflexos_volume(snapshot, existing_ref)
         not_real_parent = (response.get('orig_parent_overriden') or
                            response.get('is_source_deleted'))
         if not_real_parent:
@@ -1615,7 +1571,7 @@ class ScaleIODriver(driver.VolumeDriver):
         ancestor_id = response['ancestorVolumeId']
         volume_id = snapshot.volume.provider_id
         if ancestor_id != volume_id:
-            reason = (_("The snapshot's parent in ScaleIO is %(ancestor)s "
+            reason = (_("The snapshot's parent in VxFlex OS is %(ancestor)s "
                         "and not %(volume)s.") %
                       {'ancestor': ancestor_id, 'volume': volume_id})
             raise exception.ManageExistingInvalidReference(
@@ -1628,10 +1584,10 @@ class ScaleIODriver(driver.VolumeDriver):
         return self._get_volume_size(snapshot, existing_ref)
 
     def _get_volume_size(self, volume, existing_ref):
-        response = self._query_scaleio_volume(volume, existing_ref)
+        response = self._query_vxflexos_volume(volume, existing_ref)
         return int(math.ceil(float(response['sizeInKb']) / units.Mi))
 
-    def _execute_scaleio_get_request(self, request):
+    def _execute_vxflexos_get_request(self, request):
         r = requests.get(
             request,
             auth=(
@@ -1642,7 +1598,7 @@ class ScaleIODriver(driver.VolumeDriver):
         response = r.json()
         return r, response
 
-    def _create_scaleio_get_volume_request(self, volume, existing_ref):
+    def _create_vxflexos_get_volume_request(self, volume, existing_ref):
         """Throws an exception if the input is invalid for manage existing.
 
         if the input is valid - return a request.
@@ -1666,7 +1622,7 @@ class ScaleIODriver(driver.VolumeDriver):
                     'id': vol_id}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/Volume::%(id)s" % req_vars)
-        LOG.info("ScaleIO get volume by id request: %s.", request)
+        LOG.info("VxFlex OS get volume by id request: %s.", request)
         return request
 
     def _manage_existing_check_legal_response(self, response, existing_ref):
@@ -1703,7 +1659,7 @@ class ScaleIODriver(driver.VolumeDriver):
         :param group: the group object.
         :returns: model_update
 
-        ScaleIO won't create CG until cg-snapshot creation,
+        VxFlex OS won't create CG until cg-snapshot creation,
         db will maintain the volumes and CG relationship.
         """
 
@@ -1723,7 +1679,7 @@ class ScaleIODriver(driver.VolumeDriver):
         :param volumes: a list of volume objects in the group.
         :returns: model_update, volumes_model_update
 
-        ScaleIO will delete the volumes of the CG.
+        VxFlex OS will delete the volumes of the CG.
         """
 
         # let generic volume group support handle non-cgsnapshots
@@ -1765,13 +1721,13 @@ class ScaleIODriver(driver.VolumeDriver):
         if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
 
-        def get_scaleio_snapshot_params(snapshot):
+        def get_vxflexos_snapshot_params(snapshot):
             return {
                 'volumeId': snapshot.volume['provider_id'],
                 'snapshotName': self._id_to_base64(snapshot['id'])
             }
 
-        snapshot_defs = list(map(get_scaleio_snapshot_params, snapshots))
+        snapshot_defs = list(map(get_vxflexos_snapshot_params, snapshots))
         r, response = self._snapshot_volume_group(snapshot_defs)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed creating snapshot for group: "
@@ -1780,10 +1736,10 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         snapshot_model_update = []
-        for snapshot, scaleio_id in zip(snapshots, response['volumeIdList']):
+        for snapshot, vxflexos_id in zip(snapshots, response['volumeIdList']):
             update_item = {'id': snapshot['id'],
                            'status': fields.SnapshotStatus.AVAILABLE,
-                           'provider_id': scaleio_id}
+                           'provider_id': vxflexos_id}
             snapshot_model_update.append(update_item)
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update, snapshot_model_update
@@ -1846,18 +1802,18 @@ class ScaleIODriver(driver.VolumeDriver):
         if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
-        def get_scaleio_snapshot_params(src_volume, trg_volume):
+        def get_vxflexos_snapshot_params(src_volume, trg_volume):
             return {
                 'volumeId': src_volume['provider_id'],
                 'snapshotName': self._id_to_base64(trg_volume['id'])
             }
 
         if group_snapshot and snapshots:
-            snapshot_defs = map(get_scaleio_snapshot_params,
+            snapshot_defs = map(get_vxflexos_snapshot_params,
                                 snapshots,
                                 volumes)
         else:
-            snapshot_defs = map(get_scaleio_snapshot_params,
+            snapshot_defs = map(get_vxflexos_snapshot_params,
                                 source_vols,
                                 volumes)
         r, response = self._snapshot_volume_group(list(snapshot_defs))
@@ -1868,10 +1824,10 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         volumes_model_update = []
-        for volume, scaleio_id in zip(volumes, response['volumeIdList']):
+        for volume, vxflexos_id in zip(volumes, response['volumeIdList']):
             update_item = {'id': volume['id'],
                            'status': 'available',
-                           'provider_id': scaleio_id}
+                           'provider_id': vxflexos_id}
             volumes_model_update.append(update_item)
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         return model_update, volumes_model_update
@@ -1886,7 +1842,7 @@ class ScaleIODriver(driver.VolumeDriver):
         :param remove_volumes: a list of volume objects to be removed.
         :returns: model_update, add_volumes_update, remove_volumes_update
 
-        ScaleIO does not handle volume grouping.
+        VxFlex OS does not handle volume grouping.
         Cinder maintains volumes and CG relationship.
         """
 
@@ -1898,13 +1854,13 @@ class ScaleIODriver(driver.VolumeDriver):
         raise NotImplementedError()
 
     def _snapshot_volume_group(self, snapshot_defs):
-        LOG.info("ScaleIO snapshot group of volumes")
+        LOG.info("VxFlex OS snapshot group of volumes")
         params = {'snapshotDefs': snapshot_defs}
         req_vars = {'server_ip': self.server_ip,
                     'server_port': self.server_port}
         request = ("https://%(server_ip)s:%(server_port)s"
                    "/api/instances/System/action/snapshotVolumes") % req_vars
-        return self._execute_scaleio_post_request(params, request)
+        return self._execute_vxflexos_post_request(params, request)
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""

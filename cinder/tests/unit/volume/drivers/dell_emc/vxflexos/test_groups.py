@@ -23,12 +23,12 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import scaleio
-from cinder.tests.unit.volume.drivers.dell_emc.scaleio import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 
 
-class TestGroups(scaleio.TestScaleIODriver):
-    """Test cases for ``ScaleIODriver groups support``"""
+class TestGroups(vxflexos.TestVxFlexOSDriver):
+    """Test cases for ``VxFlexOSDriver groups support``"""
 
     def setUp(self):
         """Setup a test case environment.

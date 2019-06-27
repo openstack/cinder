@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    Dell EMC ScaleIO has been rebranded to VxFlex OS. The drivers
+    ``cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver``
+    will now be updated to
+    ``cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver``
+    in cinder.conf. Driver configuration options that start with ``sio``
+    should also be updated to ``vxflexos``. Existing sio configuration options
+    will continue to work but will be removed in the V release.
+    Online documentation will also change to reflect these changes.
