@@ -16,9 +16,10 @@
 
 from cinder import utils
 
+import sys
 
 def setup(app):
     print('** Generating driver list...')
-    rv = utils.execute('./tools/generate_driver_list.py', ['docs'])
+    rv = utils.execute(sys.executable, './tools/generate_driver_list.py', ['docs'])
     print(rv[0])
 
