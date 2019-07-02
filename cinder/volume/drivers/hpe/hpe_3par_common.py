@@ -279,11 +279,13 @@ class HPE3PARCommon(object):
         4.0.10 - Added retry in delete_volume. bug #1783934
         4.0.11 - Added extra spec hpe3par:convert_to_base
         4.0.12 - Added multiattach support
+        4.0.13 - Fixed detaching issue for volume with type multiattach
+                 enabled. bug #1834660
 
 
     """
 
-    VERSION = "4.0.12"
+    VERSION = "4.0.13"
 
     stats = {}
 
@@ -3022,7 +3024,24 @@ class HPE3PARCommon(object):
                             return host['name']
 
     def terminate_connection(self, volume, hostname, wwn=None, iqn=None):
-        """Driver entry point to unattach a volume from an instance."""
+        """Driver entry point to detach a volume from an instance."""
+        if volume.multiattach:
+            attachment_list = volume.volume_attachment
+            LOG.debug("Volume attachment list: %(atl)s",
+                      {'atl': attachment_list})
+            try:
+                attachment_list = attachment_list.objects
+            except AttributeError:
+                pass
+
+            if attachment_list is not None and len(attachment_list) > 1:
+                LOG.info("Volume %(volume)s is attached to multiple "
+                         "instances on host %(host_name)s, "
+                         "skip terminate volume connection",
+                         {'volume': volume.name,
+                          'host_name': volume.host.split('@')[0]})
+                return
+
         # does 3par know this host by a different name?
         hosts = None
         if wwn:

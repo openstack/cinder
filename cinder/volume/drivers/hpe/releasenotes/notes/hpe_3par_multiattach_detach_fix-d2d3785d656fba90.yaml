@@ -1,0 +1,3 @@
+---
+features:
+  - Fixed detach issue for multiattach capability in hpe3par driver.
