@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Zadara Storage, Inc.
+# Copyright (c) 2019 Zadara Storage, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -183,7 +183,7 @@ class ZadaraVPSAConnection(object):
                               '/api/volumes/%s/detach.xml'
                               % kwargs.get('vpsa_vol'),
                               {'server_name[]': kwargs.get('vpsa_srv'),
-                               'force': 'NO'}),
+                               'force': 'YES'}),
 
             # Get operations
             'list_volumes': ('GET',
@@ -435,6 +435,16 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                         chap_passwd=ctrl.findtext('vpsa-chap-secret'))
         return None
 
+    def _detach_vpsa_volume(self, vpsa_vol):
+        """Detach volume from all attached servers."""
+        list_servers = self._get_servers_attached_to_volume(vpsa_vol)
+        for server in list_servers:
+            # Detach volume from server
+            vpsa_srv = server.findtext('name')
+            self.vpsa.send_cmd('detach_volume',
+                               vpsa_srv=vpsa_srv,
+                               vpsa_vol=vpsa_vol)
+
     def _get_server_name(self, initiator):
         """Return VPSA's name for server object with given IQN."""
         xml_tree = self.vpsa.send_cmd('list_servers')
@@ -472,18 +482,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                         'It might be already deleted', name)
             return
 
-        # Check attachment info and detach from all
-        xml_tree = self.vpsa.send_cmd('list_vol_attachments',
-                                      vpsa_vol=vpsa_vol)
-        servers = self._xml_parse_helper(xml_tree, 'servers',
-                                         ('iqn', None), first=False)
-        if servers:
-            for server in servers:
-                vpsa_srv = server.findtext('name')
-                if vpsa_srv:
-                    self.vpsa.send_cmd('detach_volume',
-                                       vpsa_srv=vpsa_srv,
-                                       vpsa_vol=vpsa_vol)
+        self._detach_vpsa_volume(vpsa_vol)
 
         # Delete volume
         self.vpsa.send_cmd('delete_volume', vpsa_vol=vpsa_vol)
@@ -684,7 +683,16 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Detach volume from the initiator."""
         # Get server name for IQN
+        if connector is None:
+            # Detach volume from all servers
+            # Get volume name
+            name = self.configuration.zadara_vol_name_template % volume['name']
+            vpsa_vol = self._get_vpsa_volume_name(name)
+            self._detach_vpsa_volume(vpsa_vol)
+            return
+
         initiator_name = connector['initiator']
+
         vpsa_srv = self._get_server_name(initiator_name)
         if not vpsa_srv:
             raise ZadaraServerNotFound(name=initiator_name)
@@ -711,9 +719,16 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
         return self._stats
 
+    def _get_servers_attached_to_volume(self, vpsa_vol):
+        """Return all servers attached to volume."""
+        xml_tree = self.vpsa.send_cmd('list_vol_attachments',
+                                      vpsa_vol=vpsa_vol)
+        list_servers = self._xml_parse_helper(xml_tree, 'servers',
+                                              ('iqn', None), first=False)
+        return list_servers or []
+
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
-
         LOG.debug("Updating volume stats")
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
