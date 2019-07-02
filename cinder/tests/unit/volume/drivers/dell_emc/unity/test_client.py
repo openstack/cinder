@@ -20,6 +20,8 @@ from oslo_utils import units
 
 from cinder import coordination
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
+    import fake_enum as enums
+from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
 from cinder.volume.drivers.dell_emc.unity import client
 
@@ -55,6 +57,8 @@ class MockResource(object):
         self.description = None
         self.luns = None
         self.lun = None
+        self.tiering_policy = None
+        self.pool_fast_vp = None
 
     @property
     def id(self):
@@ -124,7 +128,7 @@ class MockResource(object):
 
     @staticmethod
     def create_lun(lun_name, size_gb, description=None, io_limit_policy=None,
-                   is_thin=None, is_compression=None):
+                   is_thin=None, is_compression=None, tiering_policy=None):
         if lun_name == 'in_use':
             raise ex.UnityLunNameInUseError()
         ret = MockResource(lun_name, 'lun_2')
@@ -133,6 +137,8 @@ class MockResource(object):
             ret.max_kbps = io_limit_policy.max_kbps
         if is_thin is not None:
             ret.is_thin = is_thin
+        if tiering_policy is not None:
+            ret.tiering_policy = tiering_policy
         return ret
 
     @staticmethod
@@ -416,6 +422,25 @@ class ClientTest(unittest.TestCase):
         lun = self.client.create_lun(name, 6, pool, is_thin=False)
         self.assertIsNotNone(lun.is_thin)
         self.assertFalse(lun.is_thin)
+        self.assertIsNone(lun.tiering_policy)
+
+    def test_create_auto_tier_lun(self):
+        name = 'auto_tier_lun'
+        tiering_policy = enums.TieringPolicyEnum.AUTOTIER
+        pool = MockResource('Pool 0')
+        lun = self.client.create_lun(name, 6, pool,
+                                     tiering_policy=tiering_policy)
+        self.assertIsNotNone(lun.tiering_policy)
+        self.assertEqual(enums.TieringPolicyEnum.AUTOTIER, lun.tiering_policy)
+
+    def test_create_high_tier_lun(self):
+        name = 'high_tier_lun'
+        tiering_policy = enums.TieringPolicyEnum.HIGHEST
+        pool = MockResource('Pool 0')
+        lun = self.client.create_lun(name, 6, pool,
+                                     tiering_policy=tiering_policy)
+        self.assertIsNotNone(lun.tiering_policy)
+        self.assertEqual(enums.TieringPolicyEnum.HIGHEST, lun.tiering_policy)
 
     def test_thin_clone_success(self):
         name = 'tc_77'

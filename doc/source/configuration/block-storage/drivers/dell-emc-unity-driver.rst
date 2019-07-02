@@ -35,6 +35,7 @@ Supported operations
 - Efficient non-disruptive volume backup.
 - Revert a volume to a snapshot.
 - Create thick volumes.
+- Create volume with tiering policy.
 - Create and delete consistent groups.
 - Add/remove volumes to/from a consistent group.
 - Create and delete consistent group snapshots.
@@ -299,6 +300,35 @@ Unity driver supports ``maxBWS`` and ``maxIOPS`` specs for the back-end
 consumer type. ``maxBWS`` represents the ``Maximum IO/S`` absolute limit,
 ``maxIOPS`` represents the ``Maximum Bandwidth (KBPS)`` absolute limit on the
 Unity respectively.
+
+
+Storage tiering support
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Unity supports fully automated storage tiering which requires the FAST VP
+license activated on the Unity. The OpenStack administrator can use the extra
+spec key ``storagetype:tiering`` to set the tiering policy of a volume and
+use the key ``fast_support='<is> True'`` to let Block Storage scheduler find
+a volume back end which manages a Unity with FAST VP license activated. There
+are four supported values for the extra spec key ``storagetype:tiering``
+when creating volume.
+
+- Key: ``storagetype:tiering``
+- Possible values:
+
+  - ``StartHighThenAuto``
+  - ``Auto``
+  - ``HighestAvailable``
+  - ``LowestAvailable``
+
+- Default: ``StartHighThenAuto``
+
+Run the following commands to create a volume type with tiering policy:
+
+.. code-block:: console
+
+   $ openstack volume type create VolumeOnAutoTier
+   $ openstack volume type set --property storagetype:tiering=Auto --property fast_support='<is> True' VolumeOnAutoTier
 
 
 Auto-zoning support

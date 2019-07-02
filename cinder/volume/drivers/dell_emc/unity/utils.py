@@ -325,7 +325,8 @@ def append_capabilities(func):
     capabilities = {
         'thin_provisioning_support': True,
         'thick_provisioning_support': True,
-        'consistent_group_snapshot_enabled': True
+        'consistent_group_snapshot_enabled': True,
+        'fast_support': True
     }
 
     @six.wraps(func)

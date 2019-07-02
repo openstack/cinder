@@ -35,9 +35,11 @@ from cinder.volume import volume_utils
 storops = importutils.try_import('storops')
 if storops:
     from storops import exception as storops_ex
+    from storops.unity import enums
 else:
     # Set storops_ex to be None for unit test
     storops_ex = None
+    enums = None
 
 LOG = logging.getLogger(__name__)
 
@@ -62,6 +64,7 @@ class VolumeParams(object):
         self._is_compressed = None
         self._is_in_cg = None
         self._is_replication_enabled = None
+        self._tiering_policy = None
 
     @property
     def volume_id(self):
@@ -145,6 +148,27 @@ class VolumeParams(object):
         return self._is_in_cg
 
     @property
+    def tiering_policy(self):
+        tiering_policy_map = {'StartHighThenAuto':
+                              enums.TieringPolicyEnum.AUTOTIER_HIGH,
+                              'Auto':
+                              enums.TieringPolicyEnum.AUTOTIER,
+                              'HighestAvailable':
+                              enums.TieringPolicyEnum.HIGHEST,
+                              'LowestAvailable':
+                              enums.TieringPolicyEnum.LOWEST}
+        if not self._tiering_policy:
+            tiering_value = utils.get_extra_spec(self._volume,
+                                                 'storagetype:tiering')
+            support = utils.get_extra_spec(self._volume,
+                                           'fast_support') == '<is> True'
+
+            if tiering_value and support:
+                self._tiering_policy = tiering_policy_map.get(tiering_value)
+            # if no value, unity sets StartHighThenAuto as default
+        return self._tiering_policy
+
+    @property
     def cg_id(self):
         if self.is_in_cg:
             return self._volume.group_id
@@ -166,6 +190,7 @@ class VolumeParams(object):
                 self.is_compressed == other.is_compressed and
                 self.is_in_cg == other.is_in_cg and
                 self.cg_id == other.cg_id and
+                self.tiering_policy == other.tiering_policy and
                 self.is_replication_enabled == other.is_replication_enabled)
 
 
@@ -365,7 +390,8 @@ class CommonAdapter(object):
             'is_thick': params.is_thick,
             'is_compressed': params.is_compressed,
             'cg_id': params.cg_id,
-            'is_replication_enabled': params.is_replication_enabled
+            'is_replication_enabled': params.is_replication_enabled,
+            'tiering_policy': params.tiering_policy
         }
 
         LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
@@ -382,8 +408,8 @@ class CommonAdapter(object):
             description=params.description,
             io_limit_policy=params.io_limit_policy,
             is_thin=False if params.is_thick else None,
-            is_compressed=params.is_compressed)
-
+            is_compressed=params.is_compressed,
+            tiering_policy=params.tiering_policy)
         if params.cg_id:
             LOG.debug('Adding lun %(lun)s to cg %(cg)s.',
                       {'lun': lun.get_id(), 'cg': params.cg_id})
