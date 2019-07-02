@@ -15,6 +15,7 @@
 import ddt
 import mock
 import six
+from sqlalchemy.orm import attributes
 
 from cinder import db
 from cinder import objects
@@ -47,9 +48,24 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         self.assertEqual(volume, r)
         volume_get_mock.assert_called_once_with(self.context, volume.id)
 
+    def test_from_db_object_no_volume(self):
+        original_get = attributes.InstrumentedAttribute.__get__
+
+        def my_get(get_self, instance, owner):
+            self.assertNotEqual('volume', get_self.key)
+            return original_get(get_self, instance, owner)
+
+        # Volume field is not loaded
+        attach = fake_volume.models.VolumeAttachment(id=fake.ATTACHMENT_ID,
+                                                     volume_id=fake.VOLUME_ID)
+        patch_str = 'sqlalchemy.orm.attributes.InstrumentedAttribute.__get__'
+        with mock.patch(patch_str, side_effect=my_get):
+            objects.VolumeAttachment._from_db_object(
+                self.context, objects.VolumeAttachment(), attach)
+
     @mock.patch('cinder.db.volume_attachment_update')
     def test_save(self, volume_attachment_update):
-        attachment = fake_volume.fake_volume_attachment_obj(self.context)
+        attachment = fake_volume.volume_attachment_ovo(self.context)
         attachment.attach_status = fields.VolumeAttachStatus.ATTACHING
         attachment.save()
         volume_attachment_update.assert_called_once_with(
@@ -88,7 +104,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.sqlalchemy.api.volume_attached')
     def test_volume_attached(self, volume_attached):
-        attachment = fake_volume.fake_volume_attachment_obj(self.context)
+        attachment = fake_volume.volume_attachment_ovo(self.context)
         updated_values = {'mountpoint': '/dev/sda',
                           'attach_status': fields.VolumeAttachStatus.ATTACHED,
                           'instance_uuid': fake.INSTANCE_ID}
