@@ -1080,10 +1080,10 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
                                   'mountpoint': '/dev/vdc',
                                   'initiator': 'iqn.2012-07.org.fake:01'}
 
-        attachment1 = fake_volume.fake_volume_attachment_obj(self.context)
+        attachment1 = fake_volume.volume_attachment_ovo(self.context)
         attachment1.connector = connector_mountpoint_1
 
-        attachment2 = fake_volume.fake_volume_attachment_obj(self.context)
+        attachment2 = fake_volume.volume_attachment_ovo(self.context)
         attachment2.connector = connector_mountpoint_2
 
         # Create a multiattach volume object with two active attachments on
