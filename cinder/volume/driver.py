@@ -896,7 +896,8 @@ class BaseVD(object):
             image_utils.upload_volume(context,
                                       image_service,
                                       image_meta,
-                                      attach_info['device']['path'])
+                                      attach_info['device']['path'],
+                                      compress=True)
         finally:
             # Since attached volume was not used for writing we can force
             # detach it

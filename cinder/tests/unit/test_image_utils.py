@@ -124,6 +124,7 @@ class TestQemuImgInfo(test.TestCase):
             current_version=[1, 8])
 
 
+@ddt.ddt
 class TestConvertImage(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
@@ -279,6 +280,31 @@ class TestConvertImage(test.TestCase):
         mock_exec.assert_called_once_with('qemu-img', 'convert',
                                           '-O', 'vpc',
                                           source, dest, run_as_root=True)
+
+    @ddt.data(True, False)
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.utils.is_blk_device', return_value=False)
+    def test_convert_to_qcow2(self,
+                              compress_option,
+                              mock_isblk, mock_exec, mock_info):
+        self.override_config('image_compress_on_upload', compress_option)
+        source = mock.sentinel.source
+        dest = mock.sentinel.dest
+        out_format = 'qcow2'
+        mock_info.return_value.virtual_size = 1048576
+
+        image_utils.convert_image(source,
+                                  dest,
+                                  out_format,
+                                  compress=True)
+
+        exec_args = ['qemu-img', 'convert', '-O', 'qcow2']
+        if compress_option:
+            exec_args.append('-c')
+        exec_args.extend((source, dest))
+        mock_exec.assert_called_once_with(*exec_args,
+                                          run_as_root=True)
 
     @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
@@ -727,7 +753,8 @@ class TestUploadVolume(test.TestCase):
         mock_convert.assert_called_once_with(volume_path,
                                              temp_file,
                                              output_format,
-                                             run_as_root=True)
+                                             run_as_root=True,
+                                             compress=True)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
@@ -823,7 +850,8 @@ class TestUploadVolume(test.TestCase):
         mock_convert.assert_called_once_with(volume_path,
                                              temp_file,
                                              mock.sentinel.disk_format,
-                                             run_as_root=True)
+                                             run_as_root=True,
+                                             compress=True)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         self.assertFalse(image_service.update.called)
