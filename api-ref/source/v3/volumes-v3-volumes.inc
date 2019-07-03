@@ -797,5 +797,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volumes-list-summary-response.json
+.. literalinclude:: ./samples/volumes/volumes-list-summary-response.json
    :language: javascript
