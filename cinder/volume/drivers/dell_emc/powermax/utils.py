@@ -21,6 +21,7 @@ import re
 from cinder.objects.group import Group
 from oslo_log import log as logging
 from oslo_utils import strutils
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -903,3 +904,49 @@ class PowerMaxUtils(object):
             return sg_id.split('-')[1]
         except IndexError:
             return None
+
+    @staticmethod
+    def validate_qos_input(input_key, sg_value, qos_extra_spec, property_dict):
+        max_value = 100000
+        qos_unit = "IO/Sec"
+        if input_key == 'total_iops_sec':
+            min_value = 100
+            input_value = int(qos_extra_spec['total_iops_sec'])
+            sg_key = 'host_io_limit_io_sec'
+        else:
+            qos_unit = "MB/sec"
+            min_value = 1
+            input_value = int(qos_extra_spec['total_bytes_sec']) / units.Mi
+            sg_key = 'host_io_limit_mb_sec'
+        if min_value <= input_value <= max_value:
+            if sg_value is None or input_value != int(sg_value):
+                property_dict[sg_key] = input_value
+        else:
+            exception_message = (
+                _("Invalid %(ds)s with value %(dt)s entered. Valid values "
+                  "range from %(du)s %(dv)s to 100,000 %(dv)s") % {
+                    'ds': input_key, 'dt': input_value, 'du': min_value,
+                    'dv': qos_unit})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+        return property_dict
+
+    @staticmethod
+    def validate_qos_distribution_type(
+            sg_value, qos_extra_spec, property_dict):
+        dynamic_list = ['never', 'onfailure', 'always']
+        if qos_extra_spec.get('DistributionType').lower() in dynamic_list:
+            distribution_type = qos_extra_spec['DistributionType']
+            if distribution_type != sg_value:
+                property_dict["dynamicDistribution"] = distribution_type
+        else:
+            exception_message = (
+                _("Wrong Distribution type value %(dt)s entered. Please "
+                  "enter one of: %(dl)s") % {
+                    'dt': qos_extra_spec.get('DistributionType'),
+                    'dl': dynamic_list})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+        return property_dict
