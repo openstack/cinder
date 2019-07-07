@@ -1,0 +1,7 @@
+---
+issues:
+  - |
+    SmartCompression feature is disabled for the NexentaStor5 NFS driver.
+    Thick provisioned volumes created as files containing zeros are not
+    being compressed with standard compression if SmartCompression feature
+    is enabled. This functionality will be fixed in a later release.

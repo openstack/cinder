@@ -32,6 +32,25 @@ Supported operations
 
 * Change volume type.
 
+* Get volume statistics.
+
+* Revert a volume to a snapshot.
+
+* Manage and unmanage volumes and snapshots.
+
+* List manageable volumes and snapshots.
+
+* Create, modify, delete, and list consistency groups.
+
+* Create, modify, delete, and list snapshots of consistency groups.
+
+* Create consistency group from consistency group or consistency group
+  snapshot.
+
+* Support consistency groups capability to generic volume groups.
+
+* Attach a volume to multiple servers simultaneously (multiattach).
+
 iSCSI driver
 ~~~~~~~~~~~~
 
@@ -59,7 +78,7 @@ volume driver controls:
       nexenta_host=HOST-IP
 
       # Port for Rest API (integer value)
-      nexenta_rest_port=8080
+      nexenta_rest_port=8443
 
       # Username for NexentaStor Rest (string value)
       nexenta_user=USERNAME
@@ -115,13 +134,13 @@ volume driver controls:
       nas_host=HOST-IP
 
       # Port for Rest API (integer value)
-      nexenta_rest_port=8080
+      nexenta_rest_port=8443
 
       # Path to parent filesystem (string value)
       nas_share_path=POOL/FILESYSTEM
 
-      # Specify NFS version
-      nas_mount_options=vers=4
+      # Recommended NFS options
+      nas_mount_options=vers=3,minorversion=0,timeo=100,nolock
 
 #. Create filesystem on appliance and share via NFS. For example:
 

@@ -80,6 +80,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         1.8.1 - Support for NexentaStor tenants.
         1.8.2 - Added manage/unmanage/manageable-list volume/snapshot support.
         1.8.3 - Added consistency group capability to generic volume group.
+        1.8.4 - Disabled SmartCompression feature.
     """
 
     VERSION = '1.8.3'
@@ -146,8 +147,12 @@ class NexentaNfsDriver(nfs.NfsDriver):
             message = (_('NFS root filesystem %(path)s is not mounted')
                        % {'path': filesystem['mountPoint']})
             raise jsonrpc.NefException(code='ENOTDIR', message=message)
+        payload = {}
         if filesystem['nonBlockingMandatoryMode']:
-            payload = {'nonBlockingMandatoryMode': False}
+            payload['nonBlockingMandatoryMode'] = False
+        if filesystem['smartCompression']:
+            payload['smartCompression'] = False
+        if payload:
             self.nef.filesystems.set(self.root_path, payload)
         service = self.nef.services.get('nfs')
         if service['state'] != 'online':
