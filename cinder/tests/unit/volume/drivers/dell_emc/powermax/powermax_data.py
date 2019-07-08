@@ -77,6 +77,7 @@ class PowerMaxData(object):
     volume_id = '2b06255d-f5f0-4520-a953-b029196add6a'
     no_slo_sg_name = 'OS-HostX-No_SLO-OS-fibre-PG'
     temp_snapvx = 'temp-00001-snapshot_for_clone'
+    next_gen_ucode = 5978
 
     # connector info
     wwpn1 = '123456789012345'
@@ -293,6 +294,14 @@ class PowerMaxData(object):
     rep_extra_specs4['rdf_group_label'] = rdf_group_name
     rep_extra_specs5 = deepcopy(rep_extra_specs2)
     rep_extra_specs5['target_array_model'] = 'VMAX250F'
+
+    rep_extra_specs_ode = deepcopy(rep_extra_specs2)
+    rep_extra_specs_ode['array'] = array
+    rep_extra_specs_ode.pop('rep_mode')
+    rep_extra_specs_ode['mode'] = 'Metro'
+
+    rep_extra_specs_legacy = deepcopy(rep_extra_specs_ode)
+    rep_extra_specs_legacy['mode'] = 'Synchronous'
 
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',

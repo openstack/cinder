@@ -260,6 +260,7 @@ class PowerMaxProvisionTest(test.TestCase):
         device_id = self.data.device_id
         new_size = '3'
         extra_specs = self.data.extra_specs
+        rdfg_num = self.data.rdf_group_no
         with mock.patch.object(self.provision.rest, 'extend_volume'
                                ) as mock_ex:
             self.provision.extend_volume(array, device_id, new_size,
@@ -269,9 +270,9 @@ class PowerMaxProvisionTest(test.TestCase):
             mock_ex.reset_mock()
             # Pass in rdf group
             self.provision.extend_volume(array, device_id, new_size,
-                                         extra_specs, self.data.rdf_group_no)
+                                         extra_specs, rdfg_num)
             mock_ex.assert_called_once_with(
-                array, device_id, new_size, extra_specs)
+                array, device_id, new_size, extra_specs, rdfg_num)
 
     def test_get_srp_pool_stats(self):
         array = self.data.array

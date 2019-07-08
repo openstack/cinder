@@ -169,27 +169,31 @@ class PowerMaxCommon(object):
     def __init__(self, prtcl, version, configuration=None,
                  active_backend_id=None):
 
-        self.protocol = prtcl
-        self.configuration = configuration
-        self.configuration.append_config_values(powermax_opts)
         self.rest = rest.PowerMaxRest()
         self.utils = utils.PowerMaxUtils()
         self.masking = masking.PowerMaxMasking(prtcl, self.rest)
         self.provision = provision.PowerMaxProvision(self.rest)
-        self.version = version
         self.volume_metadata = volume_metadata.PowerMaxVolumeMetadata(
             self.rest, version, LOG.isEnabledFor(logging.DEBUG))
-        # replication
+
+        # Configuration/Attributes
+        self.protocol = prtcl
+        self.configuration = configuration
+        self.configuration.append_config_values(powermax_opts)
+        self.active_backend_id = active_backend_id
+        self.version = version
+        self.version_dict = {}
+        self.ucode_level = None
+        self.next_gen = False
         self.replication_enabled = False
         self.extend_replicated_vol = False
         self.rep_devices = None
-        self.active_backend_id = active_backend_id
         self.failover = False
+
+        # Gather environment info
         self._get_replication_info()
         self._get_u4p_failover_info()
-        self.next_gen = False
         self._gather_info()
-        self.version_dict = {}
 
     def _gather_info(self):
         """Gather the relevant information for update_volume_stats."""
@@ -202,7 +206,9 @@ class PowerMaxCommon(object):
                       "longer supported.")
         self.rest.set_rest_credentials(array_info)
         if array_info:
-            self.array_model, self.next_gen = self.rest.get_array_model_info(
+            self.array_model, self.next_gen = (
+                self.rest.get_array_model_info(array_info['SerialNumber']))
+            self.ucode_level = self.rest.get_array_ucode_version(
                 array_info['SerialNumber'])
         finalarrayinfolist = self._get_slo_workload_combinations(
             array_info)
@@ -949,60 +955,203 @@ class PowerMaxCommon(object):
 
         :param volume: the volume Object
         :param new_size: the new size to increase the volume to
-        :returns: dict -- modifiedVolumeDict - the extended volume Object
         :raises: VolumeBackendAPIException:
         """
-        original_vol_size = volume.size
-        volume_name = volume.name
-        extra_specs = self._initial_setup(volume)
-        array = extra_specs[utils.ARRAY]
-        device_id = self._find_device_on_array(volume, extra_specs)
+        # Set specific attributes for extend operation
+        ex_specs = self._initial_setup(volume)
+        array = ex_specs[utils.ARRAY]
+        device_id = self._find_device_on_array(volume, ex_specs)
+        vol_name = volume.name
+        orig_vol_size = volume.size
+        rep_enabled = self.utils.is_replication_enabled(ex_specs)
+        rdf_grp_no = None
+        legacy_extend = False
+        metro_exception = False
+
+        # Run validation and capabilities checks
+        self._extend_vol_validation_checks(
+            array, device_id, vol_name, ex_specs, orig_vol_size, new_size)
+        r1_ode, r1_ode_metro, r2_ode, r2_ode_metro = (
+            self._array_ode_capabilities_check(array, rep_enabled))
+
+        # Get extend workflow dependent on array gen and replication status
+        if self.next_gen:
+            if rep_enabled:
+                (rdf_grp_no, __) = self.get_rdf_details(array)
+                if self.utils.is_metro_device(self.rep_config, ex_specs):
+                    if not r1_ode_metro or not r2_ode_metro:
+                        metro_exception = True
+
+        elif not self.next_gen and rep_enabled:
+            if self.utils.is_metro_device(self.rep_config, ex_specs):
+                metro_exception = True
+            else:
+                legacy_extend = True
+
+        # If volume to be extended is SRDF Metro enabled and not FoxTail uCode
+        if metro_exception:
+            metro_exception_message = (_(
+                "Extending a replicated volume with SRDF/Metro enabled is not "
+                "permitted on this backend. Please contact your storage "
+                "administrator. Note that you cannot extend SRDF/Metro "
+                "protected volumes unless running FoxTail PowerMax OS uCode "
+                "level."))
+            LOG.error(metro_exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=metro_exception_message)
+
+        # Handle the extend process using workflow info from previous steps
+        if legacy_extend:
+            LOG.info("Legacy extend volume %(volume)s to %(new_size)d GBs",
+                     {'volume': vol_name,
+                      'new_size': int(new_size)})
+            self._extend_legacy_replicated_vol(
+                array, volume, device_id, vol_name, new_size, ex_specs)
+        else:
+            LOG.info("ODE extend volume %(volume)s to %(new_size)d GBs",
+                     {'volume': vol_name,
+                      'new_size': int(new_size)})
+            self.provision.extend_volume(
+                array, device_id, new_size, ex_specs, rdf_grp_no)
+
+        LOG.debug("Leaving extend_volume: %(volume_name)s. ",
+                  {'volume_name': vol_name})
+
+    def _extend_vol_validation_checks(self, array, device_id, vol_name,
+                                      ex_specs, orig_vol_size, new_size):
+        """Run validation checks on settings for extend volume operation.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param vol_name: the volume name
+        :param ex_specs: extra specifications
+        :param orig_vol_size: the original volume size
+        :param new_size: the new size the volume should be
+        :raises: VolumeBackendAPIException:
+        """
+        # 1 - Check device exists
         if device_id is None:
-            exception_message = (_("Cannot find Volume: %(volume_name)s. "
-                                   "Extend operation.  Exiting....")
-                                 % {'volume_name': volume_name})
+            exception_message = (_(
+                "Cannot find Volume: %(volume_name)s. Extend operation.  "
+                "Exiting....") % {'volume_name': vol_name})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
-        # Check if volume is part of an on-going clone operation
-        self._sync_check(array, device_id, extra_specs)
+
+        # 2 - Check if volume is part of an on-going clone operation or if vol
+        # has source snapshots but not next-gen array
+        self._sync_check(array, device_id, ex_specs)
         __, snapvx_src, __ = self.rest.is_vol_in_rep_session(array, device_id)
         if snapvx_src:
-            if not self.rest.is_next_gen_array(array):
+            if not self.next_gen:
                 exception_message = (
                     _("The volume: %(volume)s is a snapshot source. "
                       "Extending a volume with snapVx snapshots is only "
-                      "supported on PowerMax/VMAX from HyperMaxOS version "
-                      "5978 onwards. Exiting...") % {'volume': volume_name})
+                      "supported on PowerMax/VMAX from OS version 5978 "
+                      "onwards. Exiting...") % {'volume': vol_name})
                 LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
 
-        if int(original_vol_size) > int(new_size):
+        # 3 - Check new size is larger than old size
+        if int(orig_vol_size) >= int(new_size):
             exception_message = (_(
-                "Your original size: %(original_vol_size)s GB is greater "
-                "than: %(new_size)s GB. Only Extend is supported. Exiting...")
-                % {'original_vol_size': original_vol_size,
-                   'new_size': new_size})
+                "Your original size: %(orig_vol_size)s GB is greater "
+                "than or the same as: %(new_size)s GB. Only extend ops are "
+                "supported. Exiting...") % {'orig_vol_size': orig_vol_size,
+                                            'new_size': new_size})
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
-        LOG.info("Extending volume %(volume)s to %(new_size)d GBs",
-                 {'volume': volume_name,
-                  'new_size': int(new_size)})
-        if self.utils.is_replication_enabled(extra_specs):
-            # Extra logic required if volume is replicated
-            self.extend_volume_is_replicated(
-                array, volume, device_id, volume_name, new_size, extra_specs)
-        else:
-            self.provision.extend_volume(
-                array, device_id, new_size, extra_specs)
 
-        self.volume_metadata.capture_extend_info(
-            volume, new_size, device_id, extra_specs, array)
+    def _array_ode_capabilities_check(self, array, rep_enabled=False):
+        """Given an array, check Online Device Expansion (ODE) support.
 
-        LOG.debug("Leaving extend_volume: %(volume_name)s. ",
-                  {'volume_name': volume_name})
+        :param array: the array serial number
+        :param rep_enabled: if replication is enabled for backend
+        :returns: r1_ode: (bool) If R1 array supports ODE
+        :returns: r1_ode_metro: (bool) If R1 array supports ODE with Metro vols
+        :returns: r2_ode: (bool) If R1 array supports ODE
+        :returns: r2_ode_metro: (bool) If R1 array supports ODE with Metro vols
+        """
+        r1_ucode = self.ucode_level.split('.')
+        r1_ode, r1_ode_metro = False, False
+        r2_ode, r2_ode_metro = False, False
+
+        if self.next_gen:
+            r1_ode = True
+            if rep_enabled:
+                __, r2_array = self.get_rdf_details(array)
+                r2_ucode = self.rest.get_array_ucode_version(array)
+                if int(r1_ucode[2]) > utils.UCODE_5978_ELMSR:
+                    r1_ode_metro = True
+                    r2_ucode = r2_ucode.split('.')
+                    if self.rest.is_next_gen_array(r2_array):
+                        r2_ode = True
+                        if int(r2_ucode[2]) > utils.UCODE_5978_ELMSR:
+                            r2_ode_metro = True
+
+        return r1_ode, r1_ode_metro, r2_ode, r2_ode_metro
+
+    def _extend_legacy_replicated_vol(self, array, volume, device_id,
+                                      volume_name, new_size, extra_specs):
+        """Extend a legacy OS volume without Online Device Expansion
+
+        :param array: the array serial number
+        :param volume: the volume objcet
+        :param device_id: the volume device id
+        :param volume_name: the volume name
+        :param new_size: the new size the volume should be
+        :param extra_specs: extra specifications
+        """
+        try:
+            (target_device, remote_array, rdf_group, local_vol_state,
+             pair_state) = self.get_remote_target_device(
+                array, volume, device_id)
+            rep_extra_specs = self._get_replication_extra_specs(
+                extra_specs, self.rep_config)
+
+            # Volume must be removed from replication (storage) group before
+            # the replication relationship can be ended (cannot have a mix of
+            # replicated and non-replicated volumes as the SRDF groups become
+            # unmanageable)
+            self.masking.remove_and_reset_members(
+                array, volume, device_id, volume_name, extra_specs, False)
+            # Repeat on target side
+            self.masking.remove_and_reset_members(
+                remote_array, volume, target_device, volume_name,
+                rep_extra_specs, False)
+            LOG.info("Breaking replication relationship...")
+            self.provision.break_rdf_relationship(array, device_id,
+                                                  target_device, rdf_group,
+                                                  rep_extra_specs, pair_state)
+            # Extend the target volume
+            LOG.info("Extending target volume...")
+            # Check to make sure the R2 device requires extending first...
+            r2_size = self.rest.get_size_of_device_on_array(remote_array,
+                                                            target_device)
+            if int(r2_size) < int(new_size):
+                self.provision.extend_volume(remote_array, target_device,
+                                             new_size, rep_extra_specs)
+            # Extend the source volume
+            LOG.info("Extending source volume...")
+            self.provision.extend_volume(array, device_id, new_size,
+                                         extra_specs)
+            # Re-create replication relationship
+            LOG.info("Recreating replication relationship...")
+            self.setup_volume_replication(array, volume, device_id,
+                                          extra_specs, target_device)
+            # Check if volume needs to be returned to volume group
+            if volume.group_id:
+                self._add_new_volume_to_volume_group(
+                    volume, device_id, volume_name, extra_specs)
+
+        except Exception as e:
+            exception_message = (_("Error extending volume. Error received "
+                                   "was %(e)s") % {'e': e})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
     def update_volume_stats(self):
         """Retrieve stats info."""
@@ -3496,8 +3645,8 @@ class PowerMaxCommon(object):
             self.provision.get_or_create_group(
                 remote_array, group_name, extra_specs)
             self.masking.add_volume_to_storage_group(
-                remote_array, target_device_id,
-                group_name, volume_name, extra_specs)
+                remote_array, target_device_id, group_name, volume_name,
+                extra_specs, force=True)
         except Exception as e:
             exception_message = (
                 _('Exception occurred adding volume %(vol)s to its async '
@@ -3889,120 +4038,6 @@ class PowerMaxCommon(object):
             target_device = None
         return (target_device, remote_array, rdf_group,
                 local_vol_state, pair_state)
-
-    def extend_volume_is_replicated(
-            self, array, volume, device_id, volume_name,
-            new_size, extra_specs):
-        """Extend a replication-enabled volume.
-
-        Cannot extend volumes in a synchronization pair where the source
-        and/or target arrays are running HyperMax versions < 5978. Must first
-        break the relationship, extend them separately, then recreate the
-        pair. Extending Metro protected volumes is not supported.
-        :param array: the array serial number
-        :param volume: the volume objcet
-        :param device_id: the volume device id
-        :param volume_name: the volume name
-        :param new_size: the new size the volume should be
-        :param extra_specs: extra specifications
-        """
-        ode_replication, allow_extend = False, self.extend_replicated_vol
-        if (self.rest.is_next_gen_array(array)
-                and not self.utils.is_metro_device(
-                    self.rep_config, extra_specs)):
-            # Check if remote array is next gen
-            __, remote_array = self.get_rdf_details(array)
-            if self.rest.is_next_gen_array(remote_array):
-                ode_replication = True
-        if self.utils.is_metro_device(self.rep_config, extra_specs):
-            allow_extend = False
-        if allow_extend is True or ode_replication is True:
-            self._extend_with_or_without_ode_replication(
-                array, volume, device_id, ode_replication, volume_name,
-                new_size, extra_specs)
-        else:
-            exception_message = (_(
-                "Extending a replicated volume is not permitted on this "
-                "backend. Please contact your administrator. Note that "
-                "you cannot extend SRDF/Metro protected volumes."))
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(
-                message=exception_message)
-
-    def _extend_with_or_without_ode_replication(
-            self, array, volume, device_id, ode_replication, volume_name,
-            new_size, extra_specs):
-        """Extend a volume with or without Online Device Expansion
-
-        :param array: the array serial number
-        :param volume: the volume objcet
-        :param device_id: the volume device id
-        :param ode_replication: Online device expansion
-        :param volume_name: the volume name
-        :param new_size: the new size the volume should be
-        :param extra_specs: extra specifications
-        """
-        try:
-            (target_device, remote_array, rdf_group,
-             local_vol_state, pair_state) = (
-                self.get_remote_target_device(
-                    array, volume, device_id))
-            rep_extra_specs = self._get_replication_extra_specs(
-                extra_specs, self.rep_config)
-            lock_rdf_group = rdf_group
-            if not ode_replication:
-                # Volume must be removed from replication (storage) group
-                # before the replication relationship can be ended (cannot
-                # have a mix of replicated and non-replicated volumes as
-                # the SRDF groups become unmanageable)
-                lock_rdf_group = None
-                self.masking.remove_and_reset_members(
-                    array, volume, device_id, volume_name,
-                    extra_specs, False)
-
-                # Repeat on target side
-                self.masking.remove_and_reset_members(
-                    remote_array, volume, target_device, volume_name,
-                    rep_extra_specs, False)
-
-                LOG.info("Breaking replication relationship...")
-                self.provision.break_rdf_relationship(
-                    array, device_id, target_device, rdf_group,
-                    rep_extra_specs, pair_state)
-
-            # Extend the target volume
-            LOG.info("Extending target volume...")
-            # Check to make sure the R2 device requires extending first...
-            r2_size = self.rest.get_size_of_device_on_array(
-                remote_array, target_device)
-            if int(r2_size) < int(new_size):
-                self.provision.extend_volume(
-                    remote_array, target_device, new_size,
-                    rep_extra_specs, lock_rdf_group)
-
-            # Extend the source volume
-            LOG.info("Extending source volume...")
-            self.provision.extend_volume(
-                array, device_id, new_size, extra_specs, lock_rdf_group)
-
-            if not ode_replication:
-                # Re-create replication relationship
-                LOG.info("Recreating replication relationship...")
-                self.setup_volume_replication(
-                    array, volume, device_id, extra_specs, target_device)
-
-                # Check if volume needs to be returned to volume group
-                if volume.group_id:
-                    self._add_new_volume_to_volume_group(
-                        volume, device_id, volume_name, extra_specs)
-
-        except Exception as e:
-            exception_message = (_("Error extending volume. "
-                                   "Error received was %(e)s") %
-                                 {'e': e})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(
-                message=exception_message)
 
     def enable_rdf(self, array, volume, device_id, rdf_group_no, rep_config,
                    target_name, remote_array, target_device, extra_specs):
