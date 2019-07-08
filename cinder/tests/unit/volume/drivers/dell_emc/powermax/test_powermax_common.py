@@ -2302,21 +2302,7 @@ class PowerMaxCommonTest(test.TestCase):
         kwargs = self.common.get_attributes_from_cinder_config()
         self.assertIsNone(kwargs)
 
-    def test_get_attributes_from_cinder_config_with_port_override_old(self):
-        kwargs_expected = (
-            {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
-             'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
-             'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': self.data.port_group_name_i})
-        configuration = tpfo.FakeConfiguration(
-            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_rest_port=3448, vmax_port_groups=[self.data.port_group_name_i])
-        self.common.configuration = configuration
-        kwargs_returned = self.common.get_attributes_from_cinder_config()
-        self.assertEqual(kwargs_expected, kwargs_returned)
-
-    def test_get_attributes_from_cinder_config_with_port_override_new(self):
+    def test_get_attributes_from_cinder_config_with_port(self):
         kwargs_expected = (
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
@@ -2781,3 +2767,23 @@ class PowerMaxCommonTest(test.TestCase):
             exception.VolumeBackendAPIException,
             self.common._extend_vol_validation_checks,
             array, device_id, volume.name, extra_specs, volume.size, new_size)
+
+    def test_get_unisphere_port(self):
+        # Test user set port ID
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=1234, vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        port = self.common._get_unisphere_port()
+        self.assertEqual(1234, port)
+
+        # Test no set port ID, use default port
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            vmax_port_groups=[self.data.port_group_name_i])
+        self.common.configuration = configuration
+        ref_port = utils.DEFAULT_PORT
+        port = self.common._get_unisphere_port()
+        self.assertEqual(ref_port, port)
