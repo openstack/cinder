@@ -1004,6 +1004,28 @@ class PowerMaxData(object):
         'workload': 'DSS',
         'child_storage_group': 'OS-HostX-SRP_1-DiamondDSS-OS-fibre-PG'}
 
+    add_volume_sg_info_dict = {
+        "storageGroupId": defaultstoragegroup_name,
+        "slo": "Optimized",
+        "service_level": "Optimized",
+        "base_slo_name": "Optimized",
+        "srp": "SRP_1",
+        "slo_compliance": "NONE",
+        "num_of_vols": 39,
+        "num_of_child_sgs": 0,
+        "num_of_parent_sgs": 0,
+        "num_of_masking_views": 0,
+        "num_of_snapshots": 0,
+        "cap_gb": 109.06,
+        "device_emulation": "FBA",
+        "type": "Standalone",
+        "unprotected": "true",
+        "compression": "true",
+        "compressionRatio": "1.0:1",
+        "compression_ratio_to_one": 1,
+        "vp_saved_percent": 99.9
+    }
+
     data_dict = {volume_id: volume_info_dict}
     platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'
     unisphere_version = u'V9.1.0.1'
