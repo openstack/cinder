@@ -56,6 +56,7 @@ from cinder.volume import manager as vol_manager
 from cinder.volume import rpcapi as volume_rpcapi
 import cinder.volume.targets.tgt
 from cinder.volume import volume_types
+import os_brick.initiator.connectors.iscsi
 
 
 QUOTAS = quota.QUOTAS
@@ -1576,6 +1577,115 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         snapshot_obj.destroy()
         db.volume_destroy(self.context, src_vol_id)
         db.volume_destroy(self.context, dst_vol['id'])
+
+    @ddt.data({'connector_class':
+               os_brick.initiator.connectors.iscsi.ISCSIConnector,
+               'rekey_supported': True,
+               'already_encrypted': 'yes'},
+              {'connector_class':
+               os_brick.initiator.connectors.iscsi.ISCSIConnector,
+               'rekey_supported': True,
+               'already_encrypted': 'no'},
+              {'connector_class':
+               os_brick.initiator.connectors.rbd.RBDConnector,
+               'rekey_supported': False,
+               'already_encrypted': 'no'})
+    @ddt.unpack
+    @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask._setup_encryption_keys')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_encryption_metadata_get')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.volume.driver.VolumeDriver._detach_volume')
+    @mock.patch('cinder.volume.driver.VolumeDriver._attach_volume')
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.utils.execute')
+    def test_create_volume_from_volume_with_enc(
+            self, mock_execute, mock_brick_gcp, mock_at, mock_det,
+            mock_qemu_img_info, mock_enc_metadata_get, mock_setup_enc_keys,
+            mock_del_enc_key, connector_class=None, rekey_supported=None,
+            already_encrypted=None):
+        # create source volume
+        mock_execute.return_value = ('', '')
+        mock_enc_metadata_get.return_value = {'cipher': 'aes-xts-plain64',
+                                              'key_size': 256,
+                                              'provider': 'luks'}
+        mock_setup_enc_keys.return_value = (
+            'qwert',
+            'asdfg',
+            fake.ENCRYPTION_KEY2_ID)
+
+        params = {'status': 'creating',
+                  'size': 1,
+                  'host': CONF.host,
+                  'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        src_vol = tests_utils.create_volume(self.context, **params)
+        src_vol_id = src_vol['id']
+
+        self.volume.create_volume(self.context, src_vol)
+        db.volume_update(self.context,
+                         src_vol['id'],
+                         {'encryption_key_id': fake.ENCRYPTION_KEY_ID})
+
+        # create volume from source volume
+        params['encryption_key_id'] = fake.ENCRYPTION_KEY2_ID
+
+        attach_info = {
+            'connector': connector_class(None),
+            'device': {'path': '/some/device/thing'}}
+        mock_at.return_value = (attach_info, src_vol)
+
+        img_info = imageutils.QemuImgInfo()
+        if already_encrypted:
+            # defaults to None when not encrypted
+            img_info.encrypted = 'yes'
+        img_info.file_format = 'raw'
+        mock_qemu_img_info.return_value = img_info
+
+        dst_vol = tests_utils.create_volume(self.context,
+                                            source_volid=src_vol_id,
+                                            **params)
+        self.volume.create_volume(self.context, dst_vol)
+
+        # ensure that status of volume is 'available'
+        vol = db.volume_get(self.context, dst_vol['id'])
+        self.assertEqual('available', vol['status'])
+
+        # cleanup resource
+        db.volume_destroy(self.context, src_vol_id)
+        db.volume_destroy(self.context, dst_vol['id'])
+
+        mock_del_enc_key.assert_not_called()
+
+        if rekey_supported:
+            mock_setup_enc_keys.assert_called_once_with(
+                mock.ANY,
+                src_vol,
+                {'key_size': 256,
+                 'provider': 'luks',
+                 'cipher': 'aes-xts-plain64'}
+            )
+            if already_encrypted:
+                mock_execute.assert_called_once_with(
+                    'cryptsetup', 'luksChangeKey',
+                    '/some/device/thing',
+                    log_errors=processutils.LOG_ALL_ERRORS,
+                    process_input='qwert\nasdfg\n',
+                    run_as_root=True)
+
+            else:
+                mock_execute.assert_called_once_with(
+                    'cryptsetup', '--batch-mode', 'luksFormat',
+                    '--type', 'luks1',
+                    '--cipher', 'aes-xts-plain64', '--key-size', '256',
+                    '--key-file=-', '/some/device/thing',
+                    process_input='asdfg',
+                    run_as_root=True)
+        else:
+            mock_setup_enc_keys.assert_not_called()
+            mock_execute.assert_not_called()
+        mock_at.assert_called()
+        mock_det.assert_called()
 
     @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_from_snapshot_with_encryption(self):

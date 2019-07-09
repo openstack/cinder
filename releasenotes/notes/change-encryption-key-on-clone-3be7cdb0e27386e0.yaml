@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    When an encrypted volume is cloned, a new encryption key is generated for
+    the new volume.  This is currently implemented only for iSCSI/FC backends.

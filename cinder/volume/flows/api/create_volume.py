@@ -424,7 +424,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             volume_type_id,
             snapshot,
             source_volume,
-            image_meta)
+            image_meta)   # new key id that's been cloned already
 
         if volume_type_id:
             volume_type = objects.VolumeType.get_by_name_or_id(

@@ -10,13 +10,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import binascii
 import traceback
 
+from castellan import key_manager
+import os_brick.initiator.connectors
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import timeutils
+import six
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
@@ -53,6 +58,11 @@ IMAGE_ATTRIBUTES = (
     'min_disk',
     'min_ram',
     'size',
+)
+
+REKEY_SUPPORTED_CONNECTORS = (
+    os_brick.initiator.connectors.iscsi.ISCSIConnector,
+    os_brick.initiator.connectors.fibre_channel.FibreChannelConnector,
 )
 
 
@@ -470,6 +480,137 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                      snapshot_id=snapshot_id)
         return model_update
 
+    @staticmethod
+    def _setup_encryption_keys(context, volume, encryption):
+        """Return encryption keys in passphrase form for a clone operation.
+
+        :param context: context
+        :param volume: volume being cloned
+        :param encryption: encryption info dict
+
+        :returns: tuple (source_pass, new_pass, new_key_id)
+        """
+
+        keymgr = key_manager.API(CONF)
+        key = keymgr.get(context, encryption['encryption_key_id'])
+        source_pass = binascii.hexlify(key.get_encoded()).decode('utf-8')
+
+        new_key_id = volume_utils.create_encryption_key(context,
+                                                        keymgr,
+                                                        volume.volume_type_id)
+        new_key = keymgr.get(context, encryption['encryption_key_id'])
+        new_pass = binascii.hexlify(new_key.get_encoded()).decode('utf-8')
+
+        return (source_pass, new_pass, new_key_id)
+
+    def _rekey_volume(self, context, volume):
+        """Change encryption key on volume.
+
+        :returns: model update dict
+        """
+
+        LOG.debug('rekey volume %s', volume.name)
+
+        properties = utils.brick_get_connector_properties(False, False)
+        LOG.debug("properties: %s", properties)
+        attach_info = None
+        model_update = {}
+        new_key_id = None
+
+        try:
+            attach_info, volume = self.driver._attach_volume(context,
+                                                             volume,
+                                                             properties)
+            if not any(c for c in REKEY_SUPPORTED_CONNECTORS
+                       if isinstance(attach_info['connector'], c)):
+                LOG.debug('skipping rekey, connector: %s',
+                          attach_info['connector'])
+                raise exception.RekeyNotSupported()
+
+            LOG.debug("attempting attach for rekey, attach_info: %s",
+                      attach_info)
+
+            if (isinstance(attach_info['device']['path'], six.string_types)):
+                image_info = image_utils.qemu_img_info(
+                    attach_info['device']['path'])
+            else:
+                # Should not happen, just a safety check
+                LOG.error('%s appears to not be encrypted',
+                          attach_info['device']['path'])
+                raise exception.RekeyNotSupported()
+
+            encryption = volume_utils.check_encryption_provider(
+                self.db,
+                volume,
+                context)
+
+            (source_pass, new_pass, new_key_id) = self._setup_encryption_keys(
+                context,
+                volume,
+                encryption)
+
+            if image_info.encrypted == 'yes':
+                key_str = source_pass + "\n" + new_pass + "\n"
+                del source_pass
+
+                (out, err) = utils.execute(
+                    'cryptsetup',
+                    'luksChangeKey',
+                    attach_info['device']['path'],
+                    run_as_root=True,
+                    process_input=key_str,
+                    log_errors=processutils.LOG_ALL_ERRORS)
+
+                del key_str
+                model_update = {'encryption_key_id': new_key_id}
+            else:
+                # volume has not been written to yet, format with luks
+                del source_pass
+
+                if image_info.file_format != 'raw':
+                    # Something has gone wrong if the image is not encrypted
+                    # and is detected as another format.
+                    raise exception.Invalid()
+
+                if encryption['provider'] == 'luks':
+                    # Force ambiguous "luks" provider to luks1 for
+                    # compatibility with new versions of cryptsetup.
+                    encryption['provider'] = 'luks1'
+
+                (out, err) = utils.execute(
+                    'cryptsetup',
+                    '--batch-mode',
+                    'luksFormat',
+                    '--type', encryption['provider'],
+                    '--cipher', encryption['cipher'],
+                    '--key-size', str(encryption['key_size']),
+                    '--key-file=-',
+                    attach_info['device']['path'],
+                    run_as_root=True,
+                    process_input=new_pass)
+                del new_pass
+                model_update = {'encryption_key_id': new_key_id}
+
+        except exception.RekeyNotSupported:
+            pass
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                if new_key_id is not None:
+                    # Remove newly cloned key since it will not be used.
+                    volume_utils.delete_encryption_key(
+                        context,
+                        key_manager.API(CONF),
+                        new_key_id)
+        finally:
+            if attach_info:
+                self.driver._detach_volume(context,
+                                           attach_info,
+                                           volume,
+                                           properties,
+                                           force=True)
+
+        return model_update
+
     def _create_from_source_volume(self, context, volume, source_volid,
                                    **kwargs):
         # NOTE(harlowja): if the source volume has disappeared this will be our
@@ -481,6 +622,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         srcvol_ref = objects.Volume.get_by_id(context, source_volid)
         try:
             model_update = self.driver.create_cloned_volume(volume, srcvol_ref)
+            if model_update is None:
+                model_update = {}
+            if volume.encryption_key_id is not None:
+                rekey_model_update = self._rekey_volume(context, volume)
+                model_update.update(rekey_model_update)
         finally:
             self._cleanup_cg_in_volume(volume)
         # NOTE(harlowja): Subtasks would be useful here since after this
