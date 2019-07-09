@@ -1174,7 +1174,7 @@ def copy_image_to_volume(driver, context, volume, image_meta, image_location,
                'image_location': image_location})
 
 
-def _image_conversion_dir():
+def image_conversion_dir():
     tmpdir = (CONF.image_conversion_dir or
               tempfile.gettempdir())
 
