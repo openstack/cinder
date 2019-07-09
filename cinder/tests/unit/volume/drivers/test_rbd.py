@@ -347,14 +347,14 @@ class RBDTestCase(test.TestCase):
                               self.context)
 
     @mock.patch.object(driver.RBDDriver, '_enable_replication',
-                       return_value=mock.sentinel.volume_update)
+                       return_value={'replication': 'enabled'})
     def test_setup_volume_with_replication(self, mock_enable):
         self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
             self.context,
             id=fake.VOLUME_TYPE_ID,
             extra_specs={'replication_enabled': '<is> True'})
         res = self.driver._setup_volume(self.volume_a)
-        self.assertEqual(mock.sentinel.volume_update, res)
+        self.assertEqual('enabled', res['replication'])
         mock_enable.assert_called_once_with(self.volume_a)
 
     @ddt.data(False, True)
@@ -365,7 +365,7 @@ class RBDTestCase(test.TestCase):
         if enabled:
             expect = {'replication_status': fields.ReplicationStatus.DISABLED}
         else:
-            expect = None
+            expect = {}
         self.assertEqual(expect, res)
         mock_enable.assert_not_called()
 
@@ -458,7 +458,7 @@ class RBDTestCase(test.TestCase):
 
         res = self.driver.create_volume(self.volume_a)
 
-        self.assertIsNone(res)
+        self.assertEqual({}, res)
         chunk_size = self.cfg.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
         args = [client.ioctx, str(self.volume_a.name),
@@ -1038,7 +1038,7 @@ class RBDTestCase(test.TestCase):
                 res = self.driver.create_cloned_volume(self.volume_b,
                                                        self.volume_a)
 
-                self.assertIsNone(res)
+                self.assertEqual({}, res)
                 (self.mock_rbd.Image.return_value.create_snap
                     .assert_called_once_with('.'.join(
                         (self.volume_b.name, 'clone_snap'))))
@@ -1104,7 +1104,7 @@ class RBDTestCase(test.TestCase):
                 res = self.driver.create_cloned_volume(self.volume_b,
                                                        self.volume_a)
 
-                self.assertIsNone(res)
+                self.assertEqual({}, res)
                 (self.mock_rbd.Image.return_value.create_snap
                     .assert_called_once_with('.'.join(
                         (self.volume_b.name, 'clone_snap'))))
@@ -1153,7 +1153,7 @@ class RBDTestCase(test.TestCase):
                 res = self.driver.create_cloned_volume(self.volume_b,
                                                        self.volume_a)
 
-                self.assertIsNone(res)
+                self.assertEqual({}, res)
                 (self.mock_rbd.Image.return_value.create_snap
                  .assert_called_once_with('.'.join(
                      (self.volume_b.name, 'clone_snap'))))
@@ -1706,7 +1706,7 @@ class RBDTestCase(test.TestCase):
         if enabled:
             expect = {'replication_status': fields.ReplicationStatus.DISABLED}
         else:
-            expect = None
+            expect = {}
         context = {}
         diff = {'encryption': {},
                 'extra_specs': {}}
@@ -1750,9 +1750,9 @@ class RBDTestCase(test.TestCase):
     @ddt.unpack
     @common_mocks
     @mock.patch.object(driver.RBDDriver, '_disable_replication',
-                       return_value=mock.sentinel.disable_replication)
+                       return_value={'replication': 'disabled'})
     @mock.patch.object(driver.RBDDriver, '_enable_replication',
-                       return_value=mock.sentinel.enable_replication)
+                       return_value={'replication': 'enabled'})
     def test_retype_replicated(self, mock_disable, mock_enable, old_replicated,
                                new_replicated):
         """Test retyping a non replicated volume.
@@ -1771,15 +1771,15 @@ class RBDTestCase(test.TestCase):
         if new_replicated:
             new_type = replicated_type
             if old_replicated:
-                update = None
+                update = {}
             else:
-                update = mock.sentinel.enable_replication
+                update = {'replication': 'enabled'}
         else:
             new_type = fake_volume.fake_volume_type_obj(
                 self.context,
                 id=fake.VOLUME_TYPE2_ID),
             if old_replicated:
-                update = mock.sentinel.disable_replication
+                update = {'replication': 'disabled'}
             else:
                 update = {'replication_status':
                           fields.ReplicationStatus.DISABLED}
