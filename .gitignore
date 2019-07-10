@@ -22,6 +22,7 @@ cover/*
 covhtml
 dist/*
 etc/cinder/cinder.conf.sample
+etc/cinder/policy.yaml.sample
 instances
 keeper
 keys
