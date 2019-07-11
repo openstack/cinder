@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Zadara Storage, Inc.
+# Copyright (c) 2019 Zadara Storage, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -631,6 +631,24 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         volume = {'name': 'test_volume_01', 'size': 1}
         self.assertRaises(exception.BadHTTPResponseStatus,
                           self.driver.create_volume, volume)
+
+    @mock.patch.object(requests, 'request', FakeRequests)
+    def test_termiante_connection_force_detach(self):
+        """Test terminate connection for os-force_detach """
+        volume = {'name': 'test_volume_01', 'size': 1, 'id': 101}
+        connector = dict(initiator='test_iqn.1')
+
+        self.driver.create_volume(volume)
+        self.driver.initialize_connection(volume, connector)
+
+        # connector is None - force detach - detach all mappings
+        self.driver.terminate_connection(volume, None)
+
+        self.assertRaises(zadara.exception.FailedCmdWithDump,
+                          self.driver.terminate_connection,
+                          volume, connector)
+
+        self.driver.delete_volume(volume)
 
     @mock.patch.object(requests, 'request', FakeRequests)
     def test_delete_without_detach(self):
