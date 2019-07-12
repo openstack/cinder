@@ -113,6 +113,18 @@ tests.
 The details for the required volume driver interfaces can be found in the
 ``cinder/interface/volume_*_driver.py`` source.
 
+New Driver Review Checklist
+---------------------------
+
+There are some common issues caught during the review of new driver patches
+that can easily be avoided. New driver maintainers should review the
+:doc:`new_driver_checklist` for some things to watch out for.
+
+.. toctree::
+   :hidden:
+
+   new_driver_checklist
+
 Driver Development Documentations
 ---------------------------------
 
