@@ -26,6 +26,16 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers import zadara
 
 
+def check_access_key(func):
+    """A decorator for all operations that needed an API before executing"""
+    def wrap(self, *args, **kwargs):
+        if not self._is_correct_access_key():
+            return RUNTIME_VARS['bad_login']
+        return func(self, *args, **kwargs)
+
+    return wrap
+
+
 DEFAULT_RUNTIME_VARS = {
     'status': 200,
     'user': 'test',
@@ -83,11 +93,19 @@ RUNTIME_VARS = None
 
 
 class FakeResponse(object):
-    def __init__(self, method, url, body):
+    def __init__(self, method, url, params, body, headers, **kwargs):
+        # kwargs include: verify, timeout
         self.method = method
         self.url = url
         self.body = body
+        self.params = params
+        self.headers = headers
         self.status = RUNTIME_VARS['status']
+
+    @property
+    def access_key(self):
+        """Returns Response Access Key"""
+        return self.headers["X-Access-Key"]
 
     def read(self):
         ops = {'POST': [('/api/users/login.xml', self._login),
@@ -113,13 +131,13 @@ class FakeResponse(object):
                }
 
         ops_list = ops[self.method]
-        modified_url = self.url.split('?')[0]
         for (templ_url, func) in ops_list:
-            if self._compare_url(modified_url, templ_url):
+            if self._compare_url(self.url, templ_url):
                 result = func()
                 return result
 
-    def _compare_url(self, url, template_url):
+    @staticmethod
+    def _compare_url(url, template_url):
         items = url.split('/')
         titems = template_url.split('/')
         for (i, titem) in enumerate(titems):
@@ -127,36 +145,26 @@ class FakeResponse(object):
                 return False
         return True
 
-    def _get_parameters(self, data):
-        items = data.split('&')
-        params = {}
-        for item in items:
-            if item:
-                (k, v) = item.split('=')
-                params[k] = v
-        return params
-
-    def _get_counter(self):
+    @staticmethod
+    def _get_counter():
         cnt = RUNTIME_VARS['counter']
         RUNTIME_VARS['counter'] += 1
         return cnt
 
     def _login(self):
-        params = self._get_parameters(self.body)
+        params = self.body
         if (params['user'] == RUNTIME_VARS['user'] and
                 params['password'] == RUNTIME_VARS['password']):
             return RUNTIME_VARS['login'] % RUNTIME_VARS['access_key']
         else:
             return RUNTIME_VARS['bad_login']
 
-    def _incorrect_access_key(self, params):
-        return (params['access_key'] != RUNTIME_VARS['access_key'])
+    def _is_correct_access_key(self):
+        return self.access_key == RUNTIME_VARS['access_key']
 
+    @check_access_key
     def _create_volume(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
-
+        params = self.body
         params['display-name'] = params['name']
         params['cg-name'] = params['name']
         params['snapshots'] = []
@@ -165,22 +173,21 @@ class FakeResponse(object):
         RUNTIME_VARS['volumes'].append((vpsa_vol, params))
         return RUNTIME_VARS['good']
 
+    @check_access_key
     def _create_server(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
+        params = self.body
 
         params['display-name'] = params['display_name']
         vpsa_srv = 'srv-%07d' % self._get_counter()
         RUNTIME_VARS['servers'].append((vpsa_srv, params))
         return RUNTIME_VARS['server_created'] % vpsa_srv
 
+    @check_access_key
     def _attach(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
-
         srv = self.url.split('/')[3]
+
+        params = self.body
+
         vol = params['volume_name[]']
 
         for (vol_name, params) in RUNTIME_VARS['volumes']:
@@ -195,11 +202,9 @@ class FakeResponse(object):
 
         return RUNTIME_VARS['bad_volume']
 
+    @check_access_key
     def _detach(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
-
+        params = self.body
         vol = self.url.split('/')[3]
         srv = params['server_name[]']
 
@@ -214,11 +219,9 @@ class FakeResponse(object):
 
         return RUNTIME_VARS['bad_volume']
 
+    @check_access_key
     def _expand(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
-
+        params = self.body
         vol = self.url.split('/')[3]
         capacity = params['capacity']
 
@@ -229,11 +232,9 @@ class FakeResponse(object):
 
         return RUNTIME_VARS['bad_volume']
 
+    @check_access_key
     def _create_snapshot(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
-
+        params = self.body
         cg_name = self.url.split('/')[3]
         snap_name = params['display_name']
 
@@ -249,6 +250,7 @@ class FakeResponse(object):
 
         return RUNTIME_VARS['bad_volume']
 
+    @check_access_key
     def _delete_snapshot(self):
         snap = self.url.split('/')[3].split('.')[0]
 
@@ -259,11 +261,9 @@ class FakeResponse(object):
 
         return RUNTIME_VARS['bad_volume']
 
+    @check_access_key
     def _create_clone(self):
-        params = self._get_parameters(self.body)
-        if self._incorrect_access_key(params):
-            return RUNTIME_VARS['bad_login']
-
+        params = self.body
         params['display-name'] = params['name']
         params['cg-name'] = params['name']
         params['capacity'] = 1
@@ -439,16 +439,24 @@ class FakeResponse(object):
 
 class FakeRequests(object):
     """A fake requests for zadara volume driver tests."""
-    def __init__(self, method, api_url, data, verify):
+    def __init__(self, method, api_url, params=None, data=None,
+                 headers=None, **kwargs):
         url = parse.urlparse(api_url).path
-        res = FakeResponse(method, url, data)
+        res = FakeResponse(method, url, params, data, headers, **kwargs)
         self.content = res.read()
         self.status_code = res.status
 
 
 class ZadaraVPSADriverTestCase(test.TestCase):
+
+    def __init__(self, *args, **kwargs):
+        super(ZadaraVPSADriverTestCase, self).__init__(*args, **kwargs)
+
+        self.configuration = None
+        self.driver = None
+
     """Test case for Zadara VPSA volume driver."""
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def setUp(self):
         super(ZadaraVPSADriverTestCase, self).setUp()
 
@@ -462,6 +470,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.configuration.zadara_vpsa_port = '80'
         self.configuration.zadara_user = 'test'
         self.configuration.zadara_password = 'test_password'
+        self.configuration.zadara_access_key = '0123456789ABCDEF'
         self.configuration.zadara_vpsa_poolname = 'pool-0001'
         self.configuration.zadara_vol_encrypt = False
         self.configuration.zadara_vol_name_template = 'OS_%s'
@@ -472,14 +481,14 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                        configuration=self.configuration))
         self.driver.do_setup(None)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy(self):
         """Create/Delete volume."""
         volume = {'name': 'test_volume_01', 'size': 1}
         self.driver.create_volume(volume)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy_multiple(self):
         """Create/Delete multiple volumes."""
         self.driver.create_volume({'name': 'test_volume_01', 'size': 1})
@@ -490,13 +499,13 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_volume({'name': 'test_volume_01'})
         self.driver.delete_volume({'name': 'test_volume_04'})
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_destroy_non_existent(self):
         """Delete non-existent volume."""
         volume = {'name': 'test_volume_02', 'size': 1}
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_empty_apis(self):
         """Test empty func (for coverage only)."""
         context = None
@@ -509,7 +518,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           None)
         self.driver.check_for_setup_error()
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_volume_attach_detach(self):
         """Test volume attachment and detach."""
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
@@ -529,25 +538,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.terminate_connection(volume, connector)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
-    def test_volume_attach_multiple_detach(self):
-        """Test multiple volume attachment and detach."""
-        volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
-        connector1 = dict(initiator='test_iqn.1')
-        connector2 = dict(initiator='test_iqn.2')
-        connector3 = dict(initiator='test_iqn.3')
-
-        self.driver.create_volume(volume)
-        self.driver.initialize_connection(volume, connector1)
-        self.driver.initialize_connection(volume, connector2)
-        self.driver.initialize_connection(volume, connector3)
-
-        self.driver.terminate_connection(volume, connector1)
-        self.driver.terminate_connection(volume, connector3)
-        self.driver.terminate_connection(volume, connector2)
-        self.driver.delete_volume(volume)
-
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_wrong_attach_params(self):
         """Test different wrong attach scenarios."""
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
@@ -556,32 +547,49 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.initialize_connection,
                           volume1, connector1)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_wrong_detach_params(self):
         """Test different wrong detachment scenarios."""
         volume1 = {'name': 'test_volume_01', 'size': 1, 'id': 101}
+        # Volume is not created.
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.terminate_connection,
+                          volume1, None)
+
+        self.driver.create_volume(volume1)
+        connector1 = dict(initiator='test_iqn.1')
+        # Server is not found. Volume is found
+        self.assertRaises(zadara.ZadaraServerNotFound,
+                          self.driver.terminate_connection,
+                          volume1, connector1)
+
         volume2 = {'name': 'test_volume_02', 'size': 1, 'id': 102}
         volume3 = {'name': 'test_volume_03', 'size': 1, 'id': 103}
-        connector1 = dict(initiator='test_iqn.1')
         connector2 = dict(initiator='test_iqn.2')
         connector3 = dict(initiator='test_iqn.3')
-        self.driver.create_volume(volume1)
         self.driver.create_volume(volume2)
         self.driver.initialize_connection(volume1, connector1)
         self.driver.initialize_connection(volume2, connector2)
+        # volume is found. Server not found
         self.assertRaises(zadara.ZadaraServerNotFound,
                           self.driver.terminate_connection,
                           volume1, connector3)
+        # Server is found. volume not found
         self.assertRaises(exception.VolumeNotFound,
                           self.driver.terminate_connection,
                           volume3, connector1)
+        # Server and volume exits but not attached
         self.assertRaises(exception.FailedCmdWithDump,
                           self.driver.terminate_connection,
                           volume1, connector2)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+        self.driver.terminate_connection(volume1, connector1)
+        self.driver.terminate_connection(volume2, connector2)
+
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_wrong_login_reply(self):
         """Test wrong login reply."""
+        self.configuration.zadara_access_key = None
 
         RUNTIME_VARS['login'] = """<hash>
                     <access-key>%s</access-key>
@@ -605,16 +613,18 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.assertRaises(exception.MalformedResponse,
                           self.driver.do_setup, None)
 
-    @mock.patch.object(requests, 'request')
+    @mock.patch.object(requests.Session, 'request')
     def test_ssl_use(self, request):
         """Coverage test for SSL connection."""
         self.configuration.zadara_ssl_cert_verify = True
         self.configuration.zadara_vpsa_use_ssl = True
         self.configuration.driver_ssl_cert_path = '/path/to/cert'
 
+        fake_request_ctrls = FakeRequests("GET", "/api/vcontrollers.xml")
+        raw_controllers = fake_request_ctrls.content
         good_response = mock.MagicMock()
         good_response.status_code = RUNTIME_VARS['status']
-        good_response.content = RUNTIME_VARS['login']
+        good_response.content = raw_controllers
 
         def request_verify_cert(*args, **kwargs):
             self.assertEqual(kwargs['verify'], '/path/to/cert')
@@ -623,7 +633,30 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         request.side_effect = request_verify_cert
         self.driver.do_setup(None)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request')
+    def test_wrong_access_key(self, request):
+        """Wrong Access Key"""
+        fake_ak = 'FAKEACCESSKEY'
+        self.configuration.zadara_access_key = fake_ak
+
+        bad_response = mock.MagicMock()
+        bad_response.status_code = RUNTIME_VARS['status']
+        bad_response.content = RUNTIME_VARS['bad_login']
+
+        def request_verify_access_key(*args, **kwargs):
+            # Checks if the fake access_key was sent to driver
+            token = kwargs['headers']['X-Access-Key']
+            self.assertEqual(token, fake_ak, "access_key wasn't delivered")
+            return bad_response
+
+        request.side_effect = request_verify_access_key
+        # when access key is invalid, driver will raise
+        # ZadaraInvalidAccessKey exception
+        self.assertRaises(zadara.ZadaraInvalidAccessKey,
+                          self.driver.do_setup,
+                          None)
+
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_bad_http_response(self):
         """Coverage test for non-good HTTP response."""
         RUNTIME_VARS['status'] = 400
@@ -632,8 +665,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.assertRaises(exception.BadHTTPResponseStatus,
                           self.driver.create_volume, volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
-    def test_termiante_connection_force_detach(self):
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
+    def test_terminate_connection_force_detach(self):
         """Test terminate connection for os-force_detach """
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 101}
         connector = dict(initiator='test_iqn.1')
@@ -650,7 +683,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_delete_without_detach(self):
         """Test volume deletion without detach."""
 
@@ -664,18 +697,19 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.initialize_connection(volume1, connector3)
         self.driver.delete_volume(volume1)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_no_active_ctrl(self):
 
-        RUNTIME_VARS['controllers'] = []
         volume = {'name': 'test_volume_01', 'size': 1, 'id': 123}
         connector = dict(initiator='test_iqn.1')
         self.driver.create_volume(volume)
+
+        RUNTIME_VARS['controllers'] = []
         self.assertRaises(zadara.ZadaraVPSANoActiveController,
                           self.driver.initialize_connection,
                           volume, connector)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy_snapshot(self):
         """Create/Delete snapshot test."""
         volume = {'name': 'test_volume_01', 'size': 1}
@@ -700,7 +734,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_expand_volume(self):
         """Expand volume test."""
         volume = {'name': 'test_volume_01', 'size': 10}
@@ -718,7 +752,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.extend_volume(volume, 15)
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy_clones(self):
         """Create/Delete clones test."""
         volume1 = {'name': 'test_volume_01', 'id': '01', 'size': 1}
@@ -757,7 +791,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         self.driver.delete_volume(volume1)
 
-    @mock.patch.object(requests, 'request', FakeRequests)
+    @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_get_volume_stats(self):
         """Get stats test."""
         self.configuration.safe_get.return_value = 'ZadaraVPSAISCSIDriver'

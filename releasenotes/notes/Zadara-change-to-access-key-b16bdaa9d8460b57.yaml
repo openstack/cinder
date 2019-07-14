@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Zadara VPSA Driver: Added new driver authentication method to use VPSA
+    API access key, and deprecate exisiting authentication method that used
+    username and password combination. The deprecated config inputs will be
+    removed in the next official release after Train.
+
+upgrade:
+  - |
+    Add a new config option 'zadara_access_key': Zadara VPSA access key.
