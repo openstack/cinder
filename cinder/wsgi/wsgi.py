@@ -30,6 +30,7 @@ i18n.enable_lazy()
 # Need to register global_opts
 from cinder.common import config
 from cinder.common import constants
+from cinder import coordination
 from cinder import rpc
 from cinder import service
 from cinder import version
@@ -43,6 +44,8 @@ def initialize_application():
          version=version.version_string())
     logging.setup(CONF, "cinder")
     config.set_middleware_defaults()
+
+    coordination.COORDINATOR.start()
 
     rpc.init(CONF)
     service.setup_profiler(constants.API_BINARY, CONF.host)
