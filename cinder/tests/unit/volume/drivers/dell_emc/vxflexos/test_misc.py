@@ -114,46 +114,20 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
     def test_valid_configuration(self):
         self.driver.check_for_setup_error()
 
-    def test_both_storage_pool(self):
-        """Both storage name and ID provided.
-
-        INVALID
-        """
-        self.driver.configuration.sio_storage_pool_id = self.STORAGE_POOL_ID
-        self.driver.configuration.sio_storage_pool_name = (
-            self.STORAGE_POOL_NAME
-        )
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
-
-    def test_no_storage_pool(self):
-        """No storage name or ID provided.
-
-        VALID as storage_pools are defined
-        """
-        self.driver.configuration.sio_storage_pool_name = None
-        self.driver.configuration.sio_storage_pool_id = None
-        self.driver.check_for_setup_error()
-
-    def test_both_domain(self):
-        """Both domain and ID are provided
-
-        INVALID
-        """
-        self.driver.configuration.sio_protection_domain_name = (
-            self.PROT_DOMAIN_NAME)
-        self.driver.configuration.sio_protection_domain_id = (
-            self.PROT_DOMAIN_ID)
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
-
     def test_no_storage_pools(self):
         """No storage pools.
 
-        VALID as domain and storage pool names are provided
+        INVALID Storage pools must be set
         """
         self.driver.storage_pools = None
-        self.driver.check_for_setup_error()
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.check_for_setup_error)
+
+    def test_invalid_storage_pools(self):
+        """Invalid storage pools data"""
+        self.driver.storage_pools = "test"
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.check_for_setup_error)
 
     def test_volume_size_round_true(self):
         self.driver._check_volume_size(1)

@@ -77,51 +77,6 @@ class TestCreateVolume(vxflexos.TestVxFlexOSDriver):
             },
         }
 
-    def test_no_domain(self):
-        """No protection domain name or ID provided."""
-        self.driver.configuration.sio_protection_domain_name = None
-        self.driver.configuration.sio_protection_domain_id = None
-        self.driver.storage_pools = None
-        self.volume.host = "host@backend"
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.test_create_volume)
-
-    def test_no_domain_id(self):
-        """Only protection domain name provided."""
-        self.driver.protection_domain_id = None
-        self.driver.protection_domain_name = self.PROT_DOMAIN_NAME
-        self.driver.storage_pool_name = None
-        self.driver.storage_pool_id = self.STORAGE_POOL_ID
-        self.test_create_volume()
-
-    def test_no_domain_id_invalid_response(self):
-        self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.test_no_domain_id)
-
-    def test_no_domain_id_badstatus_response(self):
-        self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.test_no_domain_id)
-
-    def test_no_storage_id(self):
-        """Only protection domain name provided."""
-        self.driver.storage_pool_id = None
-        self.driver.storage_pool_name = self.STORAGE_POOL_NAME
-        self.driver.protection_domain_id = self.PROT_DOMAIN_ID
-        self.driver.protection_domain_name = None
-        self.test_create_volume()
-
-    def test_no_storage_id_invalid_response(self):
-        self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.test_no_storage_id)
-
-    def test_no_storage_id_badstatus_response(self):
-        self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.test_no_storage_id)
-
     def test_create_volume(self):
         """Valid create volume parameters"""
         self.driver.create_volume(self.volume)

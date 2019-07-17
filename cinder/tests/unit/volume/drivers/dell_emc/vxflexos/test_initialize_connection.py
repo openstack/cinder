@@ -47,22 +47,6 @@ class TestInitializeConnection(vxflexos.TestVxFlexOSDriver):
         self.assertIsNone(connection_properties['iopsLimit'])
         self.assertIsNone(connection_properties['bandwidthLimit'])
 
-    def test_only_extraspecs(self):
-        qos = {}
-        extraspecs = {'sio:iops_limit': 2000, 'sio:bandwidth_limit': 4096}
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(2000, int(connection_properties['iopsLimit']))
-        self.assertEqual(4096, int(connection_properties['bandwidthLimit']))
-
-    def test_qos_and_extraspecs(self):
-        qos = {'maxIOPS': 1000, 'maxBWS': 3072}
-        extraspecs = {'sio:iops_limit': 2000, 'sio:bandwidth_limit': 4000}
-        connection_properties = (
-            self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(1000, int(connection_properties['iopsLimit']))
-        self.assertEqual(3072, int(connection_properties['bandwidthLimit']))
-
     def test_qos_scaling_and_max(self):
         qos = {'maxIOPS': 100, 'maxBWS': 2048, 'maxIOPSperGB': 10,
                'maxBWSperGB': 128}
@@ -104,7 +88,7 @@ class TestInitializeConnection(vxflexos.TestVxFlexOSDriver):
     def test_vol_id(self):
         extraspecs = qos = {}
         connection_properties = (
-            self._initialize_connection(extraspecs, qos)['data'])
+            self._initialize_connection(qos, extraspecs)['data'])
         self.assertEqual(fake.PROVIDER_ID,
                          connection_properties['scaleIO_volume_id'])
 

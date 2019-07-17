@@ -59,14 +59,7 @@ CONF.register_opts(vxflexos_opts, group=configuration.SHARED_CONF_GROUP)
 LOG = logging.getLogger(__name__)
 
 
-STORAGE_POOL_NAME = 'sio:sp_name'
-STORAGE_POOL_ID = 'sio:sp_id'
-PROTECTION_DOMAIN_NAME = 'sio:pd_name'
-PROTECTION_DOMAIN_ID = 'sio:pd_id'
 PROVISIONING_KEY = 'provisioning:type'
-OLD_PROVISIONING_KEY = 'sio:provisioning_type'
-IOPS_LIMIT_KEY = 'sio:iops_limit'
-BANDWIDTH_LIMIT = 'sio:bandwidth_limit'
 QOS_IOPS_LIMIT_KEY = 'maxIOPS'
 QOS_BANDWIDTH_LIMIT = 'maxBWS'
 QOS_IOPS_PER_GB = 'maxIOPSperGB'
@@ -140,8 +133,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
                   'port': self.server_port,
                   'user': self.server_username,
                   'verify_cert': self.verify_server_certificate})
-
-        # starting in Pike, prefer the sio_storage_pools option
         self.storage_pools = None
         if self.configuration.vxflexos_storage_pools:
             self.storage_pools = [
@@ -149,15 +140,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
                 self.configuration.vxflexos_storage_pools.split(',')]
         LOG.info("Storage pools names: %(pools)s.",
                  {'pools': self.storage_pools})
-
-        LOG.info("Storage pool name: %(pool)s, pool id: %(pool_id)s.",
-                 {'pool': self.configuration.sio_storage_pool_name,
-                  'pool_id': self.configuration.sio_storage_pool_id})
-
-        LOG.info("Protection domain name: %(domain)s, "
-                 "domain id: %(domain_id)s.",
-                 {'domain': self.configuration.sio_protection_domain_name,
-                  'domain_id': self.configuration.sio_protection_domain_id})
 
         self.provisioning_type = (
             'thin' if self.configuration.san_thin_provision else 'thick')
@@ -187,20 +169,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return vxflexos_opts
 
     def check_for_setup_error(self):
-        # make sure both domain name and id are not specified
-        if (self.configuration.sio_protection_domain_name
-                and self.configuration.sio_protection_domain_id):
-            msg = _("Cannot specify both protection domain name "
-                    "and protection domain id.")
-            raise exception.InvalidInput(reason=msg)
-
-        # make sure both storage pool and id are not specified
-        if (self.configuration.sio_storage_pool_name
-                and self.configuration.sio_storage_pool_id):
-            msg = _("Cannot specify both storage pool name and storage "
-                    "pool id.")
-            raise exception.InvalidInput(reason=msg)
-
         # make sure the REST gateway is specified
         if not self.server_ip:
             msg = _("REST server IP must be specified.")
@@ -246,8 +214,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
                      "removed in a future version"))
             versionutils.report_deprecated_feature(LOG, msg)
 
-        # we have enough information now to validate pools
-        self.storage_pools = self._build_storage_pool_list()
         if not self.storage_pools:
             msg = (_("Must specify storage pools. Option: "
                      "vxflexos_storage_pools."))
@@ -280,41 +246,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
                             "for information on how to enable zero padding "
                             "and prevent this from occurring.",
                             pool)
-
-    def _build_storage_pool_list(self):
-        """Build storage pool list
-
-        This method determines the list of storage pools that
-        are requested, by concatenating a few config settings
-        """
-        # start with the list of pools supplied in the configuration
-        pools = self.storage_pools
-        # append the domain:pool specified individually
-        if (self.configuration.sio_storage_pool_name is not None and
-                self.configuration.sio_protection_domain_name is not None):
-            extra_pool = "{}:{}".format(
-                self.configuration.sio_protection_domain_name,
-                self.configuration.sio_storage_pool_name)
-            LOG.info("Ensuring %s is in the list of configured pools.",
-                     extra_pool)
-            if pools is None:
-                pools = []
-            if extra_pool not in pools:
-                pools.append(extra_pool)
-        # if specified, account for the storage_pool_id
-        if self.configuration.sio_storage_pool_id is not None:
-            # the user specified a storage pool id
-            # get the domain and pool names from SIO
-            extra_pool = self._get_storage_pool_name(
-                self.configuration.sio_storage_pool_id)
-            LOG.info("Ensuring %s is in the list of configured pools.",
-                     extra_pool)
-            if pools is None:
-                pools = []
-            if extra_pool not in pools:
-                pools.append(extra_pool)
-
-        return pools
 
     def _get_queryable_statistics(self, sio_type, sio_id):
         if self.statisticProperties is None:
@@ -350,48 +281,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
         return self.statisticProperties
 
-    def _find_storage_pool_id_from_storage_type(self, storage_type):
-        # Default to what was configured in configuration file if not defined.
-        return storage_type.get(STORAGE_POOL_ID)
-
-    def _find_storage_pool_name_from_storage_type(self, storage_type):
-        pool_name = storage_type.get(STORAGE_POOL_NAME)
-        # using the extra spec of sio:sp_name is deprecated
-        if pool_name is not None:
-            LOG.warning("Using the volume type extra spec of "
-                        "sio:sp_name is deprecated and will be removed "
-                        "in a future version. The supported way to "
-                        "specify this is by specifying an extra spec "
-                        "of 'pool_name=protection_domain:storage_pool'")
-        return pool_name
-
-    def _find_protection_domain_id_from_storage_type(self, storage_type):
-        # Default to what was configured in configuration file if not defined.
-        return storage_type.get(PROTECTION_DOMAIN_ID)
-
-    def _find_protection_domain_name_from_storage_type(self, storage_type):
-        domain_name = storage_type.get(PROTECTION_DOMAIN_NAME)
-        # using the extra spec of sio:pd_name is deprecated
-        if domain_name is not None:
-            LOG.warning("Using the volume type extra spec of "
-                        "sio:pd_name is deprecated and will be removed "
-                        "in a future version. The supported way to "
-                        "specify this is by specifying an extra spec "
-                        "of 'pool_name=protection_domain:storage_pool'")
-        return domain_name
-
     def _find_provisioning_type(self, storage_type):
-        new_provisioning_type = storage_type.get(PROVISIONING_KEY)
-        old_provisioning_type = storage_type.get(OLD_PROVISIONING_KEY)
-        if new_provisioning_type is None and old_provisioning_type is not None:
-            LOG.info("Using sio:provisioning_type for defining "
-                     "thin or thick volume will be deprecated in the "
-                     "Ocata release of OpenStack. Please use "
-                     "provisioning:type configuration option.")
-            provisioning_type = old_provisioning_type
-        else:
-            provisioning_type = new_provisioning_type
-
+        provisioning_type = storage_type.get(PROVISIONING_KEY)
         if provisioning_type is not None:
             if provisioning_type not in ('thick', 'thin'):
                 msg = _("Illegal provisioning type. The supported "
@@ -400,21 +291,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
             return provisioning_type
         else:
             return self.provisioning_type
-
-    @staticmethod
-    def _find_limit(storage_type, qos_key, extraspecs_key):
-        qos_limit = (storage_type.get(qos_key)
-                     if qos_key is not None else None)
-        extraspecs_limit = (storage_type.get(extraspecs_key)
-                            if extraspecs_key is not None else None)
-        if extraspecs_limit is not None:
-            if qos_limit is not None:
-                LOG.warning("QoS specs are overriding extra_specs.")
-            else:
-                LOG.info("Using extra_specs for defining QoS specs "
-                         "will be deprecated in the N release "
-                         "of OpenStack. Please use QoS specs.")
-        return qos_limit if qos_limit is not None else extraspecs_limit
 
     @staticmethod
     def _version_greater_than(ver1, ver2):
@@ -481,65 +357,18 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
         volname = self._id_to_base64(volume.id)
 
-        # the cinder scheduler will send us the pd:sp for the volume
-        requested_pd = None
-        requested_sp = None
-        try:
-            pd_sp = volume_utils.extract_host(volume.host, 'pool')
-            if pd_sp is not None:
-                requested_pd = pd_sp.split(':')[0]
-                requested_sp = pd_sp.split(':')[1]
-        except (KeyError, ValueError):
-            # we seem to have not gotten it so we'll figure out defaults
-            requested_pd = None
-            requested_sp = None
+        pd_sp = volume_utils.extract_host(volume.host, 'pool')
+        protection_domain_name = pd_sp.split(':')[0]
+        storage_pool_name = pd_sp.split(':')[1]
 
         storage_type = self._get_volumetype_extraspecs(volume)
-        type_sp = self._find_storage_pool_name_from_storage_type(storage_type)
-        storage_pool_id = self._find_storage_pool_id_from_storage_type(
-            storage_type)
-        protection_domain_id = (
-            self._find_protection_domain_id_from_storage_type(storage_type))
-        type_pd = (
-            self._find_protection_domain_name_from_storage_type(storage_type))
         provisioning_type = self._find_provisioning_type(storage_type)
-
-        if type_sp is not None:
-            # prefer the storage pool in the volume type
-            # this was undocumented so will likely not happen
-            storage_pool_name = type_sp
-        else:
-            storage_pool_name = requested_sp
-        if type_pd is not None:
-            # prefer the protection domain in the volume type
-            # this was undocumented so will likely not happen
-            protection_domain_name = type_pd
-        else:
-            protection_domain_name = requested_pd
-
-        # check if the requested pd:sp match the ones that will
-        # be used. If not, spit out a deprecation notice
-        # should never happen
-        if (protection_domain_name != requested_pd
-                or storage_pool_name != requested_sp):
-            LOG.warning(
-                "Creating volume in different protection domain or "
-                "storage pool than scheduler requested. "
-                "Requested: %(req_pd)s:%(req_sp)s, "
-                "Actual %(act_pd)s:%(act_sp)s.",
-                {'req_pd': requested_pd,
-                 'req_sp': requested_sp,
-                 'act_pd': protection_domain_name,
-                 'act_sp': storage_pool_name})
 
         LOG.info("Volume type: %(volume_type)s, "
                  "storage pool name: %(pool_name)s, "
-                 "storage pool id: %(pool_id)s, protection domain id: "
-                 "%(domain_id)s, protection domain name: %(domain_name)s.",
+                 "protection domain name: %(domain_name)s.",
                  {'volume_type': storage_type,
                   'pool_name': storage_pool_name,
-                  'pool_id': storage_pool_id,
-                  'domain_id': protection_domain_id,
                   'domain_name': protection_domain_name})
 
         domain_id = self._get_protection_domain_id(protection_domain_name)
@@ -930,15 +759,13 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
     def _get_bandwidth_limit(self, size, storage_type):
         try:
-            max_bandwidth = self._find_limit(storage_type, QOS_BANDWIDTH_LIMIT,
-                                             BANDWIDTH_LIMIT)
+            max_bandwidth = storage_type.get(QOS_BANDWIDTH_LIMIT)
             if max_bandwidth is not None:
                 max_bandwidth = (self._round_to_num_gran(int(max_bandwidth),
                                                          units.Ki))
                 max_bandwidth = six.text_type(max_bandwidth)
             LOG.info("max bandwidth is: %s", max_bandwidth)
-            bw_per_gb = self._find_limit(storage_type, QOS_BANDWIDTH_PER_GB,
-                                         None)
+            bw_per_gb = storage_type.get(QOS_BANDWIDTH_PER_GB)
             LOG.info("bandwidth per gb is: %s", bw_per_gb)
             if bw_per_gb is None:
                 return max_bandwidth
@@ -957,10 +784,9 @@ class VxFlexOSDriver(driver.VolumeDriver):
             raise exception.InvalidInput(reason=msg)
 
     def _get_iops_limit(self, size, storage_type):
-        max_iops = self._find_limit(storage_type, QOS_IOPS_LIMIT_KEY,
-                                    IOPS_LIMIT_KEY)
+        max_iops = storage_type.get(QOS_IOPS_LIMIT_KEY)
         LOG.info("max iops is: %s", max_iops)
-        iops_per_gb = self._find_limit(storage_type, QOS_IOPS_PER_GB, None)
+        iops_per_gb = storage_type.get(QOS_IOPS_PER_GB)
         LOG.info("iops per gb is: %s", iops_per_gb)
         try:
             if iops_per_gb is None:
