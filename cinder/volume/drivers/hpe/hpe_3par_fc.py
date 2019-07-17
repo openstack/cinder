@@ -37,6 +37,7 @@ except ImportError:
 from oslo_log import log as logging
 from oslo_utils.excutils import save_and_reraise_exception
 
+from cinder import coordination
 from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.hpe import hpe_3par_base as hpebasedriver
@@ -125,6 +126,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         self.protocol = 'FC'
 
     @utils.trace
+    @coordination.synchronized('3par-{volume.id}')
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -208,8 +210,9 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
             self._logout(common)
 
     @utils.trace
+    @coordination.synchronized('3par-{volume.id}')
     def terminate_connection(self, volume, connector, **kwargs):
-        """Driver entry point to unattach a volume from an instance."""
+        """Driver entry point to detach a volume from an instance."""
         array_id = self.get_volume_replication_driver_data(volume)
         common = self._login(array_id=array_id)
         try:
