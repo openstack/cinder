@@ -14,6 +14,7 @@
 #    under the License.
 
 import ddt
+import json
 import mock
 
 from cinder import context
@@ -288,3 +289,42 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         self.assertEqual(
             expected_provisioning_type,
             self.driver._find_provisioning_type(empty_storage_type))
+
+    def test_get_volume_stats_v3(self):
+        self.driver.server_api_version = "3.0"
+        zero_data = {
+            'types/StoragePool/instances/action/querySelectedStatistics':
+                mocks.MockHTTPSResponse(content=json.dumps(
+                    {'"{}"'.format(self.STORAGE_POOL_NAME): {
+                        'snapCapacityInUseInKb': 0,
+                        'thickCapacityInUseInKb': 0,
+                        'netCapacityInUseInKb': 0,
+                        'netUnusedCapacityInKb': 0,
+                        'thinCapacityAllocatedInKb': 0}
+                     }
+                ))
+        }
+        with self.custom_response_mode(**zero_data):
+            stats = self.driver.get_volume_stats(True)
+            for s in ["total_capacity_gb",
+                      "free_capacity_gb",
+                      "provisioned_capacity_gb"]:
+                self.assertEqual(0, stats[s])
+
+        data = {
+            'types/StoragePool/instances/action/querySelectedStatistics':
+                mocks.MockHTTPSResponse(content=json.dumps(
+                    {'"{}"'.format(self.STORAGE_POOL_NAME): {
+                        'snapCapacityInUseInKb': 2097152,
+                        'thickCapacityInUseInKb': 67108864,
+                        'netCapacityInUseInKb': 34578432,
+                        'netUnusedCapacityInKb': 102417408,
+                        'thinCapacityAllocatedInKb': 218103808}
+                     }
+                ))
+        }
+        with self.custom_response_mode(**data):
+            stats = self.driver.get_volume_stats(True)
+            self.assertEqual(130, stats['total_capacity_gb'])
+            self.assertEqual(97, stats['free_capacity_gb'])
+            self.assertEqual(137, stats['provisioned_capacity_gb'])

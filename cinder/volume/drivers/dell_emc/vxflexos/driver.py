@@ -88,9 +88,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
           2.0.3 - Added cache for storage pool and protection domains info
           2.0.4 - Added compatibility with os_brick>1.15.3
           2.0.5 - Change driver name, rename config file options
+          3.0.0 - Add support for VxFlex OS 3.0.x and for volumes compression
     """
 
-    VERSION = "2.0.5"
+    VERSION = "3.0.0"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DELL_EMC_ScaleIO_CI"
 
@@ -251,9 +252,20 @@ class VxFlexOSDriver(driver.VolumeDriver):
         if self.statisticProperties is None:
             self.statisticProperties = [
                 "snapCapacityInUseInKb",
-                "capacityAvailableForVolumeAllocationInKb",
-                "capacityLimitInKb", "spareCapacityInKb",
                 "thickCapacityInUseInKb"]
+            # VxFlex OS 3.0 provide useful precomputed stats
+            if self._version_greater_than_or_equal(
+                    self._get_server_api_version(),
+                    "3.0"):
+                self.statisticProperties.extend([
+                    "netCapacityInUseInKb",
+                    "netUnusedCapacityInKb",
+                    "thinCapacityAllocatedInKb"])
+                return self.statisticProperties
+
+            self.statisticProperties.extend(
+                ["capacityAvailableForVolumeAllocationInKb",
+                 "capacityLimitInKb", "spareCapacityInKb"])
             # version 2.0 of SIO introduced thin volumes
             if self._version_greater_than_or_equal(
                     self._get_server_api_version(),
@@ -284,9 +296,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _find_provisioning_type(self, storage_type):
         provisioning_type = storage_type.get(PROVISIONING_KEY)
         if provisioning_type is not None:
-            if provisioning_type not in ('thick', 'thin'):
+            if provisioning_type not in ('thick', 'thin', 'compressed'):
                 msg = _("Illegal provisioning type. The supported "
-                        "provisioning types are 'thick' or 'thin'.")
+                        "provisioning types are 'thick', 'thin' "
+                        "or 'compressed'.")
                 raise exception.VolumeBackendAPIException(data=msg)
             return provisioning_type
         else:
@@ -302,7 +315,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
     @staticmethod
     def _convert_kb_to_gib(size):
-        return int(math.ceil(float(size) / units.Mi))
+        return int(math.floor(float(size) / units.Mi))
 
     @staticmethod
     def _id_to_base64(id):
@@ -377,12 +390,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
                                             storage_pool_name)
         LOG.info("Pool id is %s.", pool_id)
 
-        if provisioning_type == 'thin':
-            provisioning = "ThinProvisioned"
-        # Default volume type is thick.
-        else:
-            provisioning = "ThickProvisioned"
-
         allowed = self._is_volume_creation_safe(protection_domain_name,
                                                 storage_pool_name)
         if not allowed:
@@ -399,6 +406,12 @@ class VxFlexOSDriver(driver.VolumeDriver):
                     "unsafe backend configuration.")
             raise exception.VolumeBackendAPIException(data=msg)
 
+        provisioning = "ThinProvisioned"
+        if (provisioning_type == 'thick' and
+                self._check_pool_support_thick_vols(protection_domain_name,
+                                                    storage_pool_name)):
+            provisioning = "ThickProvisioned"
+
         # units.Mi = 1024 ** 2
         volume_size_kb = volume.size * units.Mi
         params = {'protectionDomainId': domain_id,
@@ -406,6 +419,12 @@ class VxFlexOSDriver(driver.VolumeDriver):
                   'name': volname,
                   'volumeType': provisioning,
                   'storagePoolId': pool_id}
+
+        if self._check_pool_support_compression(protection_domain_name,
+                                                storage_pool_name):
+            params['compressionMethod'] = "None"
+            if provisioning_type == "compressed":
+                params['compressionMethod'] = "Normal"
 
         LOG.info("Params for add volume request: %s.", params)
         req_vars = {'server_ip': self.server_ip,
@@ -837,95 +856,161 @@ class VxFlexOSDriver(driver.VolumeDriver):
         stats['multiattach'] = True
         pools = []
 
-        free_capacity = 0
-        total_capacity = 0
-        provisioned_capacity = 0
+        backend_free_capacity = 0
+        backend_total_capacity = 0
+        backend_provisioned_capacity = 0
 
         for sp_name in self.storage_pools:
             splitted_name = sp_name.split(':')
             domain_name = splitted_name[0]
             pool_name = splitted_name[1]
-            # Get pool id from name.
-            pool_id = self._get_storage_pool_id(domain_name, pool_name)
-            LOG.info("Pool id is %s.", pool_id)
-
-            req_vars = {'server_ip': self.server_ip,
-                        'server_port': self.server_port}
-            request = ("https://%(server_ip)s:%(server_port)s"
-                       "/api/types/StoragePool/instances/action/"
-                       "querySelectedStatistics") % req_vars
-
-            props = self._get_queryable_statistics("StoragePool", pool_id)
-            params = {'ids': [pool_id], 'properties': props}
-
-            r, response = self._execute_vxflexos_post_request(params, request)
-            LOG.info("Query capacity stats response: %s.", response)
-            for res in response.values():
-                # Divide by two because VxFlex OS creates
-                # a copy for each volume
-                total_capacity_kb = (
-                    (res['capacityLimitInKb'] - res['spareCapacityInKb']) / 2)
-                total_capacity_gb = (self._round_down_to_num_gran
-                                     (total_capacity_kb / units.Mi))
-                # This property is already rounded
-                # to 8 GB granularity in backend
-                free_capacity_gb = (
-                    res['capacityAvailableForVolumeAllocationInKb'] / units.Mi)
-                thin_capacity_allocated = 0
-                # some versions of the API had a typo in the response
-                try:
-                    thin_capacity_allocated = res['thinCapacityAllocatedInKm']
-                except (TypeError, KeyError):
-                    pass
-                # some versions of the API respond without a typo
-                try:
-                    thin_capacity_allocated = res['thinCapacityAllocatedInKb']
-                except (TypeError, KeyError):
-                    pass
-
-                # Divide by two because VxFlex OS creates
-                # a copy for each volume
-                provisioned_capacity = (
-                    ((res['thickCapacityInUseInKb'] +
-                      res['snapCapacityInUseInKb'] +
-                      thin_capacity_allocated) / 2) / units.Mi)
-
-                LOG.info("Free capacity of pool %(pool)s is: %(free)s, "
-                         "total capacity: %(total)s, "
-                         "provisioned capacity: %(prov)s",
-                         {'pool': sp_name,
-                          'free': free_capacity_gb,
-                          'total': total_capacity_gb,
-                          'prov': provisioned_capacity})
+            total_capacity_gb, free_capacity_gb, provisioned_capacity = (
+                self._query_pool_stats(domain_name, pool_name))
+            pool_support_thick_vols = self._check_pool_support_thick_vols(
+                domain_name, pool_name
+            )
+            pool_support_thin_vols = self._check_pool_support_thin_vols(
+                domain_name, pool_name
+            )
+            pool_support_compression = self._check_pool_support_compression(
+                domain_name, pool_name
+            )
             pool = {'pool_name': sp_name,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'QoS_support': True,
                     'consistent_group_snapshot_enabled': True,
                     'reserved_percentage': 0,
-                    'thin_provisioning_support': True,
-                    'thick_provisioning_support': True,
+                    'thin_provisioning_support': pool_support_thin_vols,
+                    'thick_provisioning_support': pool_support_thick_vols,
                     'multiattach': True,
                     'provisioned_capacity_gb': provisioned_capacity,
                     'max_over_subscription_ratio':
-                        self.configuration.max_over_subscription_ratio
-                    }
+                        self.configuration.max_over_subscription_ratio,
+                    'compression_support': pool_support_compression}
 
             pools.append(pool)
-            free_capacity += free_capacity_gb
-            total_capacity += total_capacity_gb
+            backend_free_capacity += free_capacity_gb
+            backend_total_capacity += total_capacity_gb
+            backend_provisioned_capacity += provisioned_capacity
 
-        stats['total_capacity_gb'] = total_capacity
-        stats['free_capacity_gb'] = free_capacity
+        stats['total_capacity_gb'] = backend_total_capacity
+        stats['free_capacity_gb'] = backend_free_capacity
+        stats['provisioned_capacity_gb'] = backend_provisioned_capacity
         LOG.info("Free capacity for backend '%(backend)s': %(free)s, "
-                 "total capacity: %(total)s.",
+                 "total capacity: %(total)s, "
+                 "provisioned capacity: %(prov)s.",
                  {'backend': stats["volume_backend_name"],
-                  'free': free_capacity,
-                  'total': total_capacity})
+                  'free': backend_free_capacity,
+                  'total': backend_total_capacity,
+                  'prov': backend_provisioned_capacity})
 
         stats['pools'] = pools
 
         self._stats = stats
+
+    def _query_pool_stats(self, domain_name, pool_name):
+        pool_id = self._get_storage_pool_id(domain_name, pool_name)
+        LOG.debug("Query stats for pool with id: %s.", pool_id)
+
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/types/StoragePool/instances/action/"
+                   "querySelectedStatistics") % req_vars
+
+        props = self._get_queryable_statistics("StoragePool", pool_id)
+        params = {'ids': [pool_id], 'properties': props}
+
+        r, response = self._execute_vxflexos_post_request(params, request)
+        LOG.debug("Query capacity stats response: %s.", response)
+        if r.status_code != http_client.OK:
+            msg = (_("Error during query storage pool stats"))
+            raise exception.VolumeBackendAPIException(data=msg)
+        # there is always exactly one value in response
+        raw_pool_stats, = response.values()
+        total_capacity_gb, free_capacity_gb, provisioned_capacity = (
+            self._compute_pool_stats(raw_pool_stats))
+        LOG.info("Free capacity of pool %(pool)s is: %(free)s, "
+                 "total capacity: %(total)s, "
+                 "provisioned capacity: %(prov)s.",
+                 {'pool': "%s:%s" % (domain_name, pool_name),
+                  'free': free_capacity_gb,
+                  'total': total_capacity_gb,
+                  'prov': provisioned_capacity})
+
+        return total_capacity_gb, free_capacity_gb, provisioned_capacity
+
+    def _compute_pool_stats(self, stats):
+        if self._version_greater_than_or_equal(
+                self._get_server_api_version(),
+                "3.0"):
+            return self._compute_pool_stats_v3(stats)
+        # Divide by two because VxFlex OS creates
+        # a copy for each volume
+        total_capacity_raw = self._convert_kb_to_gib(
+            (stats['capacityLimitInKb'] - stats['spareCapacityInKb']) / 2)
+
+        total_capacity_gb = self._round_down_to_num_gran(total_capacity_raw)
+        # This property is already rounded
+        # to 8 GB granularity in backend
+        free_capacity_gb = self._convert_kb_to_gib(
+            stats['capacityAvailableForVolumeAllocationInKb'])
+        thin_capacity_allocated = 0
+        # some versions of the API had a typo in the response
+        try:
+            thin_capacity_allocated = stats['thinCapacityAllocatedInKm']
+        except (TypeError, KeyError):
+            pass
+        # some versions of the API respond without a typo
+        try:
+            thin_capacity_allocated = stats['thinCapacityAllocatedInKb']
+        except (TypeError, KeyError):
+            pass
+
+        # Divide by two because VxFlex OS creates
+        # a copy for each volume
+        provisioned_capacity = self._convert_kb_to_gib(
+            (stats['thickCapacityInUseInKb'] +
+             stats['snapCapacityInUseInKb'] +
+             thin_capacity_allocated) / 2)
+        return total_capacity_gb, free_capacity_gb, provisioned_capacity
+
+    def _compute_pool_stats_v3(self, stats):
+        total_capacity_gb = self._convert_kb_to_gib(
+            stats['netCapacityInUseInKb'] + stats['netUnusedCapacityInKb'])
+        free_capacity_gb = self._convert_kb_to_gib(
+            stats['netUnusedCapacityInKb'])
+        provisioned_capacity_gb = self._convert_kb_to_gib(
+            (stats['thickCapacityInUseInKb'] +
+             stats['snapCapacityInUseInKb'] +
+             stats['thinCapacityAllocatedInKb']) / 2)
+        return total_capacity_gb, free_capacity_gb, provisioned_capacity_gb
+
+    def _check_pool_support_thick_vols(self, domain_name, pool_name):
+        # storage pools with fine granularity doesn't support
+        # thick volumes
+        return not self._is_fine_granularity_pool(domain_name, pool_name)
+
+    def _check_pool_support_thin_vols(self, domain_name, pool_name):
+        # thin volumes available since VxFlex OS 2.x
+        return self._version_greater_than_or_equal(
+            self._get_server_api_version(),
+            "2.0")
+
+    def _check_pool_support_compression(self, domain_name, pool_name):
+        # volume compression available only in storage pools
+        # with fine granularity
+        return self._is_fine_granularity_pool(domain_name, pool_name)
+
+    def _is_fine_granularity_pool(self, domain_name, pool_name):
+        if self._version_greater_than_or_equal(
+                self._get_server_api_version(),
+                "3.0"):
+            r = self._get_storage_pool_properties(domain_name, pool_name)
+            if r and "dataLayout" in r:
+                return r['dataLayout'] == "FineGranularity"
+        return False
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.

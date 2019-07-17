@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    VxFlex OS driver now supports VxFlex OS 3.0 features:
+    storage pools with fine granularity layout,
+    volume compression(SPEF).
