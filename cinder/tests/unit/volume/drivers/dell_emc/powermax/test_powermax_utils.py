@@ -523,3 +523,20 @@ class PowerMaxUtilsTest(test.TestCase):
         ret_prop_dict = self.utils.validate_qos_distribution_type(
             sg_value, qos_extra_spec, input_prop_dict)
         self.assertEqual(input_prop_dict, ret_prop_dict)
+
+    def test_compare_cylinders(self):
+        source_cylinders = '12345'
+        target_cylinders = '12345'
+        self.utils.compare_cylinders(source_cylinders, target_cylinders)
+
+    def test_compare_cylinders_target_larger(self):
+        source_cylinders = '12345'
+        target_cylinders = '12346'
+        self.utils.compare_cylinders(source_cylinders, target_cylinders)
+
+    def test_compare_cylinders_source_larger(self):
+        source_cylinders = '12347'
+        target_cylinders = '12346'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.compare_cylinders, source_cylinders,
+                          target_cylinders)

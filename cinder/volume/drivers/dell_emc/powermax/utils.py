@@ -949,3 +949,21 @@ class PowerMaxUtils(object):
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
         return property_dict
+
+    @staticmethod
+    def compare_cylinders(cylinders_source, cylinder_target):
+        """Compare number of cylinders of source and target.
+
+        :param cylinders_source: number of cylinders on source
+        :param cylinders_target: number of cylinders on target
+        """
+        if float(cylinders_source) > float(cylinder_target):
+            exception_message = (
+                _("The number of source cylinders %(cylinders_source)s "
+                  "cannot be greater than the number of target cylinders "
+                  "%(cylinder_target)s. Please extend your source volume by "
+                  "at least 1GiB.") % {
+                    'cylinders_source': cylinders_source,
+                    'cylinder_target': cylinder_target})
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)

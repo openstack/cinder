@@ -1880,7 +1880,7 @@ class PowerMaxRest(object):
         snapshot = None
         snap_info = self.get_volume_snap_info(array, device_id)
         if snap_info:
-            if (snap_info.get('snapshotSrcs') and
+            if (snap_info.get('snapshotSrcs', None) and
                     bool(snap_info['snapshotSrcs'])):
                 for snap in snap_info['snapshotSrcs']:
                     if snap['snapshotName'] == snap_name:
@@ -1899,7 +1899,8 @@ class PowerMaxRest(object):
         snapshot_list = []
         snap_info = self.get_volume_snap_info(array, source_device_id)
         if snap_info:
-            if bool(snap_info['snapshotSrcs']):
+            if (snap_info.get('snapshotSrcs', None) and
+                    bool(snap_info['snapshotSrcs'])):
                 snapshot_list = snap_info['snapshotSrcs']
         return snapshot_list
 
