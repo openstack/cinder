@@ -1092,7 +1092,7 @@ class PowerMaxRestTest(test.TestCase):
         payload = {'deviceNameListSource': [{'name': source_id}],
                    'deviceNameListTarget': [
                        {'name': target_id}],
-                   'copy': 'true', 'action': "",
+                   'copy': 'false', 'action': "",
                    'star': 'false', 'force': 'false',
                    'exact': 'false', 'remote': 'false',
                    'symforce': 'false', 'generation': 0}
@@ -1229,30 +1229,41 @@ class PowerMaxRestTest(test.TestCase):
     def test_find_snap_vx_sessions(self):
         array = self.data.array
         source_id = self.data.device_id
-        ref_sessions = [{'generation': '0',
-                         'snap_name': 'temp-1',
-                         'source_vol': self.data.device_id,
-                         'target_vol_list':
-                             [(self.data.device_id2, 'Copied')]},
-                        {'generation': '0',
-                         'snap_name': 'temp-1',
-                         'source_vol': self.data.device_id,
-                         'target_vol_list':
-                             [(self.data.device_id2, 'Copied')]}]
-        sessions = self.rest.find_snap_vx_sessions(array, source_id)
-        self.assertEqual(ref_sessions, sessions)
+        ref_sessions = [{'generation': 0,
+                         'snap_name': 'temp-000AA-snapshot_for_clone',
+                         'source_vol_id': self.data.device_id,
+                         'target_vol_id': self.data.device_id2,
+                         'expired': False, 'copy_mode': True,
+                         'state': 'Copied'},
+                        {'generation': 1,
+                         'snap_name': 'temp-000AA-snapshot_for_clone',
+                         'source_vol_id': self.data.device_id,
+                         'target_vol_id': self.data.device_id3,
+                         'expired': False, 'copy_mode': True,
+                         'state': 'Copied'}]
 
-    def test_find_snap_vx_sessions_tgt_only(self):
+        with mock.patch.object(self.rest, 'get_volume_snap_info',
+                               return_value=self.data.snapshot_src_details):
+            src_list, __ = self.rest.find_snap_vx_sessions(array, source_id)
+            self.assertEqual(ref_sessions, src_list)
+            self.assertIsInstance(src_list, list)
+
+    @mock.patch.object(rest.PowerMaxRest, '_get_private_volume',
+                       return_value=tpd.PowerMaxData.snap_tgt_vol_details)
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap_info',
+                       return_value=tpd.PowerMaxData.snapshot_tgt_details)
+    def test_find_snap_vx_sessions_tgt_only(self, mck_snap, mck_vol):
         array = self.data.array
         source_id = self.data.device_id
-        ref_sessions = [{'generation': '0',
-                         'snap_name': 'temp-1',
-                         'source_vol': self.data.device_id,
-                         'target_vol_list':
-                             [(self.data.device_id2, 'Copied')]}]
-        sessions = self.rest.find_snap_vx_sessions(
+        ref_session = {'generation': 6, 'state': 'Linked', 'copy_mode': False,
+                       'snap_name': 'temp-000AA-snapshot_for_clone',
+                       'source_vol_id': self.data.device_id2,
+                       'target_vol_id': source_id, 'expired': True}
+
+        __, snap_tgt = self.rest.find_snap_vx_sessions(
             array, source_id, tgt_only=True)
-        self.assertEqual(ref_sessions, sessions)
+        self.assertEqual(ref_session, snap_tgt)
+        self.assertIsInstance(snap_tgt, dict)
 
     def test_update_storagegroup_qos(self):
         sg_qos = {'srp': self.data.srp, 'num_of_vols': 2, 'cap_gb': 2,

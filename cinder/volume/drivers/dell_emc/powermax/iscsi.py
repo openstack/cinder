@@ -118,6 +118,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - PowerMax OS Metro formatted volumes fix (bug #1829876)
               - Support for Metro ODE (bp/powermax-metro-ode)
               - Removal of san_rest_port from PowerMax cinder.conf config
+              - SnapVX noCopy mode enabled for all links
     """
 
     VERSION = "4.1.0"

@@ -2214,6 +2214,7 @@ class PowerMaxCommon(object):
         self._delete_from_srp(
             array, target_device_id, clone_name, extra_specs)
 
+    @retry(retry_exc_tuple, interval=1, retries=3)
     def _sync_check(self, array, device_id, extra_specs,
                     tgt_only=False, source_device_id=None):
         """Check if volume is part of a SnapVx sync process.
@@ -2227,27 +2228,26 @@ class PowerMaxCommon(object):
         """
         if not source_device_id and tgt_only:
             source_device_id = self._get_target_source_device(
-                array, device_id, tgt_only)
+                array, device_id)
         if source_device_id:
-            @coordination.synchronized("emc-source-{source_device_id}")
-            def do_unlink_and_delete_snap(source_device_id):
+            @coordination.synchronized("emc-source-{src_device_id}")
+            def do_unlink_and_delete_snap(src_device_id):
                 # Check if source device exists on the array
                 try:
-                    self.rest.get_volume(array, source_device_id)
+                    self.rest.get_volume(array, src_device_id)
                 except exception.VolumeBackendAPIException:
                     LOG.debug("Device %(device_id)s not found on array, no "
                               "sync check required.",
-                              {'device_id': source_device_id})
+                              {'device_id': src_device_id})
                     return
                 self._do_sync_check(
-                    array, device_id, extra_specs, tgt_only)
+                    array, src_device_id, extra_specs, tgt_only)
 
             do_unlink_and_delete_snap(source_device_id)
         else:
             self._do_sync_check(
                 array, device_id, extra_specs, tgt_only)
 
-    @retry(retry_exc_tuple, interval=2, retries=2)
     def _do_sync_check(
             self, array, device_id, extra_specs, tgt_only=False):
         """Check if volume is part of a SnapVx sync process.
@@ -2258,92 +2258,82 @@ class PowerMaxCommon(object):
         :param extra_specs: extra specifications
         :param tgt_only: Flag to specify if it is a target
         """
-        get_sessions = False
         snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
             array, device_id)
-        if snapvx_tgt:
-            get_sessions = True
-        elif snapvx_src and not tgt_only:
-            get_sessions = True
-        if get_sessions:
-            snap_vx_sessions = self.rest.find_snap_vx_sessions(
-                array, device_id, tgt_only)
-            if snap_vx_sessions:
-                snap_vx_sessions.sort(
-                    key=lambda k: k['generation'], reverse=True)
-                for session in snap_vx_sessions:
-                    try:
-                        self._unlink_targets_and_delete_temp_snapvx(
-                            session, array, extra_specs)
-                    except Exception:
-                        exception_message = _(
-                            "Will retry one more time.")
+        get_sessions = True if snapvx_tgt or snapvx_src else False
 
-                        LOG.warning(exception_message)
-                        raise exception.VolumeBackendAPIException(
-                            exception_message)
+        if get_sessions:
+            src_sessions, tgt_session = self.rest.find_snap_vx_sessions(
+                array, device_id, tgt_only)
+            if tgt_session:
+                self._unlink_targets_and_delete_temp_snapvx(
+                    tgt_session, array, extra_specs)
+            if src_sessions and not tgt_only:
+                src_sessions.sort(key=lambda k: k['generation'], reverse=True)
+                for session in src_sessions:
+                    self._unlink_targets_and_delete_temp_snapvx(
+                        session, array, extra_specs)
 
     def _unlink_targets_and_delete_temp_snapvx(
             self, session, array, extra_specs):
-        """unlink targets and delete the temporary snapvx
+        """Unlink target and delete the temporary snapvx if valid candidate.
 
         :param session: the snapvx session
         :param array: the array serial number
         :param extra_specs: extra specifications
         """
-        source = session['source_vol']
         snap_name = session['snap_name']
-        targets = session['target_vol_list']
+        source = session['source_vol_id']
         generation = session['generation']
-        for target in targets:
-            LOG.debug("Unlinking source from target. Source: "
-                      "%(volume)s, Target: %(target)s, "
-                      "generation: %(generation)s.",
-                      {'volume': source, 'target': target[0],
-                       'generation': generation})
+        expired = session['expired']
+
+        target, cm_enabled = None, False
+        if session.get('target_vol_id'):
+            target = session['target_vol_id']
+            cm_enabled = session['copy_mode']
+
+        if target:
+            loop = True if cm_enabled else False
+            LOG.debug(
+                "Unlinking source from target. Source: %(vol)s, Target: "
+                "%(tgt)s, Generation: %(gen)s.", {'vol': source, 'tgt': target,
+                                                  'gen': generation})
             self.provision.break_replication_relationship(
-                array, target[0], source, snap_name,
-                extra_specs, generation)
-        # The snapshot name will only have 'temp' (or EMC_SMI for
-        # legacy volumes) if it is a temporary volume.
-        # Only then is it a candidate for deletion.
-        if 'temp' in snap_name or 'EMC_SMI' in snap_name:
-            LOG.debug("Deleting temporary snapshot. Source: "
-                      "%(volume)s, snap name: %(snap_name)s, "
-                      "generation: %(generation)s.",
-                      {'volume': source, 'snap_name': snap_name,
-                       'generation': generation})
+                array, target, source, snap_name, extra_specs, generation,
+                loop)
+
+        # Candidates for deletion:
+        # 1. If legacy snapshot with 'EMC_SMI' in snapshot name
+        # 2. If snapVX snapshot with copy mode enabled
+        # 3. If snapVX snapshot with copy mode disabled and not expired
+        if ('EMC_SMI' in snap_name or cm_enabled or (
+                not cm_enabled and not expired)):
+            LOG.debug(
+                "Deleting temporary snapshot. Source: %(vol)s, snap name: "
+                "%(name)s, generation: %(gen)s.", {
+                    'vol': source, 'name': snap_name, 'gen': generation})
             self.provision.delete_temp_volume_snap(
                 array, snap_name, source, generation)
 
-    def _get_target_source_device(
-            self, array, device_id, tgt_only=False):
+    def _get_target_source_device(self, array, device_id):
         """Get the source device id of the target.
 
         :param array: the array serial number
         :param device_id: volume instance
-        :param tgt_only: Flag - return only sessions where device is target
         return source_device_id
         """
-        LOG.debug("Getting source device id from target %(target)s.",
-                  {'target': device_id})
-        get_sessions = False
+        LOG.debug("Getting the source device ID for target device %(tgt)s",
+                  {'tgt': device_id})
         source_device_id = None
-        snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
+        snapvx_tgt, __, __ = self.rest.is_vol_in_rep_session(
             array, device_id)
         if snapvx_tgt:
-            get_sessions = True
-        elif snapvx_src and not tgt_only:
-            get_sessions = True
-        if get_sessions:
-            snap_vx_sessions = self.rest.find_snap_vx_sessions(
-                array, device_id, tgt_only)
-            if snap_vx_sessions:
-                snap_vx_sessions.sort(
-                    key=lambda k: k['generation'], reverse=True)
-                for session in snap_vx_sessions:
-                    source_device_id = session['source_vol']
-                    break
+            __, tgt_session = self.rest.find_snap_vx_sessions(
+                array, device_id, tgt_only=True)
+            source_device_id = tgt_session['source_vol_id']
+            LOG.debug("Target %(tgt)s source device %(src)s",
+                      {'target': device_id, 'src': source_device_id})
+
         return source_device_id
 
     def _clone_check(self, array, device_id, extra_specs):
@@ -2355,86 +2345,51 @@ class PowerMaxCommon(object):
         """
         snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
             array, device_id)
+
         if snapvx_src or snapvx_tgt:
             @coordination.synchronized("emc-source-{src_device_id}")
             def do_unlink_and_delete_snap(src_device_id):
-                snap_vx_sessions = self.rest.find_snap_vx_sessions(
+                src_sessions, tgt_session = self.rest.find_snap_vx_sessions(
                     array, src_device_id)
-                if snap_vx_sessions:
-                    snap_vx_sessions.sort(
+                count = 0
+                if tgt_session and count < self.snapvx_unlink_limit:
+                    self._delete_valid_snapshot(array, tgt_session,
+                                                extra_specs)
+                    count += 1
+                if src_sessions:
+                    src_sessions.sort(
                         key=lambda k: k['generation'], reverse=True)
-                    self._break_relationship(
-                        snap_vx_sessions, snapvx_tgt, src_device_id, array,
-                        extra_specs)
+                    for session in src_sessions:
+                        if count < self.snapvx_unlink_limit:
+                            self._delete_valid_snapshot(array, session,
+                                                        extra_specs)
+                            count += 1
+                        else:
+                            break
 
             do_unlink_and_delete_snap(device_id)
 
-    def _break_relationship(
-            self, snap_vx_sessions, snapvx_tgt, snapvx_src, array,
-            extra_specs):
-        """Break relationship and cleanup
+    def _delete_valid_snapshot(self, array, session, extra_specs):
+        """Delete a snapshot if valid candidate for deletion.
 
-        :param snap_vx_sessions: the snapvx sessions
-        :param snapvx_tgt: the snapvx target
-        :param snapvx_src: the snapvx source
-        :param array: the serialnumber of the array
-        :param extra_specs: extra specifications
-        """
-        count = 0
-        for session in snap_vx_sessions:
-            snap_name = session['snap_name']
-            targets = session['target_vol_list']
-            # Only unlink a set number of targets
-            if count == self.snapvx_unlink_limit:
-                break
-            is_temp = False
-            is_temp = 'temp' in snap_name or 'EMC_SMI' in snap_name
-            if utils.CLONE_SNAPSHOT_NAME in snap_name:
-                is_temp = False
-            for target in targets:
-                if snapvx_src:
-                    if not is_temp and target[1] == "Copied":
-                        # Break the replication relationship
-                        LOG.debug("Unlinking source from "
-                                  "target. Source: %(volume)s, "
-                                  "Target: %(target)s.",
-                                  {'volume': session['source_vol'],
-                                   'target': target[0]})
-                        self.provision.break_replication_relationship(
-                            array, target[0], session['source_vol'],
-                            snap_name, extra_specs,
-                            session['generation'])
-                        count = count + 1
-                elif snapvx_tgt:
-                    # If our device is a target, we need to wait
-                    # and then unlink
-                    self._break_relationship_snapvx_tgt(
-                        session, target, is_temp, array, extra_specs)
-
-    def _break_relationship_snapvx_tgt(
-            self, session, target, is_temp, array, extra_specs):
-        """Break relationship of the snapvx target and cleanup
-
+        :param array: the array serial
         :param session: the snapvx session
-        :param target: the snapvx target
-        :param is_temp: is the snapshot temporary
-        :param array: the serialnumber of the array
         :param extra_specs: extra specifications
         """
-        LOG.debug("Unlinking source from "
-                  "target. Source: %(volume)s, "
-                  "Target: %(target)s.",
-                  {'volume': session['source_vol'],
-                   'target': target[0]})
-        self.provision.break_replication_relationship(
-            array, target[0], session['source_vol'], session['snap_name'],
-            extra_specs, session['generation'])
-        # For older styled temp snapshots for clone
-        # do a delete as well
-        if is_temp:
-            self.provision.delete_temp_volume_snap(
-                array, session['snap_name'], session['source_vol'],
-                session['generation'])
+        is_legacy = 'EMC_SMI' in session['snap_name']
+        is_temp = utils.CLONE_SNAPSHOT_NAME in session['snap_name']
+        is_expired = session['expired']
+        is_valid = True if is_legacy or (is_temp and is_expired) else False
+        if is_valid:
+            try:
+                self._unlink_targets_and_delete_temp_snapvx(
+                    session, array, extra_specs)
+            except exception.VolumeBackendAPIException as e:
+                # Ignore and continue as snapshot has been unlinked
+                # successfully with incorrect status code returned
+                if ('404' and session['snap_name'] and
+                        'does not exist' in six.text_type(e)):
+                    pass
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing PowerMax/VMAX Volume (import to Cinder).
