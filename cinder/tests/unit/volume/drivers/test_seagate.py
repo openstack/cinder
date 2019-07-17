@@ -1,6 +1,6 @@
 #    Copyright 2014 Objectif Libre
 #    Copyright 2015 DotHill Systems
-#    Copyright 2016 Seagate Technology or one of its affiliates
+#    Copyright 2016-19 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,21 +14,31 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""Unit tests for OpenStack Cinder DotHill driver."""
-
-from defusedxml import lxml as etree
-import mock
-import requests
+"""Unit tests for OpenStack Cinder Seagate driver."""
 
 from cinder import exception
-from cinder.objects import fields
 from cinder import test
-from cinder.volume.drivers.dothill import dothill_client as dothill
-from cinder.volume.drivers.dothill import dothill_common
-from cinder.volume.drivers.dothill import dothill_fc
-from cinder.volume.drivers.dothill import dothill_iscsi
-from cinder.volume.drivers.dothill import exception as dh_exception
+
+from cinder.objects import fields
+
+import cinder.volume.drivers.stx.client
+import cinder.volume.drivers.stx.common
+import cinder.volume.drivers.stx.exception as stx_exception
+import cinder.volume.drivers.stx.fc
+import cinder.volume.drivers.stx.iscsi
+
 from cinder.zonemanager import utils as fczm_utils
+
+from defusedxml import lxml as etree
+
+import mock
+
+import requests
+
+STXClient = cinder.volume.drivers.stx.client.STXClient
+STXCommon = cinder.volume.drivers.stx.common.STXCommon
+STXFCDriver = cinder.volume.drivers.stx.fc.STXFCDriver
+STXISCSIDriver = cinder.volume.drivers.stx.iscsi.STXISCSIDriver
 
 session_key = '12a1626754554a21d85040760c81b'
 resp_login = '''<RESPONSE><OBJECT basetype="status" name="status" oid="1">
@@ -119,7 +129,7 @@ test_retype_volume = {'attach_status': fields.VolumeAttachStatus.DETACHED,
                       'display_name': 'test volume', 'name': 'volume',
                       'size': 10}
 test_host = {'capabilities': {'location_info':
-                              'DotHillVolumeDriver:xxxxx:dg02:A'}}
+                              'SeagateVolumeDriver:xxxxx:dg02:A'}}
 test_snap = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
              'volume': {'name_id': None},
              'volume_id': vol_id, 'display_name': 'test volume',
@@ -159,16 +169,16 @@ invalid_connector = {'ip': '10.0.0.2',
                      'host': 'fakehost'}
 
 
-class TestDotHillClient(test.TestCase):
+class TestSeagateClient(test.TestCase):
     def setUp(self):
-        super(TestDotHillClient, self).setUp()
+        super(TestSeagateClient, self).setUp()
         self.login = 'manage'
         self.passwd = '!manage'
         self.ip = '10.0.0.1'
         self.protocol = 'http'
         self.ssl_verify = False
-        self.client = dothill.DotHillClient(self.ip, self.login, self.passwd,
-                                            self.protocol, self.ssl_verify)
+        self.client = STXClient(self.ip, self.login, self.passwd,
+                                self.protocol, self.ssl_verify)
 
     @mock.patch('requests.get')
     def test_login(self, mock_requests_get):
@@ -176,7 +186,7 @@ class TestDotHillClient(test.TestCase):
         mock_requests_get.return_value = m
 
         m.text.encode.side_effect = [resp_badlogin, resp_badlogin]
-        self.assertRaises(dh_exception.DotHillAuthenticationError,
+        self.assertRaises(stx_exception.AuthenticationError,
                           self.client.login)
 
         m.text.encode.side_effect = [resp_login, resp_fw, resp_system]
@@ -209,10 +219,10 @@ class TestDotHillClient(test.TestCase):
         mock_requests_get.return_value = m
         ret = self.client._api_request('/path')
         self.assertTrue(type(ret) == etree.RestrictedElement)
-        self.assertRaises(dh_exception.DotHillConnectionError,
+        self.assertRaises(stx_exception.ConnectionError,
                           self.client._api_request,
                           '/path')
-        self.assertRaises(dh_exception.DotHillConnectionError,
+        self.assertRaises(stx_exception.ConnectionError,
                           self.client._api_request,
                           '/path')
 
@@ -222,22 +232,22 @@ class TestDotHillClient(test.TestCase):
         invalid_tree = etree.XML(invalid_xml)
         ret = self.client._assert_response_ok(ok_tree)
         self.assertIsNone(ret)
-        self.assertRaises(dh_exception.DotHillRequestError,
+        self.assertRaises(stx_exception.RequestError,
                           self.client._assert_response_ok,
                           not_ok_tree)
-        self.assertRaises(dh_exception.DotHillRequestError,
+        self.assertRaises(stx_exception.RequestError,
                           self.client._assert_response_ok, invalid_tree)
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_backend_exists(self, mock_request):
-        mock_request.side_effect = [dh_exception.DotHillRequestError,
+        mock_request.side_effect = [stx_exception.RequestError,
                                     fake_xml]
         self.assertFalse(self.client.backend_exists('backend_name',
                                                     'linear'))
         self.assertTrue(self.client.backend_exists('backend_name',
                                                    'linear'))
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_backend_stats(self, mock_request):
         stats = {'free_capacity_gb': 1979,
                  'total_capacity_gb': 1979}
@@ -250,7 +260,7 @@ class TestDotHillClient(test.TestCase):
         self.assertEqual(stats, self.client.backend_stats('A',
                                                           'virtual'))
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_get_lun(self, mock_request):
         mock_request.side_effect = [etree.XML(response_no_lun),
                                     etree.XML(response_lun)]
@@ -259,7 +269,7 @@ class TestDotHillClient(test.TestCase):
         ret = self.client._get_first_available_lun_for_host("fakehost")
         self.assertEqual(2, ret)
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_get_ports(self, mock_request):
         mock_request.side_effect = [etree.XML(response_ports)]
         ret = self.client.get_active_target_ports()
@@ -273,19 +283,19 @@ class TestDotHillClient(test.TestCase):
                            'target-id': 'id5',
                            'status': 'Up'}], ret)
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_get_fc_ports(self, mock_request):
         mock_request.side_effect = [etree.XML(response_ports)]
         ret = self.client.get_active_fc_target_ports()
         self.assertEqual(['id2'], ret)
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_get_iscsi_iqns(self, mock_request):
         mock_request.side_effect = [etree.XML(response_ports)]
         ret = self.client.get_active_iscsi_target_iqns()
         self.assertEqual(['id4', 'id5'], ret)
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_get_iscsi_portals(self, mock_request):
         portals = {'10.0.0.12': 'Up', '10.0.0.11': 'Up'}
         mock_request.side_effect = [etree.XML(response_ports_linear),
@@ -295,7 +305,7 @@ class TestDotHillClient(test.TestCase):
         ret = self.client.get_active_iscsi_target_portals()
         self.assertEqual(portals, ret)
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_delete_snapshot(self, mock_request):
         mock_request.side_effect = [None, None]
         self.client.delete_snapshot('dummy', 'linear')
@@ -303,7 +313,7 @@ class TestDotHillClient(test.TestCase):
         self.client.delete_snapshot('dummy', 'paged')
         mock_request.assert_called_with('/delete/snapshot', 'dummy')
 
-    @mock.patch.object(dothill.DotHillClient, '_request')
+    @mock.patch.object(STXClient, '_request')
     def test_list_luns_for_host(self, mock_request):
         mock_request.side_effect = [etree.XML(response_no_lun),
                                     etree.XML(response_lun)]
@@ -316,42 +326,44 @@ class TestDotHillClient(test.TestCase):
 
 
 class FakeConfiguration1(object):
-    dothill_backend_name = 'OpenStack'
-    dothill_backend_type = 'linear'
+    seagate_pool_name = 'OpenStack'
+    seagate_pool_type = 'linear'
     san_ip = '10.0.0.1'
     san_login = 'manage'
     san_password = '!manage'
-    dothill_api_protocol = 'http'
+    seagate_api_protocol = 'http'
+    driver_use_ssl = True
+    driver_ssl_cert_verify = False
 
     def safe_get(self, key):
         return 'fakevalue'
 
 
 class FakeConfiguration2(FakeConfiguration1):
-    dothill_iscsi_ips = ['10.0.0.11']
+    seagate_iscsi_ips = ['10.0.0.11']
     use_chap_auth = None
 
 
-class TestFCDotHillCommon(test.TestCase):
+class TestFCSeagateCommon(test.TestCase):
     def setUp(self):
-        super(TestFCDotHillCommon, self).setUp()
+        super(TestFCSeagateCommon, self).setUp()
         self.config = FakeConfiguration1()
-        self.common = dothill_common.DotHillCommon(self.config)
+        self.common = STXCommon(self.config)
         self.common.client_login = mock.MagicMock()
         self.common.client_logout = mock.MagicMock()
         self.common.serialNumber = "xxxxx"
         self.common.owner = "A"
         self.connector_element = "wwpns"
 
-    @mock.patch.object(dothill.DotHillClient, 'get_serial_number')
-    @mock.patch.object(dothill.DotHillClient, 'get_owner_info')
-    @mock.patch.object(dothill.DotHillClient, 'backend_exists')
+    @mock.patch.object(STXClient, 'get_serial_number')
+    @mock.patch.object(STXClient, 'get_owner_info')
+    @mock.patch.object(STXClient, 'backend_exists')
     def test_do_setup(self, mock_backend_exists,
                       mock_owner_info, mock_serial_number):
         mock_backend_exists.side_effect = [False, True]
         mock_owner_info.return_value = "A"
         mock_serial_number.return_value = "xxxxx"
-        self.assertRaises(dh_exception.DotHillInvalidBackend,
+        self.assertRaises(stx_exception.InvalidBackend,
                           self.common.do_setup, None)
         self.assertIsNone(self.common.do_setup(None))
         mock_backend_exists.assert_called_with(self.common.backend_name,
@@ -387,9 +399,9 @@ class TestFCDotHillCommon(test.TestCase):
                           connector,
                           self.connector_element))
 
-    @mock.patch.object(dothill.DotHillClient, 'backend_stats')
+    @mock.patch.object(STXClient, 'backend_stats')
     def test_update_volume_stats(self, mock_stats):
-        mock_stats.side_effect = [dh_exception.DotHillRequestError,
+        mock_stats.side_effect = [stx_exception.RequestError,
                                   stats_large_space]
 
         self.assertRaises(exception.Invalid, self.common._update_volume_stats)
@@ -403,16 +415,16 @@ class TestFCDotHillCommon(test.TestCase):
                                      'multiattach': True,
                                      'free_capacity_gb': 90,
                                      'location_info':
-                                     'DotHillVolumeDriver:xxxxx:OpenStack:A',
+                                     'SeagateVolumeDriver:xxxxx:OpenStack:A',
                                      'pool_name': 'OpenStack',
                                      'total_capacity_gb': 100}],
                           'storage_protocol': None,
-                          'vendor_name': 'DotHill',
+                          'vendor_name': 'Seagate',
                           'volume_backend_name': None}, self.common.stats)
 
-    @mock.patch.object(dothill.DotHillClient, 'create_volume')
+    @mock.patch.object(STXClient, 'create_volume')
     def test_create_volume(self, mock_create):
-        mock_create.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_create.side_effect = [stx_exception.RequestError, None]
 
         self.assertRaises(exception.Invalid, self.common.create_volume,
                           test_volume)
@@ -423,12 +435,12 @@ class TestFCDotHillCommon(test.TestCase):
                                        self.common.backend_name,
                                        self.common.backend_type)
 
-    @mock.patch.object(dothill.DotHillClient, 'delete_volume')
+    @mock.patch.object(STXClient, 'delete_volume')
     def test_delete_volume(self, mock_delete):
-        not_found_e = dh_exception.DotHillRequestError(
+        not_found_e = stx_exception.RequestError(
             'The volume was not found on this system.')
         mock_delete.side_effect = [not_found_e,
-                                   dh_exception.DotHillRequestError,
+                                   stx_exception.RequestError,
                                    None]
         self.assertIsNone(self.common.delete_volume(test_volume))
         self.assertRaises(exception.Invalid, self.common.delete_volume,
@@ -436,19 +448,19 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertIsNone(self.common.delete_volume(test_volume))
         mock_delete.assert_called_with(encoded_volid)
 
-    @mock.patch.object(dothill.DotHillClient, 'copy_volume')
-    @mock.patch.object(dothill.DotHillClient, 'backend_stats')
+    @mock.patch.object(STXClient, 'copy_volume')
+    @mock.patch.object(STXClient, 'backend_stats')
     def test_create_cloned_volume(self, mock_stats, mock_copy):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
         self.assertRaises(
-            dh_exception.DotHillNotEnoughSpace,
+            stx_exception.NotEnoughSpace,
             self.common.create_cloned_volume,
             dest_volume, detached_volume)
         self.assertFalse(mock_copy.called)
 
-        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_copy.side_effect = [stx_exception.RequestError, None]
         self.assertRaises(exception.Invalid,
                           self.common.create_cloned_volume,
                           dest_volume, detached_volume)
@@ -461,20 +473,20 @@ class TestFCDotHillCommon(test.TestCase):
                                      self.common.backend_name,
                                      self.common.backend_type)
 
-    @mock.patch.object(dothill.DotHillClient, 'copy_volume')
-    @mock.patch.object(dothill.DotHillClient, 'backend_stats')
-    @mock.patch.object(dothill_common.DotHillCommon, 'extend_volume')
+    @mock.patch.object(STXClient, 'copy_volume')
+    @mock.patch.object(STXClient, 'backend_stats')
+    @mock.patch.object(STXCommon, 'extend_volume')
     def test_create_cloned_volume_larger(self, mock_extend, mock_stats,
                                          mock_copy):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
-        self.assertRaises(dh_exception.DotHillNotEnoughSpace,
+        self.assertRaises(stx_exception.NotEnoughSpace,
                           self.common.create_cloned_volume,
                           dest_volume_larger, detached_volume)
         self.assertFalse(mock_copy.called)
 
-        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_copy.side_effect = [stx_exception.RequestError, None]
         self.assertRaises(exception.Invalid,
                           self.common.create_cloned_volume,
                           dest_volume_larger, detached_volume)
@@ -489,20 +501,20 @@ class TestFCDotHillCommon(test.TestCase):
         mock_extend.assert_called_once_with(dest_volume_larger,
                                             dest_volume_larger['size'])
 
-    @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
-    @mock.patch.object(dothill.DotHillClient, 'extend_volume')
-    @mock.patch.object(dothill.DotHillClient, 'copy_volume')
-    @mock.patch.object(dothill.DotHillClient, 'backend_stats')
+    @mock.patch.object(STXClient, 'get_volume_size')
+    @mock.patch.object(STXClient, 'extend_volume')
+    @mock.patch.object(STXClient, 'copy_volume')
+    @mock.patch.object(STXClient, 'backend_stats')
     def test_create_volume_from_snapshot(self, mock_stats, mock_copy,
                                          mock_extend, mock_get_size):
         mock_stats.side_effect = [stats_low_space, stats_large_space,
                                   stats_large_space]
 
-        self.assertRaises(dh_exception.DotHillNotEnoughSpace,
+        self.assertRaises(stx_exception.NotEnoughSpace,
                           self.common.create_volume_from_snapshot,
                           dest_volume, test_snap)
 
-        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_copy.side_effect = [stx_exception.RequestError, None]
         mock_get_size.return_value = test_snap['volume_size']
         self.assertRaises(exception.Invalid,
                           self.common.create_volume_from_snapshot,
@@ -517,10 +529,10 @@ class TestFCDotHillCommon(test.TestCase):
                                      self.common.backend_type)
         mock_extend.assert_called_with('vqqqqqqqqqqqqqqqqqqq', '10GiB')
 
-    @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
-    @mock.patch.object(dothill.DotHillClient, 'extend_volume')
+    @mock.patch.object(STXClient, 'get_volume_size')
+    @mock.patch.object(STXClient, 'extend_volume')
     def test_extend_volume(self, mock_extend, mock_size):
-        mock_extend.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_extend.side_effect = [stx_exception.RequestError, None]
         mock_size.side_effect = [10, 10]
         self.assertRaises(exception.Invalid, self.common.extend_volume,
                           test_volume, 20)
@@ -528,9 +540,9 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertIsNone(ret)
         mock_extend.assert_called_with(encoded_volid, '10GiB')
 
-    @mock.patch.object(dothill.DotHillClient, 'create_snapshot')
+    @mock.patch.object(STXClient, 'create_snapshot')
     def test_create_snapshot(self, mock_create):
-        mock_create.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_create.side_effect = [stx_exception.RequestError, None]
 
         self.assertRaises(exception.Invalid, self.common.create_snapshot,
                           test_snap)
@@ -538,12 +550,12 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertIsNone(ret)
         mock_create.assert_called_with(encoded_volid, 'sqqqqqqqqqqqqqqqqqqq')
 
-    @mock.patch.object(dothill.DotHillClient, 'delete_snapshot')
+    @mock.patch.object(STXClient, 'delete_snapshot')
     def test_delete_snapshot(self, mock_delete):
-        not_found_e = dh_exception.DotHillRequestError(
+        not_found_e = stx_exception.RequestError(
             'The volume was not found on this system.')
         mock_delete.side_effect = [not_found_e,
-                                   dh_exception.DotHillRequestError,
+                                   stx_exception.RequestError,
                                    None]
 
         self.assertIsNone(self.common.delete_snapshot(test_snap))
@@ -553,9 +565,9 @@ class TestFCDotHillCommon(test.TestCase):
         mock_delete.assert_called_with('sqqqqqqqqqqqqqqqqqqq',
                                        self.common.backend_type)
 
-    @mock.patch.object(dothill.DotHillClient, 'map_volume')
+    @mock.patch.object(STXClient, 'map_volume')
     def test_map_volume(self, mock_map):
-        mock_map.side_effect = [dh_exception.DotHillRequestError, 10]
+        mock_map.side_effect = [stx_exception.RequestError, 10]
 
         self.assertRaises(exception.Invalid, self.common.map_volume,
                           test_volume, connector, self.connector_element)
@@ -565,9 +577,9 @@ class TestFCDotHillCommon(test.TestCase):
         mock_map.assert_called_with(encoded_volid,
                                     connector, self.connector_element)
 
-    @mock.patch.object(dothill.DotHillClient, 'unmap_volume')
+    @mock.patch.object(STXClient, 'unmap_volume')
     def test_unmap_volume(self, mock_unmap):
-        mock_unmap.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_unmap.side_effect = [stx_exception.RequestError, None]
 
         self.assertRaises(exception.Invalid, self.common.unmap_volume,
                           test_volume, connector, self.connector_element)
@@ -577,11 +589,11 @@ class TestFCDotHillCommon(test.TestCase):
         mock_unmap.assert_called_with(encoded_volid, connector,
                                       self.connector_element)
 
-    @mock.patch.object(dothill.DotHillClient, 'copy_volume')
-    @mock.patch.object(dothill.DotHillClient, 'delete_volume')
-    @mock.patch.object(dothill.DotHillClient, 'modify_volume_name')
+    @mock.patch.object(STXClient, 'copy_volume')
+    @mock.patch.object(STXClient, 'delete_volume')
+    @mock.patch.object(STXClient, 'modify_volume_name')
     def test_retype(self, mock_modify, mock_delete, mock_copy):
-        mock_copy.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_copy.side_effect = [stx_exception.RequestError, None]
         self.assertRaises(exception.Invalid, self.common.migrate_volume,
                           test_retype_volume, test_host)
         ret = self.common.migrate_volume(test_retype_volume, test_host)
@@ -590,20 +602,20 @@ class TestFCDotHillCommon(test.TestCase):
                                          {'capabilities': {}})
         self.assertEqual((False, None), ret)
 
-    @mock.patch.object(dothill_common.DotHillCommon, '_get_vol_name')
-    @mock.patch.object(dothill.DotHillClient, 'modify_volume_name')
+    @mock.patch.object(STXCommon, '_get_vol_name')
+    @mock.patch.object(STXClient, 'modify_volume_name')
     def test_manage_existing(self, mock_modify, mock_volume):
         existing_ref = {'source-name': 'xxxx'}
-        mock_modify.side_effect = [dh_exception.DotHillRequestError, None]
+        mock_modify.side_effect = [stx_exception.RequestError, None]
         self.assertRaises(exception.Invalid, self.common.manage_existing,
                           test_volume, existing_ref)
         ret = self.common.manage_existing(test_volume, existing_ref)
         self.assertIsNone(ret)
 
-    @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
+    @mock.patch.object(STXClient, 'get_volume_size')
     def test_manage_existing_get_size(self, mock_volume):
         existing_ref = {'source-name': 'xxxx'}
-        mock_volume.side_effect = [dh_exception.DotHillRequestError, 1]
+        mock_volume.side_effect = [stx_exception.RequestError, 1]
         self.assertRaises(exception.Invalid,
                           self.common.manage_existing_get_size,
                           None, existing_ref)
@@ -611,28 +623,28 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertEqual(1, ret)
 
 
-class TestISCSIDotHillCommon(TestFCDotHillCommon):
+class TestISCSISeagateCommon(TestFCSeagateCommon):
     def setUp(self):
-        super(TestISCSIDotHillCommon, self).setUp()
+        super(TestISCSISeagateCommon, self).setUp()
         self.connector_element = 'initiator'
 
 
-class TestDotHillFC(test.TestCase):
-    @mock.patch.object(dothill_common.DotHillCommon, 'do_setup')
+class TestSeagateFC(test.TestCase):
+    @mock.patch.object(STXCommon, 'do_setup')
     def setUp(self, mock_setup):
-        super(TestDotHillFC, self).setUp()
-        self.vendor_name = 'DotHill'
+        super(TestSeagateFC, self).setUp()
+        self.vendor_name = 'Seagate'
 
         mock_setup.return_value = True
 
         def fake_init(self, *args, **kwargs):
-            super(dothill_fc.DotHillFCDriver, self).__init__()
+            super(STXFCDriver, self).__init__()
             self.common = None
             self.configuration = FakeConfiguration1()
             self.lookup_service = fczm_utils.create_lookup_service()
 
-        dothill_fc.DotHillFCDriver.__init__ = fake_init
-        self.driver = dothill_fc.DotHillFCDriver()
+        STXFCDriver.__init__ = fake_init
+        self.driver = STXFCDriver()
         self.driver.do_setup(None)
 
     def _test_with_mock(self, mock, method, args, expected=None):
@@ -641,42 +653,42 @@ class TestDotHillFC(test.TestCase):
         self.assertRaises(exception.Invalid, func, *args)
         self.assertEqual(expected, func(*args))
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'create_volume')
+    @mock.patch.object(STXCommon, 'create_volume')
     def test_create_volume(self, mock_create):
         self._test_with_mock(mock_create, 'create_volume', [None])
 
-    @mock.patch.object(dothill_common.DotHillCommon,
+    @mock.patch.object(STXCommon,
                        'create_cloned_volume')
     def test_create_cloned_volume(self, mock_create):
         self._test_with_mock(mock_create, 'create_cloned_volume', [None, None])
 
-    @mock.patch.object(dothill_common.DotHillCommon,
+    @mock.patch.object(STXCommon,
                        'create_volume_from_snapshot')
     def test_create_volume_from_snapshot(self, mock_create):
         self._test_with_mock(mock_create, 'create_volume_from_snapshot',
                              [None, None])
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'delete_volume')
+    @mock.patch.object(STXCommon, 'delete_volume')
     def test_delete_volume(self, mock_delete):
         self._test_with_mock(mock_delete, 'delete_volume', [None])
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'create_snapshot')
+    @mock.patch.object(STXCommon, 'create_snapshot')
     def test_create_snapshot(self, mock_create):
         self._test_with_mock(mock_create, 'create_snapshot', [None])
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'delete_snapshot')
+    @mock.patch.object(STXCommon, 'delete_snapshot')
     def test_delete_snapshot(self, mock_delete):
         self._test_with_mock(mock_delete, 'delete_snapshot', [None])
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'extend_volume')
+    @mock.patch.object(STXCommon, 'extend_volume')
     def test_extend_volume(self, mock_extend):
         self._test_with_mock(mock_extend, 'extend_volume', [None, 10])
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'client_logout')
-    @mock.patch.object(dothill_common.DotHillCommon,
+    @mock.patch.object(STXCommon, 'client_logout')
+    @mock.patch.object(STXCommon,
                        'get_active_fc_target_ports')
-    @mock.patch.object(dothill_common.DotHillCommon, 'map_volume')
-    @mock.patch.object(dothill_common.DotHillCommon, 'client_login')
+    @mock.patch.object(STXCommon, 'map_volume')
+    @mock.patch.object(STXCommon, 'client_login')
     def test_initialize_connection(self, mock_login, mock_map, mock_ports,
                                    mock_logout):
         mock_login.return_value = None
@@ -698,8 +710,8 @@ class TestDotHillFC(test.TestCase):
                                    'target_lun': 1,
                                    'target_discovered': True}}, ret)
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'unmap_volume')
-    @mock.patch.object(dothill.DotHillClient, 'list_luns_for_host')
+    @mock.patch.object(STXCommon, 'unmap_volume')
+    @mock.patch.object(STXClient, 'list_luns_for_host')
     def test_terminate_connection(self, mock_list, mock_unmap):
         mock_unmap.side_effect = [1]
         mock_list.side_effect = ['yes']
@@ -710,7 +722,7 @@ class TestDotHillFC(test.TestCase):
         ret = self.driver.terminate_connection(test_volume, connector)
         self.assertEqual(actual, ret)
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'get_volume_stats')
+    @mock.patch.object(STXCommon, 'get_volume_stats')
     def test_get_volume_stats(self, mock_stats):
         stats = {'storage_protocol': None,
                  'driver_version': self.driver.VERSION,
@@ -734,7 +746,7 @@ class TestDotHillFC(test.TestCase):
         self.assertEqual(stats, ret)
         mock_stats.assert_called_with(True)
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'retype')
+    @mock.patch.object(STXCommon, 'retype')
     def test_retype(self, mock_retype):
         mock_retype.side_effect = [exception.Invalid, True, False]
         args = [None, None, None, None, None]
@@ -742,12 +754,12 @@ class TestDotHillFC(test.TestCase):
         self.assertTrue(self.driver.retype(*args))
         self.assertFalse(self.driver.retype(*args))
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'manage_existing')
+    @mock.patch.object(STXCommon, 'manage_existing')
     def test_manage_existing(self, mock_manage_existing):
         self._test_with_mock(mock_manage_existing, 'manage_existing',
                              [None, None])
 
-    @mock.patch.object(dothill_common.DotHillCommon,
+    @mock.patch.object(STXCommon,
                        'manage_existing_get_size')
     def test_manage_size(self, mock_manage_size):
         mock_manage_size.side_effect = [exception.Invalid, 1]
@@ -757,30 +769,30 @@ class TestDotHillFC(test.TestCase):
         self.assertEqual(1, self.driver.manage_existing_get_size(None, None))
 
 
-class TestDotHillISCSI(TestDotHillFC):
-    @mock.patch.object(dothill_common.DotHillCommon, 'do_setup')
+class TestSeagateISCSI(TestSeagateFC):
+    @mock.patch.object(STXCommon, 'do_setup')
     def setUp(self, mock_setup):
-        super(TestDotHillISCSI, self).setUp()
-        self.vendor_name = 'DotHill'
+        super(TestSeagateISCSI, self).setUp()
+        self.vendor_name = 'Seagate'
         mock_setup.return_value = True
 
         def fake_init(self, *args, **kwargs):
-            super(dothill_iscsi.DotHillISCSIDriver, self).__init__()
+            super(STXISCSIDriver, self).__init__()
             self.common = None
             self.configuration = FakeConfiguration2()
             self.iscsi_ips = ['10.0.0.11']
 
-        dothill_iscsi.DotHillISCSIDriver.__init__ = fake_init
-        self.driver = dothill_iscsi.DotHillISCSIDriver()
+        STXISCSIDriver.__init__ = fake_init
+        self.driver = STXISCSIDriver()
         self.driver.do_setup(None)
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'client_logout')
-    @mock.patch.object(dothill_common.DotHillCommon,
+    @mock.patch.object(STXCommon, 'client_logout')
+    @mock.patch.object(STXCommon,
                        'get_active_iscsi_target_portals')
-    @mock.patch.object(dothill_common.DotHillCommon,
+    @mock.patch.object(STXCommon,
                        'get_active_iscsi_target_iqns')
-    @mock.patch.object(dothill_common.DotHillCommon, 'map_volume')
-    @mock.patch.object(dothill_common.DotHillCommon, 'client_login')
+    @mock.patch.object(STXCommon, 'map_volume')
+    @mock.patch.object(STXCommon, 'client_login')
     def test_initialize_connection(self, mock_login, mock_map, mock_iqns,
                                    mock_portals, mock_logout):
         mock_login.return_value = None
@@ -803,7 +815,7 @@ class TestDotHillISCSI(TestDotHillFC):
                                    'target_discovered': True,
                                    'target_portal': '10.0.0.11:3260'}}, ret)
 
-    @mock.patch.object(dothill_common.DotHillCommon, 'unmap_volume')
+    @mock.patch.object(STXCommon, 'unmap_volume')
     def test_terminate_connection(self, mock_unmap):
         mock_unmap.side_effect = [exception.Invalid, 1]
 

@@ -1,6 +1,6 @@
 #    Copyright 2014 Objectif Libre
 #    Copyright 2015 Dot Hill Systems Corp.
-#    Copyright 2016 Seagate Technology or one of its affiliates
+#    Copyright 2016-2019 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,17 +16,13 @@
 #
 
 import cinder.volume.driver
-from cinder.volume.drivers.dothill import dothill_common
-from cinder.volume.drivers.dothill import exception as dh_exception
-from cinder.volume.drivers.san import san
+import cinder.volume.drivers.san.san as san
+import cinder.volume.drivers.stx.common as common
 from cinder.zonemanager import utils as fczm_utils
 
 
-# As of Pike, the DotHill driver is no longer considered supported,
-# but the code remains as it is still subclassed by other drivers.
-# The __init__() function prevents any direct instantiation.
-class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
-    """OpenStack Fibre Channel cinder drivers for DotHill Arrays.
+class STXFCDriver(cinder.volume.driver.FibreChannelDriver):
+    """OpenStack Fibre Channel cinder drivers for Seagate arrays.
 
     .. code:: text
 
@@ -44,20 +40,24 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
           1.6    - Add management path redundancy and reduce load placed
                    on management controller.
           1.7    - Modified so it can't be invoked except as a superclass
-
+          2.0    - Reworked to create a new Seagate (STX) array driver.
     """
 
+    VERSION = "2.0"
+
+    CI_WIKI_NAME = 'Seagate_CI'
+
     def __init__(self, *args, **kwargs):
-        # Make sure we're not invoked directly
-        if type(self) == DotHillFCDriver:
-            raise dh_exception.DotHillDriverNotSupported
-        super(DotHillFCDriver, self).__init__(*args, **kwargs)
+        super(STXFCDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(san.san_opts)
         self.lookup_service = fczm_utils.create_lookup_service()
+        if type(self) != STXFCDriver:
+            return
+        self.configuration.append_config_values(common.common_opts)
 
     def _init_common(self):
-        return dothill_common.DotHillCommon(self.configuration)
+        return common.STXCommon(self.configuration)
 
     def _check_flags(self):
         required_flags = ['san_ip', 'san_login', 'san_password']
@@ -105,12 +105,15 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         info = {'driver_volume_type': 'fibre_channel', 'data': {}}
         try:
-            self.common.unmap_volume(volume, connector, 'wwpns')
             if not self.common.client.list_luns_for_host(
                     connector['wwpns'][0]):
                 ports, init_targ_map = self.get_init_targ_map(connector)
                 info['data'] = {'target_wwn': ports,
                                 'initiator_target_map': init_targ_map}
+            # multiattach volumes cannot be unmapped here, but will
+            # be implicity unmapped when the volume is deleted.
+            if not volume.get('multiattach'):
+                self.common.unmap_volume(volume, connector, 'wwpns')
                 fczm_utils.remove_fc_zone(info)
         finally:
             return info

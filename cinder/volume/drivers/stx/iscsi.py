@@ -1,6 +1,6 @@
 #    Copyright 2014 Objectif Libre
 #    Copyright 2015 Dot Hill Systems Corp.
-#    Copyright 2016 Seagate Technology or one of its affiliates
+#    Copyright 2016-2019 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -20,20 +20,17 @@ from oslo_log import log as logging
 from cinder import exception
 from cinder.i18n import _
 import cinder.volume.driver
-from cinder.volume.drivers.dothill import dothill_common as dothillcommon
-from cinder.volume.drivers.dothill import exception as dh_exception
-from cinder.volume.drivers.san import san
+import cinder.volume.drivers.san.san as san
+import cinder.volume.drivers.stx.common as common
+import cinder.volume.drivers.stx.exception as stx_exception
 
 
 DEFAULT_ISCSI_PORT = "3260"
 LOG = logging.getLogger(__name__)
 
 
-# As of Pike, the DotHill driver is no longer considered supported,
-# but the code remains as it is still subclassed by other drivers.
-# The __init__() function prevents any direct instantiation.
-class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
-    """OpenStack iSCSI cinder drivers for DotHill Arrays.
+class STXISCSIDriver(cinder.volume.driver.ISCSIDriver):
+    """OpenStack iSCSI Cinder driver for Seagate storage arrays.
 
     .. code:: text
 
@@ -53,20 +50,25 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
           1.6    - Add management path redundancy and reduce load placed
                    on management controller.
           1.7    - Modified so it can't be invoked except as a superclass
-
+          2.0    - Reworked to create a new Seagate (STX) array driver.
     """
 
+    VERSION = "2.0"
+
+    CI_WIKI_NAME = 'Seagate_CI'
+
     def __init__(self, *args, **kwargs):
-        # Make sure we're not invoked directly
-        if type(self) == DotHillISCSIDriver:
-            raise dh_exception.DotHillDriverNotSupported
-        super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
+        super(STXISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None
         self.configuration.append_config_values(san.san_opts)
-        self.iscsi_ips = None
+        if type(self) != STXISCSIDriver:
+            return
+        self.configuration.append_config_values(common.common_opts)
+        self.configuration.append_config_values(common.iscsi_opts)
+        self.iscsi_ips = self.configuration.seagate_iscsi_ips
 
     def _init_common(self):
-        return dothillcommon.DotHillCommon(self.configuration)
+        return common.STXCommon(self.configuration)
 
     def _check_flags(self):
         required_flags = ['san_ip', 'san_login', 'san_password']
@@ -130,7 +132,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                     break
 
             if 'target_portal' not in data:
-                raise dh_exception.DotHillNotTargetPortal()
+                raise stx_exception.NotTargetPortal()
 
             if self.configuration.use_chap_auth:
                 chap_secret = self.common.get_chap_record(
@@ -152,7 +154,10 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         if type(connector) == dict and 'initiator' in connector:
-            self.common.unmap_volume(volume, connector, 'initiator')
+            # multiattach volumes cannot be unmapped here, but will
+            # be implicity unmapped when the volume is deleted.
+            if not volume.get('multiattach'):
+                self.common.unmap_volume(volume, connector, 'initiator')
 
     def get_volume_stats(self, refresh=False):
         stats = self.common.get_volume_stats(refresh)

@@ -38,9 +38,10 @@ Supported operations
 Configuring the array
 ~~~~~~~~~~~~~~~~~~~~~
 
-#. Verify that the array can be managed via an HTTPS connection. HTTP can also
-   be used if ``hpmsa_api_protocol=http`` is placed into the appropriate
-   sections of the ``cinder.conf`` file.
+#. Verify that the array can be managed using an HTTPS connection. HTTP
+   can also be used if ``hpmsa_api_protocol=http`` is placed into the
+   appropriate sections of the ``cinder.conf`` file, but this option is
+   deprecated and will be removed in a future release.
 
    Confirm that virtual pools A and B are present if you plan to use virtual
    pools for OpenStack storage.
@@ -50,12 +51,12 @@ Configuring the array
    creating or setting aside one disk group for each of the A and B
    controllers.
 
-#. Edit the ``cinder.conf`` file to define a storage back end entry for each
+#. Edit the ``cinder.conf`` file to define a storage back-end entry for each
    storage pool on the array that will be managed by OpenStack. Each entry
    consists of a unique section name, surrounded by square brackets, followed
-   by options specified in a ``key=value`` format.
+   by options specified in ``key=value`` format.
 
-   * The ``hpmsa_backend_name`` value specifies the name of the storage pool
+   * The ``hpmsa_pool_name`` value specifies the name of the storage pool
      or vdisk on the array.
 
    * The ``volume_backend_name`` option value can be a unique value, if you
@@ -64,92 +65,101 @@ Configuring the array
      volume scheduler choose where new volumes are allocated.
 
    * The rest of the options will be repeated for each storage pool in a
-     given array: ``volume_driver`` specifies the Cinder driver name;
-     ``san_ip`` specifies the IP addresses or host names of the array's
-     management controllers; ``san_login`` and ``san_password`` specify
-     the username and password of an array user account with ``manage``
-     privileges; and ``hpmsa_iscsi_ips`` specfies the iSCSI IP addresses
-     for the array if using the iSCSI transport protocol.
+     given array:
+
+     * ``volume_driver`` specifies the Cinder driver name.
+     * ``san_ip`` specifies the IP addresses or host names of the array's
+       management controllers.
+     * ``san_login`` and ``san_password`` specify the username and password
+       of an array user account with ``manage`` privileges.
+     * ``driver_use_ssl`` should be set to ``true`` to enable use of the
+       HTTPS protocol.
+     * ``hpmsa_iscsi_ips`` specfies the iSCSI IP addresses for the array
+       if using the iSCSI transport protocol.
 
    In the examples below, two back ends are defined, one for pool A and one for
    pool B, and a common ``volume_backend_name`` is used so that a single
    volume type definition can be used to allocate volumes from both pools.
 
-   **iSCSI example back-end entries**
+   **Example: iSCSI example back-end entries**
 
    .. code-block:: ini
 
       [pool-a]
-      hpmsa_backend_name = A
+      hpmsa_pool_name = A
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_iscsi.HPMSAISCSIDriver
       san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
       hpmsa_iscsi_ips = 10.2.3.4,10.2.3.5
+      driver_use_ssl = true
 
       [pool-b]
-      hpmsa_backend_name = B
+      hpmsa_pool_name = B
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_iscsi.HPMSAISCSIDriver
       san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
       hpmsa_iscsi_ips = 10.2.3.4,10.2.3.5
+      driver_use_ssl = true
 
-   **Fibre Channel example back-end entries**
+   **Example: Fibre Channel example back-end entries**
 
    .. code-block:: ini
 
       [pool-a]
-      hpmsa_backend_name = A
+      hpmsa_pool_name = A
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_fc.HPMSAFCDriver
       san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
+      driver_use_ssl = true
 
       [pool-b]
-      hpmsa_backend_name = B
+      hpmsa_pool_name = B
       volume_backend_name = hpmsa-array
       volume_driver = cinder.volume.drivers.san.hp.hpmsa_fc.HPMSAFCDriver
       san_ip = 10.1.2.3,10.1.2.4
       san_login = manage
       san_password = !manage
+      driver_use_ssl = true
 
 #. If any ``volume_backend_name`` value refers to a vdisk rather than a
-   virtual pool, add an additional statement ``hpmsa_backend_type = linear``
+   virtual pool, add an additional statement ``hpmsa_pool_type = linear``
    to that back end entry.
 
 #. If HTTPS is not enabled in the array, include ``hpmsa_api_protocol = http``
    in each of the back-end definitions.
 
-#. If HTTPS is enabled, you can enable certificate verification with the option
-   ``hpmsa_verify_certificate=True``. You may also use the
-   ``hpmsa_verify_certificate_path`` parameter to specify the path to a
-   CA\_BUNDLE file containing CAs other than those in the default list.
+#. If HTTPS is enabled, you can enable certificate verification with the
+   option ``driver_ssl_cert_verify = True``. You may also use the
+   ``driver_ssl_cert_path`` option to specify the path to a
+   CA_BUNDLE file containing CAs other than those in the default list.
 
 #. Modify the ``[DEFAULT]`` section of the ``cinder.conf`` file to add an
-   ``enabled_back-ends`` parameter specifying the backend entries you added,
+   ``enabled_backends`` parameter specifying the back-end entries you added,
    and a ``default_volume_type`` parameter specifying the name of a volume type
    that you will create in the next step.
 
-   **Example of [DEFAULT] section changes**
+   **Example: [DEFAULT] section changes**
 
    .. code-block:: ini
 
       [DEFAULT]
+      # ...
       enabled_backends = pool-a,pool-b
       default_volume_type = hpmsa
 
-
 #. Create a new volume type for each distinct ``volume_backend_name`` value
-   that you added in the ``cinder.conf`` file. The example below assumes that
+   that you added to the ``cinder.conf`` file. The example below assumes that
    the same ``volume_backend_name=hpmsa-array`` option was specified in all
    of the entries, and specifies that the volume type ``hpmsa`` can be used to
    allocate volumes from any of them.
 
-   **Example of creating a volume type**
+   **Example: Creating a volume type**
 
    .. code-block:: console
 

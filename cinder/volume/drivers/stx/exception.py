@@ -15,29 +15,25 @@ from cinder import exception
 from cinder.i18n import _
 
 
-class DotHillInvalidBackend(exception.VolumeDriverException):
+class InvalidBackend(exception.VolumeDriverException):
     message = _("Backend doesn't exist (%(backend)s)")
 
 
-class DotHillConnectionError(exception.VolumeDriverException):
+class ConnectionError(exception.VolumeDriverException):
     message = "%(message)s"
 
 
-class DotHillAuthenticationError(exception.VolumeDriverException):
+class AuthenticationError(exception.VolumeDriverException):
     message = "%(message)s"
 
 
-class DotHillNotEnoughSpace(exception.VolumeDriverException):
+class NotEnoughSpace(exception.VolumeDriverException):
     message = _("Not enough space on backend (%(backend)s)")
 
 
-class DotHillRequestError(exception.VolumeDriverException):
+class RequestError(exception.VolumeDriverException):
     message = "%(message)s"
 
 
-class DotHillNotTargetPortal(exception.VolumeDriverException):
+class NotTargetPortal(exception.VolumeDriverException):
     message = _("No active iSCSI portals with supplied iSCSI IPs")
-
-
-class DotHillDriverNotSupported(exception.VolumeDriverException):
-    message = _("The Dot Hill driver is no longer supported.")

@@ -1,0 +1,29 @@
+---
+upgrade:
+  - |
+    The Lenovo driver options ``lenovo_backend_name`` and ``lenovo_backend_type``
+    options were deprecated in favor of ``lenovo_pool_name`` and
+    ``lenovo_pool_type`` to avoid confusion, and the
+    ``lenovo_api_protocol``, ``lenovo_verify_certificate``, and
+    ``lenovo_verify_certificate_path`` options were deprecated in favor of
+    the standard ``driver_use_ssl``, ``driver_ssl_cert_verify``, and
+    ``driver_ssl_cert_path`` options.  To retain the default behavior, add
+    ``driver_use_ssl = true`` to back-end entries in ``cinder.conf``
+    before the deprecated options are removed in a future release.
+
+deprecations:
+  - |
+    The Lenovo driver options ``lenovo_backend_name`` and ``lenovo_backend_type``
+    options were deprecated in favor of ``lenovo_pool_name`` and
+    ``lenovo_pool_type`` to avoid confusion, and the
+    ``lenovo_api_protocol``, ``lenovo_verify_certificate``, and
+    ``lenovo_verify_certificate_path`` options were deprecated in favor of
+    the standard ``driver_use_ssl``, ``driver_ssl_cert_verify``, and
+    ``driver_ssl_cert_path`` options.  To retain the default behavior, add
+    ``driver_use_ssl = true`` to back-end entries in ``cinder.conf``
+    before the deprecated options are removed in a future release.
+
+fixes:
+  - |
+    Fixed Lenovo driver issue where a multi-attached volume could be
+    unmapped while still in use.
