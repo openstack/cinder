@@ -199,6 +199,12 @@ class API(base.Base):
         specs = getattr(volume_type, 'extra_specs', {})
         return specs.get('multiattach', 'False') == '<is> True'
 
+    def _is_encrypted(self, volume_type):
+        specs = volume_type.get('extra_specs', {})
+        if 'encryption' not in specs:
+            return False
+        return specs.get('encryption', {}) is not {}
+
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
@@ -1657,6 +1663,11 @@ class API(base.Base):
             if tgt_is_multiattach:
                 context.authorize(vol_policy.MULTIATTACH_POLICY,
                                   target_obj=volume)
+
+        if tgt_is_multiattach and self._is_encrypted(new_type):
+            msg = ('Retype requested both encryption and multi-attach, '
+                   'which is not supported.')
+            raise exception.InvalidInput(reason=msg)
 
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
