@@ -37,7 +37,7 @@ Install and configure components
 
          [DEFAULT]
          # ...
-         backup_driver = cinder.backup.drivers.swift
+         backup_driver = cinder.backup.drivers.swift.SwiftBackupDriver
          backup_swift_url = SWIFT_URL
 
 
