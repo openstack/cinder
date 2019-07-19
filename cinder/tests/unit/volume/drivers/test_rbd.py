@@ -268,7 +268,8 @@ class RBDTestCase(test.TestCase):
         cfg = [{'backend_id': 'secondary-backend'}]
         expected = [{'name': 'secondary-backend',
                      'conf': '/etc/ceph/secondary-backend.conf',
-                     'user': 'cinder'}]
+                     'user': 'cinder',
+                     'secret_uuid': self.cfg.rbd_secret_uuid}]
         self.driver._parse_replication_configs(cfg)
         self.assertEqual(expected, self.driver._replication_targets)
 
@@ -280,10 +281,12 @@ class RBDTestCase(test.TestCase):
                {'backend_id': 'tertiary-backend'}]
         expected = [{'name': 'secondary-backend',
                      'conf': 'foo',
-                     'user': 'bar'},
+                     'user': 'bar',
+                     'secret_uuid': self.cfg.rbd_secret_uuid},
                     {'name': 'tertiary-backend',
                      'conf': '/etc/ceph/tertiary-backend.conf',
-                     'user': 'cinder'}]
+                     'user': 'cinder',
+                     'secret_uuid': self.cfg.rbd_secret_uuid}]
         self.driver._parse_replication_configs(cfg[:num_targets])
         self.assertEqual(expected[:num_targets],
                          self.driver._replication_targets)
@@ -297,16 +300,19 @@ class RBDTestCase(test.TestCase):
             self.assertEqual([], self.driver._target_names)
             self.assertEqual({'name': self.cfg.rbd_cluster_name,
                               'conf': self.cfg.rbd_ceph_conf,
-                              'user': self.cfg.rbd_user},
+                              'user': self.cfg.rbd_user,
+                              'secret_uuid': self.cfg.rbd_secret_uuid},
                              self.driver._active_config)
 
     def test_do_setup_replication(self):
         cfg = [{'backend_id': 'secondary-backend',
                 'conf': 'foo',
-                'user': 'bar'}]
+                'user': 'bar',
+                'secret_uuid': 'secondary_secret_uuid'}]
         expected = [{'name': 'secondary-backend',
                      'conf': 'foo',
-                     'user': 'bar'}]
+                     'user': 'bar',
+                     'secret_uuid': 'secondary_secret_uuid'}]
 
         with mock.patch.object(self.driver.configuration, 'safe_get',
                                return_value=cfg):
@@ -315,16 +321,19 @@ class RBDTestCase(test.TestCase):
             self.assertEqual(expected, self.driver._replication_targets)
             self.assertEqual({'name': self.cfg.rbd_cluster_name,
                               'conf': self.cfg.rbd_ceph_conf,
-                              'user': self.cfg.rbd_user},
+                              'user': self.cfg.rbd_user,
+                              'secret_uuid': self.cfg.rbd_secret_uuid},
                              self.driver._active_config)
 
     def test_do_setup_replication_failed_over(self):
         cfg = [{'backend_id': 'secondary-backend',
                 'conf': 'foo',
-                'user': 'bar'}]
+                'user': 'bar',
+                'secret_uuid': 'secondary_secret_uuid'}]
         expected = [{'name': 'secondary-backend',
                      'conf': 'foo',
-                     'user': 'bar'}]
+                     'user': 'bar',
+                     'secret_uuid': 'secondary_secret_uuid'}]
         self.driver._active_backend_id = 'secondary-backend'
 
         with mock.patch.object(self.driver.configuration, 'safe_get',
@@ -1516,6 +1525,9 @@ class RBDTestCase(test.TestCase):
         keyring_data = "[client.cinder]\n  key = test\n"
         mock_keyring.return_value = keyring_data
 
+        self.driver._active_config = {'name': 'secondary_id',
+                                      'user': 'foo',
+                                      'conf': 'bar'}
         expected = {
             'driver_volume_type': 'rbd',
             'data': {
@@ -1523,11 +1535,11 @@ class RBDTestCase(test.TestCase):
                                    self.volume_a.name),
                 'hosts': hosts,
                 'ports': ports,
-                'cluster_name': self.cfg.rbd_cluster_name,
+                'cluster_name': 'secondary_id',
                 'auth_enabled': True,
-                'auth_username': self.cfg.rbd_user,
+                'auth_username': 'foo',
                 'secret_type': 'ceph',
-                'secret_uuid': None,
+                'secret_uuid': self.cfg.rbd_secret_uuid,
                 'volume_id': self.volume_a.id,
                 'discard': True,
                 'keyring': keyring_data,
@@ -1538,6 +1550,13 @@ class RBDTestCase(test.TestCase):
         # Check how it will work with empty keyring path
         mock_keyring.return_value = None
         expected['data']['keyring'] = None
+        self._initialize_connection_helper(expected, hosts, ports)
+
+        self.driver._active_config = {'name': 'secondary_id',
+                                      'user': 'foo',
+                                      'conf': 'bar',
+                                      'secret_uuid': 'secondary_secret_uuid'}
+        expected['data']['secret_uuid'] = 'secondary_secret_uuid'
         self._initialize_connection_helper(expected, hosts, ports)
 
     def test__get_keyring_contents_no_config_file(self):
