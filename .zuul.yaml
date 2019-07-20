@@ -71,6 +71,8 @@
             irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
             irrelevant-files: *gate-irrelevant-files
+        - tempest-ipv6-only:
+            irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
@@ -82,6 +84,8 @@
         - tempest-full-py3:
             irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
+            irrelevant-files: *gate-irrelevant-files
+        - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
     experimental:
       jobs:
