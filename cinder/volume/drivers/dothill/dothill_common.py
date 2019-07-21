@@ -264,10 +264,9 @@ class DotHillCommon(object):
                  'storage_protocol': None,
                  'vendor_name': self.vendor_name,
                  'volume_backend_name': None,
-                 'multiattach': True,
                  'pools': []}
 
-        pool = {'QoS_support': False}
+        pool = {'QoS_support': False, 'multiattach': True}
         try:
             src_type = "%sVolumeDriver" % self.vendor_name
             backend_stats = self.client.backend_stats(self.backend_name,
