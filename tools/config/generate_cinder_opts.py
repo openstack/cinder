@@ -169,8 +169,11 @@ if __name__ == "__main__":
             else:
                 opt_file.write(opt_line[0])
         if opts.endswith('service_user_opts'):
+            su_dnt = " " * 16
+            su_plg = su_dnt + "loading.get_auth_plugin_conf_options"
             opt_file.write(
-                "                loading.get_session_conf_options(),\n")
+                su_plg + "('v3password'),\n"
+                + su_dnt + "loading.get_session_conf_options(),\n")
 
     def _retrieve_name(aline):
         if REGISTER_OPT_STR in aline:
