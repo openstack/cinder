@@ -289,7 +289,7 @@ Add ``volumes`` field to group list/detail and group show.
 3.27 (Maximum in Ocata)
 -----------------------
 Added new attachment APIs. See the
-`API reference <https://developer.openstack.org/api-ref/block-storage/v3/index.html#attachments>`__
+`API reference <https://docs.openstack.org/api-ref/block-storage/v3/index.html#attachments>`__
 for details.
 
 3.28
@@ -372,7 +372,7 @@ Support backup CRUD with metadata.
 3.44
 ----
 Support attachment completion. See the
-`API reference <https://developer.openstack.org/api-ref/block-storage/v3/index.html#complete-attachment>`__
+`API reference <https://docs.openstack.org/api-ref/block-storage/v3/index.html#complete-attachment>`__
 for details.
 
 3.45

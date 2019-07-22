@@ -43,7 +43,7 @@ As an end user of Cinder, you'll use Cinder to create and manage volumes using
 the Horizon user interface, command line tools such as the
 `python-cinderclient <https://docs.openstack.org/python-cinderclient/latest/>`_,
 or by directly using the
-`REST API <https://developer.openstack.org/api-ref/block-storage/>`_.
+`REST API <https://docs.openstack.org/api-ref/block-storage/>`_.
 
 Tools for using Cinder
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -67,7 +67,7 @@ more complicated logic or automation with Cinder. This can be consumed directly
 or via various SDKs. The following resources can help you get started consuming
 the API directly.
 
-* `Cinder API <https://developer.openstack.org/api-ref/block-storage/>`_
+* `Cinder API <https://docs.openstack.org/api-ref/block-storage/>`_
 * :doc:`Cinder microversion history </contributor/api_microversion_history>`
 
 For operators
