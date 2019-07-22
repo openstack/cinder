@@ -72,7 +72,7 @@ Response
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/snapshot-manage-response.json
+.. literalinclude:: ./samples/snapshot_manage_extensions/snapshot-manage-response.json
    :language: javascript
 
 
