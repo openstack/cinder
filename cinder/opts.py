@@ -285,6 +285,7 @@ def list_opts():
         ('service_user',
             itertools.chain(
                 cinder_serviceauth.service_user_opts,
+                loading.get_auth_plugin_conf_options('v3password'),
                 loading.get_session_conf_options(),
             )),
         ('backend_defaults',
