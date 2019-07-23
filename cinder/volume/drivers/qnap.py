@@ -1231,23 +1231,16 @@ class QnapAPIExecutor(object):
 
     def execute_login(self):
         """Login and return sid."""
-        params = OrderedDict()
-        params['pwd'] = base64.b64encode(self.password.encode("utf-8"))
-        params['serviceKey'] = '1'
-        params['user'] = self.username
-
-        sanitized_params = OrderedDict()
-
-        for key in params:
-            value = params[key]
-            if value is not None:
-                sanitized_params[key] = six.text_type(value)
-
-        sanitized_params = urllib.parse.urlencode(sanitized_params)
+        params = OrderedDict(
+            pwd=base64.b64encode(self.password.encode('utf-8')).decode(),
+            serviceKey='1',
+            user=self.username,
+        )
+        encoded_params = urllib.parse.urlencode(params)
         url = ('/cgi-bin/authLogin.cgi?')
 
         res_details = self._execute_and_get_response_details(
-            self.ip, url, sanitized_params)
+            self.ip, url, encoded_params)
         root = ET.fromstring(res_details['data'])
         LOG.debug('execute_login data: %s', res_details['data'])
         session_id = root.find('authSid').text
