@@ -406,7 +406,6 @@ class TestFCDotHillCommon(test.TestCase):
                                      'total_capacity_gb': 100}],
                           'storage_protocol': None,
                           'vendor_name': 'DotHill',
-                          'multiattach': True,
                           'volume_backend_name': None}, self.common.stats)
 
     @mock.patch.object(dothill.DotHillClient, 'create_volume')
@@ -712,7 +711,6 @@ class TestDotHillFC(test.TestCase):
                  'driver_version': self.driver.VERSION,
                  'volume_backend_name': None,
                  'vendor_name': self.vendor_name,
-                 'multiattach': True,
                  'pools': [{'free_capacity_gb': 90,
                             'reserved_percentage': 0,
                             'total_capacity_gb': 100,

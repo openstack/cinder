@@ -263,7 +263,6 @@ class DotHillCommon(object):
                  'storage_protocol': None,
                  'vendor_name': self.vendor_name,
                  'volume_backend_name': None,
-                 'multiattach': True,
                  'pools': []}
 
         pool = {'QoS_support': False}
