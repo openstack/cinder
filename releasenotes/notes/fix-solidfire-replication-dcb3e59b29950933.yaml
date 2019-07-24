@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The SolidFire replication was fixed. Several bugs were addressed (creating
+    replicated volumes from snapshots, from volumes, retype a volume to a
+    replicated type, managing a volume to a replicated type, correctly
+    updating portal info on failover/failback and some minor
+    other fixes). Closes bugs #1834013, #1751932.
