@@ -18,6 +18,9 @@
 import os
 import sys
 
+from cinder import context
+from cinder import db
+from cinder import exception
 from cinder import objects
 from cinder import service  # noqa
 from oslo_config import cfg
@@ -58,6 +61,10 @@ def _get_enabled_drivers():
 
 class Checks(uc.UpgradeCommands):
     """Upgrade checks to run."""
+
+    def __init__(self, *args, **kwargs):
+        super(Checks, self).__init__(*args, **kwargs)
+        self.context = context.get_admin_context()
 
     def _file_exists(self, path):
         """Helper for mocking check of os.path.exists."""
@@ -188,11 +195,37 @@ class Checks(uc.UpgradeCommands):
 
         return uc.Result(SUCCESS)
 
+    def _check_service_uuid(self):
+        try:
+            db.service_get_by_uuid(self.context, None)
+        except exception.ServiceNotFound:
+            volumes = db.volume_get_all(self.context,
+                                        limit=1,
+                                        filters={'service_uuid': None})
+            if not volumes:
+                return uc.Result(SUCCESS)
+        return uc.Result(
+            FAILURE,
+            'Services and volumes must have a service UUID. Please fix this '
+            'issue by running Queens online data migrations.')
+
+    def _check_attachment_specs(self):
+        if db.attachment_specs_exist(self.context):
+            return uc.Result(
+                FAILURE,
+                'There should be no more AttachmentSpecs in the system. '
+                'Please fix this issue by running Queens online data '
+                'migrations.')
+        return uc.Result(SUCCESS)
+
     _upgrade_checks = (
         ('Backup Driver Path', _check_backup_module),
         ('Use of Policy File', _check_policy_file),
         ('Windows Driver Path', _check_legacy_windows_config),
         ('Removed Drivers', _check_removed_drivers),
+        # added in Train
+        ('Service UUIDs', _check_service_uuid),
+        ('Attachment specs', _check_attachment_specs),
     )
 
 
