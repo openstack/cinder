@@ -27,7 +27,6 @@ import six
 from sqlalchemy.sql import operators
 
 from cinder.api import common
-from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
@@ -162,79 +161,6 @@ class DBCommonFilterTestCase(BaseTest):
 class DBAPIServiceTestCase(BaseTest):
 
     """Unit tests for cinder.db.api.service_*."""
-
-    def test_service_uuid_migrations(self):
-        # Force create one entry with no UUID
-        sqlalchemy_api.service_create(self.ctxt, {
-            'host': 'host1',
-            'binary': constants.VOLUME_BINARY,
-            'topic': 'volume', })
-
-        # Create another one with a valid UUID
-        sqlalchemy_api.service_create(self.ctxt, {
-            'host': 'host2',
-            'binary': constants.VOLUME_BINARY,
-            'topic': 'volume',
-            'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
-
-        # Run the migration and verify that we updated 1 entry
-        total, updated = db.service_uuids_online_data_migration(
-            self.ctxt, 10)
-
-        self.assertEqual(1, total)
-        self.assertEqual(1, updated)
-
-    def test_service_uuid_migrations_with_limit(self):
-        sqlalchemy_api.service_create(self.ctxt, {
-            'host': 'host1',
-            'binary': constants.VOLUME_BINARY,
-            'topic': 'volume', })
-        sqlalchemy_api.service_create(self.ctxt, {
-            'host': 'host2',
-            'binary': constants.VOLUME_BINARY,
-            'topic': 'volume', })
-        sqlalchemy_api.service_create(self.ctxt, {
-            'host': 'host3',
-            'binary': constants.VOLUME_BINARY,
-            'topic': 'volume', })
-        # Run the migration and verify that we updated 1 entry
-        total, updated = db.service_uuids_online_data_migration(
-            self.ctxt, 2)
-
-        self.assertEqual(3, total)
-        self.assertEqual(2, updated)
-
-        # Now get the rest, intentionally setting max > what we should have
-        total, updated = db.service_uuids_online_data_migration(
-            self.ctxt, 2)
-
-        self.assertEqual(1, total)
-        self.assertEqual(1, updated)
-
-    @ddt.data({'count': 5, 'total': 3, 'updated': 3},
-              {'count': 2, 'total': 3, 'updated': 2})
-    @ddt.unpack
-    def test_backup_service_online_migration(self, count, total, updated):
-        volume = utils.create_volume(self.ctxt)
-        sqlalchemy_api.backup_create(self.ctxt, {
-            'service': 'cinder.backup.drivers.swift',
-            'volume_id': volume.id
-        })
-        sqlalchemy_api.backup_create(self.ctxt, {
-            'service': 'cinder.backup.drivers.ceph',
-            'volume_id': volume.id
-        })
-        sqlalchemy_api.backup_create(self.ctxt, {
-            'service': 'cinder.backup.drivers.glusterfs',
-            'volume_id': volume.id
-        })
-        sqlalchemy_api.backup_create(self.ctxt, {
-            'service': 'cinder.backup.drivers.fake_backup_service',
-            'volume_id': volume.id
-        })
-        t, u = db.backup_service_online_migration(self.ctxt, count)
-        self.assertEqual(total, t)
-        self.assertEqual(updated, u)
 
     def test_service_create(self):
         # Add a cluster value to the service
@@ -460,65 +386,6 @@ class DBAPIServiceTestCase(BaseTest):
         binary_op = or_op.right
         self.assertIsInstance(binary_op, sqlalchemy_api.sql.functions.Function)
         self.assertEqual('binary', binary_op.name)
-
-    def test_volume_service_uuid_migrations(self):
-        # Force create one entry with no UUID
-        sqlalchemy_api.volume_create(self.ctxt,
-                                     {'host': 'host1@lvm-driver1#lvm-driver1'})
-
-        # Create another one with a valid UUID
-        sqlalchemy_api.volume_create(
-            self.ctxt,
-            {'host': 'host1@lvm-driver1#lvm-driver1',
-             'service_uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'})
-
-        # Need a service to query
-        values = {
-            'host': 'host1@lvm-driver1',
-            'binary': constants.VOLUME_BINARY,
-            'topic': constants.VOLUME_TOPIC}
-        utils.create_service(self.ctxt, values)
-
-        # Run the migration and verify that we updated 1 entry
-        total, updated = db.volume_service_uuids_online_data_migration(
-            self.ctxt, 10)
-
-        self.assertEqual(1, total)
-        self.assertEqual(1, updated)
-
-    def test_volume_service_uuid_migrations_with_limit(self):
-        """Test db migrate of volumes in batches."""
-        db.volume_create(
-            self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
-        db.volume_create(
-            self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
-        db.volume_create(
-            self.ctxt, {'host': 'host1@lvm-driver1#lvm-driver1'})
-        # Entries with no host should be skipped
-        db.volume_create(self.ctxt, {'host': None})
-
-        values = {
-            'host': 'host1@lvm-driver1',
-            'binary': constants.VOLUME_BINARY,
-            'topic': constants.VOLUME_TOPIC,
-            'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}
-        utils.create_service(self.ctxt, values)
-
-        # Run the migration and verify that we updated 2 entries
-        total, updated = db.volume_service_uuids_online_data_migration(
-            self.ctxt, 2)
-
-        # total = number of volumes that have hosts and don't have a
-        # service_uuid
-        self.assertEqual(3, total)
-        self.assertEqual(2, updated)
-
-        # Now get the last one (intentionally setting max > expected)
-        total, updated = db.volume_service_uuids_online_data_migration(
-            self.ctxt, 99)
-
-        self.assertEqual(1, total)
-        self.assertEqual(1, updated)
 
 
 @ddt.ddt
@@ -3475,73 +3342,3 @@ class DBAPIGroupTestCase(BaseTest):
             self.assertEqual(
                 new_cluster_name + groups[i].cluster_name[len(cluster_name):],
                 db_groups[i].cluster_name)
-
-
-class DBAPIAttachmentSpecsTestCase(BaseTest):
-    def test_attachment_specs_online_data_migration(self):
-        """Tests the online data migration initiated via cinder-manage"""
-        # Create five attachment records:
-        # 1. first attachment has specs but is deleted so it's ignored
-        # 2. second attachment is already migrated (no attachment_specs
-        #    entries) so it's ignored
-        # 3. the remaining attachments have specs so they are migrated in
-        #    in batches of 2
-
-        # Create an attachment record with specs and delete it.
-        attachment = objects.VolumeAttachment(
-            self.ctxt, attach_status='attaching', volume_id=fake.VOLUME_ID)
-        attachment.create()
-        # Create an attachment_specs entry for attachment.
-        connector = {'host': '127.0.0.1'}
-        db.attachment_specs_update_or_create(
-            self.ctxt, attachment.id, connector)
-        # Now delete the attachment which should also delete the specs.
-        attachment.destroy()
-        # Run the migration routine to see that there is nothing to migrate.
-        total, migrated = db.attachment_specs_online_data_migration(
-            self.ctxt, 50)
-        self.assertEqual(0, total)
-        self.assertEqual(0, migrated)
-
-        # Create a volume attachment with no specs (already migrated).
-        attachment = objects.VolumeAttachment(
-            self.ctxt, attach_status='attaching', volume_id=fake.VOLUME_ID,
-            connector=connector)
-        attachment.create()
-        # Run the migration routine to see that there is nothing to migrate.
-        total, migrated = db.attachment_specs_online_data_migration(
-            self.ctxt, 50)
-        self.assertEqual(0, total)
-        self.assertEqual(0, migrated)
-
-        # We have to create a real volume because of the joinedload in the
-        # DB API query to get the volume attachment.
-        volume = db.volume_create(self.ctxt, {'host': 'host1'})
-
-        # Now create three volume attachments with specs and migrate them
-        # in batches of 2 to show we are enforcing the limit.
-        for x in range(3):
-            attachment = objects.VolumeAttachment(
-                self.ctxt, attach_status='attaching', volume_id=volume['id'])
-            attachment.create()
-            # Create an attachment_specs entry for the attachment.
-            db.attachment_specs_update_or_create(
-                self.ctxt, attachment.id, connector)
-
-        # Migrate 2 at a time.
-        total, migrated = db.attachment_specs_online_data_migration(
-            self.ctxt, 2)
-        self.assertEqual(3, total)
-        self.assertEqual(2, migrated)
-
-        # This should complete the migration.
-        total, migrated = db.attachment_specs_online_data_migration(
-            self.ctxt, 2)
-        self.assertEqual(1, total)
-        self.assertEqual(1, migrated)
-
-        # Run it one more time to make sure there is nothing left.
-        total, migrated = db.attachment_specs_online_data_migration(
-            self.ctxt, 2)
-        self.assertEqual(0, total)
-        self.assertEqual(0, migrated)
