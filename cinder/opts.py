@@ -113,6 +113,8 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi
 from cinder.volume.drivers import infinidat as cinder_volume_drivers_infinidat
+from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli as \
+    cinder_volume_drivers_infortrend_raidcmd_cli_commoncli
 from cinder.volume.drivers.inspur.as13000 import as13000_driver as \
     cinder_volume_drivers_inspur_as13000_as13000driver
 from cinder.volume.drivers.inspur.instorage import instorage_common as \
@@ -254,6 +256,8 @@ def list_opts():
                 cinder_volume_driver.backup_opts,
                 cinder_volume_driver.image_opts,
                 cinder_volume_drivers_fusionstorage_dsware.volume_opts,
+                cinder_volume_drivers_infortrend_raidcmd_cli_commoncli.
+                infortrend_opts,
                 cinder_volume_drivers_inspur_as13000_as13000driver.
                 inspur_as13000_opts,
                 cinder_volume_drivers_inspur_instorage_instoragecommon.
