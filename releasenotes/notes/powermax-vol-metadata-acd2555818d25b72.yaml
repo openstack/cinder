@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    All volumes and snapshots created using the PowerMax for Cinder driver now
+    have additional metadata included pertaining to the details of the asset on
+    the backend storage array.

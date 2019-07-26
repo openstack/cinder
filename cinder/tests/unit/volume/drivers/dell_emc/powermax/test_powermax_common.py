@@ -136,15 +136,29 @@ class PowerMaxCommonTest(test.TestCase):
             exception.VolumeBackendAPIException,
             self.common._get_slo_workload_combinations, array_info)
 
-    def test_create_volume(self):
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_volume_metadata',
+        return_value={'device-meta-key-1': 'device-meta-value-1',
+                      'device-meta-key-2': 'device-meta-value-2'})
+    def test_create_volume(self, mck_meta):
         ref_model_update = (
-            {'provider_location': six.text_type(self.data.provider_location)})
-        model_update = self.common.create_volume(self.data.test_volume)
+            {'provider_location': six.text_type(self.data.provider_location),
+             'metadata': {'device-meta-key-1': 'device-meta-value-1',
+                          'device-meta-key-2': 'device-meta-value-2',
+                          'user-meta-key-1': 'user-meta-value-1',
+                          'user-meta-key-2': 'user-meta-value-2'}})
+        volume = deepcopy(self.data.test_volume)
+        volume.metadata = {'user-meta-key-1': 'user-meta-value-1',
+                           'user-meta-key-2': 'user-meta-value-2'}
+        model_update = self.common.create_volume(volume)
         self.assertEqual(ref_model_update, model_update)
 
-    def test_create_volume_qos(self):
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_create_volume_qos(self, mck_meta):
         ref_model_update = (
-            {'provider_location': six.text_type(self.data.provider_location)})
+            {'provider_location': six.text_type(self.data.provider_location),
+             'metadata': ''})
         extra_specs = deepcopy(self.data.extra_specs_intervals_set)
         extra_specs['qos'] = {
             'total_iops_sec': '4000', 'DistributionType': 'Always'}
@@ -154,7 +168,9 @@ class PowerMaxCommonTest(test.TestCase):
             self.assertEqual(ref_model_update, model_update)
 
     @mock.patch.object(common.PowerMaxCommon, '_clone_check')
-    def test_create_volume_from_snapshot(self, mck_clone_chk):
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_create_volume_from_snapshot(self, mck_meta, mck_clone_chk):
         ref_model_update = ({'provider_location': six.text_type(
             deepcopy(self.data.provider_location_snapshot))})
         model_update = self.common.create_volume_from_snapshot(
@@ -174,7 +190,9 @@ class PowerMaxCommonTest(test.TestCase):
             ast.literal_eval(model_update['provider_location']))
 
     @mock.patch.object(common.PowerMaxCommon, '_clone_check')
-    def test_cloned_volume(self, mck_clone_chk):
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_cloned_volume(self, mck_meta, mck_clone_chk):
         ref_model_update = ({'provider_location': six.text_type(
             self.data.provider_location_clone)})
         model_update = self.common.create_cloned_volume(
@@ -189,11 +207,22 @@ class PowerMaxCommonTest(test.TestCase):
             mock_delete.assert_called_once_with(self.data.test_volume)
 
     @mock.patch.object(common.PowerMaxCommon, '_clone_check')
-    def test_create_snapshot(self, mck_clone_chk):
-        ref_model_update = ({'provider_location': six.text_type(
-            self.data.snap_location)})
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_snapshot_metadata',
+        return_value={'snap-meta-key-1': 'snap-meta-value-1',
+                      'snap-meta-key-2': 'snap-meta-value-2'})
+    def test_create_snapshot(self, mck_meta, mck_clone_chk):
+        ref_model_update = (
+            {'provider_location': six.text_type(self.data.snap_location),
+             'metadata': {'snap-meta-key-1': 'snap-meta-value-1',
+                          'snap-meta-key-2': 'snap-meta-value-2',
+                          'user-meta-key-1': 'user-meta-value-1',
+                          'user-meta-key-2': 'user-meta-value-2'}})
+        snapshot = deepcopy(self.data.test_snapshot_manage)
+        snapshot.metadata = {'user-meta-key-1': 'user-meta-value-1',
+                             'user-meta-key-2': 'user-meta-value-2'}
         model_update = self.common.create_snapshot(
-            self.data.test_snapshot, self.data.test_volume)
+            snapshot, self.data.test_volume)
         self.assertEqual(ref_model_update, model_update)
 
     def test_delete_snapshot(self):
@@ -1261,15 +1290,25 @@ class PowerMaxCommonTest(test.TestCase):
                     array, target_device_id, clone_name,
                     extra_specs)
 
-    def test_manage_existing_success(self):
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_volume_metadata',
+        return_value={'device-meta-key-1': 'device-meta-value-1',
+                      'device-meta-key-2': 'device-meta-value-2'})
+    def test_manage_existing_success(self, mck_meta):
         external_ref = {u'source-name': u'00002'}
         provider_location = {'device_id': u'00002', 'array': u'000197800123'}
-        ref_update = {'provider_location': six.text_type(provider_location)}
+        ref_update = {'provider_location': six.text_type(provider_location),
+                      'metadata': {'device-meta-key-1': 'device-meta-value-1',
+                                   'device-meta-key-2': 'device-meta-value-2',
+                                   'user-meta-key-1': 'user-meta-value-1',
+                                   'user-meta-key-2': 'user-meta-value-2'}}
+        volume = deepcopy(self.data.test_volume)
+        volume.metadata = {'user-meta-key-1': 'user-meta-value-1',
+                           'user-meta-key-2': 'user-meta-value-2'}
         with mock.patch.object(
                 self.common, '_check_lun_valid_for_cinder_management',
                 return_value=('vol1', 'test_sg')):
-            model_update = self.common.manage_existing(
-                self.data.test_volume, external_ref)
+            model_update = self.common.manage_existing(volume, external_ref)
             self.assertEqual(ref_update, model_update)
 
     @mock.patch.object(
@@ -1604,7 +1643,9 @@ class PowerMaxCommonTest(test.TestCase):
                     self.data.workload, volume_name, new_type, extra_specs)
 
     @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
-    def test_migrate_volume_success(self, mock_remove):
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_migrate_volume_success(self, mck_meta, mock_remove):
         with mock.patch.object(self.rest, 'is_volume_in_storagegroup',
                                return_value=True):
             device_id = self.data.device_id
@@ -1645,8 +1686,10 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=('Status', 'Data', 'Info'))
     @mock.patch.object(common.PowerMaxCommon, '_retype_remote_volume',
                        return_value=True)
-    def test_migrate_in_use_volume(self, mck_remote_retype, mck_setup,
-                                   mck_retype, mck_cleanup):
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_migrate_in_use_volume(self, mck_meta, mck_remote_retype,
+                                   mck_setup, mck_retype, mck_cleanup):
         # Array/Volume info
         array = self.data.array
         srp = self.data.srp
@@ -1746,9 +1789,11 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=('Status', 'Data', 'Info'))
     @mock.patch.object(common.PowerMaxCommon, '_retype_remote_volume',
                        return_value=True)
-    def test_migrate_volume_attachment_path(self, mck_remote_retype, mck_setup,
-                                            mck_inuse_retype, mck_cleanup,
-                                            mck_retype):
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_migrate_volume_attachment_path(
+            self, mck_meta, mck_remote_retype, mck_setup, mck_inuse_retype,
+            mck_cleanup, mck_retype):
         # Array/Volume info
         array = self.data.array
         srp = self.data.srp
@@ -2109,7 +2154,9 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=True)
     @mock.patch.object(volume_utils, 'is_group_a_type',
                        return_value=False)
-    def test_create_group_from_src_success(self, mock_type,
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    def test_create_group_from_src_success(self, mck_meta, mock_type,
                                            mock_cg_type, mock_info):
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
         model_update, volumes_model_update = (
@@ -2233,17 +2280,26 @@ class PowerMaxCommonTest(test.TestCase):
 
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap',
                        return_value={'snap_name': 'snap_name'})
-    def test_manage_snapshot_success(self, mock_snap):
-        snapshot = self.data.test_snapshot_manage
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_snapshot_metadata',
+        return_value={'snap-meta-key-1': 'snap-meta-value-1',
+                      'snap-meta-key-2': 'snap-meta-value-2'})
+    def test_manage_snapshot_success(self, mck_meta, mock_snap):
+        snapshot = deepcopy(self.data.test_snapshot_manage)
+        snapshot.metadata = {'user-meta-key-1': 'user-meta-value-1',
+                             'user-meta-key-2': 'user-meta-value-2'}
         existing_ref = {u'source-name': u'test_snap'}
         updates_response = self.common.manage_existing_snapshot(
             snapshot, existing_ref)
 
         prov_loc = {'source_id': self.data.device_id,
                     'snap_name': 'OS-%s' % existing_ref['source-name']}
-
         updates = {'display_name': 'my_snap',
-                   'provider_location': six.text_type(prov_loc)}
+                   'provider_location': six.text_type(prov_loc),
+                   'metadata': {'snap-meta-key-1': 'snap-meta-value-1',
+                                'snap-meta-key-2': 'snap-meta-value-2',
+                                'user-meta-key-1': 'user-meta-value-1',
+                                'user-meta-key-2': 'user-meta-value-2'}}
 
         self.assertEqual(updates_response, updates)
 
@@ -2814,3 +2870,113 @@ class PowerMaxCommonTest(test.TestCase):
                 exception.VolumeBackendAPIException,
                 self.common._unlink_targets_and_delete_temp_snapvx,
                 array, session, extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, '_get_private_volume',
+                       return_value=tpd.PowerMaxData.priv_vol_response_rep)
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=(tpd.PowerMaxData.array_model, None))
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
+                       return_value=(tpd.PowerMaxData.rdf_group_details))
+    def test_get_volume_metadata_rep(self, mck_rdf, mck_model, mck_priv):
+        ref_metadata = {
+            'DeviceID': self.data.device_id,
+            'DeviceLabel': self.data.device_label, 'ArrayID': self.data.array,
+            'ArrayModel': self.data.array_model, 'ServiceLevel': 'None',
+            'Workload': 'None', 'Emulation': 'FBA', 'Configuration': 'TDEV',
+            'CompressionEnabled': 'False', 'ReplicationEnabled': 'True',
+            'R2-DeviceID': self.data.device_id2,
+            'R2-ArrayID': self.data.remote_array,
+            'R2-ArrayModel': self.data.array_model,
+            'ReplicationMode': 'Synchronized',
+            'RDFG-Label': self.data.rdf_group_name,
+            'R1-RDFG': 1, 'R2-RDFG': 1}
+        array = self.data.array
+        device_id = self.data.device_id
+        act_metadata = self.common.get_volume_metadata(array, device_id)
+        self.assertEqual(ref_metadata, act_metadata)
+
+    @mock.patch.object(rest.PowerMaxRest, '_get_private_volume',
+                       return_value=tpd.PowerMaxData.priv_vol_response_no_rep)
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=(tpd.PowerMaxData.array_model, None))
+    def test_get_volume_metadata_no_rep(self, mck_model, mck_priv):
+        ref_metadata = {
+            'DeviceID': self.data.device_id,
+            'DeviceLabel': self.data.device_label, 'ArrayID': self.data.array,
+            'ArrayModel': self.data.array_model, 'ServiceLevel': 'None',
+            'Workload': 'None', 'Emulation': 'FBA', 'Configuration': 'TDEV',
+            'CompressionEnabled': 'False', 'ReplicationEnabled': 'False'}
+        array = self.data.array
+        device_id = self.data.device_id
+        act_metadata = self.common.get_volume_metadata(array, device_id)
+        self.assertEqual(ref_metadata, act_metadata)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap_info',
+                       return_value=tpd.PowerMaxData.priv_snap_response)
+    def test_get_snapshot_metadata(self, mck_snap):
+        array = self.data.array
+        device_id = self.data.device_id
+        device_label = self.data.managed_snap_id
+        snap_name = self.data.test_snapshot_snap_name
+        ref_metadata = {'SnapshotLabel': snap_name,
+                        'SourceDeviceID': device_id,
+                        'SourceDeviceLabel': device_label}
+
+        act_metadata = self.common.get_snapshot_metadata(
+            array, device_id, snap_name)
+        self.assertEqual(ref_metadata, act_metadata)
+
+    def test_update_metadata(self):
+        model_update = {'provider_location': six.text_type(
+            self.data.provider_location)}
+        ref_model_update = (
+            {'provider_location': six.text_type(self.data.provider_location),
+             'metadata': {'device-meta-key-1': 'device-meta-value-1',
+                          'device-meta-key-2': 'device-meta-value-2',
+                          'user-meta-key-1': 'user-meta-value-1',
+                          'user-meta-key-2': 'user-meta-value-2'}})
+
+        existing_metadata = {'user-meta-key-1': 'user-meta-value-1',
+                             'user-meta-key-2': 'user-meta-value-2'}
+
+        object_metadata = {'device-meta-key-1': 'device-meta-value-1',
+                           'device-meta-key-2': 'device-meta-value-2'}
+
+        model_update = self.common.update_metadata(
+            model_update, existing_metadata, object_metadata)
+        self.assertEqual(ref_model_update, model_update)
+
+    def test_update_metadata_no_model(self):
+        model_update = None
+        ref_model_update = (
+            {'metadata': {'device-meta-key-1': 'device-meta-value-1',
+                          'device-meta-key-2': 'device-meta-value-2',
+                          'user-meta-key-1': 'user-meta-value-1',
+                          'user-meta-key-2': 'user-meta-value-2'}})
+
+        existing_metadata = {'user-meta-key-1': 'user-meta-value-1',
+                             'user-meta-key-2': 'user-meta-value-2'}
+
+        object_metadata = {'device-meta-key-1': 'device-meta-value-1',
+                           'device-meta-key-2': 'device-meta-value-2'}
+
+        model_update = self.common.update_metadata(
+            model_update, existing_metadata, object_metadata)
+        self.assertEqual(ref_model_update, model_update)
+
+    def test_update_metadata_no_existing_metadata(self):
+        model_update = {'provider_location': six.text_type(
+            self.data.provider_location)}
+        ref_model_update = (
+            {'provider_location': six.text_type(self.data.provider_location),
+             'metadata': {'device-meta-key-1': 'device-meta-value-1',
+                          'device-meta-key-2': 'device-meta-value-2'}})
+
+        existing_metadata = None
+
+        object_metadata = {'device-meta-key-1': 'device-meta-value-1',
+                           'device-meta-key-2': 'device-meta-value-2'}
+
+        model_update = self.common.update_metadata(
+            model_update, existing_metadata, object_metadata)
+        self.assertEqual(ref_model_update, model_update)

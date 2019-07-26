@@ -449,8 +449,12 @@ class PowerMaxCommon(object):
                 group_name = self._add_new_volume_to_volume_group(
                     volume, volume_dict['device_id'], volume_name,
                     extra_specs, rep_driver_data)
+
         model_update.update(
             {'provider_location': six.text_type(volume_dict)})
+        model_update = self.update_metadata(
+            model_update, volume.metadata, self.get_volume_metadata(
+                volume_dict['array'], volume_dict['device_id']))
 
         self.volume_metadata.capture_create_volume(
             volume_dict['device_id'], volume, group_name, group_id,
@@ -515,7 +519,9 @@ class PowerMaxCommon(object):
 
         model_update.update(
             {'provider_location': six.text_type(clone_dict)})
-
+        model_update = self.update_metadata(
+            model_update, volume.metadata, self.get_volume_metadata(
+                clone_dict['array'], clone_dict['device_id']))
         self.volume_metadata.capture_create_volume(
             clone_dict['device_id'], volume, None, None,
             extra_specs, rep_info_dict, 'createFromSnapshot',
@@ -543,6 +549,9 @@ class PowerMaxCommon(object):
 
         model_update.update(
             {'provider_location': six.text_type(clone_dict)})
+        model_update = self.update_metadata(
+            model_update, clone_volume.metadata, self.get_volume_metadata(
+                clone_dict['array'], clone_dict['device_id']))
         self.volume_metadata.capture_create_volume(
             clone_dict['device_id'], clone_volume, None, None,
             extra_specs, rep_info_dict, 'createFromVolume',
@@ -599,9 +608,19 @@ class PowerMaxCommon(object):
         extra_specs = self._initial_setup(volume)
         snapshot_dict = self._create_cloned_volume(
             snapshot, volume, extra_specs, is_snapshot=True)
+
+        model_update = {
+            'provider_location': six.text_type(snapshot_dict)}
+        model_update = self.update_metadata(
+            model_update, snapshot.metadata, self.get_snapshot_metadata(
+                extra_specs['array'], snapshot_dict['source_id'],
+                snapshot_dict['snap_name']))
+        if snapshot.metadata:
+            model_update['metadata'].update(snapshot.metadata)
+
         self.volume_metadata.capture_snapshot_info(
             volume, extra_specs, 'createSnapshot', snapshot_dict['snap_name'])
-        model_update = {'provider_location': six.text_type(snapshot_dict)}
+
         return model_update
 
     def delete_snapshot(self, snapshot, volume):
@@ -2463,6 +2482,10 @@ class PowerMaxCommon(object):
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
 
+        model_update = self.update_metadata(
+            model_update, volume.metadata, self.get_volume_metadata(
+                array, device_id))
+
         self.volume_metadata.capture_manage_existing(
             volume, rep_info_dict, device_id, extra_specs)
 
@@ -2683,9 +2706,12 @@ class PowerMaxCommon(object):
                 message=exception_message)
 
         prov_loc = {'source_id': device_id, 'snap_name': snap_backend_name}
-
-        updates = {'display_name': snap_display_name,
-                   'provider_location': six.text_type(prov_loc)}
+        model_update = {
+            'display_name': snap_display_name,
+            'provider_location': six.text_type(prov_loc)}
+        model_update = self.update_metadata(
+            model_update, snapshot.metadata, self.get_snapshot_metadata(
+                array, device_id, snap_backend_name))
 
         LOG.info("Managing SnapVX Snapshot %(snap_name)s of source "
                  "volume %(device_id)s, OpenStack Snapshot display name: "
@@ -2693,7 +2719,7 @@ class PowerMaxCommon(object):
                      'snap_name': snap_name, 'device_id': device_id,
                      'snap_display_name': snap_display_name})
 
-        return updates
+        return model_update
 
     def manage_existing_snapshot_get_size(self, snapshot):
         """Return the size of the source volume for manage-existing-snapshot.
@@ -3176,6 +3202,10 @@ class PowerMaxCommon(object):
                     model_update = {
                         'replication_status': rep_status,
                         'replication_driver_data': six.text_type(rdf_dict)}
+                    model_update = self.update_metadata(
+                        model_update, volume.metadata,
+                        self.get_volume_metadata(array, device_id))
+
                     return True, model_update
 
             try:
@@ -3198,6 +3228,10 @@ class PowerMaxCommon(object):
                     rep_mode, is_rep_enabled, target_extra_specs)
 
         if success:
+            model_update = self.update_metadata(
+                model_update, volume.metadata,
+                self.get_volume_metadata(array, device_id))
+
             self.volume_metadata.capture_retype_info(
                 volume, device_id, array, srp, target_slo,
                 target_workload, target_sg_name, is_rep_enabled, rep_mode,
@@ -4411,11 +4445,18 @@ class PowerMaxCommon(object):
 
         for snapshot in snapshots:
             src_dev_id = self._get_src_device_id_for_group_snap(snapshot)
+            extra_specs = self._initial_setup(snapshot.volume)
+            array = extra_specs['array']
+
             snapshots_model_update.append(
                 {'id': snapshot.id,
                  'provider_location': six.text_type(
                      {'source_id': src_dev_id, 'snap_name': snap_name}),
                  'status': fields.SnapshotStatus.AVAILABLE})
+            snapshots_model_update = self.update_metadata(
+                snapshots_model_update, snapshot.metadata,
+                self.get_snapshot_metadata(
+                    array, src_dev_id, snap_name))
         model_update = {'status': fields.GroupStatus.AVAILABLE}
 
         return model_update, snapshots_model_update
@@ -4851,7 +4892,10 @@ class PowerMaxCommon(object):
             (device_id, extra_specs, volume))
         volumes_model_update.append(
             self.utils.get_grp_volume_model_update(
-                volume, volume_dict, group_id))
+                volume, volume_dict, group_id,
+                meta=self.get_volume_metadata(volume_dict['array'],
+                                              volume_dict['device_id'])))
+
         return volumes_model_update, rollback_dict, list_volume_pairs
 
     def _get_clone_vol_info(self, volume, source_vols, snapshots):
@@ -4932,6 +4976,7 @@ class PowerMaxCommon(object):
         :param extra_specs: the extra specs
         :return: volumes_model_update
         """
+        ret_volumes_model_update = []
         rdf_group_no, remote_array = self.get_rdf_details(array)
         self.rest.replicate_group(
             array, group_name, rdf_group_no, remote_array, extra_specs)
@@ -4953,7 +4998,11 @@ class PowerMaxCommon(object):
             volume_model_update.update(
                 {'replication_driver_data': six.text_type(rep_update),
                  'replication_status': fields.ReplicationStatus.ENABLED})
-        return volumes_model_update
+            volume_model_update = self.update_metadata(
+                volume_model_update, None, self.get_volume_metadata(
+                    array, src_device_id))
+            ret_volumes_model_update.append(volume_model_update)
+        return ret_volumes_model_update
 
     def enable_replication(self, context, group, volumes):
         """Enable replication for a group.
@@ -5279,3 +5328,89 @@ class PowerMaxCommon(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
+
+    def update_metadata(
+            self, model_update, existing_metadata, object_metadata):
+        """Update volume metadata in model_update.
+
+        :param model_update: existing model
+        :param existing_metadata: existing metadata
+        :param object_metadata: object metadata
+        :returns: dict -- updated model
+        """
+        if model_update:
+            if 'metadata' in model_update:
+                model_update['metadata'].update(object_metadata)
+            else:
+                model_update.update({'metadata': object_metadata})
+        else:
+            model_update = {}
+            model_update.update({'metadata': object_metadata})
+
+        if existing_metadata:
+            model_update['metadata'].update(existing_metadata)
+
+        return model_update
+
+    def get_volume_metadata(self, array, device_id):
+        """Get volume metadata for model_update.
+
+        :param array: the array ID
+        :param device_id: the device ID
+        :returns: dict -- volume metadata
+        """
+        vol_info = self.rest._get_private_volume(array, device_id)
+        vol_header = vol_info['volumeHeader']
+        array_model, __ = self.rest.get_array_model_info(array)
+        sl = (vol_header['serviceLevel'] if
+              vol_header.get('serviceLevel') else 'None')
+        wl = vol_header['workload'] if vol_header.get('workload') else 'None'
+        ce = 'True' if vol_header.get('compressionEnabled') else 'False'
+
+        metadata = {'DeviceID': device_id,
+                    'DeviceLabel': vol_header['userDefinedIdentifier'],
+                    'ArrayID': array, 'ArrayModel': array_model,
+                    'ServiceLevel': sl, 'Workload': wl,
+                    'Emulation': vol_header['emulationType'],
+                    'Configuration': vol_header['configuration'],
+                    'CompressionEnabled': ce}
+
+        is_rep_enabled = vol_info['rdfInfo']['RDF']
+        if is_rep_enabled:
+            rdf_info = vol_info['rdfInfo']
+            rdf_session = rdf_info['RDFSession'][0]
+            rdf_num = rdf_session['SRDFGroupNumber']
+            rdfg_info = self.rest.get_rdf_group(array, str(rdf_num))
+            r2_array_model, __ = self.rest.get_array_model_info(
+                rdf_session['remoteSymmetrixID'])
+
+            metadata.update(
+                {'ReplicationEnabled': 'True',
+                 'R2-DeviceID': rdf_session['remoteDeviceID'],
+                 'R2-ArrayID': rdf_session['remoteSymmetrixID'],
+                 'R2-ArrayModel': r2_array_model,
+                 'ReplicationMode': rdf_session['SRDFReplicationMode'],
+                 'RDFG-Label': rdfg_info['label'],
+                 'R1-RDFG': rdf_session['SRDFGroupNumber'],
+                 'R2-RDFG': rdf_session['SRDFRemoteGroupNumber']})
+        else:
+            metadata['ReplicationEnabled'] = 'False'
+
+        return metadata
+
+    def get_snapshot_metadata(self, array, device_id, snap_name):
+        """Get snapshot metadata for model_update.
+
+        :param array: the array ID
+        :param device_id: the device ID
+        :param snap_name: the snapshot name
+        :returns: dict -- volume metadata
+        """
+        snap_info = self.rest.get_volume_snap_info(array, device_id)
+        device_name = snap_info['deviceName']
+        device_label = device_name.split(':')[1]
+        metadata = {'SnapshotLabel': snap_name,
+                    'SourceDeviceID': device_id,
+                    'SourceDeviceLabel': device_label}
+
+        return metadata

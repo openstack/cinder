@@ -540,3 +540,23 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.utils.compare_cylinders, source_cylinders,
                           target_cylinders)
+
+    def test_get_grp_volume_model_update(self):
+        volume = self.data.test_volume
+        volume_dict = self.data.provider_location
+        group_id = self.data.gvg_group_id
+        metadata = self.data.volume_metadata
+
+        ref_model_update_meta = {
+            'id': volume.id, 'status': 'available', 'metadata': metadata,
+            'provider_location': six.text_type(volume_dict)}
+        act_model_update_meta = self.utils.get_grp_volume_model_update(
+            volume, volume_dict, group_id, metadata)
+        self.assertEqual(ref_model_update_meta, act_model_update_meta)
+
+        ref_model_update_no_meta = {
+            'id': volume.id, 'status': 'available',
+            'provider_location': six.text_type(volume_dict)}
+        act_model_update_no_meta = self.utils.get_grp_volume_model_update(
+            volume, volume_dict, group_id)
+        self.assertEqual(ref_model_update_no_meta, act_model_update_no_meta)

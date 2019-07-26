@@ -508,17 +508,20 @@ class PowerMaxUtils(object):
         return volume_model_updates
 
     @staticmethod
-    def get_grp_volume_model_update(volume, volume_dict, group_id):
+    def get_grp_volume_model_update(volume, volume_dict, group_id, meta=None):
         """Create and return the volume model update on creation.
 
         :param volume: volume object
         :param volume_dict: the volume dict
         :param group_id: consistency group id
+        :param meta: the volume metadata
         :returns: model_update
         """
         LOG.info("Updating status for group: %(id)s.", {'id': group_id})
         model_update = ({'id': volume.id, 'status': 'available',
                          'provider_location': six.text_type(volume_dict)})
+        if meta:
+            model_update['metadata'] = meta
         return model_update
 
     @staticmethod

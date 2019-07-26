@@ -35,6 +35,7 @@ class PowerMaxData(object):
     array = '000197800123'
     uni_array = u'000197800123'
     array_herc = '000197900123'
+    array_model = 'PowerMax_8000'
     srp = 'SRP_1'
     srp2 = 'SRP_2'
     slo = 'Diamond'
@@ -78,6 +79,7 @@ class PowerMaxData(object):
     no_slo_sg_name = 'OS-HostX-No_SLO-OS-fibre-PG'
     temp_snapvx = 'temp-00001-snapshot_for_clone'
     next_gen_ucode = 5978
+    gvg_group_id = 'test-gvg'
 
     # connector info
     wwpn1 = '123456789012345'
@@ -1124,3 +1126,56 @@ class PowerMaxData(object):
         {'generation': 1, 'expired': False, 'copy_mode': False,
          'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
          'source_vol_id': device_id, 'target_vol_id': device_id4}]
+
+    device_label = 'OS-00001'
+    priv_vol_response_rep = {
+        'volumeHeader': {
+            'private': False, 'capGB': 1.0, 'capMB': 1026.0,
+            'serviceState': 'Normal', 'emulationType': 'FBA',
+            'volumeId': '00001', 'status': 'Ready', 'mapped': False,
+            'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
+            'encapsulated': False, 'formattedName': '00001',
+            'system_resource': False, 'numSymDevMaskingViews': 0,
+            'nameModifier': "", 'configuration': 'TDEV',
+            'userDefinedIdentifier': 'OS-00001'},
+        'maskingInfo': {'masked': False},
+        'rdfInfo': {
+            'dynamicRDF': False, 'RDF': True,
+            'concurrentRDF': False,
+            'getDynamicRDFCapability': 'RDF1_Capable', 'RDFA': False,
+            'RDFSession': [
+                {'SRDFStatus': 'Ready',
+                 'SRDFReplicationMode': 'Synchronized',
+                 'remoteDeviceID': device_id2,
+                 'remoteSymmetrixID': remote_array,
+                 'SRDFGroupNumber': 1,
+                 'SRDFRemoteGroupNumber': 1}]}}
+
+    priv_vol_response_no_rep = {
+        'volumeHeader': {
+            'private': False, 'capGB': 1.0, 'capMB': 1026.0,
+            'serviceState': 'Normal', 'emulationType': 'FBA',
+            'volumeId': '00001', 'status': 'Ready', 'mapped': False,
+            'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
+            'encapsulated': False, 'formattedName': '00001',
+            'system_resource': False, 'numSymDevMaskingViews': 0,
+            'nameModifier': "", 'configuration': 'TDEV',
+            'userDefinedIdentifier': 'OS-00001'},
+        'maskingInfo': {'masked': False},
+        'rdfInfo': {'RDF': False}}
+
+    snap_device_label = ('%(dev)s:%(label)s' % {'dev': device_id,
+                                                'label': managed_snap_id})
+    priv_snap_response = {
+        'deviceName': snap_device_label, 'snapshotLnks': [],
+        'snapshotSrcs': [
+            {'generation': 0,
+             'linkedDevices': [
+                 {'targetDevice': device_id2, 'percentageCopied': 100,
+                  'state': 'Copied', 'copy': True, 'defined': True,
+                  'linked': True}],
+             'snapshotName': test_snapshot_snap_name,
+             'state': 'Established'}]}
+
+    volume_metadata = {
+        'DeviceID': device_id, 'ArrayID': array, 'ArrayModel': array_model}
