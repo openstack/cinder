@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-03-21 22:19+0000\n"
+"POT-Creation-Date: 2019-07-25 22:11+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -238,9 +238,6 @@ msgstr "동시에 모순된 요청이 수행되었습니다."
 
 msgid "A valid secondary target MUST be specified in order to failover."
 msgstr "장애 복구하려면 올바른 보조 대상을 지정해야 합니다."
-
-msgid "A volume ID or share was not specified."
-msgstr "볼륨 ID 또는 공유가 지정되지 않았습니다. "
 
 #, python-format
 msgid ""
@@ -731,11 +728,12 @@ msgid "Cannot find requested '%s' volume type"
 msgstr "요청된 '%s' 볼륨 타입을 찾을 수 없습니다."
 
 #, python-format
+msgid "Cannot get mcs_id by channel id: %(channel_id)s."
+msgstr "채널 id: %(channel_id)s을(를) 사용하여 mcs_id를 가져올 수 없습니다. "
+
+#, python-format
 msgid "Cannot perform %(action)s during system upgrade."
 msgstr "시스템 업그레이드 중에는 %(action)s(을)를 수행할 수 없습니다."
-
-msgid "Cannot ping DRBDmanage backend"
-msgstr "DRBDmanage 백엔드에 대해 ping을 실행할 수 없음"
 
 #, python-format
 msgid ""
@@ -763,12 +761,6 @@ msgstr "다른 도메인의 CPG로 재입력할 수 없습니다."
 
 msgid "Cannot retype to a snap CPG in a different domain."
 msgstr "다른 도메인의 snap CPG로 재입력할 수 없습니다."
-
-msgid "Cannot specify both protection domain name and protection domain id."
-msgstr "보호 도메인 이름과 보호 도메인 ID를 모두 지정할 수 없습니다. "
-
-msgid "Cannot specify both storage pool name and storage pool id."
-msgstr "스토리지 풀 이름과 스토리지 풀 ID를 모두 지정할 수 없습니다. "
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "암호화 스펙을 업데이트할 수 없습니다. 볼륨 유형이 사용 중입니다."
@@ -1110,65 +1102,6 @@ msgstr "구역 세트 작성 및 활성화에 실패: (구역 세트=%(zoneset)s
 
 #, python-format
 msgid ""
-"DRBDmanage driver error: expected key \"%s\" not in answer, wrong DRBDmanage "
-"version?"
-msgstr ""
-"DRBDmanage 드라이버 오류: 예상 키 \"%s\"이(가) 응답하지 않음, 잘못된 "
-"DRBDmanage 버전입니까?"
-
-msgid ""
-"DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
-"not found."
-msgstr ""
-"DRBDmanage 드라이버 설정 오류: 일부 필수 라이브러리(dbus, drbdmanage.*)를 찾"
-"을 수 없습니다. "
-
-#, python-format
-msgid "DRBDmanage expected one resource (\"%(res)s\"), got %(n)d"
-msgstr "DRBDmanage에서 하나의 자원(\"%(res)s\")을 예상했지만 %(n)d개를 얻음"
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for new volume after snapshot restore; resource "
-"\"%(res)s\", volume \"%(vol)s\""
-msgstr ""
-"스냅샷 복원 후에 새 볼륨을 기다리는 중에 DRBDmanage 제한시간이 초과됨, 리소"
-"스 \"%(res)s\", 볼륨 \"%(vol)s\""
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for snapshot creation; resource \"%(res)s\", "
-"snapshot \"%(sn)s\""
-msgstr ""
-"스냅샷이 생성될 때까지 기다리는 동안 DRBDmanage 제한시간이 초과됨, 자원 "
-"\"%(res)s\", 스냅샷 \"%(sn)s\""
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for volume creation; resource \"%(res)s\", volume "
-"\"%(vol)s\""
-msgstr ""
-"볼륨이 생성될 때까지 기다리는 동안 DRBDmanage 제한시간이 초과됨, 자원 "
-"\"%(res)s\", 볼륨 \"%(vol)s\""
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for volume size; volume ID \"%(id)s\" (res "
-"\"%(res)s\", vnr %(vnr)d)"
-msgstr ""
-"볼륨 크기를 기다리는 동안 DRBDmanage 제한시간이 초과됨, 볼륨 ID \"%(id)s"
-"\" (res \"%(res)s\", vnr %(vnr)d)"
-
-#, python-format
-msgid "Dataset %s is not shared in Nexenta Store appliance"
-msgstr "데이터 세트 %s이(가) Nexenta Store appliance에서 공유되지 않음"
-
-#, python-format
-msgid "Dataset group %s not found at Nexenta SA"
-msgstr "Nexenta SA에서 데이터 세트 그룹 %s을(를) 찾을 수 없음"
-
-#, python-format
-msgid ""
 "Dedup is a valid provisioning type, but requires WSAPI version "
 "'%(dedup_version)s' version '%(version)s' is installed."
 msgstr ""
@@ -1323,21 +1256,6 @@ msgid ""
 "fields (%s)."
 msgstr ""
 "드라이버가 가져온 백업 데이터를 디코드했지만 필드(%s)가 누락되었습니다. "
-
-#, python-format
-msgid ""
-"EMC VNX Cinder Driver CLI exception: %(cmd)s (Return Code: %(rc)s) (Output: "
-"%(out)s)."
-msgstr ""
-"EMC VNX Cinder 드라이버 CLI 예외: %(cmd)s(리턴 코드: %(rc)s) (출력: %(out)s)."
-
-#, python-format
-msgid ""
-"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
-"(Output: %(out)s)."
-msgstr ""
-"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (리턴 코드: %(rc)s) (출"
-"력: %(out)s)."
 
 #, python-format
 msgid ""
@@ -1701,10 +1619,6 @@ msgstr "TypeError가 아닌 오류입니다."
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "볼륨 %(vol)s 이름 변경 중 오류 발생: %(err)s."
 
-#, python-format
-msgid "Error response: %s"
-msgstr "오류 응답: %s"
-
 msgid "Error retrieving volume size"
 msgstr "볼륨 크기 검색 시 오류 발생"
 
@@ -1838,10 +1752,6 @@ msgid "Expected a UUID but received %(uuid)s."
 msgstr "UUID가 필요하나, %(uuid)s를 받았습니다."
 
 #, python-format
-msgid "Expected exactly one node called \"%s\""
-msgstr "\"%s\"(이)라는 정확히 하나의 노드만 필요"
-
-#, python-format
 msgid "Expected integer for node_count, svcinfo lsiogrp returned: %(node)s."
 msgstr ""
 "node_count에 대해 정수를 예상했지만 svcinfo lsiogrp가 리턴됨: %(node)s."
@@ -1961,10 +1871,6 @@ msgstr ""
 "meta'가 이미 존재함"
 
 #, python-format
-msgid "Failed to clone volume from snapshot %s."
-msgstr "스냅샷 %s에서 볼륨을 복제하지 못했습니다. "
-
-#, python-format
 msgid "Failed to connect to %(vendor_name)s Array %(host)s: %(err)s"
 msgstr "%(vendor_name)s 배열 %(host)s에 연결 실패: %(err)s"
 
@@ -2025,6 +1931,9 @@ msgstr "호스트 작성 실패: %(name)s. 배열에 있는지 확인하십시�
 msgid "Failed to create hostgroup: %(name)s. Check if it exists on the array."
 msgstr "호스트 그룹 작성 실패: %(name)s. 배열에 있는지 확인하십시오. "
 
+msgid "Failed to create iqn."
+msgstr "IQN 작성에 실패했습니다. "
+
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr "%(volume_id)s 볼륨에 대한 iscsi 대상을 작성하지 못했습니다. "
@@ -2035,14 +1944,23 @@ msgstr "기존 플로우 관리를 작성하지 못했습니다."
 msgid "Failed to create manage_existing flow."
 msgstr "manage_existing 플로우를 작성하지 못했습니다."
 
+msgid "Failed to create map."
+msgstr "맵 작성에 실패했습니다. "
+
 #, python-format
 msgid "Failed to create metadata for volume: %(reason)s"
 msgstr "볼륨에 대한 메타데이터를 작성하지 못함: %(reason)s"
+
+msgid "Failed to create partition."
+msgstr "파티션 작성에 실패했습니다. "
 
 #, python-format
 msgid "Failed to create qos_specs: %(name)s with specs %(qos_specs)s."
 msgstr ""
 "%(qos_specs)s 스펙을 가진 qos_specs %(name)s을(를) 작성하지 못했습니다. "
+
+msgid "Failed to create replica."
+msgstr "복제본 작성에 실패했습니다. "
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "스케줄러 관리자 볼륨 플로우 작성 실패"
@@ -2051,9 +1969,8 @@ msgstr "스케줄러 관리자 볼륨 플로우 작성 실패"
 msgid "Failed to create snapshot %s"
 msgstr "스냅샷 %s 작성 실패"
 
-#, python-format
-msgid "Failed to create snapshot for volume %s."
-msgstr "볼륨 %s에 대한 스냅샷을 작성하지 못했습니다. "
+msgid "Failed to create snapshot."
+msgstr "스냅샷 작성에 실패했습니다. "
 
 #, python-format
 msgid "Failed to create south bound connector for %s."
@@ -2080,9 +1997,24 @@ msgid ""
 "Failed to delete fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr "일관성 그룹 %(cgname)s에 대한 파일 세트 삭제 실패. 오류: %(excmsg)s."
 
+msgid "Failed to delete iqn."
+msgstr "IQN 삭제에 실패했습니다. "
+
+msgid "Failed to delete map."
+msgstr "맵 삭제에 실패했습니다. "
+
+msgid "Failed to delete partition."
+msgstr "파티션 삭제에 실패했습니다. "
+
+msgid "Failed to delete replica."
+msgstr "복제본 삭제에 실패했습니다. "
+
 #, python-format
 msgid "Failed to delete snapshot %s"
 msgstr "스냅샷 %s 삭제 실패"
+
+msgid "Failed to delete snapshot."
+msgstr "스냅샷 삭제에 실패했습니다. "
 
 #, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
@@ -2095,6 +2027,9 @@ msgstr "qos 스펙의 연관을 해제하지 못했습니다. "
 msgid "Failed to disassociate qos_specs: %(specs_id)s with type %(type_id)s."
 msgstr ""
 "qos_specs %(specs_id)s을(를) %(type_id)s 유형과 연관 해제시키지 못했습니다. "
+
+msgid "Failed to execute common command."
+msgstr "공통 명령을 실행하지 못했습니다. "
 
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
@@ -2140,6 +2075,14 @@ msgstr "LUN %s에 대한 LUN 대상 세부사항을 가져오지 못함"
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "LUN %s에 대한 LUN 대상 목록을 가져오지 못함"
 
+#, python-format
+msgid "Failed to get Partition ID for volume %(volume_id)s."
+msgstr "볼륨 %(volume_id)s에 대한 파티션 ID를 가져오지 못했습니다. "
+
+#, python-format
+msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
+msgstr "스냅샷: %(snapshot_id)s에서 Raid 스냅샷 ID를 가져오지 못했습니다. "
+
 msgid "Failed to get SplitMirror."
 msgstr "SplitMirror를 가져오지 못했습니다."
 
@@ -2147,16 +2090,31 @@ msgstr "SplitMirror를 가져오지 못했습니다."
 msgid "Failed to get all associations of qos specs %s"
 msgstr "qos 스펙 %s의 모든 연관을 가져오지 못함 "
 
+msgid "Failed to get channel info."
+msgstr "채널 정보를 가져오지 못했습니다. "
+
 #, python-format
 msgid "Failed to get code level (%s)."
 msgstr "코드 레벨을 가져오는 데 실패했습니다(%s)."
+
+msgid "Failed to get device info."
+msgstr "디바이스 정보를 가져오지 못했습니다. "
 
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
 msgstr "배열에 CPG(%s)가 없기 때문에 도메인을 가져오지 못했습니다."
 
-msgid "Failed to get image snapshots."
-msgstr "이미지 스냅샷을 가져오지 못했습니다."
+msgid "Failed to get iqn info."
+msgstr "IQN 정보를 가져오지 못했습니다. "
+
+msgid "Failed to get license info."
+msgstr "라이센스 정보를 가져오지 못했습니다. "
+
+msgid "Failed to get lv info."
+msgstr "lv 정보를 가져오지 못했습니다. "
+
+msgid "Failed to get map info."
+msgstr "맵 정보를 가져오지 못했습니다. "
 
 msgid "Failed to get migration task."
 msgstr "마이그레이션 태스크를 가져오지 못했습니다."
@@ -2167,16 +2125,24 @@ msgstr "복제에서 모델 업데이트를 가져오지 못함"
 msgid "Failed to get name server info."
 msgstr "이름 서버 정보를 가져오지 못했습니다. "
 
+msgid "Failed to get network info."
+msgstr "네트워크 정보를 가져오지 못했습니다. "
+
+#, python-format
+msgid "Failed to get new part id in new pool: %(pool_id)s."
+msgstr "새 풀: %(pool_id)s에서 새 파트 id를 가져오지 못했습니다. "
+
+msgid "Failed to get partition info."
+msgstr "파티션 정보를 가져오지 못했습니다. "
+
+msgid "Failed to get replica info."
+msgstr "복제본 정보를 가져오지 못했습니다. "
+
 msgid "Failed to get show fcns database info."
 msgstr "표시 fcns 데이터베이스 정보를 가져오지 못했습니다. "
 
-#, python-format
-msgid "Failed to get size of volume %s"
-msgstr "볼륨 %s의 크기 가져오기 실패"
-
-#, python-format
-msgid "Failed to get snapshot for volume %s."
-msgstr "볼륨 %s에 대한 스냅샷을 가져오지 못했습니다. "
+msgid "Failed to get snapshot info."
+msgstr "스냅샷 정보를 가져오지 못했습니다. "
 
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
@@ -2192,6 +2158,9 @@ msgstr "LUN %s에 대한 대상 포털을 가져오지 못함"
 msgid "Failed to get targets"
 msgstr "대상을 가져오지 못함"
 
+msgid "Failed to get wwn info."
+msgstr "WWN 정보를 가져오지 못했습니다. "
+
 msgid "Failed to identify volume backend."
 msgstr "볼륨 백엔드 식별 실패"
 
@@ -2202,10 +2171,6 @@ msgstr "공유 %(cgname)s에 대한 파일 세트 링크 실패. 오류: %(excms
 #, python-format
 msgid "Failed to log on %s Array (invalid login?)."
 msgstr "%s 배열에 로그온하지 못했습니다(올바르지 않은 로그인?). "
-
-#, python-format
-msgid "Failed to login for user %s."
-msgstr "사용자 %s에 대한 로그인에 실패했습니다. "
 
 msgid "Failed to login with all rest URLs."
 msgstr "모든 나머지 URL로 로그인하지 못했습니다. "
@@ -2297,14 +2262,6 @@ msgstr ""
 "패했습니다."
 
 #, python-format
-msgid "Failed to manage volume %s."
-msgstr "볼륨 %s을(를) 관리하지 못했습니다. "
-
-#, python-format
-msgid "Failed to move volume %s."
-msgstr "볼륨 %s을(를) 이동하지 못했습니다. "
-
-#, python-format
 msgid ""
 "Failed to parse CLI output:\n"
 " command: %(cmd)s\n"
@@ -2359,6 +2316,9 @@ msgstr ""
 
 msgid "Failed to set attribute 'Incoming user' for SCST target."
 msgstr "SCST 대상에 대해 '수신 사용자' 속성을 설정하는 데 실패했습니다. "
+
+msgid "Failed to set partition."
+msgstr "파티션 설정에 실패했습니다. "
 
 #, python-format
 msgid ""
@@ -2824,10 +2784,6 @@ msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Google Cloud Storage oauth2 실패: %(reason)s"
 
 #, python-format
-msgid "Got bad path information from DRBDmanage! (%s)"
-msgstr "DRBDmanage에서 잘못된 경로 정보를 가져왔습니다(%s)! "
-
-#, python-format
 msgid "Group Type %(id)s already exists."
 msgstr "%(id)s 그룹 유형이 이미 존재합니다."
 
@@ -2954,6 +2910,14 @@ msgstr ""
 
 msgid "Incremental backups exist for this backup."
 msgstr "이 백업에 대한 증분 백업이 있습니다. "
+
+#, python-format
+msgid ""
+"Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
+"(Output: %(out)s)"
+msgstr ""
+"Infortrend CLI 예외: %(err)s 매개변수: %(param)s(리턴 코드: %(rc)s) (출력: "
+"%(out)s)"
 
 msgid "Input volumes or snapshots are invalid."
 msgstr "입력 볼륨 또는 스냅샷이 올바르지 않습니다. "
@@ -3224,10 +3188,6 @@ msgid "Invalid value for age, %(age)s"
 msgstr "연령에 대한 값이 올바르지 않음, %(age)s"
 
 #, python-format
-msgid "Invalid value: \"%s\""
-msgstr "올바르지 않은 값: \"%s\""
-
-#, python-format
 msgid ""
 "Invalid volume size provided for create request: %s (size argument must be "
 "an integer (or string representation of an integer) and greater than zero)."
@@ -3292,9 +3252,16 @@ msgstr "KeyError: %s"
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "중첩 할당량 지원을 받기 위해 Keystone 버전 3 이상을 사용해야 합니다."
 
+msgid "LUN map overflow on every channel."
+msgstr "모든 채널의 LUN 맵 오버플로우입니다. "
+
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "주어진 ref %s을(를) 사용하여 LUN을 찾을 수 없습니다. "
+
+#, python-format
+msgid "LUN number is out of bound on channel id: %(ch_id)s."
+msgstr "LUN 번호가 채널 id에 대한 경계를 벗어남: %(ch_id)s."
 
 msgid "LeftHand cluster not found"
 msgstr "LeftHand 클러스터를 찾을 수 없음"
@@ -3519,9 +3486,6 @@ msgstr "스냅샷 source-name 또는 source-id를 지정해야 합니다."
 
 msgid "Must specify source-name or source-id."
 msgstr "source-name 또는 source-id가 있어야 합니다."
-
-msgid "Must specify storage pools. Option: sio_storage_pools."
-msgstr "스토리지 풀을 지정해야 합니다. 옵션: sio_storage_pools."
 
 msgid "Must supply a positive value for age"
 msgstr "연령에 대해 양수 값을 제공해야 함"
@@ -3781,6 +3745,10 @@ msgid "Path to REST server's certificate must be specified."
 msgstr "REST 서버 인증서의 경로를 지정해야 합니다. "
 
 #, python-format
+msgid "Please create %(pool_list)s pool in advance!"
+msgstr "미리 %(pool_list)s 풀을 작성하십시오! "
+
+#, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "정책이 %(action)s이(가) 수행되도록 허용하지 않습니다."
 
@@ -3794,6 +3762,9 @@ msgstr "볼륨 호스트 필드에서 풀을 사용할 수 없습니다."
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr ""
 "이름이 %(pool_name)s인 풀을 도메인 %(domain_id)s에서 찾을 수 없습니다. "
+
+msgid "Pools name is not set."
+msgstr "풀 이름이 설정되지 않았습니다. "
 
 #, python-format
 msgid "Programming error in Cinder: %(reason)s"
@@ -3894,10 +3865,6 @@ msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 
 msgid "RPC Version"
 msgstr "RPC 버전"
-
-#, python-format
-msgid "Received error string: %s"
-msgstr "오류 문자열이 수신됨: %s"
 
 msgid "Reference must be for an unmanaged snapshot."
 msgstr "참조는 관리되지 않은 스냅샷용이어야 합니다."
@@ -4242,10 +4209,6 @@ msgid "Snapshot of volume not supported in state: %s."
 msgstr "볼륨의 스냅샷이 다음 상태에서 지원되지 않음: %s"
 
 #, python-format
-msgid "Snapshot res \"%s\" that is not deployed anywhere?"
-msgstr "배치되지 않은 스냅샷 res \"%s\"이(가) 있습니까? "
-
-#, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr ""
 "update_snapshot_status에 대해 스냅샷 상태 %(cur)s이(가) 허용되지 않습니다. "
@@ -4269,6 +4232,9 @@ msgstr "소스 볼륨 디바이스 ID가 필요합니다. "
 
 msgid "Source volume not mid-migration."
 msgstr "소스 볼륨이 마이그레이션에 포함되지 않음 "
+
+msgid "Specified logical volume does not exist."
+msgstr "지정된 논리적 볼륨이 존재하지 않습니다. "
 
 msgid "Specify a password or private_key"
 msgstr "비밀번호 또는 private_key 지정"
@@ -4962,6 +4928,10 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr "알 수 없거나 지원되지 않는 명령 %(cmd)s"
 
 #, python-format
+msgid "Unknown protocol: %(protocol)s."
+msgstr "알 수 없는 프로토콜: %(protocol)s."
+
+#, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr "알 수 없는 할당량 자원 %(unknown)s."
 
@@ -5348,9 +5318,6 @@ msgstr "볼륨이 고유하지 않습니다."
 
 msgid "Volume not yet assigned to host."
 msgstr "볼륨을 아직 호스트에 지정하지 않았습니다."
-
-msgid "Volume reference must contain source-name element."
-msgstr "볼륨 참조에는 source-name 요소가 포함되어 있어야 합니다. "
 
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
@@ -6331,28 +6298,8 @@ msgstr "%(vol)s 볼륨에서 mkfs가 실패했습니다. 오류 메시지: %(err
 msgid "mock"
 msgstr "mock"
 
-#, python-format
-msgid "multiple resources with name %s found by drbdmanage"
-msgstr "drbdmanage에서 이름이 %s인 다중 자원을 발견함"
-
-#, python-format
-msgid "multiple resources with snapshot ID %s found"
-msgstr "스냅샷 ID가 %s인 다중 자원이 발견됨"
-
 msgid "name cannot be None"
 msgstr "이름은 None일 수 없음"
-
-#, python-format
-msgid "no snapshot with id %s found in drbdmanage"
-msgstr "drbdmanage에서 ID가 %s인 스냅샷을 찾을 수 없음"
-
-#, python-format
-msgid "not exactly one snapshot with id %s"
-msgstr "ID가 %s인 스냅샷이 정확하게 하나가 아님"
-
-#, python-format
-msgid "not exactly one volume with id %s"
-msgstr "ID가 %s인 볼륨이 정확하게 하나가 아님"
 
 #, python-format
 msgid "obj missing quotes %s"
@@ -6447,6 +6394,9 @@ msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
 "rtslib_fb에 멤버 %s이(가) 누락됨: 새 python-rtslib-fb가 필요할 수 있습니다. "
 
+msgid "san_ip is not set."
+msgstr "san_ip가 설정되지 않았습니다. "
+
 msgid "san_ip must be set"
 msgstr "san_ip가 설정되어야 함"
 
@@ -6526,10 +6476,6 @@ msgstr "show_target에 필요한 올바른 iqn"
 #, python-format
 msgid "vdisk %s is not defined."
 msgstr "vdisk %s이(가) 정의되지 않았습니다. "
-
-#, python-format
-msgid "volume %s not found in drbdmanage"
-msgstr "drbdmanage에서 볼륨 %s을(를) 찾을 수 없음"
 
 msgid "volume assigned"
 msgstr "볼륨 지정됨"

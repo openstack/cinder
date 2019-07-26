@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-03-21 22:19+0000\n"
+"POT-Creation-Date: 2019-07-25 22:11+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -262,9 +262,6 @@ msgstr "只读卷必须以只读方式进行挂载。"
 
 msgid "A valid secondary target MUST be specified in order to failover."
 msgstr "必须指定有效辅助以进行故障转移。"
-
-msgid "A volume ID or share was not specified."
-msgstr "未指定卷标识或者共享。"
 
 #, python-format
 msgid ""
@@ -777,8 +774,9 @@ msgstr "无法删除加密规范。卷类型在使用中。"
 msgid "Cannot find migration task."
 msgstr "找不到迁移任务。"
 
-msgid "Cannot ping DRBDmanage backend"
-msgstr "无法对 DRBDmanage 后端执行 ping 操作"
+#, python-format
+msgid "Cannot get mcs_id by channel id: %(channel_id)s."
+msgstr "无法通过通道标识 %(channel_id)s 获取 mcs_id。"
 
 #, python-format
 msgid ""
@@ -828,12 +826,6 @@ msgstr "组对象更新时无法保存卷类型变更。"
 
 msgid "Cannot save volumes changes in group object update."
 msgstr "组对象更新时无法保存卷变更。"
-
-msgid "Cannot specify both protection domain name and protection domain id."
-msgstr "无法同时指定保护域名和保护域标识。"
-
-msgid "Cannot specify both storage pool name and storage pool id."
-msgstr "无法同时指定存储池名称和存储池标识。"
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "无法更新加密规范。卷类型在使用中。"
@@ -1198,56 +1190,6 @@ msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错
 
 #, python-format
 msgid ""
-"DRBDmanage driver error: expected key \"%s\" not in answer, wrong DRBDmanage "
-"version?"
-msgstr ""
-"DRBDmanage 驱动程序错误：回复中没有预期关键字“%s”，DRBDmanage 版本是否正确？"
-
-msgid ""
-"DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
-"not found."
-msgstr ""
-"DRBDmanage 驱动程序设置错误：找不到某些必需的库（dbus 和 drbdmanage.*）。"
-
-#, python-format
-msgid "DRBDmanage expected one resource (\"%(res)s\"), got %(n)d"
-msgstr "DRBDmanage 期望一个资源 (\"%(res)s\")，但是获得了 %(n)d"
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for new volume after snapshot restore; resource "
-"\"%(res)s\", volume \"%(vol)s\""
-msgstr "快照复原后 DRBDmanage 等待新卷时超时；资源“%(res)s”，卷“%(vol)s”"
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for snapshot creation; resource \"%(res)s\", "
-"snapshot \"%(sn)s\""
-msgstr "DRBDmanage 等待创建快照时超时；资源“%(res)s”，快照“%(sn)s”"
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for volume creation; resource \"%(res)s\", volume "
-"\"%(vol)s\""
-msgstr "DRBDmanage 等待创建卷时超时；资源“%(res)s”，卷“%(vol)s”"
-
-#, python-format
-msgid ""
-"DRBDmanage timeout waiting for volume size; volume ID \"%(id)s\" (res "
-"\"%(res)s\", vnr %(vnr)d)"
-msgstr ""
-"DRBDmanage 等待卷大小时超时；卷标识“%(id)s”（res \"%(res)s\"，vnr %(vnr)d）"
-
-#, python-format
-msgid "Dataset %s is not shared in Nexenta Store appliance"
-msgstr "数据集 %s 在 Nexenta 存储设备中未共享"
-
-#, python-format
-msgid "Dataset group %s not found at Nexenta SA"
-msgstr "在 Nexenta SA 中找不到数据库组 %s"
-
-#, python-format
-msgid ""
 "Dedup is a valid provisioning type, but requires WSAPI version "
 "'%(dedup_version)s' version '%(version)s' is installed."
 msgstr ""
@@ -1409,22 +1351,6 @@ msgid ""
 "Driver successfully decoded imported backup data, but there are missing "
 "fields (%s)."
 msgstr "驱动程序已成功将所导入的备份数据解码，但是缺少字段 (%s)。"
-
-#, python-format
-msgid ""
-"EMC VNX Cinder Driver CLI exception: %(cmd)s (Return Code: %(rc)s) (Output: "
-"%(out)s)."
-msgstr ""
-"发生 EMC VNX Cinder 驱动程序 CLI 异常：%(cmd)s（返回码为 %(rc)s）（输出为 "
-"%(out)s）。"
-
-#, python-format
-msgid ""
-"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
-"(Output: %(out)s)."
-msgstr ""
-"EMC VNX Cinder 驱动程序 SPUnavailableException：%(cmd)s（返回码：%(rc)s）（输"
-"出：%(out)s）。"
 
 #, python-format
 msgid ""
@@ -1784,10 +1710,6 @@ msgstr "更新组 %s 时发生了错误。"
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "重命名卷 %(vol)s 时出错：%(err)s。"
 
-#, python-format
-msgid "Error response: %s"
-msgstr "错误响应：%s"
-
 msgid "Error retrieving volume size"
 msgstr "检索卷大小时出错"
 
@@ -1915,10 +1837,6 @@ msgid "Exception: %s"
 msgstr "异常：%s"
 
 #, python-format
-msgid "Expected exactly one node called \"%s\""
-msgstr "刚好需要一个名为“%s”的节点"
-
-#, python-format
 msgid "Expected integer for node_count, svcinfo lsiogrp returned: %(node)s."
 msgstr "期望 node_count 的值为整数，已返回 svcinfo lsiogrp：%(node)s。"
 
@@ -2036,10 +1954,6 @@ msgid ""
 msgstr "未能备份卷元数据 - 元数据备份对象“backup.%s.meta”已存在"
 
 #, python-format
-msgid "Failed to clone volume from snapshot %s."
-msgstr "未能从快照 %s 克隆卷。"
-
-#, python-format
 msgid "Failed to connect to %(vendor_name)s Array %(host)s: %(err)s"
 msgstr "未能连接至 %(vendor_name)s 阵列 %(host)s：%(err)s"
 
@@ -2107,6 +2021,9 @@ msgstr "未能创建主机：%(name)s。请检查它在阵列上是否存在。"
 msgid "Failed to create hostgroup: %(name)s. Check if it exists on the array."
 msgstr "未能创建主机组：%(name)s。请检查它在阵列上是否存在。"
 
+msgid "Failed to create iqn."
+msgstr "未能创建 IQN。"
+
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr "未能针对卷 %(volume_id)s 创建 iscsi 目标。"
@@ -2117,13 +2034,22 @@ msgstr "未能创建 manage_existing 流。"
 msgid "Failed to create manage_existing flow."
 msgstr "未能创建 manage_existing 流。"
 
+msgid "Failed to create map."
+msgstr "未能创建映射。"
+
 #, python-format
 msgid "Failed to create metadata for volume: %(reason)s"
 msgstr "未能为卷创建元数据：%(reason)s"
 
+msgid "Failed to create partition."
+msgstr "未能创建分区。"
+
 #, python-format
 msgid "Failed to create qos_specs: %(name)s with specs %(qos_specs)s."
 msgstr "未能通过规范 %(qos_specs)s 创建 qos_specs：%(name)s。"
+
+msgid "Failed to create replica."
+msgstr "未能创建副本。"
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "未能创建调度程序管理器卷流"
@@ -2132,9 +2058,8 @@ msgstr "未能创建调度程序管理器卷流"
 msgid "Failed to create snapshot %s"
 msgstr "未能创建快照 %s"
 
-#, python-format
-msgid "Failed to create snapshot for volume %s."
-msgstr "未能为卷 %s 创建快照。"
+msgid "Failed to create snapshot."
+msgstr "未能创建快照。"
 
 #, python-format
 msgid "Failed to create south bound connector for %s."
@@ -2161,9 +2086,24 @@ msgid ""
 "Failed to delete fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr "未能针对一致性组 %(cgname)s 删除文件集。错误为 %(excmsg)s。"
 
+msgid "Failed to delete iqn."
+msgstr "未能删除 IQN。"
+
+msgid "Failed to delete map."
+msgstr "未能删除映射。"
+
+msgid "Failed to delete partition."
+msgstr "未能删除分区。"
+
+msgid "Failed to delete replica."
+msgstr "未能删除副本。"
+
 #, python-format
 msgid "Failed to delete snapshot %s"
 msgstr "未能删除快照 %s"
+
+msgid "Failed to delete snapshot."
+msgstr "未能删除快照。"
 
 #, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
@@ -2175,6 +2115,9 @@ msgstr "未能取消关联 Qos 规范。"
 #, python-format
 msgid "Failed to disassociate qos_specs: %(specs_id)s with type %(type_id)s."
 msgstr "未能使 qos_specs %(specs_id)s 与类型 %(type_id)s 取消关联。"
+
+msgid "Failed to execute common command."
+msgstr "未能执行常见命令。"
 
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
@@ -2220,6 +2163,14 @@ msgstr "未能获取 LUN %s 的 LUN 目标详细信息"
 msgid "Failed to get LUN target list for the LUN %s"
 msgstr "未能获取 LUN %s 的 LUN 目标列表"
 
+#, python-format
+msgid "Failed to get Partition ID for volume %(volume_id)s."
+msgstr "未能获取卷 %(volume_id)s 的分区标识。"
+
+#, python-format
+msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
+msgstr "未能从快照 %(snapshot_id)s 获取 RAID 快照标识。"
+
 msgid "Failed to get SplitMirror."
 msgstr "无法获取 SplitMirror。"
 
@@ -2227,16 +2178,31 @@ msgstr "无法获取 SplitMirror。"
 msgid "Failed to get all associations of qos specs %s"
 msgstr "未能获取 qos 规范 %s 的所有关联"
 
+msgid "Failed to get channel info."
+msgstr "未能获取通道信息。"
+
 #, python-format
 msgid "Failed to get code level (%s)."
 msgstr "未能获取代码级别 (%s)。"
+
+msgid "Failed to get device info."
+msgstr "未能获取设备信息。"
 
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
 msgstr "未能获取域，因为阵列上不存在 CPG (%s)。"
 
-msgid "Failed to get image snapshots."
-msgstr "无法获取映像快照。"
+msgid "Failed to get iqn info."
+msgstr "未能获取 IQN 信息。"
+
+msgid "Failed to get license info."
+msgstr "未能获取许可证信息。"
+
+msgid "Failed to get lv info."
+msgstr "未能获取 lv 信息。"
+
+msgid "Failed to get map info."
+msgstr "未能获取映射信息。"
 
 msgid "Failed to get migration task."
 msgstr "无法获取迁移任务。"
@@ -2247,16 +2213,24 @@ msgstr "未能从克隆获取模型更新"
 msgid "Failed to get name server info."
 msgstr "未能获取名称服务器信息。"
 
+msgid "Failed to get network info."
+msgstr "未能获取网络信息。"
+
+#, python-format
+msgid "Failed to get new part id in new pool: %(pool_id)s."
+msgstr "未能在新池 %(pool_id)s 中获取新的部件标识。"
+
+msgid "Failed to get partition info."
+msgstr "未能获取分区信息。"
+
+msgid "Failed to get replica info."
+msgstr "未能获取副本信息。"
+
 msgid "Failed to get show fcns database info."
 msgstr "未能获取显示 fcns 数据库信息。"
 
-#, python-format
-msgid "Failed to get size of volume %s"
-msgstr "未能获取卷 %s 的大小"
-
-#, python-format
-msgid "Failed to get snapshot for volume %s."
-msgstr "未能获取卷 %s 的快照。"
+msgid "Failed to get snapshot info."
+msgstr "未能获取快照信息。"
 
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
@@ -2272,6 +2246,9 @@ msgstr "未能获取 LUN %s 的目标门户网站"
 msgid "Failed to get targets"
 msgstr "未能获取目标"
 
+msgid "Failed to get wwn info."
+msgstr "未能获取 WWN 信息。"
+
 msgid "Failed to identify volume backend."
 msgstr "未能识别卷后端。"
 
@@ -2282,10 +2259,6 @@ msgstr "未能针对共享项 %(cgname)s 链接文件集。错误为 %(excmsg)s�
 #, python-format
 msgid "Failed to log on %s Array (invalid login?)."
 msgstr "未能登录到 %s 阵列（无效登录？）。"
-
-#, python-format
-msgid "Failed to login for user %s."
-msgstr "未能让用户 %s 登录。"
 
 msgid "Failed to login with all rest URLs."
 msgstr "未能使用所有 REST URL 进行登录。"
@@ -2358,14 +2331,6 @@ msgid ""
 msgstr "无法管理现有卷，要管理的卷为薄卷，但所选卷类型为厚卷。"
 
 #, python-format
-msgid "Failed to manage volume %s."
-msgstr "未能管理卷 %s。"
-
-#, python-format
-msgid "Failed to move volume %s."
-msgstr "未能移动卷 %s。"
-
-#, python-format
 msgid ""
 "Failed to parse CLI output:\n"
 " command: %(cmd)s\n"
@@ -2430,6 +2395,9 @@ msgstr "未能对现有卷 %(name)s 设置 QoS，错误消息：%(msg)s。"
 
 msgid "Failed to set attribute 'Incoming user' for SCST target."
 msgstr "未能对 SCST 目标设置属性“新用户”。"
+
+msgid "Failed to set partition."
+msgstr "未能设置分区。"
 
 #, python-format
 msgid ""
@@ -2870,10 +2838,6 @@ msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Google 云存储器 oauth2 故障：%(reason)s"
 
 #, python-format
-msgid "Got bad path information from DRBDmanage! (%s)"
-msgstr "从 DRBDmanage 中获得了错误路径信息！(%s)"
-
-#, python-format
 msgid "Group %(group_id)s could not be found."
 msgstr "无法找到名为 %(group_id)s 的组。"
 
@@ -3059,6 +3023,14 @@ msgstr ""
 
 msgid "Incremental backups exist for this backup."
 msgstr "对于此备份，存在增量备份。"
+
+#, python-format
+msgid ""
+"Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
+"(Output: %(out)s)"
+msgstr ""
+"Infortrend CLI 异常：%(err)s 参数：%(param)s（返回码：%(rc)s）（输出："
+"%(out)s）"
 
 msgid "Input volumes or snapshots are invalid."
 msgstr "输入卷或快照无效。"
@@ -3329,10 +3301,6 @@ msgid "Invalid value for age, %(age)s"
 msgstr "age 的值 %(age)s 无效"
 
 #, python-format
-msgid "Invalid value: \"%s\""
-msgstr "无效值：“%s”"
-
-#, python-format
 msgid ""
 "Invalid volume size provided for create request: %s (size argument must be "
 "an integer (or string representation of an integer) and greater than zero)."
@@ -3407,6 +3375,9 @@ msgstr "KeyError：%s"
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "必须使用 Keystone 版本 3 或更高版本来获取嵌套配额支持。"
 
+msgid "LUN map overflow on every channel."
+msgstr "LUN 映射在每个通道上溢出。"
+
 #, python-format
 msgid "LUN not found by UUID: %(uuid)s."
 msgstr "无法通过UUID:%(uuid)s找到LUN。"
@@ -3414,6 +3385,10 @@ msgstr "无法通过UUID:%(uuid)s找到LUN。"
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "找不到具有给定引用 %s 的 LUN。"
+
+#, python-format
+msgid "LUN number is out of bound on channel id: %(ch_id)s."
+msgstr "LUN 号超出了通道标识 %(ch_id)s 的范围。"
 
 msgid "LeftHand cluster not found"
 msgstr "找不到 LeftHand 集群"
@@ -3654,9 +3629,6 @@ msgstr "必须指定快照 source-name 或 source-id。"
 
 msgid "Must specify source-name or source-id."
 msgstr "必须指定 source-name 或 source-id。"
-
-msgid "Must specify storage pools. Option: sio_storage_pools."
-msgstr "必须指定存储库。选项：sio_storage_pools。"
 
 msgid "Must supply a positive value for age"
 msgstr "必须为 age 提供正值"
@@ -3913,6 +3885,10 @@ msgid "Path to REST server's certificate must be specified."
 msgstr "必须指定 REST 服务器的证书的路径。"
 
 #, python-format
+msgid "Please create %(pool_list)s pool in advance!"
+msgstr "请提前创建 %(pool_list)s 池！"
+
+#, python-format
 msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "政策不允许 %(action)s 被执行。"
 
@@ -3925,6 +3901,9 @@ msgstr "在卷主机字段中，未提供池。"
 #, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
 msgstr "在域 %(domain_id)s 中找不到名称为 %(pool_name)s 的池。"
+
+msgid "Pools name is not set."
+msgstr "未设置池名称。"
 
 #, python-format
 msgid "Programming error in Cinder: %(reason)s"
@@ -4025,10 +4004,6 @@ msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 
 msgid "RPC Version"
 msgstr "RPC 版本"
-
-#, python-format
-msgid "Received error string: %s"
-msgstr "接收到错误字符串：%s"
 
 msgid "Reference must be for an unmanaged snapshot."
 msgstr "引用必须针对非受管快照。"
@@ -4367,10 +4342,6 @@ msgid "Snapshot of volume not supported in state: %s."
 msgstr "不支持对处于以下状态的卷生成快照：%s。"
 
 #, python-format
-msgid "Snapshot res \"%s\" that is not deployed anywhere?"
-msgstr "未在任何位置部署的快照资源“%s”？"
-
-#, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr "对于 update_snapshot_status，不允许快照状态 %(cur)s"
 
@@ -4407,6 +4378,9 @@ msgstr "需要源卷设备标识。"
 
 msgid "Source volume not mid-migration."
 msgstr "源卷未在迁移中。"
+
+msgid "Specified logical volume does not exist."
+msgstr "所指定的逻辑卷不存在。"
 
 msgid "Specifies IP pool to use for volume"
 msgstr "为使用卷指定IP池。"
@@ -5110,6 +5084,10 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr "命令 %(cmd)s 未知或不受支持"
 
 #, python-format
+msgid "Unknown protocol: %(protocol)s."
+msgstr "未知协议：%(protocol)s。"
+
+#, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr "配额资源 %(unknown)s 未知。"
 
@@ -5509,9 +5487,6 @@ msgstr "卷并非唯一。"
 
 msgid "Volume not yet assigned to host."
 msgstr "卷尚未分配给主机。"
-
-msgid "Volume reference must contain source-name element."
-msgstr "卷引用必须包含 source-name 元素。"
 
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
@@ -6512,14 +6487,6 @@ msgstr "mkfs 在卷 %(vol)s 上发生故障，错误消息如下：%(err)s。"
 msgid "mock"
 msgstr "mock"
 
-#, python-format
-msgid "multiple resources with name %s found by drbdmanage"
-msgstr "drbdmanage 找到多个名称为 %s 的资源"
-
-#, python-format
-msgid "multiple resources with snapshot ID %s found"
-msgstr "找到多个快照标识为 %s 的资源"
-
 msgid "name cannot be None"
 msgstr "name不能是None"
 
@@ -6528,18 +6495,6 @@ msgstr "不存在\"access-key\"域"
 
 msgid "no \"user\" field"
 msgstr "不存在“user”域"
-
-#, python-format
-msgid "no snapshot with id %s found in drbdmanage"
-msgstr "在 drbdmanage 中找不到标识为 %s 的快照"
-
-#, python-format
-msgid "not exactly one snapshot with id %s"
-msgstr "而不是刚好只有一个标识为 %s 的快照"
-
-#, python-format
-msgid "not exactly one volume with id %s"
-msgstr "而不是刚好只有一个标识为 %s 的卷"
 
 #, python-format
 msgid "obj missing quotes %s"
@@ -6629,6 +6584,9 @@ msgstr ""
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr "rtslib_fb 缺少成员 %s：您可能需要较新的 python-rtslib-fb。"
 
+msgid "san_ip is not set."
+msgstr "未设置 san_ip。"
+
 msgid "san_ip must be set"
 msgstr "san_ip必须设置"
 
@@ -6712,10 +6670,6 @@ msgstr "show_target 需要有效 iqn"
 #, python-format
 msgid "vdisk %s is not defined."
 msgstr "未定义 vdisk %s。"
-
-#, python-format
-msgid "volume %s not found in drbdmanage"
-msgstr "在 drbdmanage 中找不到卷 %s"
 
 msgid "volume assigned"
 msgstr "卷已分配"
