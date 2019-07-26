@@ -30,6 +30,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.policies import volume_actions as policy
 from cinder import volume
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
@@ -221,9 +222,8 @@ class VolumeActionsController(wsgi.Controller):
             # Clone volume encryption key: the current key cannot
             # be reused because it will be deleted when the volume is
             # deleted.
-            encryption_key_id = self._key_manager.store(
-                context,
-                self._key_manager.get(context, volume.encryption_key_id))
+            encryption_key_id = volume_utils.clone_encryption_key(
+                context, self._key_manager, volume.encryption_key_id)
 
             image_metadata['cinder_encryption_key_id'] = encryption_key_id
             image_metadata['cinder_encryption_key_deletion_policy'] = \
