@@ -23,6 +23,7 @@ from defusedxml import lxml as etree
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
+import pprint
 import requests
 import six
 
@@ -380,8 +381,33 @@ class DotHillClient(object):
         raise dh_exception.DotHillRequestError(
             message=_("No LUNs available for mapping to host %s.") % host)
 
+    def _is_mapped(self, volume_name, ids):
+        if not isinstance(ids, list):
+            ids = [ids]
+        try:
+            xml = self._request('/show/volume-maps', volume_name)
+
+            for obj in xml.xpath("//OBJECT[@basetype='volume-view-mappings']"):
+                lun = obj.findtext("PROPERTY[@name='lun']")
+                iid = obj.findtext("PROPERTY[@name='identifier']")
+                if iid in ids:
+                    LOG.debug("volume '{}' is already mapped to {} at lun {}".
+                              format(volume_name, iid, lun))
+                    return lun
+        except Exception as e:
+            LOG.exception("failed to look up mappings for volume '%s'",
+                          volume_name)
+            raise
+        return None
+
     @coordination.synchronized('{self._driver_name}-{self._array_name}-map')
     def map_volume(self, volume_name, connector, connector_element):
+        # If multiattach enabled, its possible the volume is already mapped
+        LOG.debug("map_volume(%s, %s, %s)", volume_name,
+                  pprint.pformat(connector), connector_element)
+        lun = self._is_mapped(volume_name, connector[connector_element])
+        if lun:
+            return lun
         if connector_element == 'wwpns':
             lun = self._get_first_available_lun_for_host(connector['wwpns'][0])
             host = ",".join(connector['wwpns'])
