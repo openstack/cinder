@@ -517,6 +517,7 @@ class PowerMaxRest(object):
         self.check_status_code_success(operation, status_code, message)
         return status_code, message
 
+    @retry(retry_exc_tuple, interval=2, retries=3)
     def delete_resource(
             self, array, category, resource_type, resource_name,
             payload=None, private='', params=None):

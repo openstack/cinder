@@ -1023,8 +1023,7 @@ class PowerMaxCommonTest(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common._delete_from_srp, array,
                               device_id, volume_name, extra_specs)
-            mock_add.assert_called_once_with(
-                array, device_id, volume_name, extra_specs)
+            mock_add.assert_not_called()
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        side_effect=[False, True])
@@ -2793,3 +2792,16 @@ class PowerMaxCommonTest(test.TestCase):
     def test_get_replication_info(self, mock_config):
         self.common._get_replication_info()
         mock_config.assert_not_called()
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_do_sync_check')
+    def test_sync_check_no_source_device_on_array(self, mock_check):
+        with mock.patch.object(self.rest, 'get_volume',
+                               side_effect=exception.VolumeBackendAPIException(
+                                   "404 00123 does not exist")):
+            array = self.data.array
+            device_id = self.data.device_id
+            extra_specs = self.data.extra_specs
+            self.common._sync_check(array, device_id, extra_specs,
+                                    source_device_id='00123')
+            mock_check.assert_not_called()

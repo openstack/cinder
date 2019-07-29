@@ -1338,15 +1338,18 @@ class PowerMaxMasking(object):
             self.add_volume_to_default_storage_group(
                 serial_number, device_id, volume_name,
                 extra_specs, src_sg=storagegroup_name)
+            LOG.debug(
+                "Volume %(volume_name)s successfully added to "
+                "storage group %(sg)s.",
+                {'volume_name': volume_name, 'sg': storagegroup_name})
         else:
             self.remove_vol_from_storage_group(
                 serial_number, device_id, storagegroup_name,
                 volume_name, extra_specs)
-
-        LOG.debug(
-            "Volume %(volume_name)s successfully moved/ removed from "
-            "storage group %(sg)s.",
-            {'volume_name': volume_name, 'sg': storagegroup_name})
+            LOG.debug(
+                "Volume %(volume_name)s successfully removed from "
+                "storage group %(sg)s.",
+                {'volume_name': volume_name, 'sg': storagegroup_name})
 
         num_vol_in_sg = self.rest.get_num_vols_in_sg(
             serial_number, storagegroup_name)
