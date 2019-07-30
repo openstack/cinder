@@ -87,7 +87,7 @@ macrosan_opts = [
                 (host; client_name; sp1_iscsi_port; sp2_iscsi_port),
                 (host; client_name; sp1_iscsi_port; sp2_iscsi_port)
                 Important warning, Client_name has the following requirements:
-                    [a-zA-Z0-9.-_:], the maximum number of characters is 31
+                [a-zA-Z0-9.-_:], the maximum number of characters is 31
                 E.g:
                 (controller1; decive1; eth-1:0; eth-2:0),
                 (controller2; decive2; eth-1:0/eth-1:1; eth-2:0/eth-2:1),
