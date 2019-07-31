@@ -226,6 +226,7 @@ def list_opts():
                 cinder_common_config.backup_opts,
                 cinder_common_config.image_opts,
                 cinder_common_config.global_opts,
+                cinder_common_config.compression_opts,
                 cinder.compute.compute_opts,
                 cinder_context.context_opts,
                 cinder_db_api.db_opts,

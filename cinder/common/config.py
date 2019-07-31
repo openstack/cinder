@@ -195,12 +195,24 @@ image_opts = [
                     'value is used.'),
 ]
 
+compression_opts = [
+    cfg.StrOpt('compression_format',
+               default='gzip',
+               choices=[('gzip', 'GNUzip format')],
+               help='Image compression format on image upload'),
+    cfg.BoolOpt('allow_compression_on_image_upload',
+                default=False,
+                help='The strategy to use for image compression on upload. '
+                     'Default is disallow compression.'),
+]
+
 CONF.register_opts(api_opts)
 CONF.register_opts(core_opts)
 CONF.register_opts(auth_opts)
 CONF.register_opts(backup_opts)
 CONF.register_opts(image_opts)
 CONF.register_opts(global_opts)
+CONF.register_opts(compression_opts)
 
 
 def set_middleware_defaults():
