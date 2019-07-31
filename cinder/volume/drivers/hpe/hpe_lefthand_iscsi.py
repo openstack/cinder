@@ -176,6 +176,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
     CI_WIKI_NAME = "HPE_Storage_CI"
 
+    # TODO(walter-boring) Remove this driver in the 'U' release as it is no
+    # longer maintained.
+    SUPPORTED = False
+
     device_stats = {}
 
     # v2 replication constants
