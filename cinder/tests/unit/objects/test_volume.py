@@ -307,7 +307,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         db_admin_metadata = [{'key': 'admin_foo', 'value': 'admin_bar'}]
         db_glance_metadata = [{'key': 'glance_foo', 'value': 'glance_bar'}]
         db_volume_type = fake_volume.fake_db_volume_type()
-        db_volume_attachments = fake_volume.fake_db_volume_attachment()
+        db_volume_attachments = fake_volume.volume_attachment_db_obj()
         db_consistencygroup = fake_consistencygroup.fake_db_consistencygroup()
         db_snapshots = fake_snapshot.fake_db_snapshot()
 
@@ -450,7 +450,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.sqlalchemy.api.volume_attach')
     def test_begin_attach(self, volume_attach, metadata_update):
         volume = fake_volume.fake_volume_obj(self.context)
-        db_attachment = fake_volume.fake_db_volume_attachment(
+        db_attachment = fake_volume.volume_attachment_db_obj(
             volume_id=volume.id,
             attach_status=fields.VolumeAttachStatus.ATTACHING)
         volume_attach.return_value = db_attachment

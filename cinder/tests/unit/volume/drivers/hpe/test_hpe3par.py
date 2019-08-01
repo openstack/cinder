@@ -10231,9 +10231,9 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
     def test_terminate_connection_multiattach(self):
         ctx = context.get_admin_context()
         mock_client = self.setup_driver()
-        att_1 = fake_volume.fake_volume_attachment_obj(
+        att_1 = fake_volume.volume_attachment_ovo(
             ctx, id=uuidutils.generate_uuid())
-        att_2 = fake_volume.fake_volume_attachment_obj(
+        att_2 = fake_volume.volume_attachment_ovo(
             ctx, id=uuidutils.generate_uuid())
         volume = fake_volume.fake_volume_obj(
             ctx, multiattach=True, host=self.FAKE_CINDER_HOST)
