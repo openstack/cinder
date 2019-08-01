@@ -687,7 +687,9 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""
-        return self.ssc_library.get_ssc().keys()
+
+        ssc = self.ssc_library.get_ssc()
+        return list(ssc.keys())
 
     def _get_flexvol_names_from_hosts(self, hosts):
         """Returns a set of flexvol names."""
