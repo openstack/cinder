@@ -34,7 +34,6 @@ test_volume = (
     UserDict({'name': 'volume-728ec287-bf30-4d2d-98a8-7f1bed3f59ce',
               'volume_name': 'test',
               'id': '728ec287-bf30-4d2d-98a8-7f1bed3f59ce',
-              'volume_id': '728ec287-bf30-4d2d-98a8-7f1bed3f59ce',
               'provider_auth': None,
               'project_id': 'project',
               'display_name': 'test',
@@ -45,7 +44,7 @@ test_volume = (
               'macrosan uuid:0x00b34201-025b0000-46b35ae7-b7deec47'}))
 
 test_volume.size = 10
-test_volume.volume_type_id = None
+test_volume.volume_type_id = '36674caf-5314-468a-a8cb-baab4f71fe44'
 test_volume.volume_attachment = []
 
 test_migrate_volume = {
@@ -58,7 +57,7 @@ test_migrate_volume = {
     'project_id': 'project',
     'display_name': 'test',
     'display_description': 'test',
-    'volume_type_id': None,
+    'volume_type_id': '36674caf-5314-468a-a8cb-baab4f71fe44',
     '_name_id': None,
     'host': 'controller@macrosan#MacroSAN',
     'provider_location':
@@ -73,7 +72,7 @@ test_snap = {'name': 'volume-728ec287-bf30-4d2d-98a8-7f1bed3f59ce',
              'project_id': 'project',
              'display_name': 'test',
              'display_description': 'test volume',
-             'volume_type_id': None,
+             'volume_type_id': '36674caf-5314-468a-a8cb-baab4f71fe44',
              'provider_location': 'pointid: 1',
              'volume_size': 10,
              'volume': test_volume}
@@ -105,6 +104,17 @@ expected_iscsi_properties = {'target_discovered': False,
                              'volume_id':
                              '728ec287-bf30-4d2d-98a8-7f1bed3f59ce'
                              }
+
+expected_iscsi_connection_data = {
+    'client': 'devstack',
+    'ports': [{'ip': '192.168.251.1',
+               'port': 'eth-1:0:0',
+               'port_name': 'iSCSI-Target-1:0:0',
+               'target': 'iqn.2010-05.com.macrosan.target:controller'},
+              {'ip': '192.168.251.2',
+               'port': 'eth-2:0:0',
+               'port_name': 'iSCSI-Target-2:0:0',
+               'target': 'iqn.2010-05.com.macrosan.target:controller'}]}
 
 expected_initr_port_map_tgtexist = {
     '21:00:00:24:ff:20:03:ec': [{'port_name': 'FC-Target-1:1:1',
@@ -188,12 +198,10 @@ class FakeMacroSANISCSIDriver(driver.MacroSANISCSIDriver):
     def _get_client_name(self, host):
         return 'devstack'
 
-    @utils.synchronized('MacroSAN-Attach', external=True)
     def _attach_volume(self, context, volume, properties, remote=False):
         return super(FakeMacroSANISCSIDriver, self)._attach_volume(
             context, volume, properties, remote)
 
-    @utils.synchronized('MacroSAN-Attach', external=True)
     def _detach_volume(self, context, attach_info, volume,
                        properties, force=False, remote=False,
                        ignore_errors=True):
@@ -383,8 +391,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     def setUp(self):
         super(MacroSANISCSIDriverTestCase, self).setUp()
         self.configuration = mock.Mock(spec=conf.Configuration)
-        self.configuration.san_ip = \
-            "172.192.251.1, 172.192.251.2"
+        self.configuration.san_ip = "172.192.251.1, 172.192.251.2"
         self.configuration.san_login = "openstack"
         self.configuration.san_password = "passwd"
         self.configuration.macrosan_sdas_ipaddrs = None
@@ -398,9 +405,8 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
         self.configuration.macrosan_snapshot_resource_ratio = 0.3
         self.configuration.macrosan_log_timing = True
         self.configuration.macrosan_client = \
-            ['devstack; decive1; "eth-1:0:0"; "eth-2:0:0"']
-        self.configuration.macrosan_client_default = \
-            "eth-1:0:0;eth-2:0:0"
+            ['devstack; device1; "eth-1:0:0"; "eth-2:0:0"']
+        self.configuration.macrosan_client_default = "eth-1:0:0;eth-2:0:0"
         self.driver = FakeMacroSANISCSIDriver(configuration=self.configuration)
         self.driver.do_setup()
 
@@ -465,12 +471,19 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
         actual = ret['provider_location']
         self.assertEqual(test_volume['provider_location'], actual)
 
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volutils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
-    def test_create_cloned_volume(self, mock_hostname,
+    def test_create_cloned_volume(self, mock_volume_types, mock_qos,
+                                  mock_hostname,
                                   mock_brick_get_connector,
                                   mock_copy_volume,
                                   mock_os_path):
@@ -514,7 +527,9 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     def test_terminate_connection(self, mock_volume_type, mock_qos):
-        self.driver.terminate_connection(test_volume, test_connector)
+        ret = self.driver.terminate_connection(test_volume, test_connector)
+        self.assertEqual({'driver_volume_type': 'iSCSI',
+                          'data': expected_iscsi_connection_data}, ret)
 
     def test_get_raid_list(self):
         expected = ["RAID-1"]
@@ -564,12 +579,19 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
                           self.driver.create_volume_from_snapshot,
                           test_volume, test_snap)
 
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volutils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
-    def test_create_cloned_volume_fail(self, mock_hostname,
+    def test_create_cloned_volume_fail(self, mock_volume_types, mock_qos,
+                                       mock_hostname,
                                        mock_brick_get_connector,
                                        mock_copy_volume,
                                        mock_os_path):
@@ -630,7 +652,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
         self.configuration.macrosan_fc_keep_mapped_ports = True
         self.configuration.macrosan_host_name = 'devstack'
         self.configuration.macrosan_client = \
-            ['devstack; decive1; "eth-1:0:0"; "eth-2:0:0"']
+            ['devstack; device1; "eth-1:0:0"; "eth-2:0:0"']
         self.configuration.macrosan_client_default = \
             "eth-1:0:0;eth-2:0:0"
         self.driver = FakeMacroSANFCDriver(configuration=self.configuration)
@@ -647,19 +669,40 @@ class MacroSANFCDriverTestCase(test.TestCase):
                                               test_connector['wwpns'])
         self.assertEqual(expected_initr_port_map_tgtexist, ret)
 
-    def test_initialize_connection(self):
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
+    def test_initialize_connection(self, mock_volume_types, mock_qos):
         ret = self.driver.initialize_connection(test_volume, test_connector)
         self.assertEqual(expected_fctgtexist_properties, ret['data'])
 
-    def test_terminate_connection(self):
-        self.driver.terminate_connection(test_volume, test_connector)
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
+    def test_terminate_connection(self, mock_volume_types, mock_qos):
+        ret = self.driver.terminate_connection(test_volume, test_connector)
+        self.assertEqual({'driver_volume_type': 'fibre_channel', 'data': {}},
+                         ret)
 
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volutils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
-    def test_create_volume_from_snapshot(self, mock_hostname,
+    def test_create_volume_from_snapshot(self, mock_volume_types, mock_qos,
+                                         mock_hostname,
                                          mock_brick_get_connector,
                                          mock_copy_volume,
                                          mock_os_path):
@@ -667,12 +710,20 @@ class MacroSANFCDriverTestCase(test.TestCase):
         actual = ret['provider_location']
         self.assertEqual(test_volume['provider_location'], actual)
 
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={
+                           'qos_specs_id':
+                               '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                           'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volutils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
-    def test_create_cloned_volume(self, mock_hostname,
+    def test_create_cloned_volume(self, mock_volume_types, mock_qos,
+                                  mock_hostname,
                                   mock_brick_get_connector,
                                   mock_copy_volume,
                                   mock_os_path):
@@ -681,12 +732,20 @@ class MacroSANFCDriverTestCase(test.TestCase):
         actual = ret['provider_location']
         self.assertEqual(test_volume['provider_location'], actual)
 
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volutils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
-    def test_create_volume_from_snapshot_fail(self, mock_hostname,
+    def test_create_volume_from_snapshot_fail(self, mock_volume_types,
+                                              mock_qos,
+                                              mock_hostname,
                                               mock_brick_get_connector,
                                               mock_copy_volume,
                                               mock_os_path):
@@ -695,12 +754,19 @@ class MacroSANFCDriverTestCase(test.TestCase):
                           self.driver.create_volume_from_snapshot,
                           test_volume, test_snap)
 
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volutils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
-    def test_create_cloned_volume_fail(self, mock_hostname,
+    def test_create_cloned_volume_fail(self, mock_volume_types, mock_qos,
+                                       mock_hostname,
                                        mock_brick_get_connector,
                                        mock_copy_volume,
                                        mock_os_path):
@@ -709,13 +775,25 @@ class MacroSANFCDriverTestCase(test.TestCase):
                           self.driver.create_cloned_volume,
                           test_volume, test_volume)
 
-    def test_initialize_connection_fail(self):
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
+    def test_initialize_connection_fail(self, mock_volume_types, mock_qos):
         self.driver.client.cmd_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           test_volume, test_connector)
 
-    def test_terminate_connection_fail(self):
+    @mock.patch.object(volume_types, 'get_volume_type',
+                       return_value={'qos_specs_id':
+                                     '99f3d240-1b20-4b7b-9321-c6b8b86243ff',
+                                     'extra_specs': {}})
+    @mock.patch.object(qos_specs, 'get_qos_specs',
+                       return_value={'specs': {'qos-strategy': 'QoS-1'}})
+    def test_terminate_connection_fail(self, mock_volume_types, mock_qos):
         self.driver.client.cmd_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,

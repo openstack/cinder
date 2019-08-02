@@ -3,8 +3,7 @@ MacroSAN Fibre Channel and iSCSI drivers
 ==========================================
 
 The ``MacroSANFCDriver`` and ``MacroSANISCSIDriver`` Cinder drivers allow the
-MacroSAN Storage arrays to be used for Block Storage in
-OpenStack deployments.
+MacroSAN Storage arrays to be used for Block Storage in OpenStack deployments.
 
 System requirements
 ~~~~~~~~~~~~~~~~~~~
@@ -13,7 +12,10 @@ To use the MacroSAN drivers, the following are required:
 
 - MacroSAN Storage arrays with:
   - iSCSI or FC host interfaces
-  - Enable RESTful service on the MacroSAN Storage Appliance.
+  - Enable RESTful service on the MacroSAN Storage Appliance. (The service is
+  automatically turned on in the device. You can check if
+  `python /odsp/scripts/devop/devop.py` is available via `ps -aux|grep python`.
+  )
 
 - Network connectivity between the OpenStack host and the array management
   interfaces
@@ -28,22 +30,13 @@ the ``/etc/cinder/cinder.conf`` file:
 
    use_multipath_for_image_xfer = True
 
-Add and change the following configuration keys of
-the ``/etc/multipath.conf`` file:
+When creating a instance from image, install the ``multipath`` tool and add the
+following configuration keys in the ``[libvirt]`` configuration group of
+the ``/etc/nova/nova.conf`` file:
 
 .. code-block:: ini
 
-    blacklist {
-        devnode "^sda$"
-        devnode "^(ram|raw|loop|fd|md|dm-|sr|scd|st)[0-9]*"
-        devnode "^hd[a-z]"
-        devnode "^nbd*"
-    }
-
-Need to set user_friendly_names to no in the multipath.conf file.
-
-In addition, you need to delete the getuid_callout parameter in
-the centos7 system.
+   iscsi_use_multipath = True
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -55,13 +48,13 @@ Supported operations
 - Copy a volume to an image.
 - Clone a volume.
 - Extend a volume.
-- Volume Migration (Host assisted).
+- Volume Migration (Host Assisted).
 - Volume Migration (Storage Assisted).
 - Retype a volume.
 - Manage and unmanage a volume.
 - Manage and unmanage a snapshot.
-- Volume Replication
-- Thin Provisioning
+- Volume Replication.
+- Thin Provisioning.
 
 Configuring the array
 ~~~~~~~~~~~~~~~~~~~~~
@@ -109,7 +102,7 @@ Configuring the array
       # Name to give this storage back-end.
       volume_backend_name = macrosan
 
-      #Chose attach/detach volumes in cinder using multipath for volume to image and image to volume transfers.
+      #Choose attach/detach volumes in cinder using multipath for volume to image and image to volume transfers.
       use_multipath_for_image_xfer = True
 
       # IP address of the Storage if attaching directly.
@@ -121,7 +114,7 @@ Configuring the array
       # Storage user password.
       san_password = openstack
 
-      #Chose using thin-lun or thick lun.When set san_thin_provision to True,you must set
+      #Choose using thin-lun or thick lun. When set san_thin_provision to True,you must set
       #macrosan_thin_lun_extent_size, macrosan_thin_lun_low_watermark, macrosan_thin_lun_high_watermark.
       san_thin_provision = False
 
@@ -130,7 +123,7 @@ Configuring the array
 
       #The default ports used for initializing connection.
       #Separate the controller by semicolons (``;``)
-      #Separate the ports by semicolons (``,``)
+      #Separate the ports by comma (``,``)
       macrosan_client_default = eth-1:0:0, eth-1:0:1; eth-2:0:0, eth-2:0:1
 
       #The switch to force detach volume when deleting
@@ -158,7 +151,7 @@ Configuring the array
       macrosan_sdas_username = openstack
       macrosan_sdas_password = openstack
 
-      #The setting of Replication Storage.When you set ip, you must set
+      #The setting of Replication Storage. When you set ip, you must set
       #the macrosan_replication_destination_ports parameter.
       macrosan_replication_ipaddrs = 172.17.251.142, 172.17.251.143
       macrosan_replication_username = openstack
@@ -169,7 +162,7 @@ Configuring the array
       #Separate the ports by semicolons (``/``)
       macrosan_replication_destination_ports = eth-1:0:0/eth-1:0:1, eth-2:0:0/eth-2:0:1
 
-      #Macrosan iscsi_clients list.You can configure multiple clients.Separate the ports by semicolons (``/``)
+      #Macrosan iscsi_clients list. You can configure multiple clients. Separate the ports by semicolons (``/``)
       macrosan_client = (devstack; controller1name; eth-1:0:0/eth-1:0:1; eth-2:0:0/eth-2:0:1), (dev; controller2name; eth-1:0:0/eth-1:0:1; eth-2:0:0/eth-2:0:1)
 
       [cinder-iscsi-b]
@@ -342,7 +335,7 @@ of the MacroSAN volume driver.
      - iSCSI
    * - macrosan_client_default
      - ``None``
-     - This is the default connection information for iscsi.This default configuration is used when no host related information is obtained.
+     - This is the default connection information for iscsi. This default configuration is used when no host related information is obtained.
      - iSCSI
    * - zoning_mode
      - ``True``
@@ -379,7 +372,7 @@ of the MacroSAN volume driver.
      - All
    * - macrosan_replication_ipaddrs
      - ``-``
-     - The ip of replication Storage.When you set ip, you must set
+     - The ip of replication Storage. When you set ip, you must set
        the macrosan_replication_destination_ports parameter.
      - All
    * - macrosan_replication_username
@@ -408,7 +401,7 @@ of the MacroSAN volume driver.
      - All
    * - macrosan_client
      - ``True``
-     - Macrosan iscsi_clients list.You can configure multiple clients.
+     - Macrosan iscsi_clients list. You can configure multiple clients.
        You can configure it in this format:
        (hostname; client_name; sp1_iscsi_port; sp2_iscsi_port),
        E.g:

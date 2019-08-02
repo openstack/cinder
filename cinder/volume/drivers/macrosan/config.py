@@ -20,33 +20,25 @@ from oslo_config import cfg
 macrosan_opts = [
     # sdas login_info
     cfg.ListOpt('macrosan_sdas_ipaddrs',
-                default=None,
                 help="MacroSAN sdas devices' ip addresses"),
     cfg.StrOpt('macrosan_sdas_username',
-               default=None,
-               help=""),
+               help="MacroSAN sdas devices' username"),
     cfg.StrOpt('macrosan_sdas_password',
-               default=None,
-               help="",
-               secret=True),
+               secret=True,
+               help="MacroSAN sdas devices' password"),
     # replication login_info
     cfg.ListOpt('macrosan_replication_ipaddrs',
-                default=None,
                 help="MacroSAN replication devices' ip addresses"),
     cfg.StrOpt('macrosan_replication_username',
-               default=None,
-               help=""),
+               help="MacroSAN replication devices' username"),
     cfg.StrOpt('macrosan_replication_password',
-               default=None,
-               help="",
-               secret=True),
+               secret=True,
+               help="MacroSAN replication devices' password"),
     cfg.ListOpt('macrosan_replication_destination_ports',
-                default=None,
                 sample_default="eth-1:0/eth-1:1, eth-2:0/eth-2:1",
                 help="Slave device"),
     # device_features
     cfg.StrOpt('macrosan_pool', quotes=True,
-               default=None,
                help='Pool to use for volume creation'),
     cfg.IntOpt('macrosan_thin_lun_extent_size',
                default=8,
@@ -80,21 +72,20 @@ macrosan_opts = [
                      "item associated with the port is maintained."),
     # iscsi connection
     cfg.ListOpt('macrosan_client',
-                default=None,
                 help="""Macrosan iscsi_clients list.
                 You can configure multiple clients.
                 You can configure it in this format:
                 (host; client_name; sp1_iscsi_port; sp2_iscsi_port),
                 (host; client_name; sp1_iscsi_port; sp2_iscsi_port)
                 Important warning, Client_name has the following requirements:
-                [a-zA-Z0-9.-_:], the maximum number of characters is 31
+                    [a-zA-Z0-9.-_:], the maximum number of characters is 31
                 E.g:
-                (controller1; decive1; eth-1:0; eth-2:0),
-                (controller2; decive2; eth-1:0/eth-1:1; eth-2:0/eth-2:1),
+                (controller1; device1; eth-1:0; eth-2:0),
+                (controller2; device2; eth-1:0/eth-1:1; eth-2:0/eth-2:1),
                 """),
     cfg.StrOpt('macrosan_client_default',
-               default=None,
-               help="This is the default connection information for iscsi. "
+               help="This is the default connection ports' name for iscsi. "
                     "This default configuration is used "
-                    "when no host related information is obtained.")
+                    "when no host related information is obtained."
+                    "E.g: eth-1:0/eth-1:1; eth-2:0/eth-2:1")
 ]

@@ -14,17 +14,13 @@
 #    under the License.
 """Volume Drivers for MacroSAN SAN."""
 
-import base64
 from contextlib import contextmanager
 import math
 import re
-import six
 import socket
 import time
 import uuid
 
-from os_brick.initiator import connector as cn
-from os_brick.initiator import linuxfc
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -47,7 +43,7 @@ from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
 
-version = '1.0.0'
+version = '1.0.1'
 lock_name = 'MacroSAN'
 
 LOG = logging.getLogger(__name__)
@@ -63,22 +59,6 @@ def ignored(*exceptions):
         pass
 
 
-def _timing(fn):
-    def __timing(*vargs, **kv):
-        start = time.time()
-        if timing_on:
-            LOG.info('========== start %s', fn.__name__)
-
-        result = fn(*vargs, **kv)
-
-        if timing_on:
-            end = time.time()
-            LOG.info('========== end %(fname)s, cost: %(cost).2f secs',
-                     {'fname': fn.__name__, 'cost': end - start})
-        return result
-    return __timing
-
-
 def record_request_id(fn):
     def _record_request_id(*vargs, **kv):
         ctx = context.context.get_current()
@@ -91,14 +71,6 @@ def record_request_id(fn):
 def replication_synced(params):
     return (params['replication_enabled'] and
             params['replication_mode'] == 'sync')
-
-
-def b64encode(s):
-    return base64.b64encode(six.b(s)).decode()
-
-
-def b64decode(s):
-    return base64.b64decode(six.b(s)).decode()
 
 
 class MacroSANBaseDriver(driver.VolumeDriver):
@@ -182,15 +154,6 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
         self.initialize_iscsi_info()
 
-    @staticmethod
-    def get_driver_options():
-        """Return the oslo_config options specific to the driver."""
-        return config.macrosan_opts
-
-    @property
-    def _self_node_wwns(self):
-        return []
-
     def _size_str_to_int(self, size_in_g):
         if int(size_in_g) == 0:
             return 1
@@ -254,7 +217,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
                                     self.replica_login_info))
         self.device_uuid = self.client.get_device_uuid()
         self._do_setup()
-        LOG.info('MacroSAN Cinder Driver setup complete.')
+        LOG.debug('MacroSAN Cinder Driver setup complete.')
 
     def _do_setup(self):
         pass
@@ -448,14 +411,9 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def create_volume(self, volume):
         """Create a volume."""
-        LOG.debug(('========== create volume, name: %(name)s,'
-                   'id: %(volume_id)s, size: %(size)s.'),
-                  {'name': volume['name'], 'volume_id': volume['id'],
-                   'size': volume['size']})
-
         name = volume['name']
         size = self._size_str_to_int(volume['size'])
         params = self._parse_volume_params(volume)
@@ -508,22 +466,21 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def delete_volume(self, volume):
         """Delete a volume."""
-        LOG.debug('========== delete volume, id: %s.', volume['id'])
         name = self._volume_name(volume)
         params = self._parse_volume_params(volume)
         self._delete_volume(name, params)
 
-    @utils.synchronized('MacroSAN-Attach', external=True)
+    @utils.synchronized('MacroSAN-Attach-Detach', external=True)
     def _attach_volume(self, context, volume, properties, remote=False):
         return super(MacroSANBaseDriver, self)._attach_volume(context,
                                                               volume,
                                                               properties,
                                                               remote)
 
-    @utils.synchronized('MacroSAN-Attach', external=True)
+    @utils.synchronized('MacroSAN-Attach-Detach', external=True)
     def _detach_volume(self, context, attach_info, volume,
                        properties, force=False, remote=False,
                        ignore_errors=True):
@@ -568,14 +525,10 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def create_snapshot(self, snapshot):
         """Create a snapshot."""
         volume = snapshot['volume']
-        LOG.debug(('========== create snapshot, snapshot id: %(snapshot_id)s,'
-                   ' volume id: %(volume_id)s, size: %(size)s.'),
-                  {'snapshot_id': snapshot['id'], 'volume_id': volume['id'],
-                   'size': volume['size']})
 
         snapshot_name = self._snapshot_name(snapshot['name'])
         volume_name = self._volume_name(volume)
@@ -601,7 +554,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
         volume = snapshot['volume']
@@ -612,10 +565,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
         m = re.findall(r'pointid: (\d+)', provider)
         if m is None:
             return
-        LOG.debug(('========== delete snapshot, snapshot id: %(snapshot_id)s,'
-                   ' pointid: %(point_id)s, volume id: %(volume_id)s.'),
-                  {'snapshot_id': snapshot['id'], 'point_id': m[0],
-                   'volume_id': volume['id']})
+
         snapshot_name = self._snapshot_name(snapshot['id'])
         volume_name = self._volume_name(volume)
         self._delete_snapshot(snapshot_name, volume_name, m[0])
@@ -625,35 +575,6 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     def _terminate_connection(self, name, host, wwns):
         raise NotImplementedError
-
-    def _connect(self, name):
-        host = socket.gethostname()
-        conn = self._initialize_connection(name, host,
-                                           self._self_node_wwns)
-
-        device_scan_attempts = self.configuration.num_volume_device_scan_tries
-        protocol = conn['driver_volume_type']
-        connector = utils.brick_get_connector(
-            protocol,
-            use_multipath=self.use_multipath,
-            device_scan_attempts=device_scan_attempts,
-            conn=conn)
-        device = None
-        try:
-            device = connector.connect_volume(conn['data'])
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                self._terminate_connection(name, host, self._self_node_wwns)
-
-        return {'conn': conn, 'device': device, 'connector': connector}
-
-    def _disconnect(self, conn, name):
-        connector = conn['connector']
-        connector.disconnect_volume(conn['conn']['data'],
-                                    conn['device'])
-
-        self._terminate_connection(name, socket.gethostname(),
-                                   self._self_node_wwns)
 
     def _create_volume_from_snapshot(self, vol_name, vol_size,
                                      vol_params, snp_name, pointid,
@@ -685,10 +606,9 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
-        LOG.debug('========== create volume from snapshot.')
         snapshot_volume = snapshot['volume']
         provider = snapshot['provider_location']
         m = re.findall(r'pointid: (\d+)', provider)
@@ -727,10 +647,9 @@ class MacroSANBaseDriver(driver.VolumeDriver):
             self._delete_snapshot(snp_name, src_vol_name, pointid)
 
     @record_request_id
-    @_timing
+    @utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume."""
-        LOG.debug('========== create cloned volume.')
         vol_name = volume['id']
         src_vol_name = self._volume_name(src_vref)
         snapshotid =\
@@ -768,13 +687,9 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
-        LOG.debug(('========== extend volume, id: %(volume_id)s,'
-                   'size: %(size)s.'),
-                  {'volume_id': volume['id'], 'size': new_size})
-
         name = self._volume_name(volume)
         moresize = self._size_str_to_int(new_size - int(volume['size']))
         params = self._parse_volume_params(volume)
@@ -839,14 +754,12 @@ class MacroSANBaseDriver(driver.VolumeDriver):
         self._stats = data
 
     @record_request_id
+    @utils.trace
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status=None):
         """Return model update for migrated volume."""
         original_name = self._volume_name(volume)
         cur_name = self._volume_name(new_volume)
-        LOG.debug(('========== update migrated volume,'
-                   'volume: %(original_name)s, new_volume: %(cur_name)s'),
-                  {'original_name': original_name, 'cur_name': cur_name})
 
         if self.client.lun_exists(original_name):
             self.client.backup_lun_name_to_rename_file(cur_name, original_name)
@@ -866,7 +779,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         volume = snapshot['volume']
         provider = snapshot['provider_location']
@@ -905,13 +818,13 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def manage_existing(self, volume, external_ref):
         vol_params = self._parse_volume_params(volume)
         self._check_volume_params(vol_params)
         if vol_params['qos-strategy']:
             raise exception.VolumeBackendAPIException(
-                data=_('Not support to import qos-strategy'))
+                data=_('Import qos-strategy not supported'))
 
         pool = volume_utils.extract_host(volume.host, 'pool')
         name, info, params = self._get_existing_lun_info(external_ref)
@@ -995,7 +908,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
         volume = snapshot['volume']
         src_name = self._get_existing_snapname(existing_ref).lstrip('_')
@@ -1042,7 +955,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def migrate_volume(self, ctxt, volume, host):
         if not self.migration_valid(volume, host):
             return False, None
@@ -1054,8 +967,11 @@ class MacroSANBaseDriver(driver.VolumeDriver):
         owner = self.client.get_lun_sp(src_name)
         pool = host['capabilities'].get('pool_name', self.pool)
 
-        LOG.info('host: %(host)s, backend: %(volume_backend_name)s',
-                 {'host': host,
+        LOG.info('Migrating volume: %(volume), '
+                 'host: %(host)s, '
+                 'backend: %(volume_backend_name)s',
+                 {'volume': src_name,
+                  'host': host,
                   'volume_backend_name': self.volume_backend_name})
         self._create_volume(name, size, params, owner, pool)
 
@@ -1106,8 +1022,10 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
     .. code-block:: none
 
         1.0.0 - Initial driver
+        1.0.1 - Adjust some log level and text prompts; Remove some useless
+        functions; Add Cinder trace decorator. #1837920
     """
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
@@ -1198,11 +1116,6 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
 
         return id_list.pop()
 
-    @property
-    def _self_node_wwns(self):
-        connector = cn.ISCSIConnector(utils.get_root_helper())
-        return [connector.get_initiator()]
-
     def _initialize_connection(self, name, vol_params, host, wwns):
         client_name = self._get_client_name(host)
         wwn = wwns[0]
@@ -1242,11 +1155,9 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
-        LOG.debug('========== initialize_connection connector: %(connector)s',
-                  {'connector': connector})
 
         name = self._volume_name(volume)
         params = self._parse_volume_params(volume)
@@ -1273,21 +1184,26 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
         if volume_params['sdas']:
             self._unmap_itl(self.sdas_client, client_name, wwns, ports, name)
 
+        data = dict()
+        data['ports'] = ports
+        data['client'] = client_name
+        return {'driver_volume_type': 'iSCSI', 'data': data}
+
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        LOG.debug('========== terminate_connection %(connector)s',
-                  {'connector': connector})
 
         name = self._volume_name(volume)
+        conn = None
         if not connector:
             self.force_terminate_connection(name, True)
         else:
             params = self._parse_volume_params(volume)
-            self._terminate_connection(name, params, connector['host'],
-                                       [connector['initiator']])
+            conn = self._terminate_connection(name, params, connector['host'],
+                                              [connector['initiator']])
+        return conn
 
     def _initialize_connection_snapshot(self, snp_name, connector):
         return self._initialize_connection(snp_name, None, connector['host'],
@@ -1307,8 +1223,10 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
     .. code-block:: none
 
         1.0.0 - Initial driver
+        1.0.1 - Adjust some log level and text prompts; Remove some useless
+        functions; Add Cinder trace decorator. #1837920
     """
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
@@ -1332,11 +1250,6 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
             for port in ports:
                 if port['port_name'] == '':
                     self.sdas_client.create_target(port['port'])
-
-    @property
-    def _self_node_wwns(self):
-        fc = linuxfc.LinuxFibreChannel(utils.get_root_helper())
-        return [self._format_wwn_with_colon(wwn) for wwn in fc.get_fc_wwpns()]
 
     def _strip_wwn_colon(self, wwn_str):
         return wwn_str.replace(':', '')
@@ -1479,8 +1392,8 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
 
         has_port_not_mapped, initr_port_map = (
             self._map_initr_tgt(self.client, client_name, wwns))
-        LOG.info('====================initr_port_map %(initr_port_map)s',
-                 {'initr_port_map': initr_port_map})
+        LOG.debug('initr_port_map: %(initr_port_map)s',
+                  {'initr_port_map': initr_port_map})
 
         if vol_params and vol_params['sdas']:
             sdas_has_port_not_mapped, sdas_initr_port_map = (
@@ -1488,9 +1401,8 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
             lun_id = self._get_unused_lun_id(self.client, initr_port_map,
                                              self.sdas_client,
                                              sdas_initr_port_map)
-            LOG.info('%(fr)sdas_initr_port_map %(sdas_initr_port_map)s',
-                     {'fr': '=' * 10,
-                      'sdas_initr_port_map': sdas_initr_port_map})
+            LOG.debug('sdas_initr_port_map: %(sdas_initr_port_map)s',
+                      {'sdas_initr_port_map': sdas_initr_port_map})
             self._map_itl(self.sdas_client, sdas_initr_port_map, name, lun_id)
 
             lun_id = self._map_itl(self.client, initr_port_map, name, lun_id)
@@ -1528,11 +1440,9 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
-        LOG.debug('========== initialize_connection connector: %(connector)s',
-                  {'connector': connector})
 
         name = self._volume_name(volume)
         params = self._parse_volume_params(volume)
@@ -1593,11 +1503,9 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @_timing
+    @utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        LOG.debug('========== terminate_connection %(connector)s',
-                  {'connector': connector})
 
         name = self._volume_name(volume)
         conn = None
