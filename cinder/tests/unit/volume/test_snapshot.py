@@ -555,6 +555,27 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                              snapshot_ref.status)
             mock_del_snap.assert_called_once_with(snapshot)
 
+    def test_force_delete_snapshot(self):
+        """Test snapshot can be forced to delete."""
+        fake_volume = tests_utils.create_volume(self.context)
+        fake_snapshot = tests_utils.create_snapshot(self.context,
+                                                    fake_volume.id,
+                                                    status='error_deleting')
+        # 'error_deleting' snapshot can't be deleted
+        self.assertRaises(exception.InvalidSnapshot,
+                          self.volume_api.delete_snapshot,
+                          self.context,
+                          fake_snapshot)
+
+        # delete with force
+        self.volume_api.delete_snapshot(self.context,
+                                        fake_snapshot,
+                                        force=True)
+
+        # status is deleting
+        fake_snapshot.refresh()
+        self.assertEqual(fields.SnapshotStatus.DELETING, fake_snapshot.status)
+
     def test_volume_api_update_snapshot(self):
         # create raw snapshot
         volume = tests_utils.create_volume(self.context, **self.volume_params)
