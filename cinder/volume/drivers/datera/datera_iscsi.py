@@ -99,6 +99,9 @@ class DateraDriver(san.SanISCSIDriver, api2.DateraApi, api21.DateraApi):
 
     HEADER_DATA = {'Datera-Driver': 'OpenStack-Cinder-{}'.format(VERSION)}
 
+    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(DateraDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(d_opts)
