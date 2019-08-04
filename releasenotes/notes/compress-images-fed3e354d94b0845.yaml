@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    When uploading qcow2 images to Glance, image data will be compressed.  This
+    will generally result in less data transferred to Glance at the expense of
+    higher CPU usage.  This behavior is controlled by the
+    "image_compress_on_upload" boolean option, which defaults to True.

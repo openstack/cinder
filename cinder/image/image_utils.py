@@ -57,7 +57,12 @@ image_opts = [
     cfg.StrOpt('image_conversion_dir',
                default='$state_path/conversion',
                help='Directory used for temporary storage '
-               'during image conversion'), ]
+               'during image conversion'),
+    cfg.BoolOpt('image_compress_on_upload',
+                default=True,
+                help='When possible, compress images uploaded '
+                'to the image service'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(image_opts)
@@ -78,6 +83,8 @@ QEMU_IMG_FORMAT_MAP_INV = {v: k for k, v in QEMU_IMG_FORMAT_MAP.items()}
 QEMU_IMG_VERSION = None
 QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
 QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
+
+COMPRESSIBLE_IMAGE_FORMATS = ('qcow2')
 
 
 def fixup_disk_format(disk_format):
@@ -141,7 +148,8 @@ def qemu_img_supports_force_share():
 
 def _get_qemu_convert_cmd(src, dest, out_format, src_format=None,
                           out_subformat=None, cache_mode=None,
-                          prefix=None, cipher_spec=None, passphrase_file=None):
+                          prefix=None, cipher_spec=None,
+                          passphrase_file=None, compress=False):
 
     if out_format == 'vhd':
         # qemu-img still uses the legacy vpc name
@@ -154,6 +162,10 @@ def _get_qemu_convert_cmd(src, dest, out_format, src_format=None,
 
     if cache_mode:
         cmd += ('-t', cache_mode)
+
+    if CONF.image_compress_on_upload and compress:
+        if out_format in COMPRESSIBLE_IMAGE_FORMATS:
+            cmd += ('-c',)
 
     if out_subformat:
         cmd += ('-o', 'subformat=%s' % out_subformat)
@@ -206,8 +218,21 @@ def check_qemu_img_version(minimum_version):
 
 def _convert_image(prefix, source, dest, out_format,
                    out_subformat=None, src_format=None,
-                   run_as_root=True, cipher_spec=None, passphrase_file=None):
-    """Convert image to other format."""
+                   run_as_root=True, cipher_spec=None,
+                   passphrase_file=None, compress=False):
+    """Convert image to other format.
+
+    :param prefix: command prefix, i.e. cgexec for throttling
+    :param source: source filename
+    :param dest: destination filename
+    :param out_format: output image format of qemu-img
+    :param out_subformat: output image subformat
+    :param src_format: source image format
+    :param run_as_root: run qemu-img as root
+    :param cipher_spec: encryption details
+    :param passphrase_file: filename containing luks passphrase
+    :param compress: compress w/ qemu-img when possible (best effort)
+    """
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
     # This is needed to ensure that all data hit the device before
@@ -234,7 +259,8 @@ def _convert_image(prefix, source, dest, out_format,
                                 cache_mode=cache_mode,
                                 prefix=prefix,
                                 cipher_spec=cipher_spec,
-                                passphrase_file=passphrase_file)
+                                passphrase_file=passphrase_file,
+                                compress=compress)
 
     start_time = timeutils.utcnow()
 
@@ -286,7 +312,8 @@ def _convert_image(prefix, source, dest, out_format,
 
 def convert_image(source, dest, out_format, out_subformat=None,
                   src_format=None, run_as_root=True, throttle=None,
-                  cipher_spec=None, passphrase_file=None):
+                  cipher_spec=None, passphrase_file=None,
+                  compress=False):
     if not throttle:
         throttle = throttling.Throttle.get_default()
     with throttle.subcommand(source, dest) as throttle_cmd:
@@ -297,7 +324,8 @@ def convert_image(source, dest, out_format, out_subformat=None,
                        src_format=src_format,
                        run_as_root=run_as_root,
                        cipher_spec=cipher_spec,
-                       passphrase_file=passphrase_file)
+                       passphrase_file=passphrase_file,
+                       compress=compress)
 
 
 def resize_image(source, size, run_as_root=False):
@@ -641,7 +669,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
 
         out_format = fixup_disk_format(image_meta['disk_format'])
         convert_image(volume_path, tmp, out_format,
-                      run_as_root=run_as_root)
+                      run_as_root=run_as_root,
+                      compress=True)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
         if data.file_format != out_format:
