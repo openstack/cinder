@@ -16,11 +16,10 @@
 """The volume type & volume types extra specs extension."""
 
 import ast
-from webob import exc
 
 from oslo_log import log as logging
-from oslo_utils import strutils
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -28,7 +27,6 @@ from cinder.api.v2.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import volume_type as type_policy
-from cinder import utils
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -66,33 +64,13 @@ class VolumeTypesController(wsgi.Controller):
         context.authorize(type_policy.GET_POLICY, target_obj=vol_type)
         return self._view_builder.show(req, vol_type)
 
-    def _parse_is_public(self, is_public):
-        """Parse is_public into something usable.
-
-        * True: List public volume types only
-        * False: List private volume types only
-        * None: List both public and private volume types
-        """
-
-        if is_public is None:
-            # preserve default value of showing only public types
-            return True
-        elif utils.is_none_string(is_public):
-            return None
-        else:
-            try:
-                return strutils.bool_from_string(is_public, strict=True)
-            except ValueError:
-                msg = _('Invalid is_public filter [%s]') % is_public
-                raise exc.HTTPBadRequest(explanation=msg)
-
     @common.process_general_filtering('volume_type')
     def _process_volume_type_filtering(self, context=None, filters=None,
                                        req_version=None):
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_vol_type_filter_options()
-                                            )
+        api_utils.remove_invalid_filter_options(
+            context,
+            filters,
+            self._get_vol_type_filter_options())
 
     def _get_volume_types(self, req):
         """Helper function that returns a list of type dicts."""
@@ -107,11 +85,11 @@ class VolumeTypesController(wsgi.Controller):
                                                 filters=filters,
                                                 req_version=req_version)
         else:
-            utils.remove_invalid_filter_options(
+            api_utils.remove_invalid_filter_options(
                 context, filters, self._get_vol_type_filter_options())
         if context.is_admin:
             # Only admin has query access to all volume types
-            filters['is_public'] = self._parse_is_public(
+            filters['is_public'] = api_utils._parse_is_public(
                 req.params.get('is_public', None))
         else:
             filters['is_public'] = True

@@ -20,6 +20,7 @@ from six.moves import http_client
 import webob
 from webob import exc
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api.contrib import scheduler_hints
 from cinder.api import microversions as mv
@@ -88,7 +89,7 @@ class VolumeController(volumes_v2.VolumeController):
         if req_version.matches(None, mv.BACKUP_UPDATE):
             filters.pop('group_id', None)
 
-        utils.remove_invalid_filter_options(
+        api_utils.remove_invalid_filter_options(
             context, filters,
             self._get_volume_filter_options())
 
@@ -135,7 +136,7 @@ class VolumeController(volumes_v2.VolumeController):
                 context, 'volume', filters)
 
         for volume in volumes:
-            utils.add_visible_admin_metadata(volume)
+            api_utils.add_visible_admin_metadata(volume)
 
         req.cache_db_volumes(volumes.objects)
 
@@ -154,8 +155,10 @@ class VolumeController(volumes_v2.VolumeController):
         context = req.environ['cinder.context']
         filters = req.params.copy()
 
-        utils.remove_invalid_filter_options(context, filters,
-                                            self._get_volume_filter_options())
+        api_utils.remove_invalid_filter_options(
+            context,
+            filters,
+            self._get_volume_filter_options())
 
         num_vols, sum_size, metadata = self.volume_api.get_volume_summary(
             context, filters=filters)

@@ -28,6 +28,7 @@ from six.moves import range
 import webob.exc
 
 import cinder
+from cinder.api import api_utils
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -820,7 +821,7 @@ class AddVisibleAdminMetadataTestCase(test.TestCase):
                     {"key": "readonly", "value": "existing"}]
         volume = {'volume_admin_metadata': admin_metadata,
                   'volume_metadata': metadata}
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
         self.assertEqual([{"key": "key", "value": "value"},
                           {"key": "readonly", "value": "visible"},
                           {"key": "attached_mode", "value": "visible"}],
@@ -832,7 +833,7 @@ class AddVisibleAdminMetadataTestCase(test.TestCase):
         metadata = {"key": "value", "readonly": "existing"}
         volume = {'admin_metadata': admin_metadata,
                   'metadata': metadata}
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
         self.assertEqual({'key': 'value',
                           'attached_mode': 'visible',
                           'readonly': 'visible'},
@@ -846,7 +847,7 @@ class AddVisibleAdminMetadataTestCase(test.TestCase):
         metadata = [{"key": "key", "value": "value"}]
         volume = {'volume_admin_metadata': admin_metadata,
                   'volume_metadata': metadata}
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
         self.assertEqual([{"key": "key", "value": "value"}],
                          volume['volume_metadata'])
 
@@ -856,7 +857,7 @@ class AddVisibleAdminMetadataTestCase(test.TestCase):
         metadata = {"key": "value"}
         volume = {'admin_metadata': admin_metadata,
                   'metadata': metadata}
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
         self.assertEqual({'key': 'value'}, volume['metadata'])
 
     def test_add_visible_admin_metadata_no_existing_metadata(self):
@@ -864,7 +865,7 @@ class AddVisibleAdminMetadataTestCase(test.TestCase):
                           {"key": "readonly", "value": "visible"},
                           {"key": "attached_mode", "value": "visible"}]
         volume = {'volume_admin_metadata': admin_metadata}
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
         self.assertEqual({'attached_mode': 'visible', 'readonly': 'visible'},
                          volume['metadata'])
 
@@ -872,7 +873,7 @@ class AddVisibleAdminMetadataTestCase(test.TestCase):
                           "readonly": "visible",
                           "attached_mode": "visible"}
         volume = {'admin_metadata': admin_metadata}
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
         self.assertEqual({'attached_mode': 'visible', 'readonly': 'visible'},
                          volume['metadata'])
 
@@ -887,8 +888,8 @@ class InvalidFilterTestCase(test.TestCase):
         allowed_search_options = ('allowed1', 'allowed2')
         allowed_orig = ('allowed1', 'allowed2')
 
-        utils.remove_invalid_filter_options(ctxt, filters,
-                                            allowed_search_options)
+        api_utils.remove_invalid_filter_options(ctxt, filters,
+                                                allowed_search_options)
 
         self.assertEqual(allowed_orig, allowed_search_options)
         self.assertEqual(fltrs_orig, filters)
@@ -902,8 +903,8 @@ class InvalidFilterTestCase(test.TestCase):
         allowed_search_options = ('allowed1', 'allowed2')
         allowed_orig = ('allowed1', 'allowed2')
 
-        utils.remove_invalid_filter_options(ctxt, filters,
-                                            allowed_search_options)
+        api_utils.remove_invalid_filter_options(ctxt, filters,
+                                                allowed_search_options)
 
         self.assertEqual(allowed_orig, allowed_search_options)
         self.assertNotEqual(fltrs_orig, filters)
@@ -1483,7 +1484,7 @@ class TestValidateInteger(test.TestCase):
     )
     def test_validate_integer_raise_assert(self, value):
         self.assertRaises(webob.exc.HTTPBadRequest,
-                          utils.validate_integer,
+                          api_utils.validate_integer,
                           value, 'limit', min_value=-1, max_value=(2 ** 31))
 
     @ddt.data(
@@ -1492,8 +1493,8 @@ class TestValidateInteger(test.TestCase):
         u"123"  # integer in unicode format
     )
     def test_validate_integer(self, value):
-        res = utils.validate_integer(value, 'limit', min_value=-1,
-                                     max_value=(2 ** 31))
+        res = api_utils.validate_integer(value, 'limit', min_value=-1,
+                                         max_value=(2 ** 31))
         self.assertEqual(123, res)
 
 

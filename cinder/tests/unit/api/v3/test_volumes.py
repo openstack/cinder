@@ -23,6 +23,7 @@ from oslo_utils import strutils
 from six.moves import http_client
 import webob
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
@@ -43,7 +44,6 @@ from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as test_utils
-from cinder import utils
 from cinder.volume import api as volume_api
 from cinder.volume import api as vol_get
 
@@ -774,7 +774,7 @@ class VolumeApiTest(test.TestCase):
     @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER), mv.RESOURCE_FILTER,
               mv.LIKE_FILTER)
     @mock.patch.object(volume_api.API, 'check_volume_filters', mock.Mock())
-    @mock.patch.object(utils, 'add_visible_admin_metadata', mock.Mock())
+    @mock.patch.object(api_utils, 'add_visible_admin_metadata', mock.Mock())
     @mock.patch('cinder.api.common.reject_invalid_filters')
     def test_list_volume_with_general_filter(self, version, mock_update):
         req = fakes.HTTPRequest.blank('/v3/volumes', version=version)

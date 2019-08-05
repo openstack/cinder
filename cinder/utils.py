@@ -53,7 +53,6 @@ from oslo_utils import strutils
 from oslo_utils import timeutils
 import retrying
 import six
-import webob.exc
 
 from cinder import exception
 from cinder.i18n import _
@@ -290,14 +289,6 @@ def time_format(at=None):
     # Need to handle either iso8601 or python UTC format
     date_string += ('Z' if tz in ['UTC', 'UTC+00:00'] else tz)
     return date_string
-
-
-def is_none_string(val):
-    """Check if a string represents a None value."""
-    if not isinstance(val, six.string_types):
-        return False
-
-    return val.lower() == 'none'
 
 
 def monkey_patch():
@@ -671,72 +662,6 @@ def check_string_length(value, name, min_length=0, max_length=None,
     if not allow_all_spaces and value.isspace():
         msg = _('%(name)s cannot be all spaces.')
         raise exception.InvalidInput(reason=msg)
-
-
-_visible_admin_metadata_keys = ['readonly', 'attached_mode']
-
-
-def add_visible_admin_metadata(volume):
-    """Add user-visible admin metadata to regular metadata.
-
-    Extracts the admin metadata keys that are to be made visible to
-    non-administrators, and adds them to the regular metadata structure for the
-    passed-in volume.
-    """
-    visible_admin_meta = {}
-
-    if volume.get('volume_admin_metadata'):
-        if isinstance(volume['volume_admin_metadata'], dict):
-            volume_admin_metadata = volume['volume_admin_metadata']
-            for key in volume_admin_metadata:
-                if key in _visible_admin_metadata_keys:
-                    visible_admin_meta[key] = volume_admin_metadata[key]
-        else:
-            for item in volume['volume_admin_metadata']:
-                if item['key'] in _visible_admin_metadata_keys:
-                    visible_admin_meta[item['key']] = item['value']
-    # avoid circular ref when volume is a Volume instance
-    elif (volume.get('admin_metadata') and
-            isinstance(volume.get('admin_metadata'), dict)):
-        for key in _visible_admin_metadata_keys:
-            if key in volume['admin_metadata'].keys():
-                visible_admin_meta[key] = volume['admin_metadata'][key]
-
-    if not visible_admin_meta:
-        return
-
-    # NOTE(zhiyan): update visible administration metadata to
-    # volume metadata, administration metadata will rewrite existing key.
-    if volume.get('volume_metadata'):
-        orig_meta = list(volume.get('volume_metadata'))
-        for item in orig_meta:
-            if item['key'] in visible_admin_meta.keys():
-                item['value'] = visible_admin_meta.pop(item['key'])
-        for key, value in visible_admin_meta.items():
-            orig_meta.append({'key': key, 'value': value})
-        volume['volume_metadata'] = orig_meta
-    # avoid circular ref when vol is a Volume instance
-    elif (volume.get('metadata') and
-            isinstance(volume.get('metadata'), dict)):
-        volume['metadata'].update(visible_admin_meta)
-    else:
-        volume['metadata'] = visible_admin_meta
-
-
-def remove_invalid_filter_options(context, filters,
-                                  allowed_search_options):
-    """Remove search options that are not valid for non-admin API/context."""
-
-    if context.is_admin:
-        # Allow all options
-        return
-    # Otherwise, strip out all unknown options
-    unknown_options = [opt for opt in filters
-                       if opt not in allowed_search_options]
-    bad_options = ", ".join(unknown_options)
-    LOG.debug("Removing options '%s' from query.", bad_options)
-    for opt in unknown_options:
-        del filters[opt]
 
 
 def is_blk_device(dev):
@@ -1130,22 +1055,6 @@ def calculate_max_over_subscription_ratio(capability,
         max_over_subscription_ratio = float(max_over_subscription_ratio)
 
     return max_over_subscription_ratio
-
-
-def validate_integer(value, name, min_value=None, max_value=None):
-    """Make sure that value is a valid integer, potentially within range.
-
-    :param value: the value of the integer
-    :param name: the name of the integer
-    :param min_length: the min_length of the integer
-    :param max_length: the max_length of the integer
-    :returns: integer
-    """
-    try:
-        value = strutils.validate_integer(value, name, min_value, max_value)
-        return value
-    except ValueError as e:
-        raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
 
 
 def validate_dictionary_string_length(specs):

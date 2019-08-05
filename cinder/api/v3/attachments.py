@@ -16,6 +16,7 @@ from oslo_log import log as logging
 from six.moves import http_client
 import webob
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -27,7 +28,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder.policies import attachments as attachment_policy
-from cinder import utils
 from cinder.volume import api as volume_api
 from cinder.volume import utils as volume_utils
 
@@ -70,8 +70,8 @@ class AttachmentsController(wsgi.Controller):
     @common.process_general_filtering('attachment')
     def _process_attachment_filtering(self, context=None, filters=None,
                                       req_version=None):
-        utils.remove_invalid_filter_options(context, filters,
-                                            self.allowed_filters)
+        api_utils.remove_invalid_filter_options(context, filters,
+                                                self.allowed_filters)
 
     def _items(self, req):
         """Return a list of attachments, transformed through view builder."""
