@@ -28,6 +28,8 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
 from cinder.volume.drivers.nec import volume_helper
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
 
 
 xml_out = '''
@@ -199,6 +201,17 @@ xml_out = '''
    </OBJECT>
    <OBJECT name="Logical Disk">
     <SECTION name="LD Detail Information">
+     <UNIT name="LDN(h)">000f</UNIT>
+     <UNIT name="OS Type">LX</UNIT>
+     <UNIT name="LD Name">59V9KIi0ZHWJ5yvjCG5RQ4_d</UNIT>
+     <UNIT name="LD Capacity">6442450944</UNIT>
+     <UNIT name="Pool No.(h)">0001</UNIT>
+     <UNIT name="Purpose">---</UNIT>
+     <UNIT name="RPL Attribute">IV</UNIT>
+    </SECTION>
+   </OBJECT>
+   <OBJECT name="Logical Disk">
+    <SECTION name="LD Detail Information">
      <UNIT name="LDN(h)">0fff</UNIT>
      <UNIT name="OS Type">  </UNIT>
      <UNIT name="LD Name">Pool0000_SYV0FFF</UNIT>
@@ -363,12 +376,22 @@ class DummyVolume(object):
     def __init__(self, volid, volsize=1):
         super(DummyVolume, self).__init__()
         self.id = volid
+        self._name_id = None
         self.size = volsize
         self.status = None
         self.volume_type_id = None
         self.attach_status = None
         self.volume_attachment = None
         self.provider_location = None
+        self.name = None
+
+    @property
+    def name_id(self):
+        return self.id if not self._name_id else self._name_id
+
+    @name_id.setter
+    def name_id(self, value):
+        self._name_id = value
 
 
 class DummySnapshot(object):
@@ -418,6 +441,10 @@ class VolumeIDConvertTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(ldname, actual,
                          "ID:%(volid)s should be change to %(ldname)s" %
                          {'volid': volid, 'ldname': ldname})
+
+    def test_convert_deleteldname(self):
+        ldname = self._convert_deleteldname('LX:287RbQoP7VdwR1WsPC2fZT')
+        self.assertEqual(ldname, 'LX:287RbQoP7VdwR1WsPC2fZT_d')
 
 
 class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
@@ -699,16 +726,36 @@ class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(60, cli.get_sleep_time_for_clone(19))
 
     def test_delete_volume(self):
-        vol = DummyVolume("46045673-41e7-44a7-9333-02f07feab04b")
-        detached = self._detach_from_all(vol)
+        ldname = "LX:287RbQoP7VdwR1WsPC2fZT"
+        detached = self._detach_from_all(ldname, xml_out)
         self.assertTrue(detached)
-        vol.id = constants.VOLUME_ID
-        detached = self._detach_from_all(vol)
+        ldname = 'LX:31HxzqBiAFTUxxOlcVn3EA'
+        detached = self._detach_from_all(ldname, xml_out)
         self.assertFalse(detached)
-        vol.id = constants.VOLUME2_ID
-        with mock.patch.object(self, '_detach_from_all') as detach_mock:
+        vol = DummyVolume("1febb976-86d0-42ed-9bc0-4aa3e158f27d")
+        with mock.patch.object(self._cli, 'unbind') as unbind_mock:
             self.delete_volume(vol)
-            detach_mock.assert_called_once_with(vol)
+            unbind_mock.assert_called_once_with('LX:yEUHrXa5AHMjOZZLb93eP')
+
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml_out))
+        vol = DummyVolume('1febb976-86d0-42ed-9bc0-4aa3e158f27d')
+        vol._name_id = None
+        with mock.patch.object(self._cli, 'unbind') as unbind_mock:
+            self.delete_volume(vol)
+            unbind_mock.assert_called_once_with('LX:yEUHrXa5AHMjOZZLb93eP')
+
+        vol = DummyVolume('46045673-41e7-44a7-9333-02f07feab04b')
+        vol._name_id = '1febb976-86d0-42ed-9bc0-4aa3e158f27d'
+        with mock.patch.object(self._cli, 'unbind') as unbind_mock:
+            self.delete_volume(vol)
+            unbind_mock.assert_called_once_with('LX:yEUHrXa5AHMjOZZLb93eP')
+
+        vol = DummyVolume(constants.VOLUME_ID)
+        vol._name_id = 'a951f0eb-27ae-41a7-a5e5-604e721a16d4'
+        with mock.patch.object(self._cli, 'unbind') as unbind_mock:
+            self.delete_volume(vol)
+            unbind_mock.assert_called_once_with('LX:59V9KIi0ZHWJ5yvjCG5RQ4_d')
 
 
 class BindLDTest_Snap(volume_helper.MStorageDSVDriver, test.TestCase):
@@ -1278,7 +1325,22 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
         self.mock_object(self._cli, '_execute',
                          return_value=('success', 0, 0))
         self.mock_object(self._cli, 'view_all', return_value=xml_out)
+        self.mock_object(self, '_bind_ld', return_value=(0, 0, 0))
+        self.mock_object(self._cli, 'backup_restore')
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_value={})
+        self.mock_object(qos_specs, 'get_qos_specs',
+                         return_value={})
         self.do_setup(None)
+        self._properties['cli_fip'] = '10.0.0.1'
+        self._properties['pool_pools'] = {0, 1}
+        self._properties['pool_backup_pools'] = {2, 3}
+        self.newvol = DummyVolume(constants.VOLUME_ID)
+        self.sourcevol = DummyVolume(constants.VOLUME2_ID)
+        self.host = {}
+        self.VERSION = '9.99.9'
+        self.host['capabilities'] = self._update_volume_status()
+        self.xml = xml_out
 
     def test_update_migrate_volume(self):
         newvol = DummyVolume(constants.VOLUME_ID)
@@ -1287,6 +1349,115 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
                                                   newvol, 'available')
         self.assertIsNone(update_data['_name_id'])
         self.assertIsNone(update_data['provider_location'])
+
+    def test_migrate_volume(self):
+        vol = DummyVolume(constants.VOLUME2_ID)
+        moved, model_update = self.migrate_volume(None, vol,
+                                                  self.host)
+        self.assertTrue(moved)
+
+        vol.id = "87d8d42f-7550-4f43-9a2b-fe722bf86941"
+        with self.assertRaisesRegex(exception.NotFound,
+                                    'Logical Disk `LX:48L3QCi4npuqxPX0Lyeu8H`'
+                                    ' could not be found.'):
+            self._validate_migrate_volume(vol, xml_out)
+
+        vol.id = '46045673-41e7-44a7-9333-02f07feab04b'
+        vol.status = 'creating'
+        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                    'Specified Logical Disk '
+                                    'LX:287RbQoP7VdwR1WsPC2fZT is '
+                                    'not available.'):
+            self._validate_migrate_volume(vol, xml_out)
+
+        vol.id = "92dbc7f4-dbc3-4a87-aef4-d5a2ada3a9af"
+        vol.status = 'available'
+        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                    r'Specified Logical Disk '
+                                    r'LX:4T7JpyqI3UuPlKeT9D3VQF has an '
+                                    r'invalid attribute '
+                                    r'\(\(invalid attribute\)\).'):
+            self._validate_migrate_volume(vol, xml_out)
+
+    def test_retype_volume(self):
+        vol = DummyVolume(constants.VOLUME2_ID)
+        diff = {'encryption': {},
+                'qos_specs': {},
+                'extra_specs': {u'volume_backend_name': (u'Storage1',
+                                                         u'Storage2')}}
+        new_type = {'id': constants.VOLUME_TYPE_ID}
+        retyped = self.retype(None, vol, new_type, diff, self.host)
+        self.assertTrue(retyped)
+
+        volume_type = {'name': u'Bronze',
+                       'qos_specs_id': u'57223246-1d49-4565-860f-bbbee6cee122',
+                       'deleted': False,
+                       'created_at': '2019-01-08 08:48:20',
+                       'updated_at': '2019-01-08 08:48:29',
+                       'extra_specs': {}, 'is_public': True,
+                       'deleted_at': None,
+                       'id': u'33cd6136-0465-4ee0-82fa-b5f3a9138249',
+                       'description': None}
+        specs = {'specs': {u'lowerlimit': u'500', u'upperlimit': u'2000'}}
+        volume_types.get_volume_type.return_value = volume_type
+        qos_specs.get_qos_specs.return_value = specs
+        diff = {'encryption': {},
+                'qos_specs': {'consumer': (u'back-end', u'back-end'),
+                              u'lowerlimit': (u'1000', u'500'),
+                              u'upperlimit': (u'3000', u'2000')},
+                'extra_specs': {u'volume_backend_name': (u'Storage', None)}}
+        retyped = self.retype(None, vol, new_type, diff, self.host)
+        self.assertTrue(retyped)
+        diff = {'encryption': {},
+                'qos_specs': {'consumer': (u'back-end', None),
+                              u'lowerlimit': (u'1000', u'500'),
+                              u'upperlimit': (u'3000', u'2000')},
+                'extra_specs': {}}
+        retyped = self.retype(None, vol, new_type, diff, self.host)
+        self.assertTrue(retyped)
+
+    def test_validate_retype_volume(self):
+        vol = DummyVolume("87d8d42f-7550-4f43-9a2b-fe722bf86941")
+        with self.assertRaisesRegex(exception.NotFound,
+                                    'Logical Disk `LX:48L3QCi4npuqxPX0Lyeu8H`'
+                                    ' could not be found.'):
+            self._validate_retype_volume(vol, xml_out)
+
+        vol = DummyVolume("92dbc7f4-dbc3-4a87-aef4-d5a2ada3a9af")
+        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                    r'Specified Logical Disk '
+                                    r'LX:4T7JpyqI3UuPlKeT9D3VQF has an '
+                                    r'invalid attribute '
+                                    r'\(\(invalid attribute\)\).'):
+            self._validate_retype_volume(vol, xml_out)
+
+    def test_spec_is_changed(self):
+        extra_specs = {u'volume_backend_name': (u'Storage', None)}
+        equal = self._spec_is_changed(extra_specs, 'volume_backend_name')
+        self.assertTrue(equal)
+
+        extra_specs = {u'volume_backend_name': (u'Storage', u'Storage')}
+        equal = self._spec_is_changed(extra_specs, 'volume_backend_name')
+        self.assertFalse(equal)
+
+    def test_check_same_backend(self):
+        diff = {'encryption': {},
+                'qos_specs': {'consumer': (u'back-end', u'back-end'),
+                              u'upperlimit': (u'3000', u'2000'),
+                              u'lowerlimit': (u'1000', u'500')},
+                'extra_specs': {u'volume_backend_name': (u'Storage', None)}}
+        qos = self._check_same_backend(diff)
+        self.assertFalse(qos)
+
+        diff['extra_specs'] = {u'volume_backend_name':
+                               (u'Storage', u'Storage')}
+        qos = self._check_same_backend(diff)
+        self.assertTrue(qos)
+
+        diff['extra_specs'] = {u'volume_backend_name': (u'Storage', None),
+                               u'dummy_specs': None}
+        qos = self._check_same_backend(diff)
+        self.assertFalse(qos)
 
 
 class ManageUnmanage_test(volume_helper.MStorageDSVDriver, test.TestCase):
@@ -1499,3 +1670,36 @@ class RevertToSnapshotTestCase(volume_helper.MStorageDSVDriver, test.TestCase):
                                     'svname=LX:31HxzqBiAFTUxxOlcVn3EA, '
                                     'status=snap/fault'):
             self.revert_to_snapshot(None, vol, snap)
+
+
+class SetQosSpec_test(volume_helper.MStorageDSVDriver,
+                      test.TestCase):
+
+    def setUp(self):
+        super(SetQosSpec_test, self).setUp()
+        self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.do_setup(None)
+
+    def test_set_qos_spec(self):
+        volume_type = {'name': u'Bronze',
+                       'qos_specs_id': u'57223246-1d49-4565-860f-bbbee6cee122',
+                       'deleted': False,
+                       'created_at': '2019-01-08 08:48:20',
+                       'updated_at': '2019-01-08 08:48:29',
+                       'extra_specs': {}, 'is_public': True,
+                       'deleted_at': None,
+                       'id': u'33cd6136-0465-4ee0-82fa-b5f3a9138249',
+                       'description': None}
+        voltype_qos_specs = {'specs': {u'lowerlimit': u'500',
+                                       u'upperlimit': u'2000',
+                                       'upperreport': None}}
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_value=volume_type)
+        self.mock_object(qos_specs, 'get_qos_specs',
+                         return_value=voltype_qos_specs)
+        ldname = 'LX:287RbQoP7VdwR1WsPC2fZT'
+        volume_type_id = '33cd6136-0465-4ee0-82fa-b5f3a9138249'
+        ret = self._set_qos_spec(ldname, volume_type_id)
+        self.assertIsNone(ret)

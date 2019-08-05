@@ -50,6 +50,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         ldname = ldname + '_m'
         return ldname
 
+    def _convert_deleteldname(self, ldname):
+        return ldname + '_d'
+
     def _select_ldnumber(self, used_ldns, max_ld_count):
         """Pick up unused LDN."""
         for ldn in range(0, max_ld_count + 1):
@@ -323,23 +326,17 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                                         self._convert_id2name,
                                         self._select_leastused_poolnumber)
 
-        # check io limit.
-        specs = self.get_volume_type_qos_specs(volume)
-        self.check_io_parameter(specs)
-        # set io limit.
-        self._cli.set_io_limit(ldname, specs)
+        self._set_qos_spec(ldname, volume.volume_type_id)
 
         LOG.debug('LD bound. '
                   'Name=%(name)s '
                   'Size=%(size)dGB '
                   'LDN=%(ldn)04xh '
-                  'Pool=%(pool)04xh '
-                  'Specs=%(specs)s.',
+                  'Pool=%(pool)04xh.',
                   {'name': ldname,
                    'size': volume.size,
                    'ldn': ldn,
-                   'pool': selected_pool,
-                   'specs': specs})
+                   'pool': selected_pool})
 
     def _can_extend_capacity(self, new_size, pools, lds, ld):
         rvs = {}
@@ -489,12 +486,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                                         self._convert_id2name,
                                         self._select_leastused_poolnumber)
 
-        # check io limit.
-        specs = self.get_volume_type_qos_specs(volume)
-        self.check_io_parameter(specs)
-
-        # set io limit.
-        self._cli.set_io_limit(volume_name, specs)
+        self._set_qos_spec(volume_name, volume.volume_type_id)
 
         LOG.debug('LD bound. Name=%(name)s '
                   'Size=%(size)dGB '
@@ -528,6 +520,17 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         LOG.debug('_create_cloned_volume(Volume ID = %(id)s, '
                   'Source ID = %(src_id)s ) End.',
                   {'id': volume.id, 'src_id': src_vref.id})
+
+    def _set_qos_spec(self, ldname, volume_type_id, reset=False):
+        # check io limit.
+        specs = self.get_volume_type_qos_specs(volume_type_id)
+        self.correct_qos_parameter(specs, reset)
+
+        # set io limit.
+        self._cli.set_io_limit(ldname, specs)
+        LOG.debug('_set_qos_spec(Specs = %s) End.', specs)
+
+        return
 
     def _validate_migrate_volume(self, volume, xml):
         """Validate source volume information."""
@@ -604,23 +607,131 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                        'fip': self._properties['cli_fip']})
             return false_ret
 
+        self._migrate(volume, host, volume.volume_type_id,
+                      self._validate_migrate_volume,
+                      self._select_migrate_poolnumber)
+
+        LOG.debug('_migrate_volume(Volume ID = %(id)s, '
+                  'Host = %(host)s) End.',
+                  {'id': volume.id, 'host': host})
+
+        return (True, [])
+
+    def _validate_retype_volume(self, volume, xml):
+        """Validate source volume information."""
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+
+        # get ld object
+        ldname = self._validate_ld_exist(
+            lds, volume.id, self._properties['ld_name_format'])
+
+        # check rpl attribute.
+        ld = lds[ldname]
+        if ld['Purpose'] != '---':
+            msg = (_('Specified Logical Disk %(ld)s '
+                     'has an invalid attribute (%(purpose)s).')
+                   % {'ld': ldname, 'purpose': ld['Purpose']})
+            raise exception.VolumeBackendAPIException(data=msg)
+        return True
+
+    def _spec_is_changed(self, specdiff, resname):
+        res = specdiff.get(resname)
+        if (res is not None and res[0] != res[1]):
+            return True
+        return False
+
+    def _check_same_backend(self, diff):
+        if self._spec_is_changed(diff['extra_specs'], 'volume_backend_name'):
+            return False
+
+        if len(diff['extra_specs']) > 1:
+            return False
+
+        return True
+
+    def retype(self, context, volume, new_type, diff, host):
+        """Convert the volume to the specified volume type.
+
+        :param context: The context used to run the method retype
+        :param volume: The original volume that was retype to this backend
+        :param new_type: The new volume type
+        :param diff: The difference between the two types
+        :param host: The target information
+        :returns: a boolean indicating whether the migration occurred, and
+                  model_update
+        """
+        msgparm = ('Volume ID = %(id)s, '
+                   'New Type = %(type)s, '
+                   'Diff = %(diff)s, '
+                   'Destination Host = %(dsthost)s'
+                   % {'id': volume.id,
+                      'type': new_type,
+                      'diff': diff,
+                      'dsthost': host})
+        try:
+            ret = self._retype(context, volume, new_type, diff, host)
+            LOG.info('Retyped Volume (%s)', msgparm)
+            return ret
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to Retype Volume '
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
+
+    def _retype(self, context, volume, new_type, diff, host):
+        """Retype the volume to the specified volume type.
+
+        Returns a boolean indicating whether the migration occurred, as well as
+        model_update.
+        """
+        LOG.debug('_retype('
+                  'Volume ID = %(id)s, '
+                  'Volume Name = %(name)s, '
+                  'New Type = %(type)s, '
+                  'Diff = %(diff)s, '
+                  'host = %(host)s) Start.',
+                  {'id': volume.id,
+                   'name': volume.name,
+                   'type': new_type,
+                   'diff': diff,
+                   'host': host})
+
+        if self._check_same_backend(diff):
+            ldname = self._convert_id2name(volume)
+            reset = (diff['qos_specs'].get('consumer')[0] == 'back-end')
+            self._set_qos_spec(ldname, new_type['id'], reset)
+            LOG.debug('_retype(QoS setting only)(Volume ID = %(id)s, '
+                      'Host = %(host)s) End.',
+                      {'id': volume.id, 'host': host})
+            return True
+
+        self._migrate(volume,
+                      host,
+                      new_type['id'],
+                      self._validate_retype_volume,
+                      self._select_leastused_poolnumber)
+
+        LOG.debug('_retype(Volume ID = %(id)s, '
+                  'Host = %(host)s) End.',
+                  {'id': volume.id, 'host': host})
+
+        return True
+
+    def _migrate(self, volume, host, volume_type_id, validator, pool_selecter):
+
         # bind LD.
         (rvname,
          ldn,
          selected_pool) = self._bind_ld(volume,
                                         volume.size,
-                                        self._validate_migrate_volume,
+                                        validator,
                                         self._convert_id2migratename,
-                                        self._select_migrate_poolnumber,
+                                        pool_selecter,
                                         host)
 
         if selected_pool >= 0:
-            # check io limit.
-            specs = self.get_volume_type_qos_specs(volume)
-            self.check_io_parameter(specs)
-
-            # set io limit.
-            self._cli.set_io_limit(rvname, specs)
+            self._set_qos_spec(rvname, volume_type_id)
 
             volume_properties = {
                 'mvname':
@@ -637,12 +748,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             # replicate LD.
             self._cli.backup_restore(volume_properties,
                                      cli.UnpairWaitForMigrate)
-
-        LOG.debug('_migrate_volume(Volume ID = %(id)s, '
-                  'Host = %(host)s) End.',
-                  {'id': volume.id, 'host': host})
-
-        return (True, [])
+        return
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
@@ -658,6 +764,12 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         :param original_volume_status: The status of the original volume
         :returns: model_update to update DB with any needed changes
         """
+        LOG.debug('update_migrated_volume'
+                  '(Volume ID = %(id)s, New Volume ID = %(new_id)s, '
+                  'Status = %(status)s) Start.',
+                  {'id': volume.id, 'new_id': new_volume.id,
+                   'status': original_volume_status})
+
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
@@ -666,11 +778,12 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         provider_location = None
         if original_volume_status == 'available':
             original_name = self._convert_id2name(volume)
-            temp_name = self._convert_id2name(new_volume)
+            new_name = self._convert_id2name(new_volume)
             try:
                 if original_name in lds:
-                    self._cli.unbind(original_name)
-                self._cli.changeldname(None, original_name, temp_name)
+                    delete_ldname = self._convert_deleteldname(original_name)
+                    self._cli.changeldname(None, delete_ldname, original_name)
+                self._cli.changeldname(None, original_name, new_name)
             except exception.CinderException as e:
                 LOG.warning('Unable to rename the logical volume '
                             '(Volume ID = %(id)s), (%(exception)s)',
@@ -684,6 +797,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             # The back-end will not be renamed.
             name_id = new_volume._name_id or new_volume.id
             provider_location = new_volume.provider_location
+
+        LOG.debug('update_migrated_volume(name_id = %(name_id)s, '
+                  'provider_location = %(location)s) End.',
+                  {'name_id': name_id, 'location': provider_location})
+
         return {'_name_id': name_id, 'provider_location': provider_location}
 
     def check_for_export(self, context, volume_id):
@@ -761,19 +879,13 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def remove_export(self, context, volume):
         pass
 
-    def _detach_from_all(self, volume):
+    def _detach_from_all(self, ldname, xml):
         LOG.debug('_detach_from_all Start.')
-        xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
 
         # get target LD Set.
         ldset = self.get_ldset(ldsets)
-        ldname = self.get_ldname(volume.id, self._properties['ld_name_format'])
-
-        if ldname not in lds:
-            LOG.debug('LD `%s` already unbound?', ldname)
-            return False
 
         ld = lds[ldname]
         ldsetlist = []
@@ -811,7 +923,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             LOG.debug('LD `%(ld)s` deleted from LD Set `%(ldset)s`.',
                       {'ld': ldname, 'ldset': tagetldset['ldsetname']})
 
-        LOG.debug('_detach_from_all(Volume ID = %s) End.', volume.id)
+        LOG.debug('_detach_from_all(LD Name = %s) End.', ldname)
         return True
 
     def remove_export_snapshot(self, context, snapshot):
@@ -1388,18 +1500,33 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             {'msgparm': msgparm, 'exception': e})
 
     def _delete_volume(self, volume):
-        LOG.debug('_delete_volume Start.')
+        LOG.debug('_delete_volume id=%(id)s, _name_id=%(name_id)s Start.',
+                  {'id': volume.id, 'name_id': volume._name_id})
 
-        detached = self._detach_from_all(volume)
-        xml = self._cli.view_all(self._properties['ismview_path'], detached)
+        xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
             self.configs(xml))
 
-        ldname = self.get_ldname(volume.id,
+        ldname = self.get_ldname(volume.name_id,
                                  self._properties['ld_name_format'])
+
+        # The volume to be deleted has '_d' at the end of the name
+        # when migrating with the same backend.
+        delete_ldname = self._convert_deleteldname(ldname)
+        if delete_ldname in lds:
+            ldname = delete_ldname
+
         if ldname not in lds:
             LOG.debug('LD `%s` already unbound?', ldname)
             return
+
+        # If not migrating, detach from all hosts.
+        if ldname != delete_ldname:
+            detached = self._detach_from_all(ldname, xml)
+            xml = self._cli.view_all(self._properties['ismview_path'],
+                                     detached)
+            pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+                self.configs(xml))
 
         ld = lds[ldname]
 
@@ -1790,12 +1917,7 @@ class MStorageDSVDriver(MStorageDriver):
                                         self._select_volddr_poolnumber,
                                         mv_capacity)
 
-        # check io limit.
-        specs = self.get_volume_type_qos_specs(volume)
-        self.check_io_parameter(specs)
-
-        # set io limit.
-        self._cli.set_io_limit(new_rvname, specs)
+        self._set_qos_spec(new_rvname, volume.volume_type_id)
 
         if rv_capacity <= mv_capacity:
             rvnumber = None
@@ -1819,12 +1941,10 @@ class MStorageDSVDriver(MStorageDriver):
 
         LOG.debug('_create_volume_from_snapshot(Volume ID = %(vol_id)s, '
                   'Snapshot ID(SV) = %(snap_id)s, '
-                  'Snapshot ID(BV) = %(snapvol_id)s, '
-                  'Specs=%(specs)s) End.',
+                  'Snapshot ID(BV) = %(snapvol_id)s) End.',
                   {'vol_id': volume.id,
                    'snap_id': snapshot.id,
-                   'snapvol_id': snapshot.volume_id,
-                   'specs': specs})
+                   'snapvol_id': snapshot.volume_id})
 
     def revert_to_snapshot(self, context, volume, snapshot):
         """called to perform revert volume from snapshot.
