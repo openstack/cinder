@@ -562,6 +562,7 @@ class BaseVD(object):
     def check_for_setup_error(self):
         return
 
+    @staticmethod
     def get_driver_options():
         """Return the oslo_config options specific to the driver."""
         return volume_opts

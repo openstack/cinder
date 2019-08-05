@@ -35,6 +35,23 @@ There are some basic attributes that all drivers classes should have:
 
 The tooling system will also use the name and docstring of the driver class.
 
+Configuration options
+---------------------
+
+Each driver requires different configuration options set in the cinder.conf
+file to operate, and due to the complexities of the Object Oriented programming
+mechanisms (inheritance, composition, overwriting, etc.) once your driver
+defines its parameters in the code Cinder has no automated way of telling which
+configuration options are relevant to your driver.
+
+In order to assist operators and installation tools we recommend reporting the
+relevant options:
+
+* For operators: In the documentation under
+  ``doc/source/configuration/block-storage``.
+* For operators and installers: Through the ``get_driver_options`` static
+  method returning that returns a list of all the Oslo Config parameters.
+
 Minimum Features
 ----------------
 

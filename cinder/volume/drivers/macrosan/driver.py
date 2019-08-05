@@ -182,6 +182,11 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
         self.initialize_iscsi_info()
 
+    @staticmethod
+    def get_driver_options():
+        """Return the oslo_config options specific to the driver."""
+        return config.macrosan_opts
+
     @property
     def _self_node_wwns(self):
         return []

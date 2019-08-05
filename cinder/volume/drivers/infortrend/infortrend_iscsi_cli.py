@@ -38,6 +38,11 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
             'iSCSI', configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
+    @staticmethod
+    def get_driver_options():
+        """Return the oslo_config options specific to the driver."""
+        return common_cli.infortrend_opts
+
     def do_setup(self, context):
         """Any initialization the volume driver does while starting.
 
