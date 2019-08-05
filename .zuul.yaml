@@ -7,7 +7,7 @@
       - periodic-stable-jobs
       - check-requirements
       - integrated-gate
-      - integrated-gate-py3
+      - integrated-gate-storage
       - release-notes-jobs-python3
     check:
       jobs:
@@ -67,7 +67,7 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-full:
             irrelevant-files: *gate-irrelevant-files
-        - tempest-full-py3:
+        - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -79,7 +79,7 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-full:
             irrelevant-files: *gate-irrelevant-files
-        - tempest-full-py3:
+        - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
             irrelevant-files: *gate-irrelevant-files
