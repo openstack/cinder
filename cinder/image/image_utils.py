@@ -84,7 +84,7 @@ QEMU_IMG_VERSION = None
 QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
 QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
 
-COMPRESSIBLE_IMAGE_FORMATS = ('qcow2')
+COMPRESSIBLE_IMAGE_FORMATS = ('qcow2',)
 
 
 def fixup_disk_format(disk_format):
@@ -634,7 +634,7 @@ def _validate_file_format(image_data, expected_format):
 
 
 def upload_volume(context, image_service, image_meta, volume_path,
-                  volume_format='raw', run_as_root=True):
+                  volume_format='raw', run_as_root=True, compress=True):
     image_id = image_meta['id']
     if (image_meta['disk_format'] == volume_format):
         LOG.debug("%s was %s, no need to convert to %s",

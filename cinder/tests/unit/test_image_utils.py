@@ -747,7 +747,7 @@ class TestUploadVolume(test.TestCase):
         temp_file = mock_temp.return_value.__enter__.return_value
 
         output = image_utils.upload_volume(ctxt, image_service, image_meta,
-                                           volume_path)
+                                           volume_path, compress=True)
 
         self.assertIsNone(output)
         mock_convert.assert_called_once_with(volume_path,
