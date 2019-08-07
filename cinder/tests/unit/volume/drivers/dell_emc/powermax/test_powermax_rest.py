@@ -362,13 +362,36 @@ class PowerMaxRestTest(test.TestCase):
     def test_modify_storage_group(self):
         array = self.data.array
         storagegroup = self.data.defaultstoragegroup_name
-        payload = {'someKey': 'someValue'}
+        return_message = self.data.add_volume_sg_info_dict
+        payload = (
+            {"executionOption": "ASYNCHRONOUS",
+             "editStorageGroupActionParam": {
+                 "expandStorageGroupParam": {
+                     "addVolumeParam": {
+                         "emulation": "FBA",
+                         "create_new_volumes": "False",
+                         "volumeAttributes": [
+                             {
+                                 "num_of_vols": 1,
+                                 "volumeIdentifier": {
+                                     "identifier_name": "os-123-456",
+                                     "volumeIdentifierChoice":
+                                         "identifier_name"
+                                 },
+                                 "volume_size": 1,
+                                 "capacityUnit": "GB"}]}}}})
         version = self.data.u4v_version
-        with mock.patch.object(self.rest, 'modify_resource') as mock_modify:
-            self.rest.modify_storage_group(array, storagegroup, payload)
+        with mock.patch.object(self.rest, 'modify_resource',
+                               return_value=(200,
+                                             return_message)) as mock_modify:
+            status_code, message = self.rest.modify_storage_group(
+                array, storagegroup, payload)
             mock_modify.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'storagegroup',
                 payload, version, resource_name=storagegroup)
+            self.assertEqual(1, mock_modify.call_count)
+            self.assertEqual(200, status_code)
+            self.assertEqual(return_message, message)
 
     def test_create_volume_from_sg_success(self):
         volume_name = self.data.volume_details[0]['volume_identifier']

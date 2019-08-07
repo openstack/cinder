@@ -868,16 +868,19 @@ class PowerMaxRest(object):
             {"executionOption": "ASYNCHRONOUS",
              "editStorageGroupActionParam": {
                  "expandStorageGroupParam": {
-                     "addVolumeParam": [{
-                         "num_of_vols": 1,
+                     "addVolumeParam": {
                          "emulation": "FBA",
                          "create_new_volumes": "False",
-                         "volumeIdentifier": {
-                             "identifier_name": volume_name,
-                             "volumeIdentifierChoice": "identifier_name"},
-                         "volumeAttribute": {
-                             "volume_size": volume_size,
-                             "capacityUnit": "GB"}}]}}})
+                         "volumeAttributes": [
+                             {
+                                 "num_of_vols": 1,
+                                 "volumeIdentifier": {
+                                     "identifier_name": volume_name,
+                                     "volumeIdentifierChoice":
+                                         "identifier_name"
+                                 },
+                                 "volume_size": volume_size,
+                                 "capacityUnit": "GB"}]}}}})
         status_code, job = self.modify_storage_group(
             array, storagegroup_name, payload)
 
