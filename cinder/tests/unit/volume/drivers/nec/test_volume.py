@@ -16,6 +16,7 @@
 
 import ddt
 import mock
+import time
 
 from cinder import context
 from cinder import exception
@@ -1439,3 +1440,62 @@ class ManageUnmanage_Snap_test(volume_helper.MStorageDSVDriver, test.TestCase):
             newsnap,
             snaps[0]['reference'])
         self.assertEqual(6, size_in_gb)
+
+
+class RevertToSnapshotTestCase(volume_helper.MStorageDSVDriver, test.TestCase):
+
+    def setUp(self):
+        super(RevertToSnapshotTestCase, self).setUp()
+        self._set_config(conf.Configuration(None), 'dummy', 'dummy')
+        self.do_setup(None)
+        self.mock_object(self._cli, 'view_all', return_value=xml_out)
+
+    def test_revert_to_snapshot(self):
+        vol = DummyVolume("1febb976-86d0-42ed-9bc0-4aa3e158f27d")
+        snap = DummySnapshot("63410c76-2f12-4473-873d-74a63dfcd3e2")
+        self.mock_object(time, 'sleep')
+        self.mock_object(self._cli, '_execute',
+                         return_value=('success', 0, 0))
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         return_value='snap/active')
+        self.revert_to_snapshot(None, vol, snap)
+        self._cli._execute.assert_called_once_with(
+            'iSMsc_restore -bv yEUHrXa5AHMjOZZLb93eP -bvflg ld '
+            '-sv 31HxzqBiAFTUxxOlcVn3EA -svflg ld -derivsv keep -nowait')
+
+        vol.id = constants.VOLUME_ID
+        with self.assertRaisesRegex(exception.NotFound,
+                                    'Logical Disk `LX:vD03hJCiHvGpvP4iSevKk` '
+                                    'has unbound already.'):
+            self.revert_to_snapshot(None, vol, snap)
+        vol.id = '1febb976-86d0-42ed-9bc0-4aa3e158f27d'
+        snap.id = constants.SNAPSHOT_ID
+        with self.assertRaisesRegex(exception.NotFound,
+                                    'Logical Disk `LX:18FkaTGqa43xSFL8aX4A2N` '
+                                    'has unbound already.'):
+            self.revert_to_snapshot(None, vol, snap)
+        snap.id = '63410c76-2f12-4473-873d-74a63dfcd3e2'
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         return_value='rst/exec')
+        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                    'The snapshot does not exist or is '
+                                    'not in snap/active status. '
+                                    'bvname=LX:yEUHrXa5AHMjOZZLb93eP, '
+                                    'svname=LX:31HxzqBiAFTUxxOlcVn3EA, '
+                                    'status=rst/exec'):
+            self.revert_to_snapshot(None, vol, snap)
+
+        return_status = ['snap/active', 'rst/exec', 'snap/active']
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         side_effect=return_status)
+        self.revert_to_snapshot(None, vol, snap)
+
+        return_status = ['snap/active', 'rst/exec', 'snap/fault']
+        self.mock_object(self._cli, 'query_BV_SV_status',
+                         side_effect=return_status)
+        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                    'Failed to restore from snapshot. '
+                                    'bvname=LX:yEUHrXa5AHMjOZZLb93eP, '
+                                    'svname=LX:31HxzqBiAFTUxxOlcVn3EA, '
+                                    'status=snap/fault'):
+            self.revert_to_snapshot(None, vol, snap)

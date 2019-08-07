@@ -584,6 +584,46 @@ class MStorageISMCLI(object):
         cmd = 'iSMcfg generationdel -bvname %s -count 1' % bvname
         self._execute(cmd)
 
+    def snapshot_restore(self, bvname, svname):
+        """Snapshot restore."""
+        query_status = self.query_BV_SV_status(bvname[3:], svname[3:])
+        if query_status == 'snap/active':
+            cmd = ('iSMsc_restore -bv %(bv)s -bvflg ld -sv %(sv)s '
+                   '-svflg ld -derivsv keep -nowait'
+                   % {'bv': bvname[3:], 'sv': svname[3:]})
+            self._execute(cmd)
+
+            retry_count = 0
+            while True:
+                query_status = self.query_BV_SV_status(bvname[3:], svname[3:])
+                if query_status == 'rst/exec':
+                    # Restoration is in progress.
+                    sleep_time = get_sleep_time_for_clone(retry_count)
+                    LOG.debug('Sleep %d seconds Start', sleep_time)
+                    time.sleep(sleep_time)
+                    retry_count += 1
+                elif query_status == 'snap/active':
+                    # Restoration was successful.
+                    break
+                else:
+                    # Restoration failed.
+                    msg = (_('Failed to restore from snapshot. '
+                             'bvname=%(bvname)s, svname=%(svname)s, '
+                             'status=%(status)s') %
+                           {'bvname': bvname, 'svname': svname,
+                            'status': query_status})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            msg = (_('The snapshot does not exist or is '
+                     'not in snap/active status. '
+                     'bvname=%(bvname)s, svname=%(svname)s, '
+                     'status=%(status)s') %
+                   {'bvname': bvname, 'svname': svname,
+                    'status': query_status})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
     def query_BV_SV_status(self, bvname, svname):
         cmd = ('iSMsc_query -bv %(bv)s -bvflg ld -sv %(sv)s -svflg ld '
                '-summary | '
@@ -593,7 +633,12 @@ class MStorageISMCLI(object):
                % {'bv': bvname, 'sv': svname, 'line': svname})
         out, err, status = self._execute(cmd)
 
-        query_status = out[34:48].strip()
+        delimiter = ') '
+        start = out.find(delimiter)
+        if start == -1:
+            return None
+        start += len(delimiter)
+        query_status = out[start:].split(' ')[0]
         LOG.debug('snap/state:%s.', query_status)
         return query_status
 
@@ -729,16 +774,6 @@ class UnpairWait(object):
         pass
 
 
-class UnpairWaitForBackup(UnpairWait):
-    def __init__(self, volume_properties, cli):
-        super(UnpairWaitForBackup, self).__init__(volume_properties, cli)
-
-    def _execute(self):
-        LOG.debug('UnpairWaitForBackup start.')
-
-        self._wait(True)
-
-
 class UnpairWaitForRestore(UnpairWait):
     def __init__(self, volume_properties, cli):
         super(UnpairWaitForRestore, self).__init__(volume_properties, cli)
@@ -813,16 +848,6 @@ class UnpairWaitForMigrate(UnpairWait):
         self._cli.unbind(self._volume_properties['mvname'])
         self._cli.changeldname(None, self._volume_properties['mvname'],
                                self._volume_properties['rvname'])
-
-
-class UnpairWaitForDDRBackup(UnpairWaitForBackup):
-    def __init__(self, volume_properties, cli):
-        super(UnpairWaitForDDRBackup, self).__init__(volume_properties, cli)
-
-    def _execute(self):
-        LOG.debug('UnpairWaitForDDRBackup start.')
-
-        self._wait(False)
 
 
 class UnpairWaitForDDRRestore(UnpairWaitForRestore):

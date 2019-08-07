@@ -53,6 +53,8 @@ Supported operations
 - Manage and unmanage a volume.
 - Manage and unmanage a snapshot.
 - Attach a volume to multiple instances at once (multi-attach).
+- Revert a volume to a snapshot.
+
 
 Preparation
 ~~~~~~~~~~~
