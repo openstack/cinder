@@ -508,12 +508,12 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
             LOG.info('Creating virtual disk. name: %s, description: %s,'
                      'size: %s', name, description, size)
             vDiskInfo = {
-                'name': name.encode('utf-8'),
+                'name': name,
                 'blockSize': HedvigISCSIDriver.DEFAULT_VOL_BLOCK_SIZE,
                 'size': size,
                 'createdBy':
                     HedvigISCSIDriver.DEFAULT_CREATEDBY,
-                'description': description.encode('utf-8'),
+                'description': description,
                 'residence': config.Config.DiskResidence[1],
                 'replicationFactor': 3,
                 'replicationPolicy': 'Agnostic',
@@ -545,12 +545,12 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
                             vDiskInfo['compressed'] = True
                     elif "cache_enable" == key:
                         val = self.parse_and_get_boolean_entry(
-                            value.encode('utf-8'))
+                            value)
                         if val:
                             vDiskInfo['cacheEnabled'] = val
                     elif "encryption" == key:
                         val = self.parse_and_get_boolean_entry(
-                            value.encode('utf-8'))
+                            value)
                         if val:
                             vDiskInfo['encryption'] = val
                     elif "replication_factor" == key:
@@ -570,7 +570,7 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
                         if len(val) != 0:
                             dcList = []
                             for dataCenter in val:
-                                dcList.append(dataCenter.encode('utf-8'))
+                                dcList.append(dataCenter)
                             vDiskInfo['dataCenters'] = dcList
 
             if vDiskInfo['deduplication'] and (
