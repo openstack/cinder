@@ -442,74 +442,74 @@ section describing unique parameters for connections, drivers and the
 6. Create Volume Types
 ----------------------
 
-   Once the ``cinder.conf`` has been updated,  :command:`openstack` commands
-   need to be issued in order to create and associate OpenStack volume types
-   with the declared ``volume_backend_names``.
+Once the ``cinder.conf`` has been updated,  :command:`openstack` commands
+need to be issued in order to create and associate OpenStack volume types
+with the declared ``volume_backend_names``.
 
-   Additionally, each volume type will need an associated ``pool_name`` - an
-   extra specification indicating the service level/ workload combination to
-   be used for that volume type.
+Additionally, each volume type will need an associated ``pool_name`` - an
+extra specification indicating the service level/ workload combination to
+be used for that volume type.
 
-   There is also the option to assign a port group to a volume type by
-   setting the ``storagetype:portgroupname`` extra specification.
+There is also the option to assign a port group to a volume type by
+setting the ``storagetype:portgroupname`` extra specification.
 
-   .. note::
+.. note::
 
-      It is possible to create as many volume types as the number of Service
-      Level and Workload(available) combination for provisioning volumes. The
-      pool_name is the additional property which has to be set and is of the
-      format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
-      This can be obtained from the output of the ``cinder get-pools--detail``.
-      Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
-      or greater.
+   It is possible to create as many volume types as the number of Service
+   Level and Workload(available) combination for provisioning volumes. The
+   pool_name is the additional property which has to be set and is of the
+   format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
+   This can be obtained from the output of the ``cinder get-pools--detail``.
+   Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
+   or greater.
 
-   .. code-block:: console
+.. code-block:: console
 
-      $ openstack volume type create POWERMAX_ISCSI_SILVER_OLTP
-      $ openstack volume type set --property volume_backend_name=ISCSI_backend \
-                                  --property pool_name=Silver+OLTP+SRP_1+000123456789 \
-                                  --property storagetype:portgroupname=OS-PG2 \
-                                  POWERMAX_ISCSI_SILVER_OLTP
-      $ openstack volume type create POWERMAX_FC_DIAMOND_DSS
-      $ openstack volume type set --property volume_backend_name=FC_backend \
-                                  --property pool_name=Diamond+DSS+SRP_1+000123456789 \
-                                  --property storagetype:portgroupname=OS-PG1 \
-                                  POWERMAX_FC_DIAMOND_DSS
+   $ openstack volume type create POWERMAX_ISCSI_SILVER_OLTP
+   $ openstack volume type set --property volume_backend_name=ISCSI_backend \
+                               --property pool_name=Silver+OLTP+SRP_1+000123456789 \
+                               --property storagetype:portgroupname=OS-PG2 \
+                               POWERMAX_ISCSI_SILVER_OLTP
+   $ openstack volume type create POWERMAX_FC_DIAMOND_DSS
+   $ openstack volume type set --property volume_backend_name=FC_backend \
+                               --property pool_name=Diamond+DSS+SRP_1+000123456789 \
+                               --property storagetype:portgroupname=OS-PG1 \
+                               POWERMAX_FC_DIAMOND_DSS
 
 
-   By issuing these commands, the Block Storage volume type
-   ``POWERMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``,
-   a Silver Service Level, and an OLTP workload.
+By issuing these commands, the Block Storage volume type
+``POWERMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``,
+a Silver Service Level, and an OLTP workload.
 
-   The type ``POWERMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``,
-   a Diamond Service Level, and a DSS workload.
+The type ``POWERMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``,
+a Diamond Service Level, and a DSS workload.
 
-   The ``ServiceLevel`` manages the underlying storage to provide expected
-   performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
-   managed storage groups will be created instead (storage groups not
-   associated with any service level). If ``ServiceLevel`` is ``None`` then
-   ``Workload`` must be ``None``.
+The ``ServiceLevel`` manages the underlying storage to provide expected
+performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
+managed storage groups will be created instead (storage groups not
+associated with any service level). If ``ServiceLevel`` is ``None`` then
+``Workload`` must be ``None``.
 
-   .. code-block:: console
+.. code-block:: console
 
-      openstack volume type set --property pool_name=None+None+SRP_1+000123456789
+   openstack volume type set --property pool_name=None+None+SRP_1+000123456789
 
-   When a ``Workload`` is added, the latency range is reduced due to the
-   added information. Setting the ``Workload`` to ``None`` means the latency
-   range will be the widest for its Service Level type. Please note that you
-   cannot set a Workload without a Service Level.
+When a ``Workload`` is added, the latency range is reduced due to the
+added information. Setting the ``Workload`` to ``None`` means the latency
+range will be the widest for its Service Level type. Please note that you
+cannot set a Workload without a Service Level.
 
-   .. code-block:: console
+.. code-block:: console
 
-      openstack volume type set --property pool_name=Diamond+None+SRP_1+000123456789
+   openstack volume type set --property pool_name=Diamond+None+SRP_1+000123456789
 
-   .. note::
+.. note::
 
-      PowerMax and Hybrid support Optimized, Diamond, Platinum, Gold, Silver,
-      Bronze, and NONE service levels. VMAX All Flash supports Diamond and
-      None. Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
-      workloads, the latter up until ucode 5977. There is no support for
-      workloads in PowerMax OS (5978) or greater.
+   PowerMax and Hybrid support Optimized, Diamond, Platinum, Gold, Silver,
+   Bronze, and NONE service levels. VMAX All Flash supports Diamond and
+   None. Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
+   workloads, the latter up until ucode 5977. There is no support for
+   workloads in PowerMax OS (5978) or greater.
 
 
 7. Interval and Retries
@@ -1504,7 +1504,7 @@ Requirements
 .. note::
 
    Replication must be configured in advance for remote failover to work
-   successfully, human intervention will also be required to failover from R1
+   successfully. Human intervention will also be required to failover from R1
    array to R2 array in Cinder using ``cinder failover-host`` command
    (see ``Volume replication support`` for replication setup details).
 
@@ -1621,11 +1621,11 @@ Configure the source and target arrays
                            metro_use_bias:False,
                            allow_delete_metro:False
 
-      .. note::
+   .. note::
 
-         ``replication_device`` key value pairs will need to be on the same
-         line (separated by commas) in cinder.conf. They are displayed on
-         separated lines above for readiblity.
+      ``replication_device`` key value pairs will need to be on the same
+      line (separated by commas) in cinder.conf. They are displayed on
+      separated lines above for readiblity.
 
    * ``target_device_id`` is a unique PowerMax array serial number of the
      target array. For full failover functionality, the source and target
