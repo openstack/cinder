@@ -29,6 +29,8 @@ at the time of release.
   maintained.  The old matrix will be left for reference but
   this matrix should be treated as the correct state of Cinder.
 
+.. _required_driver_functions:
+
 Required Driver Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
