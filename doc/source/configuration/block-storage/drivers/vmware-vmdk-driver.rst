@@ -349,7 +349,7 @@ Create storage policies in vCenter
 
       For details about creating tags in vSphere, see the `vSphere
       documentation
-      <http://pubs.vmware.com/vsphere-55/index.jsp#com.vmware.vsphere.vcenterhost.doc/GUID-379F40D3-8CD6-449E-89CB-79C4E2683221.html>`__.
+      <https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.vsphere.vcenterhost.doc/GUID-05323758-1EBF-406F-99B6-B1A33E893453.html>`__.
 
 #. In vCenter, create a tag-based storage policy that uses one or more tags to
    identify a set of data stores.
@@ -358,7 +358,7 @@ Create storage policies in vCenter
 
       For details about creating storage policies in vSphere, see the `vSphere
       documentation
-      <http://pubs.vmware.com/vsphere-55/index.jsp#com.vmware.vsphere.storage.doc/GUID-89091D59-D844-46B2-94C2-35A3961D23E7.html>`__.
+      <https://docs.vmware.com/en/VMware-vSphere/6.7/com.vmware.vsphere.storage.doc/GUID-D025AA68-BF00-4FC2-9C7E-863E5787E743.html>`__.
 
 Data store selection
 ~~~~~~~~~~~~~~~~~~~~
