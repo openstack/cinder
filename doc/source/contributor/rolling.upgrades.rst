@@ -458,3 +458,13 @@ Documentation
 <https://docs.openstack.org/nova/latest/reference/upgrade-checks.html>`_ .
 
 
+What can be checked?
+....................
+
+The cinder-status CLI tool is assumed to be run from a place where it can
+read cinder.conf for the services, and that it can access the Cinder
+database to query information.
+
+It cannot be assumed to have network access to a storage backend -- a backend
+may only be accessible from the Cinder Volume service and not reachable
+directly from where this tool is run.
