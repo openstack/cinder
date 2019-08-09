@@ -128,6 +128,9 @@ Review Checklist
 
     * See Reno usage information here:
       https://docs.openstack.org/reno/latest/user/usage.html
+    * Make sure that the release note is in the correct subdirectory, namely,
+      ``releasenotes/notes/`` in the repository root directory.  It should
+      *not* be located in the driver's section of the code tree.
 
   * Driver added to ``doc/source/reference/support-matrix.ini`` and
     ``doc/source/reference/support-matrix.rst``
