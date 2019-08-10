@@ -14,8 +14,8 @@ The Block Storage API and scheduler services typically run on the controller
 nodes. Depending upon the drivers used, the volume service can run
 on controller nodes, compute nodes, or standalone storage nodes.
 
-For more information, see the `Configuration
-Reference <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-drivers.html>`_.
+For more information, see the :doc:`Configuration
+Reference </configuration/block-storage/volume-drivers>`.
 
 
 Prerequisites

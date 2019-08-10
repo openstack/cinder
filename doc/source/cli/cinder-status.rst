@@ -6,7 +6,7 @@ cinder-status
 CLI interface for cinder status commands
 ----------------------------------------
 
-:Author: openstack@lists.openstack.org
+:Author: openstack-discuss@lists.openstack.org
 :Copyright: OpenStack Foundation
 :Manual section: 1
 :Manual group: cloud computing

@@ -66,6 +66,7 @@ IDs using the ``openstack role list`` command. If the creator
 role does not exist, the admin can `create the role
 <https://docs.openstack.org/keystone/latest/admin/cli-manage-projects-users-and-roles.html#create-a-role>`_.
 
+.. _create__encrypted_volume_type:
 
 Create an encrypted volume type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

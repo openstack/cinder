@@ -100,9 +100,8 @@ Cinder Driver for single FC or iSCSI backend.
       [DEFAULT]
       scheduler_default_filters = DriverFilter,CapabilitiesFilter
 
-   See following links for more information:
-   `<https://docs.openstack.org/cinder/latest/configuration/block-storage/scheduler-filters.html>`_
-   `<https://docs.openstack.org/cinder/latest/admin/blockstorage-driver-filter-weighing.html>`_
+   See following documents for more information:
+   :ref:`cinder_scheduler_filters` and :ref:`filter_weigh_scheduler`.
 
 #. Under the ``[DEFAULT]`` section, set the enabled_backends parameter
    with the iSCSI or FC back-end group
@@ -189,9 +188,8 @@ The following steps are required to configure multiple K2 iSCSI/FC backends:
    described in the above section
    ``Configure single Kaminario iSCSI/FC back end``
 
-   See `Configure multiple-storage back ends
-   <https://docs.openstack.org/cinder/latest/admin/blockstorage-multi-backend.html>`__
-   for additional information.
+   See :doc:`Configure multiple-storage back ends
+   </admin/blockstorage-multi-backend>` for additional information.
 
 #. Restart the cinder volume service for the changes to take effect.
 

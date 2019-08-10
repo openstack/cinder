@@ -162,6 +162,5 @@ In this example:
    reach the Dell EqualLogic Group of ``backend1`` and ``backend2``
    through SSH, respectively.
 
-For information on configuring multiple back ends, see `Configure a
-multiple-storage back
-end <https://docs.openstack.org/cinder/latest/admin/blockstorage-multi-backend.html>`__.
+For information on configuring multiple back ends, see :doc:`Configure a
+multiple-storage back end </admin/blockstorage-multi-backend>`.

@@ -18,14 +18,15 @@ OpenStack-related sites. These sites include:
 Mailing list
 ------------
 
-The mailing list email is ``openstack@lists.openstack.org``. This is a common
-mailing list across the OpenStack projects. To participate in the mailing list:
+The mailing list email is ``openstack-discuss@lists.openstack.org``.
+This is a common mailing list across the OpenStack projects. To
+participate in the mailing list:
 
 #. Subscribe to the list at
-   http://lists.openstack.org/cgi-bin/mailman/listinfo/openstack
+   https://lists.openstack.org/cgi-bin/mailman/listinfo/openstack-discuss
 
 The mailing list archives are at
-http://lists.openstack.org/pipermail/openstack/.
+https://lists.openstack.org/pipermail/openstack-discuss/.
 
 
 Bug tracking

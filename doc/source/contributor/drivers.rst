@@ -52,6 +52,8 @@ relevant options:
 * For operators and installers: Through the ``get_driver_options`` static
   method returning that returns a list of all the Oslo Config parameters.
 
+.. _drivers_minimum_features:
+
 Minimum Features
 ----------------
 
@@ -83,6 +85,8 @@ Security Requirements
   and "driver_ssl_cert_path" options in cinder.conf.
 * Drivers should use standard Python libraries to handle encryption-related
   functionality, and not contain custom implementations of encryption code.
+
+.. _drivers_volume_stats:
 
 Volume Stats
 ------------
