@@ -180,8 +180,8 @@ Set ``storage_protocol = iscsi`` if iSCSI protocol is used.
 The value of the option ``storage_protocol`` can be either ``fc`` or ``iscsi``,
 which is case insensitive.
 
-For more details on multiple back ends, see `Configure multiple-storage
-back ends <https://docs.openstack.org/cinder/latest/admin/blockstorage-multi-backend.html>`_
+For more details on multiple back ends, see :doc:`Configure multiple-storage
+back ends </admin/blockstorage-multi-backend>`.
 
 Required configurations
 -----------------------

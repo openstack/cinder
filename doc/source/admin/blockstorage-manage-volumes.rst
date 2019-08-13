@@ -72,5 +72,4 @@ troubleshoot your installation and back up your Compute volumes.
 .. note::
 
    To enable the use of encrypted volumes, see the setup instructions in
-   `Create an encrypted volume type
-   <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encryption.html#create-an-encrypted-volume-type>`_.
+   :ref:`Create an encrypted volume type <create__encrypted_volume_type>`.

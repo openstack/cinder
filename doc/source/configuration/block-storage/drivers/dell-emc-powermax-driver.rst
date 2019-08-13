@@ -1181,7 +1181,7 @@ Use case 2 - Retype from compression disabled to compression enabled
 ----------------------------
 
 Please refer to the following:
-https://docs.openstack.org/cinder/latest/admin/blockstorage-over-subscription.html
+:doc:`/admin/blockstorage-over-subscription`.
 
 
 13. Live Migration support
@@ -1376,7 +1376,7 @@ nodes. The following were also used in live migration.
 
 PowerMax cinder driver supports the ability to attach a volume to multiple
 hosts/servers simultaneously. Please see
-https://docs.openstack.org/cinder/latest/admin/blockstorage-volume-multiattach.html
+:doc:`/admin/blockstorage-volume-multiattach`
 for configuration information.
 
 Multi-attach Architecture
@@ -1434,7 +1434,7 @@ We then decide to detach the volume from ‘Multi-attach-Instance-B’ on HostB:
 -----------------------------
 
 Please refer to the following:
-https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encryption.html
+:doc:`/configuration/block-storage/volume-encryption`.
 
 
 16. Volume metadata in logs
@@ -2381,7 +2381,7 @@ Cinder backup support
 ---------------------
 
 PowerMax cinder driver supports cinder backup functionality. See
-https://docs.openstack.org/cinder/latest/configuration/block-storage/backup-drivers.html
+:doc:`/configuration/block-storage/backup-drivers`
 and https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/backup.html
 for more details.
 

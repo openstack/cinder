@@ -24,9 +24,9 @@ These workflows are possible for a migration:
 
    .. note::
 
-      While most back ends support this function, not all do. See the `driver
-      documentation <https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-drivers.html>`__
-      in the OpenStack Configuration Reference for more details.
+      While most back ends support this function, not all do. See the
+      :doc:`driver documentation </configuration/block-storage/volume-drivers>`
+      for more details.
 
 #. If the volume is attached to a VM instance, the Block Storage creates a
    volume, and calls Compute to copy the data from the original to the new

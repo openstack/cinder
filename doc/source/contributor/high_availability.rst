@@ -1058,7 +1058,8 @@ maximum over provisioning, etc.  All the backends' information is stored in
 memory at the Schedulers, and used to decide where to create new volumes,
 migrate them on a retype, and so on.
 
-For additional information on the stats, please refer to the `volume stats`_
+For additional information on the stats, please refer to the
+:ref:`volume stats <drivers_volume_stats>`
 section of the Contributor/Developer docs.
 
 Trying to keep updated stats, schedulers reduce available free space on
@@ -1160,5 +1161,4 @@ another node's.
 .. _manager local locks: https://specs.openstack.org/openstack/cinder-specs/specs/newton/ha-aa-manager_locks.html
 .. _Active-Active replication spec: https://specs.openstack.org/openstack/cinder-specs/specs/ocata/ha-aa-replication.html
 .. _testing Active-Active: https://review.openstack.org/#/c/443504
-.. _volume stats: https://docs.openstack.org/cinder/latest/contributor/drivers.html#volume-stats
 .. _Scalable Backup Service spec: https://specs.openstack.org/openstack/cinder-specs/specs/mitaka/scalable-backup-service.html

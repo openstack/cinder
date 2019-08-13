@@ -408,7 +408,7 @@ snapshots, the volume type extra specs would also have the following entry:
 
     {'consistent_group_snapshot_enabled': <is> True}
 
-Refer to https://docs.openstack.org/cinder/latest/admin/blockstorage-groups.html
+Refer to :doc:`/admin/blockstorage-groups`
 for command lines detail.
 
 Troubleshooting

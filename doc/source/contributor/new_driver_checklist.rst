@@ -49,8 +49,7 @@ Review Checklist
     * ``CI_WIKI_NAME`` constant defined in driver class
     * well documented version history in the comment block for the main driver
       class.
-    * Support minimum driver features
-      (https://docs.openstack.org/cinder/latest/contributor/drivers.html#minimum-features )
+    * Support :ref:`minimum driver features <drivers_minimum_features>`.
     * Meet release deadline(s)
       (https://releases.openstack.org/train/schedule.html#t-cinder-driver-deadline )
 
