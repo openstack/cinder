@@ -21,7 +21,7 @@ level of the text:
 - _LW() - Used for WARNING level log messages
 - _LE() - Used for ERROR level log messages (this includes LOG.exception)
 - _() - Used for any exception messages, including strings used for both
-            logging and exceptions.
+  logging and exceptions.
 
 .. note::
 
@@ -49,7 +49,7 @@ to first do the following before any Cinder modules are imported::
     from cinder import i18n
     i18n.enable_lazy()
 
-Note: this should _only_ be called from top level scripts - no library code
+Note: this should *only* be called from top level scripts - no library code
 or common modules should call this method.
 
 Any files that use the _() for translation then must have the following

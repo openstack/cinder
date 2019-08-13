@@ -17,8 +17,8 @@ modules involved. Mock should be used to remove any external dependencies.
 All significant code changes should have unit test coverage validating the code
 happy path and any failure paths.
 
-Any proposed code change will be automatically rejected by the OpenStack
-Jenkins server [#f1]_ if the change causes unit test failures.
+Any proposed code change will be automatically rejected by the OpenDev
+Zuul project gating system [#f1]_ if the change causes unit test failures.
 
 Functional Tests
 ~~~~~~~~~~~~~~~~
@@ -210,7 +210,7 @@ Therefore, it is preferable to use:
 
 .. rubric:: Footnotes
 
-.. [#f1] See :doc:`jenkins`.
+.. [#f1] See :doc:`zuul`.
 
 
 Debugging

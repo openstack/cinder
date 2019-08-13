@@ -77,7 +77,7 @@ Other Resources
 
    launchpad
    gerrit
-   jenkins
+   zuul
    releasenotes
 
    Module Reference <api/modules>

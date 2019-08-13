@@ -13,7 +13,7 @@ OpenStack-related sites. These sites include:
 
  * `Wiki`_
  * Gerrit (see :doc:`gerrit`)
- * Jenkins (see :doc:`jenkins`)
+ * Zuul (see :doc:`zuul`)
 
 Mailing list
 ------------
