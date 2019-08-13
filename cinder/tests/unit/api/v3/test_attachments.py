@@ -19,12 +19,16 @@ Tests for attachments Api.
 
 import ddt
 import mock
+from oslo_policy import policy as oslo_policy
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import attachments as v3_attachments
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.policies import attachments as attachments_policies
+from cinder.policies import base as base_policy
+from cinder import policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -48,13 +52,17 @@ class AttachmentsAPITestCase(test.TestCase):
         self.volume2 = self._create_volume(display_name='fake_volume_2',
                                            project_id=fake.PROJECT2_ID)
         self.attachment1 = self._create_attachment(
-            volume_uuid=self.volume1.id, instance_uuid=fake.UUID1)
+            volume_uuid=self.volume1.id, instance_uuid=fake.UUID1,
+            host='host-a')
         self.attachment2 = self._create_attachment(
-            volume_uuid=self.volume1.id, instance_uuid=fake.UUID1)
+            volume_uuid=self.volume1.id, instance_uuid=fake.UUID1,
+            host='host-b')
         self.attachment3 = self._create_attachment(
-            volume_uuid=self.volume1.id, instance_uuid=fake.UUID2)
+            volume_uuid=self.volume1.id, instance_uuid=fake.UUID2,
+            host='host-c')
         self.attachment4 = self._create_attachment(
-            volume_uuid=self.volume2.id, instance_uuid=fake.UUID2)
+            volume_uuid=self.volume2.id, instance_uuid=fake.UUID2,
+            host='host-d')
         self.addCleanup(self._cleanup)
 
     def _cleanup(self):
@@ -98,7 +106,8 @@ class AttachmentsAPITestCase(test.TestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'attachment_update')
     def test_update_attachment(self, mock_update):
-        fake_connector = {'fake_key': 'fake_value'}
+        fake_connector = {'fake_key': 'fake_value',
+                          'host': 'somehost'}
         mock_update.return_value = fake_connector
         req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
                                       (fake.PROJECT_ID, self.attachment1.id),
@@ -107,7 +116,9 @@ class AttachmentsAPITestCase(test.TestCase):
         body = {
             "attachment":
                 {
-                    "connector": {'fake_key': 'fake_value'},
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost',
+                                  'connection_info': 'a'},
                 },
         }
 
@@ -133,19 +144,26 @@ class AttachmentsAPITestCase(test.TestCase):
                           self.controller.update, req,
                           self.attachment1.id, body=body)
 
+    @mock.patch('cinder.coordination.synchronized')
     @mock.patch.object(objects.VolumeAttachment, 'get_by_id')
-    def test_attachment_operations_not_authorized(self, mock_get):
-        mock_get.return_value = {'project_id': fake.PROJECT2_ID}
+    def test_attachment_operations_not_authorized(self, mock_get, mock_synch):
+        mock_get.return_value = self.attachment1
         req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
-                                      (fake.PROJECT_ID, self.attachment1.id),
+                                      (fake.PROJECT2_ID, self.attachment1.id),
                                       version=mv.NEW_ATTACH,
                                       use_admin_context=False)
         body = {
             "attachment":
                 {
-                    "connector": {'fake_key': 'fake_value'},
+                    "connector": {'fake_key': 'fake_value',
+                                  'host': 'somehost'},
                 },
         }
+        rules = {attachments_policies.UPDATE_POLICY:
+                 base_policy.RULE_ADMIN_OR_OWNER}
+        policy.set_rules(oslo_policy.Rules.from_dict(rules))
+        self.addCleanup(policy.reset)
+
         self.assertRaises(exception.NotAuthorized,
                           self.controller.update, req,
                           self.attachment1.id, body=body)
@@ -198,7 +216,7 @@ class AttachmentsAPITestCase(test.TestCase):
     def _create_attachment(self, ctxt=None, volume_uuid=None,
                            instance_uuid=None, mountpoint=None,
                            attach_time=None, detach_time=None,
-                           attach_status=None, attach_mode=None):
+                           attach_status=None, attach_mode=None, host=None):
         """Create an attachment object."""
         ctxt = ctxt or self.ctxt
         attachment = objects.VolumeAttachment(ctxt)
@@ -209,6 +227,7 @@ class AttachmentsAPITestCase(test.TestCase):
         attachment.detach_time = detach_time
         attachment.attach_status = attach_status or 'reserved'
         attachment.attach_mode = attach_mode
+        attachment.connector = {'host': host}
         attachment.create()
         return attachment
 

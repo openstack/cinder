@@ -126,7 +126,8 @@ class AttachmentManagerTestCase(test.TestCase):
         vref = objects.Volume.get_by_id(self.context,
                                         vref.id)
 
-        connector = {'fake': 'connector'}
+        connector = {'fake': 'connector',
+                     'host': 'somehost'}
         self.volume_api.attachment_update(self.context,
                                           aref,
                                           connector)
@@ -308,9 +309,51 @@ class AttachmentManagerTestCase(test.TestCase):
         self.assertEqual({}, aref.connection_info)
         vref.status = 'error'
         vref.save()
-        connector = {'fake': 'connector'}
+        connector = {'fake': 'connector',
+                     'host': 'somehost'}
         self.assertRaises(exception.InvalidVolume,
                           self.volume_api.attachment_update,
                           self.context,
                           aref,
                           connector)
+
+    @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_update',
+                return_value={})
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update',
+                return_value={})
+    def test_attachment_update_duplicate(self, mock_va_update, mock_db_upd):
+        volume_params = {'status': 'available'}
+
+        vref = tests_utils.create_volume(self.context,
+                                         deleted=0,
+                                         **volume_params)
+
+        tests_utils.attach_volume(self.context,
+                                  vref.id,
+                                  fake.UUID1,
+                                  'somehost',
+                                  'somemountpoint')
+
+        # Update volume with another attachment
+        tests_utils.attach_volume(self.context,
+                                  vref.id,
+                                  fake.UUID2,
+                                  'somehost2',
+                                  'somemountpoint2')
+        vref.refresh()
+
+        # This attachment will collide with the first
+        connector = {'host': 'somehost'}
+        vref.volume_attachment[0]['connector'] = {'host': 'somehost'}
+        vref.volume_attachment[0]['connection_info'] = {'c': 'd'}
+        with mock.patch('cinder.objects.Volume.get_by_id', return_value=vref):
+            with mock.patch.object(self.volume_api.volume_rpcapi,
+                                   'attachment_update') as m_au:
+                self.assertRaises(exception.InvalidVolume,
+                                  self.volume_api.attachment_update,
+                                  self.context,
+                                  vref.volume_attachment[1],
+                                  connector)
+                m_au.assert_not_called()
+        mock_va_update.assert_not_called()
+        mock_db_upd.assert_not_called()

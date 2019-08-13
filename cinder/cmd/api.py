@@ -35,6 +35,7 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config
+from cinder import coordination
 from cinder import rpc
 from cinder import service
 from cinder import utils
@@ -55,6 +56,8 @@ def main():
     utils.monkey_patch()
 
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
+
+    coordination.COORDINATOR.start()
 
     rpc.init(CONF)
     launcher = service.process_launcher()
