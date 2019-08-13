@@ -3221,12 +3221,12 @@ class HPE3PARCommon(object):
             if not (host_type == 'HPE3PARDriver'):
                 reason = (_("Cannot retype from HPE3PARDriver to %s.") %
                           host_type)
-                raise exception.InvalidHost(reason)
+                raise exception.InvalidHost(reason=reason)
 
             sys_info = self.client.getStorageSystemInfo()
             if not (host_id == sys_info['serialNumber']):
                 reason = (_("Cannot retype from one 3PAR array to another."))
-                raise exception.InvalidHost(reason)
+                raise exception.InvalidHost(reason=reason)
 
         # Validate new_snap_cpg.  A white-space snapCPG will fail eventually,
         # but we'd prefer to fail fast -- if this ever happens.

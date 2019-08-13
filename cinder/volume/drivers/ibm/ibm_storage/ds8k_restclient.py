@@ -233,7 +233,7 @@ class RESTScheduler(object):
         # verify the method
         if method not in ('GET', 'POST', 'PUT', 'DELETE'):
             msg = _("Invalid HTTP method: %s") % method
-            raise APIException(data=msg)
+            raise APIException(msg)
 
         # prepare the url
         url = "https://%s:%s/api/v1%s" % (self.host, self.port, endpoint)

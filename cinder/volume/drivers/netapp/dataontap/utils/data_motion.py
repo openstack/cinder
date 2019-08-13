@@ -319,7 +319,7 @@ class DataMotionMixin(object):
                 desired_attributes=['relationship-status', 'mirror-state'])[0]
             if snapmirror.get('relationship-status') != 'quiesced':
                 msg = _("SnapMirror relationship is not quiesced.")
-                raise na_utils.NetAppDriverException(reason=msg)
+                raise na_utils.NetAppDriverException(msg)
 
         try:
             wait_for_quiesced()
