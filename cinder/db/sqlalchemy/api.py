@@ -4151,8 +4151,11 @@ def volume_type_destroy(context, id):
                     'deleted_at': utcnow,
                     'updated_at': literal_column('updated_at')})
         model_query(context, models.VolumeTypeProjects, session=session,
-                    read_deleted="int_no").filter_by(
-            volume_type_id=id).soft_delete(synchronize_session=False)
+                    read_deleted="no").\
+            filter_by(volume_type_id=id).\
+            update({'deleted': True,
+                    'deleted_at': utcnow,
+                    'updated_at': literal_column('updated_at')})
     del updated_values['updated_at']
     return updated_values
 
@@ -4209,7 +4212,7 @@ def volume_get_all_active_by_window(context,
 
 def _volume_type_access_query(context, session=None):
     return model_query(context, models.VolumeTypeProjects, session=session,
-                       read_deleted="int_no")
+                       read_deleted="no")
 
 
 def _group_type_access_query(context, session=None):
