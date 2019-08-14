@@ -670,7 +670,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
         out_format = fixup_disk_format(image_meta['disk_format'])
         convert_image(volume_path, tmp, out_format,
                       run_as_root=run_as_root,
-                      compress=True)
+                      compress=compress)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
         if data.file_format != out_format:
