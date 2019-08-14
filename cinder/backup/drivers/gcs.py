@@ -310,7 +310,7 @@ class GoogleObjectWriter(object):
         md5 = hashlib.md5(self.data).digest()
         if six.PY3:
             md5 = md5.encode('utf-8')
-            etag = etag.encode('utf-8')
+            etag = bytes(etag, 'utf-8')
         md5 = base64.b64encode(md5)
         if etag != md5:
             err = _('MD5 of object: %(object_name)s before: '
