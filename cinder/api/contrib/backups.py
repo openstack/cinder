@@ -22,6 +22,7 @@ from oslo_utils import strutils
 from six.moves import http_client
 from webob import exc
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api import microversions as mv
@@ -88,9 +89,10 @@ class BackupsController(wsgi.Controller):
     @common.process_general_filtering('backup')
     def _process_backup_filtering(self, context=None, filters=None,
                                   req_version=None):
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_backup_filter_options())
+        api_utils.remove_invalid_filter_options(
+            context,
+            filters,
+            self._get_backup_filter_options())
 
     def _convert_sort_name(self, req_version, sort_keys):
         """Convert sort key "name" to "display_name". """

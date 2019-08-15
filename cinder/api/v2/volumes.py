@@ -24,6 +24,7 @@ from six.moves import http_client
 import webob
 from webob import exc
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api.contrib import scheduler_hints
 from cinder.api import microversions as mv
@@ -64,7 +65,7 @@ class VolumeController(wsgi.Controller):
         vol = self.volume_api.get(context, id, viewable_admin_meta=True)
         req.cache_db_volume(vol)
 
-        utils.add_visible_admin_metadata(vol)
+        api_utils.add_visible_admin_metadata(vol)
 
         return self._view_builder.detail(req, vol)
 
@@ -102,9 +103,10 @@ class VolumeController(wsgi.Controller):
         # NOTE(wanghao): Always removing glance_metadata since we support it
         # only in API version >= VOLUME_LIST_GLANCE_METADATA.
         filters.pop('glance_metadata', None)
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_volume_filter_options())
+        api_utils.remove_invalid_filter_options(
+            context,
+            filters,
+            self._get_volume_filter_options())
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in sort_keys:
@@ -122,7 +124,7 @@ class VolumeController(wsgi.Controller):
                                           offset=offset)
 
         for volume in volumes:
-            utils.add_visible_admin_metadata(volume)
+            api_utils.add_visible_admin_metadata(volume)
 
         req.cache_db_volumes(volumes.objects)
 
@@ -307,7 +309,7 @@ class VolumeController(wsgi.Controller):
 
         volume.update(update_dict)
 
-        utils.add_visible_admin_metadata(volume)
+        api_utils.add_visible_admin_metadata(volume)
 
         volume_utils.notify_about_volume_usage(context, volume,
                                                'update.end')

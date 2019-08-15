@@ -21,6 +21,7 @@ import six
 from six.moves import http_client
 import webob
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
@@ -66,8 +67,8 @@ class QoSSpecsController(wsgi.Controller):
         sort_keys, sort_dirs = common.get_sort_params(params)
         filters = params
         allowed_search_options = ('id', 'name', 'consumer')
-        utils.remove_invalid_filter_options(context, filters,
-                                            allowed_search_options)
+        api_utils.remove_invalid_filter_options(context, filters,
+                                                allowed_search_options)
 
         specs = qos_specs.get_all_specs(context, filters=filters,
                                         marker=marker, limit=limit,

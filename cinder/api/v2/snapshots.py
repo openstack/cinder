@@ -20,12 +20,12 @@ from oslo_utils import strutils
 from six.moves import http_client
 import webob
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import snapshots as snapshot
 from cinder.api import validation
 from cinder.api.views import snapshots as snapshot_views
-from cinder import utils
 from cinder import volume
 from cinder.volume import utils as volume_utils
 
@@ -84,8 +84,8 @@ class SnapshotsController(wsgi.Controller):
 
         # Filter out invalid options
         allowed_search_options = ('status', 'volume_id', 'name')
-        utils.remove_invalid_filter_options(context, search_opts,
-                                            allowed_search_options)
+        api_utils.remove_invalid_filter_options(context, search_opts,
+                                                allowed_search_options)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in search_opts:

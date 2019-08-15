@@ -19,6 +19,7 @@ import ast
 
 from oslo_log import log as logging
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -66,8 +67,8 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
         # Filter out invalid options
         allowed_search_options = self._get_snapshot_filter_options()
 
-        utils.remove_invalid_filter_options(context, filters,
-                                            allowed_search_options)
+        api_utils.remove_invalid_filter_options(context, filters,
+                                                allowed_search_options)
 
     def _items(self, req, is_detail=True):
         """Returns a list of snapshots, transformed through view builder."""

@@ -16,6 +16,7 @@ from oslo_log import log as logging
 from oslo_utils import strutils
 from six.moves import http_client
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
@@ -28,7 +29,6 @@ from cinder.api.views import manageable_volumes as list_manageable_view
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import manageable_volumes as policy
-from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import volume_types
 
@@ -147,7 +147,7 @@ class VolumeManageController(wsgi.Controller):
                 'value': host or cluster_name}
             raise exception.ServiceUnavailable(message=msg)
 
-        utils.add_visible_admin_metadata(new_volume)
+        api_utils.add_visible_admin_metadata(new_volume)
 
         return self._view_builder.detail(req, new_volume)
 

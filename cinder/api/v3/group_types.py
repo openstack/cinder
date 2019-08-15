@@ -20,6 +20,7 @@ from six.moves import http_client
 import webob
 from webob import exc
 
+from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
@@ -189,26 +190,6 @@ class GroupTypesController(wsgi.Controller):
 
         return self._view_builder.show(req, grp_type)
 
-    def _parse_is_public(self, is_public):
-        """Parse is_public into something usable.
-
-        * True: List public group types only
-        * False: List private group types only
-        * None: List both public and private group types
-        """
-
-        if is_public is None:
-            # preserve default value of showing only public types
-            return True
-        elif utils.is_none_string(is_public):
-            return None
-        else:
-            try:
-                return strutils.bool_from_string(is_public, strict=True)
-            except ValueError:
-                msg = _('Invalid is_public filter [%s]') % is_public
-                raise exc.HTTPBadRequest(explanation=msg)
-
     def _get_group_types(self, req):
         """Helper function that returns a list of type dicts."""
         params = req.params.copy()
@@ -218,14 +199,14 @@ class GroupTypesController(wsgi.Controller):
         context = req.environ['cinder.context']
         if context.is_admin:
             # Only admin has query access to all group types
-            filters['is_public'] = self._parse_is_public(
+            filters['is_public'] = api_utils._parse_is_public(
                 req.params.get('is_public', None))
         else:
             filters['is_public'] = True
-        utils.remove_invalid_filter_options(context,
-                                            filters,
-                                            self._get_grp_type_filter_options()
-                                            )
+        api_utils.remove_invalid_filter_options(
+            context,
+            filters,
+            self._get_grp_type_filter_options())
         limited_types = group_types.get_all_group_types(context,
                                                         filters=filters,
                                                         marker=marker,
