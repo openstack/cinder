@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Now cinder will be rollback the ``quota_usages`` table when failed
+    to create an incremental backup if there doesn't exist a parent
+    backup or the backup is not in available state.
