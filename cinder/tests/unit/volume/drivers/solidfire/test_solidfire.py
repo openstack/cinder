@@ -470,7 +470,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
             model_update = sfv.create_volume(testvol)
             self.assertIsNotNone(model_update)
-            self.assertIsNone(model_update.get('provider_geometry', None))
+            self.assertNotIn('provider_geometry', model_update)
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
@@ -1318,7 +1318,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         model_update = sfv.manage_existing(testvol, external_ref)
         self.assertIsNotNone(model_update)
-        self.assertIsNone(model_update.get('provider_geometry', None))
+        self.assertNotIn('provider_geometry', model_update)
 
     def test_manage_existing_get_size(self):
         external_ref = {'name': 'existing volume', 'source-id': 5}
