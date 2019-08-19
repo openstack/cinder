@@ -227,7 +227,7 @@ htmlhelp_basename = 'cinderdoc'
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
 latex_documents = [
-    ('index', 'Cinder.tex', u'Cinder Documentation',
+    ('index', 'cinder.tex', u'Cinder Documentation',
      u'Cinder Contributors', 'manual'),
 ]
 
@@ -247,3 +247,15 @@ latex_documents = [
 
 # If false, no module index is generated.
 # latex_use_modindex = True
+
+# Disable usage of xindy https://bugzilla.redhat.com/show_bug.cgi?id=1643664
+latex_use_xindy = False
+
+latex_domain_indices = False
+
+latex_elements = {
+    'makeindex': '',
+    'printindex': '',
+    'preamble': r'\setcounter{tocdepth}{3}',
+    'maxlistdepth': 10,
+}

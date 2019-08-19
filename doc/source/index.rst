@@ -152,10 +152,13 @@ Contents:
 
    common/glossary.rst
 
-Indices and tables
-~~~~~~~~~~~~~~~~~~
 
-Contents:
+.. only:: html
 
-* :ref:`genindex`
-* :ref:`search`
+   Indices and tables
+   ~~~~~~~~~~~~~~~~~~
+
+   Contents:
+
+   * :ref:`genindex`
+   * :ref:`search`
