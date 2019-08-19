@@ -299,21 +299,6 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-        - legacy-tempest-dsvm-neutron-full-opensuse-423:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^api-ref/.*$
-              - ^cinder/hacking/.*$
-              - ^cinder/locale/.*$
-              - ^cinder/tests/functional.*$
-              - ^cinder/tests/unit.*$
-              - ^contrib/block-box.*$
-              - ^doc/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
 - job:
     # Previously named legacy-tempest-dsvm-full-lio
     name: cinder-tempest-dsvm-lvm-lio-barbican
