@@ -1305,7 +1305,7 @@ class VolumeManager(manager.CleanableManager,
                 raise exception.InvalidVolume(
                     reason=_("being attached by different mode"))
 
-        host_name_sanitized = utils.sanitize_hostname(
+        host_name_sanitized = vol_utils.sanitize_hostname(
             host_name) if host_name else None
         if instance_uuid:
             attachments = (

@@ -33,6 +33,7 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder import utils
+from cinder.volume import utils as volume_utils
 
 POOL_CAPS = {'total_capacity_gb': 0,
              'free_capacity_gb': 0,
@@ -124,26 +125,26 @@ class GenericUtilsTestCase(test.TestCase):
     def test_hostname_unicode_sanitization(self):
         hostname = u"\u7684.test.example.com"
         self.assertEqual("test.example.com",
-                         utils.sanitize_hostname(hostname))
+                         volume_utils.sanitize_hostname(hostname))
 
     def test_hostname_sanitize_periods(self):
         hostname = "....test.example.com..."
         self.assertEqual("test.example.com",
-                         utils.sanitize_hostname(hostname))
+                         volume_utils.sanitize_hostname(hostname))
 
     def test_hostname_sanitize_dashes(self):
         hostname = "----test.example.com---"
         self.assertEqual("test.example.com",
-                         utils.sanitize_hostname(hostname))
+                         volume_utils.sanitize_hostname(hostname))
 
     def test_hostname_sanitize_characters(self):
         hostname = "(#@&$!(@*--#&91)(__=+--test-host.example!!.com-0+"
         self.assertEqual("91----test-host.example.com-0",
-                         utils.sanitize_hostname(hostname))
+                         volume_utils.sanitize_hostname(hostname))
 
     def test_hostname_translate(self):
         hostname = "<}\x1fh\x10e\x08l\x02l\x05o\x12!{>"
-        self.assertEqual("hello", utils.sanitize_hostname(hostname))
+        self.assertEqual("hello", volume_utils.sanitize_hostname(hostname))
 
     @mock.patch('os.path.join', side_effect=lambda x, y: '/'.join((x, y)))
     def test_make_dev_path(self, mock_join):
@@ -385,11 +386,11 @@ class WalkClassHierarchyTestCase(test.TestCase):
             pass
 
         class_pairs = zip((D, B, E),
-                          utils.walk_class_hierarchy(A, encountered=[C]))
+                          api_utils.walk_class_hierarchy(A, encountered=[C]))
         for actual, expected in class_pairs:
             self.assertEqual(expected, actual)
 
-        class_pairs = zip((D, B, C, E), utils.walk_class_hierarchy(A))
+        class_pairs = zip((D, B, C, E), api_utils.walk_class_hierarchy(A))
         for actual, expected in class_pairs:
             self.assertEqual(expected, actual)
 
