@@ -298,9 +298,8 @@ If you are using your own certificates, copy them to the same
 directories with the prefix ``XIV`` and in the ``.pem`` format.
 For example: XIV-my_cert.pem.
 
-* In order to prevent the CVE-2014-3566 MITM attack, follow the OpenStack
-  community `directions
-  <http://osdir.com/ml/openstack-dev/2014-10/msg01349.html>`_.
+* In order to prevent the CVE-2014-3566 MITM attack, follow these `directions
+  <https://www.ibm.com/support/knowledgecenter/en/HSG_NOVA_141/UG/nova_ig_ch4_mitm_attacks.html?cp=HW213_7.4.0>`_.
 
 Configuring Cinder nodes for trusted communication (DS8000 Family)
 ------------------------------------------------------------------
