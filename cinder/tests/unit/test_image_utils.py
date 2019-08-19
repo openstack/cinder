@@ -137,7 +137,7 @@ class TestConvertImage(test.TestCase):
         mock_info.return_value.virtual_size = 1048576
         throttle = throttling.Throttle(prefix=['cgcmd'])
 
-        with mock.patch('cinder.volume.utils.check_for_odirect_support',
+        with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                         return_value=True):
             output = image_utils.convert_image(source, dest, out_format,
                                                throttle=throttle)
@@ -149,7 +149,7 @@ class TestConvertImage(test.TestCase):
 
         mock_exec.reset_mock()
 
-        with mock.patch('cinder.volume.utils.check_for_odirect_support',
+        with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                         return_value=False):
             output = image_utils.convert_image(source, dest, out_format)
 
@@ -170,7 +170,7 @@ class TestConvertImage(test.TestCase):
         mock_info.side_effect = ValueError
         throttle = throttling.Throttle(prefix=['cgcmd'])
 
-        with mock.patch('cinder.volume.utils.check_for_odirect_support',
+        with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                         return_value=True):
             output = image_utils.convert_image(source, dest, out_format,
                                                throttle=throttle)
@@ -183,7 +183,7 @@ class TestConvertImage(test.TestCase):
 
         mock_exec.reset_mock()
 
-        with mock.patch('cinder.volume.utils.check_for_odirect_support',
+        with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                         return_value=False):
             output = image_utils.convert_image(source, dest, out_format)
 
@@ -192,7 +192,7 @@ class TestConvertImage(test.TestCase):
                                               '-O', out_format, source, dest,
                                               run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
@@ -217,7 +217,7 @@ class TestConvertImage(test.TestCase):
                                           source, dest,
                                           run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
@@ -253,7 +253,7 @@ class TestConvertImage(test.TestCase):
         out_format = mock.sentinel.out_format
         mock_info.return_value.virtual_size = 1048576
 
-        with mock.patch('cinder.volume.utils.check_for_odirect_support',
+        with mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                         return_value=True):
             output = image_utils.convert_image(source, dest, out_format,
                                                src_format='AMI')
@@ -266,7 +266,7 @@ class TestConvertImage(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.utils.is_blk_device', return_value=False)
-    @mock.patch('cinder.volume.utils.check_for_odirect_support')
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support')
     def test_convert_to_vhd(self, mock_check_odirect, mock_isblk,
                             mock_exec, mock_info):
         source = mock.sentinel.source
@@ -307,7 +307,7 @@ class TestConvertImage(test.TestCase):
                                           run_as_root=True)
 
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.utils.execute')

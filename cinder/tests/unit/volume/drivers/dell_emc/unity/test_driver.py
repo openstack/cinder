@@ -144,7 +144,7 @@ class MockAdapter(object):
 
 
 patch_check_cg = mock.patch(
-    'cinder.volume.utils.is_group_a_cg_snapshot_type',
+    'cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
     side_effect=lambda g: not g.id.endswith('_generic'))
 
 

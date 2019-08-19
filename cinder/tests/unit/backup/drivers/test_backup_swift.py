@@ -126,7 +126,7 @@ class BackupSwiftTestCase(test.TestCase):
             self.size_volume_file += 1024
 
         notify_patcher = mock.patch(
-            'cinder.volume.utils.notify_about_backup_usage')
+            'cinder.volume.volume_utils.notify_about_backup_usage')
         notify_patcher.start()
         self.addCleanup(notify_patcher.stop)
 

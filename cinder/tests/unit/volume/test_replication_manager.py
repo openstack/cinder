@@ -33,7 +33,7 @@ from cinder.tests.unit import volume as base
 import cinder.volume
 from cinder.volume import manager
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
@@ -462,7 +462,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
                                      in_groups=None, out_groups=None,
                                      driver_group_result=None,
                                      secondary_id=None):
-        host = vol_utils.extract_host(self.manager.host)
+        host = volume_utils.extract_host(self.manager.host)
         utils.create_service(self.context, {'host': host,
                                             'binary': constants.VOLUME_BINARY})
         for volume in in_volumes:
@@ -487,7 +487,7 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
         self._check_failover_db(objects.SnapshotList, out_snapshots)
         self._check_failover_db(objects.GroupList, out_groups)
 
-    @mock.patch('cinder.volume.utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
     def test_failover_host_model_updates(self, mock_group_type):
         status = fields.ReplicationStatus
         mock_group_type.return_value = True

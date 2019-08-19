@@ -25,8 +25,8 @@ from cinder import objects
 from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
 from cinder.volume import driver
-from cinder.volume import utils as volutils
 from cinder.volume import volume_migration as volume_migration
+from cinder.volume import volume_utils as volutils
 
 
 CONF = cfg.CONF

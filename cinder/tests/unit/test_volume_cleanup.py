@@ -37,7 +37,7 @@ class VolumeCleanupTestCase(base.BaseVolumeTestCase):
         super(VolumeCleanupTestCase, self).setUp()
         self.service_id = 1
         self.mock_object(service.Service, 'service_id', self.service_id)
-        self.patch('cinder.volume.utils.clear_volume', autospec=True)
+        self.patch('cinder.volume.volume_utils.clear_volume', autospec=True)
 
     def _assert_workers_are_removed(self):
         workers = db.worker_get_all(self.context, read_deleted='yes')

@@ -37,7 +37,7 @@ from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume.flows import common
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

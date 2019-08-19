@@ -27,8 +27,8 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 
 
 LOG = logging.getLogger(__name__)

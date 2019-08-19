@@ -40,8 +40,8 @@ import cinder.volume
 from cinder.volume import api as volume_api
 from cinder.volume.flows.manager import create_volume as create_volume_manager
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as volutils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as volutils
 
 
 QUOTAS = quota.QUOTAS
@@ -72,8 +72,9 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
     def setUp(self):
         super(VolumeMigrationTestCase, self).setUp()
-        self._clear_patch = mock.patch('cinder.volume.utils.clear_volume',
-                                       autospec=True)
+        self._clear_patch = mock.patch(
+            'cinder.volume.volume_utils.clear_volume',
+            autospec=True)
         self._clear_patch.start()
         self.expected_status = 'available'
         self._service = tests_utils.create_service(

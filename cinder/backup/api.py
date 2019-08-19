@@ -42,7 +42,7 @@ import cinder.policy
 from cinder import quota
 from cinder import quota_utils
 import cinder.volume
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 backup_opts = [
     cfg.BoolOpt('backup_use_same_host',

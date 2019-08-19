@@ -27,7 +27,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import utils
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

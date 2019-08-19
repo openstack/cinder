@@ -51,7 +51,7 @@ from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
-import cinder.volume.utils
+import cinder.volume.volume_utils
 
 
 CONF = cfg.CONF
@@ -99,7 +99,7 @@ def _vol_notify_usage(LOG, volume_ref, extra_info, admin_context):
                   {'volume_id': volume_ref.id,
                    'project_id': volume_ref.project_id,
                    'extra_info': extra_info})
-        cinder.volume.utils.notify_about_volume_usage(
+        cinder.volume.volume_utils.notify_about_volume_usage(
             admin_context, volume_ref, 'exists', extra_usage_info=extra_info)
     except Exception as exc_msg:
         LOG.error("Exists volume notification failed: %s",
@@ -114,7 +114,7 @@ def _snap_notify_usage(LOG, snapshot_ref, extra_info, admin_context):
                   {'snapshot_id': snapshot_ref.id,
                    'project_id': snapshot_ref.project_id,
                    'extra_info': extra_info})
-        cinder.volume.utils.notify_about_snapshot_usage(
+        cinder.volume.volume_utils.notify_about_snapshot_usage(
             admin_context, snapshot_ref, 'exists', extra_info)
     except Exception as exc_msg:
         LOG.error("Exists snapshot notification failed: %s",
@@ -124,7 +124,7 @@ def _snap_notify_usage(LOG, snapshot_ref, extra_info, admin_context):
 def _backup_notify_usage(LOG, backup_ref, extra_info, admin_context):
     """backup_ref notify usage"""
     try:
-        cinder.volume.utils.notify_about_backup_usage(
+        cinder.volume.volume_utils.notify_about_backup_usage(
             admin_context, backup_ref, 'exists', extra_info)
         LOG.debug("Sent notification for <backup_id: %(backup_id)s> "
                   "<project_id %(project_id)s> <%(extra_info)s>",
@@ -221,7 +221,7 @@ def main():
     for volume_ref in volumes:
         _obj_ref_action(_vol_notify_usage, LOG, volume_ref, extra_info,
                         admin_context, begin, end,
-                        cinder.volume.utils.notify_about_volume_usage,
+                        cinder.volume.volume_utils.notify_about_volume_usage,
                         "volume_id", "volume")
 
     snapshots = objects.SnapshotList.get_all_active_by_window(admin_context,
@@ -229,8 +229,8 @@ def main():
     LOG.info("Found %d snapshots", len(snapshots))
     for snapshot_ref in snapshots:
         _obj_ref_action(_snap_notify_usage, LOG, snapshot_ref, extra_info,
-                        admin_context, begin,
-                        end, cinder.volume.utils.notify_about_snapshot_usage,
+                        admin_context, begin, end,
+                        cinder.volume.volume_utils.notify_about_snapshot_usage,
                         "snapshot_id", "snapshot")
 
     backups = objects.BackupList.get_all_active_by_window(admin_context,
@@ -239,7 +239,7 @@ def main():
     LOG.info("Found %d backups", len(backups))
     for backup_ref in backups:
         _obj_ref_action(_backup_notify_usage, LOG, backup_ref, extra_info,
-                        admin_context, begin,
-                        end, cinder.volume.utils.notify_about_backup_usage,
+                        admin_context, begin, end,
+                        cinder.volume.volume_utils.notify_about_backup_usage,
                         "backup_id", "backup")
     LOG.info("Volume usage audit completed")

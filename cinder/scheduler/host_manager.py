@@ -34,8 +34,8 @@ from cinder import exception
 from cinder import objects
 from cinder.scheduler import filters
 from cinder import utils
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 
 
 # FIXME: This file should be renamed to backend_manager, we should also rename

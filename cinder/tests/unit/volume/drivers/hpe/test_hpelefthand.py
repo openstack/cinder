@@ -689,7 +689,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # validate call chain
             mock_client.assert_has_calls(expected)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_initialize_connection_with_chap_disabled(self, mock_utils):
         # setup_mock_client drive with CHAP disabled configuration
         # and return the mock HTTP LeftHand client
@@ -719,7 +719,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 self.connector)
             mock_client.assert_has_calls(expected)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_initialize_connection_with_chap_enabled(self, mock_utils):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP LeftHand client
@@ -2754,7 +2754,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group(self, cg_ss_enabled, mock_get_volume_type):
         cg_ss_enabled.side_effect = [False, True, True]
         ctxt = context.get_admin_context()
@@ -2794,7 +2794,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                              model_update['status'])
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group(self, cg_ss_enabled, mock_get_volume_type):
         cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
@@ -2826,7 +2826,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                              model_update['status'])
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group_add_vol_delete_group(self, cg_ss_enabled,
                                                mock_get_volume_type):
         cg_ss_enabled.return_value = True
@@ -2870,7 +2870,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                              model_update['status'])
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group_remove_vol_delete_group(self, cg_ss_enabled,
                                                   mock_get_volume_type):
         cg_ss_enabled.return_value = True
@@ -2917,7 +2917,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                              model_update['status'])
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_groupsnapshot(self, cg_ss_enabled, mock_get_volume_type):
         cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()
@@ -2974,7 +2974,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 ctxt, groupsnapshot, expected_snaps)
 
     @mock.patch.object(volume_types, 'get_volume_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_groupsnapshot(self, cg_ss_enabled, mock_get_volume_type):
         cg_ss_enabled.return_value = True
         ctxt = context.get_admin_context()

@@ -21,7 +21,7 @@ from cinder.tests.unit.brick import fake_lvm
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 
@@ -50,7 +50,7 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         model_update = {}
         try:
             if (volume.volume_type and volume.volume_type.extra_specs and
-                    vol_utils.is_replicated_spec(
+                    volume_utils.is_replicated_spec(
                         volume.volume_type.extra_specs)):
                 # Sets the new volume's replication_status to disabled
                 model_update['replication_status'] = (

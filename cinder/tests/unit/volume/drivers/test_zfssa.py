@@ -38,7 +38,7 @@ from cinder.volume.drivers.zfssa import webdavclient
 from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
 from cinder.volume.drivers.zfssa import zfssanfs
 from cinder.volume.drivers.zfssa import zfssarest as rest
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 nfs_logbias = 'latency'

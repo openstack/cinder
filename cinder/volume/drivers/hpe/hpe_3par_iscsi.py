@@ -44,7 +44,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.hpe import hpe_3par_base as hpebasedriver
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

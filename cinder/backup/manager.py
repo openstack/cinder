@@ -58,7 +58,7 @@ from cinder import quota
 from cinder import rpc
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

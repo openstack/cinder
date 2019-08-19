@@ -48,8 +48,8 @@ from cinder.volume.drivers.ibm.storwize_svc import (
 from cinder.volume.drivers.ibm.storwize_svc import storwize_const
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as utils
 
 
 INTERVAL_1_SEC = 1

@@ -34,7 +34,7 @@ from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import replication
 from cinder.volume.drivers.dell_emc.vnx import taskflows as emc_taskflow
 from cinder.volume.drivers.dell_emc.vnx import utils
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils as vol_utils
 from cinder.zonemanager import utils as zm_utils
 
 storops = importutils.try_import('storops')

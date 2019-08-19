@@ -39,8 +39,8 @@ from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 
 
 CONF = cfg.CONF

@@ -24,7 +24,7 @@ from cinder import context
 from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit.scheduler import fakes
-from cinder.volume import utils
+from cinder.volume import volume_utils as utils
 
 
 class AllocatedCapacityWeigherTestCase(test.TestCase):

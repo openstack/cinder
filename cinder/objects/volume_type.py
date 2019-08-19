@@ -21,8 +21,8 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 
 @base.CinderObjectRegistry.register
@@ -163,10 +163,10 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
                                    orm_obj, expected_attrs=expected_attrs)
 
     def is_replicated(self):
-        return utils.is_replicated_spec(self.extra_specs)
+        return volume_utils.is_replicated_spec(self.extra_specs)
 
     def is_multiattach(self):
-        return utils.is_multiattach_spec(self.extra_specs)
+        return volume_utils.is_multiattach_spec(self.extra_specs)
 
 
 @base.CinderObjectRegistry.register

@@ -26,7 +26,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
-from cinder.volume import utils as volutils
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -1607,8 +1607,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
             entries.append(ld_info)
 
-        return volutils.paginate_entries_list(entries, marker, limit, offset,
-                                              sort_keys, sort_dirs)
+        return volume_utils.paginate_entries_list(entries, marker, limit,
+                                                  offset, sort_keys, sort_dirs)
 
     def _manage_existing_get_size(self, resource_type, volume, existing_ref):
         if 'source-name' not in existing_ref:

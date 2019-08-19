@@ -49,7 +49,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume import throttling
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

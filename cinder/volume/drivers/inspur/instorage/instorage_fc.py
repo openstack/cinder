@@ -28,7 +28,7 @@ from cinder import interface
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.inspur.instorage import instorage_common
-from cinder.volume import utils
+from cinder.volume import volume_utils as utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)

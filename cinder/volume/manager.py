@@ -82,9 +82,9 @@ from cinder.volume.flows.manager import manage_existing
 from cinder.volume.flows.manager import manage_existing_snapshot
 from cinder.volume import group_types
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_migration
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 
 LOG = logging.getLogger(__name__)
 

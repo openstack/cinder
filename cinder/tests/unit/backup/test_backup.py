@@ -1009,7 +1009,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual('available', temp_vol['status'])
         self.assertEqual('fake_provider_id', temp_vol['provider_id'])
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     def test_create_backup_with_notify(self, notify):
         """Test normal backup creation with notifications."""
         vol_size = 1
@@ -1021,7 +1021,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(2, notify.call_count)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
-    @mock.patch('cinder.volume.utils.clone_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
     @mock.patch('cinder.utils.brick_get_connector_properties')
     def test_create_backup_encrypted_volume(self,
                                             mock_connector_properties,
@@ -1049,7 +1049,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fake.UUID2, backup.encryption_key_id)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
-    @mock.patch('cinder.volume.utils.clone_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
     @mock.patch('cinder.utils.brick_get_connector_properties')
     def test_create_backup_encrypted_volume_again(self,
                                                   mock_connector_properties,
@@ -1262,7 +1262,7 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     def test_restore_backup_with_notify(self, notify):
         """Test normal backup restoration with notifications."""
         vol_size = 1
@@ -1275,8 +1275,8 @@ class BackupTestCase(BaseBackupTest):
         self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
         self.assertEqual(2, notify.call_count)
 
-    @mock.patch('cinder.volume.utils.clone_encryption_key')
-    @mock.patch('cinder.volume.utils.delete_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch(
         'cinder.tests.unit.backup.fake_service.FakeBackupService.restore')
     @mock.patch('cinder.utils.brick_get_connector_properties')
@@ -1308,8 +1308,8 @@ class BackupTestCase(BaseBackupTest):
         mock_clone_encryption_key.assert_not_called()
         mock_delete_encryption_key.assert_not_called()
 
-    @mock.patch('cinder.volume.utils.clone_encryption_key')
-    @mock.patch('cinder.volume.utils.delete_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch(
         'cinder.tests.unit.backup.fake_service.FakeBackupService.restore')
     @mock.patch('cinder.utils.brick_get_connector_properties')
@@ -1369,8 +1369,8 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fake.UUID2, backup.encryption_key_id)
 
-    @mock.patch('cinder.volume.utils.clone_encryption_key')
-    @mock.patch('cinder.volume.utils.delete_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch(
         'cinder.tests.unit.backup.fake_service.FakeBackupService.restore')
     @mock.patch('cinder.utils.brick_get_connector_properties')
@@ -1506,7 +1506,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertGreaterEqual(timeutils.utcnow(), backup.deleted_at)
         self.assertEqual(fields.BackupStatus.DELETED, backup.status)
 
-    @mock.patch('cinder.volume.utils.delete_encryption_key')
+    @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     def test_delete_backup_of_encrypted_volume(self,
                                                mock_delete_encryption_key):
         """Test deletion of backup of encrypted volume"""
@@ -1525,7 +1525,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertTrue(backup.deleted)
         self.assertIsNone(backup.encryption_key_id)
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     def test_delete_backup_with_notify(self, notify):
         """Test normal backup deletion with notifications."""
         vol_id = self._create_volume_db_entry(size=1)

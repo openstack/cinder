@@ -17,7 +17,7 @@ from cinder.common import constants
 from cinder import objects
 from cinder import quota
 from cinder import rpc
-from cinder.volume import utils
+from cinder.volume import volume_utils
 
 
 QUOTAS = quota.QUOTAS
@@ -143,7 +143,7 @@ class VolumeAPI(rpc.RPCAPI):
 
     def _get_cctxt(self, host=None, version=None, **kwargs):
         if host:
-            server = utils.extract_host(host)
+            server = volume_utils.extract_host(host)
 
             # TODO(dulek): If we're pinned before 3.6, we should send stuff the
             # old way - addressing server=host@backend, topic=cinder-volume.
@@ -153,7 +153,7 @@ class VolumeAPI(rpc.RPCAPI):
             if self.client.can_send_version('3.6'):
                 kwargs['topic'] = '%(topic)s.%(host)s' % {'topic': self.TOPIC,
                                                           'host': server}
-                server = utils.extract_host(server, 'host')
+                server = volume_utils.extract_host(server, 'host')
             kwargs['server'] = server
 
         return super(VolumeAPI, self)._get_cctxt(version=version, **kwargs)

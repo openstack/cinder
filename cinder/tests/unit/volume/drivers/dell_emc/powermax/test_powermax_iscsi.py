@@ -25,7 +25,7 @@ from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
     powermax_fake_objects as tpfo)
 from cinder.volume.drivers.dell_emc.powermax import iscsi
 from cinder.volume.drivers.dell_emc.powermax import rest
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 class PowerMaxISCSITest(test.TestCase):

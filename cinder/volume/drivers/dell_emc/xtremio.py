@@ -55,7 +55,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
-from cinder.volume import utils as vutils
+from cinder.volume import volume_utils as vutils
 from cinder.zonemanager import utils as fczm_utils
 
 

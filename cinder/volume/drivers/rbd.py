@@ -43,7 +43,7 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 try:
     import rados

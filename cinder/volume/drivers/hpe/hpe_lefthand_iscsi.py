@@ -51,8 +51,8 @@ from cinder import utils as cinder_utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as utils
 
 import math
 import re

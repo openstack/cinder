@@ -32,8 +32,8 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 import taskflow.engines
 from taskflow.patterns import linear_flow as lf

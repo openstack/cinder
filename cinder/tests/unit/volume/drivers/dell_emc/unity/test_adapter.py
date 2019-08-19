@@ -351,7 +351,7 @@ def patch_dd_copy(copied_lun):
 
 @contextlib.contextmanager
 def patch_copy_volume():
-    with mock.patch('cinder.volume.utils.copy_volume') as mocked:
+    with mock.patch('cinder.volume.volume_utils.copy_volume') as mocked:
         yield mocked
 
 

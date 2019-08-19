@@ -39,8 +39,8 @@ from cinder.volume.drivers.macrosan import config
 from cinder.volume.drivers.macrosan import devop_client
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 version = '1.0.1'

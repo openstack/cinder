@@ -60,7 +60,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
             return_value={})
 
     @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch('cinder.volume.utils.extract_host')
+    @mock.patch('cinder.volume.volume_utils.extract_host')
     @mock.patch('time.time')
     @mock.patch('cinder.objects.Snapshot.get_by_id')
     def test_cast_create_volume_from_resource(self, mock_snapshot_get,
@@ -129,7 +129,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         mock_extract_host.assert_not_called()
 
     @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch('cinder.volume.utils.extract_host')
+    @mock.patch('cinder.volume.volume_utils.extract_host')
     @mock.patch('time.time')
     @mock.patch('cinder.objects.ConsistencyGroup.get_by_id')
     def test_cast_create_volume(self, consistencygroup_get_by_id, mock_time,

@@ -26,7 +26,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.fusionstorage import fs_client
 from cinder.volume.drivers.fusionstorage import fs_conf
 from cinder.volume.drivers.san import san
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

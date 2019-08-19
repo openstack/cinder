@@ -35,7 +35,7 @@ from cinder.policies import volume_transfer as policy
 from cinder import quota
 from cinder import quota_utils
 from cinder.volume import api as volume_api
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 volume_transfer_opts = [

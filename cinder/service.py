@@ -48,7 +48,7 @@ from cinder.objects import base as objects_base
 from cinder.objects import fields
 from cinder import rpc
 from cinder import version
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils
 
 if os.name == 'nt':
     from os_win import utilsfactory as os_win_utilsfactory
@@ -250,7 +250,7 @@ class Service(service.Service):
             target = messaging.Target(
                 topic='%(topic)s.%(host)s' % {'topic': self.topic,
                                               'host': self.host},
-                server=vol_utils.extract_host(self.host, 'host'))
+                server=volume_utils.extract_host(self.host, 'host'))
             self.backend_rpcserver = rpc.get_server(target, endpoints,
                                                     serializer)
             self.backend_rpcserver.start()
@@ -262,7 +262,7 @@ class Service(service.Service):
                       'cluster': self.cluster})
             target = messaging.Target(
                 topic='%s.%s' % (self.topic, self.cluster),
-                server=vol_utils.extract_host(self.cluster, 'host'))
+                server=volume_utils.extract_host(self.cluster, 'host'))
             serializer = objects_base.CinderObjectSerializer(obj_version_cap)
             self.cluster_rpcserver = rpc.get_server(target, endpoints,
                                                     serializer)

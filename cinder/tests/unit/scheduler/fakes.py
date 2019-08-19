@@ -22,7 +22,7 @@ from oslo_utils import uuidutils
 
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
-from cinder.volume import utils
+from cinder.volume import volume_utils as utils
 
 
 UTC_NOW = timeutils.utcnow()

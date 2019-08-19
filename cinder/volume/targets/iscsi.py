@@ -19,7 +19,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume.targets import driver
-from cinder.volume import utils as vutils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -192,8 +192,8 @@ class ISCSITarget(driver.Target):
         # if DNE no big deal, we'll just create it
         chap_auth = self._get_target_chap_auth(context, volume)
         if not chap_auth:
-            chap_auth = (vutils.generate_username(),
-                         vutils.generate_password())
+            chap_auth = (volume_utils.generate_username(),
+                         volume_utils.generate_password())
 
         # Get portals ips and port
         portals_config = self._get_portals_config()
@@ -300,7 +300,8 @@ class ISCSITarget(driver.Target):
     def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
         ip_secondary = ip_secondary or []
         port = self.configuration.target_port
-        portals = map(lambda x: "%s:%s" % (vutils.sanitize_host(x), port),
+        portals = map(lambda x: "%s:%s" % (volume_utils.sanitize_host(x),
+                                           port),
                       [ip] + ip_secondary)
         return ("%(portals)s,%(target)s %(iqn)s %(lun)s"
                 % ({'portals': ";".join(portals),

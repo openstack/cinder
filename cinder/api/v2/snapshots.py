@@ -27,7 +27,7 @@ from cinder.api.schemas import snapshots as snapshot
 from cinder.api import validation
 from cinder.api.views import snapshots as snapshot_views
 from cinder import volume
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)

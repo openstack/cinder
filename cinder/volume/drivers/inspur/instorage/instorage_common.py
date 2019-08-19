@@ -44,8 +44,8 @@ from cinder.volume.drivers.inspur.instorage import (
 from cinder.volume.drivers.inspur.instorage import instorage_const
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 INTERVAL_1_SEC = 1
 DEFAULT_TIMEOUT = 20
@@ -416,7 +416,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         opts = self._get_vdisk_params(
             volume.volume_type_id,
             volume_metadata=volume.get('volume_metadata'))
-        pool = utils.extract_host(volume.host, 'pool')
+        pool = volume_utils.extract_host(volume.host, 'pool')
 
         opts['iogrp'] = self._assistant.select_io_group(self._state, opts)
         self._assistant.create_vdisk(volume.name, six.text_type(volume.size),
@@ -451,7 +451,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         opts = self._get_vdisk_params(
             volume.volume_type_id,
             volume_metadata=volume.get('volume_metadata'))
-        pool = utils.extract_host(volume.host, 'pool')
+        pool = volume_utils.extract_host(volume.host, 'pool')
         self._assistant.create_copy(snapshot.name, volume.name,
                                     snapshot.id, self.configuration,
                                     opts, True, pool=pool)
@@ -495,7 +495,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         opts = self._get_vdisk_params(
             tgt_volume.volume_type_id,
             volume_metadata=tgt_volume.get('volume_metadata'))
-        pool = utils.extract_host(tgt_volume.host, 'pool')
+        pool = volume_utils.extract_host(tgt_volume.host, 'pool')
         self._assistant.create_copy(src_volume.name, tgt_volume.name,
                                     src_volume.id, self.configuration,
                                     opts, True, pool=pool)
@@ -606,7 +606,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
 
     def create_snapshot(self, snapshot):
         source_vol = snapshot.volume
-        pool = utils.extract_host(source_vol.host, 'pool')
+        pool = volume_utils.extract_host(source_vol.host, 'pool')
         opts = self._get_vdisk_params(source_vol.volume_type_id)
         self._assistant.create_copy(snapshot.volume_name, snapshot.name,
                                     snapshot.volume_id, self.configuration,
@@ -757,8 +757,8 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                 elif key in no_copy_keys:
                     vdisk_changes.append(key)
 
-        if (utils.extract_host(volume.host, 'pool') !=
-                utils.extract_host(host['host'], 'pool')):
+        if (volume_utils.extract_host(volume.host, 'pool') !=
+                volume_utils.extract_host(host['host'], 'pool')):
             need_copy = True
 
         # Check if retype affects volume replication
@@ -960,7 +960,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                        {'vdisk_iogrp': vdisk['IO_group_name'],
                         'opt_iogrp': opts['iogrp']})
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
-        pool = utils.extract_host(volume.host, 'pool')
+        pool = volume_utils.extract_host(volume.host, 'pool')
         if vdisk['mdisk_grp_name'] != pool:
             msg = (_("Failed to manage existing volume due to the "
                      "pool of the volume to be managed does not "
@@ -1032,7 +1032,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         """
 
         # now we only support consistent group
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
         LOG.debug("Creating group.")
@@ -1056,7 +1056,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         """
 
         # now we only support consistent group
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
         LOG.debug('Enter: create_group_from_src.')
@@ -1094,7 +1094,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         """
 
         # now we only support consistent group
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
         LOG.debug("Deleting group.")
@@ -1123,7 +1123,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                      remove_volumes=None):
         """Adds or removes volume(s) to/from an existing group."""
 
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
         LOG.debug("Updating group.")
@@ -1134,7 +1134,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         """Creates a cgsnapshot."""
 
         # now we only support consistent group
-        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
 
         # Use cgsnapshot id as cg name
@@ -1156,7 +1156,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         """Deletes a cgsnapshot."""
 
         # now we only support consistent group
-        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
 
         group_snapshot_id = group_snapshot.id
@@ -1896,7 +1896,7 @@ class InStorageAssistant(object):
 
     def add_chap_secret_to_host(self, host_name):
         """Generate and store a randomly-generated CHAP secret for the host."""
-        chap_secret = utils.generate_password()
+        chap_secret = volume_utils.generate_password()
         self.ssh.add_chap_secret(chap_secret, host_name)
         return chap_secret
 
@@ -2700,7 +2700,7 @@ class InStorageAssistant(object):
             for source, target in zip(sources, targets):
                 opts = self.get_vdisk_params(config, state,
                                              source.volume_type_id)
-                pool = utils.extract_host(target.host, 'pool')
+                pool = volume_utils.extract_host(target.host, 'pool')
                 self.create_localcopy_to_consistgrp(source.name,
                                                     target.name,
                                                     lc_group,

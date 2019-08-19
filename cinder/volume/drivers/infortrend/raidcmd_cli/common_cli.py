@@ -30,8 +30,8 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -2612,8 +2612,9 @@ class InfortrendCommon(object):
             }
             manageable_volumes.append(volume)
 
-        return utils.paginate_entries_list(manageable_volumes, marker, limit,
-                                           offset, sort_keys, sort_dirs)
+        return volume_utils.paginate_entries_list(manageable_volumes, marker,
+                                                  limit, offset, sort_keys,
+                                                  sort_dirs)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings existing backend storage object under Cinder management."""
@@ -2699,8 +2700,9 @@ class InfortrendCommon(object):
 
             manageable_snapshots.append(return_si)
 
-        return utils.paginate_entries_list(manageable_snapshots, marker, limit,
-                                           offset, sort_keys, sort_dirs)
+        return volume_utils.paginate_entries_list(manageable_snapshots, marker,
+                                                  limit, offset, sort_keys,
+                                                  sort_dirs)
 
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Cinder management."""

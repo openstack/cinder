@@ -42,7 +42,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import utils as na_utils
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 @ddt.ddt

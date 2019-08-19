@@ -30,7 +30,7 @@ from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.volume import utils as volume_utis
+from cinder.volume import volume_utils
 
 
 def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
@@ -2180,7 +2180,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         sort_keys = mock.Mock()
         sort_dirs = mock.Mock()
 
-        with mock.patch('cinder.volume.utils.paginate_entries_list') as mpage:
+        with mock.patch('cinder.volume.volume_utils.'
+                        'paginate_entries_list') as mpage:
             if is_snapshot:
                 test_func = self.driver.get_manageable_snapshots
             else:
@@ -3645,7 +3646,7 @@ class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
                                    config_ratio,
                                    expected_ratio,
                                    auto):
-        volume_utis.get_max_over_subscription_ratio = mock.Mock(
+        volume_utils.get_max_over_subscription_ratio = mock.Mock(
             return_value=expected_ratio)
         self.mock_config.pure_automatic_max_oversubscription_ratio = auto
         self.mock_config.max_over_subscription_ratio = config_ratio
@@ -3732,7 +3733,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         self.driver.db.group_get = mock.Mock()
 
     @mock.patch(BASE_DRIVER_OBJ + '._add_volume_to_consistency_group')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_add_to_group_if_needed(self, mock_is_cg, mock_add_to_cg):
         mock_is_cg.return_value = False
         volume, vol_name = self.new_fake_vol()
@@ -3746,7 +3747,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         mock_add_to_cg.assert_not_called()
 
     @mock.patch(BASE_DRIVER_OBJ + '._add_volume_to_consistency_group')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_add_to_group_if_needed_with_cg(self, mock_is_cg, mock_add_to_cg):
         mock_is_cg.return_value = True
         volume, vol_name = self.new_fake_vol()
@@ -3762,7 +3763,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
             vol_name
         )
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group(self, mock_is_cg):
         mock_is_cg.return_value = False
         group = fake_group.fake_group_type_obj(None)
@@ -3773,7 +3774,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         )
         mock_is_cg.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group(self, mock_is_cg):
         mock_is_cg.return_value = False
         group = mock.MagicMock()
@@ -3785,7 +3786,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         )
         mock_is_cg.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group(self, mock_is_cg):
         mock_is_cg.return_value = False
         group = mock.MagicMock()
@@ -3796,7 +3797,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         )
         mock_is_cg.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src(self, mock_is_cg):
         mock_is_cg.return_value = False
         group = mock.MagicMock()
@@ -3808,7 +3809,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         )
         mock_is_cg.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot(self, mock_is_cg):
         mock_is_cg.return_value = False
         group_snapshot = mock.MagicMock()
@@ -3820,7 +3821,7 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
         )
         mock_is_cg.assert_called_once_with(group_snapshot)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snapshot(self, mock_is_cg):
         mock_is_cg.return_value = False
         group_snapshot = mock.MagicMock()

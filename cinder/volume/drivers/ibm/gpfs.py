@@ -40,7 +40,7 @@ from cinder.volume import driver
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.san import san
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 GPFS_CLONE_MIN_RELEASE = 1200
 GPFS_ENC_MIN_RELEASE = 1404

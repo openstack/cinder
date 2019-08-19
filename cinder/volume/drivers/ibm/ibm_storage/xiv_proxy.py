@@ -42,8 +42,8 @@ from cinder.volume.drivers.ibm.ibm_storage import strings
 from cinder.volume.drivers.ibm.ibm_storage import xiv_replication as repl
 from cinder.volume import group_types
 from cinder.volume import qos_specs
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as utils
 
 
 OPENSTACK_PRODUCT_NAME = "OpenStack"

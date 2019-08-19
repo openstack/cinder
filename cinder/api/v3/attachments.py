@@ -29,7 +29,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder.policies import attachments as attachment_policy
 from cinder.volume import api as volume_api
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)

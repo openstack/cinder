@@ -36,7 +36,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder import volume
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF

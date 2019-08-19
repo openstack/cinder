@@ -2129,7 +2129,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             get.assert_called_once_with(name)
             self.assertEqual('model', result)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_cg(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = True
@@ -2139,7 +2139,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                          {'status': fields.GroupStatus.AVAILABLE})
         group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snap_cg(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = True
@@ -2154,7 +2154,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             _del_mock.assert_called_once_with(self.ctxt, cgsnapshot, snapshots)
             self.assertEqual({}, model_update)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snap(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = False
@@ -2169,7 +2169,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                               self.ctxt, cgsnapshot, snapshots)
             _del_mock.assert_not_called()
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_rainy(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = False
@@ -2179,7 +2179,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                           self.ctxt, group)
         group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_rainy(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = False
@@ -2190,7 +2190,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                           self.ctxt, group, volumes)
         group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_cg(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = True
@@ -2206,7 +2206,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual(ret, result)
             group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot_rainy(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = False
@@ -2219,7 +2219,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                           snapshots)
         group_cg_test.assert_called_once_with(group_snapshot)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = True
@@ -2235,7 +2235,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual(ret, result)
         group_cg_test.assert_called_once_with(group_snapshot)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_rainy(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = False
@@ -2248,7 +2248,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                           volumes)
         group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = True
@@ -2264,7 +2264,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual(ret, result)
         group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group_rainy(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = False
@@ -2275,7 +2275,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                           group)
         group_cg_test.assert_called_once_with(group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group(self, group_cg_test):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         group_cg_test.return_value = True

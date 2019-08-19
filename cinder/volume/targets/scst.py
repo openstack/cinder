@@ -17,7 +17,7 @@ from cinder import exception
 from cinder.i18n import _
 import cinder.privsep.targets.scst
 from cinder.volume.targets import iscsi
-from cinder.volume import utils as vutils
+from cinder.volume import volume_utils as vutils
 
 LOG = logging.getLogger(__name__)
 

@@ -30,8 +30,8 @@ from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import lvm
-import cinder.volume.utils
-from cinder.volume import utils as volutils
+import cinder.volume.volume_utils
+from cinder.volume import volume_utils as volutils
 
 CONF = cfg.CONF
 
@@ -244,7 +244,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                                    snapshot_ref)
             mock_extend.assert_called_with(dst_volume, dst_volume['size'])
 
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+    @mock.patch.object(cinder.volume.volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
@@ -266,7 +266,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
         self.assertEqual('thin', lvm_driver.configuration.lvm_type)
 
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+    @mock.patch.object(cinder.volume.volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     @mock.patch.object(cinder.brick.local_dev.lvm.LVM, 'get_volumes',
                        return_value=[])
@@ -290,7 +290,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
         self.assertEqual('thin', lvm_driver.configuration.lvm_type)
 
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+    @mock.patch.object(cinder.volume.volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lv_info')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.activate_lv')
@@ -310,7 +310,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
         self.assertEqual('default', lvm_driver.configuration.lvm_type)
 
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+    @mock.patch.object(cinder.volume.volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lv_info')
     @mock.patch('cinder.brick.local_dev.lvm.LVM.activate_lv')

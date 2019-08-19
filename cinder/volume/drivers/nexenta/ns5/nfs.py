@@ -32,7 +32,7 @@ from cinder.privsep import fs
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers import nfs
-from cinder.volume import utils
+from cinder.volume import volume_utils as utils
 
 LOG = logging.getLogger(__name__)
 

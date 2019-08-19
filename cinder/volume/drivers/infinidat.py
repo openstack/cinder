@@ -35,8 +35,8 @@ from cinder import utils
 from cinder import version
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 from cinder.zonemanager import utils as fczm_utils
 
 try:

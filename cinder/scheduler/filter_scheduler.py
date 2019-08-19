@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
-from cinder.volume import utils
+from cinder.volume import volume_utils as utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
