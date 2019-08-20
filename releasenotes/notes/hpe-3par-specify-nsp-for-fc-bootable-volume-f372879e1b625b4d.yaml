@@ -1,8 +1,0 @@
----
-fixes:
-  - |
-    This change fixes bug 1809249 - 3PAR driver picks wrong port when
-    not in multipath mode. Now the user can specify target NSP (Node-
-    Slot-Port) in cinder.conf. This information is used to create
-    initiator target map accordingly. And then bootable volume is
-    created successfully.
