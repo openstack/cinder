@@ -1,6 +1,6 @@
 #    Copyright 2014 Objectif Libre
 #    Copyright 2015 Dot Hill Systems Corp.
-#    Copyright 2016 Seagate Technology or one of its affiliates
+#    Copyright 2016-2019 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,12 +16,12 @@
 #
 
 from cinder import interface
-from cinder.volume.drivers.dothill import dothill_fc
-from cinder.volume.drivers.lenovo import lenovo_common
+import cinder.volume.drivers.lenovo.lenovo_common as lenovo_common
+import cinder.volume.drivers.stx.fc as fc
 
 
 @interface.volumedriver
-class LenovoFCDriver(dothill_fc.DotHillFCDriver):
+class LenovoFCDriver(fc.STXFCDriver):
     """OpenStack Fibre Channel cinder drivers for Lenovo Storage arrays.
 
     .. code-block:: default
@@ -30,10 +30,10 @@ class LenovoFCDriver(dothill_fc.DotHillFCDriver):
           1.0    - Inheriting from DotHill cinder drivers.
           1.6    - Add management path redundancy and reduce load placed
                    on management controller.
-
+          2.0    - DotHill driver renamed to Seagate (STX)
     """
 
-    VERSION = "1.6"
+    VERSION = "2.0"
 
     SUPPORTED = True
 

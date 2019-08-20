@@ -149,6 +149,8 @@ from cinder.volume.drivers.san import san as cinder_volume_drivers_san_san
 from cinder.volume.drivers import sheepdog as cinder_volume_drivers_sheepdog
 from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
 from cinder.volume.drivers import storpool as cinder_volume_drivers_storpool
+from cinder.volume.drivers.stx import common as \
+    cinder_volume_drivers_stx_common
 from cinder.volume.drivers.synology import synology_common as \
     cinder_volume_drivers_synology_synologycommon
 from cinder.volume.drivers.veritas_access import veritas_iscsi as \
@@ -357,6 +359,8 @@ def list_opts():
                 cinder_volume_drivers_san_san.san_opts,
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
                 cinder_volume_drivers_solidfire.sf_opts,
+                cinder_volume_drivers_stx_common.common_opts,
+                cinder_volume_drivers_stx_common.iscsi_opts,
                 cinder_volume_drivers_synology_synologycommon.cinder_opts,
                 cinder_volume_drivers_vmware_vmdk.vmdk_opts,
                 cinder_volume_drivers_vzstorage.vzstorage_opts,

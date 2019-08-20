@@ -44,9 +44,10 @@ Supported operations
 Configuring the array
 ~~~~~~~~~~~~~~~~~~~~~
 
-#. Verify that the array can be managed using an HTTPS connection. HTTP can
-   also be used if ``lenovo_api_protocol=http`` is placed into the
-   appropriate sections of the ``cinder.conf`` file.
+#. Verify that the array can be managed using an HTTPS connection. HTTP
+   can also be used if ``hpmsa_api_protocol=http`` is placed into the
+   appropriate sections of the ``cinder.conf`` file, but this option is
+   deprecated and will be removed in a future release.
 
    Confirm that virtual pools A and B are present if you plan to use
    virtual pools for OpenStack storage.
@@ -56,21 +57,26 @@ Configuring the array
    entry consists of a unique section name, surrounded by square brackets,
    followed by options specified in ``key=value`` format.
 
-   -  The ``lenovo_backend_name`` value specifies the name of the storage
+   -  The ``lenovo_pool_name`` value specifies the name of the storage
       pool on the array.
 
    -  The ``volume_backend_name`` option value can be a unique value, if
       you wish to be able to assign volumes to a specific storage pool on
-      the array, or a name that's shared among multiple storage pools to
+      the array, or a name that is shared among multiple storage pools to
       let the volume scheduler choose where new volumes are allocated.
 
    -  The rest of the options will be repeated for each storage pool in a
-      given array: ``volume_driver`` specifies the Cinder driver name;
-      ``san_ip`` specifies the IP addresses or host names of the array's
-      management controllers; ``san_login`` and ``san_password`` specify
-      the username and password of an array user account with ``manage``
-      privileges; and ``lenovo_iscsi_ips`` specfies the iSCSI IP
-      addresses for the array if using the iSCSI transport protocol.
+      given array:
+
+      * ``volume_driver`` specifies the Cinder driver name.
+      * ``san_ip`` specifies the IP addresses or host names of the array's
+        management controllers.
+      * ``san_login`` and ``san_password`` specify the username and password
+        of an array user account with ``manage`` privileges.
+      * ``driver_use_ssl`` should be set to ``true`` to enable use of the
+        HTTPS protocol.
+      * ``lenovo_iscsi_ips`` specfies the iSCSI IP addresses for the array
+        if using the iSCSI transport protocol.
 
    In the examples below, two back ends are defined, one for pool A and one
    for pool B, and a common ``volume_backend_name`` is used so that a
@@ -82,49 +88,53 @@ Configuring the array
    .. code-block:: ini
 
       [pool-a]
-      lenovo_backend_name = A
+      lenovo_pool_name = A
       volume_backend_name = lenovo-array
       volume_driver = cinder.volume.drivers.lenovo.lenovo_iscsi.LenovoISCSIDriver
       san_ip = 10.1.2.3
       san_login = manage
       san_password = !manage
       lenovo_iscsi_ips = 10.2.3.4,10.2.3.5
+      driver_use_ssl = true
 
       [pool-b]
-      lenovo_backend_name = B
+      lenovo_pool_name = B
       volume_backend_name = lenovo-array
       volume_driver = cinder.volume.drivers.lenovo.lenovo_iscsi.LenovoISCSIDriver
       san_ip = 10.1.2.3
       san_login = manage
       san_password = !manage
       lenovo_iscsi_ips = 10.2.3.4,10.2.3.5
+      driver_use_ssl = true
 
    **Example: Fibre Channel example back-end entries**
 
    .. code-block:: ini
 
       [pool-a]
-      lenovo_backend_name = A
+      lenovo_pool_name = A
       volume_backend_name = lenovo-array
       volume_driver = cinder.volume.drivers.lenovo.lenovo_fc.LenovoFCDriver
       san_ip = 10.1.2.3
       san_login = manage
       san_password = !manage
+      driver_use_ssl = true
 
       [pool-b]
-      lenovo_backend_name = B
+      lenovo_pool_name = B
       volume_backend_name = lenovo-array
       volume_driver = cinder.volume.drivers.lenovo.lenovo_fc.LenovoFCDriver
       san_ip = 10.1.2.3
       san_login = manage
       san_password = !manage
+      driver_use_ssl = true
 
-#. If HTTPS is not enabled in the array, include
+#. If HTTPS is not enabled in the array, add
    ``lenovo_api_protocol = http`` in each of the back-end definitions.
 
 #. If HTTPS is enabled, you can enable certificate verification with the
-   option ``lenovo_verify_certificate=True``. You may also use the
-   ``lenovo_verify_certificate_path`` parameter to specify the path to a
+   option ``driver_ssl_cert_verify = True``. You may also use the
+   ``driver_ssl_cert_path`` option to specify the path to a
    CA_BUNDLE file containing CAs other than those in the default list.
 
 #. Modify the ``[DEFAULT]`` section of the ``cinder.conf`` file to add an

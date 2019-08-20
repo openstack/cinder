@@ -1,6 +1,6 @@
 #    Copyright 2014 Objectif Libre
 #    Copyright 2015 Dot Hill Systems Corp.
-#    Copyright 2016 Seagate Technology or one of its affiliates
+#    Copyright 2016-2019 Seagate Technology or one of its affiliates
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,12 +16,12 @@
 #
 
 from cinder import interface
-from cinder.volume.drivers.dothill import dothill_fc
-from cinder.volume.drivers.san.hp import hpmsa_common
+import cinder.volume.drivers.san.hp.hpmsa_common as hpmsa_common
+import cinder.volume.drivers.stx.fc as fc
 
 
 @interface.volumedriver
-class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
+class HPMSAFCDriver(fc.STXFCDriver):
     """OpenStack Fibre Channel cinder drivers for HPMSA arrays.
 
     .. code-block:: default
@@ -30,12 +30,12 @@ class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
           1.0    - Inheriting from DotHill cinder drivers.
           1.6    - Add management path redundancy and reduce load placed
                    on management controller.
-
+          2.0    - DotHill driver renamed to Seagate (STX)
     """
 
-    VERSION = "1.6"
+    VERSION = "2.0"
 
-    CI_WIKI_NAME = "Vedams-HPMSA_FCISCSIDriver_CI"
+    CI_WIKI_NAME = "HPMSA_CI"
 
     SUPPORTED = True
 

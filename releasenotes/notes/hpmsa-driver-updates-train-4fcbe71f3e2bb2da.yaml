@@ -1,0 +1,29 @@
+---
+upgrade:
+  - |
+    The HPE MSA driver options ``hpmsa_backend_name`` and ``hpmsa_backend_type``
+    options were deprecated in favor of ``hpmsa_pool_name`` and
+    ``hpmsa_pool_type`` to avoid confusion, and the
+    ``hpmsa_api_protocol``, ``hpmsa_verify_certificate``, and
+    ``hpmsa_verify_certificate_path`` options were deprecated in favor of
+    the standard ``driver_use_ssl``, ``driver_ssl_cert_verify``, and
+    ``driver_ssl_cert_path`` options.  To retain the default behavior, add
+    ``driver_use_ssl = true`` to back-end entries in ``cinder.conf``
+    before the deprecated options are removed in a future release.
+
+deprecations:
+  - |
+    The HPE MSA driver options ``hpmsa_backend_name`` and ``hpmsa_backend_type``
+    options were deprecated in favor of ``hpmsa_pool_name`` and
+    ``hpmsa_pool_type`` to avoid confusion, and the
+    ``hpmsa_api_protocol``, ``hpmsa_verify_certificate``, and
+    ``hpmsa_verify_certificate_path`` options were deprecated in favor of
+    the standard ``driver_use_ssl``, ``driver_ssl_cert_verify``, and
+    ``driver_ssl_cert_path`` options.  To retain the default behavior, add
+    ``driver_use_ssl = true`` to back-end entries in ``cinder.conf``
+    before the deprecated options are removed in a future release.
+
+fixes:
+  - |
+    Fixed HPE MSA driver issue where a multi-attached volume could be
+    unmapped while still in use.
