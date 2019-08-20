@@ -380,9 +380,9 @@ class PowerMaxUtils(object):
         :returns: boolean
         """
         do_disable_compression = False
-        if DISABLECOMPRESSION in extra_specs:
-            if strutils.bool_from_string(extra_specs[DISABLECOMPRESSION]):
-                do_disable_compression = True
+        if (DISABLECOMPRESSION in extra_specs and strutils.bool_from_string(
+                extra_specs[DISABLECOMPRESSION])) or not extra_specs.get(SLO):
+            do_disable_compression = True
         return do_disable_compression
 
     def change_compression_type(self, is_source_compr_disabled, new_type):
@@ -970,3 +970,18 @@ class PowerMaxUtils(object):
                     'cylinder_target': cylinder_target})
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
+
+    @staticmethod
+    def get_service_level_workload(extra_specs):
+        """Get the service level and workload combination from extra specs.
+
+        :param extra_specs: extra specifications
+        :return: string, string
+        """
+        service_level, workload = 'None', 'None'
+        if extra_specs.get(SLO):
+            service_level = extra_specs.get(SLO)
+            if (extra_specs.get(WORKLOAD)
+                    and 'NONE' not in extra_specs.get(WORKLOAD)):
+                workload = extra_specs.get(WORKLOAD)
+        return service_level, workload

@@ -215,10 +215,17 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertEqual(pg2, pg3)
 
     def test_is_compression_disabled_true(self):
+        # Compression disabled in extra specs
         extra_specs = self.data.extra_specs_disable_compression
         do_disable_compression = self.utils.is_compression_disabled(
             extra_specs)
         self.assertTrue(do_disable_compression)
+        # Compression disabled by no SL/WL combination
+        extra_specs2 = self.data.extra_specs
+        extra_specs2[utils.SLO] = None
+        do_disable_compression2 = self.utils.is_compression_disabled(
+            extra_specs2)
+        self.assertTrue(do_disable_compression2)
 
     def test_is_compression_disabled_false(self):
         # Path 1: no compression extra spec set
@@ -560,3 +567,22 @@ class PowerMaxUtilsTest(test.TestCase):
         act_model_update_no_meta = self.utils.get_grp_volume_model_update(
             volume, volume_dict, group_id)
         self.assertEqual(ref_model_update_no_meta, act_model_update_no_meta)
+
+    def test_get_service_level_workload(self):
+        # Service Level set to None
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.SLO] = None
+        sl_1, wl_1 = self.utils.get_service_level_workload(extra_specs)
+        self.assertEqual('None', sl_1)
+        self.assertEqual('None', wl_1)
+        # Service Level set to None and Workload set
+        extra_specs[utils.WORKLOAD] = 'DSS'
+        sl_2, wl_2 = self.utils.get_service_level_workload(extra_specs)
+        self.assertEqual('None', sl_2)
+        self.assertEqual('None', wl_2)
+        # Service Level and Workload both set
+        extra_specs[utils.SLO] = 'Diamond'
+        extra_specs[utils.WORKLOAD] = 'DSS'
+        sl_3, wl_3 = self.utils.get_service_level_workload(extra_specs)
+        self.assertEqual('Diamond', sl_3)
+        self.assertEqual('DSS', wl_3)
