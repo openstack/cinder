@@ -302,7 +302,8 @@ class ISCSITarget(driver.Target):
     def _iscsi_location(self, ip, target, iqn, lun=None, ip_secondary=None):
         ip_secondary = ip_secondary or []
         port = self.configuration.target_port
-        portals = map(lambda x: "%s:%s" % (x, port), [ip] + ip_secondary)
+        portals = map(lambda x: "%s:%s" % (vutils.sanitize_host(x), port),
+                      [ip] + ip_secondary)
         return ("%(portals)s,%(target)s %(iqn)s %(lun)s"
                 % ({'portals': ";".join(portals),
                     'target': target, 'iqn': iqn, 'lun': lun}))
