@@ -231,7 +231,8 @@ class SCSTAdm(iscsi.ISCSITarget):
         return tid
 
     def _iscsi_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (ip, self.configuration.target_port,
+        return "%s:%s,%s %s %s" % (vutils.sanitize_host(ip),
+                                   self.configuration.target_port,
                                    target, iqn, lun)
 
     def _get_iscsi_name(self, volume):

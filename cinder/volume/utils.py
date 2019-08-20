@@ -38,6 +38,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -1205,3 +1206,10 @@ def check_encryption_provider(db, volume, context):
         raise exception.VolumeDriverException(message=msg)
 
     return encryption
+
+
+def sanitize_host(host):
+    """Ensure IPv6 addresses are enclosed in [] for iSCSI portals."""
+    if netutils.is_valid_ipv6(host):
+        return '[%s]' % host
+    return host

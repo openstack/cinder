@@ -231,3 +231,16 @@ class TestSCSTAdmDriver(tf.TargetDriverFixture):
                 'iqn.2010-10.org.openstack:testvol',
                 'ed2c2222-5fc0-11e4-aa15-123b93f75cba',
                 0, 1, self.fake_volumes_dir, None)
+
+    def test_iscsi_location(self):
+        location = self.target._iscsi_location('portal', 1, 'target', 2)
+        self.assertEqual('portal:3260,1 target 2', location)
+
+    def test_iscsi_location_IPv6(self):
+        ip = 'fd00:fd00:fd00:3000::12'
+        location = self.target._iscsi_location(ip, 1, 'target', 2)
+        self.assertEqual('[%s]:3260,1 target 2' % ip, location)
+
+        ip = '[' + ip + ']'
+        location = self.target._iscsi_location(ip, 1, 'target', 2)
+        self.assertEqual(ip + ':3260,1 target 2', location)
