@@ -102,6 +102,7 @@ class TestNexentaNfsDriver(test.TestCase):
         get_filesystem.return_value = {
             'mountPoint': '/path/to/volume',
             'nonBlockingMandatoryMode': False,
+            'smartCompression': False,
             'isMounted': True
         }
         get_service.return_value = {
@@ -112,18 +113,59 @@ class TestNexentaNfsDriver(test.TestCase):
         }
         self.assertIsNone(self.drv.check_for_setup_error())
         get_filesystem.assert_called_with(self.drv.root_path)
+        set_filesystem.assert_not_called()
         get_service.assert_called_with('nfs')
         get_nfs.assert_called_with(self.drv.root_path)
         get_filesystem.return_value = {
             'mountPoint': '/path/to/volume',
             'nonBlockingMandatoryMode': True,
+            'smartCompression': True,
             'isMounted': True
         }
         set_filesystem.return_value = {}
+        payload = {
+            'nonBlockingMandatoryMode': False,
+            'smartCompression': False
+        }
         self.assertIsNone(self.drv.check_for_setup_error())
+        get_filesystem.assert_called_with(self.drv.root_path)
+        set_filesystem.assert_called_with(self.drv.root_path, payload)
+        get_service.assert_called_with('nfs')
+        get_nfs.assert_called_with(self.drv.root_path)
+        get_filesystem.return_value = {
+            'mountPoint': '/path/to/volume',
+            'nonBlockingMandatoryMode': False,
+            'smartCompression': True,
+            'isMounted': True
+        }
+        payload = {
+            'smartCompression': False
+        }
+        set_filesystem.return_value = {}
+        self.assertIsNone(self.drv.check_for_setup_error())
+        get_filesystem.assert_called_with(self.drv.root_path)
+        set_filesystem.assert_called_with(self.drv.root_path, payload)
+        get_service.assert_called_with('nfs')
+        get_nfs.assert_called_with(self.drv.root_path)
+        get_filesystem.return_value = {
+            'mountPoint': '/path/to/volume',
+            'nonBlockingMandatoryMode': True,
+            'smartCompression': False,
+            'isMounted': True
+        }
+        payload = {
+            'nonBlockingMandatoryMode': False
+        }
+        set_filesystem.return_value = {}
+        self.assertIsNone(self.drv.check_for_setup_error())
+        get_filesystem.assert_called_with(self.drv.root_path)
+        set_filesystem.assert_called_with(self.drv.root_path, payload)
+        get_service.assert_called_with('nfs')
+        get_nfs.assert_called_with(self.drv.root_path)
         get_filesystem.return_value = {
             'mountPoint': 'none',
             'nonBlockingMandatoryMode': False,
+            'smartCompression': False,
             'isMounted': False
         }
         self.assertRaises(jsonrpc.NefException,
@@ -131,6 +173,7 @@ class TestNexentaNfsDriver(test.TestCase):
         get_filesystem.return_value = {
             'mountPoint': '/path/to/volume',
             'nonBlockingMandatoryMode': False,
+            'smartCompression': False,
             'isMounted': False
         }
         self.assertRaises(jsonrpc.NefException,
