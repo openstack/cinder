@@ -58,6 +58,14 @@ class VolumeTypesSampleJsonTest(api_samples_test_base.ApiSampleTestBase):
         self._verify_response('volume-type-show-response',
                               self.subs, response, 200)
 
+    def test_volume_type_update(self):
+        res = self._volume_type_create()
+        res = jsonutils.loads(res.content)['volume_type']
+        response = self._do_put(
+            'types/%s' % res['id'], 'volume-type-update-request', self.subs)
+        self._verify_response('volume-type-update-response',
+                              self.subs, response, 200)
+
     def test_volume_type_extra_spec_create_update(self):
 
         res = self._volume_type_create()
