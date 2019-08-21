@@ -723,8 +723,10 @@ class TestTemporaryDir(test.TestCase):
 
 @ddt.ddt
 class TestUploadVolume(test.TestCase):
-    @ddt.data((mock.sentinel.disk_format, mock.sentinel.disk_format),
-              ('ploop', 'parallels'))
+    @ddt.data((mock.sentinel.disk_format, mock.sentinel.disk_format, True),
+              (mock.sentinel.disk_format, mock.sentinel.disk_format, False),
+              ('ploop', 'parallels', True),
+              ('ploop', 'parallels', False))
     @mock.patch('eventlet.tpool.Proxy')
     @mock.patch('cinder.image.image_utils.CONF')
     @mock.patch('six.moves.builtins.open')
@@ -734,7 +736,7 @@ class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.os')
     def test_diff_format(self, image_format, mock_os, mock_temp, mock_convert,
                          mock_info, mock_open, mock_conf, mock_proxy):
-        input_format, output_format = image_format
+        input_format, output_format, do_compress = image_format
         ctxt = mock.sentinel.context
         image_service = mock.Mock()
         image_meta = {'id': 'test_id',
@@ -747,14 +749,14 @@ class TestUploadVolume(test.TestCase):
         temp_file = mock_temp.return_value.__enter__.return_value
 
         output = image_utils.upload_volume(ctxt, image_service, image_meta,
-                                           volume_path, compress=True)
+                                           volume_path, compress=do_compress)
 
         self.assertIsNone(output)
         mock_convert.assert_called_once_with(volume_path,
                                              temp_file,
                                              output_format,
                                              run_as_root=True,
-                                             compress=True)
+                                             compress=do_compress)
         mock_info.assert_called_with(temp_file, run_as_root=True)
         self.assertEqual(2, mock_info.call_count)
         mock_open.assert_called_once_with(temp_file, 'rb')
