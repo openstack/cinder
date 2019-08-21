@@ -84,13 +84,20 @@ class RSDClient(object):
             raise exception.VolumeBackendAPIException(
                 data=_("initialize: Cannot connect to RSD PODM."))
 
-        rsd_lib_version = version.LooseVersion(rsdlib._rsd_api_version)
-        if rsd_lib_version < version.LooseVersion("2.4.0"):
+        rsd_api_version = version.LooseVersion(rsdlib._rsd_api_version)
+        if rsd_api_version < version.LooseVersion("2.4.0"):
             raise exception.VolumeBackendAPIException(
-                data=(_("initialize: Unsupported rsd_lib version: "
+                data=(_("initialize: Unsupported rsd_api version: "
                         "%(current)s < %(expected)s.")
                       % {'current': rsdlib._rsd_api_version,
                          'expected': "2.4.0"}))
+
+        if rsdlib._redfish_version < version.LooseVersion("1.1.0"):
+            raise exception.VolumeBackendAPIException(
+                data=(_("initialize: Unsupported rsd_lib version: "
+                        "%(current)s < %(expected)s.")
+                      % {'current': rsdlib._redfish_version,
+                         'expected': "1.1.0"}))
 
         LOG.info("initialize: Connected to %s at version %s.",
                  url, rsdlib._rsd_api_version)
@@ -137,7 +144,8 @@ class RSDClient(object):
                 detail=(_("Volume %(vol)s has %(len_pp)d providing_pools!")
                         % {'vol': volume.path,
                            'len_pp': len_pp}))
-        return volume.capacity_sources[0].providing_pools[0]
+        providing_pool = volume.capacity_sources[0].providing_pools[0]
+        return providing_pool.get_members()[0].path
 
     def _create_vol_or_snap(self,
                             storage,

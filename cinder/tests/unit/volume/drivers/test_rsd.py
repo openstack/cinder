@@ -79,6 +79,7 @@ class RSDClientTestCase(test.TestCase):
         super(RSDClientTestCase, self).setUp()
         self.mock_rsd_lib = mock.Mock()
         self.mock_rsd_lib._rsd_api_version = "2.4.0"
+        self.mock_rsd_lib._redfish_version = "1.1.0"
         self.mock_rsd_lib_factory = mock.MagicMock(
             return_value=self.mock_rsd_lib)
         fake_RSDLib.factory = self.mock_rsd_lib_factory
@@ -120,15 +121,29 @@ class RSDClientTestCase(test.TestCase):
                                                      verify=True)
         self.assertTrue(isinstance(rsd_client, rsd_driver.RSDClient))
 
-    def test_initialize_incorrect_version(self):
+    def test_initialize_rsd_api_incorrect_version(self):
         self.mock_rsd_lib._rsd_api_version = "2.3.0"
         rsd_client_init = rsd_driver.RSDClient.initialize
         self.assertRaises(exception.VolumeBackendAPIException,
                           rsd_client_init, MOCK_URL, MOCK_USER,
                           MOCK_PASSWORD, False)
 
-    def test_initialize_higher_version(self):
+    def test_initialize_rsd_api_higher_version(self):
         self.mock_rsd_lib._rsd_api_version = "2.5.0"
+        rsd_client = rsd_driver.RSDClient.initialize(MOCK_URL, MOCK_USER,
+                                                     MOCK_PASSWORD,
+                                                     verify=True)
+        self.assertTrue(isinstance(rsd_client, rsd_driver.RSDClient))
+
+    def test_initialize_rsd_lib_incorrect_version(self):
+        self.mock_rsd_lib._redfish_version = "1.0.0"
+        rsd_client_init = rsd_driver.RSDClient.initialize
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          rsd_client_init, MOCK_URL, MOCK_USER,
+                          MOCK_PASSWORD, False)
+
+    def test_initialize_rsd_lib_higher_version(self):
+        self.mock_rsd_lib._redfish_version = "1.5.0"
         rsd_client = rsd_driver.RSDClient.initialize(MOCK_URL, MOCK_USER,
                                                      MOCK_PASSWORD,
                                                      verify=True)
@@ -207,14 +222,18 @@ class RSDClientTestCase(test.TestCase):
         mock_stor_serv.volumes.get_member.assert_called_with(self.resource_url)
 
     def test_get_providing_pool(self):
+        mock_providing_pool_collection = mock.Mock()
+        mock_providing_pool_collection.path = mock.Mock()
+        mock_providing_pool = mock.Mock()
+        mock_providing_pool.get_members = mock.Mock(
+            return_value=[mock_providing_pool_collection])
         mock_volume = mock.Mock()
         mock_volume.capacity_sources = [mock.Mock()]
-        mock_volume.capacity_sources[0].providing_pools = [mock.Mock()]
+        mock_volume.capacity_sources[0].providing_pools = [mock_providing_pool]
 
         provider_pool = self.rsd_client._get_providing_pool(mock_volume)
 
-        self.assertEqual(mock_volume.capacity_sources[0].providing_pools[0],
-                         provider_pool)
+        self.assertEqual(mock_providing_pool_collection.path, provider_pool)
 
     def test_get_providing_pool_no_capacity(self):
         mock_volume = mock.Mock()
