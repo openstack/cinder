@@ -28,6 +28,7 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import ssh_utils
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -162,7 +163,8 @@ class MStorageISMCLI(object):
                     break
             LOG.debug('`%(command)s` done. status=%(status)d.',
                       {'command': command, 'status': status})
-            out, err = ''.join(_out), ''.join(_err)
+            out = self._join_and_convert_str(_out)
+            err = self._join_and_convert_str(_err)
             if expected_status is not None and status not in expected_status:
                 LOG.debug('`%(command)s` failed. status=%(status)d, '
                           'out="%(out)s", err="%(err)s".',
@@ -670,6 +672,14 @@ class MStorageISMCLI(object):
                % {'poolnumber': poolnumber,
                   'cvnumber': cvnumber})
         self._execute(cmd)
+
+    def _join_and_convert_str(self, src_list):
+        if len(src_list) == 0:
+            return ''
+        if isinstance(src_list[0], bytes):
+            return utils.convert_str(b''.join(src_list))
+        else:
+            return ''.join(src_list)
 
 
 class UnpairWait(object):
