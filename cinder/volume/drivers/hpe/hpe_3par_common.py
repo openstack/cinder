@@ -289,11 +289,12 @@ class HPE3PARCommon(object):
         4.0.12 - Added multiattach support
         4.0.13 - Fixed detaching issue for volume with type multiattach
                  enabled. bug #1834660
+        4.0.14 - Added Peer Persistence feature
 
 
     """
 
-    VERSION = "4.0.13"
+    VERSION = "4.0.14"
 
     stats = {}
 
@@ -1374,8 +1375,8 @@ class HPE3PARCommon(object):
         capacity = int(math.ceil(capacity / units.Mi))
         return capacity
 
-    def _delete_3par_host(self, hostname):
-        self.client.deleteHost(hostname)
+    def _delete_3par_host(self, hostname, client_obj):
+        client_obj.deleteHost(hostname)
 
     def _get_prioritized_host_on_3par(self, host, hosts, hostname):
         # Check whether host with wwn/iqn of initiator present on 3par
@@ -1396,7 +1397,8 @@ class HPE3PARCommon(object):
 
         return host, hostname
 
-    def _create_3par_vlun(self, volume, hostname, nsp, lun_id=None):
+    def _create_3par_vlun(self, volume, hostname, nsp, lun_id=None,
+                          remote_client=None):
         try:
             location = None
             auto = True
@@ -1404,14 +1406,19 @@ class HPE3PARCommon(object):
             if lun_id is not None:
                 auto = False
 
+            if remote_client:
+                client_obj = remote_client
+            else:
+                client_obj = self.client
+
             if nsp is None:
-                location = self.client.createVLUN(volume, hostname=hostname,
-                                                  auto=auto, lun=lun_id)
+                location = client_obj.createVLUN(volume, hostname=hostname,
+                                                 auto=auto, lun=lun_id)
             else:
                 port = self.build_portPos(nsp)
-                location = self.client.createVLUN(volume, hostname=hostname,
-                                                  auto=auto, portPos=port,
-                                                  lun=lun_id)
+                location = client_obj.createVLUN(volume, hostname=hostname,
+                                                 auto=auto, portPos=port,
+                                                 lun=lun_id)
 
             vlun_info = None
             if location:
@@ -1454,33 +1461,49 @@ class HPE3PARCommon(object):
     def get_ports(self):
         return self.client.getPorts()
 
-    def get_active_target_ports(self):
-        ports = self.get_ports()
+    def get_active_target_ports(self, remote_client=None):
+        if remote_client:
+            client_obj = remote_client
+            ports = remote_client.getPorts()
+        else:
+            client_obj = self.client
+            ports = self.get_ports()
+
         target_ports = []
         for port in ports['members']:
             if (
-                port['mode'] == self.client.PORT_MODE_TARGET and
-                port['linkState'] == self.client.PORT_STATE_READY
+                port['mode'] == client_obj.PORT_MODE_TARGET and
+                port['linkState'] == client_obj.PORT_STATE_READY
             ):
                 port['nsp'] = self.build_nsp(port['portPos'])
                 target_ports.append(port)
 
         return target_ports
 
-    def get_active_fc_target_ports(self):
-        ports = self.get_active_target_ports()
+    def get_active_fc_target_ports(self, remote_client=None):
+        ports = self.get_active_target_ports(remote_client)
+        if remote_client:
+            client_obj = remote_client
+        else:
+            client_obj = self.client
+
         fc_ports = []
         for port in ports:
-            if port['protocol'] == self.client.PORT_PROTO_FC:
+            if port['protocol'] == client_obj.PORT_PROTO_FC:
                 fc_ports.append(port)
 
         return fc_ports
 
-    def get_active_iscsi_target_ports(self):
-        ports = self.get_active_target_ports()
+    def get_active_iscsi_target_ports(self, remote_client=None):
+        ports = self.get_active_target_ports(remote_client)
+        if remote_client:
+            client_obj = remote_client
+        else:
+            client_obj = self.client
+
         iscsi_ports = []
         for port in ports:
-            if port['protocol'] == self.client.PORT_PROTO_ISCSI:
+            if port['protocol'] == client_obj.PORT_PROTO_ISCSI:
                 iscsi_ports.append(port)
 
         return iscsi_ports
@@ -1663,9 +1686,14 @@ class HPE3PARCommon(object):
                        'license': license_to_check})
         return False
 
-    def _get_vlun(self, volume_name, hostname, lun_id=None, nsp=None):
+    def _get_vlun(self, volume_name, hostname, lun_id=None, nsp=None,
+                  remote_client=None):
         """find a VLUN on a 3PAR host."""
-        vluns = self.client.getHostVLUNs(hostname)
+        if remote_client:
+            vluns = remote_client.getHostVLUNs(hostname)
+        else:
+            vluns = self.client.getHostVLUNs(hostname)
+
         found_vlun = None
         for vlun in vluns:
             if volume_name in vlun['volumeName']:
@@ -1688,26 +1716,29 @@ class HPE3PARCommon(object):
                      {'name': volume_name, 'host': hostname})
         return found_vlun
 
-    def create_vlun(self, volume, host, nsp=None, lun_id=None):
+    def create_vlun(self, volume, host, nsp=None, lun_id=None,
+                    remote_client=None):
         """Create a VLUN.
 
         In order to export a volume on a 3PAR box, we have to create a VLUN.
         """
         volume_name = self._get_3par_vol_name(volume['id'])
         vlun_info = self._create_3par_vlun(volume_name, host['name'], nsp,
-                                           lun_id=lun_id)
+                                           lun_id=lun_id,
+                                           remote_client=remote_client)
         return self._get_vlun(volume_name,
                               host['name'],
                               vlun_info['lun_id'],
-                              nsp)
+                              nsp,
+                              remote_client)
 
-    def delete_vlun(self, volume, hostname, wwn=None, iqn=None):
+    def _delete_vlun(self, client_obj, volume, hostname, wwn=None, iqn=None):
         volume_name = self._get_3par_vol_name(volume['id'])
         if hostname:
-            vluns = self.client.getHostVLUNs(hostname)
+            vluns = client_obj.getHostVLUNs(hostname)
         else:
             # In case of 'force detach', hostname is None
-            vluns = self.client.getVLUNs()['members']
+            vluns = client_obj.getVLUNs()['members']
 
         # When deleteing VLUNs, you simply need to remove the template VLUN
         # and any active VLUNs will be automatically removed.  The template
@@ -1732,19 +1763,19 @@ class HPE3PARCommon(object):
             if hostname is None:
                 hostname = vlun.get('hostname')
             if 'portPos' in vlun:
-                self.client.deleteVLUN(volume_name, vlun['lun'],
-                                       hostname=hostname,
-                                       port=vlun['portPos'])
+                client_obj.deleteVLUN(volume_name, vlun['lun'],
+                                      hostname=hostname,
+                                      port=vlun['portPos'])
             else:
-                self.client.deleteVLUN(volume_name, vlun['lun'],
-                                       hostname=hostname)
+                client_obj.deleteVLUN(volume_name, vlun['lun'],
+                                      hostname=hostname)
 
         # Determine if there are other volumes attached to the host.
         # This will determine whether we should try removing host from host set
         # and deleting the host.
         vluns = []
         try:
-            vluns = self.client.getHostVLUNs(hostname)
+            vluns = client_obj.getHostVLUNs(hostname)
         except hpeexceptions.HTTPNotFound:
             LOG.debug("All VLUNs removed from host %s", hostname)
 
@@ -1772,7 +1803,7 @@ class HPE3PARCommon(object):
             try:
                 # TODO(sonivi): since multiattach is not supported for now,
                 # delete only single host, if its not exported to volume.
-                self._delete_3par_host(hostname)
+                self._delete_3par_host(hostname, client_obj)
             except Exception as ex:
                 # Any exception down here is only logged.  The vlun is deleted.
 
@@ -1790,19 +1821,25 @@ class HPE3PARCommon(object):
                           'reason': ex.get_description()})
         elif modify_host:
             if wwn is not None:
-                mod_request = {'pathOperation': self.client.HOST_EDIT_REMOVE,
+                mod_request = {'pathOperation': client_obj.HOST_EDIT_REMOVE,
                                'FCWWNs': wwn}
             else:
-                mod_request = {'pathOperation': self.client.HOST_EDIT_REMOVE,
+                mod_request = {'pathOperation': client_obj.HOST_EDIT_REMOVE,
                                'iSCSINames': iqn}
             try:
-                self.client.modifyHost(hostname, mod_request)
+                client_obj.modifyHost(hostname, mod_request)
             except Exception as ex:
                 LOG.info("3PAR vlun for volume '%(name)s' was deleted, "
                          "but the host '%(host)s' was not Modified "
                          "because: %(reason)s",
                          {'name': volume_name, 'host': hostname,
                           'reason': ex.get_description()})
+
+    def delete_vlun(self, volume, hostname, wwn=None, iqn=None,
+                    remote_client=None):
+        self._delete_vlun(self.client, volume, hostname, wwn, iqn)
+        if remote_client:
+            self._delete_vlun(remote_client, volume, hostname, wwn, iqn)
 
     def _get_volume_type(self, type_id):
         ctxt = context.get_admin_context()
@@ -3031,7 +3068,8 @@ class HPE3PARCommon(object):
                         if wwn.upper() == fc['wwn'].upper():
                             return host['name']
 
-    def terminate_connection(self, volume, hostname, wwn=None, iqn=None):
+    def terminate_connection(self, volume, hostname, wwn=None, iqn=None,
+                             remote_client=None):
         """Driver entry point to detach a volume from an instance."""
         if volume.multiattach:
             attachment_list = volume.volume_attachment
@@ -3062,7 +3100,8 @@ class HPE3PARCommon(object):
                 hostname = hosts['members'][0]['name']
 
         try:
-            self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn)
+            self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn,
+                             remote_client=remote_client)
             return
         except hpeexceptions.HTTPNotFound as e:
             if 'host does not exist' in e.get_description():
@@ -3099,7 +3138,8 @@ class HPE3PARCommon(object):
                 raise
 
         # try again with name retrieved from 3par
-        self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn)
+        self.delete_vlun(volume, hostname, wwn=wwn, iqn=iqn,
+                         remote_client=remote_client)
 
     def build_nsp(self, portPos):
         return '%s:%s:%s' % (portPos['node'],
@@ -3483,7 +3523,7 @@ class HPE3PARCommon(object):
         LOG.info("Volume %(volume)s succesfully reverted to %(snap)s.",
                  {'volume': volume_name, 'snap': snapshot_name})
 
-    def find_existing_vlun(self, volume, host):
+    def find_existing_vlun(self, volume, host, remote_client=None):
         """Finds an existing VLUN for a volume on a host.
 
         Returns an existing VLUN's information. If no existing VLUN is found,
@@ -3495,7 +3535,10 @@ class HPE3PARCommon(object):
         existing_vlun = None
         try:
             vol_name = self._get_3par_vol_name(volume['id'])
-            host_vluns = self.client.getHostVLUNs(host['name'])
+            if remote_client:
+                host_vluns = remote_client.getHostVLUNs(host['name'])
+            else:
+                host_vluns = self.client.getHostVLUNs(host['name'])
 
             # The first existing VLUN found will be returned.
             for vlun in host_vluns:
@@ -3510,11 +3553,14 @@ class HPE3PARCommon(object):
                        'vol': vol_name})
         return existing_vlun
 
-    def find_existing_vluns(self, volume, host):
+    def find_existing_vluns(self, volume, host, remote_client=None):
         existing_vluns = []
         try:
             vol_name = self._get_3par_vol_name(volume['id'])
-            host_vluns = self.client.getHostVLUNs(host['name'])
+            if remote_client:
+                host_vluns = remote_client.getHostVLUNs(host['name'])
+            else:
+                host_vluns = self.client.getHostVLUNs(host['name'])
 
             for vlun in host_vluns:
                 if vlun['volumeName'] == vol_name:

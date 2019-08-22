@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added Peer Persistence support in HPE 3PAR cinder driver.
+
