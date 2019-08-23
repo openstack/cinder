@@ -24,7 +24,6 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-              - ^.zuul\.yaml$
         - cinder-rally-task:
             voting: false
         - openstack-tox-pylint:
@@ -49,7 +48,6 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-              - ^.zuul\.yaml$
         - openstack-tox-functional:
             voting: false
             irrelevant-files: *functional-irrelevant-files
