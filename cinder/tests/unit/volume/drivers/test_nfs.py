@@ -28,6 +28,7 @@ from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
@@ -1385,6 +1386,67 @@ class NfsDriverTestCase(test.TestCase):
         mock_write_info_file.assert_called_with(
             info_path, {'active': snap_file, fake_snap.id: snap_file})
 
+    @ddt.data({'volume_status': 'available',
+               'original_provider': 'original_provider',
+               'rename_side_effect': None},
+              {'volume_status': 'available',
+               'original_provider': 'current_provider',
+               'rename_side_effect': None},
+              {'volume_status': 'in-use',
+               'original_provider': 'original_provider',
+               'rename_side_effect': None},
+              {'volume_status': 'available',
+               'original_provider': 'original_provider',
+               'rename_side_effect': OSError})
+    @ddt.unpack
+    @mock.patch('os.rename')
+    def test_update_migrated_volume(self,
+                                    mock_rename,
+                                    rename_side_effect,
+                                    original_provider,
+                                    volume_status):
+        drv = nfs.NfsDriver(configuration=self.configuration)
+        base_dir = '/dir_base/'
+        current_path = base_dir + fake.VOLUME2_NAME
+        current_provider = 'current_provider'
+        mock_rename.side_effect = rename_side_effect
+
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            id=fake.VOLUME_ID,
+            provider_location=original_provider,
+            _name_id=None)
+
+        new_volume = fake_volume.fake_volume_obj(
+            self.context,
+            id=fake.VOLUME2_ID,
+            provider_location=current_provider,
+            _name_id=None)
+
+        with mock.patch.object(drv, 'local_path') as local_path:
+            local_path.return_value = current_path
+            update = drv.update_migrated_volume(self.context,
+                                                volume,
+                                                new_volume,
+                                                volume_status)
+
+            if (volume_status == 'available' and
+                    original_provider != current_provider):
+                original_path = base_dir + fake.VOLUME_NAME
+                mock_rename.assert_called_once_with(current_path,
+                                                    original_path)
+            else:
+                mock_rename.assert_not_called()
+
+            if mock_rename.call_count > 0 and rename_side_effect is None:
+                self.assertEqual({'_name_id': None,
+                                  'provider_location': current_provider},
+                                 update)
+            else:
+                self.assertEqual({'_name_id': fake.VOLUME2_ID,
+                                  'provider_location': current_provider},
+                                 update)
+
 
 class NfsDriverDoSetupTestCase(test.TestCase):
 
@@ -1538,75 +1600,6 @@ class NfsDriverDoSetupTestCase(test.TestCase):
             [mock.call('mount.nfs',
                        check_exit_code=False,
                        run_as_root=True)])
-
-    @mock.patch.object(os, 'rename')
-    def test_update_migrated_available_volume(self, rename_volume):
-        self._test_update_migrated_volume('available', rename_volume)
-
-    @mock.patch.object(os, 'rename')
-    def test_update_migrated_available_volume_rename_fail(self, rename_volume):
-        self._test_update_migrated_volume('available', rename_volume,
-                                          rename_exception=True)
-
-    @mock.patch.object(os, 'rename')
-    def test_update_migrated_in_use_volume(self, rename_volume):
-        self._test_update_migrated_volume('in-use', rename_volume)
-
-    def _test_update_migrated_volume(self, volume_status, rename_volume,
-                                     rename_exception=False):
-        drv = nfs.NfsDriver(configuration=self.configuration)
-        fake_volume_id = 'f51b5730-13b7-11e6-a238-fa163e67a298'
-        fake_new_volume_id = '12341234-13b7-11e6-a238-fa163e67a298'
-        fake_provider_source = 'fake_provider_source'
-        fake_provider = 'fake_provider'
-        base_dir = '/dir_base/'
-        volume_name_template = 'volume-%s'
-        original_volume_name = volume_name_template % fake_volume_id
-        current_name = volume_name_template % fake_new_volume_id
-        original_volume_path = base_dir + original_volume_name
-        current_path = base_dir + current_name
-        volume = fake_volume.fake_volume_obj(
-            self.context,
-            id=fake_volume_id,
-            size=1,
-            provider_location=fake_provider_source,
-            _name_id=None)
-
-        new_volume = fake_volume.fake_volume_obj(
-            self.context,
-            id=fake_new_volume_id,
-            size=1,
-            provider_location=fake_provider,
-            _name_id=None)
-
-        with mock.patch.object(drv, 'local_path') as local_path:
-            local_path.return_value = base_dir + current_name
-            if volume_status == 'in-use':
-                update = drv.update_migrated_volume(self.context,
-                                                    volume,
-                                                    new_volume,
-                                                    volume_status)
-                self.assertEqual({'_name_id': fake_new_volume_id,
-                                  'provider_location': fake_provider}, update)
-            elif rename_exception:
-                rename_volume.side_effect = OSError
-                update = drv.update_migrated_volume(self.context,
-                                                    volume,
-                                                    new_volume,
-                                                    volume_status)
-                rename_volume.assert_called_once_with(current_path,
-                                                      original_volume_path)
-                self.assertEqual({'_name_id': fake_new_volume_id,
-                                  'provider_location': fake_provider}, update)
-            else:
-                update = drv.update_migrated_volume(self.context,
-                                                    volume,
-                                                    new_volume,
-                                                    volume_status)
-                rename_volume.assert_called_once_with(current_path,
-                                                      original_volume_path)
-                self.assertEqual({'_name_id': None,
-                                  'provider_location': fake_provider}, update)
 
     def test_retype_is_there(self):
         "Ensure that driver.retype() is there."""
