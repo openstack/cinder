@@ -453,7 +453,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed, driver.ExtendVD):
         :returns: model_update to update DB with any needed changes
         """
         name_id = None
-        if original_volume_status == 'available':
+        if (original_volume_status == 'available' and
+                volume.provider_location != new_volume.provider_location):
             current_name = CONF.volume_name_template % new_volume.id
             original_volume_name = CONF.volume_name_template % volume.id
             current_path = self.local_path(new_volume)
