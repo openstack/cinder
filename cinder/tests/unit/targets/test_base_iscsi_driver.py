@@ -158,6 +158,23 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
                                                ['portal2'])
         self.assertEqual('portal:3260;portal2:3260,1 target 2', location)
 
+    def test_iscsi_location_IPv6(self):
+        ip = 'fd00:fd00:fd00:3000::12'
+        ip2 = 'fd00:fd00:fd00:3000::13'
+
+        location = self.target._iscsi_location(ip, 1, 'target', 2)
+        self.assertEqual('[%s]:3260,1 target 2' % ip, location)
+
+        location = self.target._iscsi_location(ip, 1, 'target', 2, [ip2])
+        self.assertEqual('[%s]:3260;[%s]:3260,1 target 2' % (ip, ip2),
+                         location)
+
+        # Mix of IPv6 (already with square brackets) and IPv4
+        ip = '[' + ip + ']'
+        location = self.target._iscsi_location(ip, 1, 'target', 2,
+                                               ['192.168.1.1'])
+        self.assertEqual(ip + ':3260;192.168.1.1:3260,1 target 2', location)
+
     def test_get_target_chap_auth(self):
         ctxt = context.get_admin_context()
         self.assertEqual(('otzL', '234Z'),

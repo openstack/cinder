@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    LVM iSCSI driver fix for IPv6 addresses for the different targets, IET,
+    LIO, TGT, CXT, and SCST.
