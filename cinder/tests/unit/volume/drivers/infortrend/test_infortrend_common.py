@@ -1752,8 +1752,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertIsNone(model_update)
         self.assertEqual(1, log_error.call_count)
 
-    def test_migrate_volume_with_get_part_id_fail(self):
-
+    @mock.patch('time.sleep')
+    def test_migrate_volume_with_get_part_id_fail(self, mock_sleep):
         test_host = copy.deepcopy(self.cli_data.test_migrate_host)
         test_volume = self.cli_data.test_volume
 
@@ -1773,6 +1773,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             self.driver.migrate_volume,
             test_volume,
             test_host)
+        mock_sleep.assert_called()
 
     def test_migrate_volume_with_create_replica_fail(self):
 
