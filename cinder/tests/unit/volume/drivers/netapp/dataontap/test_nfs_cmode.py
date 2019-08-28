@@ -307,7 +307,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             self.driver.zapi_client, 'get_operational_lif_addresses',
             return_value=[fake.SHARE_IP])
         mock_resolve_hostname = self.mock_object(
-            utils, 'resolve_hostname', return_value=fake.SHARE_IP)
+            volume_utils, 'resolve_hostname', return_value=fake.SHARE_IP)
         mock_get_flexvol = self.mock_object(
             self.driver.zapi_client, 'get_flexvol',
             return_value={'name': fake.NETAPP_VOLUME})
@@ -330,7 +330,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver.zapi_client,
                          'get_operational_lif_addresses',
                          return_value=[])
-        self.mock_object(utils,
+        self.mock_object(volume_utils,
                          'resolve_hostname',
                          return_value=fake.SHARE_IP)
 
@@ -344,7 +344,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver.zapi_client,
                          'get_operational_lif_addresses',
                          return_value=[fake.SHARE_IP])
-        self.mock_object(utils,
+        self.mock_object(volume_utils,
                          'resolve_hostname',
                          return_value=fake.SHARE_IP)
         side_effect = exception.VolumeBackendAPIException(data='fake_data')

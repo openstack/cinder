@@ -30,6 +30,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
+from cinder.volume import utils as volume_utils
 
 from oslo_utils import strutils
 
@@ -668,7 +669,7 @@ class Client(client_base.Client):
         net_if_iter.add_child_elem(query)
         query.add_node_with_children(
             'net-interface-info',
-            **{'address': utils.resolve_hostname(ip)})
+            **{'address': volume_utils.resolve_hostname(ip)})
         result = self.connection.invoke_successfully(net_if_iter, True)
         num_records = result.get_child_content('num-records')
         if num_records and int(num_records) >= 1:

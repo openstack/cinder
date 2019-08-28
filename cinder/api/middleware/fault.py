@@ -20,10 +20,10 @@ from six.moves import http_client
 import webob.dec
 import webob.exc
 
+from cinder.api import api_utils
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.wsgi import common as base_wsgi
 
 
@@ -38,7 +38,7 @@ class FaultWrapper(base_wsgi.Middleware):
     @staticmethod
     def status_to_type(status):
         if not FaultWrapper._status_to_type:
-            for clazz in utils.walk_class_hierarchy(webob.exc.HTTPError):
+            for clazz in api_utils.walk_class_hierarchy(webob.exc.HTTPError):
                 FaultWrapper._status_to_type[clazz.code] = clazz
         return FaultWrapper._status_to_type.get(
             status, webob.exc.HTTPInternalServerError)()

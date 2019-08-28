@@ -263,7 +263,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
         # Lookup the zfssa_target_portal DNS name to an IP address
         host, port = lcfg.zfssa_target_portal.split(':')
-        host_ip_addr = utils.resolve_hostname(host)
+        host_ip_addr = volume_utils.resolve_hostname(host)
         self.zfssa_target_portal = host_ip_addr + ':' + port
 
     def check_for_setup_error(self):

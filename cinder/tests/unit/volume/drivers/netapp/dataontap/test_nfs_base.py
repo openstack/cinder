@@ -41,6 +41,7 @@ from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
+from cinder.volume import utils as volume_utils
 
 
 @ddt.ddt
@@ -651,7 +652,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.NFS_SHARE)
 
     def test_get_share_mount_and_vol_from_vol_ref(self):
-        self.mock_object(utils, 'resolve_hostname',
+        self.mock_object(volume_utils, 'resolve_hostname',
                          return_value='10.12.142.11')
         self.mock_object(os.path, 'isfile', return_value=True)
         self.driver._mounted_shares = [self.fake_nfs_export_1]
@@ -669,7 +670,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertEqual('test_file_name', file_path)
 
     def test_get_share_mount_and_vol_from_vol_ref_with_bad_ref(self):
-        self.mock_object(utils, 'resolve_hostname',
+        self.mock_object(volume_utils, 'resolve_hostname',
                          return_value='10.12.142.11')
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_ref = {'source-id': '1234546'}
@@ -683,7 +684,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           vol_ref)
 
     def test_get_share_mount_and_vol_from_vol_ref_where_not_found(self):
-        self.mock_object(utils, 'resolve_hostname',
+        self.mock_object(volume_utils, 'resolve_hostname',
                          return_value='10.12.142.11')
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_path = "%s/%s" % (self.fake_nfs_export_2, 'test_file_name')
@@ -698,7 +699,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           vol_ref)
 
     def test_get_share_mount_and_vol_from_vol_ref_where_is_dir(self):
-        self.mock_object(utils, 'resolve_hostname',
+        self.mock_object(volume_utils, 'resolve_hostname',
                          return_value='10.12.142.11')
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_ref = {'source-name': self.fake_nfs_export_2}

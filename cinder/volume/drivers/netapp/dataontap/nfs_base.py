@@ -906,7 +906,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         # First strip out share and convert to IP format.
         share_split = vol_ref.rsplit(':', 1)
 
-        vol_ref_share_ip = utils.resolve_hostname(share_split[0])
+        vol_ref_share_ip = volume_utils.resolve_hostname(share_split[0])
 
         # Now place back into volume reference.
         vol_ref_share = vol_ref_share_ip + ':' + share_split[1]

@@ -32,7 +32,6 @@ import pyclbr
 import random
 import re
 import shutil
-import socket
 import stat
 import sys
 import tempfile
@@ -275,22 +274,6 @@ def last_completed_audit_period(unit=None):
     return (begin, end)
 
 
-def time_format(at=None):
-    """Format datetime string to date.
-
-    :param at: Type is datetime.datetime (example
-        'datetime.datetime(2017, 12, 24, 22, 11, 32, 6086)')
-    :returns: Format date (example '2017-12-24T22:11:32Z').
-    """
-    if not at:
-        at = timeutils.utcnow()
-    date_string = at.strftime("%Y-%m-%dT%H:%M:%S")
-    tz = at.tzname(None) if at.tzinfo else 'UTC'
-    # Need to handle either iso8601 or python UTC format
-    date_string += ('Z' if tz in ['UTC', 'UTC+00:00'] else tz)
-    return date_string
-
-
 def monkey_patch():
     """Patches decorators for all functions in a specified module.
 
@@ -351,23 +334,6 @@ def make_dev_path(dev, partition=None, base='/dev'):
     if partition:
         path += str(partition)
     return path
-
-
-def sanitize_hostname(hostname):
-    """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
-    if six.PY3:
-        hostname = hostname.encode('latin-1', 'ignore')
-        hostname = hostname.decode('latin-1')
-    else:
-        if isinstance(hostname, six.text_type):
-            hostname = hostname.encode('latin-1', 'ignore')
-
-    hostname = re.sub(r'[ _]', '-', hostname)
-    hostname = re.sub(r'[^\w.-]+', '', hostname)
-    hostname = hostname.lower()
-    hostname = hostname.strip('.-')
-
-    return hostname
 
 
 def robust_file_write(directory, filename, data):
@@ -451,19 +417,6 @@ def tempdir(**kwargs):
         except OSError as e:
             LOG.debug('Could not remove tmpdir: %s',
                       six.text_type(e))
-
-
-def walk_class_hierarchy(clazz, encountered=None):
-    """Walk class hierarchy, yielding most derived classes first."""
-    if not encountered:
-        encountered = []
-    for subclass in clazz.__subclasses__():
-        if subclass not in encountered:
-            encountered.append(subclass)
-            # drill down to leaves first
-            for subsubclass in walk_class_hierarchy(subclass, encountered):
-                yield subsubclass
-            yield subclass
 
 
 def get_root_helper():
@@ -920,22 +873,6 @@ def setup_tracing(trace_flags):
         LOG.warning('Invalid trace flag: %s', invalid_flag)
     TRACE_METHOD = 'method' in trace_flags
     TRACE_API = 'api' in trace_flags
-
-
-def resolve_hostname(hostname):
-    """Resolves host name to IP address.
-
-    Resolves a host name (my.data.point.com) to an IP address (10.12.143.11).
-    This routine also works if the data passed in hostname is already an IP.
-    In this case, the same IP address will be returned.
-
-    :param hostname:  Host name to resolve.
-    :returns:         IP Address for Host name.
-    """
-    ip = socket.getaddrinfo(hostname, None)[0][4][0]
-    LOG.debug('Asked to resolve hostname %(host)s and got IP %(ip)s.',
-              {'host': hostname, 'ip': ip})
-    return ip
 
 
 def build_or_str(elements, str_format=None):
