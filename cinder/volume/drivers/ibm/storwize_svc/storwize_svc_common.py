@@ -2647,6 +2647,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     VDISKCOPYOPS_INTERVAL = 600
     DEFAULT_GR_SLEEP = random.randint(20, 500) / 100.0
 
+    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCCommonDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(storwize_svc_opts)
