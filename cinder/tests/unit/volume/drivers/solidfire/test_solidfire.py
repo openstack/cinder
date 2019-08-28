@@ -18,7 +18,10 @@ import datetime
 import re
 import six
 
-import ddt
+from ddt import data
+from ddt import ddt
+from ddt import file_data
+from ddt import unpack
 import mock
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -63,7 +66,7 @@ f_uuid = ['262b9ce2-a71a-4fbe-830c-c20c5596caea',
           '362b9ce2-a71a-4fbe-830c-c20c5596caea']
 
 
-@ddt.ddt
+@ddt
 class SolidFireVolumeTestCase(test.TestCase):
 
     EXPECTED_QOS = {'minIOPS': 110, 'burstIOPS': 1530, 'maxIOPS': 1020}
@@ -1237,8 +1240,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'], size)
         self.assertEqual(self.expected_qos_results, qos)
 
-    @ddt.file_data("scaled_iops_test_data.json")
-    @ddt.unpack
+    @file_data("scaled_iops_test_data.json")
+    @unpack
     def test_scaled_qos_spec_by_type(self, argument):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         size = argument[0].pop('size')
@@ -1246,8 +1249,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'], size)
         self.assertEqual(argument[1], qos)
 
-    @ddt.file_data("scaled_iops_invalid_data.json")
-    @ddt.unpack
+    @file_data("scaled_iops_invalid_data.json")
+    @unpack
     def test_set_scaled_qos_by_type_invalid(self, inputs):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         size = inputs[0].pop('size')
@@ -2684,22 +2687,31 @@ class SolidFireVolumeTestCase(test.TestCase):
         except Exception:
             pass
 
-    def test_set_rep_by_volume_type(self):
+    @data('Async', 'Sync', 'SnapshotsOnly')
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_set_rep_by_volume_type(self, mode, mock_get_volume_type):
+        mock_get_volume_type.return_value = {
+            'name': 'sf-1', 'deleted': False,
+            'created_at': '2014-02-06 04:58:11',
+            'updated_at': None, 'extra_specs':
+                {'replication_enabled': '<is> True',
+                 'solidfire:replication_mode': mode},
+            'deleted_at': None,
+            'id': '290edb2a-f5ea-11e5-9ce9-5e5517507c66'}
+        rep_opts = {}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         sfv.cluster_pairs = self.cluster_pairs
         ctxt = None
         type_id = '290edb2a-f5ea-11e5-9ce9-5e5517507c66'
-        fake_type = {'extra_specs': {'replication_enabled': '<is> True'}}
-        with mock.patch.object(volume_types,
-                               'get_volume_type',
-                               return_value=fake_type):
-            self.assertEqual('Async', sfv._set_rep_by_volume_type(
-                ctxt, type_id))
+        rep_opts['rep_type'] = mode
+        self.assertEqual(rep_opts, sfv._set_rep_by_volume_type(ctxt, type_id))
+        mock_get_volume_type.assert_called()
 
     def test_replicate_volume(self):
         replication_status = fields.ReplicationStatus.ENABLED
         fake_vol = {'project_id': 1, 'volumeID': 1, 'size': 1}
         params = {'attributes': {}}
+        rep_info = {'rep_type': 'Async'}
         sf_account = {'initiatorSecret': 'shhh', 'targetSecret': 'dont-tell'}
         model_update = {'provider_id': '1 2 xxxx'}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -2716,7 +2728,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                   return_value=model_update):
             self.assertEqual({'replication_status': replication_status},
                              sfv._replicate_volume(fake_vol, params,
-                                                   sf_account, {}))
+                                                   sf_account, rep_info))
 
     def test_pythons_try_except(self):
         def _fake_retrieve_rep(vol):
