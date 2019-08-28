@@ -22,7 +22,14 @@ from cinder.scheduler import filters
 
 
 class JsonFilter(filters.BaseBackendFilter):
-    """Backend filter for simple JSON-based grammar for selecting backends."""
+    """Backend filter for simple JSON-based grammar for selecting backends.
+
+    If you want to choose one of your backend,
+    make a query hint, for example:
+
+      cinder create --hint query='["=", "$backend_id", "rbd:vol@ceph#cloud"]'
+    """
+
     def _op_compare(self, args, op):
         """Compare first item of args with the rest using specified operator.
 
