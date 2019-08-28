@@ -1508,6 +1508,8 @@ class NfsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, '_read_info_file', return_value={}), \
                 mock.patch.object(drv, '_do_create_snapshot') \
                 as mock_do_create_snapshot, \
+                mock.patch.object(drv, '_check_snapshot_support') \
+                as mock_check_support, \
                 mock.patch.object(drv, '_write_info_file') \
                 as mock_write_info_file, \
                 mock.patch.object(drv, 'get_active_image_from_info',
@@ -1516,6 +1518,7 @@ class NfsDriverTestCase(test.TestCase):
                                   return_value=snap_path):
             self._driver.create_snapshot(fake_snap)
 
+        mock_check_support.assert_called_once()
         mock_do_create_snapshot.assert_called_with(fake_snap, volume['name'],
                                                    snap_path)
         mock_write_info_file.assert_called_with(
