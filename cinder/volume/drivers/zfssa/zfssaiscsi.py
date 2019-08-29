@@ -128,6 +128,10 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
     VERSION = '1.0.4'
     protocol = 'iSCSI'
 
+    # TODO(jsbryant) Remove driver in the 'U' release as Oracle
+    #                is dropping support.
+    SUPPORTED = False
+
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Oracle_ZFSSA_CI"
 
