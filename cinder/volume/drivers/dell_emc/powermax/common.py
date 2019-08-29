@@ -74,14 +74,6 @@ powermax_opts = [
                 default=False,
                 help='Use this value to enable '
                      'the initiator_check.'),
-    cfg.PortOpt(utils.VMAX_SERVER_PORT_OLD,
-                deprecated_for_removal=True,
-                deprecated_since="13.0.0",
-                deprecated_reason='Unisphere port should now be '
-                                  'set using the common san_api_port '
-                                  'config option instead.',
-                default=8443,
-                help='REST server port number.'),
     cfg.StrOpt(utils.VMAX_ARRAY,
                help='DEPRECATED: vmax_array.',
                deprecated_for_removal=True,
@@ -229,10 +221,8 @@ class PowerMaxCommon(object):
         self.pool_info['reserved_percentage'] = (
             self.configuration.safe_get('reserved_percentage'))
         LOG.debug(
-            "Updating volume stats on file %(emcConfigFileName)s on "
-            "backend %(backendName)s.",
-            {'emcConfigFileName': self.pool_info['config_file'],
-             'backendName': self.pool_info['backend_name']})
+            "Updating volume stats on Cinder backend %(backendName)s.",
+            {'backendName': self.pool_info['backend_name']})
 
     def _get_u4p_failover_info(self):
         """Gather Unisphere failover target information, if provided."""
@@ -1071,8 +1061,8 @@ class PowerMaxCommon(object):
         :param rep_enabled: if replication is enabled for backend
         :returns: r1_ode: (bool) If R1 array supports ODE
         :returns: r1_ode_metro: (bool) If R1 array supports ODE with Metro vols
-        :returns: r2_ode: (bool) If R1 array supports ODE
-        :returns: r2_ode_metro: (bool) If R1 array supports ODE with Metro vols
+        :returns: r2_ode: (bool) If R2 array supports ODE
+        :returns: r2_ode_metro: (bool) If R2 array supports ODE with Metro vols
         """
         r1_ucode = self.ucode_level.split('.')
         r1_ode, r1_ode_metro = False, False
@@ -5258,10 +5248,8 @@ class PowerMaxCommon(object):
 
         :returns: unisphere port
         """
-        if self.configuration.safe_get(utils.VMAX_SERVER_PORT_OLD):
-            return self.configuration.safe_get(utils.VMAX_SERVER_PORT_OLD)
-        elif self.configuration.safe_get(utils.VMAX_SERVER_PORT_NEW):
-            return self.configuration.safe_get(utils.VMAX_SERVER_PORT_NEW)
+        if self.configuration.safe_get(utils.U4P_SERVER_PORT):
+            return self.configuration.safe_get(utils.U4P_SERVER_PORT)
         else:
             LOG.debug("PowerMax/VMAX port is not set, using default port: %s",
                       utils.DEFAULT_PORT)

@@ -290,8 +290,6 @@ class FakeConfiguration(object):
                 self.san_ip = value
             elif key == 'san_api_port':
                 self.san_api_port = value
-            elif key == 'san_rest_port':
-                self.san_rest_port = value
             elif key == 'vmax_srp':
                 self.vmax_srp = value
             elif key == 'vmax_service_level':
