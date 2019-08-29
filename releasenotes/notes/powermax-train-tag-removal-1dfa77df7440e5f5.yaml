@@ -1,5 +1,5 @@
 ---
-deprecations:
+upgrade:
   - |
     The PowerMax Cinder driver has removed the environment configuration
     option san_rest_port in favour of the Cinder standard option san_api_port.
