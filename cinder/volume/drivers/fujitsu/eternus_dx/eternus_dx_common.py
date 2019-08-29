@@ -2174,15 +2174,17 @@ class FJDXCommon(object):
         LOG.debug('_is_job_finished, finish: %s.', job_finished)
         return job_finished
 
-    def _pywbem_uint(self, num, datatype):
+    @staticmethod
+    def _pywbem_uint(num, datatype):
         try:
-            result = {
-                '8': pywbem.Uint8(num),
-                '16': pywbem.Uint16(num),
-                '32': pywbem.Uint32(num),
-                '64': pywbem.Uint64(num)
-            }
-            result = result.get(datatype, num)
+            if datatype == '8':
+                result = pywbem.Uint8(num)
+            elif datatype == '16':
+                result = pywbem.Uint16(num)
+            elif datatype == '32':
+                result = pywbem.Uint32(num)
+            elif datatype == '64':
+                result = pywbem.Uint64(num)
         except NameError:
             result = num
 
