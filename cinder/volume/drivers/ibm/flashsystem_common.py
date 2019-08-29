@@ -97,6 +97,9 @@ class FlashSystemDriver(san.SanDriver,
 
     VERSION = "1.0.12"
 
+    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
+    SUPPORTED = False
+
     MULTI_HOST_MAP_ERRORS = ['CMMVC6045E', 'CMMVC6071E']
 
     def __init__(self, *args, **kwargs):
