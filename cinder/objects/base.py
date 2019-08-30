@@ -279,9 +279,10 @@ class CinderPersistentObject(object):
         # registration.
         try:
             cls.model = db.get_model_for_versioned_object(cls)
-        except (ImportError, AttributeError):
+        except (ImportError, AttributeError) as e:
             msg = _("Couldn't find ORM model for Persistent Versioned "
                     "Object %s.") % cls.obj_name()
+            LOG.exception("Failed to initialize object.")
             raise exception.ProgrammingError(reason=msg)
 
     @contextlib.contextmanager
