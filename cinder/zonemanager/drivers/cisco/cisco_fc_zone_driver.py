@@ -32,6 +32,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
+import re
 import six
 import string
 
@@ -226,10 +227,10 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     # If zone exists, then perform an update_zone and add
                     # new members into existing zone.
                     if zone_name and (zone_name in zone_names):
-                        zone_members = filter(
+                        zone_members = list(filter(
                             lambda x: x not in
                             cfgmap_from_fabric['zones'][zone_name],
-                            zone_members)
+                            zone_members))
                         if zone_members:
                             zone_update_map[zone_name] = zone_members
                     else:
@@ -381,9 +382,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         SUPPORTED_CHARS)
                     # Check if there are zone members leftover after removal
                     if (zone_names and (zone_name in zone_names)):
-                        filtered_members = filter(
+                        filtered_members = list(filter(
                             lambda x: x not in zone_members,
-                            cfgmap_from_fabric['zones'][zone_name])
+                            cfgmap_from_fabric['zones'][zone_name]))
 
                         # The assumption here is that initiator is always
                         # there in the zone as it is 'initiator' policy.
@@ -393,10 +394,10 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         LOG.debug("Zone delete - I mode: filtered targets: %s",
                                   filtered_members)
                         if filtered_members:
-                            remove_members = filter(
+                            remove_members = list(filter(
                                 lambda x: x in
                                 cfgmap_from_fabric['zones'][zone_name],
-                                zone_members)
+                                zone_members))
                             if remove_members:
                                 # Do not want to remove the initiator
                                 remove_members.remove(formatted_initiator)
@@ -506,17 +507,16 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     msg = _("Failed to get show fcns database info.")
                     LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
-                visible_targets = filter(
-                    lambda x: x in formatted_target_list, nsinfo)
+                visible_targets = list(filter(
+                    lambda x: x in formatted_target_list, nsinfo))
 
                 if visible_targets:
                     LOG.info("Filtered targets for SAN is: %s",
                              {fabric_name: visible_targets})
                     # getting rid of the ':' before returning
-                    for idx, elem in enumerate(visible_targets):
-                        visible_targets[idx] = six.text_type(
-                            visible_targets[idx]).replace(':', '')
-                    fabric_map[fabric_name] = visible_targets
+                    fabric_map[fabric_name] = list(map(
+                        lambda x: re.sub(r':', '', x), visible_targets))
+
                 else:
                     LOG.debug("No targets are in the fcns info for SAN %s",
                               fabric_name)
