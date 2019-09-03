@@ -1608,10 +1608,7 @@ class InfortrendCommon(object):
     def _get_part_id(self, volume_id, pool_id=None):
         count = 0
         while True:
-            if count == 2:
-                rc, part_list = self._execute('ShowPartition')
-            else:
-                rc, part_list = self._execute('ShowPartition')
+            rc, part_list = self._execute('ShowPartition')
 
             for entry in part_list:
                 if pool_id is None:
