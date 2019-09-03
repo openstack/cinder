@@ -16,6 +16,7 @@
 Handles all requests to Nova.
 """
 
+from keystoneauth1 import exceptions as ks_exc
 from keystoneauth1 import identity
 from keystoneauth1 import loading as ks_loading
 from novaclient import api_versions
@@ -77,7 +78,7 @@ def _get_identity_endpoint_from_sc(context):
             if (not CONF[NOVA_GROUP].region_name or
                     endpoint.get('region') == CONF[NOVA_GROUP].region_name):
                 return endpoint.get(CONF[NOVA_GROUP].interface + 'URL')
-    raise nova_exceptions.EndpointNotFound()
+    raise ks_exc.EndpointNotFound()
 
 
 def novaclient(context, privileged_user=False, timeout=None, api_version=None):

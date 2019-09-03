@@ -13,6 +13,7 @@
 #    under the License.
 
 import ddt
+from keystoneauth1 import exceptions as ks_exc
 import mock
 
 from cinder.compute import nova
@@ -171,11 +172,10 @@ class NovaClientTestCase(test.TestCase):
             global_request_id=self.ctx.request_id,
             timeout=None, extensions=nova.nova_extensions)
 
-    def test_novaclient_exceptions(self):
-        # This is to prevent regression if exceptions are
-        # removed from novaclient since the service catalog
-        # code does not have thorough tests.
-        self.assertTrue(hasattr(nova_exceptions, 'EndpointNotFound'))
+    def test_get_identity_endpoint_from_sc_endpoint_not_found(self):
+        ctxt = context.get_admin_context()
+        self.assertRaises(ks_exc.EndpointNotFound,
+                          nova._get_identity_endpoint_from_sc, ctxt)
 
 
 class FakeNovaClient(object):
