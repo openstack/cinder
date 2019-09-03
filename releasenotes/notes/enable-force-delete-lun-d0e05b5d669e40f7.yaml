@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    DellEMC Unity: The fix of bug
+    `1825469 <https://bugs.launchpad.net/cinder/+bug/1825469>`_ changes the
+    default value of the ``force_delete_lun_in_storagegroup`` option from
+    ``False`` to ``True``, which means luns will always be force deleted after
+    upgrade.
+fixes:
+  - |
+    DellEMC Unity: Fix bug
+    `1825469 <https://bugs.launchpad.net/cinder/+bug/1825469>`_. The fix
+    enables the ``force_delete_lun_in_storagegroup`` option to ``True`` by
+    default, which makes sure that luns can deleted even when they are still in
+    storage groups.

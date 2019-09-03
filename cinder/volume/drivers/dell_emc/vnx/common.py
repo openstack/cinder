@@ -102,9 +102,8 @@ VNX_OPTS = [
                 'to maximum number of pool LUNs is reached. '
                 'By default, the value is False.'),
     cfg.BoolOpt('force_delete_lun_in_storagegroup',
-                default=False,
-                help='Delete a LUN even if it is in Storage Groups. '
-                'By default, the value is False.'),
+                default=True,
+                help='Delete a LUN even if it is in Storage Groups.'),
     cfg.BoolOpt('ignore_pool_full_threshold',
                 default=False,
                 help='Force LUN creation even if '
