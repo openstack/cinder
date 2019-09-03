@@ -31,7 +31,9 @@ The following provides a listing of the default policies. It is not recommended
 to copy this file into ``/etc/cinder`` unless you are planning on providing a
 different policy for an operation that is not the default.
 
-The sample policy file can also be viewed in `file form
-<../../../_static/cinder.policy.yaml.sample>`_.
+.. only:: html
+
+   The sample policy file can also be viewed in `file form
+   <../../../_static/cinder.policy.yaml.sample>`_.
 
 .. literalinclude:: ../../../_static/cinder.policy.yaml.sample

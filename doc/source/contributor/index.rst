@@ -82,10 +82,12 @@ Other Resources
 
    Module Reference <api/modules>
 
-Indices and tables
-------------------
+.. only:: html
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   Indices and tables
+   ------------------
+
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
 
