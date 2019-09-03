@@ -2787,3 +2787,9 @@ class PowerMaxCommonTest(test.TestCase):
         ref_port = utils.DEFAULT_PORT
         port = self.common._get_unisphere_port()
         self.assertEqual(ref_port, port)
+
+    @mock.patch.object(utils.PowerMaxUtils,
+                       'get_replication_config')
+    def test_get_replication_info(self, mock_config):
+        self.common._get_replication_info()
+        mock_config.assert_not_called()

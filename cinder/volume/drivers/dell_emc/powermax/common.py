@@ -179,7 +179,7 @@ class PowerMaxCommon(object):
         self.next_gen = False
         self.replication_enabled = False
         self.extend_replicated_vol = False
-        self.rep_devices = None
+        self.rep_devices = []
         self.failover = False
 
         # Gather environment info
@@ -312,7 +312,7 @@ class PowerMaxCommon(object):
     def _get_replication_info(self):
         """Gather replication information, if provided."""
         self.rep_config = None
-        self.replication_targets = None
+        self.replication_targets = []
         if hasattr(self.configuration, 'replication_device'):
             self.rep_devices = self.configuration.safe_get(
                 'replication_device')
