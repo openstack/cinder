@@ -50,6 +50,7 @@ LOG = logging.getLogger(__name__)
 backup_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
+               ignore_case=True,
                choices=['none', 'off', 'no',
                         'zlib', 'gzip',
                         'bz2', 'bzip2'],
