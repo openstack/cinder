@@ -18,6 +18,7 @@ It has identified itself as `Cinder`. It was abstracted from the Nova project.
 * Developer docs: https://docs.openstack.org/cinder/latest/
 * Blueprints: https://blueprints.launchpad.net/cinder
 * Release notes: https://docs.openstack.org/releasenotes/cinder/
+* Design specifications: https://specs.openstack.org/openstack/cinder-specs/
 
 Getting Started
 ---------------
