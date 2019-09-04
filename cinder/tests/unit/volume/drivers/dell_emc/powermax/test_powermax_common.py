@@ -2435,11 +2435,13 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common.unmanage_snapshot,
                           self.data.test_snapshot_manage)
 
+    @mock.patch.object(provision.PowerMaxProvision, 'delete_volume_snap')
     @mock.patch.object(provision.PowerMaxProvision, 'is_restore_complete',
                        return_value=True)
-    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(common.PowerMaxCommon, '_clone_check')
     @mock.patch.object(provision.PowerMaxProvision, 'revert_volume_snapshot')
-    def test_revert_to_snapshot(self, mock_revert, mock_sync, mock_complete):
+    def test_revert_to_snapshot(self, mock_revert, mock_clone,
+                                mock_complete, mock_delete):
         volume = self.data.test_volume
         snapshot = self.data.test_snapshot
         array = self.data.array
@@ -2451,6 +2453,11 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.revert_to_snapshot(volume, snapshot)
         mock_revert.assert_called_once_with(
             array, device_id, snap_name, extra_specs)
+        mock_clone.assert_called_once_with(array, device_id, extra_specs)
+        mock_complete.assert_called_once_with(array, device_id,
+                                              snap_name, extra_specs)
+        mock_delete.assert_called_once_with(array, snap_name, device_id,
+                                            restored=True, generation=0)
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        return_value=True)
