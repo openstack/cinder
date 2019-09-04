@@ -227,7 +227,7 @@ htmlhelp_basename = 'cinderdoc'
 # (source start file, target name, title, author, documentclass
 # [howto/manual]).
 latex_documents = [
-    ('index', 'cinder.tex', u'Cinder Documentation',
+    ('index', 'doc-cinder.tex', u'Cinder Documentation',
      u'Cinder Contributors', 'manual'),
 ]
 
