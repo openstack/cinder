@@ -2902,6 +2902,7 @@ class InStorageAssistant(object):
             rc_id = self.ssh.mkrcrelationship(master, aux, system,
                                               asynccopy)
         except exception.VolumeBackendAPIException as e:
+            rc_id = None
             # CMMVC5959E is the code in InStorage, meaning that
             # there is a relationship that already has this name on the
             # master cluster.
