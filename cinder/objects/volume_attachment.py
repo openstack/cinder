@@ -95,8 +95,12 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
                         jsonutils.loads(value) if value else None)
             else:
                 attachment[name] = value
-        if 'volume' in expected_attrs:
-            db_volume = db_attachment.get('volume')
+        # NOTE: hasattr check is necessary to avoid doing a lazy loading when
+        # loading VolumeList.get_all: Getting a Volume loads its
+        # VolumeAttachmentList, which think they have the volume loaded, but
+        # they don't.  More detail on https://review.openstack.org/632549
+        if 'volume' in expected_attrs and hasattr(db_attachment, 'volume'):
+            db_volume = db_attachment.volume
             if db_volume:
                 attachment.volume = objects.Volume._from_db_object(
                     context, objects.Volume(), db_volume)
