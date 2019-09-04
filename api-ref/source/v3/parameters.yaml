@@ -1314,7 +1314,7 @@ has_dependent_backups:
 host:
   description: |
     The OpenStack Block Storage host where the
-    existing volume resides. Host format is ``host@backend``.
+    existing volume resides.
   in: body
   required: true
   type: object
@@ -1333,7 +1333,8 @@ host_name:
   type: string
 host_name_backend:
   description: |
-    The name of the host that hosts the storage backend.
+    The name of the host that hosts the storage backend,
+    may take the format of ``host@backend``.
   in: body
   required: true
   type: string
