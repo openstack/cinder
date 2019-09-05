@@ -52,6 +52,8 @@ def fake_snapshot_obj(context, **updates):
     expected_attrs = updates.pop('expected_attrs', None) or []
     if 'volume' in updates and 'volume' not in expected_attrs:
         expected_attrs.append('volume')
+    if 'context' in updates and 'context' not in expected_attrs:
+        expected_attrs.append('context')
     return snapshot.Snapshot._from_db_object(context, snapshot.Snapshot(),
                                              fake_db_snapshot(**updates),
                                              expected_attrs=expected_attrs)

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes a bug that prevented distributed file system drivers from creating
+    snapshots during volume clone operations (NFS, WindowsSMBFS, VZstorage
+    and Quobyte drivers). Fixing this allows creating snapshot based backups.
