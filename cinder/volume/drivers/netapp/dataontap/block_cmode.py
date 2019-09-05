@@ -432,7 +432,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
 
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""
-        return self.ssc_library.get_ssc().keys()
+
+        ssc = self.ssc_library.get_ssc()
+        return list(ssc.keys())
 
     def create_group(self, group):
         """Driver entry point for creating a generic volume group.
