@@ -97,7 +97,7 @@ class SynoLUNNotExist(exception.VolumeDriverException):
 class AESCipher(object):
     """Encrypt with OpenSSL-compatible way"""
 
-    SALT_MAGIC = 'Salted__'
+    SALT_MAGIC = b'Salted__'
 
     def __init__(self, password, key_length=32):
         self._bs = 16
@@ -110,10 +110,10 @@ class AESCipher(object):
 
     def _pad(self, s):
         bs = self._bs
-        return s + (bs - len(s) % bs) * chr(bs - len(s) % bs)
+        return (s + (bs - len(s) % bs) * chr(bs - len(s) % bs)).encode('utf-8')
 
     def _derive_key_and_iv(self, password, salt, key_length, iv_length):
-        d = d_i = ''
+        d = d_i = b''
         while len(d) < key_length + iv_length:
             md5_str = d_i + password + salt
             d_i = hashlib.md5(md5_str).digest()
@@ -129,7 +129,7 @@ class AESCipher(object):
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(self._pad(text)) + encryptor.finalize()
 
-        return "%s%s%s" % (self.SALT_MAGIC, self._salt, ciphertext)
+        return self.SALT_MAGIC + self._salt + ciphertext
 
 
 class Session(object):
@@ -191,10 +191,10 @@ class Session(object):
                      'abcdefghijklmnopqrstuvwxyz'
                      'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                      '~!@#$%^&*()_+-/')
-        key = ''
+        key = b''
 
         while length > 0:
-            key += available[randint(0, len(available) - 1)]
+            key += available[randint(0, len(available) - 1)].encode('utf-8')
             length -= 1
 
         return key
@@ -214,8 +214,12 @@ class Session(object):
     def _encrypt_RSA(self, modulus, passphrase, text):
         public_numbers = rsa.RSAPublicNumbers(passphrase, modulus)
         public_key = public_numbers.public_key(default_backend())
+
+        if isinstance(text, str):
+            text = text.encode('utf-8')
+
         ciphertext = public_key.encrypt(
-            text.encode('ascii'),
+            text,
             padding.PKCS1v15()
         )
         return ciphertext
@@ -1291,11 +1295,13 @@ class SynoCommon(object):
                                        'port': self.target_port})
             iscsi_properties.update(target_portals=target_portals)
             count = len(target_portals)
-            iscsi_properties.update(target_iqns=
-                                    [iscsi_properties['target_iqn']] * count)
+            iscsi_properties.update(target_iqns=[
+                iscsi_properties['target_iqn']
+            ] * count)
             iscsi_properties.update(target_lun=0)
-            iscsi_properties.update(target_luns=
-                                    [iscsi_properties['target_lun']] * count)
+            iscsi_properties.update(target_luns=[
+                iscsi_properties['target_lun']
+            ] * count)
 
         if 'provider_auth' in volume:
             auth = volume['provider_auth']
