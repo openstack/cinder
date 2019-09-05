@@ -336,19 +336,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             fake.VOLUME_ID, fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA,
             None)
 
-    def test_get_preferred_target_from_list(self):
-        target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
-        operational_addresses = [
-            target['address']
-            for target in target_details_list[2:]]
-        self.zapi_client.get_operational_lif_addresses = (
-            mock.Mock(return_value=operational_addresses))
-
-        result = self.library._get_preferred_target_from_list(
-            target_details_list)
-
-        self.assertEqual(target_details_list[2], result)
-
     @ddt.data({'replication_backends': [], 'cluster_credentials': False},
               {'replication_backends': ['target_1', 'target_2'],
                'cluster_credentials': True})
