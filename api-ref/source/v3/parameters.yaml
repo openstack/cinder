@@ -1355,6 +1355,12 @@ host_service:
   in: body
   required: true
   type: string
+host_service_status:
+  description: |
+    The status of the service. One of ``available`` or ``unavailable``.
+  in: body
+  required: true
+  type: string
 hosts:
   description: |
     A OpenStack Block Storage host.

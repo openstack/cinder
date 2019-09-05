@@ -42,7 +42,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - hosts: hosts
-   - service-status: service_status
+   - service-status: host_service_status
    - service: host_service
    - zone: availability_zone_required
    - service-state: service_state
