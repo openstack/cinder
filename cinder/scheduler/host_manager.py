@@ -35,7 +35,7 @@ from cinder import objects
 from cinder.scheduler import filters
 from cinder import utils
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 
 # FIXME: This file should be renamed to backend_manager, we should also rename
@@ -246,7 +246,7 @@ class BackendState(object):
             pool_name = self.volume_backend_name
             if pool_name is None:
                 # To get DEFAULT_POOL_NAME
-                pool_name = vol_utils.extract_host(self.host, 'pool', True)
+                pool_name = volume_utils.extract_host(self.host, 'pool', True)
 
             if len(self.pools) == 0:
                 # No pool was there
@@ -349,8 +349,8 @@ class BackendState(object):
 
 class PoolState(BackendState):
     def __init__(self, host, cluster_name, capabilities, pool_name):
-        new_host = vol_utils.append_host(host, pool_name)
-        new_cluster = vol_utils.append_host(cluster_name, pool_name)
+        new_host = volume_utils.append_host(host, pool_name)
+        new_cluster = volume_utils.append_host(cluster_name, pool_name)
         super(PoolState, self).__init__(new_host, new_cluster, capabilities)
         self.pool_name = pool_name
         # No pools in pool
@@ -726,7 +726,8 @@ class HostManager(object):
                 filtered = False
                 pool = state.pools[key]
                 # use backend_key.pool_name to make sure key is unique
-                pool_key = vol_utils.append_host(backend_key, pool.pool_name)
+                pool_key = volume_utils.append_host(backend_key,
+                                                    pool.pool_name)
                 new_pool = dict(name=pool_key)
                 new_pool.update(dict(capabilities=pool.capabilities))
 
@@ -871,7 +872,7 @@ class HostManager(object):
     def _notify_capacity_usage(self, context, usage):
         if usage:
             for u in usage:
-                vol_utils.notify_about_capacity_usage(
+                volume_utils.notify_about_capacity_usage(
                     context, u, u['type'], None, None)
         LOG.debug("Publish storage capacity: %s.", usage)
 

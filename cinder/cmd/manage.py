@@ -85,7 +85,7 @@ from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import volume_utils as vutils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
@@ -444,7 +444,7 @@ class VolumeCommands(object):
         """Delete a volume, bypassing the check that it must be available."""
         ctxt = context.get_admin_context()
         volume = objects.Volume.get_by_id(ctxt, volume_id)
-        host = vutils.extract_host(volume.host) if volume.host else None
+        host = volume_utils.extract_host(volume.host) if volume.host else None
 
         if not host:
             print(_("Volume not yet assigned to host."))

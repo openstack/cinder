@@ -84,7 +84,7 @@ from cinder.volume import group_types
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_migration
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -205,7 +205,7 @@ class VolumeManager(manager.CleanableManager,
     def _get_service(self, host=None, binary=constants.VOLUME_BINARY):
         host = host or self.host
         ctxt = context.get_admin_context()
-        svc_host = vol_utils.extract_host(host, 'backend')
+        svc_host = volume_utils.extract_host(host, 'backend')
         return objects.Service.get_by_args(ctxt, svc_host, binary)
 
     def __init__(self, volume_driver=None, service_name=None,
@@ -315,7 +315,7 @@ class VolumeManager(manager.CleanableManager,
             self.image_volume_cache = None
 
     def _count_allocated_capacity(self, ctxt, volume):
-        pool = vol_utils.extract_host(volume['host'], 'pool')
+        pool = volume_utils.extract_host(volume['host'], 'pool')
         if pool is None:
             # No pool name encoded in host, so this is a legacy
             # volume created before pool is introduced, ask
@@ -329,8 +329,8 @@ class VolumeManager(manager.CleanableManager,
                 return
 
             if pool:
-                new_host = vol_utils.append_host(volume['host'],
-                                                 pool)
+                new_host = volume_utils.append_host(volume['host'],
+                                                    pool)
                 self.db.volume_update(ctxt, volume['id'],
                                       {'host': new_host})
             else:
@@ -339,7 +339,7 @@ class VolumeManager(manager.CleanableManager,
                 # volume_backend_name is None, use default pool name.
                 # This is only for counting purpose, doesn't update DB.
                 pool = (self.driver.configuration.safe_get(
-                    'volume_backend_name') or vol_utils.extract_host(
+                    'volume_backend_name') or volume_utils.extract_host(
                     volume['host'], 'pool', True))
         try:
             pool_stat = self.stats['pools'][pool]
@@ -563,7 +563,7 @@ class VolumeManager(manager.CleanableManager,
         self.driver.set_initialized()
 
         # Keep the image tmp file clean when init host.
-        backend_name = vol_utils.extract_host(self.service_topic_queue)
+        backend_name = volume_utils.extract_host(self.service_topic_queue)
         image_utils.cleanup_temporary_file(backend_name)
 
         # Migrate any ConfKeyManager keys based on fixed_key to the currently
@@ -669,9 +669,10 @@ class VolumeManager(manager.CleanableManager,
     def _set_resource_host(self, resource):
         """Set the host field on the DB to our own when we are clustered."""
         if (resource.is_clustered and
-                not vol_utils.hosts_are_equivalent(resource.host, self.host)):
-            pool = vol_utils.extract_host(resource.host, 'pool')
-            resource.host = vol_utils.append_host(self.host, pool)
+                not volume_utils.hosts_are_equivalent(resource.host,
+                                                      self.host)):
+            pool = volume_utils.extract_host(resource.host, 'pool')
+            resource.host = volume_utils.append_host(self.host, pool)
             resource.save()
 
     @objects.Volume.set_workers
@@ -785,8 +786,9 @@ class VolumeManager(manager.CleanableManager,
 
     def _check_is_our_resource(self, resource):
         if resource.host:
-            res_backend = vol_utils.extract_host(resource.service_topic_queue)
-            backend = vol_utils.extract_host(self.service_topic_queue)
+            res_backend = volume_utils.extract_host(
+                resource.service_topic_queue)
+            backend = volume_utils.extract_host(self.service_topic_queue)
             if res_backend != backend:
                 msg = (_('Invalid %(resource)s: %(resource)s %(id)s is not '
                          'local to %(backend)s.') %
@@ -1305,7 +1307,7 @@ class VolumeManager(manager.CleanableManager,
                 raise exception.InvalidVolume(
                     reason=_("being attached by different mode"))
 
-        host_name_sanitized = vol_utils.sanitize_hostname(
+        host_name_sanitized = volume_utils.sanitize_hostname(
             host_name) if host_name else None
         if instance_uuid:
             attachments = (
@@ -2162,11 +2164,11 @@ class VolumeManager(manager.CleanableManager,
 
         try:
             size_in_mb = int(src_vol['size']) * units.Ki    # vol size is in GB
-            vol_utils.copy_volume(src_attach_info['device']['path'],
-                                  dest_attach_info['device']['path'],
-                                  size_in_mb,
-                                  self.configuration.volume_dd_blocksize,
-                                  sparse=sparse_copy_volume)
+            volume_utils.copy_volume(src_attach_info['device']['path'],
+                                     dest_attach_info['device']['path'],
+                                     size_in_mb,
+                                     self.configuration.volume_dd_blocksize,
+                                     sparse=sparse_copy_volume)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to copy volume %(src)s to %(dest)s.",
@@ -2197,7 +2199,7 @@ class VolumeManager(manager.CleanableManager,
             new_vol_values['volume_type_id'] = new_type_id
             if volume_types.volume_types_encryption_changed(
                     ctxt, volume.volume_type_id, new_type_id):
-                encryption_key_id = vol_utils.create_encryption_key(
+                encryption_key_id = volume_utils.create_encryption_key(
                     ctxt, self.key_manager, new_type_id)
                 new_vol_values['encryption_key_id'] = encryption_key_id
 
@@ -2665,7 +2667,7 @@ class VolumeManager(manager.CleanableManager,
                                    volume,
                                    event_suffix,
                                    extra_usage_info=None):
-        vol_utils.notify_about_volume_usage(
+        volume_utils.notify_about_volume_usage(
             context, volume, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -2674,7 +2676,7 @@ class VolumeManager(manager.CleanableManager,
                                      snapshot,
                                      event_suffix,
                                      extra_usage_info=None):
-        vol_utils.notify_about_snapshot_usage(
+        volume_utils.notify_about_snapshot_usage(
             context, snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -2684,7 +2686,7 @@ class VolumeManager(manager.CleanableManager,
                                   event_suffix,
                                   volumes=None,
                                   extra_usage_info=None):
-        vol_utils.notify_about_group_usage(
+        volume_utils.notify_about_group_usage(
             context, group, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -2693,7 +2695,7 @@ class VolumeManager(manager.CleanableManager,
                 context, group.id)
         if volumes:
             for volume in volumes:
-                vol_utils.notify_about_volume_usage(
+                volume_utils.notify_about_volume_usage(
                     context, volume, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
@@ -2703,7 +2705,7 @@ class VolumeManager(manager.CleanableManager,
                                            event_suffix,
                                            snapshots=None,
                                            extra_usage_info=None):
-        vol_utils.notify_about_group_snapshot_usage(
+        volume_utils.notify_about_group_snapshot_usage(
             context, group_snapshot, event_suffix,
             extra_usage_info=extra_usage_info, host=self.host)
 
@@ -2712,7 +2714,7 @@ class VolumeManager(manager.CleanableManager,
                 context, group_snapshot.id)
         if snapshots:
             for snapshot in snapshots:
-                vol_utils.notify_about_snapshot_usage(
+                volume_utils.notify_about_snapshot_usage(
                     context, snapshot, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
@@ -2770,11 +2772,11 @@ class VolumeManager(manager.CleanableManager,
                               for attachment in attachments]
             nova_api.extend_volume(context, instance_uuids, volume.id)
 
-        pool = vol_utils.extract_host(volume.host, 'pool')
+        pool = volume_utils.extract_host(volume.host, 'pool')
         if pool is None:
             # Legacy volume, put them into default pool
             pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
+                'volume_backend_name') or volume_utils.extract_host(
                     volume.host, 'pool', True)
 
         try:
@@ -2791,10 +2793,10 @@ class VolumeManager(manager.CleanableManager,
 
     def _is_our_backend(self, host, cluster_name):
         return ((not cluster_name and
-                 vol_utils.hosts_are_equivalent(self.driver.host, host)) or
+                 volume_utils.hosts_are_equivalent(self.driver.host, host)) or
                 (cluster_name and
-                 vol_utils.hosts_are_equivalent(self.driver.cluster_name,
-                                                cluster_name)))
+                 volume_utils.hosts_are_equivalent(self.driver.cluster_name,
+                                                   cluster_name)))
 
     def retype(self, context, volume, new_type_id, host,
                migration_policy='never', reservations=None,
@@ -2954,7 +2956,7 @@ class VolumeManager(manager.CleanableManager,
         replication_diff = diff_specs.get('replication_enabled')
 
         if replication_diff:
-            is_replicated = vol_utils.is_boolean_str(replication_diff[1])
+            is_replicated = volume_utils.is_boolean_str(replication_diff[1])
             if is_replicated:
                 replication_status = fields.ReplicationStatus.ENABLED
             else:
@@ -2973,11 +2975,11 @@ class VolumeManager(manager.CleanableManager,
 
     def _update_stats_for_managed(self, volume_reference):
         # Update volume stats
-        pool = vol_utils.extract_host(volume_reference.host, 'pool')
+        pool = volume_utils.extract_host(volume_reference.host, 'pool')
         if pool is None:
             # Legacy volume, put them into default pool
             pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
+                'volume_backend_name') or volume_utils.extract_host(
                     volume_reference.host, 'pool', True)
 
         try:
@@ -3440,12 +3442,13 @@ class VolumeManager(manager.CleanableManager,
     def _update_allocated_capacity(self, vol, decrement=False, host=None):
         # Update allocated capacity in volume stats
         host = host or vol['host']
-        pool = vol_utils.extract_host(host, 'pool')
+        pool = volume_utils.extract_host(host, 'pool')
         if pool is None:
             # Legacy volume, put them into default pool
             pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(host, 'pool',
-                                                                 True)
+                'volume_backend_name') or volume_utils.extract_host(host,
+                                                                    'pool',
+                                                                    True)
 
         vol_size = -vol['size'] if decrement else vol['size']
         try:

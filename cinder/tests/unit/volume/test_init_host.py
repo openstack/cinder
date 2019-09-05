@@ -26,7 +26,7 @@ from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
 from cinder.volume import driver
 from cinder.volume import volume_migration as volume_migration
-from cinder.volume import volume_utils as volutils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
@@ -44,16 +44,16 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
             self.context, size=100, host=CONF.host)
         vol1 = tests_utils.create_volume(
             self.context, size=128,
-            host=volutils.append_host(CONF.host, 'pool0'))
+            host=volume_utils.append_host(CONF.host, 'pool0'))
         vol2 = tests_utils.create_volume(
             self.context, size=256,
-            host=volutils.append_host(CONF.host, 'pool0'))
+            host=volume_utils.append_host(CONF.host, 'pool0'))
         vol3 = tests_utils.create_volume(
             self.context, size=512,
-            host=volutils.append_host(CONF.host, 'pool1'))
+            host=volume_utils.append_host(CONF.host, 'pool1'))
         vol4 = tests_utils.create_volume(
             self.context, size=1024,
-            host=volutils.append_host(CONF.host, 'pool2'))
+            host=volume_utils.append_host(CONF.host, 'pool2'))
         self.volume.init_host(service_id=self.service_id)
         init_host_mock.assert_called_once_with(
             service_id=self.service_id, added_to_cluster=None)
@@ -74,7 +74,7 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
         # to be volume_backend_name or None
 
         vol0.refresh()
-        expected_host = volutils.append_host(CONF.host, 'fake')
+        expected_host = volume_utils.append_host(CONF.host, 'fake')
         self.assertEqual(expected_host, vol0.host)
         self.volume.delete_volume(self.context, vol0)
         self.volume.delete_volume(self.context, vol1)
@@ -100,24 +100,24 @@ class VolumeInitHostTestCase(base.BaseVolumeTestCase):
                                   cluster_name=cluster_name)
         tests_utils.create_volume(
             self.context, size=128, cluster_name=cluster_name,
-            host=volutils.append_host(CONF.host, 'pool0'))
+            host=volume_utils.append_host(CONF.host, 'pool0'))
         tests_utils.create_volume(
             self.context, size=256, cluster_name=cluster_name,
-            host=volutils.append_host(CONF.host + '2', 'pool0'))
+            host=volume_utils.append_host(CONF.host + '2', 'pool0'))
         tests_utils.create_volume(
             self.context, size=512, cluster_name=cluster_name,
-            host=volutils.append_host(CONF.host + '2', 'pool1'))
+            host=volume_utils.append_host(CONF.host + '2', 'pool1'))
         tests_utils.create_volume(
             self.context, size=1024, cluster_name=cluster_name,
-            host=volutils.append_host(CONF.host + '3', 'pool2'))
+            host=volume_utils.append_host(CONF.host + '3', 'pool2'))
 
         # These don't belong to the cluster so they will be ignored
         tests_utils.create_volume(
             self.context, size=1024,
-            host=volutils.append_host(CONF.host, 'pool2'))
+            host=volume_utils.append_host(CONF.host, 'pool2'))
         tests_utils.create_volume(
             self.context, size=1024, cluster_name=cluster_name + '1',
-            host=volutils.append_host(CONF.host + '3', 'pool2'))
+            host=volume_utils.append_host(CONF.host + '3', 'pool2'))
 
         self.volume.init_host(service_id=self.service_id)
         init_host_mock.assert_called_once_with(

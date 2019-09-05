@@ -40,7 +40,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
@@ -785,8 +785,8 @@ class API(base.Base):
                 # group.host and add_vol_ref['host'] are in this format:
                 # 'host@backend#pool'. Extract host (host@backend) before
                 # doing comparison.
-                vol_host = vol_utils.extract_host(add_vol_ref['host'])
-                group_host = vol_utils.extract_host(group.host)
+                vol_host = volume_utils.extract_host(add_vol_ref['host'])
+                group_host = volume_utils.extract_host(group.host)
                 if group_host != vol_host:
                     raise exception.InvalidVolume(
                         reason=_("Volume is not local to this node."))
@@ -956,7 +956,7 @@ class API(base.Base):
             raise exception.InvalidGroupType(reason=msg)
 
         for vol_type in group.volume_types:
-            if not vol_utils.is_replicated_spec(vol_type.extra_specs):
+            if not volume_utils.is_replicated_spec(vol_type.extra_specs):
                 msg = _("Volume type %s does not have 'replication_enabled' "
                         "spec key set to '<is> True'.") % vol_type.id
                 LOG.error(msg)

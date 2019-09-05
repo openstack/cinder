@@ -30,7 +30,7 @@ from cinder import quota_utils
 from cinder import utils
 from cinder.volume.flows import common
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -223,7 +223,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # exist, this is expected as it signals that the image_id is missing.
         image_meta = self.image_service.show(context, image_id)
 
-        vol_utils.check_image_metadata(image_meta, size)
+        volume_utils.check_image_metadata(image_meta, size)
 
         return image_meta
 
@@ -237,7 +237,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         the validated availability zone.
         """
         refresh_az = False
-        type_azs = vol_utils.extract_availability_zones_from_volume_type(
+        type_azs = volume_utils.extract_availability_zones_from_volume_type(
             volume_type)
         type_az_configured = type_azs is not None
         if type_az_configured:
@@ -339,12 +339,12 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             # Clone the existing key and associate a separate -- but
             # identical -- key with each volume.
             if encryption_key_id is not None:
-                encryption_key_id = vol_utils.clone_encryption_key(
+                encryption_key_id = volume_utils.clone_encryption_key(
                     context,
                     key_manager,
                     encryption_key_id)
             else:
-                encryption_key_id = vol_utils.create_encryption_key(
+                encryption_key_id = volume_utils.create_encryption_key(
                     context,
                     key_manager,
                     volume_type_id)
@@ -456,7 +456,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             specs = None
             extra_specs = None
 
-        if vol_utils.is_replicated_spec(extra_specs):
+        if volume_utils.is_replicated_spec(extra_specs):
             replication_status = fields.ReplicationStatus.ENABLED
         else:
             replication_status = fields.ReplicationStatus.DISABLED
@@ -740,13 +740,13 @@ class VolumeCastTask(flow_utils.CinderTask):
             # If cgroup_id existed, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as CG's backend.
             cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
-            request_spec['resource_backend'] = vol_utils.extract_host(
+            request_spec['resource_backend'] = volume_utils.extract_host(
                 cgroup.resource_backend)
         elif group_id:
             # If group_id exists, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as group's backend.
             group = objects.Group.get_by_id(context, group_id)
-            request_spec['resource_backend'] = vol_utils.extract_host(
+            request_spec['resource_backend'] = volume_utils.extract_host(
                 group.resource_backend)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.

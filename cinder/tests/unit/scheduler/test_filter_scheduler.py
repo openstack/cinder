@@ -27,7 +27,7 @@ from cinder.scheduler import host_manager
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit.scheduler import test_scheduler
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 
 @ddt.ddt
@@ -379,7 +379,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = objects.RequestSpec.from_primitives(request_spec)
         ret_host = sched.backend_passes_filters(ctx, 'host1#lvm1',
                                                 request_spec, {})
-        self.assertEqual('host1', utils.extract_host(ret_host.host))
+        self.assertEqual('host1', volume_utils.extract_host(ret_host.host))
         self.assertTrue(_mock_service_get_topic.called)
 
     @mock.patch('cinder.db.service_get_all')
@@ -395,7 +395,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = objects.RequestSpec.from_primitives(request_spec)
         ret_host = sched.backend_passes_filters(ctx, 'host5#_pool0',
                                                 request_spec, {})
-        self.assertEqual('host5', utils.extract_host(ret_host.host))
+        self.assertEqual('host5', volume_utils.extract_host(ret_host.host))
         self.assertTrue(_mock_service_get_topic.called)
 
     @mock.patch('cinder.db.service_get_all')
@@ -408,7 +408,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1}}
         request_spec = objects.RequestSpec.from_primitives(request_spec)
         ret_host = sched.backend_passes_filters(ctx, 'host1', request_spec, {})
-        self.assertEqual('host1', utils.extract_host(ret_host.host))
+        self.assertEqual('host1', volume_utils.extract_host(ret_host.host))
         self.assertTrue(mock_service_get_all.called)
 
     @mock.patch('cinder.db.service_get_all')
@@ -481,7 +481,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         host_state = sched.find_retype_backend(ctx, request_spec,
                                                filter_properties={},
                                                migration_policy='never')
-        self.assertEqual('host4', utils.extract_host(host_state.host))
+        self.assertEqual('host4', volume_utils.extract_host(host_state.host))
 
     @mock.patch('cinder.db.service_get_all')
     def test_retype_with_pool_policy_never_migrate_pass(
@@ -540,7 +540,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         host_state = sched.find_retype_backend(ctx, request_spec,
                                                filter_properties={},
                                                migration_policy='on-demand')
-        self.assertEqual('host1', utils.extract_host(host_state.host))
+        self.assertEqual('host1', volume_utils.extract_host(host_state.host))
 
     @mock.patch('cinder.db.service_get_all')
     def test_retype_policy_demand_migrate_fail(self, _mock_service_get_topic):

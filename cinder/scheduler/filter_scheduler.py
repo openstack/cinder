@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.scheduler import driver
 from cinder.scheduler import scheduler_options
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -117,11 +117,11 @@ class FilterScheduler(driver.Scheduler):
         weighed_backends = self._get_weighted_candidates(context, request_spec,
                                                          filter_properties)
         # If backend has no pool defined we will ignore it in the comparison
-        ignore_pool = not bool(utils.extract_host(backend, 'pool'))
+        ignore_pool = not bool(volume_utils.extract_host(backend, 'pool'))
         for weighed_backend in weighed_backends:
             backend_id = weighed_backend.obj.backend_id
             if ignore_pool:
-                backend_id = utils.extract_host(backend_id)
+                backend_id = volume_utils.extract_host(backend_id)
             if backend_id == backend:
                 return weighed_backend.obj
 
@@ -160,7 +160,7 @@ class FilterScheduler(driver.Scheduler):
             if backend_state.backend_id == backend:
                 return backend_state
 
-        if utils.extract_host(backend, 'pool') is None:
+        if volume_utils.extract_host(backend, 'pool') is None:
             # legacy volumes created before pool is introduced has no pool
             # info in host.  But host_state.host always include pool level
             # info. In this case if above exact match didn't work out, we
@@ -171,8 +171,9 @@ class FilterScheduler(driver.Scheduler):
             # to happen even migration policy is 'never'.
             for weighed_backend in weighed_backends:
                 backend_state = weighed_backend.obj
-                new_backend = utils.extract_host(backend_state.backend_id,
-                                                 'backend')
+                new_backend = volume_utils.extract_host(
+                    backend_state.backend_id,
+                    'backend')
                 if new_backend == backend:
                     return backend_state
 
@@ -447,8 +448,8 @@ class FilterScheduler(driver.Scheduler):
             for backend2 in backend_list2:
                 # Should schedule creation of group on backend level,
                 # not pool level.
-                if (utils.extract_host(backend1.obj.backend_id) ==
-                        utils.extract_host(backend2.obj.backend_id)):
+                if (volume_utils.extract_host(backend1.obj.backend_id) ==
+                        volume_utils.extract_host(backend2.obj.backend_id)):
                     new_backends.append(backend1)
         if not new_backends:
             return []
@@ -526,14 +527,14 @@ class FilterScheduler(driver.Scheduler):
         # snapshot or volume).
         resource_backend = request_spec.get('resource_backend')
         if weighed_backends and resource_backend:
-            resource_backend_has_pool = bool(utils.extract_host(
+            resource_backend_has_pool = bool(volume_utils.extract_host(
                 resource_backend, 'pool'))
             # Get host name including host@backend#pool info from
             # weighed_backends.
             for backend in weighed_backends[::-1]:
                 backend_id = (
                     backend.obj.backend_id if resource_backend_has_pool
-                    else utils.extract_host(backend.obj.backend_id)
+                    else volume_utils.extract_host(backend.obj.backend_id)
                 )
                 if backend_id != resource_backend:
                     weighed_backends.remove(backend)
