@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -807,9 +807,9 @@ class PowerMaxUtils(object):
         :param new_type_extra_specs: the target type extra specs
         :return: bool
         """
-        is_src_multiattach = vol_utils.is_boolean_str(
+        is_src_multiattach = volume_utils.is_boolean_str(
             extra_specs.get('multiattach'))
-        is_tgt_multiattach = vol_utils.is_boolean_str(
+        is_tgt_multiattach = volume_utils.is_boolean_str(
             new_type_extra_specs.get('multiattach'))
         return is_src_multiattach != is_tgt_multiattach
 

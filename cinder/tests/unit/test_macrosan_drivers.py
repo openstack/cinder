@@ -27,7 +27,7 @@ from cinder.volume.drivers.macrosan import devop_client
 from cinder.volume.drivers.macrosan import driver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as volutils
+from cinder.volume import volume_utils
 
 
 test_volume = (
@@ -460,7 +460,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_volume_from_snapshot(self, mock_volume_type, mock_qos,
                                          mock_hostname,
@@ -480,7 +480,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_cloned_volume(self, mock_volume_types, mock_qos,
                                   mock_hostname,
@@ -567,7 +567,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_volume_from_snapshot_fail(self, mock_volume_type,
                                               mock_qos, mock_hostname,
@@ -588,7 +588,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_cloned_volume_fail(self, mock_volume_types, mock_qos,
                                        mock_hostname,
@@ -699,7 +699,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_volume_from_snapshot(self, mock_volume_types, mock_qos,
                                          mock_hostname,
@@ -720,7 +720,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_cloned_volume(self, mock_volume_types, mock_qos,
                                   mock_hostname,
@@ -741,7 +741,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_volume_from_snapshot_fail(self, mock_volume_types,
                                               mock_qos,
@@ -763,7 +763,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(socket, 'gethostname', return_value='controller')
     @mock.patch.object(utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
-    @mock.patch.object(volutils, 'copy_volume', return_value=None)
+    @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
     def test_create_cloned_volume_fail(self, mock_volume_types, mock_qos,
                                        mock_hostname,

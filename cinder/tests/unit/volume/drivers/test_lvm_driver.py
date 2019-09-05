@@ -31,7 +31,7 @@ from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import lvm
 import cinder.volume.volume_utils
-from cinder.volume import volume_utils as volutils
+from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 
@@ -74,8 +74,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           lvm_driver._delete_volume, volume)
 
-    @mock.patch.object(volutils, 'clear_volume')
-    @mock.patch.object(volutils, 'copy_volume')
+    @mock.patch.object(volume_utils, 'clear_volume')
+    @mock.patch.object(volume_utils, 'copy_volume')
     @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'create_export')
     def test_delete_volume_thinlvm_snap(self, _mock_create_export,
                                         mock_copy, mock_clear):
@@ -97,7 +97,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                          'size': 123}
         lvm_driver._delete_volume(fake_snapshot, is_snapshot=True)
 
-    @mock.patch.object(volutils, 'get_all_volume_groups',
+    @mock.patch.object(volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lvm_version',
                 return_value=(2, 2, 100))
@@ -186,7 +186,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
         with mock.patch.object(self.volume.driver, 'vg'), \
                 mock.patch.object(self.volume.driver, '_create_volume'), \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy:
+                mock.patch.object(volume_utils, 'copy_volume') as mock_copy:
 
             # Test case for thick LVM
             src_volume = tests_utils.create_volume(self.context)
@@ -394,7 +394,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.assertFalse(moved)
         self.assertIsNone(model_update)
 
-    @mock.patch.object(volutils, 'get_all_volume_groups',
+    @mock.patch.object(volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     def test_lvm_migrate_volume_same_volume_group(self, vgs):
         hostname = socket.gethostname()
@@ -414,9 +414,9 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     @mock.patch.object(lvm.LVMVolumeDriver, '_create_volume')
     @mock.patch.object(brick_lvm.LVM, 'get_all_physical_volumes')
     @mock.patch.object(brick_lvm.LVM, 'delete')
-    @mock.patch.object(volutils, 'copy_volume',
+    @mock.patch.object(volume_utils, 'copy_volume',
                        side_effect=processutils.ProcessExecutionError)
-    @mock.patch.object(volutils, 'get_all_volume_groups',
+    @mock.patch.object(volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes'}])
     def test_lvm_migrate_volume_volume_copy_error(self, vgs, copy_volume,
                                                   mock_delete, mock_pvs,
@@ -434,7 +434,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                           vol, host)
         mock_delete.assert_called_once_with(vol)
 
-    @mock.patch.object(volutils, 'get_all_volume_groups',
+    @mock.patch.object(volume_utils, 'get_all_volume_groups',
                        return_value=[{'name': 'cinder-volumes-2'}])
     def test_lvm_volume_group_missing(self, vgs):
         hostname = socket.gethostname()
@@ -475,8 +475,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                return_value = [{}]), \
                 mock.patch.object(self.volume.driver, '_execute') \
                 as mock_execute, \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy, \
-                mock.patch.object(volutils, 'get_all_volume_groups',
+                mock.patch.object(volume_utils, 'copy_volume') as mock_copy, \
+                mock.patch.object(volume_utils, 'get_all_volume_groups',
                                   side_effect = get_all_volume_groups), \
                 mock.patch.object(self.volume.driver, '_delete_volume'):
 
@@ -523,8 +523,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                return_value = [{}]), \
                 mock.patch.object(lvm_driver, '_execute') \
                 as mock_execute, \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy, \
-                mock.patch.object(volutils, 'get_all_volume_groups',
+                mock.patch.object(volume_utils, 'copy_volume') as mock_copy, \
+                mock.patch.object(volume_utils, 'get_all_volume_groups',
                                   side_effect = get_all_volume_groups), \
                 mock.patch.object(lvm_driver, '_delete_volume'):
 

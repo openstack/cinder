@@ -30,7 +30,7 @@ from cinder.objects import fields
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.dell_emc.unity import client
 from cinder.volume.drivers.dell_emc.unity import utils
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 storops = importutils.try_import('storops')
 if storops:
@@ -139,7 +139,7 @@ class VolumeParams(object):
     def is_in_cg(self):
         if self._is_in_cg is None:
             self._is_in_cg = (self._volume.group and
-                              vol_utils.is_group_a_cg_snapshot_type(
+                              volume_utils.is_group_a_cg_snapshot_type(
                                   self._volume.group))
         return self._is_in_cg
 
@@ -670,7 +670,7 @@ class CommonAdapter(object):
                     size_in_m = utils.byte_to_mib(src_snap.size)
                 else:
                     size_in_m = utils.byte_to_mib(src_lun.size_total)
-                vol_utils.copy_volume(
+                volume_utils.copy_volume(
                     src_info['device']['path'],
                     dest_info['device']['path'],
                     size_in_m,

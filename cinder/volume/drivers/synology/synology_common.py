@@ -43,7 +43,7 @@ from cinder.objects import snapshot
 from cinder.objects import volume
 from cinder import utils
 from cinder.volume import configuration
-from cinder.volume import volume_utils as volutils
+from cinder.volume import volume_utils
 
 
 cinder_opts = [
@@ -676,9 +676,9 @@ class SynoCommon(object):
         if self.config.safe_get('use_chap_auth') and self.config.use_chap_auth:
             auth_type = 1
             chap_username = (self.config.safe_get('chap_username') or
-                             volutils.generate_username(12))
+                             volume_utils.generate_username(12))
             chap_password = (self.config.safe_get('chap_password') or
-                             volutils.generate_password())
+                             volume_utils.generate_password())
             provider_auth = ' '.join(('CHAP', chap_username, chap_password))
 
         trg_prefix = self.config.safe_get('target_prefix')

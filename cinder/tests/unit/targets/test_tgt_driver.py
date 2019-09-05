@@ -23,7 +23,7 @@ from cinder import test
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import tgt
-from cinder.volume import volume_utils as vutils
+from cinder.volume import volume_utils
 
 
 class TestTgtAdmDriver(tf.TargetDriverFixture):
@@ -351,11 +351,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                   side_effect=lambda x, y: True),\
                 mock.patch.object(self.target, '_get_target_chap_auth',
                                   side_effect=lambda x, y: None) as m_chap,\
-                mock.patch.object(vutils, 'generate_username',
+                mock.patch.object(volume_utils, 'generate_username',
                                   side_effect=lambda: 'QZJb'),\
                 mock.patch('cinder.privsep.targets.tgt.tgtadmin_update',
                            return_value=('', '')), \
-                mock.patch.object(vutils, 'generate_password',
+                mock.patch.object(volume_utils, 'generate_password',
                                   side_effect=lambda: 'P68e'):
 
             ctxt = context.get_admin_context()

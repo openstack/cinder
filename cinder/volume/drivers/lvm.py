@@ -35,7 +35,7 @@ from cinder import interface
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
-from cinder.volume import volume_utils as volutils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # be sure to convert before passing in
         vol_sz_in_meg = size_in_g * units.Ki
 
-        volutils.clear_volume(
+        volume_utils.clear_volume(
             vol_sz_in_meg, dev_path,
             volume_clear=self.configuration.volume_clear,
             volume_clear_size=self.configuration.volume_clear_size)
@@ -289,7 +289,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             try:
                 lvm_type = self.configuration.lvm_type
                 if lvm_type == 'auto':
-                    if volutils.supports_thin_provisioning():
+                    if volume_utils.supports_thin_provisioning():
                         lvm_type = 'thin'
                     else:
                         lvm_type = 'default'
@@ -307,7 +307,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                            self.configuration.volume_group)
                 raise exception.VolumeBackendAPIException(data=message)
 
-        vg_list = volutils.get_all_volume_groups(
+        vg_list = volume_utils.get_all_volume_groups(
             self.configuration.volume_group)
         vg_dict = next(vg for vg in vg_list if vg['name'] == self.vg.vg_name)
         if vg_dict is None:
@@ -325,7 +325,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
             self.configuration.lvm_type = 'default'
 
-            if volutils.supports_thin_provisioning():
+            if volume_utils.supports_thin_provisioning():
                 if self.vg.get_volume(pool_name) is not None:
                     LOG.info('Enabling LVM thin provisioning by default '
                              'because a thin pool exists.')
@@ -337,7 +337,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         if self.configuration.lvm_type == 'thin':
             # Specific checks for using Thin provisioned LV's
-            if not volutils.supports_thin_provisioning():
+            if not volume_utils.supports_thin_provisioning():
                 message = _("Thin provisioning not supported "
                             "on this version of LVM.")
                 raise exception.VolumeBackendAPIException(data=message)
@@ -427,12 +427,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         # copy_volume expects sizes in MiB, we store integer GiB
         # be sure to convert before passing in
-        volutils.copy_volume(self.local_path(snapshot),
-                             self.local_path(volume),
-                             snapshot['volume_size'] * units.Ki,
-                             self.configuration.volume_dd_blocksize,
-                             execute=self._execute,
-                             sparse=self._sparse_copy_volume)
+        volume_utils.copy_volume(self.local_path(snapshot),
+                                 self.local_path(volume),
+                                 snapshot['volume_size'] * units.Ki,
+                                 self.configuration.volume_dd_blocksize,
+                                 execute=self._execute,
+                                 sparse=self._sparse_copy_volume)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
@@ -549,7 +549,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                 mirror_count)
 
             self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
-            volutils.copy_volume(
+            volume_utils.copy_volume(
                 self.local_path(temp_snapshot),
                 self.local_path(volume),
                 src_vref['size'] * units.Ki,
@@ -594,8 +594,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         lv_name = existing_ref['source-name']
         self.vg.get_volume(lv_name)
 
-        vol_id = volutils.extract_id_from_volume_name(lv_name)
-        if volutils.check_already_managed_volume(vol_id):
+        vol_id = volume_utils.extract_id_from_volume_name(lv_name)
+        if volume_utils.check_already_managed_volume(vol_id):
             raise exception.ManageExistingAlreadyManaged(volume_ref=lv_name)
 
         # Attempt to rename the LV to match the OpenStack internal name.
@@ -677,10 +677,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 continue
 
             if resource_type == 'volume':
-                potential_id = volutils.extract_id_from_volume_name(lv['name'])
+                potential_id = volume_utils.extract_id_from_volume_name(
+                    lv['name'])
             else:
                 unescape = self._unescape_snapshot(lv['name'])
-                potential_id = volutils.extract_id_from_snapshot_name(unescape)
+                potential_id = volume_utils.extract_id_from_snapshot_name(
+                    unescape)
             lv_info = {'reference': {'source-name': lv['name']},
                        'size': int(math.ceil(float(lv['size']))),
                        'cinder_id': None,
@@ -703,8 +705,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
             entries.append(lv_info)
 
-        return volutils.paginate_entries_list(entries, marker, limit, offset,
-                                              sort_keys, sort_dirs)
+        return volume_utils.paginate_entries_list(entries, marker, limit,
+                                                  offset, sort_keys, sort_dirs)
 
     def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
                                sort_keys, sort_dirs):
@@ -757,7 +759,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             LOG.error(message)
             raise exception.VolumeBackendAPIException(data=message)
 
-        vg_list = volutils.get_all_volume_groups()
+        vg_list = volume_utils.get_all_volume_groups()
         try:
             next(vg for vg in vg_list if vg['name'] == dest_vg)
         except StopIteration:
@@ -785,12 +787,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
         # be sure to convert before passing in
         size_in_mb = int(volume['size']) * units.Ki
         try:
-            volutils.copy_volume(self.local_path(volume),
-                                 self.local_path(volume, vg=dest_vg),
-                                 size_in_mb,
-                                 self.configuration.volume_dd_blocksize,
-                                 execute=self._execute,
-                                 sparse=self._sparse_copy_volume)
+            volume_utils.copy_volume(self.local_path(volume),
+                                     self.local_path(volume, vg=dest_vg),
+                                     size_in_mb,
+                                     self.configuration.volume_dd_blocksize,
+                                     execute=self._execute,
+                                     sparse=self._sparse_copy_volume)
         except Exception as e:
             with excutils.save_and_reraise_exception():
                 LOG.error("Volume migration failed due to "

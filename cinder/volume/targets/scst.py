@@ -17,7 +17,7 @@ from cinder import exception
 from cinder.i18n import _
 import cinder.privsep.targets.scst
 from cinder.volume.targets import iscsi
-from cinder.volume import volume_utils as vutils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -231,7 +231,7 @@ class SCSTAdm(iscsi.ISCSITarget):
         return tid
 
     def _iscsi_location(self, ip, target, iqn, lun=None):
-        return "%s:%s,%s %s %s" % (vutils.sanitize_host(ip),
+        return "%s:%s,%s %s %s" % (volume_utils.sanitize_host(ip),
                                    self.configuration.target_port,
                                    target, iqn, lun)
 
@@ -290,8 +290,8 @@ class SCSTAdm(iscsi.ISCSITarget):
         else:
             chap_auth = self._get_target_chap_auth(context, volume)
             if not chap_auth:
-                chap_auth = (vutils.generate_username(),
-                             vutils.generate_password())
+                chap_auth = (volume_utils.generate_username(),
+                             volume_utils.generate_password())
         tid = self.create_iscsi_target(iscsi_name, volume['id'], iscsi_target,
                                        lun, volume_path, chap_auth)
 

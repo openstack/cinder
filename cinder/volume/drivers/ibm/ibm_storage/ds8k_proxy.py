@@ -83,7 +83,7 @@ from cinder.volume.drivers.ibm.ibm_storage import ds8k_restclient as restclient
 from cinder.volume.drivers.ibm.ibm_storage import proxy
 from cinder.volume.drivers.ibm.ibm_storage import strings
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -363,13 +363,13 @@ class Group(object):
         self.id = group.id
         self.host = group.host
         self.consisgroup_snapshot_enabled = (
-            utils.is_group_a_cg_snapshot_type(group))
+            volume_utils.is_group_a_cg_snapshot_type(group))
         self.group_replication_enabled = (
-            utils.is_group_a_type(group,
-                                  "group_replication_enabled"))
+            volume_utils.is_group_a_type(
+                group, "group_replication_enabled"))
         self.consisgroup_replication_enabled = (
-            utils.is_group_a_type(group,
-                                  "consistent_group_replication_enabled"))
+            volume_utils.is_group_a_type(
+                group, "consistent_group_replication_enabled"))
         if is_snapshot:
             self.snapshots = group.snapshots
         else:
@@ -1151,7 +1151,7 @@ class DS8KProxy(proxy.IBMStorageProxy):
         if (grp.group_replication_enabled or
                 grp.consisgroup_replication_enabled):
             for volume_type in group.volume_types:
-                replication_type = utils.is_replicated_spec(
+                replication_type = volume_utils.is_replicated_spec(
                     volume_type.extra_specs)
                 self._assert(replication_type,
                              'Unable to create group: group %(grp)s '

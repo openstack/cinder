@@ -43,7 +43,7 @@ from cinder.volume.drivers.ibm.ibm_storage import xiv_replication as repl
 from cinder.volume import group_types
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 
 OPENSTACK_PRODUCT_NAME = "OpenStack"
@@ -485,7 +485,8 @@ class XIVProxy(proxy.IBMStorageProxy):
         LOG.debug('checking replication_info %(rep)s',
                   {'rep': replication_info})
         volume_update['replication_status'] = 'disabled'
-        cg = volume.group and utils.is_group_a_cg_snapshot_type(volume.group)
+        cg = volume.group and volume_utils.is_group_a_cg_snapshot_type(
+            volume.group)
         if replication_info['enabled']:
             try:
                 repl.VolumeReplication(self).create_replication(
@@ -588,7 +589,7 @@ class XIVProxy(proxy.IBMStorageProxy):
 
         # Add this field to adjust it to generic replication (for volumes)
         replication_info = self._get_replication_info(group_specs)
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             # take every vol out of cg - we can't mirror the cg otherwise.
             if volumes:
                 self._update_consistencygroup(context, group,
@@ -647,7 +648,7 @@ class XIVProxy(proxy.IBMStorageProxy):
 
         replication_info = self._get_replication_info(group_specs)
         updated_volumes = []
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             # one call deletes replication for cgs and volumes together.
             group_name = self._cg_name_from_group(group)
             repl.GroupReplication(self).delete_replication(group_name,
@@ -784,7 +785,7 @@ class XIVProxy(proxy.IBMStorageProxy):
         failback = (secondary_backend_id == strings.PRIMARY_BACKEND_ID)
         result = False
         details = ""
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             result, details = repl.GroupReplication(self).failover(group,
                                                                    failback)
         else:
@@ -1782,7 +1783,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def create_group(self, context, group):
         """Creates a group."""
 
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             cgname = self._cg_name_from_group(group)
             return self._create_consistencygroup(context, cgname)
         # For generic group, create is executed by manager
@@ -1868,7 +1869,7 @@ class XIVProxy(proxy.IBMStorageProxy):
                               sorted_snapshots, source_group,
                               sorted_source_vols):
         """Create volume group from volume group or volume group snapshot."""
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return self._create_consistencygroup_from_src(context, group,
                                                           volumes,
                                                           group_snapshot,
@@ -1984,7 +1985,7 @@ class XIVProxy(proxy.IBMStorageProxy):
             LOG.error(msg)
             raise self._get_exception()(msg)
 
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return self._delete_consistencygroup(context, group, volumes)
         else:
             # For generic group delete the volumes only - executed by manager
@@ -2069,7 +2070,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def update_group(self, context, group,
                      add_volumes=None, remove_volumes=None):
         """Updates a group."""
-        if utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return self._update_consistencygroup(context, group, add_volumes,
                                                  remove_volumes)
         else:
@@ -2155,7 +2156,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Create volume group snapshot."""
 
-        if utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             return self._create_cgsnapshot(context, group_snapshot, snapshots)
         else:
             # For generic group snapshot create executed by manager
@@ -2229,7 +2230,7 @@ class XIVProxy(proxy.IBMStorageProxy):
     @proxy._trace_time
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         """Delete volume group snapshot."""
-        if utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             return self._delete_cgsnapshot(context, group_snapshot, snapshots)
         else:
             # For generic group snapshot delete is executed by manager

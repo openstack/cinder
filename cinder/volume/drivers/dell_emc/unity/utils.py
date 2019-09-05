@@ -28,7 +28,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
@@ -177,19 +177,19 @@ def convert_to_itor_tgt_map(zone_mapping):
 
 
 def get_pool_name(volume):
-    return vol_utils.extract_host(volume.host, 'pool')
+    return volume_utils.extract_host(volume.host, 'pool')
 
 
 def get_pool_name_from_host(host):
-    return vol_utils.extract_host(host['host'], 'pool')
+    return volume_utils.extract_host(host['host'], 'pool')
 
 
 def get_backend_name_from_volume(volume):
-    return vol_utils.extract_host(volume.host, 'backend')
+    return volume_utils.extract_host(volume.host, 'backend')
 
 
 def get_backend_name_from_host(host):
-    return vol_utils.extract_host(host['host'], 'backend')
+    return volume_utils.extract_host(host['host'], 'backend')
 
 
 def get_extra_spec(volume, spec_key):

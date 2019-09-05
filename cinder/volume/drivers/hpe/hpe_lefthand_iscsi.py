@@ -52,7 +52,7 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 import math
 import re
@@ -485,7 +485,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     def create_group(self, context, group):
         """Creates a group."""
         LOG.debug("Creating group.")
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
         for vol_type_id in group.volume_type_ids:
             replication_type = self._volume_of_replicated_type(
@@ -506,7 +506,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         """Creates a group from a source"""
         msg = _("Creating a group from a source is not "
                 "supported when consistent_group_snapshot_enabled to true.")
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
         else:
             raise exception.VolumeBackendAPIException(data=msg)
@@ -514,7 +514,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     @cinder_utils.trace
     def delete_group(self, context, group, volumes):
         """Deletes a group."""
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
         volume_model_updates = []
@@ -547,7 +547,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         add/remove volumes from the group.
         """
         LOG.debug("Updating group.")
-        if not utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
 
         return None, None, None
@@ -555,7 +555,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     @cinder_utils.trace
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Creates a group snapshot."""
-        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
         client = self._login()
         try:
@@ -612,7 +612,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     @cinder_utils.trace
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         """Deletes a group snapshot."""
-        if not utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
         client = self._login()
         snap_name_base = "snapshot-" + group_snapshot.id
@@ -977,7 +977,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
         optional = None
         if chap_enabled:
-            chap_secret = utils.generate_password()
+            chap_secret = volume_utils.generate_password()
             optional = {'chapName': connector['initiator'],
                         'chapTargetSecret': chap_secret,
                         'chapAuthenticationRequired': True

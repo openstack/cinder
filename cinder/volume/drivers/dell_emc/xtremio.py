@@ -55,7 +55,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
-from cinder.volume import volume_utils as vutils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 
@@ -437,9 +437,10 @@ class XtremIOVolumeDriver(san.SanDriver):
                              or self.driver_name)
         self.cluster_id = (self.configuration.safe_get('xtremio_cluster_name')
                            or '')
-        self.provisioning_factor = vutils.get_max_over_subscription_ratio(
-            self.configuration.max_over_subscription_ratio,
-            supports_auto=False)
+        self.provisioning_factor = \
+            volume_utils.get_max_over_subscription_ratio(
+                self.configuration.max_over_subscription_ratio,
+                supports_auto=False)
 
         self.clean_ig = (self.configuration.safe_get('xtremio_clean_unused_ig')
                          or False)
@@ -784,7 +785,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                     LOG.warning('Failed to clean IG %d without mappings', idx)
 
     def _get_password(self):
-        return vutils.generate_password(
+        return volume_utils.generate_password(
             length=12,
             symbolgroups=(string.ascii_uppercase + string.digits))
 

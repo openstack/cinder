@@ -34,7 +34,7 @@ from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import replication
 from cinder.volume.drivers.dell_emc.vnx import taskflows as emc_taskflow
 from cinder.volume.drivers.dell_emc.vnx import utils
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as zm_utils
 
 storops = importutils.try_import('storops')
@@ -251,7 +251,7 @@ class CommonAdapter(replication.ReplicationAdapter):
 
         qos_specs = utils.get_backend_qos_specs(volume)
         if (volume.group and
-                vol_utils.is_group_a_cg_snapshot_type(volume.group)):
+                volume_utils.is_group_a_cg_snapshot_type(volume.group)):
             cg_id = volume.group_id
         else:
             cg_id = None
