@@ -2903,6 +2903,32 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(ref_metadata, act_metadata)
 
     @mock.patch.object(rest.PowerMaxRest, '_get_private_volume',
+                       return_value=tpd.PowerMaxData.
+                       priv_vol_response_metro_active_rep)
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=(tpd.PowerMaxData.array_model, None))
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
+                       return_value=(tpd.PowerMaxData.rdf_group_details))
+    def test_get_volume_metadata_metro_active_rep(self, mck_rdf,
+                                                  mck_model, mck_priv):
+        ref_metadata = {
+            'DeviceID': self.data.device_id,
+            'DeviceLabel': self.data.device_label, 'ArrayID': self.data.array,
+            'ArrayModel': self.data.array_model, 'ServiceLevel': 'None',
+            'Workload': 'None', 'Emulation': 'FBA', 'Configuration': 'TDEV',
+            'CompressionDisabled': 'True', 'ReplicationEnabled': 'True',
+            'R2-DeviceID': self.data.device_id2,
+            'R2-ArrayID': self.data.remote_array,
+            'R2-ArrayModel': self.data.array_model,
+            'ReplicationMode': 'Metro',
+            'RDFG-Label': self.data.rdf_group_name,
+            'R1-RDFG': 1, 'R2-RDFG': 1}
+        array = self.data.array
+        device_id = self.data.device_id
+        act_metadata = self.common.get_volume_metadata(array, device_id)
+        self.assertEqual(ref_metadata, act_metadata)
+
+    @mock.patch.object(rest.PowerMaxRest, '_get_private_volume',
                        return_value=tpd.PowerMaxData.priv_vol_response_no_rep)
     @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
                        return_value=(tpd.PowerMaxData.array_model, None))

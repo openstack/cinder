@@ -5393,6 +5393,9 @@ class PowerMaxCommon(object):
                  'RDFG-Label': rdfg_info['label'],
                  'R1-RDFG': rdf_session['SRDFGroupNumber'],
                  'R2-RDFG': rdf_session['SRDFRemoteGroupNumber']})
+
+            if metadata.get('ReplicationMode') == utils.RDF_ACTIVE.title():
+                metadata['ReplicationMode'] = utils.REP_METRO
         else:
             metadata['ReplicationEnabled'] = 'False'
 
