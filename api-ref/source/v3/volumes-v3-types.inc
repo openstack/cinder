@@ -66,7 +66,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/volume_type/volume-type-show-response.json
+.. literalinclude:: ./samples/volume_type/volume-type-update-response.json
    :language: javascript
 
 
