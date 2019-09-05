@@ -175,3 +175,5 @@ info.dtypes.wwn==0.1.1
 info.dtypes.iqn==0.4.0
 purestorage==1.6.0
 rsd-lib==1.1.0
+storpool==4.0.0
+storpool.spopenstack==2.2.1
