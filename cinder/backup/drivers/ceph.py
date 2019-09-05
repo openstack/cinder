@@ -631,15 +631,15 @@ class CephBackupDriver(driver.BackupDriver):
                                         base_name, read_only=True))
         try:
             snaps = base_rbd.list_snaps()
+
+            if snaps is None:
+                return False
+
+            for snap in snaps:
+                if snap['name'] == snap_name:
+                    return True
         finally:
             base_rbd.close()
-
-        if snaps is None:
-            return False
-
-        for snap in snaps:
-            if snap['name'] == snap_name:
-                return True
 
         return False
 
