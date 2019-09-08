@@ -7,7 +7,7 @@ upgrade:
     continue to use them.
 deprecations:
   - |
-    The Oracle ZFSSA drivers has been marked as unsupported
+    The Oracle ZFSSA drivers have been been marked as unsupported
     and are now deprecated. ``enable_unsupported_driver`` will need
     to be set to ``True`` in the driver's section in cinder.conf to
     continue to use them. Oracle has indicated that they don't plan to
