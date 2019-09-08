@@ -109,7 +109,7 @@ class Client(object):
             'attr': 'existence',
             'name': name
         }
-        return self.send_request('get', '/lun', data=data)
+        return self.send_request(method='get', url='/lun', data=data)
 
     def snapshot_point_exists(self, lun_name, pointid):
         """Whether the snapshot point exists."""
