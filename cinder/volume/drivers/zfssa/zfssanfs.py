@@ -101,6 +101,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Oracle_ZFSSA_CI"
 
+    # TODO(jsbryant) Remove driver in the 'U' release as Oracle
+    #                is dropping support.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         super(ZFSSANFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(ZFSSA_OPTS)
