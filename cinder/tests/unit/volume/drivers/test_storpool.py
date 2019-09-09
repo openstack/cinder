@@ -1,4 +1,4 @@
-# Copyright 2014 - 2017  StorPool
+# Copyright 2014 - 2017, 2019  StorPool
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -242,6 +242,12 @@ class StorPoolTestCase(test.TestCase):
         for pool in stats['pools']:
             self.assertEqual(21, pool['total_capacity_gb'])
             self.assertEqual(5, int(pool['free_capacity_gb']))
+
+            self.assertTrue(pool['multiattach'])
+            self.assertFalse(pool['QoS_support'])
+            self.assertFalse(pool['thick_provisioning_support'])
+            self.assertTrue(pool['thin_provisioning_support'])
+
             if pool['pool_name'] != 'default':
                 m = r.match(pool['pool_name'])
                 self.assertIsNotNone(m)

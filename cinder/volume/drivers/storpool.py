@@ -1,4 +1,4 @@
-#    Copyright (c) 2014 - 2017 StorPool
+#    Copyright (c) 2014 - 2019 StorPool
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -90,10 +90,10 @@ class StorPoolDriver(driver.VolumeDriver):
                   fix the docstring formatting
         1.2.2   - Reintroduce the driver into OpenStack Queens,
                   add ignore_errors to the internal _detach_volume() method
-
+        1.2.3   - Advertise some more driver capabilities.
     """
 
-    VERSION = '1.2.1'
+    VERSION = '1.2.3'
     CI_WIKI_NAME = 'StorPool_CI'
 
     # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
@@ -297,7 +297,10 @@ class StorPoolDriver(driver.VolumeDriver):
             'total_capacity_gb': total / units.Gi,
             'free_capacity_gb': free / units.Gi,
             'reserved_percentage': 0,
+            'multiattach': True,
             'QoS_support': False,
+            'thick_provisioning_support': False,
+            'thin_provisioning_support': True,
         }
 
         pools = [dict(space, pool_name='default')]

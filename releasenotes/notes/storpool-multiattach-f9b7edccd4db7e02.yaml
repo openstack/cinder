@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The StorPool driver enables the ``multiattach`` and ``thin_provisioning``
+    capabilities.
