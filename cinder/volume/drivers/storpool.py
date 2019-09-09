@@ -96,9 +96,6 @@ class StorPoolDriver(driver.VolumeDriver):
     VERSION = '1.2.3'
     CI_WIKI_NAME = 'StorPool_CI'
 
-    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
         super(StorPoolDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(storpool_opts)
