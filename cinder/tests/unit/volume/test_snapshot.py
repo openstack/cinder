@@ -118,7 +118,8 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
 
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
-                                   ['INFO', 'volume.create.end']))
+                                   ['INFO', 'volume.create.end']),
+                                  any_order=True)
 
         snapshot = create_snapshot(volume['id'], size=volume['size'])
         snapshot_id = snapshot.id
@@ -131,7 +132,8 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                                   (['INFO', 'volume.create.start'],
                                    ['INFO', 'volume.create.end'],
                                    ['INFO', 'snapshot.create.start'],
-                                   ['INFO', 'snapshot.create.end']))
+                                   ['INFO', 'snapshot.create.end']),
+                                  any_order=True)
 
         self.volume.delete_snapshot(self.context, snapshot)
         self.assert_notify_called(mock_notify,
@@ -140,7 +142,8 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                                    ['INFO', 'snapshot.create.start'],
                                    ['INFO', 'snapshot.create.end'],
                                    ['INFO', 'snapshot.delete.start'],
-                                   ['INFO', 'snapshot.delete.end']))
+                                   ['INFO', 'snapshot.delete.end']),
+                                  any_order=True)
 
         snap = objects.Snapshot.get_by_id(context.get_admin_context(
             read_deleted='yes'), snapshot_id)
