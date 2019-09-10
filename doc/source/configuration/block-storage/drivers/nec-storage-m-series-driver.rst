@@ -52,7 +52,7 @@ Supported operations
 - Efficient non-disruptive volume backup.
 - Manage and unmanage a volume.
 - Manage and unmanage a snapshot.
-
+- Attach a volume to multiple instances at once (multi-attach).
 
 Preparation
 ~~~~~~~~~~~

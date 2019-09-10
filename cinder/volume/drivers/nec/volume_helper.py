@@ -1143,6 +1143,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             {'msgparm': msgparm, 'exception': e})
         return ret
 
+    @coordination.synchronized('mstorage_iscsi_terminate_{volume.id}')
     def iscsi_terminate_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
                    % {'id': volume.id, 'connector': connector})
@@ -1164,6 +1165,9 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         if connector is None:
             LOG.debug('Connector is not specified. Nothing to do.')
+            return
+
+        if self._is_multi_attachment(volume, connector):
             return
 
         # delete unused access control setting.
@@ -1312,6 +1316,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
+    @coordination.synchronized('mstorage_fc_terminate_{volume.id}')
     def fc_terminate_connection(self, volume, connector):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
                    % {'id': volume.id, 'connector': connector})
@@ -1331,6 +1336,10 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         LOG.debug('_fc_terminate_connection'
                   '(Volume ID = %(id)s, connector = %(connector)s) Start.',
                   {'id': volume.id, 'connector': connector})
+
+        if connector is not None and (
+           self._is_multi_attachment(volume, connector)):
+            return
 
         xml = self._cli.view_all(self._properties['ismview_path'])
         pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
@@ -1393,6 +1402,26 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
+    def _is_multi_attachment(self, volume, connector):
+        """Check the number of attached instances.
+
+        Returns true if the volume is attached to multiple instances.
+        Returns false if the volume is attached to a single instance.
+        """
+        host = connector['host']
+        attach_list = volume.volume_attachment
+
+        if attach_list is None:
+            return False
+
+        host_list = [att.connector['host'] for att in attach_list if
+                     att is not None and att.connector is not None]
+        if host_list.count(host) > 1:
+            LOG.info("Volume is attached to multiple instances on "
+                     "this host.")
+            return True
+        return False
+
     def _build_initiator_target_map(self, connector, fc_ports):
         target_wwns = []
         for port in fc_ports:
@@ -1419,6 +1448,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         data['driver_version'] = self.VERSION
         data['reserved_percentage'] = self._properties['reserved_percentage']
         data['QoS_support'] = True
+        data['multiattach'] = True
         data['location_info'] = (self._properties['cli_fip'] + ":"
                                  + (','.join(map(str,
                                              self._properties['pool_pools']))))

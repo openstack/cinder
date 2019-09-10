@@ -26,10 +26,31 @@ from cinder.zonemanager import utils as fczm_utils
 @interface.volumedriver
 class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
                           driver.ISCSIDriver):
-    """M-Series Storage Snapshot iSCSI Driver."""
+    """M-Series Storage Snapshot iSCSI Driver.
+
+    .. code-block:: none
+
+      Version history:
+
+        1.8.1 - First open source driver version.
+        1.8.2 - Code refactoring.
+        1.9.1 - Support optimal path for non-disruptive backup.
+        1.9.2 - Support manage/unmanage and manage/unmanage snapshot.
+                Delete an unused configuration
+                parameter (ldset_controller_node_name).
+                Fixed bug #1705001: driver fails to start.
+        1.10.1 - Support automatic configuration of SAN access control.
+                 Fixed bug #1753375: SAN access remains permitted on the
+                 source node.
+        1.10.2 - Delete max volumes per pool limit.
+        1.10.3 - Add faster clone status check.
+                 Fixed bug #1777385: driver removed access permission from
+                 the destination node after live-migraion.
+                 Fixed bug #1778669: LUNs of detached volumes are never reused.
+    """
 
     VERSION = '1.10.3'
-    WIKI_NAME = 'NEC_Cinder_CI'
+    CI_WIKI_NAME = 'NEC_Cinder_CI'
 
     def __init__(self, *args, **kwargs):
         super(MStorageISCSIDriver, self).__init__(*args, **kwargs)
@@ -72,10 +93,31 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
 @interface.volumedriver
 class MStorageFCDriver(volume_helper.MStorageDSVDriver,
                        driver.FibreChannelDriver):
-    """M-Series Storage Snapshot FC Driver."""
+    """M-Series Storage Snapshot FC Driver.
+
+    .. code-block:: none
+
+      Version history:
+
+        1.8.1 - First open source driver version.
+        1.8.2 - Code refactoring.
+        1.9.1 - Support optimal path for non-disruptive backup.
+        1.9.2 - Support manage/unmanage and manage/unmanage snapshot.
+                Delete an unused configuration
+                parameter (ldset_controller_node_name).
+                Fixed bug #1705001: driver fails to start.
+        1.10.1 - Support automatic configuration of SAN access control.
+                 Fixed bug #1753375: SAN access remains permitted on the
+                 source node.
+        1.10.2 - Delete max volumes per pool limit.
+        1.10.3 - Add faster clone status check.
+                 Fixed bug #1777385: driver removed access permission from
+                 the destination node after live-migraion.
+                 Fixed bug #1778669: LUNs of detached volumes are never reused.
+    """
 
     VERSION = '1.10.3'
-    WIKI_NAME = 'NEC_Cinder_CI'
+    CI_WIKI_NAME = 'NEC_Cinder_CI'
 
     def __init__(self, *args, **kwargs):
         super(MStorageFCDriver, self).__init__(*args, **kwargs)

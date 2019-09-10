@@ -17,9 +17,12 @@
 import ddt
 import mock
 
+from cinder import context
 from cinder import exception
+from cinder.objects import volume_attachment
 from cinder import test
 from cinder.tests.unit import fake_constants as constants
+from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
@@ -360,6 +363,7 @@ class DummyVolume(object):
         self.volume_id = None
         self.volume_type_id = None
         self.attach_status = None
+        self.volume_attachment = None
         self.provider_location = None
 
 
@@ -781,24 +785,85 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(88, info['data']['target_luns'][1])
 
     def test_iscsi_terminate_connection(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id='46045673-41e7-44a7-9333-02f07feab04b')
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
-                     'multipath': True}
-        ret = self._iscsi_terminate_connection(self.vol, connector)
-        self.assertIsNone(ret)
+                     'multipath': True, 'host': 'DummyHost'}
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+        with mock.patch.object(self._cli, 'delldsetld',
+                               return_value=(True, '')
+                               ) as delldsetld_mock:
+            ret = self._iscsi_terminate_connection(vol, connector)
+            delldsetld_mock.assert_called_once_with(
+                'LX:OpenStack0', 'LX:287RbQoP7VdwR1WsPC2fZT')
+            self.assertIsNone(ret)
+
+        attachment1 = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attachment2 = {
+            'id': constants.ATTACHMENT2_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object1 = volume_attachment.VolumeAttachment(**attachment1)
+        attach_object2 = volume_attachment.VolumeAttachment(**attachment2)
+        attachments = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object1, attach_object2])
+        vol.volume_attachment = attachments
+        with mock.patch.object(self._cli, 'delldsetld',
+                               return_value=(True, '')
+                               ) as delldsetld_mock:
+            ret = self._iscsi_terminate_connection(vol, connector)
+            delldsetld_mock.assert_not_called()
+            self.assertIsNone(ret)
 
     def test_iscsi_terminate_connection_negative(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id='46045673-41e7-44a7-9333-02f07feab04b')
         connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255",
-                     'multipath': True}
+                     'multipath': True, 'host': 'DummyHost'}
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
         with self.assertRaisesRegex(exception.VolumeBackendAPIException,
                                     r'Failed to unregister Logical Disk from'
                                     r' Logical Disk Set \(iSM31064\)'):
             self.mock_object(self._cli, 'delldsetld',
                              return_value=(False, 'iSM31064'))
-            self._iscsi_terminate_connection(self.vol, connector)
+            self._iscsi_terminate_connection(vol, connector)
 
     def test_fc_initialize_connection(self):
-        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
-        info = self._fc_initialize_connection(self.vol, connector)
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id='46045673-41e7-44a7-9333-02f07feab04b')
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"],
+                     'host': 'DummyHost'}
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+        info = self._fc_initialize_connection(vol, connector)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual('2100000991020012', info['data']['target_wwn'][0])
         self.assertEqual('2200000991020012', info['data']['target_wwn'][1])
@@ -833,11 +898,61 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
                                     r' Logical Disk Set \(iSM31064\)'):
             self.mock_object(self._cli, 'delldsetld',
                              return_value=(False, 'iSM31064'))
-            self._fc_terminate_connection(self.vol, connector)
+            self._fc_terminate_connection(vol, connector)
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id='46045673-41e7-44a7-9333-02f07feab04b')
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+        with mock.patch.object(self._cli, 'delldsetld',
+                               return_value=(True, '')
+                               ) as delldsetld_mock:
+            self._fc_terminate_connection(vol, connector)
+            delldsetld_mock.assert_called_once_with(
+                'LX:OpenStack1', 'LX:287RbQoP7VdwR1WsPC2fZT')
+
+        attachment1 = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attachment2 = {
+            'id': constants.ATTACHMENT2_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object1 = volume_attachment.VolumeAttachment(**attachment1)
+        attach_object2 = volume_attachment.VolumeAttachment(**attachment2)
+        attachments = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object1, attach_object2])
+        vol.volume_attachment = attachments
+        with mock.patch.object(self._cli, 'delldsetld',
+                               return_value=(True, '')
+                               ) as delldsetld_mock:
+            self._fc_terminate_connection(vol, connector)
+            delldsetld_mock.assert_not_called()
 
     def test_fc_terminate_connection(self):
-        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
-        info = self._fc_terminate_connection(self.vol, connector)
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id='46045673-41e7-44a7-9333-02f07feab04b')
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"],
+                     'host': 'DummyHost'}
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+        info = self._fc_terminate_connection(vol, connector)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual('2100000991020012', info['data']['target_wwn'][0])
         self.assertEqual('2200000991020012', info['data']['target_wwn'][1])
@@ -867,9 +982,42 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
         self.assertEqual(
             '2A00000991020012',
             info['data']['initiator_target_map']['10000090FAA0786B'][3])
-        info = self._fc_terminate_connection(self.vol, None)
+        info = self._fc_terminate_connection(vol, None)
         self.assertEqual('fibre_channel', info['driver_volume_type'])
         self.assertEqual({}, info['data'])
+
+    def test_is_multi_attachment(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id=constants.VOLUME_ID)
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"],
+                     'host': 'DummyHost'}
+        attachment1 = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attachment2 = {
+            'id': constants.ATTACHMENT2_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object1 = volume_attachment.VolumeAttachment(**attachment1)
+        attach_object2 = volume_attachment.VolumeAttachment(**attachment2)
+        attachments = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object1, attach_object2])
+        vol.volume_attachment = attachments
+        ret = self._is_multi_attachment(vol, connector)
+        self.assertTrue(ret)
+
+        attachments = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object1])
+        vol.volume_attachment = attachments
+        ret = self._is_multi_attachment(vol, connector)
+        self.assertFalse(ret)
+
+        vol.volume_attachment = None
+        ret = self._is_multi_attachment(vol, connector)
+        self.assertFalse(ret)
 
     def test_iscsi_portal_with_controller_node_name(self):
         self.vol.status = 'downloading'
@@ -1010,11 +1158,33 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
     def test_terminate_connection_snapshot(self):
-        connector = {'initiator': "iqn.1994-05.com.redhat:d1d8e8f23255"}
-        self.iscsi_terminate_connection_snapshot(self.vol, connector)
+        ctx = context.RequestContext('admin', 'fake', True)
+        vol = fake_volume_obj(ctx, id="46045673-41e7-44a7-9333-02f07feab04b")
+        connector = {'initiator': 'iqn.1994-05.com.redhat:d1d8e8f23255',
+                     'host': 'DummyHost'}
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+        self.iscsi_terminate_connection_snapshot(vol, connector)
 
-        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
-        ret = self.fc_terminate_connection_snapshot(self.vol, connector)
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"],
+                     'host': 'DummyHost'}
+        attachment = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**attachment)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+        ret = self.fc_terminate_connection_snapshot(vol, connector)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
     def test_remove_export_snapshot(self):
