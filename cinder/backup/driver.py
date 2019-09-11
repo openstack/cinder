@@ -430,18 +430,3 @@ class BackupDriver(base.Base):
     def check_for_setup_error(self):
         """Method for checking if backup backend is successfully installed."""
         return
-
-
-@six.add_metaclass(abc.ABCMeta)
-class BackupDriverWithVerify(BackupDriver):
-    @abc.abstractmethod
-    def verify(self, backup):
-        """Verify that the backup exists on the backend.
-
-        Verify that the backup is OK, possibly following an import record
-        operation.
-
-        :param backup: backup id of the backup to verify
-        :raises InvalidBackup, NotImplementedError:
-        """
-        return
