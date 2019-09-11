@@ -106,7 +106,7 @@ if __name__ == "__main__":
     for atree in dir_trees_list:
 
         if atree in ["tools/config/generate_cinder_opts.py",
-                     "cinder/hacking/checks.py",
+                     "cinder/tests/hacking/checks.py",
                      "cinder/volume/configuration.py",
                      "cinder/test.py",
                      "cinder/cmd/status.py"]:
