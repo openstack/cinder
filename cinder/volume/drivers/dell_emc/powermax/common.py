@@ -1731,11 +1731,9 @@ class PowerMaxCommon(object):
                 foundsnap_name = None
 
         if foundsnap_name is None or sourcedevice_id is None:
-            exception_message = (_("Error retrieving snapshot details. "
-                                   "Snapshot name: %(snap)s") %
-                                 {'snap': volume_name})
-            LOG.error(exception_message)
-
+            LOG.debug("Error retrieving snapshot details. "
+                      "Snapshot name: %(snap)s",
+                      {'snap': volume_name})
         else:
             LOG.debug("Source volume: %(volume_name)s  Snap name: "
                       "%(foundsnap_name)s.",
@@ -1801,6 +1799,12 @@ class PowerMaxCommon(object):
         # Remove from any storage groups and cleanup replication
         self._remove_vol_and_cleanup_replication(
             array, device_id, volume_name, extra_specs, volume)
+        # Check if volume is in any storage group
+        sg_list = self.rest.get_storage_groups_from_volume(array, device_id)
+        if sg_list:
+            LOG.error("Device %(device_id)s is in storage group(s) "
+                      "%(sg_list)s prior to delete. Delete will fail.",
+                      {'device_id': device_id, 'sg_list': sg_list})
         self._delete_from_srp(
             array, device_id, volume_name, extra_specs)
         return volume_name
@@ -1997,12 +2001,6 @@ class PowerMaxCommon(object):
             self.provision.delete_volume_from_srp(
                 array, device_id, volume_name)
         except Exception as e:
-            # If we cannot successfully delete the volume, then we want to
-            # return the volume to the default storage group,
-            # which should be the SG it previously belonged to.
-            self.masking.add_volume_to_default_storage_group(
-                array, device_id, volume_name, extra_specs)
-
             error_message = (_("Failed to delete volume %(volume_name)s. "
                                "Exception received: %(e)s") %
                              {'volume_name': volume_name,
@@ -2233,6 +2231,14 @@ class PowerMaxCommon(object):
         if source_device_id:
             @coordination.synchronized("emc-source-{source_device_id}")
             def do_unlink_and_delete_snap(source_device_id):
+                # Check if source device exists on the array
+                try:
+                    self.rest.get_volume(array, source_device_id)
+                except exception.VolumeBackendAPIException:
+                    LOG.debug("Device %(device_id)s not found on array, no "
+                              "sync check required.",
+                              {'device_id': source_device_id})
+                    return
                 self._do_sync_check(
                     array, device_id, extra_specs, tgt_only)
 
