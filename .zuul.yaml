@@ -18,8 +18,8 @@
             irrelevant-files: &functional-irrelevant-files
               - ^.*\.rst$
               - ^api-ref/.*$
-              - ^cinder/hacking/.*$
               - ^cinder/locale/.*$
+              - ^cinder/tests/hacking/.*$
               - ^cinder/tests/unit.*$
               - ^contrib/block-box.*$
               - ^doc/.*$
@@ -38,9 +38,9 @@
               - ^.*\.rst$
               - ^api-ref/.*$
               - ^cinder/cmd/status\.py$
-              - ^cinder/hacking/.*$
               - ^cinder/locale/.*$
               - ^cinder/tests/functional.*$
+              - ^cinder/tests/hacking/.*$
               - ^cinder/tests/unit.*$
               - ^contrib/block-box.*$
               - ^doc/.*$
