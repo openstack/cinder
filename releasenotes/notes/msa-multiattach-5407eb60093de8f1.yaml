@@ -1,0 +1,4 @@
+---
+features:
+  - Support for multiattach has been enabled for HPE MSA Storage since the
+    14.0.0 release, but no release note was included to announce this change.
