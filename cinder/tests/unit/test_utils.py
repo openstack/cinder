@@ -33,7 +33,7 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder import utils
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 POOL_CAPS = {'total_capacity_gb': 0,
              'free_capacity_gb': 0,

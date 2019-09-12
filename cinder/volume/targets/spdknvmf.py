@@ -21,7 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume import configuration
 from cinder.volume.targets import nvmeof
-from cinder.volume import utils
+from cinder.volume import volume_utils
 
 spdk_opts = [
     cfg.StrOpt('spdk_rpc_ip',
@@ -136,7 +136,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
             nqn = '%s:cnode%s' % (subsystem_name, node)
             choice = string.ascii_uppercase + string.digits
             serial = ''.join(
-                utils.generate_password(length=12, symbolgroups=choice))
+                volume_utils.generate_password(length=12, symbolgroups=choice))
 
             params = {
                 'nqn': nqn,

@@ -47,8 +47,8 @@ from cinder.volume.drivers.dell_emc.vxflexos import options
 from cinder.volume.drivers.dell_emc.vxflexos import simplecache
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 

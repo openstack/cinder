@@ -21,7 +21,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils
 
 
 @base.CinderObjectRegistry.register
@@ -180,8 +180,8 @@ class Group(base.CinderPersistentObject, base.CinderObject,
 
     @property
     def is_replicated(self):
-        if (vol_utils.is_group_a_type(self, "group_replication_enabled") or
-                vol_utils.is_group_a_type(
+        if (volume_utils.is_group_a_type(self, "group_replication_enabled") or
+                volume_utils.is_group_a_type(
                     self, "consistent_group_replication_enabled")):
             return True
         return False

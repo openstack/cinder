@@ -23,7 +23,7 @@ from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
 from cinder.volume.drivers.dell_emc.powermax import common
 from cinder.volume.drivers.dell_emc.powermax import fc
 from cinder.volume.drivers.dell_emc.powermax import rest
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 

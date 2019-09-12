@@ -415,7 +415,7 @@ class ChunkedDriverTestCase(test.TestCase):
                          metadata['volume-base-metadata']['display_name'])
         self.assertEqual('testhost', metadata['volume-base-metadata']['host'])
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     def test_send_progress_end(self, mock_notify):
         obj_meta = {}
         self.driver._send_progress_end(self.ctxt, self.backup, obj_meta)
@@ -423,7 +423,7 @@ class ChunkedDriverTestCase(test.TestCase):
         self.assertEqual(100, obj_meta.get('backup_percent', 0))
         self.assertTrue(mock_notify.called)
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     def test_send_progress_notification(self, mock_notify):
         obj_meta = {}
         self.driver._send_progress_notification(

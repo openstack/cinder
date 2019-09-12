@@ -27,7 +27,7 @@ from cinder.scheduler import host_manager
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit.scheduler import test_scheduler
-from cinder.volume import utils
+from cinder.volume import volume_utils as utils
 
 
 @ddt.ddt

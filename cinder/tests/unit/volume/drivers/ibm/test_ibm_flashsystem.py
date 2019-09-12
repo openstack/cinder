@@ -31,8 +31,8 @@ from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import flashsystem_fc
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 
 class FlashSystemManagementSimulator(object):

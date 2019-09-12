@@ -35,7 +35,7 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
 
     def setUp(self):
         super(VolumeRetypeTestCase, self).setUp()
-        self.patch('cinder.volume.utils.clear_volume', autospec=True)
+        self.patch('cinder.volume.volume_utils.clear_volume', autospec=True)
         self.expected_status = 'available'
         self.service_id = 1
         self.user_context = context.RequestContext(user_id=fake.USER_ID,

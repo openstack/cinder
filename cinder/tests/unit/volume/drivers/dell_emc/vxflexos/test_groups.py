@@ -110,7 +110,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
             },
         }
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group(self, is_group_a_cg_snapshot_type):
         """Test group create.
 
@@ -126,7 +126,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group(self, is_group_a_cg_snapshot_type):
         """Test group deletion.
 
@@ -145,7 +145,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group(self, is_group_a_cg_snapshot_type):
         """Test updating a group
 
@@ -163,7 +163,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         self.assertIsNone(add_up)
         self.assertIsNone(remove_up)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_group(self, is_group_a_cg_snapshot_type):
         """Test creating group from source group
 
@@ -191,7 +191,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         volume_provider_list = list(map(get_pid, result_volumes_model_update))
         self.assertListEqual(volume_provider_list, ['sid1', 'sid2'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_snapshot(self, is_group_a_cg_snapshot_type):
         """Test creating group from snapshot
 
@@ -218,7 +218,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         volume_provider_list = list(map(get_pid, result_volumes_model_update))
         self.assertListEqual(volume_provider_list, ['sid1', 'sid2'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snapshot(self, is_group_a_cg_snapshot_type):
         """Test deleting group snapshot
 
@@ -250,7 +250,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         self.assertTrue(all(snapshot['status'] == 'deleted' for snapshot in
                             result_snapshot_model_update))
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot(self, is_group_a_cg_snapshot_type):
         """Test creating group snapshot
 

@@ -34,7 +34,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration
 from cinder.volume.drivers.inspur.as13000 import as13000_driver
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF

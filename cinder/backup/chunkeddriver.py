@@ -40,7 +40,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 if sys.platform == 'win32':
     from os_win import utilsfactory as os_win_utilsfactory

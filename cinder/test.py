@@ -55,7 +55,7 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
-from cinder.volume import utils
+from cinder.volume import volume_utils
 
 
 CONF = config.CONF
@@ -540,8 +540,8 @@ class RPCAPITestCase(TestCase, ModelsObjectComparatorMixin):
         version = version or self.base_version
         topic = None
         if server is not None:
-            backend = utils.extract_host(server)
-            server = utils.extract_host(server, 'host')
+            backend = volume_utils.extract_host(server)
+            server = volume_utils.extract_host(server, 'host')
             topic = 'cinder-volume.%s' % backend
 
         if expected_method is None:

@@ -33,8 +33,8 @@ from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.hpe import hpe_3par_fc as hpefcdriver
 from cinder.volume.drivers.hpe import hpe_3par_iscsi as hpedriver
 from cinder.volume import qos_specs
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 hpeexceptions = hpe3parclient.hpeexceptions
 
@@ -4899,7 +4899,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -4934,7 +4934,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_with_replication_enabled(self, cg_ss_enable,
                                                    vol_ss_enable):
         cg_ss_enable.return_value = True
@@ -4999,7 +4999,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_empty_group_with_replication_enabled(self, cg_ss_enable,
                                                          vol_ss_enable):
         cg_ss_enable.return_value = True
@@ -5043,7 +5043,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_with_replication_enabled(self, cg_ss_enable,
                                                    vol_ss_enable):
         cg_ss_enable.return_value = True
@@ -5099,7 +5099,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_enable_group_replication(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -5137,7 +5137,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_disable_group_replication(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -5304,7 +5304,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_update_replication_enabled_group_add_vol(self, _mock_volume_types,
                                                       cg_ss_enable,
@@ -5383,7 +5383,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_update_repl_group_add_periodic_vol(self, _mock_volume_types,
                                                 cg_ss_enable,
@@ -5469,7 +5469,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_update_replication_enabled_group_remove_vol(
             self, _mock_volume_types, cg_ss_enable, vol_ss_enable):
@@ -5865,7 +5865,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 'get_volume_settings_from_type')
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'create_group')
     @mock.patch.object(volume_types, 'get_volume_type')
@@ -5977,7 +5977,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 'get_volume_settings_from_type')
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src(self, cg_ss_enable, vol_ss_enable,
                                    typ_info):
         cg_ss_enable.return_value = True
@@ -6081,7 +6081,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 'get_volume_settings_from_type')
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_group(self, cg_ss_enable, vol_ss_enable,
                                          typ_info):
         cg_ss_enable.return_value = True
@@ -6154,7 +6154,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -6206,7 +6206,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_exceptions(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -6247,7 +6247,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group_add_vol(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -6301,7 +6301,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group_remove_vol(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -6372,7 +6372,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -6454,7 +6454,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     @mock.patch('cinder.volume.drivers.hpe.hpe_3par_common.HPE3PARCommon.'
                 'is_volume_group_snap_type')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snapshot(self, cg_ss_enable, vol_ss_enable):
         cg_ss_enable.return_value = True
         vol_ss_enable.return_value = True
@@ -9768,7 +9768,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 common, 'test-host', 'test-vol', 'test-host', 'fake')
             mock_client.assert_has_calls(expected)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_do_export(self, mock_utils):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -9849,7 +9849,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertEqual(expected_model, model)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_do_export_host_not_found(self, mock_utils):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
@@ -9885,7 +9885,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertEqual(expected_model, model)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_do_export_host_chap_disabled(self, mock_utils):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
@@ -9931,7 +9931,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertEqual(expected_model, model)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_do_export_no_active_vluns(self, mock_utils):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
@@ -9975,7 +9975,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertEqual(expected_model, model)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_do_export_vlun_missing_chap_credentials(self, mock_utils):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
@@ -10032,7 +10032,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_client.assert_has_calls(expected)
             self.assertDictEqual(expected_model, model_without_remote_name)
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_create_export(self, mock_utils):
         config = self.setup_configuration()
         config.hpe3par_iscsi_chap_enabled = True

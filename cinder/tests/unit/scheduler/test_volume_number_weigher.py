@@ -25,11 +25,11 @@ from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.scheduler import fakes
-from cinder.volume import utils
+from cinder.volume import volume_utils
 
 
 def fake_volume_data_get_for_host(context, host, count_only=False):
-    host = utils.extract_host(host)
+    host = volume_utils.extract_host(host)
     if host == 'host1':
         return 1
     elif host == 'host2':
@@ -96,7 +96,7 @@ class VolumeNumberWeigherTestCase(test.TestCase):
             weighed_host = self._get_weighed_host(backend_info_list)
             self.assertEqual(0.0, weighed_host.weight)
             self.assertEqual('host1',
-                             utils.extract_host(weighed_host.obj.host))
+                             volume_utils.extract_host(weighed_host.obj.host))
 
     def test_volume_number_weight_multiplier2(self):
         self.flags(volume_number_multiplier=1.0)
@@ -113,4 +113,4 @@ class VolumeNumberWeigherTestCase(test.TestCase):
             weighed_host = self._get_weighed_host(backend_info_list)
             self.assertEqual(1.0, weighed_host.weight)
             self.assertEqual('host5',
-                             utils.extract_host(weighed_host.obj.host))
+                             volume_utils.extract_host(weighed_host.obj.host))

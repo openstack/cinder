@@ -37,8 +37,8 @@ from cinder.volume.drivers.dell_emc.powermax import metadata as volume_metadata
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF

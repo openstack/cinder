@@ -26,7 +26,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.volume import utils as volutils
+from cinder.volume import volume_utils
 
 import cinder.volume.drivers.datera.datera_common as datc
 
@@ -579,7 +579,7 @@ class DateraApi(object):
                 'cinder_id': cinder_id,
                 'extra_info': extra_info})
 
-        page_results = volutils.paginate_entries_list(
+        page_results = volume_utils.paginate_entries_list(
             results, marker, limit, offset, sort_keys, sort_dirs)
 
         return page_results

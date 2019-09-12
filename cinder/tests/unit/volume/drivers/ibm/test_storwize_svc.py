@@ -51,8 +51,8 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi
 from cinder.volume import group_types
 from cinder.volume import qos_specs
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 SVC_POOLS = ['openstack', 'openstack1']
 
@@ -6170,8 +6170,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    @mock.patch('cinder.volume.utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_delete_replication_grp')
     def test_storwize_delete_group(self, _del_rep_grp, is_grp_a_cg_rep_type,
@@ -6198,8 +6198,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
-    @mock.patch('cinder.volume.utils.is_group_a_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_update_replication_grp')
     def test_storwize_group_update(self, _update_rep_grp, is_grp_a_cg_rep_type,
@@ -6224,7 +6224,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_storwize_create_group_snapshot(self, is_grp_a_cg_snapshot_type):
         is_grp_a_cg_snapshot_type.side_effect = [True, True, False, True]
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
@@ -6253,7 +6253,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_storwize_delete_group_snapshot(self, is_grp_a_cg_snapshot_type):
         is_grp_a_cg_snapshot_type.side_effect = [True, True, True, False, True]
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
@@ -7644,7 +7644,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.ctxt, mirror_volume, hyperswap_vol_type, diff,
                           host3)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_storwize_hyperswap_group_create(self, is_grp_a_cg_snapshot_type):
         """Test group create."""
         is_grp_a_cg_snapshot_type.side_effect = [False, False, False, False]
@@ -7683,7 +7683,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          model_update['status'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_storwize_hyperswap_group_delete(self, is_grp_a_cg_snapshot_type):
         """Test group create."""
         is_grp_a_cg_snapshot_type.side_effect = [False, False, False]
@@ -7728,7 +7728,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_storwize_hyperswap_group_update(self, is_grp_a_cg_snapshot_type):
         """Test group create."""
         is_grp_a_cg_snapshot_type.side_effect = [False, False, False,

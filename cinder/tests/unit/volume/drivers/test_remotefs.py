@@ -30,7 +30,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume.drivers import remotefs
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 @ddt.ddt

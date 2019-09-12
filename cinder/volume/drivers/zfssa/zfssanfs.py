@@ -36,7 +36,7 @@ from cinder.volume import configuration
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
-from cinder.volume import utils as vutils
+from cinder.volume import volume_utils
 
 
 ZFSSA_OPTS = [
@@ -114,7 +114,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
     def do_setup(self, context):
         self.configuration.max_over_subscription_ratio = (
-            vutils.get_max_over_subscription_ratio(
+            volume_utils.get_max_over_subscription_ratio(
                 self.configuration.max_over_subscription_ratio,
                 supports_auto=False))
 

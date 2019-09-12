@@ -30,7 +30,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
 from cinder.volume.drivers.netapp import utils as na_utils
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 LOG = log.getLogger(__name__)
 ENTRY_DOES_NOT_EXIST = "(entry doesn't exist)"

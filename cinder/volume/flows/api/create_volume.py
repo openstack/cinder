@@ -29,8 +29,8 @@ from cinder import quota
 from cinder import quota_utils
 from cinder import utils
 from cinder.volume.flows import common
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 
 LOG = logging.getLogger(__name__)
 

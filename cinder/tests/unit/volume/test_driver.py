@@ -44,7 +44,7 @@ from cinder.volume import driver
 from cinder.volume import manager
 from cinder.volume import rpcapi as volume_rpcapi
 import cinder.volume.targets.tgt
-from cinder.volume import utils as volutils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
@@ -274,7 +274,7 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
     @mock.patch.object(utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_attach_volume')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_detach_volume')
-    @mock.patch.object(volutils, 'copy_volume')
+    @mock.patch.object(volume_utils, 'copy_volume')
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'get_capabilities')
     @mock.patch.object(cinder.volume.volume_types,
                        'volume_types_encryption_changed')

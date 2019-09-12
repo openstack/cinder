@@ -39,7 +39,7 @@ from cinder.image import glance
 from cinder import objects
 from cinder import utils
 from cinder import volume as cinder_volume
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 

@@ -26,7 +26,7 @@ from cinder.objects import fields
 from cinder import quota
 from cinder import quota_utils
 from cinder.volume.flows import common as flow_common
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF

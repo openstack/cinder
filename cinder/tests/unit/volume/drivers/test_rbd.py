@@ -44,7 +44,7 @@ from cinder.tests.unit import utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 # This is used to collect raised exceptions so that tests may check what was
@@ -2356,7 +2356,7 @@ class RBDTestCase(test.TestCase):
             self.assertEqual((True, None), ret)
 
     @mock.patch('tempfile.NamedTemporaryFile')
-    @mock.patch('cinder.volume.utils.check_encryption_provider',
+    @mock.patch('cinder.volume.volume_utils.check_encryption_provider',
                 return_value={'encryption_key_id': fake.ENCRYPTION_KEY_ID})
     def test_create_encrypted_volume(self,
                                      mock_check_enc_prov,
@@ -2380,7 +2380,7 @@ class RBDTestCase(test.TestCase):
                     'cipher': 'aes-xts-essiv',
                     'key_size': 256}
 
-        with mock.patch('cinder.volume.utils.check_encryption_provider',
+        with mock.patch('cinder.volume.volume_utils.check_encryption_provider',
                         return_value=enc_info), \
                 mock.patch('cinder.volume.drivers.rbd.open') as mock_open, \
                 mock.patch.object(self.driver, '_execute') as mock_exec:

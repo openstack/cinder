@@ -36,7 +36,7 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils as vol_utils
 
 krest = importutils.try_import("krest")
 

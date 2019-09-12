@@ -43,7 +43,7 @@ from cinder.objects import snapshot
 from cinder.objects import volume
 from cinder import utils
 from cinder.volume import configuration
-from cinder.volume import utils as volutils
+from cinder.volume import volume_utils as volutils
 
 
 cinder_opts = [

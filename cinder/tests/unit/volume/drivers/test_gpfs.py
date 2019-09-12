@@ -1737,7 +1737,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual(volume_path, ret)
 
     @mock.patch('cinder.db.get_by_id')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_local_path_volume_in_cg(self, mock_group_cg_snapshot_type,
                                      mock_group_obj):
         mock_group_cg_snapshot_type.return_value = True
@@ -1856,7 +1856,7 @@ class GPFSDriverTestCase(test.TestCase):
 
         return (volume, new_type, diff, host)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group(self, mock_cg_snapshot_type):
         mock_cg_snapshot_type.return_value = False
         ctxt = self.context
@@ -1869,7 +1869,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_create_consistencygroup')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_cg(self, mock_cg_snapshot_type,
                              mock_consisgroup_create):
         mock_cg_snapshot_type.return_value = True
@@ -1878,7 +1878,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.create_group(ctxt, group)
         mock_consisgroup_create.assert_called_once_with(ctxt, group)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group(self, mock_cg_snapshot_type):
         mock_cg_snapshot_type.return_value = False
         ctxt = self.context
@@ -1892,7 +1892,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_delete_consistencygroup')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_cg(self, mock_cg_snapshot_type,
                              mock_consisgroup_delete):
         mock_cg_snapshot_type.return_value = True
@@ -1902,7 +1902,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.delete_group(ctxt, group, volumes)
         mock_consisgroup_delete.assert_called_once_with(ctxt, group, volumes)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group(self, mock_cg_snapshot_type):
         mock_cg_snapshot_type.return_value = False
         ctxt = self.context
@@ -1915,7 +1915,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_update_consistencygroup')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_update_group_cg(self, mock_cg_snapshot_type,
                              mock_consisgroup_update):
         mock_cg_snapshot_type.return_value = True
@@ -1925,7 +1925,7 @@ class GPFSDriverTestCase(test.TestCase):
         mock_consisgroup_update.assert_called_once_with(ctxt, group,
                                                         None, None)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot(self, mock_cg_snapshot_type):
         mock_cg_snapshot_type.return_value = False
         ctxt = self.context
@@ -1939,7 +1939,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_create_cgsnapshot')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_snapshot_cg(self, mock_cg_snapshot_type,
                                       mock_cgsnapshot_create):
         mock_cg_snapshot_type.return_value = True
@@ -1950,7 +1950,7 @@ class GPFSDriverTestCase(test.TestCase):
         mock_cgsnapshot_create.assert_called_once_with(ctxt, group_snapshot,
                                                        snapshots)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snapshot(self, mock_cg_snapshot_type):
         mock_cg_snapshot_type.return_value = False
         ctxt = self.context
@@ -1964,7 +1964,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_delete_cgsnapshot')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snapshot_cg(self, mock_cg_snapshot_type,
                                       mock_cgsnapshot_delete):
         mock_cg_snapshot_type.return_value = True
@@ -1975,7 +1975,7 @@ class GPFSDriverTestCase(test.TestCase):
         mock_cgsnapshot_delete.assert_called_once_with(ctxt, group_snapshot,
                                                        snapshots)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src(self, mock_cg_snapshot_type):
         mock_cg_snapshot_type.return_value = False
         ctxt = self.context
@@ -1989,7 +1989,7 @@ class GPFSDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_create_consistencygroup_from_src')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_cg(self, mock_cg_snapshot_type,
                                       mock_cg_clone_create):
         mock_cg_snapshot_type.return_value = True
@@ -2219,7 +2219,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
             self.assertEqual('file', stats['storage_protocol'])
 
     @mock.patch('cinder.db.get_by_id')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_get_volume_path(self, mock_group_cg_snapshot_type, mock_group):
         mock_group_cg_snapshot_type.return_value = True
         self.driver.configuration.gpfs_mount_point_base = (
@@ -2240,7 +2240,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
                          self.driver._get_volume_path(volume))
 
     @mock.patch('cinder.db.get_by_id')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSNFSDriver.'
                 '_get_mount_point_for_share')
     def test_local_path(self, mock_mount_point,

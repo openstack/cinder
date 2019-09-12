@@ -2415,7 +2415,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group(self,
                           mock_is_cg,
@@ -2429,7 +2429,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_create_replay_profile.assert_called_once_with(fake.GROUP_ID)
         self.assertEqual({'status': 'available'}, model_update)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=False)
     def test_create_group_not_a_cg(self,
                                    mock_is_cg,
@@ -2444,7 +2444,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'create_replay_profile',
                        return_value=None)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_fail(self,
                                mock_is_cg,
@@ -2465,7 +2465,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=SCRPLAYPROFILE)
     @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'delete_volume')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_delete_group(self,
                           mock_is_cg,
@@ -2489,7 +2489,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(group['status'], model_update['status'])
         self.assertEqual(expected_volumes, volumes)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=False)
     def test_delete_group_not_a_cg(
             self, mock_is_cg, mock_close_connection,
@@ -2509,7 +2509,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        return_value=None)
     @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'delete_volume')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_delete_group_not_found(self,
                                     mock_is_cg,
@@ -2535,7 +2535,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_update_group(self,
                           mock_is_cg,
@@ -2558,7 +2558,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertIsNone(rt2)
         self.assertIsNone(rt3)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=False)
     def test_update_group_not_a_cg(self,
                                    mock_is_cg,
@@ -2575,7 +2575,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_update_group_not_found(self,
                                     mock_is_cg,
@@ -2601,7 +2601,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_update_group_error(self,
                                 mock_is_cg,
@@ -2631,7 +2631,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        'create_group')
     @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'create_cloned_volume')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_from_src(
             self, mock_is_cg, mock_create_cloned_volume, mock_create_group,
@@ -2662,7 +2662,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        'create_group')
     @mock.patch.object(storagecenter_iscsi.SCISCSIDriver,
                        'create_volume_from_snapshot')
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_from_src_from_snapshot(
             self, mock_is_cg, mock_create_volume_from_snapshot,
@@ -2699,7 +2699,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.create_group_from_src,
                           context, group, volumes, None, None, None, None)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=False)
     def test_create_group_from_src_not_a_cg(
             self, mock_is_cg, mock_close_connection,
@@ -2720,7 +2720,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_snapshot(self,
                                    mock_is_cg,
@@ -2747,7 +2747,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_snapshot_profile_not_found(self,
                                                      mock_is_cg,
@@ -2764,7 +2764,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         mock_find_replay_profile.assert_called_once_with(fake.GROUP_ID)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=False)
     def test_create_group_snapshot_not_a_cg(
             self, mock_is_cg, mock_close_connection,
@@ -2781,7 +2781,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_create_group_snapshot_fail(self,
                                         mock_is_cg,
@@ -2806,7 +2806,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_delete_group_snapshot(self,
                                    mock_is_cg,
@@ -2833,7 +2833,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=None)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_delete_group_snapshot_profile_not_found(self,
                                                      mock_is_cg,
@@ -2859,7 +2859,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(storagecenter_api.SCApi,
                        'find_replay_profile',
                        return_value=SCRPLAYPROFILE)
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
     def test_delete_group_snapshot_profile_failed_delete(
             self, mock_is_cg, mock_find_replay_profile, mock_delete_cg_replay,
@@ -2874,7 +2874,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
                                                       fake.GROUP_SNAPSHOT_ID)
 
-    @mock.patch('cinder.volume.utils.is_group_a_cg_snapshot_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=False)
     def test_delete_group_snapshot_not_a_cg(
             self, mock_is_cg, mock_close_connection,

@@ -26,8 +26,8 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.sc import storagecenter_api
 from cinder.volume.drivers.san.san import san_opts
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 common_opts = [
     cfg.IntOpt('dell_sc_ssn',

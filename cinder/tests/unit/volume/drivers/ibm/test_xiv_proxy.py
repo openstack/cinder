@@ -717,7 +717,7 @@ class XIVProxyTest(test.TestCase):
         pool_name = p_failback._get_backend_pool()
         self.assertEqual(REPLICA_POOL, pool_name)
 
-    @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
+    @mock.patch("cinder.volume.volume_utils.is_group_a_cg_snapshot_type",
                 mock.MagicMock(return_value=True))
     def test_create_volume_with_consistency_group(self):
         """Test Create volume with consistency_group"""
@@ -751,7 +751,7 @@ class XIVProxyTest(test.TestCase):
 
     @mock.patch('pyxcli.mirroring.mirrored_entities.'
                 'MirroredEntities', mock.MagicMock())
-    @mock.patch('cinder.volume.utils.is_group_a_type',
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type',
                 mock.MagicMock(return_value=True))
     @mock.patch("cinder.volume.drivers.ibm.ibm_storage."
                 "xiv_proxy.XIVProxy._get_extra_specs",
@@ -2529,8 +2529,8 @@ class XIVProxyTest(test.TestCase):
         # check no assertion occurs
         p._silent_delete_volume(TEST_VOLUME)
 
-    @mock.patch("cinder.volume.utils.group_get_by_id", mock.MagicMock())
-    @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
+    @mock.patch("cinder.volume.volume_utils.group_get_by_id", mock.MagicMock())
+    @mock.patch("cinder.volume.volume_utils.is_group_a_cg_snapshot_type",
                 mock.MagicMock(return_value=False))
     def test_create_cloned_volume_calls_vol_create_and_copy(self):
         """test create_cloned_volume
@@ -2567,8 +2567,8 @@ class XIVProxyTest(test.TestCase):
             vol_src=vol_src['name'],
             vol_trg=vol_trg['name'])
 
-    @mock.patch("cinder.volume.utils.group_get_by_id", mock.MagicMock())
-    @mock.patch("cinder.volume.utils.is_group_a_cg_snapshot_type",
+    @mock.patch("cinder.volume.volume_utils.group_get_by_id", mock.MagicMock())
+    @mock.patch("cinder.volume.volume_utils.is_group_a_cg_snapshot_type",
                 mock.MagicMock(return_value=False))
     def test_handle_created_vol_properties_returns_vol_update(self):
         """test handle_created_vol_props

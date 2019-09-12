@@ -136,7 +136,8 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
 
         }
 
-        with mock.patch('cinder.volume.utils.paginate_entries_list') as mpage:
+        with mock.patch('cinder.volume.volume_utils.'
+                        'paginate_entries_list') as mpage:
             test_func = self.driver.get_manageable_volumes
             test_func(cinder_objs, marker, limit, offset, sort_keys, sort_dirs)
             mpage.assert_called_once_with(

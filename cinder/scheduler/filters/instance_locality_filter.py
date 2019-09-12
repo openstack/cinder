@@ -20,7 +20,7 @@ from cinder.compute import nova
 from cinder import exception
 from cinder.i18n import _
 from cinder.scheduler import filters
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)

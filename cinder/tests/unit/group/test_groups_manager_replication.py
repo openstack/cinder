@@ -29,7 +29,7 @@ from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf
 from cinder.volume import driver
-from cinder.volume import utils as volutils
+from cinder.volume import volume_utils
 
 GROUP_QUOTAS = quota.GROUP_QUOTAS
 CONF = cfg.CONF
@@ -77,7 +77,7 @@ class GroupManagerTestCase(test.TestCase):
             """Make sure that the pool is part of the host."""
             self.assertIn('host', group)
             host = group.host
-            pool = volutils.extract_host(host, level='pool')
+            pool = volume_utils.extract_host(host, level='pool')
             self.assertEqual('fakepool', pool)
             return {'status': fields.GroupStatus.AVAILABLE,
                     'replication_status': fields.ReplicationStatus.DISABLING}

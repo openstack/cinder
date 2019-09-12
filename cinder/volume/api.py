@@ -61,8 +61,8 @@ from cinder import utils
 from cinder.volume.flows.api import create_volume
 from cinder.volume.flows.api import manage_existing
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 allow_force_upload_opt = cfg.BoolOpt('enable_force_upload',
                                      default=False,

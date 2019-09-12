@@ -39,8 +39,8 @@ from cinder.volume.drivers.inspur.instorage import (
 from cinder.volume.drivers.inspur.instorage import instorage_common
 from cinder.volume.drivers.inspur.instorage import instorage_iscsi
 from cinder.volume import qos_specs
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 

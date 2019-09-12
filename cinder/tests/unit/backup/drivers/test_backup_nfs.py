@@ -71,7 +71,7 @@ class BackupNFSShareTestCase(test.TestCase):
         # Note(yikun): It mocks out the backup notifier to avoid to leak
         # notifications into other test.
         notify_patcher = mock.patch(
-            'cinder.volume.utils.notify_about_backup_usage')
+            'cinder.volume.volume_utils.notify_about_backup_usage')
         notify_patcher.start()
         self.addCleanup(notify_patcher.stop)
 
@@ -257,7 +257,7 @@ class BackupNFSTestCase(test.TestCase):
         # Note(yikun): It mocks out the backup notifier to avoid to leak
         # notifications into other test.
         notify_patcher = mock.patch(
-            'cinder.volume.utils.notify_about_backup_usage')
+            'cinder.volume.volume_utils.notify_about_backup_usage')
         notify_patcher.start()
         self.addCleanup(notify_patcher.stop)
 

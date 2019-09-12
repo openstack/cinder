@@ -42,17 +42,17 @@ from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import throttling
-from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 
 CONF = cfg.CONF
 
 
 class NotifyUsageTestCase(test.TestCase):
-    @mock.patch('cinder.volume.utils._usage_from_volume')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_volume')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_volume_usage(self, mock_rpc, mock_conf, mock_usage):
         mock_conf.host = 'host1'
         output = volume_utils.notify_about_volume_usage(mock.sentinel.context,
@@ -67,9 +67,9 @@ class NotifyUsageTestCase(test.TestCase):
             'volume.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_volume')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_volume')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_volume_usage_with_kwargs(self, mock_rpc, mock_conf,
                                                    mock_usage):
         mock_conf.host = 'host1'
@@ -88,9 +88,9 @@ class NotifyUsageTestCase(test.TestCase):
             'volume.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_snapshot')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_snapshot')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_snapshot_usage(self, mock_rpc,
                                          mock_conf, mock_usage):
         mock_conf.host = 'host1'
@@ -107,9 +107,9 @@ class NotifyUsageTestCase(test.TestCase):
             'snapshot.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_snapshot')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_snapshot')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_snapshot_usage_with_kwargs(self, mock_rpc, mock_conf,
                                                      mock_usage):
         mock_conf.host = 'host1'
@@ -265,9 +265,9 @@ class NotifyUsageTestCase(test.TestCase):
         }
         self.assertEqual(expected_volume, usage_info)
 
-    @mock.patch('cinder.volume.utils._usage_from_consistencygroup')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_consistencygroup')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_consistencygroup_usage(self, mock_rpc,
                                                  mock_conf, mock_usage):
         mock_conf.host = 'host1'
@@ -284,9 +284,9 @@ class NotifyUsageTestCase(test.TestCase):
             'consistencygroup.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_consistencygroup')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_consistencygroup')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_consistencygroup_usage_with_kwargs(self, mock_rpc,
                                                              mock_conf,
                                                              mock_usage):
@@ -307,9 +307,9 @@ class NotifyUsageTestCase(test.TestCase):
             'consistencygroup.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_cgsnapshot')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_cgsnapshot')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_cgsnapshot_usage(self, mock_rpc,
                                            mock_conf, mock_usage):
         mock_conf.host = 'host1'
@@ -325,9 +325,9 @@ class NotifyUsageTestCase(test.TestCase):
             'cgsnapshot.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_cgsnapshot')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_cgsnapshot')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_cgsnapshot_usage_with_kwargs(self, mock_rpc,
                                                        mock_conf, mock_usage):
         mock_conf.host = 'host1'
@@ -404,9 +404,9 @@ class LVMVolumeDriverTestCase(test.TestCase):
         bs = volume_utils._check_blocksize('ABM')
         self.assertEqual('1M', bs)
 
-    @mock.patch('cinder.volume.utils._usage_from_capacity')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_capacity')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_capacity_usage(self, mock_rpc,
                                          mock_conf, mock_usage):
         mock_conf.host = 'host1'
@@ -422,9 +422,9 @@ class LVMVolumeDriverTestCase(test.TestCase):
             'capacity.test_suffix',
             mock_usage.return_value)
 
-    @mock.patch('cinder.volume.utils._usage_from_capacity')
-    @mock.patch('cinder.volume.utils.CONF')
-    @mock.patch('cinder.volume.utils.rpc')
+    @mock.patch('cinder.volume.volume_utils._usage_from_capacity')
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.rpc')
     def test_notify_about_capacity_usage_with_kwargs(self, mock_rpc, mock_conf,
                                                      mock_usage):
         mock_conf.host = 'host1'
@@ -518,8 +518,8 @@ class OdirectSupportTestCase(test.TestCase):
 
 
 class ClearVolumeTestCase(test.TestCase):
-    @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.copy_volume', return_value=None)
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_clear_volume_conf(self, mock_conf, mock_copy):
         mock_conf.volume_clear = 'zero'
         mock_conf.volume_clear_size = 0
@@ -532,8 +532,8 @@ class ClearVolumeTestCase(test.TestCase):
                                           execute=utils.execute, ionice='-c3',
                                           throttle=None, sparse=False)
 
-    @mock.patch('cinder.volume.utils.copy_volume', return_value=None)
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.copy_volume', return_value=None)
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_clear_volume_args(self, mock_conf, mock_copy):
         mock_conf.volume_clear = 'should_override_with_arg'
         mock_conf.volume_clear_size = 0
@@ -547,7 +547,7 @@ class ClearVolumeTestCase(test.TestCase):
                                           execute=utils.execute, ionice='-c0',
                                           throttle=None, sparse=False)
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_clear_volume_invalid_opt(self, mock_conf):
         mock_conf.volume_clear = 'non_existent_volume_clearer'
         mock_conf.volume_clear_size = 0
@@ -558,10 +558,10 @@ class ClearVolumeTestCase(test.TestCase):
 
 
 class CopyVolumeTestCase(test.TestCase):
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.utils.execute')
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_copy_volume_dd_iflag_and_oflag(self, mock_conf, mock_exec,
                                             mock_support):
         fake_throttle = throttling.Throttle(['fake_throttle'])
@@ -589,7 +589,7 @@ class CopyVolumeTestCase(test.TestCase):
                                           'bs=3M', 'iflag=count_bytes,direct',
                                           'oflag=direct', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec, mock_support):
@@ -618,7 +618,7 @@ class CopyVolumeTestCase(test.TestCase):
                                           'bs=3M', 'iflag=count_bytes',
                                           run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support):
@@ -631,7 +631,7 @@ class CopyVolumeTestCase(test.TestCase):
                                           'iflag=count_bytes',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_with_ionice(self, mock_exec, mock_support):
@@ -645,7 +645,7 @@ class CopyVolumeTestCase(test.TestCase):
                                           'iflag=count_bytes',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_with_sparse(self, mock_exec, mock_support):
@@ -659,7 +659,7 @@ class CopyVolumeTestCase(test.TestCase):
                                           'conv=fdatasync,sparse',
                                           run_as_root=True)
 
-    @mock.patch('cinder.volume.utils.check_for_odirect_support',
+    @mock.patch('cinder.volume.volume_utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_with_sparse_iflag_and_oflag(self, mock_exec,
@@ -674,7 +674,7 @@ class CopyVolumeTestCase(test.TestCase):
                                           'oflag=direct', 'conv=sparse',
                                           run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._copy_volume_with_file')
+    @mock.patch('cinder.volume.volume_utils._copy_volume_with_file')
     def test_copy_volume_handles(self, mock_copy):
         handle1 = io.RawIOBase()
         handle2 = io.RawIOBase()
@@ -682,8 +682,8 @@ class CopyVolumeTestCase(test.TestCase):
         self.assertIsNone(output)
         mock_copy.assert_called_once_with(handle1, handle2, 1024)
 
-    @mock.patch('cinder.volume.utils._transfer_data')
-    @mock.patch('cinder.volume.utils._open_volume_with_path')
+    @mock.patch('cinder.volume.volume_utils._transfer_data')
+    @mock.patch('cinder.volume.volume_utils._open_volume_with_path')
     def test_copy_volume_handle_transfer(self, mock_open, mock_transfer):
         handle = io.RawIOBase()
         output = volume_utils.copy_volume('/foo/bar', handle, 1024, 1)
@@ -737,7 +737,7 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertEqual(16, len(password))
         self.assertEqual(10, len(volume_utils.generate_password(10)))
 
-    @mock.patch('cinder.volume.utils.generate_password')
+    @mock.patch('cinder.volume.volume_utils.generate_password')
     def test_generate_username(self, mock_gen_pass):
         output = volume_utils.generate_username()
         self.assertEqual(mock_gen_pass.return_value, output)
@@ -840,7 +840,7 @@ class VolumeUtilsTestCase(test.TestCase):
         host_2 = 'fake_host2@backend1'
         self.assertFalse(volume_utils.hosts_are_equivalent(host_1, host_2))
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_extract_id_from_volume_name_vol_id_pattern(self, conf_mock):
         conf_mock.volume_name_template = 'volume-%s'
         vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
@@ -848,7 +848,7 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.extract_id_from_volume_name(vol_name)
         self.assertEqual(vol_id, result)
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_extract_id_from_volume_name_vol_id_vol_pattern(self, conf_mock):
         conf_mock.volume_name_template = 'volume-%s-volume'
         vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
@@ -856,7 +856,7 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.extract_id_from_volume_name(vol_name)
         self.assertEqual(vol_id, result)
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_extract_id_from_volume_name_id_vol_pattern(self, conf_mock):
         conf_mock.volume_name_template = '%s-volume'
         vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
@@ -864,7 +864,7 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.extract_id_from_volume_name(vol_name)
         self.assertEqual(vol_id, result)
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_extract_id_from_volume_name_no_match(self, conf_mock):
         conf_mock.volume_name_template = '%s-volume'
         vol_name = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
@@ -894,7 +894,7 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.check_already_managed_volume('not-a-uuid')
         self.assertFalse(result)
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_extract_id_from_snapshot_name(self, conf_mock):
         conf_mock.snapshot_name_template = '%s-snapshot'
         snap_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
@@ -902,7 +902,7 @@ class VolumeUtilsTestCase(test.TestCase):
         result = volume_utils.extract_id_from_snapshot_name(snap_name)
         self.assertEqual(snap_id, result)
 
-    @mock.patch('cinder.volume.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     def test_extract_id_from_snapshot_name_no_match(self, conf_mock):
         conf_mock.snapshot_name_template = '%s-snapshot'
         snap_name = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'

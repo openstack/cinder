@@ -30,7 +30,7 @@ from cinder.objects import fields
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.dell_emc.unity import client
 from cinder.volume.drivers.dell_emc.unity import utils
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils as vol_utils
 
 storops = importutils.try_import('storops')
 if storops:

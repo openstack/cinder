@@ -1800,7 +1800,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
 
-    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     @mock.patch('cinder.objects.volume.VolumeList.get_all_active_by_window')
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
@@ -1866,7 +1866,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
                       extra_usage_info=local_extra_info)
         ])
 
-    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     @mock.patch('cinder.objects.volume.VolumeList.get_all_active_by_window')
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
@@ -1940,10 +1940,10 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
                       extra_usage_info=local_extra_info_delete)
         ])
 
-    @mock.patch('cinder.volume.utils.notify_about_snapshot_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_snapshot_usage')
     @mock.patch('cinder.objects.snapshot.SnapshotList.'
                 'get_all_active_by_window')
-    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     @mock.patch('cinder.objects.volume.VolumeList.get_all_active_by_window')
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
@@ -2017,9 +2017,9 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
                       extra_usage_info=local_extra_info_delete)
         ])
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     @mock.patch('cinder.objects.backup.BackupList.get_all_active_by_window')
-    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     @mock.patch('cinder.objects.volume.VolumeList.get_all_active_by_window')
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')
@@ -2084,12 +2084,12 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
             ctxt, backup1, 'delete.start',
             extra_usage_info=local_extra_info_delete)
 
-    @mock.patch('cinder.volume.utils.notify_about_backup_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
     @mock.patch('cinder.objects.backup.BackupList.get_all_active_by_window')
-    @mock.patch('cinder.volume.utils.notify_about_snapshot_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_snapshot_usage')
     @mock.patch('cinder.objects.snapshot.SnapshotList.'
                 'get_all_active_by_window')
-    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     @mock.patch('cinder.objects.volume.VolumeList.get_all_active_by_window')
     @mock.patch('cinder.utils.last_completed_audit_period')
     @mock.patch('cinder.rpc.init')

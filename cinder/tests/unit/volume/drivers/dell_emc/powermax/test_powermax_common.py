@@ -33,7 +33,7 @@ from cinder.volume.drivers.dell_emc.powermax import masking
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 class PowerMaxCommonTest(test.TestCase):

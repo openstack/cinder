@@ -25,7 +25,7 @@ from cinder.tests.unit import utils as tests_utils
 from cinder.tests.unit import volume as base
 from cinder.volume.flows.manager import manage_existing
 from cinder.volume import manager
-from cinder.volume import utils
+from cinder.volume import volume_utils
 
 FAKE_HOST_POOL = 'volPool'
 FAKE_HOST = 'hostname@backend'
@@ -160,7 +160,8 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         self.manager._update_stats_for_managed(volume_obj)
 
         mock_safe_get.assert_called_once_with('volume_backend_name')
-        backend_stats = self.manager.stats['pools'][utils.DEFAULT_POOL_NAME]
+        pool_stats = self.manager.stats['pools']
+        backend_stats = pool_stats[volume_utils.DEFAULT_POOL_NAME]
         self.assertEqual(1, backend_stats['allocated_capacity_gb'])
 
     def test_update_stats_key_error(self):
@@ -174,7 +175,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
                 'manage_existing')
     @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
                 'manage_existing_get_size')
-    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     def test_manage_volume_with_notify(self, mock_notify, mock_size,
                                        mock_manage):
         elevated = context.get_admin_context()

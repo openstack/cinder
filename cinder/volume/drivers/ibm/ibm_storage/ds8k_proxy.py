@@ -82,8 +82,8 @@ from cinder.volume.drivers.ibm.ibm_storage import ds8k_helper as helper
 from cinder.volume.drivers.ibm.ibm_storage import ds8k_restclient as restclient
 from cinder.volume.drivers.ibm.ibm_storage import proxy
 from cinder.volume.drivers.ibm.ibm_storage import strings
-from cinder.volume import utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as utils
 
 LOG = logging.getLogger(__name__)
 

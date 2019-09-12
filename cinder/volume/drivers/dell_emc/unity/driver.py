@@ -25,7 +25,7 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.unity import adapter
 from cinder.volume.drivers.san.san import san_opts
-from cinder.volume import utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def skip_if_not_cg(func):
     @six.wraps(func)
     def inner(self, *args, **kwargs):
         # Only used to decorating the second argument is `group`
-        if utils.is_group_a_cg_snapshot_type(args[1]):
+        if volume_utils.is_group_a_cg_snapshot_type(args[1]):
             return func(self, *args, **kwargs)
 
         LOG.debug('Group is not a consistency group. Unity driver does '

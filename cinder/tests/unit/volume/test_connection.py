@@ -396,7 +396,7 @@ class VolumeAttachDetachTestCase(base.BaseVolumeTestCase):
 
     def setUp(self):
         super(VolumeAttachDetachTestCase, self).setUp()
-        self.patch('cinder.volume.utils.clear_volume', autospec=True)
+        self.patch('cinder.volume.volume_utils.clear_volume', autospec=True)
         self.user_context = context.RequestContext(user_id=fake.USER_ID,
                                                    project_id=fake.PROJECT_ID)
 

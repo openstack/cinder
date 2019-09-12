@@ -26,8 +26,8 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.macrosan import devop_client
 from cinder.volume.drivers.macrosan import driver
 from cinder.volume import qos_specs
-from cinder.volume import utils as volutils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as volutils
 
 
 test_volume = (

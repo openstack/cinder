@@ -27,8 +27,8 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
-from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils as vol_utils
 
 storops = importutils.try_import('storops')
 

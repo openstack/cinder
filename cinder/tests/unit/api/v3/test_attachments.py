@@ -34,7 +34,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 @ddt.ddt

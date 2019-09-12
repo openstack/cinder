@@ -23,7 +23,7 @@ from cinder.tests.unit import utils
 from cinder.tests.unit.volume.drivers.infortrend import test_infortrend_cli
 from cinder.volume import configuration
 from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli
-from cinder.volume import utils as cv_utils
+from cinder.volume import volume_utils
 
 SUCCEED = (0, '')
 FAKE_ERROR_RETURN = (-1, '')
@@ -2769,8 +2769,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         result = self.driver.get_manageable_volumes(fake_cinder_volumes,
                                                     None, 1000, 0,
                                                     ['reference'], ['desc'])
-        ans = cv_utils.paginate_entries_list(ans, None, 1000, 0,
-                                             ['reference'], ['desc'])
+        ans = volume_utils.paginate_entries_list(ans, None, 1000, 0,
+                                                 ['reference'], ['desc'])
         self.assertEqual(ans, result)
 
     def test_get_manageable_snapshots(self):
@@ -2830,8 +2830,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         result = self.driver.get_manageable_snapshots(fake_cinder_snapshots,
                                                       None, 1000, 0,
                                                       ['reference'], ['desc'])
-        ans = cv_utils.paginate_entries_list(ans, None, 1000, 0,
-                                             ['reference'], ['desc'])
+        ans = volume_utils.paginate_entries_list(ans, None, 1000, 0,
+                                                 ['reference'], ['desc'])
         self.assertEqual(ans, result)
 
     def test_manage_existing_snapshot(self):

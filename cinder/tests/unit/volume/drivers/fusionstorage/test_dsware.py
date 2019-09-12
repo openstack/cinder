@@ -25,7 +25,7 @@ from cinder.volume import configuration as config
 from cinder.volume.drivers.fusionstorage import dsware
 from cinder.volume.drivers.fusionstorage import fs_client
 from cinder.volume.drivers.fusionstorage import fs_conf
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 class FakeDSWAREDriver(dsware.DSWAREDriver):

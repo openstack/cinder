@@ -16,7 +16,7 @@ from cinder import context
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import scst
-from cinder.volume import utils as vutils
+from cinder.volume import volume_utils as vutils
 
 
 class TestSCSTAdmDriver(tf.TargetDriverFixture):

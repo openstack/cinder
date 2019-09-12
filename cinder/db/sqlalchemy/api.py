@@ -66,7 +66,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder import utils
-from cinder.volume import utils as vol_utils
+from cinder.volume import volume_utils as vol_utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)

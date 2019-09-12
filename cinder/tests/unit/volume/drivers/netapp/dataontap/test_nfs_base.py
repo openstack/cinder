@@ -41,7 +41,7 @@ from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 
 
 @ddt.ddt

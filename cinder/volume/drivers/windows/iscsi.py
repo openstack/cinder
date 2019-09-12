@@ -34,7 +34,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
-from cinder.volume import utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -230,9 +230,9 @@ class WindowsISCSIDriver(driver.ISCSIDriver):
 
             if self.configuration.use_chap_auth:
                 chap_username = (self.configuration.chap_username or
-                                 utils.generate_username())
+                                 volume_utils.generate_username())
                 chap_password = (self.configuration.chap_password or
-                                 utils.generate_password())
+                                 volume_utils.generate_password())
 
                 self._tgt_utils.set_chap_credentials(target_name,
                                                      chap_username,

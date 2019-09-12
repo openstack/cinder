@@ -85,7 +85,7 @@ from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 from cinder.volume import rpcapi as volume_rpcapi
-from cinder.volume import utils as vutils
+from cinder.volume import volume_utils as vutils
 
 
 CONF = cfg.CONF

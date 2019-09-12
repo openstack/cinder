@@ -260,8 +260,8 @@ class TestWindowsISCSIDriver(test.TestCase):
         self.assertEqual(expected_target_name, target_name)
 
     @mock.patch.object(windows_iscsi.WindowsISCSIDriver, '_get_target_name')
-    @mock.patch.object(windows_iscsi.utils, 'generate_username')
-    @mock.patch.object(windows_iscsi.utils, 'generate_password')
+    @mock.patch.object(windows_iscsi.volume_utils, 'generate_username')
+    @mock.patch.object(windows_iscsi.volume_utils, 'generate_password')
     def test_create_export(self, mock_generate_password,
                            mock_generate_username,
                            mock_get_target_name):
