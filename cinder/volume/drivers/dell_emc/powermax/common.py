@@ -2162,13 +2162,21 @@ class PowerMaxCommon(object):
         clone_id = clone_volume.id
         clone_name = self.utils.get_volume_element_name(clone_id)
         create_snap = False
+
+        volume_dict = self.rest.get_volume(array, source_device_id)
         # PowerMax/VMAX supports using a target volume that is bigger than
         # the source volume, so we create the target volume the desired
         # size at this point to avoid having to extend later
         try:
             clone_dict = self._create_volume(
                 clone_name, clone_volume.size, extra_specs)
+
             target_device_id = clone_dict['device_id']
+            if target_device_id:
+                clone_volume_dict = self.rest.get_volume(
+                    array, target_device_id)
+                self.utils.compare_cylinders(
+                    volume_dict['cap_cyl'], clone_volume_dict['cap_cyl'])
             LOG.info("The target device id is: %(device_id)s.",
                      {'device_id': target_device_id})
             if not snap_name:
@@ -2185,7 +2193,8 @@ class PowerMaxCommon(object):
                             {'cloneName': clone_name, 'e': e})
                 self._cleanup_target(
                     array, target_device_id, source_device_id,
-                    clone_name, snap_name, extra_specs)
+                    clone_name, snap_name, extra_specs,
+                    target_volume=clone_volume)
                 # Re-throw the exception.
             raise
         # add source id and snap_name to the clone dict
@@ -2195,7 +2204,8 @@ class PowerMaxCommon(object):
 
     def _cleanup_target(
             self, array, target_device_id, source_device_id,
-            clone_name, snap_name, extra_specs, generation=0):
+            clone_name, snap_name, extra_specs, generation=0,
+            target_volume=None):
         """Cleanup target volume on failed clone/ snapshot creation.
 
         :param array: the array serial number
@@ -2204,6 +2214,7 @@ class PowerMaxCommon(object):
         :param clone_name: the name of the clone volume
         :param extra_specs: the extra specifications
         :param generation: the generation number of the snapshot
+        :param target_volume: the target volume object
         """
         snap_session = self.rest.get_sync_session(
             array, source_device_id, snap_name, target_device_id, generation)
@@ -2211,6 +2222,8 @@ class PowerMaxCommon(object):
             self.provision.break_replication_relationship(
                 array, target_device_id, source_device_id,
                 snap_name, extra_specs, generation)
+        self._remove_vol_and_cleanup_replication(
+            array, target_device_id, clone_name, extra_specs, target_volume)
         self._delete_from_srp(
             array, target_device_id, clone_name, extra_specs)
 

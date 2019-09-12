@@ -1179,7 +1179,7 @@ class PowerMaxCommonTest(test.TestCase):
                 self.data.extra_specs, snap_name)
             mock_cleanup.assert_called_once_with(
                 array, device_id, device_id, clone_name, snap_name,
-                extra_specs)
+                extra_specs, target_volume=clone_volume)
 
     def test_create_replica_failed_no_target(self):
         array = self.data.array
@@ -1195,6 +1195,27 @@ class PowerMaxCommonTest(test.TestCase):
                     self.common._create_replica, array, clone_volume,
                     source_device_id, self.data.extra_specs, snap_name)
                 mock_cleanup.assert_not_called()
+
+    @mock.patch.object(
+        utils.PowerMaxUtils,
+        'compare_cylinders',
+        side_effect=exception.VolumeBackendAPIException)
+    def test_create_replica_cylinder_mismatch(self, mock_cyl):
+        array = self.data.array
+        clone_volume = self.data.test_clone_volume
+        source_device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        clone_name = 'OS-' + clone_volume.id
+        with mock.patch.object(
+                self.common, '_cleanup_target') as mock_cleanup:
+            self.assertRaises(
+                Exception, self.common._create_replica, array,
+                clone_volume, source_device_id,
+                self.data.extra_specs, snap_name)  # noqa: ignore=H202
+            mock_cleanup.assert_called_once_with(
+                array, source_device_id, source_device_id,
+                clone_name, snap_name, self.data.extra_specs,
+                target_volume=clone_volume)
 
     @mock.patch.object(
         masking.PowerMaxMasking,
@@ -1220,7 +1241,8 @@ class PowerMaxCommonTest(test.TestCase):
                     array, target_device_id, source_device_id,
                     snap_name, extra_specs, generation)
 
-    def test_cleanup_target_no_sync(self):
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_volume_from_sg')
+    def test_cleanup_target_no_sync(self, mock_remove):
         array = self.data.array
         clone_volume = self.data.test_clone_volume
         source_device_id = self.data.device_id
