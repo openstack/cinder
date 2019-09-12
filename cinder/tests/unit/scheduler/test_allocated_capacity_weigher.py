@@ -24,7 +24,7 @@ from cinder import context
 from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit.scheduler import fakes
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 
 class AllocatedCapacityWeigherTestCase(test.TestCase):
@@ -66,7 +66,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(
-            'host1', utils.extract_host(weighed_host.obj.host))
+            'host1', volume_utils.extract_host(weighed_host.obj.host))
 
     def test_capacity_weight_multiplier1(self):
         self.flags(allocated_capacity_weight_multiplier=1.0)
@@ -82,7 +82,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(1.0, weighed_host.weight)
         self.assertEqual(
-            'host4', utils.extract_host(weighed_host.obj.host))
+            'host4', volume_utils.extract_host(weighed_host.obj.host))
 
     def test_capacity_weight_multiplier2(self):
         self.flags(allocated_capacity_weight_multiplier=-2.0)
@@ -98,4 +98,4 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         weighed_host = self._get_weighed_host(hostinfo_list)
         self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(
-            'host1', utils.extract_host(weighed_host.obj.host))
+            'host1', volume_utils.extract_host(weighed_host.obj.host))

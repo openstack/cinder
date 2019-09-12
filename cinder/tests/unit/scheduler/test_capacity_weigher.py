@@ -25,7 +25,7 @@ from cinder import context
 from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit.scheduler import fakes
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 
 @ddt.ddt
@@ -109,7 +109,8 @@ class CapacityWeigherTestCase(test.TestCase):
             backend_info_list,
             weight_properties=weight_properties)[0]
         self.assertEqual(1.0, weighed_host.weight)
-        self.assertEqual(winner, utils.extract_host(weighed_host.obj.host))
+        self.assertEqual(winner,
+                         volume_utils.extract_host(weighed_host.obj.host))
 
     @ddt.data(
         {'volume_type': {'extra_specs': {'provisioning:type': 'thin'}},
@@ -158,7 +159,8 @@ class CapacityWeigherTestCase(test.TestCase):
             weight_properties=weight_properties)
         weighed_host = weighed_host[0]
         self.assertEqual(0.0, weighed_host.weight)
-        self.assertEqual(winner, utils.extract_host(weighed_host.obj.host))
+        self.assertEqual(winner,
+                         volume_utils.extract_host(weighed_host.obj.host))
 
     @ddt.data(
         {'volume_type': {'extra_specs': {'provisioning:type': 'thin'}},
@@ -206,7 +208,8 @@ class CapacityWeigherTestCase(test.TestCase):
             backend_info_list,
             weight_properties=weight_properties)[0]
         self.assertEqual(1.0 * 2, weighed_host.weight)
-        self.assertEqual(winner, utils.extract_host(weighed_host.obj.host))
+        self.assertEqual(winner,
+                         volume_utils.extract_host(weighed_host.obj.host))
 
     def test_capacity_weight_no_unknown_or_infinite(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -233,11 +236,13 @@ class CapacityWeigherTestCase(test.TestCase):
         weighed_hosts = self._get_weighed_hosts(backend_info_list)
         best_host = weighed_hosts[0]
         self.assertEqual(0.0, best_host.weight)
-        self.assertEqual('host4', utils.extract_host(best_host.obj.host))
+        self.assertEqual('host4',
+                         volume_utils.extract_host(best_host.obj.host))
         # and host2 is the worst:
         worst_host = weighed_hosts[-1]
         self.assertEqual(-1.0, worst_host.weight)
-        self.assertEqual('host2', utils.extract_host(worst_host.obj.host))
+        self.assertEqual('host2',
+                         volume_utils.extract_host(worst_host.obj.host))
 
     def test_capacity_weight_free_unknown(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -275,11 +280,13 @@ class CapacityWeigherTestCase(test.TestCase):
         weighed_hosts = self._get_weighed_hosts(backend_info_list)
         best_host = weighed_hosts[0]
         self.assertEqual(0.0, best_host.weight)
-        self.assertEqual('host4', utils.extract_host(best_host.obj.host))
+        self.assertEqual('host4',
+                         volume_utils.extract_host(best_host.obj.host))
         # and host5 is the worst:
         worst_host = weighed_hosts[-1]
         self.assertEqual(-1.0, worst_host.weight)
-        self.assertEqual('host5', utils.extract_host(worst_host.obj.host))
+        self.assertEqual('host5',
+                         volume_utils.extract_host(worst_host.obj.host))
 
     def test_capacity_weight_cap_unknown(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -317,11 +324,13 @@ class CapacityWeigherTestCase(test.TestCase):
         weighed_hosts = self._get_weighed_hosts(backend_info_list)
         best_host = weighed_hosts[0]
         self.assertEqual(0.0, best_host.weight)
-        self.assertEqual('host4', utils.extract_host(best_host.obj.host))
+        self.assertEqual('host4',
+                         volume_utils.extract_host(best_host.obj.host))
         # and host5 is the worst:
         worst_host = weighed_hosts[-1]
         self.assertEqual(-1.0, worst_host.weight)
-        self.assertEqual('host5', utils.extract_host(worst_host.obj.host))
+        self.assertEqual('host5',
+                         volume_utils.extract_host(worst_host.obj.host))
 
     def test_capacity_weight_free_infinite(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -359,11 +368,13 @@ class CapacityWeigherTestCase(test.TestCase):
         weighed_hosts = self._get_weighed_hosts(backend_info_list)
         best_host = weighed_hosts[0]
         self.assertEqual(0.0, best_host.weight)
-        self.assertEqual('host4', utils.extract_host(best_host.obj.host))
+        self.assertEqual('host4',
+                         volume_utils.extract_host(best_host.obj.host))
         # and host5 is the worst:
         worst_host = weighed_hosts[-1]
         self.assertEqual(-1.0, worst_host.weight)
-        self.assertEqual('host5', utils.extract_host(worst_host.obj.host))
+        self.assertEqual('host5',
+                         volume_utils.extract_host(worst_host.obj.host))
 
     def test_capacity_weight_cap_infinite(self):
         self.flags(capacity_weight_multiplier=-1.0)
@@ -401,8 +412,10 @@ class CapacityWeigherTestCase(test.TestCase):
         weighed_hosts = self._get_weighed_hosts(backend_info_list)
         best_host = weighed_hosts[0]
         self.assertEqual(0.0, best_host.weight)
-        self.assertEqual('host4', utils.extract_host(best_host.obj.host))
+        self.assertEqual('host4',
+                         volume_utils.extract_host(best_host.obj.host))
         # and host5 is the worst:
         worst_host = weighed_hosts[-1]
         self.assertEqual(-1.0, worst_host.weight)
-        self.assertEqual('host5', utils.extract_host(worst_host.obj.host))
+        self.assertEqual('host5',
+                         volume_utils.extract_host(worst_host.obj.host))

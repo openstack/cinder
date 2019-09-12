@@ -22,7 +22,7 @@ from oslo_utils import uuidutils
 
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 
 
 UTC_NOW = timeutils.utcnow()
@@ -301,7 +301,8 @@ def mock_host_manager_db_calls(mock_obj, backends_with_pools=False,
             {
                 'id': sid,
                 'host': svc,
-                'availability_zone': az_map[utils.extract_host(svc, 'host')],
+                'availability_zone': az_map[volume_utils.extract_host(svc,
+                                                                      'host')],
                 'topic': 'volume',
                 'disabled': False,
                 'updated_at': timeutils.utcnow(),

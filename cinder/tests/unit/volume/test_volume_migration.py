@@ -41,7 +41,7 @@ from cinder.volume import api as volume_api
 from cinder.volume.flows.manager import create_volume as create_volume_manager
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as volutils
+from cinder.volume import volume_utils
 
 
 QUOTAS = quota.QUOTAS
@@ -556,7 +556,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                 mock.patch.object(os_brick.initiator.connector,
                                   'get_connector_properties') \
                 as mock_get_connector_properties, \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy, \
+                mock.patch.object(volume_utils, 'copy_volume') as mock_copy, \
                 mock.patch.object(volume_rpcapi.VolumeAPI,
                                   'get_capabilities') \
                 as mock_get_capabilities:

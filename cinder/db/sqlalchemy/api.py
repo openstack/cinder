@@ -66,7 +66,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder import utils
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -577,10 +577,10 @@ def is_backend_frozen(context, host, cluster_name):
     """Check if a storage backend is frozen based on host and cluster_name."""
     if cluster_name:
         model = models.Cluster
-        conditions = [model.name == vol_utils.extract_host(cluster_name)]
+        conditions = [model.name == volume_utils.extract_host(cluster_name)]
     else:
         model = models.Service
-        conditions = [model.host == vol_utils.extract_host(host)]
+        conditions = [model.host == volume_utils.extract_host(host)]
     conditions.extend((~model.deleted, model.frozen))
     query = get_session().query(sql.exists().where(and_(*conditions)))
     frozen = query.scalar()
