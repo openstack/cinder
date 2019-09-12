@@ -16,7 +16,7 @@ from cinder import context
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import scst
-from cinder.volume import volume_utils as vutils
+from cinder.volume import volume_utils
 
 
 class TestSCSTAdmDriver(tf.TargetDriverFixture):
@@ -163,9 +163,9 @@ class TestSCSTAdmDriver(tf.TargetDriverFixture):
                                   side_effect=_fake_iscsi_location),\
                 mock.patch.object(self.target, 'target_driver',
                                   return_value='iscsi'),\
-                mock.patch.object(vutils, 'generate_username',
+                mock.patch.object(volume_utils, 'generate_username',
                                   side_effect=lambda: 'QZJbisGmn9AL954FNF4D'),\
-                mock.patch.object(vutils, 'generate_password',
+                mock.patch.object(volume_utils, 'generate_password',
                                   side_effect=lambda: 'P68eE7u9eFqDGexd28DQ'):
             self.assertEqual(expected_result,
                              self.target.create_export(ctxt,

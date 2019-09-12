@@ -28,7 +28,7 @@ from cinder import interface
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.inspur.instorage import instorage_common
-from cinder.volume import volume_utils as utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
 
             properties['target_wwn'] = conn_wwpns
 
-            i_t_map = utils.make_initiator_target_all2all_map(
+            i_t_map = volume_utils.make_initiator_target_all2all_map(
                 connector['wwpns'], conn_wwpns)
             properties['initiator_target_map'] = i_t_map
 
@@ -223,9 +223,10 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
                     # a VM deletion.
                     for node in self._state['storage_nodes'].values():
                         target_wwpns.extend(node['WWPN'])
-                    init_targ_map = (utils.make_initiator_target_all2all_map
-                                     (connector['wwpns'],
-                                      target_wwpns))
+                    init_targ_map = (
+                        volume_utils.make_initiator_target_all2all_map(
+                            connector['wwpns'],
+                            target_wwpns))
                     info['data'] = {'initiator_target_map': init_targ_map}
                     # Only remove the zone if it's the last volume removed
                     fczm_utils.remove_fc_zone(info)

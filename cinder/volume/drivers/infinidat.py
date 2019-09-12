@@ -36,7 +36,7 @@ from cinder import version
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 try:
@@ -378,9 +378,9 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         infinidat_host = self._get_or_create_host(port)
         if self.configuration.use_chap_auth:
             chap_username = (self.configuration.chap_username or
-                             vol_utils.generate_username())
+                             volume_utils.generate_username())
             chap_password = (self.configuration.chap_password or
-                             vol_utils.generate_password())
+                             volume_utils.generate_password())
             infinidat_host.update_fields(
                 security_method='CHAP',
                 security_chap_inbound_username=chap_username,
@@ -627,11 +627,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                 dst_ctx = self._device_connect_context(volume)
                 with src_ctx as src_dev, dst_ctx as dst_dev:
                     dd_block_size = self.configuration.volume_dd_blocksize
-                    vol_utils.copy_volume(src_dev['device']['path'],
-                                          dst_dev['device']['path'],
-                                          snapshot.volume.size * units.Ki,
-                                          dd_block_size,
-                                          sparse=True)
+                    volume_utils.copy_volume(src_dev['device']['path'],
+                                             dst_dev['device']['path'],
+                                             snapshot.volume.size * units.Ki,
+                                             dd_block_size,
+                                             sparse=True)
             except Exception:
                 infinidat_volume.delete()
                 raise
@@ -680,11 +680,11 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
             dst_ctx = self._device_connect_context(volume)
             with src_ctx as src_dev, dst_ctx as dst_dev:
                 dd_block_size = self.configuration.volume_dd_blocksize
-                vol_utils.copy_volume(src_dev['device']['path'],
-                                      dst_dev['device']['path'],
-                                      src_vref.size * units.Ki,
-                                      dd_block_size,
-                                      sparse=True)
+                volume_utils.copy_volume(src_dev['device']['path'],
+                                         dst_dev['device']['path'],
+                                         src_vref.size * units.Ki,
+                                         dd_block_size,
+                                         sparse=True)
         except Exception:
             infinidat_volume.delete()
             raise
@@ -723,7 +723,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def create_group(self, context, group):
         """Creates a group."""
         # let generic volume group support handle non-cgsnapshots
-        if not vol_utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
         obj = self._system.cons_groups.create(name=self._make_cg_name(group),
                                               pool=self._get_infinidat_pool())
@@ -734,7 +734,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def delete_group(self, context, group, volumes):
         """Deletes a group."""
         # let generic volume group support handle non-cgsnapshots
-        if not vol_utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
         try:
             infinidat_cg = self._get_infinidat_cg(group)
@@ -751,7 +751,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
                      add_volumes=None, remove_volumes=None):
         """Updates a group."""
         # let generic volume group support handle non-cgsnapshots
-        if not vol_utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
         add_volumes = add_volumes if add_volumes else []
         remove_volumes = remove_volumes if remove_volumes else []
@@ -775,7 +775,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         # order as the target (volumes)
 
         # let generic volume group support handle non-cgsnapshots
-        if not vol_utils.is_group_a_cg_snapshot_type(group):
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
             raise NotImplementedError()
         self.create_group(context, group)
         new_infinidat_group = self._get_infinidat_cg(group)
@@ -795,7 +795,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Creates a group_snapshot."""
         # let generic volume group support handle non-cgsnapshots
-        if not vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
         infinidat_cg = self._get_infinidat_cg(group_snapshot.group)
         group_snap_name = self._make_group_snapshot_name(group_snapshot)
@@ -814,7 +814,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         """Deletes a group_snapshot."""
         # let generic volume group support handle non-cgsnapshots
-        if not vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             raise NotImplementedError()
         cgsnap_name = self._make_group_snapshot_name(group_snapshot)
         infinidat_cgsnap = self._system.cons_groups.safe_get(name=cgsnap_name)

@@ -36,7 +36,7 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 krest = importutils.try_import("krest")
 
@@ -365,7 +365,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         """Failover to replication target."""
         volume_updates = []
         back_end_ip = None
-        svc_host = vol_utils.extract_host(self.host, 'backend')
+        svc_host = volume_utils.extract_host(self.host, 'backend')
         service = objects.Service.get_by_args(context, svc_host,
                                               'cinder-volume')
 
@@ -587,11 +587,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self.create_volume(volume)
             conn = self.initialize_connection(volume, properties)
             dest_attach_info = self._connect_device(conn)
-            vol_utils.copy_volume(src_attach_info['device']['path'],
-                                  dest_attach_info['device']['path'],
-                                  snapshot.volume.size * units.Ki,
-                                  self.configuration.volume_dd_blocksize,
-                                  sparse=True)
+            volume_utils.copy_volume(src_attach_info['device']['path'],
+                                     dest_attach_info['device']['path'],
+                                     snapshot.volume.size * units.Ki,
+                                     self.configuration.volume_dd_blocksize,
+                                     sparse=True)
             self._kaminario_disconnect_volume(src_attach_info,
                                               dest_attach_info)
             self.terminate_connection(volume, properties)
@@ -635,11 +635,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self.create_volume(volume)
             conn = self.initialize_connection(volume, properties)
             dest_attach_info = self._connect_device(conn)
-            vol_utils.copy_volume(src_attach_info['device']['path'],
-                                  dest_attach_info['device']['path'],
-                                  src_vref.size * units.Ki,
-                                  self.configuration.volume_dd_blocksize,
-                                  sparse=True)
+            volume_utils.copy_volume(src_attach_info['device']['path'],
+                                     dest_attach_info['device']['path'],
+                                     src_vref.size * units.Ki,
+                                     self.configuration.volume_dd_blocksize,
+                                     sparse=True)
             self._kaminario_disconnect_volume(src_attach_info,
                                               dest_attach_info)
             self.terminate_connection(volume, properties)
@@ -816,7 +816,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 and (cap.total - cap.free) != 0):
             ratio = provisioned_vol / float(cap.total - cap.free)
         else:
-            ratio = vol_utils.get_max_over_subscription_ratio(
+            ratio = volume_utils.get_max_over_subscription_ratio(
                 conf.max_over_subscription_ratio, supports_auto=True)
 
         self.stats = {'QoS_support': False,

@@ -28,7 +28,7 @@ from cinder.objects import fields
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 storops = importutils.try_import('storops')
 
@@ -120,7 +120,7 @@ def update_remote_provider_location(volume, client):
 
 
 def get_pool_from_host(host):
-    return vol_utils.extract_host(host, 'pool')
+    return volume_utils.extract_host(host, 'pool')
 
 
 def wait_until(condition, timeout=None, interval=common.INTERVAL_5_SEC,
@@ -412,7 +412,7 @@ def is_volume_smp(volume):
 def require_consistent_group_snapshot_enabled(func):
     @six.wraps(func)
     def inner(self, *args, **kwargs):
-        if not vol_utils.is_group_a_cg_snapshot_type(args[1]):
+        if not volume_utils.is_group_a_cg_snapshot_type(args[1]):
             raise NotImplementedError
         return func(self, *args, **kwargs)
     return inner

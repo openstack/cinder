@@ -42,7 +42,7 @@ from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume.targets import iscsi as iscsi_driver
 from cinder.volume import volume_types
-from cinder.volume import volume_utils as vol_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -656,7 +656,7 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _generate_random_string(self, length):
         """Generates random_string to use for CHAP password."""
 
-        return vol_utils.generate_password(
+        return volume_utils.generate_password(
             length=length,
             symbolgroups=(string.ascii_uppercase + string.digits))
 
@@ -1604,7 +1604,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # SolidFire does not have the concept of volume groups. We're going to
         # play along with the group song and dance. There will be a lot of
         # no-ops because of this.
-        if vol_utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return {'status': fields.GroupStatus.AVAILABLE}
 
         # Blatantly ripping off this pattern from other drivers.
@@ -1614,7 +1614,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                               snapshots=None, source_group=None,
                               source_vols=None):
         # At this point this is just a pass-through.
-        if vol_utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return self._create_consistencygroup_from_src(
                 ctxt,
                 group,
@@ -1629,7 +1629,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def create_group_snapshot(self, ctxt, group_snapshot, snapshots):
         # This is a pass-through to the old consistency group stuff.
-        if vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             return self._create_cgsnapshot(ctxt, group_snapshot, snapshots)
 
         # Default implementation handles other scenarios.
@@ -1639,7 +1639,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # Delete a volume group. SolidFire does not track volume groups,
         # however we do need to actually remove the member volumes of the
         # group. Right now only consistent volume groups are supported.
-        if vol_utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return self._delete_consistencygroup(ctxt, group, volumes)
 
         # Default implementation handles other scenarios.
@@ -1649,7 +1649,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # Regarding consistency groups SolidFire does not track volumes, so
         # this is a no-op. In the future with replicated volume groups this
         # might actually do something.
-        if vol_utils.is_group_a_cg_snapshot_type(group):
+        if volume_utils.is_group_a_cg_snapshot_type(group):
             return self._update_consistencygroup(ctxt,
                                                  group,
                                                  add_volumes,
@@ -1723,7 +1723,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         return None, None
 
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
-        if vol_utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
             return self._delete_cgsnapshot(context, group_snapshot, snapshots)
 
         # Default implementation handles other scenarios.
