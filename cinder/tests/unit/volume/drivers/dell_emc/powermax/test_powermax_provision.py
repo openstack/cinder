@@ -146,15 +146,16 @@ class PowerMaxProvisionTest(test.TestCase):
         target_device_id = self.data.device_id2
         snap_name = self.data.snap_location['snap_name']
         extra_specs = self.data.extra_specs
+
         with mock.patch.object(
-                self.provision.rest, 'modify_volume_snap') as mock_modify:
+                self.provision, '_unlink_volume') as mock_unlink:
             self.provision.break_replication_relationship(
                 array, target_device_id, source_device_id, snap_name,
-                extra_specs)
-            mock_modify.assert_called_once_with(
+                extra_specs, generation=6, loop=True)
+            mock_unlink.assert_called_once_with(
                 array, source_device_id, target_device_id,
                 snap_name, extra_specs, list_volume_pairs=None,
-                unlink=True, generation=0)
+                generation=6, loop=True)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -163,6 +164,16 @@ class PowerMaxProvisionTest(test.TestCase):
             self.provision._unlink_volume(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs)
+            mock_mod.assert_called_once_with(
+                self.data.array, self.data.device_id, self.data.device_id2,
+                self.data.snap_location['snap_name'], self.data.extra_specs,
+                list_volume_pairs=None, unlink=True, generation=0)
+
+            mock_mod.reset_mock()
+            self.provision._unlink_volume(
+                self.data.array, self.data.device_id, self.data.device_id2,
+                self.data.snap_location['snap_name'], self.data.extra_specs,
+                loop=False)
             mock_mod.assert_called_once_with(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs,

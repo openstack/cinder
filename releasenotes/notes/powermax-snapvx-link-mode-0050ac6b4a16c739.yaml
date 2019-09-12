@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    The PowerMax for Cinder driver now implements noCopy mode for links between
+    SnapVX source and target.  This change will improve space efficiency by
+    using pointers instead of copied tracks when source and target volumes are
+    linked.

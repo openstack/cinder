@@ -1814,7 +1814,7 @@ class PowerMaxRest(object):
                 tgt_list.append({'name': target_id})
             payload = {"deviceNameListSource": src_list,
                        "deviceNameListTarget": tgt_list,
-                       "copy": 'true', "action": action,
+                       "copy": 'false', "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
                        "symforce": 'false', "generation": generation}
@@ -2094,46 +2094,48 @@ class PowerMaxRest(object):
         :param tgt_only: Flag - return only sessions where device is target
         :returns: list of snapshot dicts
         """
-        snap_dict_list, sessions = [], []
-        vol_details = self._get_private_volume(array, device_id)
-        snap_vx_info = vol_details['timeFinderInfo']
-        is_snap_src = snap_vx_info['snapVXSrc']
-        is_snap_tgt = snap_vx_info['snapVXTgt']
-        if snap_vx_info.get('snapVXSession'):
-            sessions = snap_vx_info['snapVXSession']
-        if is_snap_src and not tgt_only:
-            for session in sessions:
-                if session.get('srcSnapshotGenInfo'):
-                    src_list = session['srcSnapshotGenInfo']
-                    for src in src_list:
-                        snap_name = src['snapshotHeader']['snapshotName']
-                        generation = src['snapshotHeader']['generation']
-                        target_list, target_dict_list = [], []
-                        if src.get('lnkSnapshotGenInfo'):
-                            target_dict_list = src['lnkSnapshotGenInfo']
-                        for tgt in target_dict_list:
-                            target_tup = tgt['targetDevice'], tgt['state']
-                            target_list.append(target_tup)
-                        link_info = {'target_vol_list': target_list,
-                                     'snap_name': snap_name,
-                                     'source_vol': device_id,
-                                     'generation': generation}
-                        snap_dict_list.append(link_info)
-        if is_snap_tgt:
-            for session in sessions:
+        snap_tgt_dict, snap_src_dict_list = dict(), list()
+        s_in = self.get_volume_snap_info(array, device_id)
+
+        snap_src = (
+            s_in['snapshotSrcs'] if s_in.get('snapshotSrcs') else list())
+        snap_tgt = (
+            s_in['snapshotLnks'][0] if s_in.get('snapshotLnks') else dict())
+
+        if snap_src and not tgt_only:
+            for session in snap_src:
+                snap_src_dict = dict()
+
+                snap_src_dict['source_vol_id'] = device_id
+                snap_src_dict['generation'] = session['generation']
+                snap_src_dict['snap_name'] = session['snapshotName']
+                snap_src_dict['expired'] = session['expired']
+
+                if session.get('linkedDevices'):
+                    snap_src_link = session['linkedDevices'][0]
+                    snap_src_dict['target_vol_id'] = snap_src_link[
+                        'targetDevice']
+                    snap_src_dict['copy_mode'] = snap_src_link['copy']
+                    snap_src_dict['state'] = snap_src_link['state']
+
+                snap_src_dict_list.append(snap_src_dict)
+
+        if snap_tgt:
+            snap_tgt_dict['source_vol_id'] = snap_tgt['linkSourceName']
+            snap_tgt_dict['target_vol_id'] = device_id
+            snap_tgt_dict['state'] = snap_tgt['state']
+            snap_tgt_dict['copy_mode'] = snap_tgt['copy']
+
+            vol_info = self._get_private_volume(array, device_id)
+            vol_tf_sessions = vol_info['timeFinderInfo']['snapVXSession']
+            for session in vol_tf_sessions:
                 if session.get('tgtSrcSnapshotGenInfo'):
-                    tgt = session['tgtSrcSnapshotGenInfo']
-                    snap_name = tgt['snapshotName']
-                    target_tup = tgt['targetDevice'], tgt['state']
-                    target_list = [target_tup]
-                    source_vol = tgt['sourceDevice']
-                    generation = tgt['generation']
-                    link_info = {'target_vol_list': target_list,
-                                 'snap_name': snap_name,
-                                 'source_vol': source_vol,
-                                 'generation': generation}
-                    snap_dict_list.append(link_info)
-        return snap_dict_list
+                    snap_tgt_link = session.get('tgtSrcSnapshotGenInfo')
+                    snap_tgt_dict['snap_name'] = snap_tgt_link['snapshotName']
+                    snap_tgt_dict['expired'] = snap_tgt_link['expired']
+                    snap_tgt_dict['generation'] = snap_tgt_link['generation']
+
+        return snap_src_dict_list, snap_tgt_dict
 
     def get_rdf_group(self, array, rdf_number):
         """Get specific rdf group details.

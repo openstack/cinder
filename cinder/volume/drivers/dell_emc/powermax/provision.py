@@ -176,7 +176,7 @@ class PowerMaxProvision(object):
 
     def break_replication_relationship(
             self, array, target_device_id, source_device_id, snap_name,
-            extra_specs, generation=0):
+            extra_specs, generation=0, loop=True):
         """Unlink a snapshot from its target volume.
 
         :param array: the array serial number
@@ -185,6 +185,7 @@ class PowerMaxProvision(object):
         :param snap_name: the name for the snap shot
         :param extra_specs: extra specifications
         :param generation: the generation number of the snapshot
+        :param loop: if looping call is required for handling retries
         """
         @coordination.synchronized("emc-snapvx-{src_device_id}")
         def do_unlink_volume(src_device_id):
@@ -194,13 +195,14 @@ class PowerMaxProvision(object):
 
             self._unlink_volume(array, src_device_id, target_device_id,
                                 snap_name, extra_specs,
-                                list_volume_pairs=None, generation=generation)
+                                list_volume_pairs=None, generation=generation,
+                                loop=loop)
 
         do_unlink_volume(source_device_id)
 
     def _unlink_volume(
             self, array, source_device_id, target_device_id, snap_name,
-            extra_specs, list_volume_pairs=None, generation=0):
+            extra_specs, list_volume_pairs=None, generation=0, loop=True):
         """Unlink a target volume from its source volume.
 
         :param array: the array serial number
@@ -210,6 +212,7 @@ class PowerMaxProvision(object):
         :param extra_specs: extra specifications
         :param list_volume_pairs: list of volume pairs, optional
         :param generation: the generation number of the snapshot
+        :param loop: if looping call is required for handling retries
         :return: return code
         """
         def _unlink_vol():
@@ -237,11 +240,18 @@ class PowerMaxProvision(object):
             if kwargs['modify_vol_success']:
                 raise loopingcall.LoopingCallDone()
 
-        kwargs = {'retries': 0,
-                  'modify_vol_success': False}
-        timer = loopingcall.FixedIntervalLoopingCall(_unlink_vol)
-        rc = timer.start(interval=UNLINK_INTERVAL).wait()
-        return rc
+        if not loop:
+            self.rest.modify_volume_snap(
+                array, source_device_id, target_device_id, snap_name,
+                extra_specs, unlink=True,
+                list_volume_pairs=list_volume_pairs,
+                generation=generation)
+        else:
+            kwargs = {'retries': 0,
+                      'modify_vol_success': False}
+            timer = loopingcall.FixedIntervalLoopingCall(_unlink_vol)
+            rc = timer.start(interval=UNLINK_INTERVAL).wait()
+            return rc
 
     def delete_volume_snap(self, array, snap_name,
                            source_device_id, restored=False, generation=0):
