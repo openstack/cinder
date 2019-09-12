@@ -718,7 +718,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
         return {'provider_location': src_vref.provider_location}
 
-    def _create_cloned_volume(self, volume, src_vref):
+    def _create_cloned_volume(self, volume, src_vref, context):
         """Creates a clone of the specified volume."""
         volume_format = self.get_volume_format(src_vref)
         if volume_format == DISK_FORMAT_PLOOP:
