@@ -85,6 +85,9 @@ class IBMStorageDriver(san.SanDriver,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_STORAGE_CI"
 
+    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
 
