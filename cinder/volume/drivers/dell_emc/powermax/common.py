@@ -5250,7 +5250,7 @@ class PowerMaxCommon(object):
             exception_message = (_(
                 "Failed to revert the volume to the snapshot"))
             raise exception.VolumeDriverException(message=exception_message)
-        self._sync_check(array, sourcedevice_id, extra_specs)
+        self._clone_check(array, sourcedevice_id, extra_specs)
         try:
             LOG.info("Reverting device: %(deviceid)s "
                      "to snapshot: %(snapname)s.",
