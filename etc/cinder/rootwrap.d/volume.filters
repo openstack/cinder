@@ -136,3 +136,5 @@ ploop: CommandFilter, ploop, root
 # cinder/volume/drivers/quobyte.py
 mount.quobyte: CommandFilter, mount.quobyte, root
 umount.quobyte: CommandFilter, umount.quobyte, root
+
+cryptsetup: CommandFilter, cryptsetup, root
