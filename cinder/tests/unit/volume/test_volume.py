@@ -25,6 +25,7 @@ from castellan import key_manager
 import enum
 import eventlet
 import mock
+import os_brick.initiator.connectors.iscsi
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import imageutils
@@ -56,7 +57,6 @@ from cinder.volume import manager as vol_manager
 from cinder.volume import rpcapi as volume_rpcapi
 import cinder.volume.targets.tgt
 from cinder.volume import volume_types
-import os_brick.initiator.connectors.iscsi
 
 
 QUOTAS = quota.QUOTAS
