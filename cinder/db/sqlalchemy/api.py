@@ -4326,7 +4326,9 @@ def group_type_access_remove(context, type_id, project_id):
     count = (_group_type_access_query(context).
              filter_by(group_type_id=group_type_id).
              filter_by(project_id=project_id).
-             soft_delete(synchronize_session=False))
+             update({'deleted': True,
+                     'deleted_at': timeutils.utcnow(),
+                     'updated_at': literal_column('updated_at')}))
     if count == 0:
         raise exception.GroupTypeAccessNotFound(
             group_type_id=type_id, project_id=project_id)
