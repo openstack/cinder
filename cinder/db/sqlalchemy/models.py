@@ -451,7 +451,7 @@ class VolumeTypeProjects(BASE, CinderBase):
         foreign_keys=volume_type_id,
         primaryjoin='and_('
         'VolumeTypeProjects.volume_type_id == VolumeTypes.id,'
-        'not_(VolumeTypeProjects.deleted))')
+        'VolumeTypeProjects.deleted == 0)')
 
 
 class GroupTypeProjects(BASE, CinderBase):

@@ -263,7 +263,7 @@ def model_query(context, model, *args, **kwargs):
     elif read_deleted == 'only':
         query = query.filter_by(deleted=True)
     elif read_deleted == 'int_no':
-        query = query.filter_by(deleted=False)
+        query = query.filter_by(deleted=0)
     else:
         raise Exception(
             _("Unrecognized read_deleted value '%s'") % read_deleted)
@@ -3588,7 +3588,7 @@ def _process_volume_types_filters(query, filters):
         if filters['is_public'] and context.project_id is not None:
             projects_attr = getattr(models.VolumeTypes, 'projects')
             the_filter.extend([
-                projects_attr.any(project_id=context.project_id, deleted=False)
+                projects_attr.any(project_id=context.project_id, deleted=0)
             ])
         if len(the_filter) > 1:
             query = query.filter(or_(*the_filter))
@@ -4151,11 +4151,8 @@ def volume_type_destroy(context, id):
                     'deleted_at': utcnow,
                     'updated_at': literal_column('updated_at')})
         model_query(context, models.VolumeTypeProjects, session=session,
-                    read_deleted="no").\
-            filter_by(volume_type_id=id).\
-            update({'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
+                    read_deleted="int_no").filter_by(
+            volume_type_id=id).soft_delete(synchronize_session=False)
     del updated_values['updated_at']
     return updated_values
 
@@ -4212,7 +4209,7 @@ def volume_get_all_active_by_window(context,
 
 def _volume_type_access_query(context, session=None):
     return model_query(context, models.VolumeTypeProjects, session=session,
-                       read_deleted="no")
+                       read_deleted="int_no")
 
 
 def _group_type_access_query(context, session=None):
