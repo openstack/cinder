@@ -153,6 +153,37 @@ PowerMax drivers also support the following features:
 PowerMax naming conventions
 ===========================
 
+.. note::
+
+   shortHostName will be altered using the following formula, if its length
+   exceeds 16 characters. This is because the storage group and masking view
+   names cannot exceed 64 characters:
+
+   .. code-block:: text
+
+      if len(shortHostName) > 16:
+          1. Perform md5 hash on the shortHostName
+          2. Convert output of 1. to hex
+          3. Take last 6 characters of shortHostName and append output of 2.
+          4. If the length of output of 3. exceeds 16 characters
+          5. Add the first 8 characters and last 8 characters together
+
+.. note::
+
+   portgroup_name will be altered using the following formula, if its length
+   exceeds 12 characters. This is because the storage group and masking view
+   names cannot exceed 64 characters:
+
+   .. code-block:: text
+
+      if len(portgroup_name) > 12:
+          1. Perform md5 hash on the portgroup_name
+          2. Convert output of 1. to hex
+          3. Take last 6 characters of portgroup_name and append output of 2.
+          4. If the length of output of 3. exceeds 12 characters
+          5. Add the first 6 characters and last 6 characters together
+
+
 Masking view names
 ------------------
 
