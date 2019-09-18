@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    New config option spdk_max_queue_depth is added for SPDK NVMe-oF target.
+    It allows users to specify max queu depth.
