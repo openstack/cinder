@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Dell EMC SC Driver: Fixes `bug 1822229
+    <https://bugs.launchpad.net/cinder/+bug/1822229>`__
+    to handle the volume mappings in the backend when a volume
+    is attached to multiple instances on the same host.

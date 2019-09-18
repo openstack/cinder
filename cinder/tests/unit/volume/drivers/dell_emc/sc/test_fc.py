@@ -18,6 +18,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
 from cinder.volume.drivers.dell_emc.sc import storagecenter_api
 from cinder.volume.drivers.dell_emc.sc import storagecenter_fc
 
@@ -940,6 +941,106 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                      [u'5000D31000FCBE3D', u'5000D31000FCBE35']},
                     'driver_volume_type': 'fibre_channel'}
         self.assertEqual(expected, res, 'Unexpected return data')
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_server',
+                       return_value=SCSERVER)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'unmap_volume',
+                       return_value=True)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_wwns',
+                       return_value=(1,
+                                     [u'5000D31000FCBE3D',
+                                      u'5000D31000FCBE35'],
+                                     {u'21000024FF30441C':
+                                      [u'5000D31000FCBE35'],
+                                      u'21000024FF30441D':
+                                      [u'5000D31000FCBE3D']}))
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'get_volume_count',
+                       return_value=1)
+    def test_terminate_connection_multiattached_host(self,
+                                                     mock_get_volume_count,
+                                                     mock_find_wwns,
+                                                     mock_unmap_volume,
+                                                     mock_find_volume,
+                                                     mock_find_server,
+                                                     mock_close_connection,
+                                                     mock_open_connection,
+                                                     mock_init):
+        connector = self.connector
+
+        attachment1 = fake_volume.volume_attachment_ovo(self._context)
+        attachment1.connector = connector
+        attachment1.attached_host = connector['host']
+        attachment1.attach_status = 'attached'
+
+        attachment2 = fake_volume.volume_attachment_ovo(self._context)
+        attachment2.connector = connector
+        attachment2.attached_host = connector['host']
+        attachment2.attach_status = 'attached'
+
+        vol = fake_volume.fake_volume_obj(self._context)
+        vol.multiattach = True
+        vol.volume_attachment.objects.append(attachment1)
+        vol.volume_attachment.objects.append(attachment2)
+
+        self.driver.terminate_connection(vol, connector)
+        mock_unmap_volume.assert_not_called()
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_server',
+                       return_value=SCSERVER)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'unmap_volume',
+                       return_value=True)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'find_wwns',
+                       return_value=(1,
+                                     [u'5000D31000FCBE3D',
+                                      u'5000D31000FCBE35'],
+                                     {u'21000024FF30441C':
+                                      [u'5000D31000FCBE35'],
+                                      u'21000024FF30441D':
+                                      [u'5000D31000FCBE3D']}))
+    @mock.patch.object(storagecenter_api.SCApi,
+                       'get_volume_count',
+                       return_value=1)
+    def test_terminate_connection_multiattached_diffhost(self,
+                                                         mock_get_volume_count,
+                                                         mock_find_wwns,
+                                                         mock_unmap_volume,
+                                                         mock_find_volume,
+                                                         mock_find_server,
+                                                         mock_close_connection,
+                                                         mock_open_connection,
+                                                         mock_init):
+        connector = self.connector
+
+        attachment1 = fake_volume.volume_attachment_ovo(self._context)
+        attachment1.connector = connector
+        attachment1.attached_host = connector['host']
+        attachment1.attach_status = 'attached'
+
+        attachment2 = fake_volume.volume_attachment_ovo(self._context)
+        attachment2.connector = connector
+        attachment2.attached_host = 'host2'
+        attachment2.attach_status = 'attached'
+
+        vol = fake_volume.fake_volume_obj(self._context)
+        vol.multiattach = True
+        vol.volume_attachment.objects.append(attachment1)
+        vol.volume_attachment.objects.append(attachment2)
+
+        self.driver.terminate_connection(vol, connector)
+        mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
 
     def test_terminate_secondary(self,
                                  mock_close_connection,
