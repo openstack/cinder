@@ -1655,8 +1655,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         db.volume_destroy(self.context, src_vol_id)
         db.volume_destroy(self.context, dst_vol['id'])
 
-        mock_del_enc_key.assert_not_called()
-
         if rekey_supported:
             mock_setup_enc_keys.assert_called_once_with(
                 mock.ANY,
@@ -1681,9 +1679,13 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                     '--key-file=-', '/some/device/thing',
                     process_input='asdfg',
                     run_as_root=True)
+            mock_del_enc_key.assert_called_once_with(mock.ANY,  # context
+                                                     mock.ANY,  # keymgr
+                                                     fake.ENCRYPTION_KEY2_ID)
         else:
             mock_setup_enc_keys.assert_not_called()
             mock_execute.assert_not_called()
+            mock_del_enc_key.assert_not_called()
         mock_at.assert_called()
         mock_det.assert_called()
 
