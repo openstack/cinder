@@ -126,10 +126,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.2 - Handle force detach case. bug #1686745
         4.0.3 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
+        4.0.4 - Added Peer Persistence feature
 
     """
 
-    VERSION = "4.0.2"
+    VERSION = "4.0.4"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -146,17 +147,23 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         finally:
             self._logout(common)
 
-    def initialize_iscsi_ports(self, common):
+    def initialize_iscsi_ports(self, common,
+                               remote_target=None, remote_client=None):
         # map iscsi_ip-> ip_port
         #             -> iqn
         #             -> nsp
         iscsi_ip_list = {}
         temp_iscsi_ip = {}
 
+        if remote_target:
+            backend_conf = remote_target
+        else:
+            backend_conf = common._client_conf
+
         # use the 3PAR ip_addr list for iSCSI configuration
-        if len(common._client_conf['hpe3par_iscsi_ips']) > 0:
+        if len(backend_conf['hpe3par_iscsi_ips']) > 0:
             # add port values to ip_addr, if necessary
-            for ip_addr in common._client_conf['hpe3par_iscsi_ips']:
+            for ip_addr in backend_conf['hpe3par_iscsi_ips']:
                 ip = ip_addr.split(':')
                 if len(ip) == 1:
                     temp_iscsi_ip[ip_addr] = {'ip_port': DEFAULT_ISCSI_PORT}
@@ -168,15 +175,16 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         # add the single value iscsi_ip_address option to the IP dictionary.
         # This way we can see if it's a valid iSCSI IP. If it's not valid,
         # we won't use it and won't bother to report it, see below
-        if (common._client_conf['iscsi_ip_address'] not in temp_iscsi_ip):
-            ip = common._client_conf['iscsi_ip_address']
-            ip_port = common._client_conf['iscsi_port']
-            temp_iscsi_ip[ip] = {'ip_port': ip_port}
+        if 'iscsi_ip_address' in backend_conf:
+            if (backend_conf['iscsi_ip_address'] not in temp_iscsi_ip):
+                ip = backend_conf['iscsi_ip_address']
+                ip_port = backend_conf['iscsi_port']
+                temp_iscsi_ip[ip] = {'ip_port': ip_port}
 
         # get all the valid iSCSI ports from 3PAR
         # when found, add the valid iSCSI ip, ip port, iqn and nsp
         # to the iSCSI IP dictionary
-        iscsi_ports = common.get_active_iscsi_target_ports()
+        iscsi_ports = common.get_active_iscsi_target_ports(remote_client)
 
         for port in iscsi_ports:
             ip = port['IPAddr']
@@ -190,8 +198,9 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         # if the single value iscsi_ip_address option is still in the
         # temp dictionary it's because it defaults to $my_ip which doesn't
         # make sense in this context. So, if present, remove it and move on.
-        if common._client_conf['iscsi_ip_address'] in temp_iscsi_ip:
-            del temp_iscsi_ip[common._client_conf['iscsi_ip_address']]
+        if 'iscsi_ip_address' in backend_conf:
+            if backend_conf['iscsi_ip_address'] in temp_iscsi_ip:
+                del temp_iscsi_ip[backend_conf['iscsi_ip_address']]
 
         # lets see if there are invalid iSCSI IPs left in the temp dict
         if len(temp_iscsi_ip) > 0:
@@ -204,7 +213,59 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
             msg = _('At least one valid iSCSI IP address must be set.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
-        self.iscsi_ips[common._client_conf['hpe3par_api_url']] = iscsi_ip_list
+
+        if remote_target:
+            self.iscsi_ips[remote_target['hpe3par_api_url']] = iscsi_ip_list
+        else:
+            self.iscsi_ips[common._client_conf['hpe3par_api_url']] = (
+                iscsi_ip_list)
+
+    def _initialize_connection_common(self, volume, connector, common,
+                                      host, iscsi_ips, ready_ports,
+                                      target_portals, target_iqns, target_luns,
+                                      remote_client=None):
+
+        # Target portal ips are defined in cinder.conf.
+        target_portal_ips = iscsi_ips.keys()
+
+        # Collect all existing VLUNs for this volume/host combination.
+        existing_vluns = common.find_existing_vluns(volume, host,
+                                                    remote_client)
+
+        # Cycle through each ready iSCSI port and determine if a new
+        # VLUN should be created or an existing one used.
+        lun_id = None
+        for port in ready_ports:
+            iscsi_ip = port['IPAddr']
+            if iscsi_ip in target_portal_ips:
+                vlun = None
+                # check for an already existing VLUN matching the
+                # nsp for this iSCSI IP. If one is found, use it
+                # instead of creating a new VLUN.
+                for v in existing_vluns:
+                    portPos = common.build_portPos(
+                        iscsi_ips[iscsi_ip]['nsp'])
+                    if v['portPos'] == portPos:
+                        vlun = v
+                        break
+                else:
+                    vlun = common.create_vlun(
+                        volume, host, iscsi_ips[iscsi_ip]['nsp'],
+                        lun_id=lun_id, remote_client=remote_client)
+
+                    # We want to use the same LUN ID for every port
+                    if lun_id is None:
+                        lun_id = vlun['lun']
+
+                iscsi_ip_port = "%s:%s" % (
+                    iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
+                target_portals.append(iscsi_ip_port)
+                target_iqns.append(port['iSCSIName'])
+                target_luns.append(vlun['lun'])
+            else:
+                LOG.warning("iSCSI IP: '%s' was not found in "
+                            "hpe3par_iscsi_ips list defined in "
+                            "cinder.conf.", iscsi_ip)
 
     @utils.trace
     @coordination.synchronized('3par-{volume.id}')
@@ -236,6 +297,8 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
           * Create a host on the 3par
           * create vlun on the 3par
         """
+        LOG.debug("volume id: %(volume_id)s",
+                  {'volume_id': volume['id']})
         array_id = self.get_volume_replication_driver_data(volume)
         common = self._login(array_id=array_id)
         try:
@@ -249,12 +312,15 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
             iscsi_ips = self.iscsi_ips[common._client_conf['hpe3par_api_url']]
 
             # we have to make sure we have a host
-            host, username, password = self._create_host(
+            host, username, password, cpg = self._create_host(
                 common,
                 volume,
                 connector)
 
-            if connector.get('multipath'):
+            multipath = connector.get('multipath')
+            LOG.debug("multipath: %(multipath)s",
+                      {'multipath': multipath})
+            if multipath:
                 ready_ports = common.client.getiSCSIPorts(
                     state=common.client.PORT_STATE_READY)
 
@@ -262,45 +328,57 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                 target_iqns = []
                 target_luns = []
 
-                # Target portal ips are defined in cinder.conf.
-                target_portal_ips = iscsi_ips.keys()
+                self._initialize_connection_common(
+                    volume, connector, common,
+                    host, iscsi_ips, ready_ports,
+                    target_portals, target_iqns, target_luns)
 
-                # Collect all existing VLUNs for this volume/host combination.
-                existing_vluns = common.find_existing_vluns(volume, host)
+                if volume.get('replication_status') == 'enabled':
+                    LOG.debug('This is a replication setup')
 
-                # Cycle through each ready iSCSI port and determine if a new
-                # VLUN should be created or an existing one used.
-                lun_id = None
-                for port in ready_ports:
-                    iscsi_ip = port['IPAddr']
-                    if iscsi_ip in target_portal_ips:
-                        vlun = None
-                        # check for an already existing VLUN matching the
-                        # nsp for this iSCSI IP. If one is found, use it
-                        # instead of creating a new VLUN.
-                        for v in existing_vluns:
-                            portPos = common.build_portPos(
-                                iscsi_ips[iscsi_ip]['nsp'])
-                            if v['portPos'] == portPos:
-                                vlun = v
-                                break
+                    remote_target = common._replication_targets[0]
+                    replication_mode = remote_target['replication_mode']
+                    quorum_witness_ip = (
+                        remote_target.get('quorum_witness_ip'))
+
+                    if replication_mode == 1:
+                        LOG.debug('replication_mode is sync')
+                        if quorum_witness_ip:
+                            LOG.debug('quorum_witness_ip is present')
+                            LOG.debug('Peer Persistence has been configured')
                         else:
-                            vlun = common.create_vlun(
-                                volume, host, iscsi_ips[iscsi_ip]['nsp'],
-                                lun_id=lun_id)
-
-                            # We want to use the same LUN ID for every port
-                            if lun_id is None:
-                                lun_id = vlun['lun']
-                        iscsi_ip_port = "%s:%s" % (
-                            iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
-                        target_portals.append(iscsi_ip_port)
-                        target_iqns.append(port['iSCSIName'])
-                        target_luns.append(vlun['lun'])
+                            LOG.debug('Since quorum_witness_ip is absent, '
+                                      'considering this as Active/Passive '
+                                      'replication')
                     else:
-                        LOG.warning("iSCSI IP: '%s' was not found in "
-                                    "hpe3par_iscsi_ips list defined in "
-                                    "cinder.conf.", iscsi_ip)
+                        LOG.debug('Active/Passive replication has been '
+                                  'configured')
+
+                    if replication_mode == 1 and quorum_witness_ip:
+                        remote_client = (
+                            common._create_replication_client(remote_target))
+
+                        self.initialize_iscsi_ports(
+                            common, remote_target, remote_client)
+                        remote_iscsi_ips = (
+                            self.iscsi_ips[remote_target['hpe3par_api_url']])
+
+                        # we have to make sure we have a host
+                        host, username, password, cpg = (
+                            self._create_host(
+                                common, volume, connector,
+                                remote_target, cpg, remote_client))
+
+                        ready_ports = remote_client.getiSCSIPorts(
+                            state=remote_client.PORT_STATE_READY)
+
+                        self._initialize_connection_common(
+                            volume, connector, common,
+                            host, remote_iscsi_ips, ready_ports,
+                            target_portals, target_iqns, target_luns,
+                            remote_client)
+
+                        common._destroy_replication_client(remote_client)
 
                 info = {'driver_volume_type': 'iscsi',
                         'data': {'target_portals': target_portals,
@@ -373,6 +451,39 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         common = self._login(array_id=array_id)
         try:
             is_force_detach = connector is None
+
+            remote_client = None
+            multipath = False
+            if connector:
+                multipath = connector.get('multipath')
+            LOG.debug("multipath: %(multipath)s",
+                      {'multipath': multipath})
+            if multipath:
+                if volume.get('replication_status') == 'enabled':
+                    LOG.debug('This is a replication setup')
+
+                    remote_target = common._replication_targets[0]
+                    replication_mode = remote_target['replication_mode']
+                    quorum_witness_ip = (
+                        remote_target.get('quorum_witness_ip'))
+
+                    if replication_mode == 1:
+                        LOG.debug('replication_mode is sync')
+                        if quorum_witness_ip:
+                            LOG.debug('quorum_witness_ip is present')
+                            LOG.debug('Peer Persistence has been configured')
+                        else:
+                            LOG.debug('Since quorum_witness_ip is absent, '
+                                      'considering this as Active/Passive '
+                                      'replication')
+                    else:
+                        LOG.debug('Active/Passive replication has been '
+                                  'configured')
+
+                    if replication_mode == 1 and quorum_witness_ip:
+                        remote_client = (
+                            common._create_replication_client(remote_target))
+
             if is_force_detach:
                 common.terminate_connection(volume, None, None)
             else:
@@ -380,7 +491,8 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                 common.terminate_connection(
                     volume,
                     hostname,
-                    iqn=connector['initiator'])
+                    iqn=connector['initiator'],
+                    remote_client=remote_client)
             self._clear_chap_3par(common, volume)
         finally:
             self._logout(common)
@@ -407,7 +519,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
             raise
 
     def _create_3par_iscsi_host(self, common, hostname, iscsi_iqn, domain,
-                                persona_id):
+                                persona_id, remote_client=None):
         """Create a 3PAR host.
 
         Create a 3PAR host, if there is already a host on the 3par using
@@ -417,7 +529,12 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         # first search for an existing host
         host_found = None
 
-        hosts = common.client.queryHost(iqns=iscsi_iqn)
+        if remote_client:
+            client_obj = remote_client
+        else:
+            client_obj = common.client
+
+        hosts = client_obj.queryHost(iqns=iscsi_iqn)
 
         if hosts and hosts['members'] and 'name' in hosts['members'][0]:
             host_found = hosts['members'][0]['name']
@@ -427,16 +544,16 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         else:
             persona_id = int(persona_id)
             try:
-                common.client.createHost(hostname, iscsiNames=iscsi_iqn,
-                                         optional={'domain': domain,
-                                                   'persona': persona_id})
+                client_obj.createHost(hostname, iscsiNames=iscsi_iqn,
+                                      optional={'domain': domain,
+                                                'persona': persona_id})
             except hpeexceptions.HTTPConflict as path_conflict:
                 msg = "Create iSCSI host caught HTTP conflict code: %s"
                 with save_and_reraise_exception(reraise=False) as ctxt:
                     if path_conflict.get_code() is EXISTENT_PATH:
                         # Handle exception : EXISTENT_PATH - host WWN/iSCSI
                         # name already used by another host
-                        hosts = common.client.queryHost(iqns=iscsi_iqn)
+                        hosts = client_obj.queryHost(iqns=iscsi_iqn)
                         if hosts and hosts['members'] and (
                                 'name' in hosts['members'][0]):
                             hostname = hosts['members'][0]['name']
@@ -468,31 +585,45 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                        'chapSecret': password}
         common.client.modifyHost(hostname, mod_request)
 
-    def _create_host(self, common, volume, connector):
+    def _create_host(self, common, volume, connector,
+                     remote_target=None, src_cpg=None, remote_client=None):
         """Creates or modifies existing 3PAR host."""
         # make sure we don't have the host already
         host = None
+        domain = None
         username = None
         password = None
         hostname = common._safe_hostname(connector['host'])
-        cpg = common.get_cpg(volume, allowSnap=True)
-        domain = common.get_domain(cpg)
 
-        # Get the CHAP secret if CHAP is enabled
-        if common._client_conf['hpe3par_iscsi_chap_enabled']:
-            vol_name = common._get_3par_vol_name(volume['id'])
-            username = common.client.getVolumeMetaData(
-                vol_name, CHAP_USER_KEY)['value']
-            password = common.client.getVolumeMetaData(
-                vol_name, CHAP_PASS_KEY)['value']
+        if remote_target:
+            cpg = common._get_cpg_from_cpg_map(
+                remote_target['cpg_map'], src_cpg)
+            cpg_obj = remote_client.getCPG(cpg)
+            if 'domain' in cpg_obj:
+                domain = cpg_obj['domain']
+        else:
+            cpg = common.get_cpg(volume, allowSnap=True)
+            domain = common.get_domain(cpg)
+
+        if not remote_target:
+            # Get the CHAP secret if CHAP is enabled
+            if common._client_conf['hpe3par_iscsi_chap_enabled']:
+                vol_name = common._get_3par_vol_name(volume['id'])
+                username = common.client.getVolumeMetaData(
+                    vol_name, CHAP_USER_KEY)['value']
+                password = common.client.getVolumeMetaData(
+                    vol_name, CHAP_PASS_KEY)['value']
 
         try:
-            host = common._get_3par_host(hostname)
-            # Check whether host with iqn of initiator present on 3par
-            hosts = common.client.queryHost(iqns=[connector['initiator']])
-            host, hostname = common._get_prioritized_host_on_3par(host,
-                                                                  hosts,
-                                                                  hostname)
+            if remote_target:
+                host = remote_client.getHost(hostname)
+            else:
+                host = common._get_3par_host(hostname)
+                # Check whether host with iqn of initiator present on 3par
+                hosts = common.client.queryHost(iqns=[connector['initiator']])
+                host, hostname = (
+                    common._get_prioritized_host_on_3par(
+                        host, hosts, hostname))
         except hpeexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
             persona_id = common.get_persona_type(volume)
@@ -501,22 +632,27 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                                                     hostname,
                                                     [connector['initiator']],
                                                     domain,
-                                                    persona_id)
+                                                    persona_id,
+                                                    remote_client)
         else:
-            if 'iSCSIPaths' not in host or len(host['iSCSIPaths']) < 1:
-                self._modify_3par_iscsi_host(
-                    common, hostname,
-                    connector['initiator'])
-            elif (not host['initiatorChapEnabled'] and
-                    common._client_conf['hpe3par_iscsi_chap_enabled']):
-                LOG.warning("Host exists without CHAP credentials set and "
-                            "has iSCSI attachments but CHAP is enabled. "
-                            "Updating host with new CHAP credentials.")
+            if not remote_target:
+                if 'iSCSIPaths' not in host or len(host['iSCSIPaths']) < 1:
+                    self._modify_3par_iscsi_host(
+                        common, hostname,
+                        connector['initiator'])
+                elif (not host['initiatorChapEnabled'] and
+                        common._client_conf['hpe3par_iscsi_chap_enabled']):
+                    LOG.warning("Host exists without CHAP credentials set and "
+                                "has iSCSI attachments but CHAP is enabled. "
+                                "Updating host with new CHAP credentials.")
 
-        # set/update the chap details for the host
-        self._set_3par_chaps(common, hostname, volume, username, password)
-        host = common._get_3par_host(hostname)
-        return host, username, password
+        if remote_target:
+            host = remote_client.getHost(hostname)
+        else:
+            # set/update the chap details for the host
+            self._set_3par_chaps(common, hostname, volume, username, password)
+            host = common._get_3par_host(hostname)
+        return host, username, password, cpg
 
     def _do_export(self, common, volume, connector):
         """Gets the associated account, generates CHAP info and updates."""

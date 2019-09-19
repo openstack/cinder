@@ -113,10 +113,11 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.5 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
         4.0.6 - Set NSP for single path attachments. Bug #1809249
+        4.0.7 - Added Peer Persistence feature
 
     """
 
-    VERSION = "4.0.5"
+    VERSION = "4.0.7"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -125,6 +126,43 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
         self.lookup_service = fczm_utils.create_lookup_service()
         self.protocol = 'FC'
+
+    def _initialize_connection_common(self, volume, connector, common, host,
+                                      target_wwns, init_targ_map, numPaths,
+                                      remote_client=None):
+        # check if a VLUN already exists for this host
+        existing_vlun = common.find_existing_vlun(volume, host, remote_client)
+
+        vlun = None
+        if existing_vlun is None:
+            # now that we have a host, create the VLUN
+            if self.lookup_service and numPaths == 1:
+                nsp = None
+                active_fc_port_list = (
+                    common.get_active_fc_target_ports(remote_client))
+                for port in active_fc_port_list:
+                    if port['portWWN'].lower() == target_wwns[0].lower():
+                        nsp = port['nsp']
+                        break
+                vlun = common.create_vlun(volume, host, nsp, None,
+                                          remote_client)
+            else:
+                vlun = common.create_vlun(volume, host, None, None,
+                                          remote_client)
+        else:
+            vlun = existing_vlun
+
+        info_backend = {'driver_volume_type': 'fibre_channel',
+                        'data': {'target_lun': vlun['lun'],
+                                 'target_discovered': True,
+                                 'target_wwn': target_wwns,
+                                 'initiator_target_map': init_targ_map}}
+
+        encryption_key_id = volume.get('encryption_key_id')
+        info_backend['data']['encrypted'] = encryption_key_id is not None
+        fczm_utils.add_fc_zone(info_backend)
+
+        return info_backend
 
     @utils.trace
     @coordination.synchronized('3par-{volume.id}')
@@ -167,16 +205,20 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
           * Create a VLUN for that HOST with the volume we want to export.
 
         """
+        LOG.debug("volume id: %(volume_id)s",
+                  {'volume_id': volume['id']})
         array_id = self.get_volume_replication_driver_data(volume)
         common = self._login(array_id=array_id)
         try:
             # we have to make sure we have a host
-            host = self._create_host(common, volume, connector)
+            host, cpg = self._create_host(common, volume, connector)
             target_wwns, init_targ_map, numPaths = (
                 self._build_initiator_target_map(common, connector))
 
             multipath = connector.get('multipath')
-            LOG.debug("multipath: %s", multipath)
+            LOG.debug("multipath: %(multipath)s",
+                      {'multipath': multipath})
+
             user_target = None
             if not multipath:
                 user_target = self._get_user_target(common)
@@ -188,34 +230,64 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                     target_wwns = [user_target]
                     init_targ_map[initiator] = [user_target]
 
-            # check if a VLUN already exists for this host
-            existing_vlun = common.find_existing_vlun(volume, host)
+            info = self._initialize_connection_common(
+                volume, connector, common, host,
+                target_wwns, init_targ_map, numPaths)
 
-            vlun = None
-            if existing_vlun is None:
-                # now that we have a host, create the VLUN
-                if self.lookup_service is not None and numPaths == 1:
-                    nsp = None
-                    active_fc_port_list = common.get_active_fc_target_ports()
-                    for port in active_fc_port_list:
-                        if port['portWWN'].lower() == target_wwns[0].lower():
-                            nsp = port['nsp']
-                            break
-                    vlun = common.create_vlun(volume, host, nsp)
+            if not multipath:
+                return info
+
+            if volume.get('replication_status') != 'enabled':
+                return info
+
+            LOG.debug('This is a replication setup')
+
+            remote_target = common._replication_targets[0]
+            replication_mode = remote_target['replication_mode']
+            quorum_witness_ip = remote_target.get('quorum_witness_ip')
+
+            if replication_mode == 1:
+                LOG.debug('replication_mode is sync')
+                if quorum_witness_ip:
+                    LOG.debug('quorum_witness_ip is present')
+                    LOG.debug('Peer Persistence has been configured')
                 else:
-                    vlun = common.create_vlun(volume, host)
+                    LOG.debug('Since quorum_witness_ip is absent, '
+                              'considering this as Active/Passive '
+                              'replication')
+                    return info
             else:
-                vlun = existing_vlun
+                LOG.debug('Active/Passive replication has been '
+                          'configured')
+                return info
+
+            # Peer Persistence has been configured
+            remote_client = common._create_replication_client(remote_target)
+
+            host, cpg = self._create_host(
+                common, volume, connector,
+                remote_target, cpg, remote_client)
+            target_wwns, init_targ_map, numPaths = (
+                self._build_initiator_target_map(
+                    common, connector, remote_client))
+
+            info_peer = self._initialize_connection_common(
+                volume, connector, common, host,
+                target_wwns, init_targ_map, numPaths,
+                remote_client)
+
+            common._destroy_replication_client(remote_client)
 
             info = {'driver_volume_type': 'fibre_channel',
-                    'data': {'target_lun': vlun['lun'],
+                    'data': {'encrypted': info['data']['encrypted'],
+                             'target_lun': info['data']['target_lun'],
                              'target_discovered': True,
-                             'target_wwn': target_wwns,
-                             'initiator_target_map': init_targ_map}}
+                             'target_wwn': info['data']['target_wwn'] +
+                             info_peer['data']['target_wwn'],
+                             'initiator_target_map': self.merge_dicts(
+                             info['data']['initiator_target_map'],
+                             info_peer['data']['initiator_target_map'])}}
 
-            encryption_key_id = volume.get('encryption_key_id', None)
-            info['data']['encrypted'] = encryption_key_id is not None
-            fczm_utils.add_fc_zone(info)
             return info
         finally:
             self._logout(common)
@@ -228,6 +300,39 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         common = self._login(array_id=array_id)
         try:
             is_force_detach = connector is None
+
+            remote_client = None
+            multipath = False
+            if connector:
+                multipath = connector.get('multipath')
+            LOG.debug("multipath: %(multipath)s",
+                      {'multipath': multipath})
+            if multipath:
+                if volume.get('replication_status') == 'enabled':
+                    LOG.debug('This is a replication setup')
+
+                    remote_target = common._replication_targets[0]
+                    replication_mode = remote_target['replication_mode']
+                    quorum_witness_ip = (
+                        remote_target.get('quorum_witness_ip'))
+
+                    if replication_mode == 1:
+                        LOG.debug('replication_mode is sync')
+                        if quorum_witness_ip:
+                            LOG.debug('quorum_witness_ip is present')
+                            LOG.debug('Peer Persistence has been configured')
+                        else:
+                            LOG.debug('Since quorum_witness_ip is absent, '
+                                      'considering this as Active/Passive '
+                                      'replication')
+                    else:
+                        LOG.debug('Active/Passive replication has been '
+                                  'configured')
+
+                    if replication_mode == 1 and quorum_witness_ip:
+                        remote_client = (
+                            common._create_replication_client(remote_target))
+
             if is_force_detach:
                 common.terminate_connection(volume, None, None)
                 # TODO(sonivi): remove zones, if not required
@@ -236,7 +341,8 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
             else:
                 hostname = common._safe_hostname(connector['host'])
                 common.terminate_connection(volume, hostname,
-                                            wwn=connector['wwpns'])
+                                            wwn=connector['wwpns'],
+                                            remote_client=remote_client)
 
                 zone_remove = True
                 try:
@@ -259,21 +365,61 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
             if zone_remove:
                 LOG.info("Need to remove FC Zone, building initiator "
                          "target map")
-                target_wwns, init_targ_map, _numPaths = \
-                    self._build_initiator_target_map(common, connector)
+                target_wwns, init_targ_map, _numPaths = (
+                    self._build_initiator_target_map(common, connector))
 
                 info['data'] = {'target_wwn': target_wwns,
                                 'initiator_target_map': init_targ_map}
                 fczm_utils.remove_fc_zone(info)
+
+            if remote_client:
+                if zone_remove:
+                    try:
+                        vluns = remote_client.getHostVLUNs(hostname)
+                    except hpeexceptions.HTTPNotFound:
+                        # No more exports for this host.
+                        pass
+                    else:
+                        # Vlun exists, so check for wwpn entry.
+                        for wwpn in connector.get('wwpns'):
+                            for vlun in vluns:
+                                if (vlun.get('active') and
+                                   vlun.get('remoteName') == wwpn.upper()):
+                                    zone_remove = False
+                                    break
+
+                info_peer = {'driver_volume_type': 'fibre_channel',
+                             'data': {}}
+
+                if zone_remove:
+                    LOG.info("Need to remove FC Zone, building initiator "
+                             "target map")
+                    target_wwns, init_targ_map, _numPaths = (
+                        self._build_initiator_target_map(common, connector,
+                                                         remote_client))
+
+                    info_peer['data'] = {'target_wwn': target_wwns,
+                                         'initiator_target_map': init_targ_map}
+                    fczm_utils.remove_fc_zone(info_peer)
+
+                    info = (
+                        {'driver_volume_type': 'fibre_channel',
+                         'data': {'target_wwn': info['data']['target_wwn'] +
+                                  info_peer['data']['target_wwn'],
+                                  'initiator_target_map': self.merge_dicts(
+                                  info['data']['initiator_target_map'],
+                                  info_peer['data']['initiator_target_map'])}})
+
             return info
 
         finally:
             self._logout(common)
 
-    def _build_initiator_target_map(self, common, connector):
+    def _build_initiator_target_map(self, common, connector,
+                                    remote_client=None):
         """Build the target_wwns and the initiator target map."""
 
-        fc_ports = common.get_active_fc_target_ports()
+        fc_ports = common.get_active_fc_target_ports(remote_client)
         all_target_wwns = []
         target_wwns = []
         init_targ_map = {}
@@ -311,7 +457,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         return target_wwns, init_targ_map, numPaths
 
     def _create_3par_fibrechan_host(self, common, hostname, wwns,
-                                    domain, persona_id):
+                                    domain, persona_id, remote_client=None):
         """Create a 3PAR host.
 
         Create a 3PAR host, if there is already a host on the 3par using
@@ -320,7 +466,13 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         """
         # first search for an existing host
         host_found = None
-        hosts = common.client.queryHost(wwns=wwns)
+
+        if remote_client:
+            client_obj = remote_client
+        else:
+            client_obj = common.client
+
+        hosts = client_obj.queryHost(wwns=wwns)
 
         if hosts and hosts['members'] and 'name' in hosts['members'][0]:
             host_found = hosts['members'][0]['name']
@@ -330,9 +482,9 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         else:
             persona_id = int(persona_id)
             try:
-                common.client.createHost(hostname, FCWwns=wwns,
-                                         optional={'domain': domain,
-                                                   'persona': persona_id})
+                client_obj.createHost(hostname, FCWwns=wwns,
+                                      optional={'domain': domain,
+                                                'persona': persona_id})
             except hpeexceptions.HTTPConflict as path_conflict:
                 msg = "Create FC host caught HTTP conflict code: %s"
                 LOG.exception(msg, path_conflict.get_code())
@@ -340,7 +492,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                     if path_conflict.get_code() is EXISTENT_PATH:
                         # Handle exception : EXISTENT_PATH - host WWN/iSCSI
                         # name already used by another host
-                        hosts = common.client.queryHost(wwns=wwns)
+                        hosts = client_obj.queryHost(wwns=wwns)
                         if hosts and hosts['members'] and (
                                 'name' in hosts['members'][0]):
                             hostname = hosts['members'][0]['name']
@@ -353,11 +505,17 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                         ctxt.reraise = True
             return hostname
 
-    def _modify_3par_fibrechan_host(self, common, hostname, wwn):
-        mod_request = {'pathOperation': common.client.HOST_EDIT_ADD,
+    def _modify_3par_fibrechan_host(self, common, hostname, wwn,
+                                    remote_client):
+        if remote_client:
+            client_obj = remote_client
+        else:
+            client_obj = common.client
+
+        mod_request = {'pathOperation': client_obj.HOST_EDIT_ADD,
                        'FCWWNs': wwn}
         try:
-            common.client.modifyHost(hostname, mod_request)
+            client_obj.modifyHost(hostname, mod_request)
         except hpeexceptions.HTTPConflict as path_conflict:
             msg = ("Modify FC Host %(hostname)s caught "
                    "HTTP conflict code: %(code)s")
@@ -365,21 +523,34 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                           {'hostname': hostname,
                            'code': path_conflict.get_code()})
 
-    def _create_host(self, common, volume, connector):
+    def _create_host(self, common, volume, connector,
+                     remote_target=None, src_cpg=None, remote_client=None):
         """Creates or modifies existing 3PAR host."""
         host = None
+        domain = None
         hostname = common._safe_hostname(connector['host'])
-        cpg = common.get_cpg(volume, allowSnap=True)
-        domain = common.get_domain(cpg)
+        if remote_target:
+            cpg = common._get_cpg_from_cpg_map(
+                remote_target['cpg_map'], src_cpg)
+            cpg_obj = remote_client.getCPG(cpg)
+            if 'domain' in cpg_obj:
+                domain = cpg_obj['domain']
+        else:
+            cpg = common.get_cpg(volume, allowSnap=True)
+            domain = common.get_domain(cpg)
+
         if not connector.get('multipath'):
             connector['wwpns'] = connector['wwpns'][:1]
         try:
-            host = common._get_3par_host(hostname)
-            # Check whether host with wwn of initiator present on 3par
-            hosts = common.client.queryHost(wwns=connector['wwpns'])
-            host, hostname = common._get_prioritized_host_on_3par(host,
-                                                                  hosts,
-                                                                  hostname)
+            if remote_target:
+                host = remote_client.getHost(hostname)
+            else:
+                host = common._get_3par_host(hostname)
+                # Check whether host with wwn of initiator present on 3par
+                hosts = common.client.queryHost(wwns=connector['wwpns'])
+                host, hostname = (
+                    common._get_prioritized_host_on_3par(
+                        host, hosts, hostname))
         except hpeexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
             persona_id = common.get_persona_type(volume)
@@ -388,13 +559,19 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                                                         hostname,
                                                         connector['wwpns'],
                                                         domain,
-                                                        persona_id)
-            host = common._get_3par_host(hostname)
-            return host
+                                                        persona_id,
+                                                        remote_client)
+            if remote_target:
+                host = remote_client.getHost(hostname)
+            else:
+                host = common._get_3par_host(hostname)
+            return host, cpg
         else:
-            return self._add_new_wwn_to_host(common, host, connector['wwpns'])
+            host = self._add_new_wwn_to_host(
+                common, host, connector['wwpns'], remote_client)
+            return host, cpg
 
-    def _add_new_wwn_to_host(self, common, host, wwns):
+    def _add_new_wwn_to_host(self, common, host, wwns, remote_client=None):
         """Add wwns to a host if one or more don't exist.
 
         Identify if argument wwns contains any world wide names
@@ -419,8 +596,12 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         # if any wwns found that were not in host list,
         # add them to the host
         if (len(new_wwns) > 0):
-            self._modify_3par_fibrechan_host(common, host['name'], new_wwns)
-            host = common._get_3par_host(host['name'])
+            self._modify_3par_fibrechan_host(
+                common, host['name'], new_wwns, remote_client)
+            if remote_client:
+                host = remote_client.getHost(host['name'])
+            else:
+                host = common._get_3par_host(host['name'])
         return host
 
     def _get_user_target(self, common):
@@ -444,3 +625,8 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                         "%(nsp)s", {'nsp': target_nsp})
 
         return target_wwn
+
+    def merge_dicts(self, dict_1, dict_2):
+        keys = set(dict_1).union(dict_2)
+        no = []
+        return {k: (dict_1.get(k, no) + dict_2.get(k, no)) for k in keys}

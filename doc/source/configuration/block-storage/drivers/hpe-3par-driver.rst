@@ -109,6 +109,8 @@ Supported operations
 
 * Report Backend State in Service List.
 
+* Peer Persistence.
+
 Volume type support for both HPE 3PAR drivers includes the ability to set the
 following capabilities in the OpenStack Block Storage API
 ``cinder.api.contrib.types_extra_specs`` volume type extra specs extension
@@ -460,4 +462,44 @@ bootable volume is created successfully.
 Note: If above mentioned option (nsp) is not specified in cinder.conf,
 then the original flow is executed i.e first target is picked and
 bootable volume creation may fail.
+
+Peer Persistence support
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Given 3PAR backend configured with replication setup, currently only
+Active/Passive replication is supported by 3PAR in OpenStack. When
+failover happens, nova does not support volume force-detach (from
+dead primary backend) / re-attach to secondary backend. Storage
+engineer's manual intervention is required.
+
+To overcome above scenario, support for Peer Persistence is added.
+Given a system with Peer Persistence configured and replicated volume
+is created. When this volume is attached to an instance, vlun is
+created automatically in secondary backend, in addition to primary
+backend. So that when a failover happens, it is seamless.
+
+For Peer Persistence support, perform following steps:
+1] enable multipath
+2] set replication mode as "sync"
+3] configure a quorum witness server
+
+Specify ip address of quorum witness server in ``/etc/cinder/cinder.conf``
+[within backend section] as given below:
+
+.. code-block:: console
+
+   [3pariscsirep]
+   hpe3par_api_url = http://10.50.3.7:8008/api/v1
+   hpe3par_username = <user_name>
+   hpe3par_password = <password>
+   ...
+   <other parameters>
+   ...
+   replication_device = backend_id:CSIM-EOS12_1611702,
+                        replication_mode:sync,
+                        quorum_witness_ip:10.50.3.192,
+                        hpe3par_api_url:http://10.50.3.22:8008/api/v1,
+                        ...
+                        <other parameters>
+                        ...
 
