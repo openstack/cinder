@@ -94,8 +94,12 @@ mstorage_opts = [
                 default=False,
                 help='Use legacy iSMCLI command.'),
     cfg.IntOpt('nec_iscsi_portals_per_cont',
-               default=1,
-               help='Number of iSCSI portals.'),
+               default=0,
+               deprecated_for_removal=True,
+               help='Max number of iSCSI portals per controller. '
+                    '0 => unlimited. '
+                    'This option is deprecated and may '
+                    'be removed in the next release.'),
     cfg.BoolOpt('nec_auto_accesscontrol',
                 default=True,
                 help='Configure access control automatically.'),
@@ -152,9 +156,6 @@ def convert_to_id(value62):
 
 class MStorageVolumeCommon(object):
     """M-Series Storage volume common class."""
-
-    VERSION = '1.10.2'
-    WIKI_NAME = 'NEC_Cinder_CI'
 
     def do_setup(self, context):
         self._context = context

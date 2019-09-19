@@ -47,9 +47,12 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
                  Fixed bug #1777385: driver removed access permission from
                  the destination node after live-migraion.
                  Fixed bug #1778669: LUNs of detached volumes are never reused.
+        1.11.1 - Add support pytyon 3.
+                 Add support for multi-attach.
+                 Add support of more than 4 iSCSI portals for a node.
     """
 
-    VERSION = '1.10.3'
+    VERSION = '1.11.1'
     CI_WIKI_NAME = 'NEC_Cinder_CI'
 
     def __init__(self, *args, **kwargs):
@@ -60,9 +63,6 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
     @staticmethod
     def get_driver_options():
         return volume_common.mstorage_opts
-
-    def create_export(self, context, volume, connector):
-        return self.iscsi_do_export(context, volume, connector)
 
     def ensure_export(self, context, volume):
         pass
@@ -75,9 +75,6 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
 
     def terminate_connection(self, volume, connector, **kwargs):
         return self.iscsi_terminate_connection(volume, connector)
-
-    def create_export_snapshot(self, context, snapshot, connector):
-        return self.iscsi_do_export_snapshot(context, snapshot, connector)
 
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         return self.iscsi_initialize_connection_snapshot(snapshot,
@@ -114,9 +111,12 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
                  Fixed bug #1777385: driver removed access permission from
                  the destination node after live-migraion.
                  Fixed bug #1778669: LUNs of detached volumes are never reused.
+        1.11.1 - Add support pytyon 3.
+                 Add support for multi-attach.
+                 Add support of more than 4 iSCSI portals for a node.
     """
 
-    VERSION = '1.10.3'
+    VERSION = '1.11.1'
     CI_WIKI_NAME = 'NEC_Cinder_CI'
 
     def __init__(self, *args, **kwargs):
@@ -127,9 +127,6 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
     @staticmethod
     def get_driver_options():
         return volume_common.mstorage_opts
-
-    def create_export(self, context, volume, connector):
-        return self.fc_do_export(context, volume, connector)
 
     def ensure_export(self, context, volume):
         pass
@@ -146,9 +143,6 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
         conn_info = self.fc_terminate_connection(volume, connector)
         fczm_utils.remove_fc_zone(conn_info)
         return conn_info
-
-    def create_export_snapshot(self, context, snapshot, connector):
-        return self.fc_do_export_snapshot(context, snapshot, connector)
 
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         return self.fc_initialize_connection_snapshot(snapshot,

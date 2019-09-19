@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    NEC Driver: Added support of more than 4 iSCSI portals
+    for a node.
+deprecations:
+  - |
+    NEC Driver: Deprecated ``nec_iscsi_portals_per_cont``
+    config option. The option was used to limit number of
+    portals and is no longer needed.
+
