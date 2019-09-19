@@ -516,6 +516,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         attach_info = None
         model_update = {}
         new_key_id = None
+        original_key_id = volume.encryption_key_id
+        key_mgr = key_manager.API(CONF)
 
         try:
             attach_info, volume = self.driver._attach_volume(context,
@@ -591,6 +593,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 del new_pass
                 model_update = {'encryption_key_id': new_key_id}
 
+            # delete the original key that was cloned for this volume
+            # earlier
+            volume_utils.delete_encryption_key(context,
+                                               key_mgr,
+                                               original_key_id)
         except exception.RekeyNotSupported:
             pass
         except Exception:
@@ -599,7 +606,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     # Remove newly cloned key since it will not be used.
                     volume_utils.delete_encryption_key(
                         context,
-                        key_manager.API(CONF),
+                        key_mgr,
                         new_key_id)
         finally:
             if attach_info:
