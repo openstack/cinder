@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes a bug that prevented creation of Quobyte volumes from
+    snapshots during snapshot backups. This now allows backing up
+    volumes with existing snapshots.

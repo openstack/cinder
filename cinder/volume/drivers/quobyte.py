@@ -35,7 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.12'
+VERSION = '1.1.13'
 
 LOG = logging.getLogger(__name__)
 
@@ -115,6 +115,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.10 - Adds overlay based volumes for snapshot merge caching
         1.1.11 - NAS secure ownership & permissions are now False by default
         1.1.12 - Ensure the currently configured volume url is always used
+        1.1.13 - Enable snapshot based backups with Quobyte
 
     """
 
@@ -347,9 +348,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         LOG.debug('Creating volume %(vol)s from snapshot %(snap)s',
                   {'vol': volume.id, 'snap': snapshot.id})
 
-        if snapshot.status != 'available':
-            msg = _('Snapshot status must be "available" to clone. '
-                    'But is: %(status)s') % {'status': snapshot.status}
+        if snapshot.status not in ['available', 'backing-up']:
+            msg = _('Snapshot status must be "available" or "backing-up" to '
+                    'clone. But is: %(status)s') % {'status': snapshot.status}
 
             raise exception.InvalidSnapshot(msg)
 
