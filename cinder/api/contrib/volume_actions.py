@@ -221,14 +221,13 @@ class VolumeActionsController(wsgi.Controller):
             # Clone volume encryption key: the current key cannot
             # be reused because it will be deleted when the volume is
             # deleted.
-            # TODO(eharney): Currently, there is no mechanism to remove
-            # these keys, because Glance will not delete the key from
-            # Barbican when the image is deleted.
             encryption_key_id = self._key_manager.store(
                 context,
                 self._key_manager.get(context, volume.encryption_key_id))
 
             image_metadata['cinder_encryption_key_id'] = encryption_key_id
+            image_metadata['cinder_encryption_key_deletion_policy'] = \
+                'on_image_deletion'
 
         if req_version >= mv.get_api_version(
                 mv.UPLOAD_IMAGE_PARAMS):
