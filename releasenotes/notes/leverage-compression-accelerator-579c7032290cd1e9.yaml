@@ -1,0 +1,49 @@
+---
+features:
+  - |
+    A general framework to accommodate hardware compression accelerators for
+    compression of volumes uploaded to the Image service (Glance) as images
+    and decompression of compressed images used to create volumes is
+    introduced.
+
+    The only accelerator supported in this release is Intel QuickAssist
+    Technology (QAT), which produces a compressed file in gzip format.
+    Refer to this `Cinder documentation
+    <https://docs.openstack.org/cinder/latest/admin/blockstorage-accelerate-image-compression.html>`_
+    for more information about using this feature.
+
+    Additionally, the framework provides software-based compression using
+    GUNzip tool if a suitable hardware accelerator is not available.
+    Because this software fallback could cause performance problems if the
+    Cinder services are not deployed on sufficiently powerful nodes, the
+    default setting is *not* to enable compression on image upload or
+    download.
+
+    The compressed image of a volume will be stored in the
+    Image service (Glance) with the ``container_format`` image property of
+    ``compressed``.  See the `Image service documentation
+    <https://docs.openstack.org/glance/latest>`_ for more information about
+    this image container format.
+issues:
+  - |
+    In the Image service (Glance), the ``compressed`` container format
+    identifier does not indicate a particular compression technology; it is up
+    to the image consumer to determine what compression has been used, and
+    there is no requirement that OpenStack services must support arbitrary
+    compression technologies.  For the upload and download of compressed
+    images, Cinder supports *only* the gzip format.
+
+    While you may expect that Cinder will be able to consume any image in
+    ``compressed`` container format *that Cinder has created*, you should not
+    expect Cinder to be able to successfully use an image in ``compressed``
+    format that it has not created itself.
+upgrade:
+  - |
+    Added string config option ``compression_format`` in [default] section of
+    cinder.conf to specify image compression format.  Currently the only legal
+    value for this option is ``gzip``.
+  - |
+    Added boolean config option ``allow_compression_on_image_upload`` in
+    [default] section of cinder.conf to enable/disable image compression on
+    image upload. The default value of this option is ``false``, which means
+    image compression is disabled.

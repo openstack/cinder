@@ -1099,3 +1099,16 @@ class ServiceUserTokenNoAuth(CinderException):
 
 class RekeyNotSupported(CinderException):
     message = _("Rekey not supported.")
+
+
+class ImageCompressionNotAllowed(CinderException):
+    message = _("Image compression upload disallowed, but container_format "
+                "is compressed")
+
+
+class CinderAcceleratorError(CinderException):
+    message = _("Cinder accelerator %(accelerator)s encountered an error "
+                "while compressing/decompressing image.\n"
+                "Command %(cmd)s execution failed.\n"
+                "%(description)s\n"
+                "Reason: %(reason)s")

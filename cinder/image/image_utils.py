@@ -47,6 +47,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import accelerator
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import volume_utils
@@ -279,7 +280,6 @@ def _convert_image(prefix, source, dest, out_format,
             LOG.error(message)
 
         raise
-
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
@@ -551,6 +551,17 @@ def fetch_to_volume_format(context, image_service,
     qemu_img = True
     image_meta = image_service.show(context, image_id)
 
+    allow_image_compression = CONF.allow_compression_on_image_upload
+    if image_meta and (image_meta.get('container_format') == 'compressed'):
+        if allow_image_compression is False:
+            compression_param = {'container_format':
+                                 image_meta.get('container_format')}
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=_("Image compression disallowed, "
+                         "but container_format is "
+                         "%(container_format)s.") % compression_param)
+
     # NOTE(avishay): I'm not crazy about creating temp files which may be
     # large and cause disk full errors which would confuse users.
     # Unfortunately it seems that you can't pipe to 'qemu-img convert' because
@@ -608,6 +619,21 @@ def fetch_to_volume_format(context, image_service,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file, })
 
+        # NOTE(ZhengMa): This is used to do image decompression on image
+        # downloading with 'compressed' container_format. It is a
+        # transparent level between original image downloaded from
+        # Glance and Cinder image service. So the source file path is
+        # the same with destination file path.
+        if image_meta.get('container_format') == 'compressed':
+            LOG.debug("Found image with compressed container format")
+            if not accelerator.is_gzip_compressed(tmp):
+                raise exception.ImageUnacceptable(
+                    image_id=image_id,
+                    reason=_("Unsupported compressed image format found. "
+                             "Only gzip is supported currently"))
+            accel = accelerator.ImageAccel(tmp, tmp)
+            accel.decompress_img(run_as_root=run_as_root)
+
         # NOTE(jdg): I'm using qemu-img convert to write
         # to the volume regardless if it *needs* conversion or not
         # TODO(avishay): We can speed this up by checking if the image is raw
@@ -615,8 +641,8 @@ def fetch_to_volume_format(context, image_service,
         # check via 'qemu-img info' that what we copied was in fact a raw
         # image and not a different format with a backing file, which may be
         # malicious.
-        LOG.debug("%s was %s, converting to %s ", image_id, fmt, volume_format)
         disk_format = fixup_disk_format(image_meta['disk_format'])
+        LOG.debug("%s was %s, converting to %s", image_id, fmt, volume_format)
 
         convert_image(tmp, dest, volume_format,
                       out_subformat=volume_subformat,
@@ -636,19 +662,20 @@ def _validate_file_format(image_data, expected_format):
 def upload_volume(context, image_service, image_meta, volume_path,
                   volume_format='raw', run_as_root=True, compress=True):
     image_id = image_meta['id']
-    if (image_meta['disk_format'] == volume_format):
-        LOG.debug("%s was %s, no need to convert to %s",
-                  image_id, volume_format, image_meta['disk_format'])
-        if os.name == 'nt' or os.access(volume_path, os.R_OK):
-            with open(volume_path, 'rb') as image_file:
-                image_service.update(context, image_id, {},
-                                     tpool.Proxy(image_file))
-        else:
-            with utils.temporary_chown(volume_path):
+    if image_meta.get('container_format') != 'compressed':
+        if (image_meta['disk_format'] == volume_format):
+            LOG.debug("%s was %s, no need to convert to %s",
+                      image_id, volume_format, image_meta['disk_format'])
+            if os.name == 'nt' or os.access(volume_path, os.R_OK):
                 with open(volume_path, 'rb') as image_file:
                     image_service.update(context, image_id, {},
                                          tpool.Proxy(image_file))
-        return
+            else:
+                with utils.temporary_chown(volume_path):
+                    with open(volume_path, 'rb') as image_file:
+                        image_service.update(context, image_id, {},
+                                             tpool.Proxy(image_file))
+            return
 
     with temporary_file() as tmp:
         LOG.debug("%s was %s, converting to %s",
@@ -679,6 +706,14 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 reason=_("Converted to %(f1)s, but format is now %(f2)s") %
                 {'f1': out_format, 'f2': data.file_format})
 
+        # NOTE(ZhengMa): This is used to do image compression on image
+        # uploading with 'compressed' container_format.
+        # Compress file 'tmp' in-place
+        if image_meta.get('container_format') == 'compressed':
+            LOG.debug("Container_format set to 'compressed', compressing "
+                      "image before uploading.")
+            accel = accelerator.ImageAccel(tmp, tmp)
+            accel.compress_img(run_as_root=run_as_root)
         with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {},
                                  tpool.Proxy(image_file))

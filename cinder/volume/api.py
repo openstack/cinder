@@ -1316,6 +1316,13 @@ class API(base.Base):
                     pass
 
             recv_metadata = self.image_service.create(context, metadata)
+
+            # NOTE(ZhengMa): Check if allow image compression before image
+            # uploading
+            if recv_metadata.get('container_format') == 'compressed':
+                allow_compression = CONF.allow_compression_on_image_upload
+                if allow_compression is False:
+                    raise exception.ImageCompressionNotAllowed()
         except Exception:
             # NOTE(geguileo): To mimic behavior before conditional_update we
             # will rollback status if image create fails
