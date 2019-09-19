@@ -1276,6 +1276,29 @@ class API(base.Base):
                                                      meta_entry['value']})
         return results
 
+    def _merge_volume_image_meta(self, context, volume, image_meta):
+        """Merges the image metadata from volume into image_meta"""
+        glance_core_props = CONF.glance_core_properties
+        if glance_core_props:
+            try:
+                vol_img_metadata = self.get_volume_image_metadata(
+                    context, volume)
+                custom_property_set = (
+                    set(vol_img_metadata).difference(glance_core_props))
+                if custom_property_set:
+                    # only include elements that haven't already been
+                    # assigned values
+                    filtered_property_set = custom_property_set.difference(
+                        image_meta)
+                    image_meta['properties'] = {
+                        custom_prop: vol_img_metadata[custom_prop]
+                        for custom_prop in filtered_property_set}
+            except exception.GlanceMetadataNotFound:
+                # If volume is not created from image, No glance metadata
+                # would be available for that volume in
+                # volume glance metadata table
+                pass
+
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
         if not CONF.enable_force_upload and force:
@@ -1298,23 +1321,7 @@ class API(base.Base):
             raise exception.InvalidVolume(reason=msg)
 
         try:
-            glance_core_props = CONF.glance_core_properties
-            if glance_core_props:
-                try:
-                    vol_img_metadata = self.get_volume_image_metadata(
-                        context, volume)
-                    custom_property_set = (
-                        set(vol_img_metadata).difference(glance_core_props))
-                    if custom_property_set:
-                        metadata['properties'] = {
-                            custom_prop: vol_img_metadata[custom_prop]
-                            for custom_prop in custom_property_set}
-                except exception.GlanceMetadataNotFound:
-                    # If volume is not created from image, No glance metadata
-                    # would be available for that volume in
-                    # volume glance metadata table
-                    pass
-
+            self._merge_volume_image_meta(context, volume, metadata)
             recv_metadata = self.image_service.create(context, metadata)
         except Exception:
             # NOTE(geguileo): To mimic behavior before conditional_update we

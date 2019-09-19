@@ -918,14 +918,48 @@ class TestGlanceImageService(test.TestCase):
             'size': 2,
             'min_disk': 2,
             'min_ram': 2,
+            'cinder_encryption_key_deletion_policy': 'outer',
+            # note that a key duplicated in the 'properties' dict
+            # will overwrite the "outer" value
             'properties': {'kernel_id': 'foo',
                            'ramdisk_id': 'bar',
-                           'x_billinginfo': '123'},
+                           'x_billinginfo': '123',
+                           'cinder_encryption_key_deletion_policy': 'NOPE'},
         }
 
         actual = service._translate_to_glance(metadata)
         expected = {
             'id': 1,
+            'size': 2,
+            'min_disk': 2,
+            'min_ram': 2,
+            'cinder_encryption_key_deletion_policy': 'NOPE',
+            'kernel_id': 'foo',
+            'ramdisk_id': 'bar',
+            'x_billinginfo': '123',
+        }
+        self.assertEqual(expected, actual)
+
+    def test_translate_to_glance_no_properties_element(self):
+        """Show _translate does not remove arbitrary flat properties"""
+        client = glance_stubs.StubGlanceClient()
+        service = self._create_image_service(client)
+
+        metadata = {
+            'id': 1,
+            'cinder_encryption_key_deletion_policy': 'baz',
+            'size': 2,
+            'min_disk': 2,
+            'min_ram': 2,
+            'kernel_id': 'foo',
+            'ramdisk_id': 'bar',
+            'x_billinginfo': '123',
+        }
+
+        actual = service._translate_to_glance(metadata)
+        expected = {
+            'id': 1,
+            'cinder_encryption_key_deletion_policy': 'baz',
             'size': 2,
             'min_disk': 2,
             'min_ram': 2,

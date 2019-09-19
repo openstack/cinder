@@ -744,3 +744,37 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                           volume,
                           test_meta1,
                           force=True)
+
+
+class CopyVolumeToImagePrivateFunctionsTestCase(cinder.test.TestCase):
+
+    @mock.patch('cinder.volume.api.API.get_volume_image_metadata',
+                return_value={'some_key': 'some_value',
+                              'cinder_encryption_key_id': 'stale_value'})
+    def test_merge_volume_image_meta(self, mock_get_img_meta):
+        # this is what we're passing to copy_volume_to_image
+        image_meta = {
+            'container_format': 'bare',
+            'disk_format': 'raw',
+            'cinder_encryption_key_id': 'correct_value'
+        }
+        self.assertNotIn('properties', image_meta)
+
+        volume_api = cinder.volume.api.API()
+        volume_api._merge_volume_image_meta(None, None, image_meta)
+        # we've got 'properties' now
+        self.assertIn('properties', image_meta)
+        # verify the key_id is what we expect
+        self.assertEqual(image_meta['cinder_encryption_key_id'],
+                         'correct_value')
+
+        translate = cinder.image.glance.GlanceImageService._translate_to_glance
+        sent_to_glance = translate(image_meta)
+
+        # this is correct, glance gets a "flat" dict of properties
+        self.assertNotIn('properties', sent_to_glance)
+
+        # make sure the image would be created in Glance with the
+        # correct key_id
+        self.assertEqual(image_meta['cinder_encryption_key_id'],
+                         sent_to_glance['cinder_encryption_key_id'])
