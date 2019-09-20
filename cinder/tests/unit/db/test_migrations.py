@@ -108,8 +108,6 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         # manner is provided in Cinder's developer documentation.
         # Reviewers: DO NOT ALLOW THINGS TO BE ADDED HERE WITHOUT CARE
         exceptions = [
-            66,
-            73,
             # NOTE(ameade): 87 sets messages.request_id to nullable. This is
             # 100% backward compatible and according to MySQL docs such ALTER
             # is performed with the same restrictions as column addition, which
