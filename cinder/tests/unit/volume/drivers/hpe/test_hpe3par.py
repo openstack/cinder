@@ -711,6 +711,7 @@ class HPE3PARBaseDriver(test.TestCase):
         configuration.filter_function = FILTER_FUNCTION
         configuration.image_volume_cache_enabled = False
         configuration.replication_device = None
+        configuration.hpe3par_target_nsp = None
         return configuration
 
     @mock.patch(
@@ -6929,6 +6930,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
         mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
@@ -6993,6 +6996,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -7014,6 +7019,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 return fake_map
         mock_lookup.return_value = fake_lookup_object()
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
         mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
@@ -7087,6 +7094,89 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertDictEqual(expected_properties, result)
+
+    def test_initialize_connection_single_path_target_nsp(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        self.driver.configuration.hpe3par_target_nsp = '2:1:2'
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpeexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST,
+                'FCPaths': [{'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'vendor': None,
+                             'wwn': self.wwn[0]}]}]
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        mock_client.getHostVLUNs.side_effect = [
+            hpeexceptions.HTTPNotFound('fake'),
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'portPos': {'node': 7, 'slot': 1, 'cardPort': 1},
+              'remoteName': self.wwn[0],
+              'lun': 90, 'type': 0}]]
+
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': 90,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
+        user_target_wwn = '0987654321234'
+        expected_properties = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'encrypted': False,
+                'target_lun': 90,
+                'target_wwn': [user_target_wwn],
+                'target_discovered': True,
+                'initiator_target_map':
+                    {'123456789012345': [user_target_wwn]}}}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            result = self.driver.initialize_connection(
+                self.volume,
+                self.connector.copy())
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(wwns=['123456789012345']),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.getPorts(),
+                mock.call.getPorts(),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=True,
+                    hostname=self.FAKE_HOST,
+                    lun=None),
+                mock.call.getHostVLUNs(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)

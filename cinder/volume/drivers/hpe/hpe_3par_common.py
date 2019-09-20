@@ -118,6 +118,14 @@ hpe3par_opts = [
     cfg.BoolOpt('hpe3par_iscsi_chap_enabled',
                 default=False,
                 help="Enable CHAP authentication for iSCSI connections."),
+    cfg.StrOpt('hpe3par_target_nsp',
+               default="",
+               help="The nsp of 3PAR backend to be used when: "
+                    "(1) multipath is not enabled in cinder.conf. "
+                    "(2) Fiber Channel Zone Manager is not used. "
+                    "(3) the 3PAR backend is prezoned with this "
+                    "specific nsp only. For example if nsp is 2 1 2, the "
+                    "format of the option's value is 2:1:2"),
 ]
 
 
