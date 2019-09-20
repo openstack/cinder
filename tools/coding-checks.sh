@@ -37,8 +37,7 @@ run_pylint() {
     if [ -n "${files}" ]; then
         echo "Running pylint against:"
         printf "\t%s\n" "${files[@]}"
-        pylint --rcfile=.pylintrc --output-format=colorized ${files} -E \
-            -j `python -c 'import multiprocessing as mp; print(mp.cpu_count())'`
+        pylint --rcfile=.pylintrc --output-format=colorized ${files} -E -j 0
     else
         echo "No python changes in this commit, pylint check not required."
         exit 0
