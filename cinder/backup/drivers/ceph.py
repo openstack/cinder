@@ -976,7 +976,7 @@ class CephBackupDriver(driver.BackupDriver):
                     self.delete_backup(backup)
         else:
             if backup.parent_id:
-                LOG.debug("Volume file is NOT RBD: can't perform"
+                LOG.debug("Volume file is NOT RBD: can't perform "
                           "incremental backup.")
                 raise exception.BackupRBDOperationFailed
             LOG.debug("Volume file is NOT RBD: will do full backup.")
