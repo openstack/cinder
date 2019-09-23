@@ -109,6 +109,8 @@ Supported operations
 
 * Report Backend State in Service List.
 
+* Attach a volume to multiple servers simultaneously (multiattach).
+
 * Peer Persistence.
 
 Volume type support for both HPE 3PAR drivers includes the ability to set the
