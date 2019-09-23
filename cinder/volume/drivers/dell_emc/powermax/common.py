@@ -3154,6 +3154,9 @@ class PowerMaxCommon(object):
             # Scenario: Rep was enabled, target VT has rep disabled, need to
             # disable replication
             if was_rep_enabled and not is_rep_enabled:
+                # Add force to allow volume removal from RDF enabled
+                # storage groups
+                extra_specs['force_vol_remove'] = True
                 self.cleanup_lun_replication(volume, volume_name,
                                              device_id, extra_specs)
                 model_update = {
@@ -3163,6 +3166,9 @@ class PowerMaxCommon(object):
             # Scenario: Rep was not enabled, target VT has rep enabled, need to
             # enable replication
             elif not was_rep_enabled and is_rep_enabled:
+                metro_bias = utils.METROBIAS
+                if metro_bias in self.rep_config:
+                    extra_specs[metro_bias] = self.rep_config[metro_bias]
                 rep_status, rep_driver_data, rep_info_dict = (
                     self.setup_inuse_volume_replication(
                         array, volume, device_id, extra_specs))
@@ -3197,6 +3203,10 @@ class PowerMaxCommon(object):
                     move_target = True
             else:
                 if is_rep_enabled:
+                    metro_bias = utils.METROBIAS
+                    if metro_bias in self.rep_config:
+                        target_extra_specs[
+                            metro_bias] = self.rep_config[metro_bias]
                     # Setup_volume_replication will put volume in correct sg
                     rep_status, rdf_dict, __ = self.setup_volume_replication(
                         array, volume, device_id, target_extra_specs)
