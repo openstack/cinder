@@ -226,11 +226,20 @@ class PowerMaxRestTest(test.TestCase):
         array_details = self.rest.get_array_detail(self.data.failed_resource)
         self.assertIsNone(array_details)
 
-    def test_get_uni_version(self):
-        version, major_version = self.rest.get_uni_version()
-        self.assertEqual('91', major_version)
-        with mock.patch.object(self.rest, '_get_request', return_value=None):
+    def test_get_uni_version_success(self):
+        ret_val = (200, tpd.PowerMaxData.version_details)
+        current_major_version = tpd.PowerMaxData.u4v_version
+        with mock.patch.object(self.rest, 'request', return_value=ret_val):
             version, major_version = self.rest.get_uni_version()
+            self.assertIsNotNone(version)
+            self.assertIsNotNone(major_version)
+            self.assertEqual(major_version, current_major_version)
+
+    def test_get_uni_version_failed(self):
+        ret_val = (500, '')
+        with mock.patch.object(self.rest, 'request', return_value=ret_val):
+            version, major_version = self.rest.get_uni_version()
+            self.assertIsNone(version)
             self.assertIsNone(major_version)
 
     def test_get_srp_by_name(self):
@@ -1758,3 +1767,34 @@ class PowerMaxRestTest(test.TestCase):
         array = self.data.array
         ucode = self.rest.get_array_ucode_version(array)
         self.assertEqual(self.data.powermax_model_details['ucode'], ucode)
+
+    def test_validate_unisphere_version_suceess(self):
+        version = tpd.PowerMaxData.unisphere_version
+        returned_version = {'version': version}
+        with mock.patch.object(self.rest, "request",
+                               return_value=(200,
+                                             returned_version)) as mock_req:
+            valid_version = self.rest.validate_unisphere_version()
+            self.assertTrue(valid_version)
+        request_count = mock_req.call_count
+        self.assertEqual(1, request_count)
+
+    def test_validate_unisphere_version_fail(self):
+        version = tpd.PowerMaxData.unisphere_version_90
+        returned_version = {'version': version}
+
+        with mock.patch.object(self.rest, "request",
+                               return_value=(200,
+                                             returned_version))as mock_req:
+            valid_version = self.rest.validate_unisphere_version()
+            self.assertFalse(valid_version)
+        request_count = mock_req.call_count
+        self.assertEqual(1, request_count)
+
+    def test_validate_unisphere_version_no_connection(self):
+        with mock.patch.object(self.rest, "request",
+                               return_value=(500, '')) as mock_req:
+            valid_version = self.rest.validate_unisphere_version()
+            self.assertFalse(valid_version)
+        request_count = mock_req.call_count
+        self.assertEqual(2, request_count)

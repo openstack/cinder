@@ -186,6 +186,7 @@ class PowerMaxCommon(object):
         self._get_replication_info()
         self._get_u4p_failover_info()
         self._gather_info()
+        self.rest.validate_unisphere_version()
 
     def _gather_info(self):
         """Gather the relevant information for update_volume_stats."""
