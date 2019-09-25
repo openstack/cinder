@@ -50,6 +50,7 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
         1.11.1 - Add support pytyon 3.
                  Add support for multi-attach.
                  Add support of more than 4 iSCSI portals for a node.
+                 Add support to revert a volume to a snapshot.
     """
 
     VERSION = '1.11.1'
@@ -114,6 +115,7 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
         1.11.1 - Add support pytyon 3.
                  Add support for multi-attach.
                  Add support of more than 4 iSCSI portals for a node.
+                 Add support to revert a volume to a snapshot.
     """
 
     VERSION = '1.11.1'

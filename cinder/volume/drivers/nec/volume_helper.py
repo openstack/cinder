@@ -1825,3 +1825,55 @@ class MStorageDSVDriver(MStorageDriver):
                    'snap_id': snapshot.id,
                    'snapvol_id': snapshot.volume_id,
                    'specs': specs})
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """called to perform revert volume from snapshot.
+
+        :param context: Our working context.
+        :param volume: the volume to be reverted.
+        :param snapshot: the snapshot data revert to volume.
+        :return None
+        """
+        msgparm = ('Volume ID = %(vol_id)s, '
+                   'Snapshot ID = %(snap_id)s, '
+                   'Snapshot Volume ID = %(snapvol_id)s'
+                   % {'vol_id': volume.id,
+                      'snap_id': snapshot.id,
+                      'snapvol_id': snapshot.volume_id})
+        try:
+            self._revert_to_snapshot(context, volume, snapshot)
+            LOG.info('Reverted to Snapshot (%s)', msgparm)
+        except exception.CinderException as e:
+            with excutils.save_and_reraise_exception():
+                LOG.warning('Failed to revert to Snapshot '
+                            '(%(msgparm)s) (%(exception)s)',
+                            {'msgparm': msgparm, 'exception': e})
+
+    def _revert_to_snapshot(self, context, volume, snapshot):
+        LOG.debug('_revert_to_snapshot (Volume ID = %(vol_id)s, '
+                  'Snapshot ID = %(snap_id)s) Start.',
+                  {'vol_id': volume.id, 'snap_id': snapshot.id})
+        xml = self._cli.view_all(self._properties['ismview_path'])
+        pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
+            self.configs(xml))
+        # get BV name.
+        bvname = (
+            self.get_ldname(volume.id,
+                            self._properties['ld_name_format']))
+        if bvname not in lds:
+            msg = _('Logical Disk `%s` has unbound already.') % bvname
+            LOG.error(msg)
+            raise exception.NotFound(msg)
+
+        # get SV name.
+        svname = (
+            self.get_ldname(snapshot.id,
+                            self._properties['ld_backupname_format']))
+        if svname not in lds:
+            msg = _('Logical Disk `%s` has unbound already.') % svname
+            LOG.error(msg)
+            raise exception.NotFound(msg)
+
+        self._cli.snapshot_restore(bvname, svname)
+
+        LOG.debug('_revert_to_snapshot(Volume ID = %s) End.', volume.id)
