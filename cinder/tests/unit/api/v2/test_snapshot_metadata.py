@@ -31,6 +31,7 @@ from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -95,7 +96,7 @@ def fake_get(self, context, *args, **kwargs):
            'host': 'fake-host',
            'status': 'available',
            'encryption_key_id': None,
-           'volume_type_id': None,
+           'volume_type_id': fake.VOLUME_TYPE_ID,
            'migration_status': None,
            'availability_zone': 'fake-zone',
            'attach_status': fields.VolumeAttachStatus.DETACHED,
@@ -114,10 +115,13 @@ class SnapshotMetaDataTest(test.TestCase):
         super(SnapshotMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
         self.mock_object(volume.api.API, 'get', fake_get)
+        self.mock_object(cinder.db.sqlalchemy.api, 'volume_type_get',
+                         v2_fakes.fake_volume_type_get)
         self.mock_object(scheduler_rpcapi.SchedulerAPI, 'create_snapshot')
         self.mock_object(cinder.db, 'snapshot_get', return_snapshot)
         self.mock_object(self.volume_api, 'update_snapshot_metadata')
         self.patch('cinder.objects.volume.Volume.refresh')
+        self.patch('cinder.quota.QuotaEngine.reserve')
 
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}

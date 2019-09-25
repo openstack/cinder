@@ -26,7 +26,6 @@ from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.backup import fake_service
-from cinder.volume import volume_types
 
 _backup_db_fields = ['id', 'user_id', 'project_id',
                      'volume_id', 'host', 'availability_zone',
@@ -39,7 +38,8 @@ _backup_db_fields = ['id', 'user_id', 'project_id',
 class BackupBaseDriverTestCase(test.TestCase):
 
     def _create_volume_db_entry(self, id, size):
-        vol = {'id': id, 'size': size, 'status': 'available'}
+        vol = {'id': id, 'size': size, 'status': 'available',
+               'volume_type_id': self.vt['id']}
         return db.volume_create(self.ctxt, vol)['id']
 
     def _create_backup_db_entry(self, backupid, volid, size,
@@ -90,7 +90,8 @@ class BackupMetadataAPITestCase(test.TestCase):
                                 display_description):
         vol = {'id': id, 'size': size, 'status': 'available',
                'display_name': display_name,
-               'display_description': display_description}
+               'display_description': display_description,
+               'volume_type_id': self.vt['id']}
         return db.volume_create(self.ctxt, vol)['id']
 
     def setUp(self):
@@ -226,12 +227,9 @@ class BackupMetadataAPITestCase(test.TestCase):
         self.assertEqual(set([]),
                          set(keys).symmetric_difference(set(fact.keys())))
 
-        volume_types.create(self.ctxt, 'faketype')
-        vol_type = volume_types.get_volume_type_by_name(self.ctxt, 'faketype')
-
         meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
                           {'encryption_key_id': '123',
-                           'volume_type_id': vol_type.get('id'),
+                           'volume_type_id': self.vt.get('id'),
                            'display_name': 'vol-2',
                            'display_description': 'description'},
                           self.bak_meta_api.TYPE_TAG_VOL_META: {},
@@ -357,38 +355,6 @@ class BackupMetadataAPITestCase(test.TestCase):
         self.bak_meta_api._restore_vol_base_meta(
             container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META], enc_vol2_id,
             fields)
-
-    def test_restore_encrypted_vol_to_none_type_source_type_unavailable(self):
-        fields = ['encryption_key_id']
-        container = {}
-        enc_vol_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
-                                                            'enc_vol_type',
-                                                            True)
-        undef_vol_id = self._create_encrypted_volume_db_entry(
-            str(uuid.uuid4()), None, False)
-        self.bak_meta_api._save_vol_base_meta(container, enc_vol_id)
-        self.assertRaises(exception.EncryptedBackupOperationFailed,
-                          self.bak_meta_api._restore_vol_base_meta,
-                          container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META],
-                          undef_vol_id, fields)
-
-    def test_restore_encrypted_vol_to_none_type_source_type_available(self):
-        fields = ['encryption_key_id']
-        container = {}
-        db.volume_type_create(self.ctxt, {'id': 'enc_vol_type_id',
-                                          'name': 'enc_vol_type'})
-        enc_vol_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
-                                                            'enc_vol_type_id',
-                                                            True)
-        undef_vol_id = self._create_encrypted_volume_db_entry(
-            str(uuid.uuid4()), None, False)
-        self.bak_meta_api._save_vol_base_meta(container, enc_vol_id)
-        self.bak_meta_api._restore_vol_base_meta(
-            container[self.bak_meta_api.TYPE_TAG_VOL_BASE_META], undef_vol_id,
-            fields)
-        self.assertEqual(
-            db.volume_get(self.ctxt, undef_vol_id)['volume_type_id'],
-            db.volume_get(self.ctxt, enc_vol_id)['volume_type_id'])
 
     def test_filter(self):
         metadata = {'a': 1, 'b': 2, 'c': 3}

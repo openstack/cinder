@@ -2239,7 +2239,8 @@ class TestVolumeSharedTargetsOnlineMigration(test.TestCase):
             sqlalchemy_api.volume_create(
                 ctxt,
                 {'host': 'host1@lvm-driver1#lvm-driver1',
-                 'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad'})
+                 'service_uuid': 'f080f895-cff2-4eb3-9c61-050c060b59ad',
+                 'volume_type_id': fake.VOLUME_TYPE_ID})
 
         values = {
             'host': 'host1@lvm-driver1',

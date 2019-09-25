@@ -43,6 +43,7 @@ from cinder.objects import fields
 from cinder.policies import volumes as vol_policy
 from cinder import quota
 from cinder.tests import fake_driver
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -98,6 +99,17 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.service_id = 1
         self.user_context = context.RequestContext(user_id=fake.USER_ID,
                                                    project_id=fake.PROJECT_ID)
+        elevated = context.get_admin_context()
+        db.volume_type_create(elevated,
+                              v2_fakes.fake_default_type_get(
+                                  id=fake.VOLUME_TYPE2_ID))
+        self.vol_type = db.volume_type_get_by_name(elevated, '__DEFAULT__')
+
+    def _create_volume(self, context, **kwargs):
+        return tests_utils.create_volume(
+            context,
+            volume_type_id=volume_types.get_default_volume_type()['id'],
+            **kwargs)
 
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
@@ -561,14 +573,16 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume = volume_api.create(self.context,
                                    1,
                                    'name',
-                                   'description')
+                                   'description',
+                                   volume_type=self.vol_type)
         self.assertEqual('az2', volume['availability_zone'])
 
         self.override_config('default_availability_zone', 'default-az')
         volume = volume_api.create(self.context,
                                    1,
                                    'name',
-                                   'description')
+                                   'description',
+                                   volume_type=self.vol_type)
         self.assertEqual('default-az', volume['availability_zone'])
 
     @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.MagicMock())
@@ -583,15 +597,12 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume = volume_api.create(self.context,
                                    1,
                                    'name',
-                                   'description')
-        self.assertIsNone(volume['volume_type_id'])
+                                   'description',
+                                   volume_type=self.vol_type)
         self.assertIsNone(volume['encryption_key_id'])
 
         # Create default volume type
         vol_type = conf_fixture.def_vol_type
-        db.volume_type_create(context.get_admin_context(),
-                              {'name': vol_type, 'extra_specs': {}})
-
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  vol_type)
 
@@ -647,7 +658,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         """
         volume_api = cinder.volume.api.API()
         volume = volume_api.create(
-            self.context, 1, 'name', 'description', multiattach=True)
+            self.context, 1, 'name', 'description', multiattach=True,
+            volume_type=self.vol_type)
         self.assertTrue(volume.multiattach)
 
     def _fail_multiattach_policy_authorize(self, policy):
@@ -2279,7 +2291,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         volume = volume_api.create(self.context,
                                    size,
                                    'name',
-                                   'description')
+                                   'description',
+                                   volume_type=self.vol_type)
         self.assertEqual(int(size), volume['size'])
 
     def test_create_volume_int_size(self):
@@ -2393,12 +2406,14 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ctxt = context.get_admin_context()
         db.volume_create(ctxt, {'id': 'fake1', 'status': 'available',
                                 'host': 'test', 'provider_location': '',
-                                'size': 1})
+                                'size': 1,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, 'fake1', 'key1', 'value1')
         db.volume_glance_metadata_create(ctxt, 'fake1', 'key2', 'value2')
         db.volume_create(ctxt, {'id': 'fake2', 'status': 'available',
                                 'host': 'test', 'provider_location': '',
-                                'size': 1})
+                                'size': 1,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, 'fake2', 'key3', 'value3')
         db.volume_glance_metadata_create(ctxt, 'fake2', 'key4', 'value4')
         volume_api = cinder.volume.api.API()
@@ -2411,8 +2426,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     @mock.patch.object(QUOTAS, 'limit_check')
     @mock.patch.object(QUOTAS, 'reserve')
     def test_extend_attached_volume(self, reserve, limit_check):
-        volume = tests_utils.create_volume(self.context, size=2,
-                                           status='available', host=CONF.host)
+        volume = self._create_volume(self.context, size=2,
+                                     status='available', host=CONF.host)
         volume_api = cinder.volume.api.API()
 
         self.assertRaises(exception.InvalidVolume,
@@ -2428,6 +2443,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual('extending', volume.status)
         self.assertEqual('in-use', volume.previous_status)
         reserve.assert_called_once_with(self.context, gigabytes=1,
+                                        gigabytes___DEFAULT__=1,
                                         project_id=volume.project_id)
         limit_check.side_effect = None
         reserve.side_effect = None
@@ -2438,7 +2454,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         request_spec = {
             'volume_properties': volume,
-            'volume_type': {},
+            'volume_type': self.vol_type,
             'volume_id': volume.id
         }
         volume_api.scheduler_rpcapi.extend_volume.assert_called_once_with(
@@ -2451,8 +2467,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     def test_extend_volume(self, reserve, limit_check):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
-        volume = tests_utils.create_volume(self.context, size=2,
-                                           status='in-use', host=CONF.host)
+        volume = self._create_volume(self.context, size=2,
+                                     status='in-use', host=CONF.host)
         volume_api = cinder.volume.api.API()
 
         # Extend fails when status != available
@@ -2485,6 +2501,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual('extending', volume.status)
         self.assertEqual('available', volume.previous_status)
         reserve.assert_called_once_with(self.context, gigabytes=1,
+                                        gigabytes___DEFAULT__=1,
                                         project_id=volume.project_id)
 
         # Test the quota exceeded
@@ -2516,7 +2533,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         request_spec = {
             'volume_properties': volume,
-            'volume_type': {},
+            'volume_type': self.vol_type,
             'volume_id': volume.id
         }
         volume_api.scheduler_rpcapi.extend_volume.assert_called_once_with(
@@ -2715,9 +2732,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         """Test volume can't be cloned from an other volume in different az."""
         volume_api = cinder.volume.api.API()
 
-        volume_src = tests_utils.create_volume(self.context,
-                                               availability_zone='az2',
-                                               **self.volume_params)
+        volume_src = self._create_volume(self.context,
+                                         availability_zone='az2',
+                                         **self.volume_params)
         self.volume.create_volume(self.context, volume_src)
 
         volume_src = db.volume_get(self.context, volume_src['id'])
@@ -2726,7 +2743,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                        size=1,
                                        name='fake_name',
                                        description='fake_desc',
-                                       source_volume=volume_src)
+                                       source_volume=volume_src,
+                                       volume_type=
+                                       objects.VolumeType.get_by_name_or_id(
+                                           self.context,
+                                           self.vol_type['id']))
         self.assertEqual('az2', volume_dst['availability_zone'])
 
         self.assertRaises(exception.InvalidInput,

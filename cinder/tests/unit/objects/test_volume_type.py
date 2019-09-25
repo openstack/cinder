@@ -18,8 +18,10 @@ from oslo_utils import timeutils
 import pytz
 import six
 
+from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import objects
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
@@ -118,6 +120,8 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
     @mock.patch('cinder.db.sqlalchemy.api.volume_type_destroy')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_type_get',
+                       v2_fakes.fake_volume_type_get)
     def test_destroy(self, volume_type_destroy, utcnow_mock):
         volume_type_destroy.return_value = {
             'deleted': True,

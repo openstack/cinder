@@ -37,6 +37,7 @@ from cinder.image import glance
 from cinder import objects
 from cinder.policies import volumes as policy
 from cinder import utils
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -285,6 +286,11 @@ class VolumeController(volumes_v2.VolumeController):
             # Not found exception will be handled at the wsgi level
             kwargs['volume_type'] = (
                 objects.VolumeType.get_by_name_or_id(context, req_volume_type))
+        else:
+            kwargs['volume_type'] = (
+                objects.VolumeType.get_by_name_or_id(
+                    context,
+                    volume_types.get_default_volume_type()['id']))
 
         kwargs['metadata'] = volume.get('metadata', None)
 

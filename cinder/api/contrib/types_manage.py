@@ -158,6 +158,11 @@ class VolumeTypesManageController(wsgi.Controller):
                 context, 'volume_type.delete', err, id=id)
             # Not found exception will be handled at the wsgi level
             raise
+        except exception.VolumeTypeDefault as err:
+            self._notify_volume_type_error(
+                context, 'volume_type.delete', err, volume_type=vol_type)
+            msg = _('Target volume type is default and cannot be deleted.')
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         return webob.Response(status_int=http_client.ACCEPTED)
 

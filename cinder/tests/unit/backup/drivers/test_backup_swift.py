@@ -68,7 +68,8 @@ class BackupSwiftTestCase(test.TestCase):
     def _create_volume_db_entry(self, volume_id=_DEFAULT_VOLUME_ID):
         vol = {'id': volume_id,
                'size': 1,
-               'status': 'available'}
+               'status': 'available',
+               'volume_type_id': self.vt['id']}
         return db.volume_create(self.ctxt, vol)['id']
 
     def _create_backup_db_entry(self,

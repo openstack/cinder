@@ -94,6 +94,8 @@ class VolumeTypesApiTest(test.TestCase):
                                            is_admin=True)
         self.mock_authorize = self.patch(
             'cinder.context.RequestContext.authorize')
+        # since __DEFAULT__ type always exists, total number of volume types
+        # is total_types_created + 1. In this case it's 4
         self.type_id1 = self._create_volume_type('volume_type1',
                                                  {'key1': 'value1'})
         self.type_id2 = self._create_volume_type('volume_type2',
@@ -101,6 +103,9 @@ class VolumeTypesApiTest(test.TestCase):
         self.type_id3 = self._create_volume_type('volume_type3',
                                                  {'key3': 'value3'}, False,
                                                  [fake.PROJECT_ID])
+        self.default_type = volume_types.get_default_volume_type()['id']
+        self.vol_type = volume_types.get_by_name_or_id(
+            context.get_admin_context(), '__DEFAULT__')['id']
 
     def test_volume_types_index(self):
         self.mock_object(volume_types, 'get_all_types',
@@ -147,7 +152,7 @@ class VolumeTypesApiTest(test.TestCase):
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
-        self.assertEqual(2, len(res['volume_types']))
+        self.assertEqual(3, len(res['volume_types']))
 
     def test_volume_types_index_with_offset_out_of_range(self):
         url = '/v2/%s/types?offset=424366766556787' % fake.PROJECT_ID
@@ -182,7 +187,7 @@ class VolumeTypesApiTest(test.TestCase):
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
-        self.assertEqual(3, len(res['volume_types']))
+        self.assertEqual(4, len(res['volume_types']))
         self.assertEqual(self.type_id3, res['volume_types'][0]['id'])
         self.assertEqual(self.type_id2, res['volume_types'][1]['id'])
         self.assertEqual(self.type_id1, res['volume_types'][2]['id'])
@@ -194,26 +199,30 @@ class VolumeTypesApiTest(test.TestCase):
             user_id=fake.USER_ID, project_id=fake.PROJECT_ID, is_admin=False)
         res = self.controller.index(req)
 
-        self.assertEqual(3, len(res['volume_types']))
+        self.assertEqual(4, len(res['volume_types']))
 
     def test_volume_types_index_with_sort_keys(self):
         req = fakes.HTTPRequest.blank('/v2/%s/types?sort=id' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
-        expect_result = [self.type_id1, self.type_id2, self.type_id3]
+        expect_result = [self.default_type, self.type_id1,
+                         self.type_id2, self.type_id3]
         expect_result.sort(reverse=True)
 
-        self.assertEqual(3, len(res['volume_types']))
+        self.assertEqual(4, len(res['volume_types']))
         self.assertEqual(expect_result[0], res['volume_types'][0]['id'])
         self.assertEqual(expect_result[1], res['volume_types'][1]['id'])
         self.assertEqual(expect_result[2], res['volume_types'][2]['id'])
+        self.assertEqual(expect_result[3], res['volume_types'][3]['id'])
 
     def test_volume_types_index_with_sort_and_limit(self):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/types?sort=id&limit=2' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
-        expect_result = [self.type_id1, self.type_id2, self.type_id3]
+
+        expect_result = [self.default_type, self.type_id1,
+                         self.type_id2, self.type_id3]
         expect_result.sort(reverse=True)
 
         self.assertEqual(2, len(res['volume_types']))
@@ -225,13 +234,15 @@ class VolumeTypesApiTest(test.TestCase):
             '/v2/%s/types?sort=id:asc' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
-        expect_result = [self.type_id1, self.type_id2, self.type_id3]
+        expect_result = [self.default_type, self.type_id1,
+                         self.type_id2, self.type_id3]
         expect_result.sort()
 
-        self.assertEqual(3, len(res['volume_types']))
+        self.assertEqual(4, len(res['volume_types']))
         self.assertEqual(expect_result[0], res['volume_types'][0]['id'])
         self.assertEqual(expect_result[1], res['volume_types'][1]['id'])
         self.assertEqual(expect_result[2], res['volume_types'][2]['id'])
+        self.assertEqual(expect_result[3], res['volume_types'][3]['id'])
 
     def test_volume_types_show(self):
         self.mock_object(volume_types, 'get_volume_type',

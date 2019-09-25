@@ -136,7 +136,8 @@ class VolumeMetaDataTest(test.TestCase):
                "display_name": "Volume Test Name",
                "display_description": "Volume Test Desc",
                "availability_zone": "zone1:host1",
-               "metadata": {}}
+               "metadata": {},
+               "volume_type": self.vt['id']}
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         self.volume_controller.create(req, body=body)

@@ -111,7 +111,8 @@ class BackupCephTestCase(test.TestCase):
     """Test case for ceph backup driver."""
 
     def _create_volume_db_entry(self, id, size):
-        vol = {'id': id, 'size': size, 'status': 'available'}
+        vol = {'id': id, 'size': size, 'status': 'available',
+               'volume_type_id': self.vt['id']}
         return db.volume_create(self.ctxt, vol)['id']
 
     def _create_backup_db_entry(self, backupid, volid, size,

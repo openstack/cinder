@@ -18,7 +18,6 @@ import datetime
 import mock
 import time
 
-from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_utils import uuidutils
 
@@ -224,7 +223,6 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_get_default_volume_type(self):
         """Ensures default volume type can be retrieved."""
-        volume_types.create(self.ctxt, conf_fixture.def_vol_type, {})
         default_vol_type = volume_types.get_default_volume_type()
         self.assertEqual(conf_fixture.def_vol_type,
                          default_vol_type.get('name'))
@@ -236,12 +234,18 @@ class VolumeTypeTestCase(test.TestCase):
         is not in database.
         """
         default_vol_type = volume_types.get_default_volume_type()
-        self.assertEqual({}, default_vol_type)
-
-    def test_get_default_volume_type_under_non_default(self):
-        cfg.CONF.set_default('default_volume_type', None)
-
-        self.assertEqual({}, volume_types.get_default_volume_type())
+        self.assertEqual(
+            {'created_at': default_vol_type['created_at'],
+             'deleted': False,
+             'deleted_at': None,
+             'description': u'Default Volume Type',
+             'extra_specs': {},
+             'id': default_vol_type['id'],
+             'is_public': True,
+             'name': u'__DEFAULT__',
+             'qos_specs_id': None,
+             'updated_at': default_vol_type['updated_at']},
+            default_vol_type)
 
     def test_non_existent_vol_type_shouldnt_delete(self):
         """Ensures that volume type creation fails with invalid args."""

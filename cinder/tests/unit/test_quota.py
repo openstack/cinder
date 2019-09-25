@@ -51,16 +51,9 @@ class QuotaIntegrationTestCase(test.TestCase):
         objects.register_all()
         super(QuotaIntegrationTestCase, self).setUp()
         self.volume_type_name = CONF.default_volume_type
-        self.volume_type = objects.VolumeType(context.get_admin_context(),
-                                              name=self.volume_type_name,
-                                              description='',
-                                              is_public=False,
-                                              projects=[],
-                                              extra_specs={})
-        self.volume_type.create()
-
-        self.addCleanup(db.volume_type_destroy, context.get_admin_context(),
-                        self.volume_type['id'])
+        self.volume_type = objects.VolumeType.get_by_name_or_id(
+            context.get_admin_context(),
+            identity=self.volume_type_name)
 
         self.flags(quota_volumes=2,
                    quota_snapshots=2,
@@ -164,12 +157,14 @@ class QuotaIntegrationTestCase(test.TestCase):
         test_volume1 = tests_utils.create_volume(
             self.context,
             status='available',
-            host=CONF.host)
+            host=CONF.host,
+            volume_type_id=self.vt['id'])
         test_volume2 = tests_utils.create_volume(
             self.context,
             status='available',
-            host=CONF.host)
-        volume_api = cinder.volume.api.API()
+            host=CONF.host,
+            volume_type_id=self.vt['id'])
+        volume_api = volume.api.API()
         volume_api.create_snapshots_in_db(self.context,
                                           [test_volume1, test_volume2],
                                           'fake_name',
@@ -1092,7 +1087,14 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
     @mock.patch('cinder.quota.db.quota_class_get_defaults')
     def test_get_project_quotas_lazy_load_defaults(
             self, mock_defaults, mock_quotas):
-        mock_quotas.return_value = self._default_quotas_non_child
+        defaults = self._default_quotas_non_child
+        volume_types = volume.volume_types.get_all_types(
+            context.get_admin_context())
+        for vol_type in volume_types:
+            defaults['volumes_' + vol_type] = -1
+            defaults['snapshots_' + vol_type] = -1
+            defaults['gigabytes_' + vol_type] = -1
+        mock_quotas.return_value = defaults
         self.driver.get_project_quotas(
             FakeContext('test_project', None),
             quota.QUOTAS.resources, 'test_project', usages=False)
@@ -2186,9 +2188,9 @@ class QuotaVolumeTypeReservationTestCase(test.TestCase):
         super(QuotaVolumeTypeReservationTestCase, self).setUp()
 
         self.volume_type_name = CONF.default_volume_type
-        self.volume_type = db.volume_type_create(
+        self.volume_type = db.volume_type_get_by_name(
             context.get_admin_context(),
-            dict(name=self.volume_type_name))
+            name=self.volume_type_name)
 
     @mock.patch.object(quota.QUOTAS, 'reserve')
     @mock.patch.object(quota.QUOTAS, 'add_volume_type_opts')

@@ -35,6 +35,7 @@ from sqlalchemy.engine import reflection
 from cinder.db import migration
 import cinder.db.sqlalchemy.migrate_repo
 from cinder.tests.unit import utils as test_utils
+from cinder.volume import volume_types
 
 
 class MigrationsMixin(test_migrations.WalkVersionsMixin):
@@ -178,6 +179,14 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIn('source_project_id', volume_transfer.c)
         self.assertIn('destination_project_id', volume_transfer.c)
         self.assertIn('accepted', volume_transfer.c)
+
+    def _check_132(self, engine, data):
+        """Test create default volume type."""
+        vol_types = db_utils.get_table(engine, 'volume_types')
+        vtype = (vol_types.select(vol_types.c.name ==
+                                  volume_types.DEFAULT_VOLUME_TYPE)
+                 .execute().first())
+        self.assertIsNotNone(vtype)
 
     # NOTE: this test becomes slower with each addition of new DB migration.
     # 'pymysql' works much slower on slow nodes than 'psycopg2'. And such

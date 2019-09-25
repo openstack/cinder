@@ -78,7 +78,8 @@ class InStorageMCSFcDriverTestCase(test.TestCase):
     def _create_volume(self, **kwargs):
         pool = fakes.get_test_pool()
         prop = {'host': 'openstack@mcs#%s' % pool,
-                'size': 1}
+                'size': 1,
+                'volume_type_id': self.vt['id']}
         for p in prop.keys():
             if p not in kwargs:
                 kwargs[p] = prop[p]

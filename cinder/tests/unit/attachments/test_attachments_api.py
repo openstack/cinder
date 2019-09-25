@@ -22,6 +22,7 @@ from cinder.policies import attachments as attachment_policy
 from cinder.policies import base as base_policy
 from cinder import policy
 from cinder import test
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
@@ -321,6 +322,8 @@ class AttachmentManagerTestCase(test.TestCase):
                 return_value={})
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.attachment_update',
                 return_value={})
+    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get',
+                       v2_fakes.fake_volume_type_get)
     def test_attachment_update_duplicate(self, mock_va_update, mock_db_upd):
         volume_params = {'status': 'available'}
 

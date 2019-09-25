@@ -37,6 +37,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.VOLUME2_ID,
@@ -45,6 +46,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.VOLUME3_ID,
@@ -53,18 +55,21 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True, 'status': 'deleted',
                 'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.VOLUME4_ID,
                 'host': 'devstack',
                 'project_id': fake.PROJECT_ID,
                 'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.VOLUME5_ID,
                 'host': 'devstack',
                 'project_id': fake.PROJECT_ID,
                 'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             }
         ]
 
@@ -77,6 +82,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
                 'status': fields.SnapshotStatus.DELETED,
                 'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
                 'volume_id': fake.VOLUME_ID,
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
 
             {
@@ -87,6 +93,7 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
                 'status': fields.SnapshotStatus.DELETED,
                 'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1),
                 'volume_id': fake.VOLUME_ID,
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.SNAPSHOT3_ID,
@@ -96,18 +103,21 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
                 'status': fields.SnapshotStatus.DELETED,
                 'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1),
                 'volume_id': fake.VOLUME_ID,
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.SNAPSHOT_ID,
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
                 'volume_id': fake.VOLUME_ID,
+                'volume_type_id': fake.VOLUME_TYPE_ID,
             },
             {
                 'id': fake.SNAPSHOT2_ID,
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
-                'volume_id': fake.VOLUME_ID
+                'volume_id': fake.VOLUME_ID,
+                'volume_type_id': fake.VOLUME_TYPE_ID
             }
         ]
 
@@ -183,7 +193,9 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
 
     def test_snapshot_get_all_active_by_window(self):
         # Find all all snapshots valid within a timeframe window.
-        db.volume_create(self.context, {'id': fake.VOLUME_ID})
+        db.volume_create(self.context, {'id': fake.VOLUME_ID,
+                                        'volume_type_id':
+                                            fake.VOLUME_TYPE_ID})
         for i in range(5):
             self.db_vol_attrs[i]['volume_id'] = fake.VOLUME_ID
 
@@ -226,7 +238,9 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
 
     def test_backup_get_all_active_by_window(self):
         # Find all backups valid within a timeframe window.
-        db.volume_create(self.context, {'id': fake.VOLUME_ID})
+        db.volume_create(self.context, {'id': fake.VOLUME_ID,
+                                        'volume_type_id':
+                                            fake.VOLUME_TYPE_ID})
         for i in range(5):
             self.db_back_attrs[i]['volume_id'] = fake.VOLUME_ID
 

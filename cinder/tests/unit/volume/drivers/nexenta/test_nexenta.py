@@ -307,7 +307,8 @@ class TestNexentaISCSIDriver(test.TestCase):
             'id': '1',
             'size': 1,
             'status': 'available',
-            'provider_location': self.TEST_VOLUME_NAME
+            'provider_location': self.TEST_VOLUME_NAME,
+            'volume_type_id': self.vt['id']
         }
         return db.volume_create(self.ctxt, vol)['id']
 
@@ -368,7 +369,8 @@ class TestNexentaNfsDriver(test.TestCase):
             'id': '1',
             'size': 1,
             'status': 'available',
-            'provider_location': self.TEST_EXPORT1
+            'provider_location': self.TEST_EXPORT1,
+            'volume_type_id': self.vt['id']
         }
         self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
         return db.volume_create(self.ctxt, vol)['id']

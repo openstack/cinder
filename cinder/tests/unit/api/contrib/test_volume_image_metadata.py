@@ -144,7 +144,8 @@ class VolumeImageMetadataTest(test.TestCase):
         # create a bootable volume
         db.volume_create(ctxt, {'id': fake.VOLUME_ID, 'status': 'available',
                                 'host': 'test', 'provider_location': '',
-                                'size': 1})
+                                'size': 1,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID,
                                          'image_id', fake.IMAGE_ID)
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID,
@@ -157,7 +158,8 @@ class VolumeImageMetadataTest(test.TestCase):
         # create an unbootable volume
         db.volume_create(ctxt, {'id': fake.VOLUME2_ID, 'status': 'available',
                                 'host': 'test', 'provider_location': '',
-                                'size': 1})
+                                'size': 1,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
 
     def test_get_volume(self):
         self._create_volume_and_glance_metadata()
@@ -191,7 +193,8 @@ class VolumeImageMetadataTest(test.TestCase):
         ctxt = context.get_admin_context()
         db.volume_create(ctxt, {'id': fake.VOLUME_ID, 'status': 'available',
                                 'host': 'test', 'provider_location': '',
-                                'size': 1})
+                                'size': 1,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID,
                                          'key1', 'value1')
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID,

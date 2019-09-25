@@ -34,7 +34,7 @@
             "status": "creating",
             "updated_at": null,
             "user_id": "%(uuid)s",
-            "volume_type": null
+            "volume_type": "__DEFAULT__"
         }
     ]
 }

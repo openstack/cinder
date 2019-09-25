@@ -712,7 +712,7 @@ class VolumeRetypeActionsTest(test.TestCase):
                                                     name='old',
                                                     qos_specs_id=qos_old).id
         else:
-            vol_type_old = None
+            vol_type_old = v2_fakes.fake_default_type_get()
 
         vol_type_new = utils.create_volume_type(admin_ctxt, self,
                                                 name='new',
@@ -742,7 +742,7 @@ class VolumeRetypeActionsTest(test.TestCase):
             if enc_orig:
                 utils.create_encryption(admin_ctxt, vol_type_old, self)
         else:
-            vol_type_old = None
+            vol_type_old = v2_fakes.fake_default_type_get()
 
         vol_type_new = utils.create_volume_type(admin_ctxt, self,
                                                 name='new').id
@@ -1140,7 +1140,8 @@ class VolumeImageActionsTest(test.TestCase):
     def test_extend_attached_volume(self, version, status):
         vol = db.volume_create(self.context,
                                {'size': 1, 'project_id': fake.PROJECT_ID,
-                                'status': status})
+                                'status': status,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
         self.mock_object(volume_api.API, 'get', return_value=vol)
         mock_extend = self.mock_object(volume_api.API, '_extend')
         body = {"os-extend": {"new_size": 2}}
