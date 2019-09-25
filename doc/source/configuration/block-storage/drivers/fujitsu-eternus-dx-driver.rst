@@ -132,6 +132,8 @@ Configuration
        <EternusUser>smisuser</EternusUser>
        <EternusPassword>smispassword</EternusPassword>
        <EternusPool>raid5_0001</EternusPool>
+       <EternusPool>tpp_0001</EternusPool>
+       <EternusPool>raid_0002</EternusPool>
        <EternusSnapPool>raid5_0001</EternusSnapPool>
        </FUJITSU>
 
@@ -146,6 +148,8 @@ Configuration
        <EternusUser>smisuser</EternusUser>
        <EternusPassword>smispassword</EternusPassword>
        <EternusPool>raid5_0001</EternusPool>
+       <EternusPool>tpp_0001</EternusPool>
+       <EternusPool>raid_0002</EternusPool>
        <EternusSnapPool>raid5_0001</EternusSnapPool>
        <EternusISCSIIP>1.1.1.1</EternusISCSIIP>
        <EternusISCSIIP>1.1.1.2</EternusISCSIIP>
@@ -169,7 +173,7 @@ Configuration
    ``EternusPassword``
        Password for the SMI-S connection of the ETERNUS DX.
 
-   ``EternusPool``
+   ``EternusPool`` (Multiple setting allowed)
        Storage pool name for volumes.
 
        Enter RAID Group name or TPP name in the ETERNUS DX.
@@ -188,6 +192,8 @@ Configuration
         and cannot specify TPP name.
       * You can specify the same RAID Group name for ``EternusPool`` and ``EternusSnapPool``
         if you create volumes and snapshots on a same storage pool.
+      * For ``EternusPool``, when multiple pools are specified,
+        cinder-scheduler will select one from multiple pools to create the volume.
 
 Configuration example
 ~~~~~~~~~~~~~~~~~~~~~

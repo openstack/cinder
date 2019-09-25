@@ -42,6 +42,10 @@ POOL_TYPE_dic = {
     RAIDGROUP: 'RAID_GROUP',
     TPPOOL: 'Thinporvisioning_POOL',
 }
+POOL_TYPE_list = [
+    'RAID',
+    'TPP'
+]
 OPERATION_dic = {
     SNAPOPC: RETURN_TO_RESOURCEPOOL,
     OPC: DETACH,

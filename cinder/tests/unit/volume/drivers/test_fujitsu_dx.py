@@ -43,6 +43,7 @@ CONF = """<?xml version='1.0' encoding='UTF-8'?>
 <EternusPassword>testpass</EternusPassword>
 <EternusISCSIIP>10.0.0.3</EternusISCSIIP>
 <EternusPool>abcd1234_TPP</EternusPool>
+<EternusPool>abcd1234_RG</EternusPool>
 <EternusSnapPool>abcd1234_OSVD</EternusSnapPool>
 </FUJITSU>"""
 
@@ -51,8 +52,19 @@ TEST_VOLUME = {
     'name': 'volume1',
     'display_name': 'volume1',
     'provider_location': None,
-    'volume_metadata': [],
+    'metadata': {},
     'size': 1,
+    'host': 'controller@113#abcd1234_TPP'
+}
+
+TEST_VOLUME2 = {
+    'id': '98179912-2495-42e9-97f0-6a0d3511700a',
+    'name': 'volume2',
+    'display_name': 'volume2',
+    'provider_location': None,
+    'metadata': {},
+    'size': 1,
+    'host': 'controller@113#abcd1234_RG'
 }
 
 TEST_SNAP = {
@@ -72,7 +84,8 @@ TEST_CLONE = {
     'project_id': 'project',
     'display_name': 'clone1',
     'display_description': 'volume created from snapshot',
-    'volume_metadata': [],
+    'metadata': {},
+    'host': 'controller@113#abcd1234_TPP'
 }
 
 ISCSI_INITIATOR = 'iqn.1993-08.org.debian:01:8261afe17e4c'
@@ -96,24 +109,76 @@ AUTH_PRIV = 'FUJITSU_AuthorizedPrivilege'
 STOR_SYNC = 'FUJITSU_StorageSynchronized'
 PROT_CTRL_UNIT = 'CIM_ProtocolControllerForUnit'
 STORAGE_TYPE = 'abcd1234_TPP'
+STORAGE_TYPE2 = 'abcd1234_RG'
 LUNMASKCTRL_IDS = ['AFG0010_CM00CA00P00', 'AFG0011_CM01CA00P00']
 
 MAP_STAT = '0'
 VOL_STAT = '0'
 
 FAKE_CAPACITY = 1170368102400
+# Volume1 in pool abcd1234_TPP
 FAKE_LUN_ID1 = '600000E00D2A0000002A011500140000'
 FAKE_LUN_NO1 = '0x0014'
+# Snapshot1 in pool abcd1234_OSVD
 FAKE_LUN_ID2 = '600000E00D2A0000002A0115001E0000'
 FAKE_LUN_NO2 = '0x001E'
+# Volume2 in pool abcd1234_RG
+FAKE_LUN_ID3 = '600000E00D2800000028075301140000'
+FAKE_LUN_NO3 = '0x0114'
 FAKE_SYSTEM_NAME = 'ET603SA4621302115'
+# abcd1234_TPP pool
+FAKE_USEGB = 2.0
+# abcd1234_RG pool
+FAKE_USEGB2 = 1.0
+FAKE_POOLS = [{
+    'path': {'InstanceID': 'FUJITSU:TPP0004'},
+    'pool_name': 'abcd1234_TPP',
+    'useable_capacity_gb': (FAKE_CAPACITY / units.Gi) * 20 - FAKE_USEGB,
+    'multiattach': False,
+    'thick_provisioning_support': False,
+    'provisioned_capacity_gb': FAKE_USEGB,
+    'total_volumes': 2,
+    'thin_provisioning_support': True,
+    'free_capacity_gb': FAKE_CAPACITY / units.Gi - FAKE_USEGB,
+    'total_capacity_gb': FAKE_CAPACITY / units.Gi,
+    'max_over_subscription_ratio': '20.0',
+}, {
+    'path': {'InstanceID': 'FUJITSU:RSP0005'},
+    'pool_name': 'abcd1234_RG',
+    'useable_capacity_gb': FAKE_CAPACITY / units.Gi - FAKE_USEGB2,
+    'multiattach': False,
+    'thick_provisioning_support': True,
+    'provisioned_capacity_gb': FAKE_USEGB2,
+    'total_volumes': 1,
+    'thin_provisioning_support': False,
+    'free_capacity_gb': FAKE_CAPACITY / units.Gi - FAKE_USEGB2,
+    'total_capacity_gb': FAKE_CAPACITY / units.Gi,
+    'max_over_subscription_ratio': 1,
+}]
 
 FAKE_STATS = {
+    'driver_version': '1.3.0',
+    'storage_protocol': 'iSCSI',
     'vendor_name': 'FUJITSU',
-    'total_capacity_gb': FAKE_CAPACITY / units.Gi,
-    'free_capacity_gb': FAKE_CAPACITY / units.Gi,
+    'QoS_support': False,
+    'volume_backend_name': 'volume_backend_name',
+    'shared_targets': True,
+    'backend_state': 'up',
+    'pools': FAKE_POOLS,
+}
+FAKE_STATS2 = {
+    'driver_version': '1.3.0',
+    'storage_protocol': 'FC',
+    'vendor_name': 'FUJITSU',
+    'QoS_support': False,
+    'volume_backend_name': 'volume_backend_name',
+    'shared_targets': True,
+    'backend_state': 'up',
+    'pools': FAKE_POOLS,
 }
 
+
+# Volume1 in pool abcd1234_TPP
 FAKE_KEYBIND1 = {
     'CreationClassName': 'FUJITSU_StorageVolume',
     'SystemName': STORAGE_SYSTEM,
@@ -121,11 +186,27 @@ FAKE_KEYBIND1 = {
     'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
 }
 
+# Volume2 in pool abcd1234_RG
+FAKE_KEYBIND3 = {
+    'CreationClassName': 'FUJITSU_StorageVolume',
+    'SystemName': STORAGE_SYSTEM,
+    'DeviceID': FAKE_LUN_ID3,
+    'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
+}
+
+# Volume1
 FAKE_LOCATION1 = {
     'classname': 'FUJITSU_StorageVolume',
     'keybindings': FAKE_KEYBIND1,
 }
 
+# Volume2
+FAKE_LOCATION3 = {
+    'classname': 'FUJITSU_StorageVolume',
+    'keybindings': FAKE_KEYBIND3,
+}
+
+# Volume1 metadata info.
 FAKE_LUN_META1 = {
     'FJ_Pool_Type': 'Thinporvisioning_POOL',
     'FJ_Volume_No': FAKE_LUN_NO1,
@@ -134,9 +215,23 @@ FAKE_LUN_META1 = {
     'FJ_Backend': FAKE_SYSTEM_NAME,
 }
 
+# Volume2 metadata info.
+FAKE_LUN_META3 = {
+    'FJ_Pool_Type': 'RAID_GROUP',
+    'FJ_Volume_No': FAKE_LUN_NO3,
+    'FJ_Volume_Name': u'FJosv_4whcadwDac7ANKHA2O719A==',
+    'FJ_Pool_Name': STORAGE_TYPE2,
+    'FJ_Backend': FAKE_SYSTEM_NAME,
+}
+# Volume1
 FAKE_MODEL_INFO1 = {
     'provider_location': six.text_type(FAKE_LOCATION1),
     'metadata': FAKE_LUN_META1,
+}
+# Volume2
+FAKE_MODEL_INFO3 = {
+    'provider_location': six.text_type(FAKE_LOCATION3),
+    'metadata': FAKE_LUN_META3,
 }
 
 FAKE_KEYBIND2 = {
@@ -151,7 +246,9 @@ FAKE_LOCATION2 = {
     'keybindings': FAKE_KEYBIND2,
 }
 
-FAKE_SNAP_INFO = {'provider_location': six.text_type(FAKE_LOCATION2)}
+FAKE_SNAP_INFO = {
+    'provider_location': six.text_type(FAKE_LOCATION2)
+}
 
 FAKE_LUN_META2 = {
     'FJ_Pool_Type': 'Thinporvisioning_POOL',
@@ -205,7 +302,10 @@ class FakeEternusConnection(object):
             VOL_STAT = '1'
             rc = 0
             vol = self._enum_volumes()
-            job = {'TheElement': vol[0].path}
+            if InPool.get('InstanceID') == 'FUJITSU:RSP0005':
+                job = {'TheElement': vol[1].path}
+            else:
+                job = {'TheElement': vol[0].path}
         elif MethodName == 'ReturnToStoragePool':
             VOL_STAT = '0'
             rc = 0
@@ -262,7 +362,7 @@ class FakeEternusConnection(object):
 
         return result
 
-    def EnumerateInstances(self, name):
+    def EnumerateInstances(self, name, **param_dict):
         result = None
         if name == 'FUJITSU_StorageProduct':
             result = self._enum_sysnames()
@@ -315,6 +415,8 @@ class FakeEternusConnection(object):
             result = self._assoc_storagevolume(objectpath)
         elif ResultClass == 'FUJITSU_AuthorizedPrivilege':
             result = self._assoc_authpriv()
+        elif AssocClass == 'FUJITSU_AllocatedFromStoragePool':
+            result = self._assocnames_pool(objectpath)
         else:
             result = self._default_assoc(objectpath)
 
@@ -329,6 +431,9 @@ class FakeEternusConnection(object):
             result = self._assocnames_tcp_endpoint()
         elif ResultClass == 'FUJITSU_AffinityGroupController':
             result = self._assocnames_afngroup()
+        elif (ResultClass == 'FUJITSU_StorageVolume' and
+              AssocClass == 'FUJITSU_AllocatedFromStoragePool'):
+            result = self._assocnames_volumelist(objectpath)
         else:
             result = self._default_assocnames(objectpath)
 
@@ -406,6 +511,26 @@ class FakeEternusConnection(object):
 
     def _assocnames_afngroup(self):
         return self._enum_afntyservice()
+
+    def _assocnames_volumelist(self, poolpath):
+        volumelist = self._enum_volumes(force=True)
+        inpool = []
+        for vol in volumelist:
+            vol_pool = vol.get('poolpath')
+            if poolpath['InstanceID'] == vol_pool:
+                inpool.append(vol)
+
+        return inpool
+
+    def _assocnames_pool(self, volumepath):
+        poollist = self._enum_pool_details('RAID')
+        poollist += self._enum_pool_details('TPP')
+        volpool = []
+        for pool in poollist:
+            if volumepath['poolpath'] == pool['InstanceID']:
+                volpool.append(pool)
+
+        return volpool
 
     def _default_assocnames(self, objectpath):
         return objectpath
@@ -520,34 +645,48 @@ class FakeEternusConnection(object):
     def _enum_pool_details(self, pooltype):
         pools = []
         pool = FJ_StoragePool()
+        pool2 = FJ_StoragePool()
 
         if pooltype == 'RAID':
             pool['InstanceID'] = 'FUJITSU:RSP0004'
             pool['CreationClassName'] = 'FUJITSU_RAIDStoragePool'
             pool['ElementName'] = 'abcd1234_OSVD'
             pool['TotalManagedSpace'] = 1170368102400
-            pool['RemainingManagedSpace'] = 1170368102400
-            pool.path = pool
+            pool['RemainingManagedSpace'] = 1170368102400 - 1 * units.Gi
+            pool.path = FJ_StoragePool()
+            pool.path['InstanceID'] = 'FUJITSU:RSP0004'
             pool.path.classname = 'FUJITSU_RAIDStoragePool'
+            pools.append(pool)
+
+            pool2['InstanceID'] = 'FUJITSU:RSP0005'
+            pool2['CreationClassName'] = 'FUJITSU_RAIDStoragePool'
+            pool2['ElementName'] = 'abcd1234_RG'
+            pool2['TotalManagedSpace'] = 1170368102400
+            pool2['RemainingManagedSpace'] = 1170368102400 - 1 * units.Gi
+            pool2.path = FJ_StoragePool()
+            pool2.path['InstanceID'] = 'FUJITSU:RSP0005'
+            pool2.path.classname = 'FUJITSU_RAIDStoragePool'
+            pools.append(pool2)
         else:
-            pool = FJ_StoragePool()
             pool['InstanceID'] = 'FUJITSU:TPP0004'
             pool['CreationClassName'] = 'FUJITSU_ThinProvisioningPool'
             pool['ElementName'] = 'abcd1234_TPP'
             pool['TotalManagedSpace'] = 1170368102400
-            pool['RemainingManagedSpace'] = 1170368102400
-            pool.path = pool
+            pool['RemainingManagedSpace'] = 1170368102400 - 2 * units.Gi
+            pool.path = FJ_StoragePool()
+            pool.path['InstanceID'] = 'FUJITSU:TPP0004'
             pool.path.classname = 'FUJITSU_ThinProvisioningPool'
+            pools.append(pool)
 
-        pools.append(pool)
         return pools
 
-    def _enum_volumes(self):
+    def _enum_volumes(self, force=False):
         volumes = []
-        if VOL_STAT == '0':
+        if VOL_STAT == '0' and not force:
             return volumes
         volume = FJ_StorageVolume()
         volume['name'] = TEST_VOLUME['name']
+        volume['poolpath'] = 'FUJITSU:TPP0004'
         volume['CreationClassName'] = 'FUJITSU_StorageVolume'
         volume['Name'] = FAKE_LUN_ID1
         volume['DeviceID'] = FAKE_LUN_ID1
@@ -558,20 +697,46 @@ class FakeEternusConnection(object):
         volume.path = volume
         volume.path.classname = volume['CreationClassName']
 
-        name = {}
-        name['classname'] = 'FUJITSU_StorageVolume'
-        keys = {}
-        keys['CreationClassName'] = 'FUJITSU_StorageVolume'
-        keys['SystemName'] = STORAGE_SYSTEM
-        keys['DeviceID'] = volume['DeviceID']
-        keys['SystemCreationClassName'] = 'FUJITSU_StorageComputerSystem'
-        name['keybindings'] = keys
+        name = {
+            'classname': 'FUJITSU_StorageVolume',
+            'keybindings': {
+                'CreationClassName': 'FUJITSU_StorageVolume',
+                'SystemName': STORAGE_SYSTEM,
+                'DeviceID': volume['DeviceID'],
+                'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
+            },
+        }
         volume['provider_location'] = str(name)
-
         volumes.append(volume)
+
+        volume3 = FJ_StorageVolume()
+        volume3['name'] = TEST_VOLUME2['name']
+        volume3['poolpath'] = 'FUJITSU:RSP0005'
+        volume3['CreationClassName'] = 'FUJITSU_StorageVolume'
+        volume3['Name'] = FAKE_LUN_ID3
+        volume3['DeviceID'] = FAKE_LUN_ID3
+        volume3['SystemCreationClassName'] = 'FUJITSU_StorageComputerSystem'
+        volume3['SystemName'] = STORAGE_SYSTEM
+        volume3['ElementName'] = 'FJosv_4whcadwDac7ANKHA2O719A=='
+        volume3['volume_type_id'] = None
+        volume3.path = volume3
+        volume3.path.classname = volume3['CreationClassName']
+
+        name3 = {
+            'classname': 'FUJITSU_StorageVolume',
+            'keybindings': {
+                'CreationClassName': 'FUJITSU_StorageVolume',
+                'SystemName': STORAGE_SYSTEM,
+                'DeviceID': volume3['DeviceID'],
+                'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
+            },
+        }
+        volume3['provider_location'] = str(name3)
+        volumes.append(volume3)
 
         snap_vol = FJ_StorageVolume()
         snap_vol['name'] = TEST_SNAP['name']
+        snap_vol['poolpath'] = 'FUJITSU:RSP0004'
         snap_vol['CreationClassName'] = 'FUJITSU_StorageVolume'
         snap_vol['Name'] = FAKE_LUN_ID2
         snap_vol['DeviceID'] = FAKE_LUN_ID2
@@ -581,20 +746,21 @@ class FakeEternusConnection(object):
         snap_vol.path = snap_vol
         snap_vol.path.classname = snap_vol['CreationClassName']
 
-        name2 = {}
-        name2['classname'] = 'FUJITSU_StorageVolume'
-        keys2 = {}
-        keys2['CreationClassName'] = 'FUJITSU_StorageVolume'
-        keys2['SystemName'] = STORAGE_SYSTEM
-        keys2['DeviceID'] = snap_vol['DeviceID']
-        keys2['SystemCreationClassName'] = 'FUJITSU_StorageComputerSystem'
-        name2['keybindings'] = keys2
+        name2 = {
+            'classname': 'FUJITSU_StorageVolume',
+            'keybindings': {
+                'CreationClassName': 'FUJITSU_StorageVolume',
+                'SystemName': STORAGE_SYSTEM,
+                'DeviceID': snap_vol['DeviceID'],
+                'SystemCreationClassName': 'FUJITSU_StorageComputerSystem',
+            },
+        }
         snap_vol['provider_location'] = str(name2)
-
         volumes.append(snap_vol)
 
         clone_vol = FJ_StorageVolume()
         clone_vol['name'] = TEST_CLONE['name']
+        clone_vol['poolpath'] = 'FUJITSU:TPP0004'
         clone_vol['CreationClassName'] = 'FUJITSU_StorageVolume'
         clone_vol['ElementName'] = TEST_CLONE['name']
         clone_vol['DeviceID'] = FAKE_LUN_ID2
@@ -678,7 +844,6 @@ class FakeEternusConnection(object):
         return targetlist
 
     def _getinstance_storagevolume(self, objpath):
-        foundinstance = None
         instance = FJ_StorageVolume()
         volumes = self._enum_volumes()
         for volume in volumes:
@@ -713,6 +878,8 @@ class FJFCDriverTestCase(test.TestCase):
         # Make fake Object by using mock as configuration object.
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.cinder_eternus_config_file = self.config_file.name
+        self.configuration.safe_get = self.fake_safe_get
+        self.configuration.max_over_subscription_ratio = '20.0'
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
                          self.fake_eternus_connection)
@@ -725,22 +892,27 @@ class FJFCDriverTestCase(test.TestCase):
         driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
         self.driver = driver
 
+    def fake_safe_get(self, str=None):
+        return str
+
     def fake_eternus_connection(self):
         conn = FakeEternusConnection()
         return conn
 
     def test_get_volume_stats(self):
         ret = self.driver.get_volume_stats(True)
-        stats = {'vendor_name': ret['vendor_name'],
-                 'total_capacity_gb': ret['total_capacity_gb'],
-                 'free_capacity_gb': ret['free_capacity_gb']}
-        self.assertEqual(FAKE_STATS, stats)
+
+        self.assertEqual(FAKE_STATS2, ret)
 
     def test_create_and_delete_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
+        model_info = self.driver.create_volume(TEST_VOLUME2)
+        self.assertEqual(FAKE_MODEL_INFO3, model_info)
+
         self.driver.delete_volume(TEST_VOLUME)
+        self.driver.delete_volume(TEST_VOLUME2)
 
     @mock.patch.object(dx_common.FJDXCommon, '_get_mapdata')
     def test_map_unmap(self, mock_mapdata):
@@ -816,7 +988,16 @@ class FJFCDriverTestCase(test.TestCase):
         model_info = self.driver.create_volume(TEST_VOLUME)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
-        self.driver.extend_volume(TEST_VOLUME, 10)
+        volume_info = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info[key] = model_info[key]
+            elif key == 'metadata':
+                volume_info[key] = model_info[key]
+            else:
+                volume_info[key] = TEST_VOLUME[key]
+
+        self.driver.extend_volume(volume_info, 10)
 
 
 class FJISCSIDriverTestCase(test.TestCase):
@@ -835,6 +1016,8 @@ class FJISCSIDriverTestCase(test.TestCase):
         # Make fake Object by using mock as configuration object.
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.cinder_eternus_config_file = self.config_file.name
+        self.configuration.safe_get = self.fake_safe_get
+        self.configuration.max_over_subscription_ratio = '20.0'
 
         self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
                          self.fake_eternus_connection)
@@ -849,6 +1032,9 @@ class FJISCSIDriverTestCase(test.TestCase):
         # Set iscsi driver to self.driver.
         driver = dx_iscsi.FJDXISCSIDriver(configuration=self.configuration)
         self.driver = driver
+
+    def fake_safe_get(self, str=None):
+        return str
 
     def fake_eternus_connection(self):
         conn = FakeEternusConnection()
@@ -867,16 +1053,18 @@ class FJISCSIDriverTestCase(test.TestCase):
 
     def test_get_volume_stats(self):
         ret = self.driver.get_volume_stats(True)
-        stats = {'vendor_name': ret['vendor_name'],
-                 'total_capacity_gb': ret['total_capacity_gb'],
-                 'free_capacity_gb': ret['free_capacity_gb']}
-        self.assertEqual(FAKE_STATS, stats)
+
+        self.assertEqual(FAKE_STATS, ret)
 
     def test_create_and_delete_volume(self):
         model_info = self.driver.create_volume(TEST_VOLUME)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
+        model_info = self.driver.create_volume(TEST_VOLUME2)
+        self.assertEqual(FAKE_MODEL_INFO3, model_info)
+
         self.driver.delete_volume(TEST_VOLUME)
+        self.driver.delete_volume(TEST_VOLUME2)
 
     def test_map_unmap(self):
         fake_mapdata = self.fake_get_mapdata(None, {}, None)
@@ -942,4 +1130,13 @@ class FJISCSIDriverTestCase(test.TestCase):
         model_info = self.driver.create_volume(TEST_VOLUME)
         self.assertEqual(FAKE_MODEL_INFO1, model_info)
 
-        self.driver.extend_volume(TEST_VOLUME, 10)
+        volume_info = {}
+        for key in TEST_VOLUME:
+            if key == 'provider_location':
+                volume_info[key] = model_info[key]
+            elif key == 'metadata':
+                volume_info[key] = model_info[key]
+            else:
+                volume_info[key] = TEST_VOLUME[key]
+
+        self.driver.extend_volume(volume_info, 10)
