@@ -44,6 +44,7 @@ from cinder.volume import rpcapi as volume_rpcapi
 
 
 CONF = cfg.CONF
+ENCRYPTED_VOLUME_ID = 'f78e8977-6164-4114-a593-358fa6646eff'
 
 
 @ddt.ddt
@@ -775,6 +776,9 @@ def fake_volume_get_obj(self, context, volume_id, **kwargs):
     else:
         volume.status = 'available'
 
+    if volume_id == ENCRYPTED_VOLUME_ID:
+        volume['encryption_key_id'] = 'does_not_matter'
+
     volume.volume_type = fake_volume.fake_volume_type_obj(
         context,
         name=v2_fakes.DEFAULT_VOL_TYPE)
@@ -883,6 +887,70 @@ class VolumeImageActionsTest(test.TestCase):
                      'disk_format': 'raw',
                      'image_name': 'image_name'}}
         self.assertDictEqual(expected, res_dict)
+
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(volume_api.API, "copy_volume_to_image")
+    def test_check_image_metadata_copy_encrypted_volume_to_image(
+            self, mock_copy_vol):
+        """Make sure the encryption image properties exit the controller."""
+
+        # all we're interested in is that the 'metadata' dict contains the
+        # correct data, so we do this bad hack to smuggle it out in the
+        # controller's response to make it easy to access
+        def really_fake_upload_volume(context, volume, metadata, force):
+            return metadata
+
+        mock_copy_vol.side_effect = really_fake_upload_volume
+
+        FAKE_ID = 'fake-encryption-key-id'
+        # the controller does a lazy init of the key manager, so we
+        # need a 2-level mock here
+        self.mock_object(self.controller, '_key_mgr')
+        self.controller._key_mgr.return_value = not None
+        self.mock_object(self.controller._key_manager, 'store')
+        self.controller._key_manager.store.return_value = FAKE_ID
+
+        vol_id = ENCRYPTED_VOLUME_ID
+        img = {"container_format": 'bare',
+               "disk_format": 'raw',
+               "image_name": 'image_name',
+               "force": True}
+        body = {"os-volume_upload_image": img}
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, vol_id))
+        res_dict = self.controller._volume_upload_image(req, vol_id, body=body)
+
+        sent_meta = res_dict['os-volume_upload_image']
+        self.assertIn('cinder_encryption_key_id', sent_meta)
+        self.assertEqual(FAKE_ID, sent_meta['cinder_encryption_key_id'])
+        self.assertIn('cinder_encryption_key_deletion_policy', sent_meta)
+        self.assertEqual('on_image_deletion',
+                         sent_meta['cinder_encryption_key_deletion_policy'])
+
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    @mock.patch.object(volume_api.API, "copy_volume_to_image")
+    def test_check_image_metadata_copy_nonencrypted_volume_to_image(
+            self, mock_copy_vol):
+        """Make sure no encryption image properties are sent."""
+
+        def really_fake_upload_volume(context, volume, metadata, force):
+            return metadata
+
+        mock_copy_vol.side_effect = really_fake_upload_volume
+
+        id = fake.VOLUME_ID
+        img = {"container_format": 'bare',
+               "disk_format": 'raw',
+               "image_name": 'image_name',
+               "force": True}
+        body = {"os-volume_upload_image": img}
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, id))
+        res_dict = self.controller._volume_upload_image(req, id, body=body)
+
+        sent_meta = res_dict['os-volume_upload_image']
+        self.assertNotIn('cinder_encryption_key_id', sent_meta)
+        self.assertNotIn('cinder_encryption_key_deletion_policy', sent_meta)
 
     def test_copy_volume_to_image_volumenotfound(self):
         def fake_volume_get_raise_exc(self, context, volume_id):
