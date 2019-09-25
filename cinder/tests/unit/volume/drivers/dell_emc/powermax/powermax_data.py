@@ -1152,6 +1152,29 @@ class PowerMaxData(object):
                  'SRDFGroupNumber': 1,
                  'SRDFRemoteGroupNumber': 1}]}}
 
+    priv_vol_response_metro_active_rep = {
+        'volumeHeader': {
+            'private': False, 'capGB': 1.0, 'capMB': 1026.0,
+            'serviceState': 'Normal', 'emulationType': 'FBA',
+            'volumeId': '00001', 'status': 'Ready', 'mapped': False,
+            'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
+            'encapsulated': False, 'formattedName': '00001',
+            'system_resource': False, 'numSymDevMaskingViews': 0,
+            'nameModifier': "", 'configuration': 'TDEV',
+            'userDefinedIdentifier': 'OS-00001'},
+        'maskingInfo': {'masked': False},
+        'rdfInfo': {
+            'dynamicRDF': False, 'RDF': True,
+            'concurrentRDF': False,
+            'getDynamicRDFCapability': 'RDF1_Capable', 'RDFA': False,
+            'RDFSession': [
+                {'SRDFStatus': 'Ready',
+                 'SRDFReplicationMode': 'Active',
+                 'remoteDeviceID': device_id2,
+                 'remoteSymmetrixID': remote_array,
+                 'SRDFGroupNumber': 1,
+                 'SRDFRemoteGroupNumber': 1}]}}
+
     priv_vol_response_no_rep = {
         'volumeHeader': {
             'private': False, 'capGB': 1.0, 'capMB': 1026.0,
