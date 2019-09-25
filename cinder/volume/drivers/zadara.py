@@ -12,8 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Volume driver for Zadara Virtual Private Storage Array (VPSA).
+"""Volume driver for Zadara Virtual Private Storage Array (VPSA).
 
 This driver requires VPSA with API version 15.07 or higher.
 """
@@ -52,10 +51,16 @@ zadara_opts = [
                      'certificate of the VPSA endpoint.'),
     cfg.StrOpt('zadara_user',
                default=None,
+               deprecated_for_removal=True,
                help='VPSA - Username'),
     cfg.StrOpt('zadara_password',
                default=None,
                help='VPSA - Password',
+               deprecated_for_removal=True,
+               secret=True),
+    cfg.StrOpt('zadara_access_key',
+               default=None,
+               help='VPSA access key',
                secret=True),
     cfg.StrOpt('zadara_vpsa_poolname',
                default=None,
@@ -69,7 +74,6 @@ zadara_opts = [
     cfg.BoolOpt('zadara_default_snap_policy',
                 default=False,
                 help="VPSA - Attach snapshot policy for volumes")]
-
 CONF = cfg.CONF
 CONF.register_opts(zadara_opts, group=configuration.SHARED_CONF_GROUP)
 
@@ -98,23 +102,21 @@ class ZadaraVolumeNotFound(exception.VolumeDriverException):
     message = "%(reason)s"
 
 
+class ZadaraInvalidAccessKey(exception.VolumeDriverException):
+    message = "Invalid VPSA access key"
+
+
 class ZadaraVPSAConnection(object):
     """Executes volume driver commands on VPSA."""
 
     def __init__(self, conf):
         self.conf = conf
-        self.access_key = None
+        self.access_key = conf.zadara_access_key
 
         self.ensure_connection()
 
     def _generate_vpsa_cmd(self, cmd, **kwargs):
         """Generate command to be sent to VPSA."""
-
-        def _joined_params(params):
-            param_str = []
-            for k, v in params.items():
-                param_str.append("%s=%s" % (k, v))
-            return '&'.join(param_str)
 
         # Dictionary of applicable VPSA commands in the following format:
         # 'command': (method, API_URL, {optional parameters})
@@ -123,7 +125,6 @@ class ZadaraVPSAConnection(object):
                       '/api/users/login.xml',
                       {'user': self.conf.zadara_user,
                        'password': self.conf.zadara_password}),
-
             # Volume operations
             'create_volume': ('POST',
                               '/api/volumes.xml',
@@ -143,7 +144,6 @@ class ZadaraVPSAConnection(object):
                               '/api/volumes/%s/expand.xml'
                               % kwargs.get('vpsa_vol'),
                               {'capacity': kwargs.get('size')}),
-
             # Snapshot operations
             # Snapshot request is triggered for a single volume though the
             # API call implies that snapshot is triggered for CG (legacy API).
@@ -155,24 +155,20 @@ class ZadaraVPSAConnection(object):
                                 '/api/snapshots/%s.xml'
                                 % kwargs.get('snap_id'),
                                 {}),
-
             'create_clone_from_snap': ('POST',
                                        '/api/consistency_groups/%s/clone.xml'
                                        % kwargs.get('cg_name'),
                                        {'name': kwargs.get('name'),
                                         'snapshot': kwargs.get('snap_id')}),
-
             'create_clone': ('POST',
                              '/api/consistency_groups/%s/clone.xml'
                              % kwargs.get('cg_name'),
                              {'name': kwargs.get('name')}),
-
             # Server operations
             'create_server': ('POST',
                               '/api/servers.xml',
                               {'display_name': kwargs.get('initiator'),
                                'iqn': kwargs.get('initiator')}),
-
             # Attach/Detach operations
             'attach_volume': ('POST',
                               '/api/servers/%s/volumes.xml'
@@ -184,7 +180,6 @@ class ZadaraVPSAConnection(object):
                               % kwargs.get('vpsa_vol'),
                               {'server_name[]': kwargs.get('vpsa_srv'),
                                'force': 'YES'}),
-
             # Get operations
             'list_volumes': ('GET',
                              '/api/volumes.xml',
@@ -207,28 +202,18 @@ class ZadaraVPSAConnection(object):
                                    % kwargs.get('cg_name'),
                                    {})}
 
-        if cmd not in vpsa_commands:
+        try:
+            method, url, params = vpsa_commands[cmd]
+        except KeyError:
             raise exception.UnknownCmd(cmd=cmd)
-        else:
-            (method, url, params) = vpsa_commands[cmd]
 
         if method == 'GET':
-            # For GET commands add parameters to the URL
-            params.update(dict(access_key=self.access_key,
-                               page=1, start=0, limit=0))
-            url += '?' + _joined_params(params)
-            body = ''
+            params = dict(page=1, start=0, limit=0)
+            body = None
 
-        elif method == 'DELETE':
-            # For DELETE commands add parameters to the URL
-            params.update(dict(access_key=self.access_key))
-            url += '?' + _joined_params(params)
-            body = ''
-
-        elif method == 'POST':
-            if self.access_key:
-                params.update(dict(access_key=self.access_key))
-            body = _joined_params(params)
+        elif method in ['DELETE', 'POST']:
+            body = params
+            params = None
 
         else:
             msg = (_('Method %(method)s is not defined') %
@@ -236,7 +221,11 @@ class ZadaraVPSAConnection(object):
             LOG.error(msg)
             raise AssertionError(msg)
 
-        return (method, url, body)
+        # 'access_key' was generated using username and password
+        # or it was taken from the input file
+        headers = {'X-Access-Key': self.access_key}
+
+        return method, url, params, body, headers
 
     def ensure_connection(self, cmd=None):
         """Retrieve access key for VPSA connection."""
@@ -248,12 +237,12 @@ class ZadaraVPSAConnection(object):
         xml_tree = self.send_cmd(cmd)
         user = xml_tree.find('user')
         if user is None:
-            raise (exception.MalformedResponse(cmd=cmd,
-                   reason=_('no "user" field')))
+            raise (exception.MalformedResponse(
+                   cmd=cmd, reason=_('no "user" field')))
         access_key = user.findtext('access-key')
         if access_key is None:
-            raise (exception.MalformedResponse(cmd=cmd,
-                   reason=_('no "access-key" field')))
+            raise (exception.MalformedResponse(
+                   cmd=cmd, reason=_('no "access-key" field')))
         self.access_key = access_key
 
     def send_cmd(self, cmd, **kwargs):
@@ -261,7 +250,8 @@ class ZadaraVPSAConnection(object):
 
         self.ensure_connection(cmd)
 
-        (method, url, body) = self._generate_vpsa_cmd(cmd, **kwargs)
+        method, url, params, body, headers = self._generate_vpsa_cmd(cmd,
+                                                                     **kwargs)
         LOG.debug('Invoking %(cmd)s using %(method)s request.',
                   {'cmd': cmd, 'method': method})
 
@@ -284,8 +274,11 @@ class ZadaraVPSAConnection(object):
             api_url = "%s://%s%s" % (protocol, host, url)
 
         try:
-            response = requests.request(method, api_url, data=body,
-                                        verify=verify)
+            with requests.Session() as session:
+                session.headers.update(headers)
+                response = session.request(method, api_url, params=params,
+                                           data=body, headers=headers,
+                                           verify=verify)
         except requests.exceptions.RequestException as e:
             message = (_('Exception: %s') % six.text_type(e))
             raise exception.VolumeDriverException(message=message)
@@ -296,6 +289,10 @@ class ZadaraVPSAConnection(object):
         data = response.content
         xml_tree = lxml.fromstring(data)
         status = xml_tree.findtext('status')
+        if status == '5':
+            # Invalid Credentials
+            raise ZadaraInvalidAccessKey()
+
         if status != '0':
             raise exception.FailedCmdWithDump(status=status, data=data)
 
@@ -314,15 +311,17 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
       Version history:
         15.07 - Initial driver
         16.05 - Move from httplib to requests
+        19.08 - Add API access key authentication option
     """
 
-    VERSION = '16.05'
+    VERSION = '19.08'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "ZadaraStorage_VPSA_CI"
 
     def __init__(self, *args, **kwargs):
         super(ZadaraVPSAISCSIDriver, self).__init__(*args, **kwargs)
+        self.vpsa = None
         self.configuration.append_config_values(zadara_opts)
 
     @staticmethod
@@ -335,10 +334,20 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         Establishes initial connection with VPSA and retrieves access_key.
         """
         self.vpsa = ZadaraVPSAConnection(self.configuration)
+        self._check_access_key_validity()
+
+    def _check_access_key_validity(self):
+        """Check VPSA access key"""
+        self.vpsa.ensure_connection()
+        if not self.vpsa.access_key:
+            raise ZadaraInvalidAccessKey()
+        active_ctrl = self._get_active_controller_details()
+        if active_ctrl is None:
+            raise ZadaraInvalidAccessKey()
 
     def check_for_setup_error(self):
         """Returns an error (exception) if prerequisites aren't met."""
-        self.vpsa.ensure_connection()
+        self._check_access_key_validity()
 
     def local_path(self, volume):
         """Return local path to existing local volume."""
@@ -358,14 +367,14 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             return None
 
         result_list = []
-        (key, value) = search_tuple
-        for object in objects.getchildren():
-            found_value = object.findtext(key)
+        key, value = search_tuple
+        for child_object in objects.getchildren():
+            found_value = child_object.findtext(key)
             if found_value and (found_value == value or value is None):
                 if first:
-                    return object
+                    return child_object
                 else:
-                    result_list.append(object)
+                    result_list.append(child_object)
         return result_list if result_list else None
 
     def _get_vpsa_volume_name_and_size(self, name):
@@ -377,7 +386,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             return (volume.findtext('name'),
                     int(volume.findtext('virtual-capacity')))
 
-        return (None, None)
+        return None, None
 
     def _get_vpsa_volume_name(self, name):
         """Return VPSA's name for the volume."""
@@ -419,9 +428,9 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             free = int(float(pool.findtext('available-capacity')))
             LOG.debug('Pool %(name)s: %(total)sGB total, %(free)sGB free',
                       {'name': pool_name, 'total': total, 'free': free})
-            return (total, free)
+            return total, free
 
-        return ('unknown', 'unknown')
+        return 'unknown', 'unknown'
 
     def _get_active_controller_details(self):
         """Return details of VPSA's active controller."""
@@ -435,14 +444,18 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                         chap_passwd=ctrl.findtext('vpsa-chap-secret'))
         return None
 
-    def _detach_vpsa_volume(self, vpsa_vol):
+    def _detach_vpsa_volume(self, vpsa_vol, vpsa_srv=None):
         """Detach volume from all attached servers."""
-        list_servers = self._get_servers_attached_to_volume(vpsa_vol)
-        for server in list_servers:
+        if vpsa_srv:
+            list_servers_ids = [vpsa_srv]
+        else:
+            list_servers = self._get_servers_attached_to_volume(vpsa_vol)
+            list_servers_ids = [s.findtext('name') for s in list_servers]
+
+        for server_id in list_servers_ids:
             # Detach volume from server
-            vpsa_srv = server.findtext('name')
             self.vpsa.send_cmd('detach_volume',
-                               vpsa_srv=vpsa_srv,
+                               vpsa_srv=server_id,
                                vpsa_vol=vpsa_vol)
 
     def _get_server_name(self, initiator):
@@ -482,7 +495,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                         'It might be already deleted', name)
             return
 
-        self._detach_vpsa_volume(vpsa_vol)
+        self._detach_vpsa_volume(vpsa_vol=vpsa_vol)
 
         # Delete volume
         self.vpsa.send_cmd('delete_volume', vpsa_vol=vpsa_vol)
@@ -556,7 +569,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                            % volume['name'],
                            snap_id=snap_id)
 
-        if (volume['size'] > snapshot['volume_size']):
+        if volume['size'] > snapshot['volume_size']:
             self.extend_volume(volume, volume['size'])
 
     def create_cloned_volume(self, volume, src_vref):
@@ -577,7 +590,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
                            name=self.configuration.zadara_vol_name_template
                            % volume['name'])
 
-        if (volume['size'] > src_vref['size']):
+        if volume['size'] > src_vref['size']:
             self.extend_volume(volume, volume['size'])
 
     def extend_volume(self, volume, new_size):
@@ -618,10 +631,13 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
         During this call VPSA exposes volume to particular Initiator. It also
         creates a 'server' entity for Initiator (if it was not created before)
-
         All necessary connection information is returned, including auth data.
         Connection data (target, LUN) is not stored in the DB.
         """
+        # First: Check Active controller: if not valid, raise exception
+        ctrl = self._get_active_controller_details()
+        if not ctrl:
+            raise ZadaraVPSANoActiveController()
 
         # Get/Create server name for IQN
         initiator_name = connector['initiator']
@@ -635,11 +651,6 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         if not vpsa_vol:
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
-        # Get Active controller details
-        ctrl = self._get_active_controller_details()
-        if not ctrl:
-            raise ZadaraVPSANoActiveController()
-
         xml_tree = self.vpsa.send_cmd('list_vol_attachments',
                                       vpsa_vol=vpsa_vol)
         attach = self._xml_parse_helper(xml_tree, 'servers',
@@ -649,30 +660,30 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             self.vpsa.send_cmd('attach_volume',
                                vpsa_srv=vpsa_srv,
                                vpsa_vol=vpsa_vol)
-        # Get connection info
+
         xml_tree = self.vpsa.send_cmd('list_vol_attachments',
                                       vpsa_vol=vpsa_vol)
         server = self._xml_parse_helper(xml_tree, 'servers',
                                         ('iqn', initiator_name))
         if server is None:
             raise ZadaraAttachmentsNotFound(name=name)
+
         target = server.findtext('target')
         lun = int(server.findtext('lun'))
-        if target is None or lun is None:
+        if None in [target, lun]:
             raise ZadaraInvalidAttachmentInfo(
                 name=name,
                 reason=_('target=%(target)s, lun=%(lun)s') %
                 {'target': target, 'lun': lun})
 
-        properties = {}
-        properties['target_discovered'] = False
-        properties['target_portal'] = '%s:%s' % (ctrl['ip'], '3260')
-        properties['target_iqn'] = target
-        properties['target_lun'] = lun
-        properties['volume_id'] = volume['id']
-        properties['auth_method'] = 'CHAP'
-        properties['auth_username'] = ctrl['chap_user']
-        properties['auth_password'] = ctrl['chap_passwd']
+        properties = {'target_discovered': False,
+                      'target_portal': '%s:%s' % (ctrl['ip'], '3260'),
+                      'target_iqn': target,
+                      'target_lun': lun,
+                      'volume_id': volume['id'],
+                      'auth_method': 'CHAP',
+                      'auth_username': ctrl['chap_user'],
+                      'auth_password': ctrl['chap_passwd']}
 
         LOG.debug('Attach properties: %(properties)s',
                   {'properties': strutils.mask_password(properties)})
@@ -682,14 +693,19 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Detach volume from the initiator."""
+
         # Get server name for IQN
         if connector is None:
             # Detach volume from all servers
             # Get volume name
             name = self.configuration.zadara_vol_name_template % volume['name']
             vpsa_vol = self._get_vpsa_volume_name(name)
-            self._detach_vpsa_volume(vpsa_vol)
-            return
+            if vpsa_vol:
+                self._detach_vpsa_volume(vpsa_vol=vpsa_vol)
+                return
+            else:
+                LOG.warning('Volume %s could not be found', name)
+                raise exception.VolumeNotFound(volume_id=volume['id'])
 
         initiator_name = connector['initiator']
 
@@ -704,9 +720,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeNotFound(volume_id=volume['id'])
 
         # Detach volume from server
-        self.vpsa.send_cmd('detach_volume',
-                           vpsa_srv=vpsa_srv,
-                           vpsa_vol=vpsa_vol)
+        self._detach_vpsa_volume(vpsa_vol=vpsa_vol, vpsa_srv=vpsa_srv)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
