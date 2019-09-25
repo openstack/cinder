@@ -3,8 +3,16 @@ features:
   - |
     Added a new default volume type ``__DEFAULT__`` which
     will be used when
-    - A new volume is created without any type
+
+    - A new volume is created without a type
     - The `default_volume_type` option is unset in cinder.conf
-    The volume will be assigned the ``__DEFAULT__`` type.
-    All existing volume, snapshots without a type will
-    be migrated to the ``__DEFAULT__`` type.
+
+    Then the volume will be assigned the ``__DEFAULT__`` type.
+upgrade:
+  - |
+    The db migration script will create a volume type named
+    ``__DEFAULT__``
+    The online migration will migrate all existing untyped
+    volumes, snapshots to the ``__DEFAULT__`` type.
+    An invalid/non-existent type specified with `default_volume_type`
+    option in cinder.conf will result in VolumeTypeNotFoundByName exception.
