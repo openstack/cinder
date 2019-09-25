@@ -120,6 +120,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Removal of san_rest_port from PowerMax cinder.conf config
               - SnapVX noCopy mode enabled for all links
               - Volume/Snapshot backed metadata inclusion
+              - Debug metadata compression and service level info fix
     """
 
     VERSION = "4.1.0"

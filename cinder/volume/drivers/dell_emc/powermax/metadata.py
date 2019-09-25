@@ -24,7 +24,6 @@ from oslo_log import log as logging
 
 from cinder.objects import volume
 from cinder import version
-
 from cinder.volume.drivers.dell_emc.powermax import utils
 LOG = logging.getLogger(__name__)
 CLEANUP_LIST = ['masking_view', 'child_storage_group', 'parent_storage_group',
@@ -306,11 +305,11 @@ class PowerMaxVolumeMetadata(object):
             initiator_group = masking_view_dict[utils.IG_NAME]
             port_group = masking_view_dict[utils.PORTGROUPNAME]
 
+        sl, wl = self.utils.get_service_level_workload(extra_specs)
         datadict = self.gather_volume_info(
             volume.id, successful_operation, False,
             serial_number=extra_specs[utils.ARRAY],
-            service_level=extra_specs[utils.SLO],
-            workload=extra_specs[utils.WORKLOAD], srp=extra_specs[utils.SRP],
+            service_level=sl, workload=wl, srp=extra_specs[utils.SRP],
             masking_view=masking_view_dict[utils.MV_NAME],
             child_storage_group=child_storage_group,
             parent_storage_group=parent_storage_group,
@@ -338,12 +337,12 @@ class PowerMaxVolumeMetadata(object):
         :param sg_list: storage group list
         """
         default_sg = self.utils.derive_default_sg_from_extra_specs(extra_specs)
+        sl, wl = self.utils.get_service_level_workload(extra_specs)
         datadict = self.gather_volume_info(
             volume.id, 'detach', False, device_id=device_id,
             serial_number=extra_specs[utils.ARRAY],
-            service_level=extra_specs[utils.SLO],
-            workload=extra_specs[utils.WORKLOAD], srp=extra_specs[utils.SRP],
-            default_sg_name=default_sg,
+            service_level=sl, workload=wl,
+            srp=extra_specs[utils.SRP], default_sg_name=default_sg,
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
             mv_list=mv_list, sg_list=sg_list
@@ -364,12 +363,12 @@ class PowerMaxVolumeMetadata(object):
         :param array: array serial number
         """
         default_sg = self.utils.derive_default_sg_from_extra_specs(extra_specs)
+        sl, wl = self.utils.get_service_level_workload(extra_specs)
         datadict = self.gather_volume_info(
             volume.id, 'extend', False, volume_size=new_size,
             device_id=device_id,
             default_sg_name=default_sg, serial_number=array,
-            service_level=extra_specs[utils.SLO],
-            workload=extra_specs[utils.WORKLOAD],
+            service_level=sl, workload=wl,
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
@@ -396,13 +395,13 @@ class PowerMaxVolumeMetadata(object):
                 snapshot_count = six.text_type(len(source.snapshots) - 1)
             default_sg = (
                 self.utils.derive_default_sg_from_extra_specs(extra_specs))
+            sl, wl = self.utils.get_service_level_workload(extra_specs)
             datadict = self.gather_volume_info(
                 source.id, successful_operation, False,
                 volume_size=source.size,
                 default_sg_name=default_sg,
                 serial_number=extra_specs[utils.ARRAY],
-                service_level=extra_specs[utils.SLO],
-                workload=extra_specs[utils.WORKLOAD],
+                service_level=sl, workload=wl,
                 srp=extra_specs[utils.SRP],
                 identifier_name=(
                     self.utils.get_volume_element_name(source.id)),
@@ -480,13 +479,13 @@ class PowerMaxVolumeMetadata(object):
 
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
+        sl, wl = self.utils.get_service_level_workload(extra_specs)
         datadict = self.gather_volume_info(
             volume.id, successful_operation, True, volume_size=volume.size,
             device_id=device_id,
             default_sg_name=default_sg,
             serial_number=extra_specs[utils.ARRAY],
-            service_level=extra_specs[utils.SLO],
-            workload=extra_specs[utils.WORKLOAD],
+            service_level=sl, workload=wl,
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
@@ -498,14 +497,11 @@ class PowerMaxVolumeMetadata(object):
             source_snapshot_id=source_snapshot_id,
             rep_mode=rep_mode, replication_status=replication_status,
             rdf_group_label=rdf_group_label, use_bias=use_bias,
-            is_compression_disabled=(
-                'yes' if self.utils.is_compression_disabled(
-                    extra_specs) else 'no'),
+            is_compression_disabled=self.utils.is_compression_disabled(
+                extra_specs),
             source_device_id=source_device_id,
             temporary_snapvx=temporary_snapvx,
-            target_array_model=target_array_model
-
-        )
+            target_array_model=target_array_model)
         volume_metadata = self.update_volume_info_metadata(
             datadict, self.version_dict)
         self.print_pretty_table(volume_metadata)
@@ -544,12 +540,12 @@ class PowerMaxVolumeMetadata(object):
         :param rep_mode: replication mode
         """
         operation = "Failover" if failover else "Failback"
+        sl, wl = self.utils.get_service_level_workload(extra_specs)
         datadict = self.gather_volume_info(
             volume.id, operation, True, volume_size=volume.size,
             device_id=target_device,
             serial_number=remote_array,
-            service_level=extra_specs[utils.SLO],
-            workload=extra_specs[utils.WORKLOAD],
+            service_level=sl, workload=wl,
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
@@ -591,13 +587,13 @@ class PowerMaxVolumeMetadata(object):
 
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
+        sl, wl = self.utils.get_service_level_workload(extra_specs)
         datadict = self.gather_volume_info(
             volume.id, successful_operation, True, volume_size=volume.size,
             device_id=device_id,
             default_sg_name=default_sg,
             serial_number=extra_specs[utils.ARRAY],
-            service_level=extra_specs[utils.SLO],
-            workload=extra_specs[utils.WORKLOAD],
+            service_level=sl, workload=wl,
             srp=extra_specs[utils.SRP],
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
@@ -631,6 +627,8 @@ class PowerMaxVolumeMetadata(object):
         :param is_compression_disabled: compression disabled flag
         """
         successful_operation = "retype"
+        if not target_slo:
+            target_slo, target_workload = 'None', 'None'
         datadict = self.gather_volume_info(
             volume.id, successful_operation, False, volume_size=volume.size,
             device_id=device_id,
@@ -643,8 +641,7 @@ class PowerMaxVolumeMetadata(object):
             openstack_name=volume.display_name,
             is_rep_enabled=('yes' if is_rep_enabled else 'no'),
             rep_mode=rep_mode, is_compression_disabled=(
-                'yes' if is_compression_disabled else 'no')
-        )
+                True if is_compression_disabled else False))
         volume_metadata = self.update_volume_info_metadata(
             datadict, self.version_dict)
         self.print_pretty_table(volume_metadata)

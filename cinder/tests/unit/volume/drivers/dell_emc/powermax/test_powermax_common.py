@@ -1615,7 +1615,7 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = self.data.extra_specs
         volume = self.data.test_volume
         host = {'host': self.data.fake_host}
-        new_type = {'extra_specs': {}}
+        new_type = {'extra_specs': {'slo': 'Bronze'}}
         migrate_status = self.common._slo_workload_migration(
             device_id, volume, host, volume_name, new_type, extra_specs)
         self.assertFalse(migrate_status)
@@ -2890,7 +2890,7 @@ class PowerMaxCommonTest(test.TestCase):
             'DeviceLabel': self.data.device_label, 'ArrayID': self.data.array,
             'ArrayModel': self.data.array_model, 'ServiceLevel': 'None',
             'Workload': 'None', 'Emulation': 'FBA', 'Configuration': 'TDEV',
-            'CompressionEnabled': 'False', 'ReplicationEnabled': 'True',
+            'CompressionDisabled': 'True', 'ReplicationEnabled': 'True',
             'R2-DeviceID': self.data.device_id2,
             'R2-ArrayID': self.data.remote_array,
             'R2-ArrayModel': self.data.array_model,
@@ -2912,7 +2912,7 @@ class PowerMaxCommonTest(test.TestCase):
             'DeviceLabel': self.data.device_label, 'ArrayID': self.data.array,
             'ArrayModel': self.data.array_model, 'ServiceLevel': 'None',
             'Workload': 'None', 'Emulation': 'FBA', 'Configuration': 'TDEV',
-            'CompressionEnabled': 'False', 'ReplicationEnabled': 'False'}
+            'CompressionDisabled': 'True', 'ReplicationEnabled': 'False'}
         array = self.data.array
         device_id = self.data.device_id
         act_metadata = self.common.get_volume_metadata(array, device_id)

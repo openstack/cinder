@@ -5366,7 +5366,7 @@ class PowerMaxCommon(object):
         sl = (vol_header['serviceLevel'] if
               vol_header.get('serviceLevel') else 'None')
         wl = vol_header['workload'] if vol_header.get('workload') else 'None'
-        ce = 'True' if vol_header.get('compressionEnabled') else 'False'
+        cd = 'False' if vol_header.get('compressionEnabled') else 'True'
 
         metadata = {'DeviceID': device_id,
                     'DeviceLabel': vol_header['userDefinedIdentifier'],
@@ -5374,7 +5374,7 @@ class PowerMaxCommon(object):
                     'ServiceLevel': sl, 'Workload': wl,
                     'Emulation': vol_header['emulationType'],
                     'Configuration': vol_header['configuration'],
-                    'CompressionEnabled': ce}
+                    'CompressionDisabled': cd}
 
         is_rep_enabled = vol_info['rdfInfo']['RDF']
         if is_rep_enabled:
