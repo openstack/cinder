@@ -63,7 +63,7 @@ class MockResource(object):
     def get_id(self):
         return self._id
 
-    def delete(self):
+    def delete(self, force_snap_delete=None):
         if self.get_id() in ['snap_2']:
             raise ex.SnapDeleteIsCalled()
         elif self.get_id() == 'not_found':
@@ -72,6 +72,11 @@ class MockResource(object):
             raise ex.UnityDeleteAttachedSnapError()
         elif self.name == 'empty_host':
             raise ex.HostDeleteIsCalled()
+        elif self.get_id() == 'lun_in_replication':
+            if not force_snap_delete:
+                raise ex.UnityDeleteLunInReplicationError()
+        elif self.get_id() == 'lun_rep_session_1':
+            raise ex.UnityResourceNotFoundError()
 
     @property
     def pool(self):
@@ -207,6 +212,21 @@ class MockResource(object):
             return False
         return True
 
+    def replicate_with_dst_resource_provisioning(self, max_time_out_of_sync,
+                                                 dst_pool_id,
+                                                 remote_system=None,
+                                                 dst_lun_name=None):
+        return {'max_time_out_of_sync': max_time_out_of_sync,
+                'dst_pool_id': dst_pool_id,
+                'remote_system': remote_system,
+                'dst_lun_name': dst_lun_name}
+
+    def failover(self, sync=None):
+        return {'sync': sync}
+
+    def failback(self, force_full_copy=None):
+        return {'force_full_copy': force_full_copy}
+
 
 class MockResourceList(object):
     def __init__(self, names=None, ids=None):
@@ -327,6 +347,28 @@ class MockSystem(object):
     def get_io_limit_policy(name):
         return MockResource(name=name)
 
+    def get_remote_system(self, name=None):
+        if name == 'not-exist':
+            raise ex.UnityResourceNotFoundError()
+        else:
+            return {'name': name}
+
+    def get_replication_session(self, name=None,
+                                src_resource_id=None, dst_resource_id=None):
+        if name == 'not-exist':
+            raise ex.UnityResourceNotFoundError()
+        elif src_resource_id == 'lun_in_replication':
+            return [MockResource(name='rep_session')]
+        elif src_resource_id == 'lun_not_in_replication':
+            raise ex.UnityResourceNotFoundError()
+        elif src_resource_id == 'lun_in_multiple_replications':
+            return [MockResource(_id='lun_rep_session_1'),
+                    MockResource(_id='lun_rep_session_2')]
+        else:
+            return {'name': name,
+                    'src_resource_id': src_resource_id,
+                    'dst_resource_id': dst_resource_id}
+
 
 @mock.patch.object(client, 'storops', new='True')
 def get_client():
@@ -403,6 +445,15 @@ class ClientTest(unittest.TestCase):
             self.client.delete_lun('not_found')
         except ex.StoropsException:
             self.fail('not found error should be dealt with silently.')
+
+    def test_delete_lun_in_replication(self):
+        self.client.delete_lun('lun_in_replication')
+
+    @ddt.data({'lun_id': 'lun_not_in_replication'},
+              {'lun_id': 'lun_in_multiple_replications'})
+    @ddt.unpack
+    def test_delete_lun_replications(self, lun_id):
+        self.client.delete_lun_replications(lun_id)
 
     def test_get_lun_with_id(self):
         lun = self.client.get_lun('lun4')
@@ -748,3 +799,61 @@ class ClientTest(unittest.TestCase):
             ret = self.client.filter_snaps_in_cg_snap('snap_cg_1')
             mocked_get.assert_called_once_with(snap_group='snap_cg_1')
             self.assertEqual(snaps, ret)
+
+    def test_create_replication(self):
+        remote_system = MockResource(_id='RS_1')
+        lun = MockResource(_id='sv_1')
+        called = self.client.create_replication(lun, 60, 'pool_1',
+                                                remote_system)
+        self.assertEqual(called['max_time_out_of_sync'], 60)
+        self.assertEqual(called['dst_pool_id'], 'pool_1')
+        self.assertIs(called['remote_system'], remote_system)
+
+    def test_get_remote_system(self):
+        called = self.client.get_remote_system(name='remote-unity')
+        self.assertEqual(called['name'], 'remote-unity')
+
+    def test_get_remote_system_not_exist(self):
+        called = self.client.get_remote_system(name='not-exist')
+        self.assertIsNone(called)
+
+    def test_get_replication_session(self):
+        called = self.client.get_replication_session(name='rep-name')
+        self.assertEqual(called['name'], 'rep-name')
+
+    def test_get_replication_session_not_exist(self):
+        self.assertRaises(client.ClientReplicationError,
+                          self.client.get_replication_session,
+                          name='not-exist')
+
+    def test_failover_replication(self):
+        rep_session = MockResource(_id='rep_id_1')
+        called = self.client.failover_replication(rep_session)
+        self.assertEqual(called['sync'], False)
+
+    def test_failover_replication_raise(self):
+        rep_session = MockResource(_id='rep_id_1')
+
+        def mock_failover(sync=None):
+            raise ex.UnityResourceNotFoundError()
+
+        rep_session.failover = mock_failover
+        self.assertRaises(client.ClientReplicationError,
+                          self.client.failover_replication,
+                          rep_session)
+
+    def test_failback_replication(self):
+        rep_session = MockResource(_id='rep_id_1')
+        called = self.client.failback_replication(rep_session)
+        self.assertEqual(called['force_full_copy'], True)
+
+    def test_failback_replication_raise(self):
+        rep_session = MockResource(_id='rep_id_1')
+
+        def mock_failback(force_full_copy=None):
+            raise ex.UnityResourceNotFoundError()
+
+        rep_session.failback = mock_failback
+        self.assertRaises(client.ClientReplicationError,
+                          self.client.failback_replication,
+                          rep_session)

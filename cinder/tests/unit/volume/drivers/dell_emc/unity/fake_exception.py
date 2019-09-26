@@ -18,35 +18,39 @@ class StoropsException(Exception):
     message = 'Storops Error.'
 
 
-class UnityLunNameInUseError(StoropsException):
+class UnityException(StoropsException):
     pass
 
 
-class UnityResourceNotFoundError(StoropsException):
+class UnityLunNameInUseError(UnityException):
     pass
 
 
-class UnitySnapNameInUseError(StoropsException):
+class UnityResourceNotFoundError(UnityException):
     pass
 
 
-class UnityDeleteAttachedSnapError(StoropsException):
+class UnitySnapNameInUseError(UnityException):
     pass
 
 
-class UnityResourceAlreadyAttachedError(StoropsException):
+class UnityDeleteAttachedSnapError(UnityException):
     pass
 
 
-class UnityPolicyNameInUseError(StoropsException):
+class UnityResourceAlreadyAttachedError(UnityException):
     pass
 
 
-class UnityNothingToModifyError(StoropsException):
+class UnityPolicyNameInUseError(UnityException):
     pass
 
 
-class UnityThinCloneLimitExceededError(StoropsException):
+class UnityNothingToModifyError(UnityException):
+    pass
+
+
+class UnityThinCloneLimitExceededError(UnityException):
     pass
 
 
@@ -82,15 +86,23 @@ class AdapterSetupError(Exception):
     pass
 
 
+class ReplicationManagerSetupError(Exception):
+    pass
+
+
 class HostDeleteIsCalled(Exception):
     pass
 
 
-class UnityThinCloneNotAllowedError(StoropsException):
+class UnityThinCloneNotAllowedError(UnityException):
     pass
 
 
-class SystemAPINotSupported(StoropsException):
+class SystemAPINotSupported(UnityException):
+    pass
+
+
+class UnityDeleteLunInReplicationError(UnityException):
     pass
 
 

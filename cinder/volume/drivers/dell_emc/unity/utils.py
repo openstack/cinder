@@ -18,6 +18,8 @@ from __future__ import division
 import contextlib
 from distutils import version
 import functools
+import json
+
 from oslo_log import log as logging
 from oslo_utils import fnmatch
 from oslo_utils import units
@@ -348,3 +350,45 @@ def is_multiattach_to_host(volume_attachment, host_name):
                   if a.attach_status == fields.VolumeAttachStatus.ATTACHED and
                   a.attached_host == host_name]
     return len(attachment) > 1
+
+
+def load_replication_data(rep_data_str):
+    # rep_data_str is string dumped from a dict like:
+    # {
+    #     'default': 'rep_session_name_failed_over',
+    #     'backend_id_1': 'rep_session_name_1',
+    #     'backend_id_2': 'rep_session_name_2'
+    # }
+    return json.loads(rep_data_str)
+
+
+def dump_replication_data(model_update, rep_data):
+    # rep_data is a dict like:
+    # {
+    #     'backend_id_1': 'rep_session_name_1',
+    #     'backend_id_2': 'rep_session_name_2'
+    # }
+    model_update['replication_driver_data'] = json.dumps(rep_data)
+    return model_update
+
+
+def enable_replication_status(model_update, rep_data):
+    model_update['replication_status'] = fields.ReplicationStatus.ENABLED
+    return dump_replication_data(model_update, rep_data)
+
+
+def error_replication_status(model_update):
+    # model_update is a dict like:
+    # {
+    #     'volume_id': volume.id,
+    #     'updates': {
+    #         'provider_id': new_provider_id,
+    #         'provider_location': new_provider_location,
+    #         'replication_status': fields.ReplicationStatus.FAILOVER_ERROR,
+    #         ...
+    #     }
+    # }
+    model_update['updates']['replication_status'] = (
+        fields.ReplicationStatus.FAILOVER_ERROR
+    )
+    return model_update

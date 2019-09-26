@@ -24,6 +24,7 @@ from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.unity import adapter
+from cinder.volume.drivers.dell_emc.unity import replication
 from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as zm_utils
@@ -80,9 +81,10 @@ class UnityDriver(driver.ManageableVD,
         4.2.0 - Support compressed volume
         5.0.0 - Support storage assisted volume migration
         6.0.0 - Support generic group and consistent group
+        6.1.0 - Support volume replication
     """
 
-    VERSION = '06.00.00'
+    VERSION = '06.01.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"
@@ -91,20 +93,26 @@ class UnityDriver(driver.ManageableVD,
         super(UnityDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(UNITY_OPTS)
         self.configuration.append_config_values(san_opts)
+
+        # active_backend_id is not None if the service is failed over.
+        self.active_backend_id = kwargs.get('active_backend_id')
+        self.replication_manager = replication.ReplicationManager()
         protocol = self.configuration.storage_protocol
         if protocol.lower() == adapter.PROTOCOL_FC.lower():
             self.protocol = adapter.PROTOCOL_FC
-            self.adapter = adapter.FCAdapter(self.VERSION)
         else:
             self.protocol = adapter.PROTOCOL_ISCSI
-            self.adapter = adapter.ISCSIAdapter(self.VERSION)
 
     @staticmethod
     def get_driver_options():
         return UNITY_OPTS
 
     def do_setup(self, context):
-        self.adapter.do_setup(self, self.configuration)
+        self.replication_manager.do_setup(self)
+
+    @property
+    def adapter(self):
+        return self.replication_manager.active_adapter
 
     def check_for_setup_error(self):
         pass
@@ -316,3 +324,8 @@ class UnityDriver(driver.ManageableVD,
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         """Deletes a snapshot of consistency group."""
         return self.adapter.delete_group_snapshot(group_snapshot)
+
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        """Failovers volumes to secondary backend."""
+        return self.adapter.failover(volumes,
+                                     secondary_id=secondary_id, groups=groups)

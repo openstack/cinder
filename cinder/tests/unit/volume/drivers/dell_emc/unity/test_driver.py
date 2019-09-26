@@ -32,7 +32,11 @@ from cinder.volume.drivers.dell_emc.unity import driver
 ########################
 
 class MockAdapter(object):
+    def __init__(self):
+        self.is_setup = False
+
     def do_setup(self, driver_object, configuration):
+        self.is_setup = True
         raise ex.AdapterSetupError()
 
     @staticmethod
@@ -135,6 +139,20 @@ class MockAdapter(object):
     def delete_group_snapshot(group_snapshot):
         return group_snapshot
 
+    def failover(self, volumes, secondary_id=None, groups=None):
+        return {'volumes': volumes,
+                'secondary_id': secondary_id,
+                'groups': groups}
+
+
+class MockReplicationManager(object):
+    def __init__(self):
+        self.active_adapter = MockAdapter()
+
+    def do_setup(self, d):
+        if isinstance(d, driver.UnityDriver):
+            raise ex.ReplicationManagerSetupError()
+
 
 ########################
 #
@@ -189,7 +207,7 @@ class UnityDriverTest(unittest.TestCase):
     def setUp(self):
         self.config = conf.Configuration(None)
         self.driver = driver.UnityDriver(configuration=self.config)
-        self.driver.adapter = MockAdapter()
+        self.driver.replication_manager = MockReplicationManager()
 
     def test_default_initialize(self):
         config = conf.Configuration(None)
@@ -208,6 +226,13 @@ class UnityDriverTest(unittest.TestCase):
         self.assertEqual(1, config.ssh_min_pool_conn)
         self.assertEqual(5, config.ssh_max_pool_conn)
         self.assertEqual('iSCSI', iscsi_driver.protocol)
+        self.assertIsNone(iscsi_driver.active_backend_id)
+
+    def test_initialize_with_active_backend_id(self):
+        config = conf.Configuration(None)
+        iscsi_driver = driver.UnityDriver(configuration=config,
+                                          active_backend_id='secondary_unity')
+        self.assertEqual('secondary_unity', iscsi_driver.active_backend_id)
 
     def test_fc_initialize(self):
         config = conf.Configuration(None)
@@ -219,7 +244,7 @@ class UnityDriverTest(unittest.TestCase):
         def f():
             self.driver.do_setup(None)
 
-        self.assertRaises(ex.AdapterSetupError, f)
+        self.assertRaises(ex.ReplicationManagerSetupError, f)
 
     def test_create_volume(self):
         volume = self.get_volume()
@@ -422,3 +447,12 @@ class UnityDriverTest(unittest.TestCase):
         ret = self.driver.delete_group_snapshot(self.get_context(), cg_snap,
                                                 None)
         self.assertEqual(ret, cg_snap)
+
+    def test_failover_host(self):
+        volume = self.get_volume()
+        called = self.driver.failover_host(None, [volume],
+                                           secondary_id='secondary_unity',
+                                           groups=None)
+        self.assertListEqual(called['volumes'], [volume])
+        self.assertEqual('secondary_unity', called['secondary_id'])
+        self.assertIsNone(called['groups'])

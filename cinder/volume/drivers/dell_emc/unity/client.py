@@ -104,10 +104,47 @@ class UnityClient(object):
         """
         try:
             lun = self.system.get_lun(_id=lun_id)
-            lun.delete()
         except storops_ex.UnityResourceNotFoundError:
-            LOG.debug("LUN %s doesn't exist. Deletion is not needed.",
+            LOG.debug("Cannot get LUN %s from unity. Do nothing.", lun_id)
+            return
+
+        def _delete_lun_if_exist(force_snap_delete=False):
+            """Deletes LUN, skip if it doesn't exist."""
+            try:
+                lun.delete(force_snap_delete=force_snap_delete)
+            except storops_ex.UnityResourceNotFoundError:
+                LOG.debug("LUN %s doesn't exist. Deletion is not needed.",
+                          lun_id)
+
+        try:
+            _delete_lun_if_exist()
+        except storops_ex.UnityDeleteLunInReplicationError:
+            LOG.info("LUN %s is participating in replication sessions. "
+                     "Delete replication sessions first",
+                     lun_id)
+            self.delete_lun_replications(lun_id)
+
+            # It could fail if not pass in force_snap_delete when
+            # deleting the lun immediately after
+            # deleting the replication sessions.
+            _delete_lun_if_exist(force_snap_delete=True)
+
+    def delete_lun_replications(self, lun_id):
+        LOG.debug("Deleting all the replication sessions which are from "
+                  "lun %s", lun_id)
+        try:
+            rep_sessions = self.system.get_replication_session(
+                src_resource_id=lun_id)
+        except storops_ex.UnityResourceNotFoundError:
+            LOG.debug("No replication session found from lun %s. Do nothing.",
                       lun_id)
+        else:
+            for session in rep_sessions:
+                try:
+                    session.delete()
+                except storops_ex.UnityResourceNotFoundError:
+                    LOG.debug("Replication session %s doesn't exist. "
+                              "Skip the deletion.", session.get_id())
 
     def get_lun(self, lun_id=None, name=None):
         """Gets LUN on the Unity system.
@@ -388,3 +425,86 @@ class UnityClient(object):
 
     def filter_snaps_in_cg_snap(self, cg_snap_id):
         return self.system.get_snap(snap_group=cg_snap_id).list
+
+    @staticmethod
+    def create_replication(src_lun, max_time_out_of_sync,
+                           dst_pool_id, remote_system):
+        """Creates a new lun on remote system and sets up replication to it."""
+        return src_lun.replicate_with_dst_resource_provisioning(
+            max_time_out_of_sync, dst_pool_id, remote_system=remote_system,
+            dst_lun_name=src_lun.name)
+
+    def get_remote_system(self, name=None):
+        """Gets remote system on the Unity system.
+
+        :param name: remote system name.
+        :return: remote system.
+        """
+        try:
+            return self.system.get_remote_system(name=name)
+        except storops_ex.UnityResourceNotFoundError:
+            LOG.warning("Not found remote system with name %s. Return None.",
+                        name)
+            return None
+
+    def get_replication_session(self, name=None,
+                                src_resource_id=None, dst_resource_id=None):
+        """Gets replication session via its name.
+
+        :param name: replication session name.
+        :param src_resource_id: replication session's src_resource_id.
+        :param dst_resource_id: replication session's dst_resource_id.
+        :return: replication session.
+        """
+        try:
+            return self.system.get_replication_session(
+                name=name, src_resource_id=src_resource_id,
+                dst_resource_id=dst_resource_id)
+        except storops_ex.UnityResourceNotFoundError:
+            raise ClientReplicationError(
+                'Replication session with name %(name)s not found.'.format(
+                    name=name))
+
+    def failover_replication(self, rep_session):
+        """Fails over a replication session.
+
+        :param rep_session: replication session to fail over.
+        """
+        name = rep_session.name
+        LOG.debug('Failing over replication: %s', name)
+        try:
+            # In OpenStack, only support to failover triggered from secondary
+            # backend because the primary could be down. Then `sync=False`
+            # is required here which means it won't sync from primary to
+            # secondary before failover.
+            return rep_session.failover(sync=False)
+        except storops_ex.UnityException as ex:
+            raise ClientReplicationError(
+                'Failover of replication: %(name)s failed, '
+                'error: %(err)s'.format(name=name, err=ex)
+            )
+        LOG.debug('Replication: %s failed over', name)
+
+    def failback_replication(self, rep_session):
+        """Fails back a replication session.
+
+        :param rep_session: replication session to fail back.
+        """
+        name = rep_session.name
+        LOG.debug('Failing back replication: %s', name)
+        try:
+            # If the replication was failed-over before initial copy done,
+            # following failback will fail without `force_full_copy` because
+            # the primary # and secondary data have no common base.
+            # `force_full_copy=True` has no effect if initial copy done.
+            return rep_session.failback(force_full_copy=True)
+        except storops_ex.UnityException as ex:
+            raise ClientReplicationError(
+                'Failback of replication: %(name)s failed, '
+                'error: %(err)s'.format(name=name, err=ex)
+            )
+        LOG.debug('Replication: %s failed back', name)
+
+
+class ClientReplicationError(exception.CinderException):
+    pass

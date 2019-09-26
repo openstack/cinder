@@ -61,6 +61,7 @@ class VolumeParams(object):
         self._is_thick = None
         self._is_compressed = None
         self._is_in_cg = None
+        self._is_replication_enabled = None
 
     @property
     def volume_id(self):
@@ -149,6 +150,13 @@ class VolumeParams(object):
             return self._volume.group_id
         return None
 
+    @property
+    def is_replication_enabled(self):
+        if self._is_replication_enabled is None:
+            value = utils.get_extra_spec(self._volume, 'replication_enabled')
+            self._is_replication_enabled = value == '<is> True'
+        return self._is_replication_enabled
+
     def __eq__(self, other):
         return (self.volume_id == other.volume_id and
                 self.name == other.name and
@@ -157,7 +165,8 @@ class VolumeParams(object):
                 self.is_thick == other.is_thick and
                 self.is_compressed == other.is_compressed and
                 self.is_in_cg == other.is_in_cg and
-                self.cg_id == other.cg_id)
+                self.cg_id == other.cg_id and
+                self.is_replication_enabled == other.is_replication_enabled)
 
 
 class CommonAdapter(object):
@@ -166,6 +175,7 @@ class CommonAdapter(object):
     driver_volume_type = 'unknown'
 
     def __init__(self, version=None):
+        self.is_setup = False
         self.version = version
         self.driver = None
         self.config = None
@@ -185,10 +195,17 @@ class CommonAdapter(object):
         self.allowed_ports = None
         self.remove_empty_host = False
         self.to_lock_host = False
+        self.replication_manager = None
 
     def do_setup(self, driver, conf):
+        """Sets up the attributes of adapter.
+
+        :param driver: the unity driver.
+        :param conf: the driver configurations.
+        """
         self.driver = driver
         self.config = self.normalize_config(conf)
+        self.replication_manager = driver.replication_manager
         self.configured_pool_names = self.config.unity_storage_pool_names
         self.reserved_percentage = self.config.reserved_percentage
         self.max_over_subscription_ratio = (
@@ -221,6 +238,8 @@ class CommonAdapter(object):
             'group': group_name, 'sys_name': self.client.system.info.name}
         persist_path = os.path.join(cfg.CONF.state_path, 'unity', folder_name)
         storops.TCHelper.set_up(persist_path)
+
+        self.is_setup = True
 
     def normalize_config(self, config):
         config.unity_storage_pool_names = utils.remove_empty(
@@ -298,14 +317,38 @@ class CommonAdapter(object):
         valid_names = utils.validate_pool_names(names, array_pools.name)
         return {p.name: p for p in array_pools if p.name in valid_names}
 
-    def makeup_model(self, lun, is_snap_lun=False):
+    def makeup_model(self, lun_id, is_snap_lun=False):
         lun_type = 'snap_lun' if is_snap_lun else 'lun'
-        location = self._build_provider_location(lun_id=lun.get_id(),
+        location = self._build_provider_location(lun_id=lun_id,
                                                  lun_type=lun_type)
         return {
             'provider_location': location,
-            'provider_id': lun.get_id()
+            'provider_id': lun_id
         }
+
+    def setup_replications(self, lun, model_update):
+        if not self.replication_manager.is_replication_configured:
+            LOG.debug('Replication device not configured, '
+                      'skip setting up replication for lun %s',
+                      lun.name)
+            return model_update
+
+        rep_data = {}
+        rep_devices = self.replication_manager.replication_devices
+        for backend_id, dst in rep_devices.items():
+            remote_serial_number = dst.adapter.serial_number
+            LOG.debug('Setting up replication to remote system %s',
+                      remote_serial_number)
+            remote_system = self.client.get_remote_system(remote_serial_number)
+            if remote_system is None:
+                raise exception.VolumeBackendAPIException(
+                    data=_('Setup replication to remote system %s failed.'
+                           'Cannot find it.') % remote_serial_number)
+            rep_session = self.client.create_replication(
+                lun, dst.max_time_out_of_sync,
+                dst.destination_pool.get_id(), remote_system)
+            rep_data[backend_id] = rep_session.name
+        return utils.enable_replication_status(model_update, rep_data)
 
     def create_volume(self, volume):
         """Creates a volume.
@@ -321,13 +364,15 @@ class CommonAdapter(object):
             'io_limit_policy': params.io_limit_policy,
             'is_thick': params.is_thick,
             'is_compressed': params.is_compressed,
-            'cg_id': params.cg_id
+            'cg_id': params.cg_id,
+            'is_replication_enabled': params.is_replication_enabled
         }
 
         LOG.info('Create Volume: %(name)s, size: %(size)s, description: '
                  '%(description)s, pool: %(pool)s, io limit policy: '
                  '%(io_limit_policy)s, thick: %(is_thick)s, '
-                 'compressed: %(is_compressed)s, cg_group: %(cg_id)s.',
+                 'compressed: %(is_compressed)s, cg_group: %(cg_id)s, '
+                 'replication_enabled: %(is_replication_enabled)s.',
                  log_params)
 
         lun = self.client.create_lun(
@@ -338,12 +383,17 @@ class CommonAdapter(object):
             io_limit_policy=params.io_limit_policy,
             is_thin=False if params.is_thick else None,
             is_compressed=params.is_compressed)
+
         if params.cg_id:
             LOG.debug('Adding lun %(lun)s to cg %(cg)s.',
                       {'lun': lun.get_id(), 'cg': params.cg_id})
             self.client.update_cg(params.cg_id, [lun.get_id()], ())
 
-        return self.makeup_model(lun)
+        model_update = self.makeup_model(lun.get_id())
+
+        if params.is_replication_enabled:
+            model_update = self.setup_replications(lun, model_update)
+        return model_update
 
     def delete_volume(self, volume):
         lun_id = self.get_lun_id(volume)
@@ -474,6 +524,10 @@ class CommonAdapter(object):
             'volume_backend_name': self.volume_backend_name,
             'storage_protocol': self.protocol,
             'pools': self.get_pools_stats(),
+            'replication_enabled':
+                self.replication_manager.is_replication_configured,
+            'replication_targets':
+                list(self.replication_manager.replication_devices),
         }
 
     def get_pools_stats(self):
@@ -499,7 +553,11 @@ class CommonAdapter(object):
             'compression_support': pool.is_all_flash,
             'max_over_subscription_ratio': (
                 self.max_over_subscription_ratio),
-            'multiattach': True
+            'multiattach': True,
+            'replication_enabled':
+                self.replication_manager.is_replication_configured,
+            'replication_targets':
+                list(self.replication_manager.replication_devices),
         }
 
     def get_lun_id(self, volume):
@@ -737,9 +795,13 @@ class CommonAdapter(object):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         snap = self.client.get_snap(snapshot.name)
-        return self.makeup_model(
-            self._thin_clone(VolumeParams(self, volume), snap),
-            is_snap_lun=True)
+        params = VolumeParams(self, volume)
+        lun = self._thin_clone(params, snap)
+        model_update = self.makeup_model(lun.get_id(), is_snap_lun=True)
+
+        if params.is_replication_enabled:
+            model_update = self.setup_replications(lun, model_update)
+        return model_update
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates cloned volume.
@@ -777,10 +839,15 @@ class CommonAdapter(object):
                           '%(name)s is attached: %(attach)s.',
                           {'name': src_vref.name,
                            'attach': src_vref.volume_attachment})
-                return self.makeup_model(lun)
+                model_update = self.makeup_model(lun.get_id())
             else:
                 lun = self._thin_clone(vol_params, src_snap, src_lun=src_lun)
-                return self.makeup_model(lun, is_snap_lun=True)
+                model_update = self.makeup_model(lun.get_id(),
+                                                 is_snap_lun=True)
+
+            if vol_params.is_replication_enabled:
+                model_update = self.setup_replications(lun, model_update)
+            return model_update
 
     def get_pool_name(self, volume):
         return self.client.get_pool_name(volume.name)
@@ -924,6 +991,75 @@ class CommonAdapter(object):
         cg_snap = self.client.get_snap(group_snapshot.id)
         self.client.delete_snap(cg_snap)
         return None, None
+
+    @cinder_utils.trace
+    def failover(self, volumes, secondary_id=None, groups=None):
+        # TODO(ryan) support group failover after group bp merges
+        # https://review.openstack.org/#/c/574119/
+
+        if secondary_id is None:
+            LOG.debug('No secondary specified when failover. '
+                      'Randomly choose a secondary')
+            secondary_id = random.choice(
+                list(self.replication_manager.replication_devices))
+            LOG.debug('Chose %s as secondary', secondary_id)
+
+        is_failback = secondary_id == 'default'
+
+        def _failover_or_back(volume):
+            LOG.debug('Failing over volume: %(vol)s to secondary id: '
+                      '%(sec_id)s', vol=volume.name, sec_id=secondary_id)
+            model_update = {
+                'volume_id': volume.id,
+                'updates': {}
+            }
+
+            if not volume.replication_driver_data:
+                LOG.error('Empty replication_driver_data of volume: %s, '
+                          'replication session name should be in it.',
+                          volume.name)
+                return utils.error_replication_status(model_update)
+            rep_data = utils.load_replication_data(
+                volume.replication_driver_data)
+
+            if is_failback:
+                # Failback executed on secondary backend which is currently
+                # active.
+                _adapter = self.replication_manager.default_device.adapter
+                _client = self.replication_manager.active_adapter.client
+                rep_name = rep_data[self.replication_manager.active_backend_id]
+            else:
+                # Failover executed on secondary backend because primary could
+                # die.
+                _adapter = self.replication_manager.replication_devices[
+                    secondary_id].adapter
+                _client = _adapter.client
+                rep_name = rep_data[secondary_id]
+
+            try:
+                rep_session = _client.get_replication_session(name=rep_name)
+
+                if is_failback:
+                    _client.failback_replication(rep_session)
+                    new_model = _adapter.makeup_model(
+                        rep_session.src_resource_id)
+                else:
+                    _client.failover_replication(rep_session)
+                    new_model = _adapter.makeup_model(
+                        rep_session.dst_resource_id)
+
+                model_update['updates'].update(new_model)
+                self.replication_manager.failover_service(secondary_id)
+                return model_update
+            except client.ClientReplicationError as ex:
+                LOG.error('Failover failed, volume: %(vol)s, secondary id: '
+                          '%(sec_id)s, error: %(err)s',
+                          vol=volume.name, sec_id=secondary_id, err=ex)
+                return utils.error_replication_status(model_update)
+
+        return (secondary_id,
+                [_failover_or_back(volume) for volume in volumes],
+                [])
 
 
 class ISCSIAdapter(CommonAdapter):
