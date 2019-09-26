@@ -61,7 +61,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/qos-unset-request.json
+.. literalinclude:: ./samples/qos/qos-unset-request.json
    :language: javascript
 
 
@@ -104,7 +104,7 @@ Response
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos_show_response.json
+.. literalinclude:: ./samples/qos/qos_show_response.json
    :language: javascript
 
 
@@ -210,7 +210,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-show-response.json
+.. literalinclude:: ./samples/qos/qos-show-response.json
    :language: javascript
 
 
@@ -241,7 +241,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/qos-update-request.json
+.. literalinclude:: ./samples/qos/qos-update-request.json
    :language: javascript
 
 Response
@@ -255,7 +255,7 @@ Response
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-update-response.json
+.. literalinclude:: ./samples/qos/qos-update-response.json
    :language: javascript
 
 
@@ -314,7 +314,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/qos-create-request.json
+.. literalinclude:: ./samples/qos/qos-create-request.json
    :language: javascript
 
 
@@ -334,7 +334,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-create-response.json
+.. literalinclude:: ./samples/qos/qos-create-response.json
    :language: javascript
 
 
@@ -384,5 +384,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/qos-list-response.json
+.. literalinclude:: ./samples/qos/qos-list-response.json
    :language: javascript
