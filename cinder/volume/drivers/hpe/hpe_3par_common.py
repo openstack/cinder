@@ -4150,6 +4150,27 @@ class HPE3PARCommon(object):
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
+            # Check if we are in sync mode and quorum_witness_ip is present.
+            # If yes, add options for Peer Persistence (PP)
+            quorum_witness_ip = None
+            if replication_mode_num == self.SYNC:
+                remote_target = self._replication_targets[0]
+                quorum_witness_ip = remote_target.get('quorum_witness_ip')
+
+                if quorum_witness_ip:
+                    LOG.debug('setting pp_params')
+                    pp_params = {'targets': [
+                        {'policies': {'autoFailover': True,
+                                      'pathManagement': True,
+                                      'autoRecover': True}}]}
+                    try:
+                        self.client.modifyRemoteCopyGroup(rcg_name, pp_params)
+                    except Exception as ex:
+                        msg = (_("There was an error while modifying remote "
+                                 "copy group: %s.") % six.text_type(ex))
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
+
             # Start the remote copy.
             try:
                 self.client.startRemoteCopy(rcg_name)
