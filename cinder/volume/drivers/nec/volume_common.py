@@ -820,11 +820,11 @@ class MStorageVolumeCommon(object):
             xml = self._cli.view_all(self._properties['ismview_path'], False)
             return self.configs(xml)
 
-    def get_volume_type_qos_specs(self, volume):
+    def get_volume_type_qos_specs(self, volume_type_id):
         specs = {}
 
         ctxt = context.get_admin_context()
-        type_id = volume.volume_type_id
+        type_id = volume_type_id
         if type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
 
@@ -834,56 +834,54 @@ class MStorageVolumeCommon(object):
 
             LOG.debug('get_volume_type_qos_specs '
                       'volume_type=%(volume_type)s, '
-                      'qos_specs_id=%(qos_spec_id)s '
+                      'qos_specs_id=%(qos_spec_id)s, '
                       'specs=%(specs)s',
                       {'volume_type': volume_type,
                        'qos_spec_id': qos_specs_id,
                        'specs': specs})
         return specs
 
-    def check_io_parameter(self, specs):
-        if ('upperlimit' not in specs and
-                'lowerlimit' not in specs and
-                'upperreport' not in specs):
-            specs['upperlimit'] = None
-            specs['lowerlimit'] = None
-            specs['upperreport'] = None
-            LOG.debug('qos parameter not found.')
+    def correct_qos_parameter(self, specs, reset):
+        if 'upperlimit' in specs and specs['upperlimit'] is not None:
+            if self.validates_number(specs['upperlimit']) is True:
+                upper_limit = int(specs['upperlimit'], 10)
+                if ((upper_limit != 0) and
+                        ((upper_limit < 10) or (upper_limit > 1000000))):
+                    raise exception.InvalidConfigurationValue(
+                        value=upper_limit, option='upperlimit')
+            else:
+                raise exception.InvalidConfigurationValue(
+                    value=specs['upperlimit'], option='upperlimit')
         else:
-            if 'upperlimit' in specs and specs['upperlimit'] is not None:
-                if self.validates_number(specs['upperlimit']) is True:
-                    upper_limit = int(specs['upperlimit'], 10)
-                    if ((upper_limit != 0) and
-                            ((upper_limit < 10) or (upper_limit > 1000000))):
-                        raise exception.InvalidConfigurationValue(
-                            value=upper_limit, option='upperlimit')
-                else:
-                    raise exception.InvalidConfigurationValue(
-                        value=specs['upperlimit'], option='upperlimit')
-            else:
-                specs['upperlimit'] = None
+            # 0: Set to no limit.(default)
+            # None: Keep current value.
+            specs['upperlimit'] = '0' if reset else None
 
-            if 'lowerlimit' in specs and specs['lowerlimit'] is not None:
-                if self.validates_number(specs['lowerlimit']) is True:
-                    lower_limit = int(specs['lowerlimit'], 10)
-                    if (lower_limit != 0 and (lower_limit < 10 or
-                                              lower_limit > 1000000)):
-                        raise exception.InvalidConfigurationValue(
-                            value=lower_limit, option='lowerlimit')
-                else:
+        if 'lowerlimit' in specs and specs['lowerlimit'] is not None:
+            if self.validates_number(specs['lowerlimit']) is True:
+                lower_limit = int(specs['lowerlimit'], 10)
+                if (lower_limit != 0 and (lower_limit < 10 or
+                                          lower_limit > 1000000)):
                     raise exception.InvalidConfigurationValue(
-                        value=specs['lowerlimit'], option='lowerlimit')
+                        value=lower_limit, option='lowerlimit')
             else:
-                specs['lowerlimit'] = None
+                raise exception.InvalidConfigurationValue(
+                    value=specs['lowerlimit'], option='lowerlimit')
+        else:
+            # 0: Set to no limit.(default)
+            # None: Keep current value.
+            specs['lowerlimit'] = '0' if reset else None
 
-            if 'upperreport' in specs:
-                if specs['upperreport'] not in ['on', 'off']:
-                    LOG.debug('Illegal arguments. '
-                              'upperreport is not on or off.'
-                              'upperreport=%s', specs['upperreport'])
-                    specs['upperreport'] = None
-            else:
-                specs['upperreport'] = None
+        if 'upperreport' in specs:
+            if specs['upperreport'] not in ['on', 'off']:
+                LOG.debug('Illegal arguments. '
+                          'upperreport is not on or off.'
+                          'upperreport=%s', specs['upperreport'])
+                specs['upperreport'] = 'off' if reset else None
+        else:
+            # off: Set to no report.(default)
+            # None: Keep current value.
+            specs['upperreport'] = 'off' if reset else None
 
     def check_accesscontrol(self, ldsets, ld):
         """Check Logical disk is in-use or not."""
