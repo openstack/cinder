@@ -27,8 +27,10 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
@@ -68,7 +70,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def setUp(self):
         self.ctxt = context.get_admin_context()
-        self.configuration = conf.Configuration(None)
+        self.configuration = conf.BackendGroupConfiguration(
+            [], conf.SHARED_CONF_GROUP)
         self.configuration.sf_allow_tenant_qos = True
         self.configuration.san_is_local = True
         self.configuration.sf_emulate_512 = True
@@ -102,14 +105,17 @@ class SolidFireVolumeTestCase(test.TestCase):
                                      'compressionPercent': 100,
                                      'deDuplicationPercent': 100,
                                      'thinProvisioningPercent': 100}}}
-        self.mock_volume = {'project_id': 'testprjid',
-                            'name': 'testvol',
-                            'size': 1,
-                            'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                            'volume_type_id': 'fast',
-                            'created_at': timeutils.utcnow(),
-                            'attributes':
-                            {'uuid': '262b9ce2-a71a-4fbe-830c-c20c5596caea'}}
+        vol_updates = {'project_id': 'testprjid',
+                       'name': 'testvol',
+                       'size': 1,
+                       'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                       'volume_type_id': 'fast',
+                       'created_at': timeutils.utcnow(),
+                       'attributes':
+                           {'uuid': '262b9ce2-a71a-4fbe-830c-c20c5596caea'}}
+        ctx = context.get_admin_context()
+        self.mock_volume = fake_volume.fake_volume_obj(ctx, **vol_updates)
+
         self.fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
                                 'updated_at': datetime.datetime(2013, 9,
                                                                 28, 15,
@@ -140,6 +146,28 @@ class SolidFireVolumeTestCase(test.TestCase):
                            'attributes': {'uuid': f_uuid[0]},
                            'qos': None,
                            'iqn': 'super_fake_iqn'}
+
+        self.cluster_pairs = (
+            [{'uniqueID': 'lu9f',
+              'endpoint': {'passwd': 'admin', 'port': 443,
+                           'url': 'https://192.168.139.102:443',
+                           'svip': '10.10.8.134',
+                           'mvip': '192.168.139.102',
+                           'login': 'admin'},
+              'name': 'AutoTest2-6AjG-FOR-TEST-ONLY',
+              'clusterPairID': 33,
+              'uuid': '9c499d4b-8fff-48b4-b875-27601d5d9889',
+              'svip': '10.10.23.2',
+              'mvipNodeID': 1,
+              'repCount': 1,
+              'encryptionAtRestState': 'disabled',
+              'attributes': {},
+              'mvip': '192.168.139.102',
+              'ensemble': ['10.10.5.130'],
+              'svipNodeID': 1}])
+
+        self.mvip = '192.168.139.102'
+        self.svip = '10.10.8.134'
 
         self.fake_sfsnap_name = '%s%s' % (self.configuration.sf_volume_prefix,
                                           self.snap.id)
@@ -242,7 +270,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             return {'result': {'volumeID': 6}, 'id': 2}
 
         elif method is 'ModifyVolume':
-            return
+            return {'result': {}, 'id': 1}
 
         elif method is 'ListVolumesForAccount' and version == '1.0':
             test_name = 'OS-VOLID-a720b3c0-d1f0-11e1-9b23-0800200c9a66'
@@ -410,6 +438,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                                    'maxIOPS': '2000',
                                    'burstIOPS': '3000'}}
 
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **testvol)
+
         def _fake_get_volume_type(ctxt, type_id):
             return test_type
 
@@ -456,6 +487,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'targetSecret': 'shhhh',
                             'username': 'prefix-testprjid'}]
 
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **testvol)
+
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
                                '_get_sfaccounts_for_tenant',
@@ -478,6 +512,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'volume_type_id': None,
                    'created_at': timeutils.utcnow()}
+
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **testvol)
+
         fake_sfaccounts = [{'accountID': 5,
                             'targetSecret': 'shhhh',
                             'username': 'prefix-testprjid'}]
@@ -500,14 +538,19 @@ class SolidFireVolumeTestCase(test.TestCase):
                              model_update.get('provider_geometry', None))
 
     def test_create_delete_snapshot(self):
-        testsnap = {'project_id': 'testprjid',
-                    'name': 'testvol',
-                    'volume_size': 1,
-                    'id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
-                    'volume_id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                    'volume_type_id': None,
-                    'created_at': timeutils.utcnow(),
-                    'provider_id': '8 99 None'}
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx)
+
+        testsnap_dict = {'project_id': 'testprjid',
+                         'name': testvol.name,
+                         'volume_size': testvol.size,
+                         'id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
+                         'volume_id': testvol.id,
+                         'volume_type_id': None,
+                         'created_at': timeutils.utcnow(),
+                         'provider_id': '8 99 None',
+                         'volume': testvol}
+        testsnap = fake_snapshot.fake_snapshot_obj(ctx, **testsnap_dict)
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         fake_uuid = 'UUID-b831c4d1-d1f0-11e1-9b23-0800200c9a66'
@@ -521,7 +564,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                                   '_get_sfaccounts_for_tenant',
                                   return_value=[{'accountID': 5,
                                                  'username':
-                                                 'prefix-testprjid'}]):
+                                                 'prefix-testprjid'}]),\
+                mock.patch.object(sfv, '_retrieve_replication_settings',
+                                  return_value=["Async", {}]),\
+                mock.patch.object(sfv, '_get_sf_volume',
+                                  return_value={'volumeID': 33}):
             sfv.create_snapshot(testsnap)
             sfv.delete_snapshot(testsnap)
 
@@ -535,19 +582,23 @@ class SolidFireVolumeTestCase(test.TestCase):
              'name': 'UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
              'attributes': {}})
 
-        testvol = {'project_id': 'testprjid',
-                   'name': 'testvol',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None,
-                   'created_at': timeutils.utcnow()}
+        updates_vol_a = {'project_id': 'testprjid',
+                         'name': 'testvol',
+                         'size': 1,
+                         'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                         'volume_type_id': None,
+                         'created_at': timeutils.utcnow()}
 
-        testvol_b = {'project_id': 'testprjid',
-                     'name': 'testvol',
-                     'size': 1,
-                     'id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
-                     'volume_type_id': None,
-                     'created_at': timeutils.utcnow()}
+        updates_vol_b = {'project_id': 'testprjid',
+                         'name': 'testvol',
+                         'size': 1,
+                         'id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
+                         'volume_type_id': None,
+                         'created_at': timeutils.utcnow()}
+
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **updates_vol_a)
+        testvol_b = fake_volume.fake_volume_obj(ctx, **updates_vol_b)
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         with mock.patch.object(sfv,
@@ -1088,6 +1139,70 @@ class SolidFireVolumeTestCase(test.TestCase):
                           sfv.extend_volume,
                           testvol, 2)
 
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_retrieve_qos_setting')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_retrieve_replication_settings')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def test_extend_replicated_volume(self, mock_create_cluster_reference,
+                                      mock_retrieve_replication_settings,
+                                      mock_issue_api_request,
+                                      mock_retrieve_qos_setting,
+                                      mock_get_sf_volume,
+                                      mock_get_sfaccount):
+
+        mock_create_cluster_reference.return_value = {
+            'mvip': self.mvip,
+            'svip': self.svip}
+
+        mock_retrieve_replication_settings.return_value = "Async"
+        mock_retrieve_qos_setting.return_value = None
+        self.fake_sfvol['volumePairs'] = [{'remoteVolumeID': 26}]
+        mock_get_sf_volume.return_value = self.fake_sfvol
+        mock_get_sfaccount.return_value = self.fake_sfaccount
+
+        ctx = context.get_admin_context()
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': f_uuid,
+            'created_at': utc_now
+        }
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+        sfv.cluster_pairs = self.cluster_pairs
+        sfv.active_cluster['mvip'] = self.mvip
+        sfv.active_cluster['svip'] = self.svip
+
+        mock_issue_api_request.reset_mock()
+        updates = sfv.extend_volume(vol, vol.size + 10)
+        self.assertIsNone(updates)
+
+        modify_params = {
+            'volumeID': self.fake_sfvol['volumeID'],
+            'totalSize': int((vol.size + 10) * units.Gi),
+            'qos': None
+        }
+        modify_params2 = modify_params.copy()
+        modify_params2['volumeID'] = 26
+
+        expected_calls = [
+            mock.call("ModifyVolume", modify_params, version='5.0'),
+            mock.call("ModifyVolume", modify_params2, version='5.0',
+                      endpoint=self.cluster_pairs[0]['endpoint'])
+        ]
+
+        mock_issue_api_request.assert_has_calls(expected_calls)
+        mock_create_cluster_reference.assert_called()
+        mock_retrieve_replication_settings.assert_called_with(vol)
+        mock_retrieve_qos_setting.assert_called_with(vol, vol.size + 10)
+        mock_get_sf_volume.assert_called_with(
+            vol.id, {'accountID': self.fake_sfaccount['accountID']})
+        mock_get_sfaccount.assert_called_with(vol.project_id)
+
     def test_set_by_qos_spec_with_scoping(self):
         size = 1
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -1190,15 +1305,19 @@ class SolidFireVolumeTestCase(test.TestCase):
                                 'qos:minIOPS': ('1000', u'500'),
                                 'qos:maxIOPS': ('10000', u'1000')}}
         host = None
-        testvol = {'project_id': 'testprjid',
+        updates = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
 
-        self.assertTrue(sfv.retype(self.ctxt,
-                                   testvol,
-                                   type_ref, diff, host))
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **updates)
+
+        migrated, updates = sfv.retype(self.ctxt, testvol, type_ref,
+                                       diff, host)
+        self.assertTrue(migrated)
+        self.assertEqual({}, updates)
 
     def test_retype_with_qos_spec(self):
         test_type = {'name': 'sf-1',
@@ -1236,16 +1355,112 @@ class SolidFireVolumeTestCase(test.TestCase):
                               'minIOPS': ('1000', '500'),
                               'maxIOPS': ('10000', '1000')}}
         host = None
-        testvol = {'project_id': 'testprjid',
+        updates = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **updates)
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.assertTrue(sfv.retype(self.ctxt,
-                                   testvol,
-                                   test_type, diff, host))
+        migrated, updates = sfv.retype(self.ctxt, testvol, test_type,
+                                       diff, host)
+        self.assertTrue(migrated)
+        self.assertEqual({}, updates)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_rep_by_volume_type')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_retrieve_replication_settings')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_default_volume_params')
+    @mock.patch.object(solidfire.SolidFireDriver, '_replicate_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_disable_replication')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_qos_by_volume_type')
+    def test_retype_replicated(self,
+                               mock_set_qos_by_volume_type,
+                               mock_disable_replication,
+                               mock_replicate_volume,
+                               mock_get_default_volume_params,
+                               mock_retrieve_replication_settings,
+                               mock_set_rep_by_volume_type,
+                               mock_get_sf_volume,
+                               mock_get_sfaccount):
+
+        all_mocks = locals()
+        mock_get_sf_volume.return_value = None
+        mock_get_sfaccount.return_value = self.fake_sfaccount
+        mock_retrieve_replication_settings.return_value = 'Async'
+
+        ctx = context.get_admin_context()
+        type_fields = {'extra_specs': {'replication_enabled': '<is> True'},
+                       'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        fake_provider_id = "%s %s %s" % (
+            self.fake_sfvol['volumeID'],
+            fakes.FAKE_UUID,
+            self.cluster_pairs[0]['uuid'])
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': fakes.FAKE_UUID,
+            'created_at': utc_now,
+            'volume_type': src_vol_type,
+            'volume_type_id': src_vol_type.id,
+            'provider_id': fake_provider_id
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        dst_vol_type = fake_volume.fake_volume_type_obj(ctx)
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+        sfv.cluster_pairs = self.cluster_pairs
+        sfv.active_cluster['mvip'] = self.mvip
+        sfv.active_cluster['svip'] = self.svip
+
+        self.assertRaises(exception.VolumeNotFound,
+                          sfv.retype, ctx, vol, dst_vol_type, None, None)
+        mock_get_sfaccount.assert_called_once_with(vol.project_id)
+        mock_get_sf_volume.assert_called_once_with(
+            vol.id, {'accountID': self.fake_sfaccount['accountID']})
+
+        mock_get_sfaccount.reset_mock()
+        mock_get_sf_volume.reset_mock()
+        expected = {"key": "value"}
+        mock_get_sf_volume.return_value = self.fake_sfvol
+        mock_replicate_volume.return_value = expected
+        mock_set_rep_by_volume_type.side_effect = [src_vol_type, dst_vol_type]
+
+        retyped, updates = sfv.retype(ctx, vol, dst_vol_type, None, None)
+        self.assertDictEqual(expected, updates)
+
+        mock_get_sfaccount.assert_called_once_with(vol.project_id)
+        mock_get_sf_volume.assert_called_once_with(
+            vol.id, {'accountID': self.fake_sfaccount['accountID']})
+        mock_get_default_volume_params.assert_called()
+        mock_disable_replication.assert_not_called()
+        mock_replicate_volume.assert_called_once()
+        mock_retrieve_replication_settings.assert_called_once()
+        mock_set_qos_by_volume_type.assert_called_once()
+
+        expected = {}
+        for mk in all_mocks.values():
+            if isinstance(mk, mock.MagicMock):
+                mk.reset_mock()
+
+        mock_set_rep_by_volume_type.side_effect = [src_vol_type, None]
+        retyped, updates = sfv.retype(ctx, vol, dst_vol_type, None, None)
+        self.assertDictEqual(expected, updates)
+        mock_get_sfaccount.assert_called_once_with(vol.project_id)
+        mock_get_sf_volume.assert_called_once_with(
+            vol.id, {'accountID': self.fake_sfaccount['accountID']})
+        mock_get_default_volume_params.assert_not_called()
+        mock_disable_replication.assert_called_with(vol)
+        mock_replicate_volume.assert_not_called()
+        mock_retrieve_replication_settings.assert_not_called()
+        mock_set_qos_by_volume_type.assert_called_once()
 
     def test_update_cluster_status(self):
         self.mock_object(solidfire.SolidFireDriver,
@@ -1297,11 +1512,14 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_manage_existing_volume(self):
         external_ref = {'name': 'existing volume', 'source-id': 5}
-        testvol = {'project_id': 'testprjid',
+        updates = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **updates)
+
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
                          self.fake_issue_api_request)
@@ -1325,6 +1543,173 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertEqual(2, size)
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_default_volume_params')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_retrieve_replication_settings')
+    @mock.patch.object(solidfire.SolidFireDriver, '_replicate_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_model_info')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def test_manage_existing_replicated_fail(
+            self,
+            mock_create_cluster_reference,
+            mock_update_cluster_status,
+            mock_get_model_info,
+            mock_replicate_volume,
+            mock_retrieve_replication_settings,
+            mock_get_default_volume_params,
+            mock_get_create_account,
+            mock_issue_api_request):
+
+        mock_retrieve_replication_settings.return_value = 'Async'
+        mock_get_default_volume_params.return_value = {'totalSize': 50}
+        mock_get_create_account.return_value = self.fake_sfaccount
+        mock_replicate_volume.side_effect = solidfire.SolidFireAPIException
+
+        ctx = context.get_admin_context()
+        type_fields = {'extra_specs': {'replication_enabled': '<is> True'},
+                       'id': fakes.get_fake_uuid()}
+        vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        fake_provider_id = "%s %s %s" % (
+            self.fake_sfvol['volumeID'],
+            fakes.FAKE_UUID,
+            self.cluster_pairs[0]['uuid'])
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': fakes.FAKE_UUID,
+            'created_at': utc_now,
+            'volume_type': vol_type,
+            'volume_type_id': vol_type.id,
+            'provider_id': fake_provider_id
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+        sfv.active_cluster['mvip'] = self.mvip
+        sfv.active_cluster['svip'] = self.svip
+
+        external_ref = {}
+        self.assertRaises(solidfire.SolidFireAPIException,
+                          sfv.manage_existing, vol, external_ref)
+
+        self.fake_sfvol['volumePairs'] = [{'remoteVolumeID': 26}]
+        mock_issue_api_request.return_value = {
+            'result': {'volumes': [self.fake_sfvol]}}
+        external_ref = {'source-id': 6, 'name': 'new-being-managed'}
+        self.assertRaises(solidfire.SolidFireDriverException,
+                          sfv.manage_existing, vol, external_ref)
+
+        mock_get_default_volume_params.return_value = {'totalSize': 50}
+        self.fake_sfvol['volumePairs'] = []
+        mock_issue_api_request.return_value = {
+            'result': {'volumes': [self.fake_sfvol]}}
+        self.assertRaises(solidfire.SolidFireAPIException,
+                          sfv.manage_existing, vol, external_ref)
+
+        modify_attributes = {'uuid': vol.id,
+                             'is_clone': 'False',
+                             'os_imported_at': utc_now + "+00:00",
+                             'old_name': 'new-being-managed'}
+        modify_params1 = {'volumeID': self.fake_sfvol['volumeID'],
+                          'attributes': modify_attributes}
+        modify_params2 = {'volumeID': self.fake_sfvol['volumeID'],
+                          'attributes': self.fake_sfvol['attributes']}
+        calls = [mock.call('ListActiveVolumes',
+                           {'startVolumeID': self.fake_sfvol['volumeID'],
+                            'limit': 1}),
+                 mock.call('ModifyVolume', modify_params1, version='5.0'),
+                 mock.call('ModifyVolume', modify_params2, version='5.0')]
+
+        mock_issue_api_request.assert_has_calls(calls)
+        mock_get_model_info.assert_not_called()
+        mock_create_cluster_reference.assert_called_once()
+        mock_update_cluster_status.assert_called_once()
+        mock_replicate_volume.assert_called()
+        mock_retrieve_replication_settings.assert_called_with(vol)
+        mock_get_default_volume_params.assert_called_with(vol)
+        mock_get_create_account.assert_called_with(vol.project_id)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_rep_by_volume_type')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_retrieve_replication_settings')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_default_volume_params')
+    @mock.patch.object(solidfire.SolidFireDriver, '_replicate_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_disable_replication')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_qos_by_volume_type')
+    def test_manage_existing_replicated(
+            self,
+            mock_set_qos_by_volume_type,
+            mock_disable_replication,
+            mock_replicate_volume,
+            mock_get_default_volume_params,
+            mock_retrieve_replication_settings,
+            mock_set_rep_by_volume_type,
+            mock_get_sf_volume,
+            mock_get_sfaccount):
+
+        mock_get_sf_volume.return_value = None
+        mock_get_sfaccount.return_value = self.fake_sfaccount
+        mock_retrieve_replication_settings.return_value = 'Async'
+
+        ctx = context.get_admin_context()
+        type_fields = {'extra_specs': {'replication_enabled': '<is> True'},
+                       'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        fake_provider_id = "%s %s %s" % (
+            self.fake_sfvol['volumeID'],
+            fakes.FAKE_UUID,
+            self.cluster_pairs[0]['uuid'])
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': fakes.FAKE_UUID,
+            'created_at': utc_now,
+            'volume_type': src_vol_type,
+            'volume_type_id': src_vol_type.id,
+            'provider_id': fake_provider_id
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        dst_vol_type = fake_volume.fake_volume_type_obj(ctx)
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+        sfv.cluster_pairs = self.cluster_pairs
+        sfv.active_cluster['mvip'] = self.mvip
+        sfv.active_cluster['svip'] = self.svip
+
+        self.assertRaises(exception.VolumeNotFound,
+                          sfv.retype, ctx, vol, dst_vol_type, None, None)
+        mock_get_sfaccount.assert_called_once_with(vol.project_id)
+        mock_get_sf_volume.assert_called_once_with(
+            vol.id, {'accountID': self.fake_sfaccount['accountID']})
+
+        mock_get_sfaccount.reset_mock()
+        mock_get_sf_volume.reset_mock()
+        expected = {"key": "value"}
+        mock_get_sf_volume.return_value = self.fake_sfvol
+        mock_replicate_volume.return_value = expected
+        mock_set_rep_by_volume_type.side_effect = [src_vol_type, dst_vol_type]
+
+        retyped, updates = sfv.retype(ctx, vol, dst_vol_type, None, None)
+        self.assertDictEqual(expected, updates)
+
+        mock_get_sfaccount.assert_called_once_with(vol.project_id)
+        mock_get_sf_volume.assert_called_once_with(
+            vol.id, {'accountID': self.fake_sfaccount['accountID']})
+        mock_get_default_volume_params.assert_called()
+        mock_disable_replication.assert_not_called()
+        mock_replicate_volume.assert_called_once()
+        mock_retrieve_replication_settings.assert_called_once()
+        mock_set_qos_by_volume_type.assert_called_once()
+        mock_set_rep_by_volume_type.assert_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     def test_create_volume_for_migration(self,
                                          _mock_issue_api_request):
         _mock_issue_api_request.side_effect = self.fake_issue_api_request
@@ -1336,6 +1721,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow(),
                    'migration_status': 'target:'
                                        'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
+        ctx = context.get_admin_context()
+        testvol = fake_volume.fake_volume_obj(ctx, **testvol)
         fake_sfaccounts = [{'accountID': 5,
                             'targetSecret': 'shhhh',
                             'username': 'prefix-testprjid'}]
@@ -1354,7 +1741,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                   '_do_volume_create',
                                   side_effect=_fake_do_v_create):
 
-            proj_id, sf_vol_object = sfv.create_volume(testvol)
+            project_id, sf_vol_object = sfv.create_volume(testvol)
             self.assertEqual('a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                              sf_vol_object['attributes']['uuid'])
             self.assertEqual('b830b3c0-d1f0-11e1-9b23-1900200c9a77',
@@ -1436,7 +1823,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                          'qos': None,
                          'iqn': test_name}]}}
 
-        def _fake_issue_api_req(method, params, version=0):
+        def _fake_issue_api_req(method, params, version=0, endpoint=None):
             return fake_response
 
         with mock.patch.object(
@@ -2299,32 +2686,24 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_set_rep_by_volume_type(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.cluster_pairs = [{'cluster_id': 'fake-id', 'cluster_mvip':
-                              'fake-mvip'}]
+        sfv.cluster_pairs = self.cluster_pairs
         ctxt = None
         type_id = '290edb2a-f5ea-11e5-9ce9-5e5517507c66'
         fake_type = {'extra_specs': {'replication_enabled': '<is> True'}}
         with mock.patch.object(volume_types,
                                'get_volume_type',
                                return_value=fake_type):
-            self.assertEqual('fake-id', sfv._set_rep_by_volume_type(
-                ctxt,
-                type_id)['targets']['cluster_id'])
+            self.assertEqual('Async', sfv._set_rep_by_volume_type(
+                ctxt, type_id))
 
     def test_replicate_volume(self):
+        replication_status = fields.ReplicationStatus.ENABLED
+        fake_vol = {'project_id': 1, 'volumeID': 1, 'size': 1}
+        params = {'attributes': {}}
+        sf_account = {'initiatorSecret': 'shhh', 'targetSecret': 'dont-tell'}
+        model_update = {'provider_id': '1 2 xxxx'}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.cluster_pairs = (
-            [{'uniqueID': 'lu9f', 'endpoint': {'passwd': 'admin', 'port':
-                                               443, 'url':
-                                               'https://192.168.139.102:443',
-                                               'svip': '10.10.8.134', 'mvip':
-                                               '192.168.139.102', 'login':
-                                               'admin'}, 'name':
-              'AutoTest2-6AjG-FOR-TEST-ONLY', 'clusterPairID': 33, 'uuid':
-              '9c499d4b-8fff-48b4-b875-27601d5d9889', 'svip': '10.10.23.2',
-              'mvipNodeID': 1, 'repCount': 1, 'encryptionAtRestState':
-              'disabled', 'attributes': {}, 'mvip': '192.168.139.102',
-              'ensemble': ['10.10.5.130'], 'svipNodeID': 1}])
+        sfv.cluster_pairs = self.cluster_pairs
 
         with mock.patch.object(sfv,
                                '_issue_api_request',
@@ -2334,14 +2713,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                                   return_value={'accountID': 1}),\
                 mock.patch.object(sfv,
                                   '_do_volume_create',
-                                  return_value={'provider_id': '1 2 xxxx'}):
-            self.assertEqual({'provider_id': '1 2 xxxx'},
-                             sfv._replicate_volume(
-                                 {'project_id': 1, 'volumeID': 1},
-                                 {'attributes': {}},
-                                 {'initiatorSecret': 'shhh',
-                                  'targetSecret': 'dont-tell'},
-                                 {}))
+                                  return_value=model_update):
+            self.assertEqual({'replication_status': replication_status},
+                             sfv._replicate_volume(fake_vol, params,
+                                                   sf_account, {}))
 
     def test_pythons_try_except(self):
         def _fake_retrieve_rep(vol):
@@ -2354,7 +2729,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                return_value={'accountID': 5}),\
                 mock.patch.object(sfv,
                                   '_retrieve_qos_setting',
-                                  return_value=None),\
+                                  return_value=None), \
                 mock.patch.object(sfv,
                                   '_do_volume_create',
                                   return_value={'provider_id': '1 2 xxxx'}),\
@@ -2474,3 +2849,430 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertRaises(exception.VolumeSnapshotNotFound,
                           sfv.revert_to_snapshot,
                           self.ctxt, self.vol, self.snap)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_cluster_pairs')
+    @mock.patch.object(solidfire.SolidFireDriver, '_snapshot_discovery')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_model_info')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_attributes')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_cluster_pairs')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_default_volume_params')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_retrieve_replication_settings')
+    @mock.patch.object(solidfire.SolidFireDriver, '_replicate_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def test_do_clone_volume_rep_disabled(self,
+                                          mock_create_cluster_reference,
+                                          mock_replicate_volume,
+                                          mock_retrieve_replication_settings,
+                                          mock_get_default_volume_params,
+                                          mock_set_cluster_pairs,
+                                          mock_update_cluster_status,
+                                          mock_update_attributes,
+                                          mock_get_model_info,
+                                          mock_issue_api_request,
+                                          mock_snapshot_discovery,
+                                          mock_test_set_cluster_pairs,
+                                          mock_get_create_account):
+
+        all_mocks = locals()
+
+        def reset_mocks():
+            for mk in all_mocks.values():
+                if isinstance(mk, mock.MagicMock):
+                    mk.reset_mock()
+
+        sf_volume_params = {'volumeID': 1, 'snapshotID': 2, 'newSize': 3}
+        mock_snapshot_discovery.return_value = (sf_volume_params, True,
+                                                self.fake_sfvol)
+        mock_get_create_account.return_value = self.fake_sfaccount
+
+        ctx = context.get_admin_context()
+        vol_fields = {'updated_at': timeutils.utcnow(),
+                      'created_at': timeutils.utcnow()}
+        src_vol = fake_volume.fake_volume_obj(ctx)
+        dst_vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+
+        mock_create_cluster_reference.return_value = {
+            'mvip': self.mvip,
+            'svip': self.svip}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = False
+
+        reset_mocks()
+        mock_issue_api_request.return_value = {
+            'error': {'code': 000, 'name': 'DummyError',
+                      'message': 'This is a fake error response'},
+            'id': 1}
+
+        self.assertRaises(solidfire.SolidFireAPIException,
+                          sfv._do_clone_volume, src_vol.id,
+                          dst_vol, sf_src_snap=self.fake_sfsnaps[0])
+
+        clone_vol_params = {
+            'snapshotID': self.fake_sfsnaps[0]['snapshotID'],
+            'volumeID': self.fake_sfsnaps[0]['volumeID'],
+            'newSize': dst_vol.size * units.Gi,
+            'name': '%(prefix)s%(id)s' % {
+                'prefix': self.configuration.sf_volume_prefix,
+                    'id': dst_vol.id},
+            'newAccountID': self.fake_sfaccount['accountID']}
+
+        mock_get_create_account.assert_called_with(dst_vol.project_id)
+        mock_issue_api_request.assert_called_once_with(
+            'CloneVolume', clone_vol_params, version='6.0')
+        mock_test_set_cluster_pairs.assert_not_called()
+        mock_update_attributes.assert_not_called()
+        mock_get_model_info.assert_not_called()
+        mock_snapshot_discovery.assert_not_called()
+
+        reset_mocks()
+        mock_issue_api_request.side_effect = self.fake_issue_api_request
+        mock_get_default_volume_params.return_value = {}
+        mock_get_model_info.return_value = None
+        self.assertRaises(solidfire.SolidFireAPIException,
+                          sfv._do_clone_volume, src_vol.id,
+                          dst_vol, sf_src_snap=self.fake_sfsnaps[0])
+
+        mock_get_create_account.assert_called_with(dst_vol.project_id)
+        calls = [mock.call('CloneVolume', clone_vol_params, version='6.0'),
+                 mock.call('ModifyVolume', {'volumeID': 6})]
+        mock_issue_api_request.assert_has_calls(calls)
+        mock_test_set_cluster_pairs.assert_not_called()
+        mock_update_attributes.assert_not_called()
+        mock_get_model_info.assert_called_once()
+        mock_snapshot_discovery.assert_not_called()
+
+        reset_mocks()
+        mock_retrieve_replication_settings.return_value = 'Async'
+        update = {'replication_status': fields.ReplicationStatus.ENABLED}
+        mock_replicate_volume.side_effect = solidfire.SolidFireDriverException
+        mock_update_attributes.return_value = {'result': {}, 'id': 1}
+        mock_get_model_info.return_value = {
+            'provider_location': '1.1.1.1 iqn 0',
+            'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2c76370d66b '
+                             '2FE0CQ8J196R',
+            'provider_id': '%s %s cluster-id-01' % (
+                self.fake_sfvol['volumeID'],
+                self.fake_sfaccount['accountID'])
+        }
+
+        data, account, updates = sfv._do_clone_volume(
+            src_vol.id, dst_vol, sf_src_snap=self.fake_sfsnaps[0])
+
+        self.assertEqual({'result': {}, 'id': 1}, data)
+        self.assertEqual(25, account['accountID'])
+        self.assertEqual(self.fake_sfvol['volumeID'],
+                         int(updates['provider_id'].split()[0]))
+
+        mock_get_create_account.assert_called_with(dst_vol.project_id)
+        calls = [mock.call('CloneVolume', clone_vol_params, version='6.0'),
+                 mock.call('ModifyVolume', {'volumeID': 6})]
+
+        mock_issue_api_request.assert_has_calls(calls)
+        mock_test_set_cluster_pairs.assert_not_called()
+        mock_update_attributes.assert_not_called()
+        mock_get_model_info.assert_called_once()
+        mock_snapshot_discovery.assert_not_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
+    @mock.patch.object(solidfire.SolidFireDriver, '_retrieve_qos_setting')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_extract_sf_attributes_from_extra_specs')
+    def test_get_default_volume_params(
+            self, mock_extract_sf_attributes_from_extra_specs,
+            mock_retrieve_qos_setting, mock_get_create_account):
+
+        mock_extract_sf_attributes_from_extra_specs.return_value = [{
+            'key1': 'value1',
+            'key2': 'value2'
+        }]
+        mock_retrieve_qos_setting.return_value = None
+        mock_get_create_account.return_value = self.fake_sfaccount
+
+        ctx = context.get_admin_context()
+        type_fields = {'extra_specs': {'replication_enabled': '<is> True'}}
+        vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': fakes.FAKE_UUID,
+            'created_at': utc_now,
+            'volume_type': vol_type,
+            'volume_type_id': vol_type.id
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+
+        vol_name = '%s%s' % (self.configuration.sf_volume_prefix, vol.id)
+        expected_attr = {
+            'uuid': vol.id,
+            'is_clone': False,
+            'created_at': utc_now + "+00:00",
+            'cinder-name': vol.get('display_name', ""),
+            'key1': 'value1',
+            'key2': 'value2',
+        }
+
+        expected_params = {
+            'name': vol_name,
+            'accountID': self.fake_sfaccount['accountID'],
+            'sliceCount': 1,
+            'totalSize': int(vol.size * units.Gi),
+            'enable512e': self.configuration.sf_emulate_512,
+            'attributes': expected_attr,
+            'qos': None
+        }
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+
+        params = sfv._get_default_volume_params(vol, False)
+
+        self.assertDictEqual(expected_params, params)
+        mock_extract_sf_attributes_from_extra_specs.assert_called()
+        mock_retrieve_qos_setting.assert_called()
+        mock_get_create_account.assert_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfvol_by_cinder_vref')
+    def test_disable_replication_fail(self, mock_get_sfvol_by_cinder_vref):
+
+        self.fake_sfvol['volumePairs'] = []
+        mock_get_sfvol_by_cinder_vref.return_value = self.fake_sfvol
+
+        ctx = context.get_admin_context()
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': f_uuid,
+            'created_at': utc_now
+        }
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+        sfv.cluster_pairs = self.cluster_pairs
+
+        expected = {'replication_status': fields.ReplicationStatus.DISABLED}
+        updates = sfv._disable_replication(vol)
+
+        self.assertDictEqual(expected, updates)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sfvol_by_cinder_vref')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def test_disable_replication(self, mock_create_cluster_reference,
+                                 mock_issue_api_request,
+                                 mock_get_sfvol_by_cinder_vref):
+
+        mock_create_cluster_reference.return_value = {
+            'mvip': self.mvip,
+            'svip': self.svip}
+
+        self.fake_sfvol['volumePairs'] = [{"remoteVolumeID": 26}]
+        mock_get_sfvol_by_cinder_vref.return_value = self.fake_sfvol
+
+        ctx = context.get_admin_context()
+        utc_now = timeutils.utcnow().isoformat()
+        vol_fields = {
+            'id': f_uuid,
+            'created_at': utc_now
+        }
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+        sfv.cluster_pairs = self.cluster_pairs
+        sfv.active_cluster['mvip'] = self.mvip
+        sfv.active_cluster['svip'] = self.svip
+
+        expected = {'replication_status': fields.ReplicationStatus.DISABLED}
+        mock_issue_api_request.reset_mock()
+        updates = sfv._disable_replication(vol)
+
+        self.assertDictEqual(expected, updates)
+
+        expected = [
+            mock.call("RemoveVolumePair",
+                      {'volumeID': self.fake_sfvol['volumeID']}, '8.0'),
+            mock.call("RemoveVolumePair", {'volumeID': 26}, '8.0',
+                      endpoint=sfv.cluster_pairs[0]['endpoint']),
+            mock.call("DeleteVolume", {'volumeID': 26},
+                      endpoint=sfv.cluster_pairs[0]['endpoint']),
+            mock.call("PurgeDeletedVolume", {'volumeID': 26},
+                      endpoint=sfv.cluster_pairs[0]['endpoint'])
+        ]
+
+        mock_issue_api_request.assert_has_calls(expected)
+        mock_create_cluster_reference.assert_called()
+        mock_get_sfvol_by_cinder_vref.assert_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_cluster_pairs')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_cluster_info')
+    @mock.patch.object(solidfire.SolidFireDriver, '_map_sf_volumes')
+    @mock.patch.object(solidfire.SolidFireDriver, '_failover_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_remote_info_by_id')
+    def test_failover_host(self, mock_get_remote_info_by_id,
+                           mock_get_create_account,
+                           mock_failover_volume,
+                           mock_map_sf_volumes,
+                           mock_get_cluster_info,
+                           mock_update_cluster_status,
+                           mock_set_cluster_pairs,
+                           mock_create_cluster_reference,
+                           mock_issue_api_request):
+
+        all_mocks = locals()
+
+        def reset_mocks():
+            for mk in all_mocks.values():
+                if isinstance(mk, mock.MagicMock):
+                    mk.reset_mock()
+
+        ctx = context.get_admin_context()
+        vol_fields = {'updated_at': timeutils.utcnow(),
+                      'created_at': timeutils.utcnow()}
+
+        cinder_vols = []
+        sf_vols = []
+        for i in range(1, 6):
+            vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+            sf_vol = self.fake_sfvol.copy()
+            sf_vol['volumeID'] = i
+            sf_vol['name'] = '%s%s' % (self.configuration.sf_volume_prefix,
+                                       vol.id)
+            sf_vol['access'] = 'replicationTarget'
+            sf_vol['attributes'] = {'uuid': vol.id}
+            sf_vol['cinder_id'] = vol.id
+
+            sf_vols.append(sf_vol)
+            cinder_vols.append(vol)
+
+        mock_map_sf_volumes.return_value = sf_vols
+        mock_create_cluster_reference.return_value = self.cluster_pairs[0]
+
+        fake_replication_device = {'backend_id': 'fake',
+                                   'mvip': '0.0.0.0',
+                                   'login': 'fake_login',
+                                   'password': 'fake_pwd'}
+
+        self.configuration.replication_device = [fake_replication_device]
+
+        reset_mocks()
+        drv_args = {'active_backend_id': None}
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
+                                        **drv_args)
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          sfv.failover_host, ctx, cinder_vols, 'default', None)
+        mock_map_sf_volumes.assert_not_called()
+
+        reset_mocks()
+        drv_args = {'active_backend_id': 'default'}
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
+                                        **drv_args)
+        self.assertRaises(exception.UnableToFailOver,
+                          sfv.failover_host, ctx, cinder_vols, 'default', None)
+        mock_map_sf_volumes.assert_not_called()
+
+        reset_mocks()
+        drv_args = {'active_backend_id': None}
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
+                                        **drv_args)
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          sfv.failover_host, ctx, cinder_vols,
+                          secondary_id='not_fake_id', groups=None)
+        mock_map_sf_volumes.assert_not_called()
+
+        reset_mocks()
+        drv_args = {'active_backend_id': None}
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
+                                        **drv_args)
+        sfv.cluster_pairs = [None]
+        self.assertRaises(exception.UnableToFailOver,
+                          sfv.failover_host, ctx, cinder_vols,
+                          secondary_id='fake', groups=None)
+        mock_map_sf_volumes.assert_not_called()
+
+        reset_mocks()
+        drv_args = {'active_backend_id': None}
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
+                                        **drv_args)
+        sfv.cluster_pairs = self.cluster_pairs
+        sfv.cluster_pairs[0]['backend_id'] = 'fake'
+        sfv.replication_enabled = True
+        cluster_id, updates, _ = sfv.failover_host(
+            ctx, cinder_vols, secondary_id='fake', groups=None)
+        self.assertEqual(5, len(updates))
+        for update in updates:
+            self.assertEqual(fields.ReplicationStatus.FAILED_OVER,
+                             update['updates']['replication_status'])
+
+        self.assertEqual('fake', cluster_id)
+        mock_get_create_account.assert_called()
+        mock_failover_volume.assert_called()
+        mock_map_sf_volumes.assert_called()
+        mock_get_cluster_info.assert_not_called()
+        mock_update_cluster_status.assert_called()
+        mock_set_cluster_pairs.assert_called()
+        mock_create_cluster_reference.assert_called()
+        mock_issue_api_request.assert_not_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    def test_failover_volume(self, mock_update_cluster_status,
+                             mock_create_cluster_reference,
+                             mock_issue_api_request):
+
+        all_mocks = locals()
+
+        def reset_mocks():
+            for mk in all_mocks.values():
+                if isinstance(mk, mock.MagicMock):
+                    mk.reset_mock()
+
+        mock_issue_api_request.return_value = self.fake_sfaccount
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.replication_enabled = True
+
+        fake_src_sfvol = {'volumeID': 600,
+                          'name': 'test_volume',
+                          'accountID': 25,
+                          'sliceCount': 1,
+                          'totalSize': 1 * units.Gi,
+                          'enable512e': True,
+                          'access': "replicationTarget",
+                          'status': "active",
+                          'attributes': {'uuid': f_uuid[0]},
+                          'qos': None,
+                          'iqn': 'super_fake_iqn'}
+
+        expected_src_params = {'volumeID': fake_src_sfvol['volumeID'],
+                               'access': 'replicationTarget'}
+
+        expected_tgt_params = {'volumeID': self.fake_sfvol['volumeID'],
+                               'access': 'readWrite'}
+
+        sfv._failover_volume(self.fake_sfvol, self.cluster_pairs[0],
+                             fake_src_sfvol)
+
+        mock_issue_api_request.assert_has_calls(
+            [mock.call("ModifyVolume", expected_src_params),
+             mock.call("ModifyVolume", expected_tgt_params,
+                       endpoint=self.cluster_pairs[0]['endpoint'])]
+        )
+        reset_mocks()
+
+        sfv._failover_volume(self.fake_sfvol, self.cluster_pairs[0])
+
+        mock_issue_api_request.assert_called_with(
+            "ModifyVolume",
+            expected_tgt_params,
+            endpoint=self.cluster_pairs[0]['endpoint']
+        )
