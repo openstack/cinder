@@ -114,6 +114,9 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             # it should be add the additional prefix before volume_type_name,
             # which we of course allow *this* size to 300.
             127,
+            # 136 modifies the the tables having volume_type_id field to set
+            # as non nullable
+            136,
         ]
 
         if version not in exceptions:
@@ -187,6 +190,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                                   volume_types.DEFAULT_VOLUME_TYPE)
                  .execute().first())
         self.assertIsNotNone(vtype)
+
+    def _check_136(self, engine, data):
+        """Test alter volume_type_id columns."""
+        vol_table = db_utils.get_table(engine, 'volumes')
+        snap_table = db_utils.get_table(engine, 'snapshots')
+        encrypt_table = db_utils.get_table(engine, 'encryption')
+        self.assertFalse(vol_table.c.volume_type_id.nullable)
+        self.assertFalse(snap_table.c.volume_type_id.nullable)
+        self.assertFalse(encrypt_table.c.volume_type_id.nullable)
 
     # NOTE: this test becomes slower with each addition of new DB migration.
     # 'pymysql' works much slower on slow nodes than 'psycopg2'. And such

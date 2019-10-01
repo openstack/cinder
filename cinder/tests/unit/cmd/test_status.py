@@ -27,6 +27,7 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fakes
 import cinder.volume.manager as volume_manager
 
 
@@ -253,22 +254,24 @@ class TestCinderStatus(testtools.TestCase):
     def test__check_service_uuid_ok(self):
         self._create_service()
         self._create_service()
-        self._create_volume()
+        self._create_volume(volume_type_id=fakes.VOLUME_TYPE_ID)
         # Confirm that we ignored deleted entries
-        self._create_volume(service_uuid=None, deleted=True)
+        self._create_volume(service_uuid=None, deleted=True,
+                            volume_type_id=fakes.VOLUME_TYPE_ID)
         result = self.checks._check_service_uuid()
         self.assertEqual(uc.Code.SUCCESS, result.code)
 
     def test__check_service_uuid_fail_service(self):
         self._create_service()
         self._create_service(uuid=None)
-        self._create_volume()
+        self._create_volume(volume_type_id=fakes.VOLUME_TYPE_ID)
         result = self.checks._check_service_uuid()
         self.assertEqual(uc.Code.FAILURE, result.code)
 
     def test__check_service_uuid_fail_volume(self):
         self._create_service()
-        self._create_volume(service_uuid=None)
+        self._create_volume(service_uuid=None,
+                            volume_type_id=fakes.VOLUME_TYPE_ID)
         result = self.checks._check_service_uuid()
         self.assertEqual(uc.Code.FAILURE, result.code)
 
