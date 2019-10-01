@@ -318,13 +318,12 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         LOG.debug('_create_volume Start.')
 
         # select ld number and LD bind.
-        (ldname,
-         ldn,
-         selected_pool) = self._bind_ld(volume,
-                                        volume.size,
-                                        None,
-                                        self._convert_id2name,
-                                        self._select_leastused_poolnumber)
+        ldname, ldn, selected_pool = self._bind_ld(
+            volume,
+            volume.size,
+            None,
+            self._convert_id2name,
+            self._select_leastused_poolnumber)
 
         self._set_qos_spec(ldname, volume.volume_type_id)
 
@@ -478,13 +477,12 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                 raise exception.VolumeBackendAPIException(data=msg)
 
         # Creating Cloned Volume.
-        (volume_name,
-         ldn,
-         selected_pool) = self._bind_ld(volume,
-                                        src_vref.size,
-                                        None,
-                                        self._convert_id2name,
-                                        self._select_leastused_poolnumber)
+        volume_name, ldn, selected_pool = self._bind_ld(
+            volume,
+            src_vref.size,
+            None,
+            self._convert_id2name,
+            self._select_leastused_poolnumber)
 
         self._set_qos_spec(volume_name, volume.volume_type_id)
 
@@ -524,11 +522,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def _set_qos_spec(self, ldname, volume_type_id, reset=False):
         # check io limit.
         specs = self.get_volume_type_qos_specs(volume_type_id)
-        self.correct_qos_parameter(specs, reset)
+        qos_params = self.get_qos_parameters(specs, reset)
 
         # set io limit.
-        self._cli.set_io_limit(ldname, specs)
-        LOG.debug('_set_qos_spec(Specs = %s) End.', specs)
+        self._cli.set_io_limit(ldname, qos_params)
+        LOG.debug('_set_qos_spec(Specs = %s) End.', qos_params)
 
         return
 
@@ -721,14 +719,13 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
     def _migrate(self, volume, host, volume_type_id, validator, pool_selecter):
 
         # bind LD.
-        (rvname,
-         ldn,
-         selected_pool) = self._bind_ld(volume,
-                                        volume.size,
-                                        validator,
-                                        self._convert_id2migratename,
-                                        pool_selecter,
-                                        host)
+        rvname, __, selected_pool = self._bind_ld(
+            volume,
+            volume.size,
+            validator,
+            self._convert_id2migratename,
+            pool_selecter,
+            host)
 
         if selected_pool >= 0:
             self._set_qos_spec(rvname, volume_type_id)
@@ -1908,14 +1905,13 @@ class MStorageDSVDriver(MStorageDriver):
         mv_capacity = rv['ld_capacity']
         rv_capacity = volume.size
 
-        (new_rvname,
-         rvnumber,
-         selected_pool) = self._bind_ld(volume,
-                                        mv_capacity,
-                                        None,
-                                        self._convert_id2name,
-                                        self._select_volddr_poolnumber,
-                                        mv_capacity)
+        new_rvname, rvnumber, selected_pool = self._bind_ld(
+            volume,
+            mv_capacity,
+            None,
+            self._convert_id2name,
+            self._select_volddr_poolnumber,
+            mv_capacity)
 
         self._set_qos_spec(new_rvname, volume.volume_type_id)
 

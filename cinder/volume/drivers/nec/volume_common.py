@@ -824,9 +824,8 @@ class MStorageVolumeCommon(object):
         specs = {}
 
         ctxt = context.get_admin_context()
-        type_id = volume_type_id
-        if type_id is not None:
-            volume_type = volume_types.get_volume_type(ctxt, type_id)
+        if volume_type_id is not None:
+            volume_type = volume_types.get_volume_type(ctxt, volume_type_id)
 
             qos_specs_id = volume_type.get('qos_specs_id')
             if qos_specs_id is not None:
@@ -841,7 +840,8 @@ class MStorageVolumeCommon(object):
                        'specs': specs})
         return specs
 
-    def correct_qos_parameter(self, specs, reset):
+    def get_qos_parameters(self, specs, reset):
+        qos_params = {}
         if 'upperlimit' in specs and specs['upperlimit'] is not None:
             if self.validates_number(specs['upperlimit']) is True:
                 upper_limit = int(specs['upperlimit'], 10)
@@ -849,13 +849,16 @@ class MStorageVolumeCommon(object):
                         ((upper_limit < 10) or (upper_limit > 1000000))):
                     raise exception.InvalidConfigurationValue(
                         value=upper_limit, option='upperlimit')
+                qos_params['upperlimit'] = upper_limit
             else:
                 raise exception.InvalidConfigurationValue(
                     value=specs['upperlimit'], option='upperlimit')
         else:
             # 0: Set to no limit.(default)
+            #    On the QoS function in NEC Storage, 0 means there is no
+            #    limit.
             # None: Keep current value.
-            specs['upperlimit'] = '0' if reset else None
+            qos_params['upperlimit'] = 0 if reset else None
 
         if 'lowerlimit' in specs and specs['lowerlimit'] is not None:
             if self.validates_number(specs['lowerlimit']) is True:
@@ -864,24 +867,30 @@ class MStorageVolumeCommon(object):
                                           lower_limit > 1000000)):
                     raise exception.InvalidConfigurationValue(
                         value=lower_limit, option='lowerlimit')
+                qos_params['lowerlimit'] = lower_limit
             else:
                 raise exception.InvalidConfigurationValue(
                     value=specs['lowerlimit'], option='lowerlimit')
         else:
             # 0: Set to no limit.(default)
+            #    On the QoS function in NEC Storage, 0 means there is no
+            #    limit.
             # None: Keep current value.
-            specs['lowerlimit'] = '0' if reset else None
+            qos_params['lowerlimit'] = 0 if reset else None
 
         if 'upperreport' in specs:
             if specs['upperreport'] not in ['on', 'off']:
                 LOG.debug('Illegal arguments. '
                           'upperreport is not on or off.'
                           'upperreport=%s', specs['upperreport'])
-                specs['upperreport'] = 'off' if reset else None
+                qos_params['upperreport'] = 'off' if reset else None
+            else:
+                qos_params['upperreport'] = specs['upperreport']
         else:
             # off: Set to no report.(default)
             # None: Keep current value.
-            specs['upperreport'] = 'off' if reset else None
+            qos_params['upperreport'] = 'off' if reset else None
+        return qos_params
 
     def check_accesscontrol(self, ldsets, ld):
         """Check Logical disk is in-use or not."""

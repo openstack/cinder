@@ -47,7 +47,7 @@ class MStorageISCSIDriver(volume_helper.MStorageDSVDriver,
                  Fixed bug #1777385: driver removed access permission from
                  the destination node after live-migraion.
                  Fixed bug #1778669: LUNs of detached volumes are never reused.
-        1.11.1 - Add support pytyon 3.
+        1.11.1 - Add support python 3.
                  Add support for multi-attach.
                  Add support of more than 4 iSCSI portals for a node.
                  Add support to revert a volume to a snapshot.
@@ -115,7 +115,7 @@ class MStorageFCDriver(volume_helper.MStorageDSVDriver,
                  Fixed bug #1777385: driver removed access permission from
                  the destination node after live-migraion.
                  Fixed bug #1778669: LUNs of detached volumes are never reused.
-        1.11.1 - Add support pytyon 3.
+        1.11.1 - Add support python 3.
                  Add support for multi-attach.
                  Add support of more than 4 iSCSI portals for a node.
                  Add support to revert a volume to a snapshot.
