@@ -572,7 +572,8 @@ def service_update(context, service_id, values):
 @enginefacade.writer
 def untyped_volumes_online_data_migration(context, max_count):
     from cinder.volume import volume_types
-    default_type = volume_types.get_default_volume_type()
+    default_type = volume_types.get_volume_type_by_name(context,
+                                                        '__DEFAULT__')
     # get all volumes having volume_type=None
     total = 0
     updated = 0
@@ -596,7 +597,8 @@ def untyped_volumes_online_data_migration(context, max_count):
 @enginefacade.writer
 def untyped_snapshots_online_data_migration(context, max_count):
     from cinder.volume import volume_types
-    default_type = volume_types.get_default_volume_type()
+    default_type = volume_types.get_volume_type_by_name(context,
+                                                        '__DEFAULT__')
     # get all snapshots having volume_type=None
     total = 0
     updated = 0
