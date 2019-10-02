@@ -1528,6 +1528,15 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         base_name = volume.name
 
+        # Some OpenStack deployments, eg PowerVC, create a volume.name that
+        # when appended with out '-cinder' string will exceed the maximum
+        # volume name length for Pure, so here we left truncate the true volume
+        # name before the opennstack volume_name_template affected it and
+        # then put back the template format
+        if len(base_name) > 56:
+            actual_name = base_name[7:]
+            base_name = "volume-" + actual_name[-52:]
+
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)
         if repl_type == REPLICATION_TYPE_SYNC:
