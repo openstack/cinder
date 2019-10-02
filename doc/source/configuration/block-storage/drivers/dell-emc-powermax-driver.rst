@@ -18,33 +18,22 @@ in the backend to perform PowerMax and VMAX storage operations.
    While ``PowerMax`` will be used throughout this document, it will be used
    to collectively categorize the following supported arrays, PowerMax 2000,
    8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX Hybrid. Please note
-   That we will no longer be supporting the VMAX Hybrid in the ``T`` release
-   of OpenStack.
+   there will be extended support of the VMAX Hybrid series until further
+   notice.
 
-.. note::
-
-   KNOWN ISSUE:
-   Workload support was dropped in PowerMax OS 5978. If a VMAX All Flash array
-   is upgraded to PowerMax OS 5978 or greater and existing volume types
-   leveraged workload i.e. DSS, DSS_REP, OLTP and OLTP_REP, attaching and
-   detaching will no longer work and the volume type will be unusable.
-   Refrain from upgrading to PowerMax OS 5978 or greater on an All Flash
-   until a fix is merged. Please contact your Dell EMC PowerMax customer
-   support representative if in any doubt.
 
 System requirements and licensing
 =================================
 
 The Dell EMC PowerMax Cinder driver supports the VMAX-3 hybrid series, VMAX
-All-Flash series and the PowerMax arrays. Please note we will be no longer
-supporting the VMAX hybrid series in the ``T`` release of OpenStack.
+All-Flash series and the PowerMax arrays.
 
-The array operating system software, Solutions Enabler 9.0.x series, and
-Unisphere for PowerMax 9.0.x series are required to run Dell EMC PowerMax
+The array operating system software, Solutions Enabler 9.1.x series, and
+Unisphere for PowerMax 9.1.x series are required to run Dell EMC PowerMax
 Cinder driver.
 
 Download Solutions Enabler and Unisphere from the Dell EMC's support web site
-(login is required). See the ``Dell EMC Solutions Enabler 9.0.x Installation
+(login is required). See the ``Dell EMC Solutions Enabler 9.1.x Installation
 and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
 Guide`` at ``support.emc.com``.
 
@@ -141,6 +130,8 @@ PowerMax drivers also support the following features:
 -  Replicated volume retype support
 -  Retyping attached(in-use) volume
 -  Unisphere high availability(HA) support
+-  Online device expansion of a metro device
+-  Rapid tdev deallocation of deletes
 
 .. note::
 
@@ -245,13 +236,13 @@ PowerMax Driver Integration
    Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
    OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
    (eManagement) container application. See the ``Dell EMC Solutions Enabler
-   9.0.x Installation and Configuration Guide`` on ``support.emc.com`` for
+   9.1.x Installation and Configuration Guide`` on ``support.emc.com`` for
    more details.
 
    .. note::
 
       You must discover storage arrays before you can use the PowerMax drivers.
-      Follow instructions in ```Dell EMC Solutions Enabler 9.0.x Installation
+      Follow instructions in ```Dell EMC Solutions Enabler 9.1.x Installation
       and Configuration Guide`` on ``support.emc.com`` for more details.
 
 #. Download Unisphere from ``support.emc.com`` and install it.
@@ -260,7 +251,7 @@ PowerMax Driver Integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   PowerMax). See ``Dell EMC Solutions Enabler 9.0.x Installation and
+   PowerMax). See ``Dell EMC Solutions Enabler 9.1.x Installation and
    Configuration Guide`` at ``support.emc.com``.
 
 
@@ -328,7 +319,7 @@ complex and open-zoning would raise security concerns.
 
 .. note::
 
-   Service Level and workload can be added to the cinder.conf when the
+   Service Level can be added to the cinder.conf when the
    backend is the default case and there is no associated volume type.
    This not a recommended configuration as it is too restrictive.
    Workload is NONE for PowerMax and any All Flash with PowerMax OS
@@ -338,8 +329,6 @@ complex and open-zoning would raise security concerns.
    | PowerMax parameter | cinder.conf parameter      | Default | Required |
    +====================+============================+=========+==========+
    |  ServiceLevel      | powermax_service_level     | None    | No       |
-   +--------------------+----------------------------+---------+----------+
-   |  Workload          | powermax_workload          | None    | No       |
    +--------------------+----------------------------+---------+----------+
 
 
@@ -456,60 +445,51 @@ setting the ``storagetype:portgroupname`` extra specification.
 .. note::
 
    It is possible to create as many volume types as the number of Service
-   Level and Workload(available) combination for provisioning volumes. The
+   Level for provisioning volumes. The
    pool_name is the additional property which has to be set and is of the
-   format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
+   format: ``<ServiceLevel>+<SRP>+<Array ID>``.
    This can be obtained from the output of the ``cinder get-pools--detail``.
    Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
    or greater.
 
 .. code-block:: console
 
-   $ openstack volume type create POWERMAX_ISCSI_SILVER_OLTP
+   $ openstack volume type create POWERMAX_ISCSI_SILVER
    $ openstack volume type set --property volume_backend_name=ISCSI_backend \
-                               --property pool_name=Silver+OLTP+SRP_1+000123456789 \
+                               --property pool_name=Silver+SRP_1+000123456789 \
                                --property storagetype:portgroupname=OS-PG2 \
-                               POWERMAX_ISCSI_SILVER_OLTP
-   $ openstack volume type create POWERMAX_FC_DIAMOND_DSS
+                               POWERMAX_ISCSI_SILVER
+   $ openstack volume type create POWERMAX_FC_DIAMOND
    $ openstack volume type set --property volume_backend_name=FC_backend \
-                               --property pool_name=Diamond+DSS+SRP_1+000123456789 \
+                               --property pool_name=Diamond+SRP_1+000123456789 \
                                --property storagetype:portgroupname=OS-PG1 \
-                               POWERMAX_FC_DIAMOND_DSS
+                               POWERMAX_FC_DIAMOND
 
 
 By issuing these commands, the Block Storage volume type
-``POWERMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``,
-a Silver Service Level, and an OLTP workload.
+``POWERMAX_ISCSI_SILVER`` is associated with the ``ISCSI_backend``,
+a Silver Service Level.
 
-The type ``POWERMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``,
-a Diamond Service Level, and a DSS workload.
+The type ``POWERMAX_FC_DIAMOND`` is associated with the ``FC_backend``,
+a Diamond Service Level.
 
 The ``ServiceLevel`` manages the underlying storage to provide expected
 performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
 managed storage groups will be created instead (storage groups not
-associated with any service level). If ``ServiceLevel`` is ``None`` then
-``Workload`` must be ``None``.
+associated with any service level).
 
 .. code-block:: console
 
-   openstack volume type set --property pool_name=None+None+SRP_1+000123456789
-
-When a ``Workload`` is added, the latency range is reduced due to the
-added information. Setting the ``Workload`` to ``None`` means the latency
-range will be the widest for its Service Level type. Please note that you
-cannot set a Workload without a Service Level.
-
-.. code-block:: console
-
-   openstack volume type set --property pool_name=Diamond+None+SRP_1+000123456789
+   openstack volume type set --property pool_name=None+SRP_1+000123456789
 
 .. note::
 
    PowerMax and Hybrid support Optimized, Diamond, Platinum, Gold, Silver,
    Bronze, and NONE service levels. VMAX All Flash supports Diamond and
    None. Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
-   workloads, the latter up until ucode 5977. There is no support for
-   workloads in PowerMax OS (5978) or greater.
+   workloads, the latter up until ucode 5977. Please refer to Stein PowerMax
+   online documentation if you wish to use ``workload``. There is no support
+   for workloads in PowerMax OS (5978) or greater.
 
 
 7. Interval and Retries
@@ -1553,6 +1533,53 @@ restarted for changes to take effect.
    used by the PowerMax driver.
 
 
+18. Rapid TDEV Deallocation
+---------------------------
+
+The PowerMax driver can now leverage the enhanced volume delete feature-set
+made available in the PowerMax 5978 Foxtail uCode release. These enhancements
+allow volume deallocation & deletion to be combined into a single call.
+Previously, volume deallocation & deletion were split into separate tasks;
+now a single REST call is dispatched and a response code on the projected
+outcome of their request is issued rapidly allowing other task execution to
+proceed without the delay. No additional configuration is necessary, the
+system will automatically determine when to use either the rapid or legacy
+compliant volume deletion sequence based on the connected PowerMax array’s
+metadata.
+
+
+19. PowerMax Online (in-use) Device Expansion
+---------------------------------------------
+
+.. table::
+
+   +---------------------------------+-------------------------------------------+
+   | uCode Level                     | Supported In-Use Volume Extend Operations |
+   +----------------+----------------+--------------+--------------+-------------+
+   | R1 uCode Level | R2 uCode Level | Sync         | Async        | Metro       |
+   +================+================+==============+==============+=============+
+   | 5979           | 5979           | Y            | Y            | Y           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5979           | 5978           | Y            | Y            | N           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5978           | 5978           | Y            | Y            | N           |
+   +----------------+----------------+--------------+--------------+-------------+
+
+
+Assumptions, Restrictions and Pre-Requisites
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ODE in the context of this document refers to extending a volume where it
+  is in-use, that is, attached to an instance.
+- The ``allow_extend`` is only applicable on Hybrid arrays or All Flash arrays
+  with HyperMax OS. If included elsewhere, it is ignored.
+- Extending a Metro volume is blocked for all replication sessions where both
+  R1 and R2 arrays are not PowerMax OS 5979 or newer.
+- Where one array is a lower uCode than the other, the environment is limited
+  to functionality of that of the lowest uCode level, i.e. if R1 is 5979 and
+  R2 is 5978, expanding a metro volume is not supported, both R1 and R2 need
+  to be on 5979 uCode.
+
 Cinder supported operations
 ===========================
 
@@ -1616,7 +1643,6 @@ Configure the source and target arrays
                            remote_port_group:os-failover-pg,
                            remote_pool:SRP_1,
                            rdf_group_label: 28_11_07,
-                           allow_extend:False,
                            mode:Metro,
                            metro_use_bias:False,
                            allow_delete_metro:False
@@ -1641,20 +1667,6 @@ Configure the source and target arrays
 
    * ``rdf_group_label`` is the name of a PowerMax SRDF group that has been
      pre-configured between the source and target arrays.
-
-   * ``allow_extend`` is a flag for allowing the extension of replicated
-     volumes. To extend a volume in an SRDF relationship, this relationship
-     must first be broken, both the source and target volumes are then
-     independently extended, and then the replication relationship is
-     re-established. If not explicitly set, this flag defaults to ``False``.
-
-     .. note::
-        As the SRDF link must be severed, due caution should be exercised when
-        performing this operation. If absolutely necessary, only one source and
-        target pair should be extended at a time.
-
-     .. note::
-        It is not currently possible to extend SRDF/Metro protected volumes.
 
    * ``mode`` is the required replication mode. Options are 'Synchronous',
      'Asynchronous', and 'Metro'. This defaults to 'Synchronous'.
@@ -1684,6 +1696,24 @@ Configure the source and target arrays
       Ensure there is only a single ``replication_device`` entry per
       back-end stanza.
 
+   * ``allow_extend`` is only applicable to Hybrid arrays or All Flash arrays
+     with HyperMax OS. It is a flag for allowing the extension of
+     replicated volumes. To extend a volume in an SRDF relationship, this
+     relationship must first be broken, both the source and target volumes are
+     then independently extended, and then the replication relationship is
+     re-established. If not explicitly set, this flag defaults to ``False``.
+
+     .. note::
+        As the SRDF link must be severed, due caution should be exercised when
+        performing this operation. If absolutely necessary, only one source and
+        target pair should be extended at a time (only only applicable to
+        Hybrid arrays or All Flash arrays with HyperMax OS).
+
+     .. note::
+        It is not possible to extend SRDF/Metro protected volumes on Hybrid
+        arrays or All Flash arrays with HyperMax OS.
+
+
 #. Create a ``replication-enabled`` volume type. Once the
    ``replication_device`` parameter has been entered in the PowerMax
    backend entry in the ``cinder.conf``, a corresponding volume type
@@ -1704,15 +1734,10 @@ Most features are supported, except for the following:
 * Replication Group operations are available for volumes in Synchronous mode
   only.
 
-* Storage-assisted retype operations on replication-enabled PowerMax volumes
-  (moving from a non-replicated type to a replicated-type and vice-versa.
-  Moving to another service level/workload combination, for example) are
-  not supported.
-
-* It is not currently possible to extend SRDF/Metro protected volumes.
-  If a bigger volume size is required for a SRDF/Metro protected volume, this
-  can be achieved by cloning the original volume and choosing a larger size for
-  the new cloned volume.
+* It is not possible to extend SRDF/Metro protected volumes on Hybrid arrays
+  or All Flash arrays with HyperMax OS. If a bigger volume size is required
+  for a SRDF/Metro protected volume, this can be achieved by cloning the
+  original volume and choosing a larger size for the new cloned volume.
 
 * The image volume cache functionality is supported (enabled by setting
   ``image_volume_cache_enabled = True``), but one of two actions must be taken
@@ -1721,13 +1746,15 @@ Most features are supported, except for the following:
   * The first boot volume created on a backend (which will trigger the
     cached volume to be created) should be the smallest necessary size.
     For example, if the minimum size disk to hold an image is 5GB, create
-    the first boot volume as 5GB.
+    the first boot volume as 5GB. All subsequent boot volumes are extended
+    to the user specific size.
   * Alternatively, ensure that the ``allow_extend`` option in the
-    ``replication_device parameter`` is set to ``True`` (Please note that it is
-    not possible to extend SRDF/Metro protected volumes).
+    ``replication_device parameter`` is set to ``True``. This is only
+    applicable to Hybrid arrays or All Flash array with HyperMax OS.
 
-  This is because the initial boot volume is created at the minimum required
-  size for the requested image, and then extended to the user specified size.
+  .. note::
+      it is not possible to extend SRDF/Metro protected volumes on Hybrid
+      arrays or All Flash arrays with HyperMax OS.
 
 
 Failover host
@@ -1777,31 +1804,14 @@ multiple paths.
 
 .. note::
 
-   There is an known issue on Unisphere for PowerMax where volumes are
-   formatted when added to existing metro RDF Groups. The issue will only
-   be addressed on arrays with PowerMax OS as the option not to format a metro
-   volume is not available on HyperMax OS. Please refrain on cloning metro
-   volumes until further notice. If in any doubt please contact your Dell EMC
-   Representative.
+   The metro issue around formatting volumes when they are added to existing
+   metro RDF groups has been fixed in Unisphere for PowerMax 9.1, however, it
+   has only been addressed on arrays with PowerMax OS and will not be
+   available on arrays running a HyperMax OS.
 
 
 Known issues
 ~~~~~~~~~~~~
-
-.. note::
-
-   Due to to nature of SRDF/Metro and issues around extending and cloning
-   Metro devices we cannot support image_volume_cache_enabled=True on bootable
-   Metro devices.
-
-.. note::
-
-   There is an known issue on Unisphere for PowerMax where volumes are
-   formatted when added to existing metro RDF Groups. The issue will only
-   be addressed on arrays with PowerMax OS as the option not to format a metro
-   volume is not available on HyperMax OS. Please refrain on cloning metro
-   volumes until further notice. If in any doubt please contact your Dell EMC
-   Representative.
 
 .. note::
 
@@ -2079,9 +2089,8 @@ the same format:
 
 .. code-block:: console
 
-   Pool format: <service_level>+<workload_type>+<srp>+<array_id>
-   Pool example 1: Diamond+DSS+SRP_1+111111111111
-   Pool example 2: Diamond+SRP_1+111111111111
+   Pool format: <service_level>+<srp>+<array_id>
+   Pool example: Diamond+SRP_1+111111111111
 
 
 .. list-table:: Pool values
@@ -2091,8 +2100,6 @@ the same format:
      - Value
    * - service_level
      - The service level of the volume to be managed
-   * - workload
-     - The workload of the volume to be managed
    * - SRP
      - The Storage Resource Pool configured for use by the backend
    * - array_id
