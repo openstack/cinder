@@ -2661,25 +2661,89 @@ class PowerMaxCommonTest(test.TestCase):
             self.common._extend_vol_validation_checks,
             array, device_id, volume.name, extra_specs, volume.size, new_size)
 
-    @mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
-                       return_value=True)
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_array_ucode_version',
-        return_value=tpd.PowerMaxData.powermax_model_details['ucode'])
+    def test_array_ode_capabilities_check_non_next_gen_local(self):
+        """Rep enabled, neither array next gen, returns F,F,F,F"""
+        array = self.data.powermax_model_details['symmetrixId']
+        self.common.next_gen = False
+        (r1_ode, r1_ode_metro,
+         r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
+            array, True)
+        self.assertFalse(r1_ode)
+        self.assertFalse(r1_ode_metro)
+        self.assertFalse(r2_ode)
+        self.assertFalse(r2_ode_metro)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_detail',
+                       return_value={'ucode': '5977.1.1'})
     @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
                        return_value=(10, tpd.PowerMaxData.remote_array))
-    def test_array_ode_capabilities_check(self, mck_rdf, mck_ucode, mck_gen):
+    def test_array_ode_capabilities_check_next_gen_non_rep_pre_elm(
+            self, mock_rdf, mock_det):
+        """Rep disabled, local array next gen, pre elm, returns T,F,F,F"""
+        array = self.data.powermax_model_details['symmetrixId']
+        self.common.ucode_level = '5978.1.1'
+        self.common.next_gen = True
+        (r1_ode, r1_ode_metro,
+         r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
+            array, False)
+        self.assertTrue(r1_ode)
+        self.assertFalse(r1_ode_metro)
+        self.assertFalse(r2_ode)
+        self.assertFalse(r2_ode_metro)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_detail',
+                       return_value={'ucode': '5977.1.1'})
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(10, tpd.PowerMaxData.remote_array))
+    def test_array_ode_capabilities_check_next_gen_remote_rep(
+            self, mock_rdf, mock_det):
+        """Rep enabled, remote not next gen, returns T,T,F,F"""
         array = self.data.powermax_model_details['symmetrixId']
         self.common.ucode_level = self.data.powermax_model_details['ucode']
         self.common.next_gen = True
-
-        r1, r1_ode, r2, r2_ode = self.common._array_ode_capabilities_check(
+        (r1_ode, r1_ode_metro,
+         r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
             array, True)
-        self.assertTrue(r1)
         self.assertTrue(r1_ode)
-        self.assertTrue(r2)
+        self.assertTrue(r1_ode_metro)
+        self.assertFalse(r2_ode)
+        self.assertFalse(r2_ode_metro)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_detail',
+                       return_value={'ucode': '5978.1.1'})
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(10, tpd.PowerMaxData.remote_array))
+    def test_array_ode_capabilities_check_next_gen_pre_elm_rep(
+            self, mock_rdf, mock_det):
+        """Rep enabled, both array next gen, tgt<5978.221, returns T,T,T,F"""
+        array = self.data.powermax_model_details['symmetrixId']
+        self.common.ucode_level = self.data.powermax_model_details['ucode']
+        self.common.next_gen = True
+        (r1_ode, r1_ode_metro,
+         r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
+            array, True)
+        self.assertTrue(r1_ode)
+        self.assertTrue(r1_ode_metro)
         self.assertTrue(r2_ode)
+        self.assertFalse(r2_ode_metro)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_detail',
+                       return_value=tpd.PowerMaxData.ucode_5978_foxtail)
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(10, tpd.PowerMaxData.remote_array))
+    def test_array_ode_capabilities_check_next_gen_post_elm_rep(
+            self, mock_rdf, mock_det):
+        """Rep enabled, both array next gen, tgt>5978.221 returns T,T,T,T"""
+        array = self.data.powermax_model_details['symmetrixId']
+        self.common.ucode_level = self.data.powermax_model_details['ucode']
+        self.common.next_gen = True
+        (r1_ode, r1_ode_metro,
+         r2_ode, r2_ode_metro) = self.common._array_ode_capabilities_check(
+            array, True)
+        self.assertTrue(r1_ode)
+        self.assertTrue(r1_ode_metro)
+        self.assertTrue(r2_ode)
+        self.assertTrue(r2_ode_metro)
 
     @mock.patch.object(common.PowerMaxCommon,
                        '_add_new_volume_to_volume_group')
