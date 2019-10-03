@@ -1514,11 +1514,12 @@ class PowerMaxCommonTest(test.TestCase):
             mck_add_sg_to_sg.assert_called()
             self.assertTrue(success)
 
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_volume',
-        return_value=tpd.PowerMaxData.volume_details_attached)
+    @mock.patch.object(provision.PowerMaxProvision, 'create_storage_group',
+                       return_value=None)
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=tpd.PowerMaxData.volume_details_attached)
     @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
-                       return_value=tpd.PowerMaxData.sg_details[1])
+                       side_effect=[tpd.PowerMaxData.sg_details[1], None])
     @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
                        return_value=('OS-Test-SG', '', '', ''))
     @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
@@ -1529,7 +1530,7 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=False)
     def test_retype_inuse_volume_fail(self, mck_vol_in_sg, mck_sg_move,
                                       mck_child_sg_in_sg, mck_get_sg_name,
-                                      mck_get_sg, mck_get_vol):
+                                      mck_get_sg, mck_get_vol, mck_create_sg):
         array = self.data.array
         srp = self.data.srp
         slo = self.data.slo
@@ -1688,8 +1689,13 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=True)
     @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
                        return_value='')
-    def test_migrate_in_use_volume(self, mck_meta, mck_remote_retype,
-                                   mck_setup, mck_retype, mck_cleanup):
+    @mock.patch.object(utils.PowerMaxUtils, 'get_async_rdf_managed_grp_name')
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=True)
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
+    def test_migrate_in_use_volume(
+            self, mck_add_vol, mck_get_sg, mck_get_rdf_name, mck_meta,
+            mck_remote_retype, mck_setup, mck_retype, mck_cleanup):
         # Array/Volume info
         array = self.data.array
         srp = self.data.srp
@@ -1752,6 +1758,8 @@ class PowerMaxCommonTest(test.TestCase):
         # Scenario 3: no_rep => rep
         with mock.patch.object(self.utils, 'is_replication_enabled',
                                side_effect=[False, True]):
+            tgt_extra_specs['rep_mode'] = utils.REP_METRO
+            self.common.rep_config['mode'] = utils.REP_METRO
             success = self.common._migrate_volume(
                 array, volume, device_id, srp, slo, workload, volume_name,
                 new_type, src_extra_specs)[0]
@@ -1763,6 +1771,9 @@ class PowerMaxCommonTest(test.TestCase):
             mck_retype.assert_called_once_with(
                 array, srp, volume, device_id, src_extra_specs, slo,
                 workload, tgt_extra_specs, False)
+            mck_add_vol.assert_called_once()
+            mck_get_sg.assert_called_once()
+            mck_get_rdf_name.assert_called_once()
             mck_cleanup.assert_not_called()
             mck_remote_retype.assert_not_called()
             self.assertTrue(success)
@@ -1778,7 +1789,7 @@ class PowerMaxCommonTest(test.TestCase):
                 array, srp, volume, device_id, src_extra_specs, slo, workload,
                 tgt_extra_specs, False)
             mck_remote_retype.assert_called_once_with(
-                array, volume, device_id, volume_name, rep_mode, True,
+                array, volume, device_id, volume_name, utils.REP_METRO, True,
                 tgt_extra_specs)
             mck_cleanup.assert_not_called()
             mck_setup.assert_not_called()

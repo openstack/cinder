@@ -3182,6 +3182,21 @@ class PowerMaxCommon(object):
                 target_slo, target_workload, target_extra_specs,
                 is_compression_disabled)
 
+            # Ensure that storage groups for metro volumes stay consistent
+            if not was_rep_enabled and is_rep_enabled and (
+                    self.rep_config['mode'] is utils.REP_METRO):
+                async_sg = self.utils.get_async_rdf_managed_grp_name(
+                    self.rep_config)
+                sg_exists = self.rest.get_storage_group(array, async_sg)
+                if not sg_exists:
+                    self.rest.create_storage_group(
+                        array, async_sg, extra_specs['srp'],
+                        extra_specs['slo'], extra_specs['workload'],
+                        extra_specs)
+                self.masking.add_volume_to_storage_group(
+                    array, device_id, async_sg, volume_name, extra_specs,
+                    True)
+
             # If the volume was replication enabled both before and after
             # retype, the volume needs to be retyped on the remote array also
             if was_rep_enabled and is_rep_enabled:
@@ -3334,20 +3349,16 @@ class PowerMaxCommon(object):
         target_sg = self.rest.get_storage_group(array, target_sg_name)
 
         if not target_sg:
-            self.provision.create_storage_group(array, target_sg_name, srp,
-                                                target_slo,
-                                                target_workload,
-                                                target_extra_specs,
-                                                is_compression_disabled)
-            parent_sg = source_sg['parent_storage_group'][0]
-            self.masking.add_child_sg_to_parent_sg(
-                array, target_sg_name, parent_sg, target_extra_specs)
-            target_sg = self.rest.get_storage_group(array, target_sg_name)
+            target_sg = self.provision.create_storage_group(
+                array, target_sg_name, srp, target_slo, target_workload,
+                target_extra_specs, is_compression_disabled)
+            parent_sg = source_sg.get('parent_storage_group')
+            if parent_sg:
+                parent_sg = parent_sg[0]
+                self.masking.add_child_sg_to_parent_sg(
+                    array, target_sg_name, parent_sg, target_extra_specs)
 
-        target_in_parent = self.rest.is_child_sg_in_parent_sg(
-            array, target_sg_name, target_sg['parent_storage_group'][0])
-
-        if target_sg and target_in_parent:
+        if target_sg:
             self.masking.move_volume_between_storage_groups(
                 array, device_id, source_sg_name, target_sg_name,
                 target_extra_specs)
@@ -3588,6 +3599,9 @@ class PowerMaxCommon(object):
         rdf_group_no, remote_array = self.get_rdf_details(array)
         extra_specs['replication_enabled'] = '<is> True'
         extra_specs['rep_mode'] = self.rep_config['mode']
+        group_details = self.rest.get_rdf_group(array, rdf_group_no)
+        volumes_in_group = group_details['numDevices']
+        async_sg = self.utils.get_async_rdf_managed_grp_name(self.rep_config)
 
         rdf_vol_size = volume.size
         if rdf_vol_size == 0:
@@ -3598,8 +3612,24 @@ class PowerMaxCommon(object):
 
         rep_extra_specs = self._get_replication_extra_specs(
             extra_specs, self.rep_config)
-        volume_dict = self._create_volume(
-            target_name, rdf_vol_size, rep_extra_specs, in_use=True)
+        rep_mode = self.rep_config['mode']
+
+        if (volumes_in_group > 0) and (rep_mode is utils.REP_METRO or
+                                       rep_mode is utils.REP_ASYNC):
+            volume_dict = self._create_volume(
+                target_name, rdf_vol_size, rep_extra_specs)
+            sg_exists = self.rest.get_storage_group(remote_array, async_sg)
+            if not sg_exists:
+                self.rest.create_storage_group(
+                    remote_array, async_sg, extra_specs['srp'],
+                    extra_specs['slo'], extra_specs['workload'],
+                    rep_extra_specs)
+            self.masking.add_volume_to_storage_group(
+                remote_array, volume_dict['device_id'], async_sg,
+                target_name, rep_extra_specs, True)
+        else:
+            volume_dict = self._create_volume(
+                target_name, rdf_vol_size, rep_extra_specs, in_use=True)
         target_device_id = volume_dict['device_id']
 
         LOG.debug("Create volume replica: Target device: %(target)s "

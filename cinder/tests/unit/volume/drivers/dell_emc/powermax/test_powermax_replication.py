@@ -32,6 +32,7 @@ from cinder.volume.drivers.dell_emc.powermax import common
 from cinder.volume.drivers.dell_emc.powermax import fc
 from cinder.volume.drivers.dell_emc.powermax import iscsi
 from cinder.volume.drivers.dell_emc.powermax import masking
+from cinder.volume.drivers.dell_emc.powermax import metadata
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
@@ -238,6 +239,7 @@ class PowerMaxReplicationTest(test.TestCase):
     def test_unmap_lun_volume_failed_over(self, mock_fo, mock_es, mock_rm):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        extra_specs[utils.IS_RE] = True
         rep_config = self.utils.get_replication_config(
             [self.replication_device])
         self.common._unmap_lun(self.data.test_volume, self.data.connector)
@@ -399,32 +401,71 @@ class PowerMaxReplicationTest(test.TestCase):
                           'device_id': self.data.device_id2}, rep_data)
         mock_create.assert_not_called()
 
-    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
-                       return_value=(tpd.PowerMaxData.rdf_group_no,
-                                     tpd.PowerMaxData.remote_array))
-    @mock.patch.object(rest.PowerMaxRest, 'get_size_of_device_on_array',
-                       return_value=2)
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group', return_value={
+        'numDevices': 1})
+    @mock.patch.object(rest.PowerMaxRest, 'get_size_of_device_on_array')
     @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
-                       return_value=tpd.PowerMaxData.rep_extra_specs5)
-    @mock.patch.object(common.PowerMaxCommon, '_create_volume',
-                       return_value=tpd.PowerMaxData.provider_location)
+                       return_value=tpd.PowerMaxData.rep_extra_specs6)
+    @mock.patch.object(common.PowerMaxCommon, '_create_volume', return_value={
+        'device_id': tpd.PowerMaxData.device_id2})
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=None)
+    @mock.patch.object(rest.PowerMaxRest, 'create_storage_group')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     @mock.patch.object(common.PowerMaxCommon, '_sync_check')
     @mock.patch.object(rest.PowerMaxRest, 'create_rdf_device_pair',
-                       return_value=tpd.PowerMaxData.rdf_group_details)
-    def test_setup_inuse_volume_replication(self, mck_create_rdf_pair,
-                                            mck_sync_chk, mck_create_vol,
-                                            mck_rep_specs, mck_get_vol_size,
-                                            mck_get_rdf_info):
+                       return_value={'rdf_dict'})
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata,
+                       'gather_replication_info',
+                       return_value={'rep_info_dict'})
+    def test_setup_inuse_volume_replication(
+            self, mck_gather_rep_info, mck_create_rdf_pair, mck_sync_check,
+            mck_add_vol_to_sg, mck_create_sg, mck_get_sg, mck_create_vol,
+            mck_get_rep_specs, mck_get_size, mck_get_rdf_grp):
         array = self.data.array
-        device_id = self.data.device_id
         volume = self.data.test_attached_volume
-        extra_specs = self.data.extra_specs_migrate
-        self.rep_config = self.data.rep_extra_specs4
-        rep_status, rep_data, __ = (
+        volume_id = volume.id
+        target_name = self.common.utils.get_volume_element_name(volume_id)
+        target_device_id = tpd.PowerMaxData.device_id2
+        device_id = self.data.device_id
+        extra_specs = self.data.extra_specs_rep_enabled
+        self.common.rep_config['mode'] = utils.REP_METRO
+        rdf_group_no, remote_array = self.common.get_rdf_details(array)
+        rep_extra_specs = self.common._get_replication_extra_specs(
+            extra_specs, self.common.rep_config)
+        async_sg = self.common.utils.get_async_rdf_managed_grp_name(
+            self.common.rep_config)
+        status, driver_data, info_dict = (
             self.common.setup_inuse_volume_replication(
                 array, volume, device_id, extra_specs))
-        self.assertEqual('enabled', rep_status)
-        self.assertEqual(self.data.rdf_group_details, rep_data)
+        self.assertEqual(status, common.REPLICATION_ENABLED)
+        self.assertEqual(driver_data, {'rdf_dict'})
+        self.assertEqual(info_dict, {'rep_info_dict'})
+        mck_get_rdf_grp.assert_called_with(array, rdf_group_no)
+        mck_get_size.assert_called_once_with(array, device_id)
+        mck_get_rep_specs.assert_called_with(
+            extra_specs, self.common.rep_config)
+        mck_create_vol.assert_called_once()
+        mck_get_sg.assert_called_once_with(remote_array, async_sg)
+        mck_create_sg.assert_called_once_with(
+            remote_array, async_sg, extra_specs['srp'], extra_specs['slo'],
+            extra_specs['workload'], rep_extra_specs)
+        mck_sync_check.assert_called_once_with(array, device_id, extra_specs,
+                                               tgt_only=True)
+        mck_add_vol_to_sg.assert_called_once_with(
+            remote_array, target_device_id, async_sg, target_name,
+            rep_extra_specs, True)
+        mck_create_rdf_pair.assert_called_once_with(
+            array, device_id, rdf_group_no, target_device_id, remote_array,
+            extra_specs)
+        mck_gather_rep_info.assert_called_with(
+            volume_id, 'replication', False, rdf_group_no=rdf_group_no,
+            target_name=target_name, remote_array=remote_array,
+            target_device_id=target_device_id,
+            replication_status=common.REPLICATION_ENABLED,
+            rep_mode=rep_extra_specs['rep_mode'],
+            rdf_group_label=self.common.rep_config['rdf_group_label'],
+            target_array_model=rep_extra_specs['target_array_model'])
 
     @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
                        return_value=('VMAX250F', False))
