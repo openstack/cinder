@@ -123,9 +123,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Debug metadata compression and service level info fix
         4.1.1 - QoS calulation fix
         4.1.2 - Volume group delete fix (bug #1853589)
+        4.1.3 - Retype attached replication fix (#1851371)
     """
 
-    VERSION = "4.1.2"
+    VERSION = "4.1.3"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
