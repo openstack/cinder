@@ -1092,7 +1092,7 @@ class PowerMaxCommon(object):
             r1_ode = True
             if rep_enabled:
                 __, r2_array = self.get_rdf_details(array)
-                r2_ucode = self.rest.get_array_ucode_version(array)
+                r2_ucode = self.rest.get_array_ucode_version(r2_array)
                 if int(r1_ucode[2]) > utils.UCODE_5978_ELMSR:
                     r1_ode_metro = True
                     r2_ucode = r2_ucode.split('.')
