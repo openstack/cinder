@@ -221,9 +221,11 @@ class SolidFireDriver(san.SanISCSIDriver):
           2.0.12 - Fix bug #1744005
           2.0.14 - Fix bug #1782588 qos settings on extend
           2.0.15 - Fix bug #1834013 NetApp SolidFire replication errors
+          2.0.16 - Add options for replication mode (Async, Sync and
+                   SnapshotsOnly)
     """
 
-    VERSION = '2.0.15'
+    VERSION = '2.0.16'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_SolidFire_CI"
@@ -322,6 +324,18 @@ class SolidFireDriver(san.SanISCSIDriver):
     @staticmethod
     def get_driver_options():
         return sf_opts
+
+    def _init_vendor_properties(self):
+        properties = {}
+        self._set_property(
+            properties,
+            "solidfire:replication_mode",
+            "Replication mode",
+            _("Specifies replication mode."),
+            "string",
+            enum=["Async", "Sync", "SnapshotsOnly"])
+
+        return properties, 'solidfire'
 
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
@@ -1412,15 +1426,17 @@ class SolidFireDriver(san.SanISCSIDriver):
         return rep_data
 
     def _set_rep_by_volume_type(self, ctxt, type_id):
-        rep_type = None
+        rep_modes = ['Async', 'Sync', 'SnapshotsOnly']
+        rep_opts = {}
         type_ref = volume_types.get_volume_type(ctxt, type_id)
         specs = type_ref.get('extra_specs')
-
-        # TODO(erlon): Add support for sync/snapshot replication
         if specs.get('replication_enabled', "") == "<is> True":
-            rep_type = 'Async'
+            if specs.get('solidfire:replication_mode') in rep_modes:
+                rep_opts['rep_type'] = specs.get('solidfire:replication_mode')
+            else:
+                rep_opts['rep_type'] = 'Async'
 
-        return rep_type
+        return rep_opts
 
     def _replicate_volume(self, volume, params,
                           parent_sfaccount, rep_info):
@@ -1476,7 +1492,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                       volume['volumeID'])
 
             # Make sure we split any pair the volume have
-            params = {'volumeID': volume['volumeID'], 'mode': rep_info}
+            params = {'volumeID': volume['volumeID'],
+                      'mode': rep_info['rep_type']}
             self._issue_api_request('RemoveVolumePair', params, '8.0')
 
             rep_key = self._issue_api_request(

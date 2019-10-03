@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    SolidFire supports Synchronous, Asynchronous and SnapshotsOnly replication
+    modes. This adds the config option `solidfire:replication_mode` to specify
+    the mode to be used by Cinder. Its value can be `Sync`, `Async` or
+    `SnapshotsOnly`.
