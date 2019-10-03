@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix DetachedInstanceError is not bound to a Session for VolumeAttachments.
+    This affected VolumeList.get_all, and could make a service fail on startup
+    and make it stay in down state.
