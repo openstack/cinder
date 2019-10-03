@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug 1809249 <https://bugs.launchpad.net/cinder/+bug/1809249>`_ -
+    3PAR driver adds the config option `hpe3par_target_nsp` that can be
+    set to the 3PAR backend to use when multipath is not enabled and
+    the Fibre Channel Zone Manager is not used.
