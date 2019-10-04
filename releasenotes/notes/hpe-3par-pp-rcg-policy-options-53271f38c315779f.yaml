@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    This change fixes bug 1845483 - 3PAR: For Peer Persistence, add
+    policy options in RCG. Following options are added after Remote
+    Copy Group (RCG) is created: autoFailover, pathManagement,
+    autoRecover
+

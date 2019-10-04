@@ -1329,6 +1329,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         # and return the mock HTTP 3PAR client
         conf = self.setup_configuration()
         self.replication_targets[0]['replication_mode'] = 'sync'
+        self.replication_targets[0]['quorum_witness_ip'] = None
         conf.replication_device = self.replication_targets
         mock_client = self.setup_driver(config=conf)
         mock_client.getStorageSystemInfo.return_value = (
@@ -1393,6 +1394,96 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                       'targetName': backend_id}],
                     optional={'volumeAutoCreation': True}),
                 mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'enabled',
+                              'provider_location': self.CLIENT_ID},
+                             return_model)
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_replicated_peer_persistence(
+            self, _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        self.replication_targets[0]['quorum_witness_ip'] = '10.50.3.192'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.create_volume(self.volume_replicated)
+            comment = Comment({
+                "volume_type_name": "replicated",
+                "display_name": "Foo Volume",
+                "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "volume_type_id": "be9181f1-4040-46f2-8298-e7532f2bf9db",
+                "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "qos": {},
+                "type": "OpenStack"})
+
+            backend_id = self.replication_targets[0]['backend_id']
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HPE3PAR_CPG,
+                    2048, {
+                        'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': backend_id,
+                      'mode': SYNC_MODE,
+                      'snapCPG': HPE3PAR_CPG_REMOTE}],
+                    {'localUserCPG': HPE3PAR_CPG,
+                     'localSnapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': backend_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.modifyRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    {'targets': [
+                        {'policies': {'autoFailover': True,
+                                      'pathManagement': True,
+                                      'autoRecover': True}}]}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+
             mock_client.assert_has_calls(
                 self.get_id_login +
                 self.standard_logout +
