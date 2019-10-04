@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The LINSTOR driver for Cinder supports LINSTOR 0.9.12.  The driver
+    supports LINSTOR backend using REST API.
+
+    The new driver adds 'linstor_autoplace_count' configuration option that
+    specifies the number of volume replicas.
+features:
+  - |
+    The LINSTOR Driver for Cinder now supports LINSTOR 0.9.12.

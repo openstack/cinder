@@ -1,4 +1,4 @@
-#  Copyright (c) 2014-2018 LINBIT HA Solutions GmbH
+#  Copyright (c) 2014-2019 LINBIT HA Solutions GmbH
 #  All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -15,7 +15,7 @@
 
 """This driver connects Cinder to an installed LINSTOR instance.
 
-See https://docs.linbit.com/docs/users-guide-9.0/#ch-openstack
+See https://docs.linbit.com/docs/users-guide-9.0/#ch-openstack-linstor
 for more details.
 """
 
@@ -33,11 +33,6 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
-
-try:
-    import google.protobuf.json_format as proto
-except ImportError:
-    proto = None
 
 try:
     import linstor
@@ -69,7 +64,14 @@ linstor_opts = [
                default=4096,
                help='Default Block size for Image restoration. '
                     'When using iSCSI transport, this option '
-                    'specifies the block size'),
+                    'specifies the block size.'),
+
+    cfg.IntOpt('linstor_autoplace_count',
+               default=0,
+               help='Autoplace replication count on volume deployment. '
+                    '0 = Full cluster replication without autoplace, '
+                    '1 = Single node deployment without replication, '
+                    '2 or greater = Replicated deployment with autoplace.'),
 
     cfg.BoolOpt('linstor_controller_diskless',
                 default=True,
@@ -84,14 +86,25 @@ CONF.register_opts(linstor_opts, group=configuration.SHARED_CONF_GROUP)
 CINDER_UNKNOWN = 'unknown'
 DM_VN_PREFIX = 'CV_'
 DM_SN_PREFIX = 'SN_'
-LVM = 'Lvm'
-LVMTHIN = 'LvmThin'
+DISKLESS = 'DISKLESS'
+LVM = 'LVM'
+LVM_THIN = 'LVM_THIN'
+ZFS = 'ZFS'
+ZFS_THIN = 'ZFS_THIN'
 
 
 class LinstorBaseDriver(driver.VolumeDriver):
-    """Cinder driver that uses Linstor for storage."""
+    """Cinder driver that uses LINSTOR for storage.
 
-    VERSION = '1.0.0'
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0 - Initial driver
+        1.0.1 - Added support for LINSTOR 0.9.12
+    """
+
+    VERSION = '1.0.1'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = 'LINBIT_LINSTOR_CI'
@@ -113,6 +126,8 @@ class LinstorBaseDriver(driver.VolumeDriver):
             'linstor_default_blocksize')
         self.diskless = self.configuration.safe_get(
             'linstor_controller_diskless')
+        self.ap_count = self.configuration.safe_get(
+            'linstor_autoplace_count')
         self.default_backend_name = self.configuration.safe_get(
             'volume_backend_name')
         self.host_name = socket.gethostname()
@@ -176,44 +191,36 @@ class LinstorBaseDriver(driver.VolumeDriver):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
                 lin.connect()
-
-            response = proto.MessageToDict(lin.resource_list()[0].proto_msg)
-        return response
+            api_reply = lin.resource_list()[0].__dict__['_rest_data']
+            return api_reply
 
     def _get_api_resource_dfn_list(self):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
                 lin.connect()
+            api_reply = lin.resource_dfn_list()[0].__dict__['_rest_data']
+            return api_reply
 
-            response = proto.MessageToDict(
-                lin.resource_dfn_list()[0].proto_msg)
-            return response
-
-    def _get_api_nodes_list(self):
+    def _get_api_node_list(self):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
                 lin.connect()
-
-            response = proto.MessageToDict(lin.node_list()[0].proto_msg)
-            return response
+            api_reply = lin.node_list()[0].__dict__['_rest_data']
+            return api_reply
 
     def _get_api_storage_pool_dfn_list(self):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
                 lin.connect()
-
-            response = proto.MessageToDict(
-                lin.storage_pool_dfn_list()[0].proto_msg)
-            return response
+            api_reply = lin.storage_pool_dfn_list()[0].__dict__['_rest_data']
+            return api_reply
 
     def _get_api_storage_pool_list(self):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
                 lin.connect()
-
-            response = proto.MessageToDict(
-                lin.storage_pool_list()[0].proto_msg)
-            return response
+            api_reply = lin.storage_pool_list()[0].__dict__['_rest_data']
+            return api_reply
 
     def _get_api_volume_extend(self, rsc_target_name, new_size):
         with lin_drv(self.default_uri) as lin:
@@ -226,25 +233,15 @@ class LinstorBaseDriver(driver.VolumeDriver):
                 size=self._vol_size_to_linstor(new_size))
             return vol_reply
 
-    def _api_snapshot_create(self, node_names, rsc_name, snapshot_name):
-        with lin_drv(self.default_uri) as lin:
-            if not lin.connected:
-                lin.connect()
+    def _api_snapshot_create(self, drbd_rsc_name, snapshot_name):
+        lin = linstor.Resource(drbd_rsc_name, uri=self.default_uri)
+        snap_reply = lin.snapshot_create(snapshot_name)
+        return snap_reply
 
-            snap_reply = lin.snapshot_create(node_names=node_names,
-                                             rsc_name=rsc_name,
-                                             snapshot_name=snapshot_name,
-                                             async_msg=False)
-            return snap_reply
-
-    def _api_snapshot_delete(self, drbd_rsc_name, snap_name):
-        with lin_drv(self.default_uri) as lin:
-            if not lin.connected:
-                lin.connect()
-
-            snap_reply = lin.snapshot_delete(rsc_name=drbd_rsc_name,
-                                             snapshot_name=snap_name)
-            return snap_reply
+    def _api_snapshot_delete(self, drbd_rsc_name, snapshot_name):
+        lin = linstor.Resource(drbd_rsc_name, uri=self.default_uri)
+        snap_reply = lin.snapshot_delete(snapshot_name)
+        return snap_reply
 
     def _api_rsc_dfn_delete(self, drbd_rsc_name):
         with lin_drv(self.default_uri) as lin:
@@ -320,6 +317,18 @@ class LinstorBaseDriver(driver.VolumeDriver):
             rsc_reply = lin.resource_create([new_rsc], async_msg=False)
             return rsc_reply
 
+    def _api_rsc_autoplace(self, rsc_name):
+        with lin_drv(self.default_uri) as lin:
+            if not lin.connected:
+                lin.connect()
+
+            new_rsc = linstor.Resource(name=rsc_name, uri=self.default_uri)
+            new_rsc.placement.redundancy = self.ap_count
+            new_rsc.placement.storage_pool = self.default_pool
+            rsc_reply = new_rsc.autoplace()
+
+            return rsc_reply
+
     def _api_rsc_delete(self, rsc_name, node_name):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
@@ -328,6 +337,36 @@ class LinstorBaseDriver(driver.VolumeDriver):
             rsc_reply = lin.resource_delete(node_name=node_name,
                                             rsc_name=rsc_name)
             return rsc_reply
+
+    def _api_rsc_auto_delete(self, rsc_name):
+        with lin_drv(self.default_uri) as lin:
+            if not lin.connected:
+                lin.connect()
+
+            rsc = linstor.Resource(str(rsc_name), self.default_uri)
+            return rsc.delete()
+
+    def _api_rsc_is_diskless(self, rsc_name):
+        with lin_drv(self.default_uri) as lin:
+            if not lin.connected:
+                lin.connect()
+
+            rsc = linstor.Resource(str(rsc_name))
+            return rsc.is_diskless(self.host_name)
+
+    def _api_rsc_size(self, rsc_name):
+        with lin_drv(self.default_uri) as lin:
+            if not lin.connected:
+                lin.connect()
+
+            rsc = linstor.Resource(str(rsc_name))
+            if len(rsc.volumes):
+                if "size" in rsc.volumes:
+                    return rsc.volumes[0].size
+                else:
+                    return 0
+            else:
+                return 0
 
     def _api_volume_dfn_delete(self, rsc_name, volume_nr):
         with lin_drv(self.default_uri) as lin:
@@ -353,29 +392,39 @@ class LinstorBaseDriver(driver.VolumeDriver):
             return vol_reply
 
     def _api_snapshot_resource_restore(self,
-                                       nodes,
                                        src_rsc_name,
                                        src_snap_name,
                                        new_vol_name):
+
+        lin = linstor.Resource(src_rsc_name, uri=self.default_uri)
+        new_rsc = lin.restore_from_snapshot(src_snap_name, new_vol_name)
+
+        # Adds an aux/property KV for synchronous return from snapshot restore
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
                 lin.connect()
 
-            rsc_reply = lin.snapshot_resource_restore(
-                node_names=nodes,
-                from_resource=src_rsc_name,
-                from_snapshot=src_snap_name,
-                to_resource=new_vol_name)
-            return rsc_reply
+            aux_prop = {}
+            aux_prop["Aux/restore"] = "done"
+            lin.volume_dfn_modify(
+                rsc_name=new_vol_name,
+                volume_nr=0,
+                set_properties=aux_prop)
+
+        if new_rsc.name == new_vol_name:
+            return True
+        return False
 
     def _get_rsc_path(self, rsc_name):
         rsc_list_reply = self._get_api_resource_list()
 
-        for rsc in rsc_list_reply['resources']:
-            if rsc['name'] == rsc_name and rsc['nodeName'] == self.host_name:
-                for volume in rsc['vlms']:
-                    if volume['vlmNr'] == 0:
-                        return volume['devicePath']
+        if rsc_list_reply:
+            for rsc in rsc_list_reply:
+                if (rsc["name"] == rsc_name and
+                        rsc["node_name"] == self.host_name):
+                    for volume in rsc["volumes"]:
+                        if volume["volume_number"] == 0:
+                            return volume["device_path"]
 
     def _get_local_path(self, volume):
         try:
@@ -391,13 +440,11 @@ class LinstorBaseDriver(driver.VolumeDriver):
     def _get_spd(self):
         # Storage Pool Definition List
         spd_list_reply = self._get_api_storage_pool_dfn_list()
-
         spd_list = []
-        for node in spd_list_reply['storPoolDfns']:
-            spd_item = {}
-            spd_item['spd_uuid'] = node['uuid']
-            spd_item['spd_name'] = node['storPoolName']
-            spd_list.append(spd_item)
+
+        if spd_list_reply:
+            for spd in spd_list_reply:
+                spd_list.append(spd["storage_pool_name"])
 
         return spd_list
 
@@ -405,49 +452,39 @@ class LinstorBaseDriver(driver.VolumeDriver):
         # Fetch Storage Pool List
         sp_list_reply = self._get_api_storage_pool_list()
 
-        # Fetch Resource Definition List
-        sp_list = []
-
         # Separate the diskless nodes
         sp_diskless_list = []
+        sp_list = []
         node_count = 0
 
         if sp_list_reply:
-            for node in sp_list_reply['storPools']:
-                if node['storPoolName'] == self.default_pool:
+            for node in sp_list_reply:
+                if node["storage_pool_name"] == self.default_pool:
                     sp_node = {}
-                    sp_node['node_uuid'] = node['nodeUuid']
-                    sp_node['node_name'] = node['nodeName']
-                    sp_node['sp_uuid'] = node['storPoolUuid']
-                    sp_node['sp_name'] = node['storPoolName']
-                    sp_node['sp_vlms_uuid'] = []
-                    if 'vlms' in node:
-                        for vlm in node['vlms']:
-                            sp_node['sp_vlms_uuid'].append(vlm['vlmDfnUuid'])
+                    sp_node["node_name"] = node["node_name"]
+                    sp_node["sp_uuid"] = node["uuid"]
+                    sp_node["sp_name"] = node["storage_pool_name"]
 
-                    if 'Diskless' in node['driver']:
+                    if node["provider_kind"] == DISKLESS:
                         diskless = True
-                        sp_node['sp_free'] = -1.0
-                        sp_node['sp_cap'] = 0.0
+                        sp_node["sp_free"] = -1.0
+                        sp_node["sp_cap"] = -1.0
+                        sp_node["sp_allocated"] = 0.0
                     else:
                         diskless = False
-                        if 'freeSpace' in node:
-                            sp_node['sp_free'] = round(
-                                int(node['freeSpace']['freeCapacity']) /
-                                units.Mi,
-                                2)
-                            sp_node['sp_cap'] = round(
-                                int(node['freeSpace']['totalCapacity']) /
-                                units.Mi,
-                                2)
+                        if "free_capacity" in node:
+                            temp = float(node["free_capacity"]) / units.Mi
+                            sp_node["sp_free"] = round(temp)
+                            temp = float(node["total_capacity"]) / units.Mi
+                            sp_node["sp_cap"] = round(temp)
 
-                            # Driver
-                    if node['driver'] == "LvmDriver":
-                        sp_node['driver_name'] = LVM
-                    elif node['driver'] == "LvmThinDriver":
-                        sp_node['driver_name'] = LVMTHIN
+                    drivers = [LVM, LVM_THIN, ZFS, ZFS_THIN, DISKLESS]
+
+                    # Driver selection
+                    if node["provider_kind"] in drivers:
+                        sp_node['driver_name'] = node["provider_kind"]
                     else:
-                        sp_node['driver_name'] = node['driver']
+                        sp_node['driver_name'] = str(node["provider_kind"])
 
                     if diskless:
                         sp_diskless_list.append(sp_node)
@@ -455,9 +492,9 @@ class LinstorBaseDriver(driver.VolumeDriver):
                         sp_list.append(sp_node)
                     node_count += 1
 
-        # Add the diskless nodes to the end of the list
-        if sp_diskless_list:
-            sp_list.extend(sp_diskless_list)
+            # Add the diskless nodes to the end of the list
+            if sp_diskless_list:
+                sp_list.extend(sp_diskless_list)
 
         return sp_list
 
@@ -465,7 +502,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
 
         data = {}
         data["volume_backend_name"] = self.default_backend_name
-        data["vendor_name"] = 'LINBIT'
+        data["vendor_name"] = "LINBIT"
         data["driver_version"] = self.VERSION
         data["pools"] = []
 
@@ -477,40 +514,51 @@ class LinstorBaseDriver(driver.VolumeDriver):
         for rd in rd_list:
             num_vols += 1
 
-        allocated_sizes_gb = []
-        free_capacity_gb = []
-        total_capacity_gb = []
+        # allocated_sizes_gb = []
+        free_gb = []
+        total_gb = []
         thin_enabled = False
 
-        # Free capacity for Local Node
+        # Total & Free capacity for Local Node
         single_pool = {}
         for sp in sp_data:
-            if 'Diskless' not in sp['driver_name']:
-                if 'LvmThin' in sp['driver_name']:
+            if "Diskless" not in sp["driver_name"]:
+                thin_backends = [LVM_THIN, ZFS_THIN]
+                if sp["driver_name"] in thin_backends:
                     thin_enabled = True
-                if 'sp_cap' in sp:
-                    if sp['sp_cap'] >= 0.0:
-                        total_capacity_gb.append(sp['sp_cap'])
-                if 'sp_free' in sp:
-                    if sp['sp_free'] >= 0.0:
-                        free_capacity_gb.append(sp['sp_free'])
-                sp_allocated_size_gb = 0
-                for vlm_uuid in sp['sp_vlms_uuid']:
-                    for rd in rd_list:
-                        if 'vlm_dfn_uuid' in rd:
-                            if rd['vlm_dfn_uuid'] == vlm_uuid:
-                                sp_allocated_size_gb += rd['rd_size']
-                allocated_sizes_gb.append(sp_allocated_size_gb)
+                if "sp_cap" in sp:
+                    if sp["sp_cap"] >= 0.0:
+                        total_gb.append(sp["sp_cap"])
+                if "sp_free" in sp:
+                    if sp["sp_free"] >= 0.0:
+                        free_gb.append(sp["sp_free"])
+
+        # Allocated capacity
+        sp_allocated_size_gb = 0.0
+        local_resources = []
+
+        reply = self._get_api_resource_list()
+
+        if reply:
+            for rsc in reply:
+                if rsc["node_name"] == self.host_name:
+                    local_resources.append(rsc["name"])
+
+            for rsc_name in local_resources:
+                if not self._api_rsc_is_diskless(rsc_name):
+                    rsc_size = self._api_rsc_size(rsc_name)
+                    sp_allocated_size_gb += round(
+                        int(rsc_size) / units.Gi, 2)
 
         single_pool["pool_name"] = data["volume_backend_name"]
-        single_pool["free_capacity_gb"] = min(free_capacity_gb)
-        single_pool["total_capacity_gb"] = min(total_capacity_gb)
-        single_pool['provisioned_capacity_gb'] = max(allocated_sizes_gb)
+        single_pool["free_capacity_gb"] = min(free_gb) if free_gb else 0
+        single_pool["total_capacity_gb"] = min(total_gb) if total_gb else 0
+        single_pool["provisioned_capacity_gb"] = sp_allocated_size_gb
         single_pool["reserved_percentage"] = (
             self.configuration.reserved_percentage)
-        single_pool['thin_provisioning_support'] = thin_enabled
-        single_pool['thick_provisioning_support'] = not thin_enabled
-        single_pool['max_over_subscription_ratio'] = (
+        single_pool["thin_provisioning_support"] = thin_enabled
+        single_pool["thick_provisioning_support"] = not thin_enabled
+        single_pool["max_over_subscription_ratio"] = (
             self.configuration.max_over_subscription_ratio)
         single_pool["location_info"] = self.default_uri
         single_pool["total_volumes"] = num_vols
@@ -518,7 +566,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
         single_pool["goodness_function"] = self.get_goodness_function()
         single_pool["QoS_support"] = False
         single_pool["multiattach"] = False
-        single_pool["backend_state"] = 'up'
+        single_pool["backend_state"] = "up"
 
         data["pools"].append(single_pool)
 
@@ -526,29 +574,16 @@ class LinstorBaseDriver(driver.VolumeDriver):
 
     def _get_resource_definitions(self):
 
+        rd_list_reply = self._get_api_resource_dfn_list()
         rd_list = []
 
-        rd_list_reply = self._get_api_resource_dfn_list()
-
-        # Only if resource definition present
-        if 'rscDfns' in rd_list_reply:
-            for node in rd_list_reply['rscDfns']:
-
+        if rd_list_reply:
+            for node in rd_list_reply:
                 # Count only Cinder volumes
-                if DM_VN_PREFIX in node['rscName']:
+                if DM_VN_PREFIX in node['name']:
                     rd_node = {}
-                    rd_node['rd_uuid'] = node['rscDfnUuid']
-                    rd_node['rd_name'] = node['rscName']
-                    rd_node['rd_port'] = node['rscDfnPort']
-
-                    if 'vlmDfns' in node:
-                        for vol in node['vlmDfns']:
-                            if vol['vlmNr'] == 0:
-                                rd_node['vlm_dfn_uuid'] = vol['vlmDfnUuid']
-                                rd_node['rd_size'] = round(
-                                    float(vol['vlmSize']) / units.Mi, 2)
-                                break
-
+                    rd_node["rd_uuid"] = node['uuid']
+                    rd_node["rd_name"] = node['name']
                     rd_list.append(rd_node)
 
         return rd_list
@@ -558,46 +593,62 @@ class LinstorBaseDriver(driver.VolumeDriver):
 
         However, it excludes diskless nodes.
         """
-
-        rsc_list_reply = self._get_api_resource_list()  # reply in dict
-
+        rsc_list_reply = self._get_api_resource_list()
         snap_list = []
-        for rsc in rsc_list_reply['resources']:
-            if rsc['name'] != resource:
-                continue
 
-            # Diskless nodes are not available for snapshots
-            diskless = False
-            if 'rscFlags' in rsc:
-                if 'DISKLESS' in rsc['rscFlags']:
-                    diskless = True
-            if not diskless:
-                snap_list.append(rsc['nodeName'])
+        if rsc_list_reply:
+            for rsc in rsc_list_reply:
+                if rsc["name"] != resource:
+                    continue
+
+                # Diskless nodes are not available for snapshots
+                diskless = False
+                if "flags" in rsc:
+                    if 'DISKLESS' in rsc["flags"]:
+                        diskless = True
+                if not diskless:
+                    snap_list.append(rsc["node_name"])
 
         return snap_list
 
-    def _get_linstor_nodes(self):
-        # Returns all available DRBD nodes
-        node_list_reply = self._get_api_nodes_list()
+    def _get_diskless_nodes(self, resource):
+        # Returns diskless nodes given a resource
+        rsc_list_reply = self._get_api_resource_list()
+        diskless_list = []
 
+        if rsc_list_reply:
+            for rsc in rsc_list_reply:
+                if rsc["name"] != resource:
+                    continue
+
+                if "flags" in rsc:
+                    if DISKLESS in rsc["flags"]:
+                        diskless_list.append(rsc["node_name"])
+
+        return diskless_list
+
+    def _get_linstor_nodes(self):
+        # Returns all available LINSTOR nodes
+        node_list_reply = self._get_api_node_list()
         node_list = []
-        for node in node_list_reply['nodes']:
-            node_list.append(node['name'])
+
+        if node_list_reply:
+            for node in node_list_reply:
+                node_list.append(node["name"])
 
         return node_list
 
     def _get_nodes(self):
-        # Get Node List
-        node_list_reply = self._get_api_nodes_list()
-
+        # Returns all LINSTOR nodes in a dict list
+        node_list_reply = self._get_api_node_list()
         node_list = []
+
         if node_list_reply:
-            for node in node_list_reply['nodes']:
+            for node in node_list_reply:
                 node_item = {}
-                node_item['node_name'] = node['name']
-                node_item['node_uuid'] = node['uuid']
-                node_item['node_address'] = (
-                    node['netInterfaces'][0]['address'])
+                node_item["node_name"] = node["name"]
+                node_item["node_address"] = (
+                    node["net_interfaces"][0]["address"])
                 node_list.append(node_item)
 
         return node_list
@@ -622,83 +673,57 @@ class LinstorBaseDriver(driver.VolumeDriver):
     #
     def create_snapshot(self, snapshot):
         snap_name = self._snapshot_name_from_cinder_snapshot(snapshot)
-        drbd_rsc_name = self._drbd_resource_name_from_cinder_snapshot(snapshot)
-        node_names = self._get_snapshot_nodes(drbd_rsc_name)
+        rsc_name = self._drbd_resource_name_from_cinder_snapshot(snapshot)
 
-        snap_reply = self._api_snapshot_create(node_names=node_names,
-                                               rsc_name=drbd_rsc_name,
+        snap_reply = self._api_snapshot_create(drbd_rsc_name=rsc_name,
                                                snapshot_name=snap_name)
 
-        if not self._check_api_reply(snap_reply, noerror_only=True):
+        if not snap_reply:
             msg = 'ERROR creating a LINSTOR snapshot {}'.format(snap_name)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(msg)
 
     def delete_snapshot(self, snapshot):
-        snap_name = self._snapshot_name_from_cinder_snapshot(snapshot)
-        drbd_rsc_name = self._drbd_resource_name_from_cinder_snapshot(snapshot)
+        snapshot_name = self._snapshot_name_from_cinder_snapshot(snapshot)
+        rsc_name = self._drbd_resource_name_from_cinder_snapshot(snapshot)
 
-        snap_reply = self._api_snapshot_delete(drbd_rsc_name, snap_name)
+        snap_reply = self._api_snapshot_delete(rsc_name, snapshot_name)
 
-        if not self._check_api_reply(snap_reply, noerror_only=True):
-            msg = 'ERROR deleting a LINSTOR snapshot {}'.format(snap_name)
+        if not snap_reply:
+            msg = 'ERROR deleting a LINSTOR snapshot {}'.format(snapshot_name)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(msg)
 
         # Delete RD if no other RSC are found
-        if not self._get_snapshot_nodes(drbd_rsc_name):
-            self._api_rsc_dfn_delete(drbd_rsc_name)
+        if not self._get_snapshot_nodes(rsc_name):
+            self._api_rsc_dfn_delete(rsc_name)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         src_rsc_name = self._drbd_resource_name_from_cinder_snapshot(snapshot)
         src_snap_name = self._snapshot_name_from_cinder_snapshot(snapshot)
         new_vol_name = self._drbd_resource_name_from_cinder_volume(volume)
 
-        # New RD
-        rsc_reply = self._api_rsc_dfn_create(new_vol_name)
+        # If no autoplace, manually build a cluster list
+        if self.ap_count == 0:
+            diskless_nodes = []
+            nodes = []
+            for node in self._get_storage_pool():
 
-        if not self._check_api_reply(rsc_reply):
-            msg = _('Error on creating LINSTOR Resource Definition')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+                if DISKLESS in node['driver_name']:
+                    diskless_nodes.append(node['node_name'])
+                    continue
 
-        # New VD from Snap
-        reply = self._api_snapshot_volume_dfn_restore(src_rsc_name,
-                                                      src_snap_name,
-                                                      new_vol_name)
-        if not self._check_api_reply(reply, noerror_only=True):
-            msg = _('Error on restoring LINSTOR Volume Definition')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+                # Filter out controller node if it is diskless
+                if self.diskless and node['node_name'] == self.host_name:
+                    continue
+                else:
+                    nodes.append(node['node_name'])
 
-        # Set StorPoolName property on VD
-        reply = self._api_volume_dfn_set_sp(new_vol_name)
-        if not self._check_api_reply(reply):
-            msg = _('Error on restoring LINSTOR Volume StorPoolName property')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # New RSC from Snap
-        # Assumes restoring to all the nodes containing the storage pool
-        # unless diskless
-        nodes = []
-        for node in self._get_storage_pool():
-
-            if 'Diskless' in node['driver_name']:
-                continue
-
-            # Filter out controller node if LINSTOR is diskless
-            if self.diskless and node['node_name'] == self.host_name:
-                continue
-            else:
-                nodes.append(node['node_name'])
-
-        reply = self._api_snapshot_resource_restore(nodes,
-                                                    src_rsc_name,
+        reply = self._api_snapshot_resource_restore(src_rsc_name,
                                                     src_snap_name,
                                                     new_vol_name)
-        if not self._check_api_reply(reply, noerror_only=True):
-            msg = _('Error on restoring LINSTOR resources')
+        if not reply:
+            msg = _('Error on restoring a LINSTOR volume')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -707,6 +732,13 @@ class LinstorBaseDriver(driver.VolumeDriver):
             reply = self._api_rsc_create(rsc_name=new_vol_name,
                                          node_name=self.host_name,
                                          diskless=self.diskless)
+
+        # Add any other diskless nodes only if not autoplaced
+        if self.ap_count == 0 and diskless_nodes:
+            for node in diskless_nodes:
+                self._api_rsc_create(rsc_name=new_vol_name,
+                                     node_name=node,
+                                     diskless=True)
 
         # Upsize if larger volume than original snapshot
         src_rsc_size = int(snapshot['volume_size'])
@@ -722,7 +754,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
 
             if not self._check_api_reply(reply, noerror_only=True):
                 # Delete failed volume
-                failed_volume = []
+                failed_volume = {}
                 failed_volume['id'] = volume['id']
                 self.delete_volume(failed_volume)
 
@@ -731,9 +763,9 @@ class LinstorBaseDriver(driver.VolumeDriver):
                 raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume(self, volume):
+
         # Check for Storage Pool List
         sp_data = self._get_storage_pool()
-        rsc_size = 1
         rsc_size = volume['size']
 
         # No existing Storage Pools found
@@ -747,11 +779,11 @@ class LinstorBaseDriver(driver.VolumeDriver):
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            # Create Storage Pool (definition is implicit)
+            # Create Storage Pool
             spd_list = self._get_spd()
 
             if spd_list:
-                spd_name = spd_list[0]['spd_name']
+                spd_name = spd_list[0]
 
             for node in node_list:
 
@@ -766,12 +798,12 @@ class LinstorBaseDriver(driver.VolumeDriver):
                     storage_driver=node_driver,
                     driver_pool_name=self.default_vg_name)
 
-                if not self._check_api_reply(sp_reply):
+                if not self._check_api_reply(sp_reply, noerror_only=True):
                     msg = _('Could not create a LINSTOR storage pool')
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
-        # # Check for RD
+        # Check for RD
         # If Retyping from another volume, use parent/origin uuid
         # as a name source
         if (volume['migration_status'] is not None and
@@ -785,8 +817,8 @@ class LinstorBaseDriver(driver.VolumeDriver):
 
         # Create a New RD
         rsc_dfn_reply = self._api_rsc_dfn_create(rsc_name)
-        if not self._check_api_reply(rsc_dfn_reply,
-                                     noerror_only=True):
+
+        if not self._check_api_reply(rsc_dfn_reply, noerror_only=True):
             msg = _("Error creating a LINSTOR resource definition")
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -795,8 +827,8 @@ class LinstorBaseDriver(driver.VolumeDriver):
         vd_size = self._vol_size_to_linstor(rsc_size)
         vd_reply = self._api_volume_dfn_create(rsc_name=rsc_name,
                                                size=int(vd_size))
-        if not self._check_api_reply(vd_reply,
-                                     noerror_only=True):
+
+        if not self._check_api_reply(vd_reply, noerror_only=True):
             msg = _("Error creating a LINSTOR volume definition")
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -804,25 +836,37 @@ class LinstorBaseDriver(driver.VolumeDriver):
         # Create LINSTOR Resources
         ctrl_in_sp = False
         for node in sp_data:
-
             # Check if controller is in the pool
             if node['node_name'] == self.host_name:
                 ctrl_in_sp = True
 
-            # Create resources and,
-            # Check only errors when creating diskless resources
-            if 'Diskless' in node['driver_name']:
-                diskless = True
-            else:
-                diskless = False
-            rsc_reply = self._api_rsc_create(rsc_name=rsc_name,
-                                             node_name=node['node_name'],
-                                             diskless=diskless)
+        # Use autoplace to deploy if set
+        if self.ap_count:
+            try:
+                self._api_rsc_autoplace(rsc_name=rsc_name)
 
-            if not self._check_api_reply(rsc_reply, noerror_only=True):
-                msg = _("Error creating a LINSTOR resource")
+            except Exception:
+                msg = _("Error creating autoplaces LINSTOR resource(s)")
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
+
+        # Otherwise deploy across the entire cluster
+        else:
+            for node in sp_data:
+                # Deploy resource on each node
+                if DISKLESS in node['driver_name']:
+                    diskless = True
+                else:
+                    diskless = False
+
+                rsc_reply = self._api_rsc_create(rsc_name=rsc_name,
+                                                 node_name=node['node_name'],
+                                                 diskless=diskless)
+
+                if not self._check_api_reply(rsc_reply, noerror_only=True):
+                    msg = _("Error creating a LINSTOR resource")
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
 
         # If the controller is diskless and not in the pool, create a diskless
         # resource on it
@@ -832,7 +876,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
                                              diskless=True)
 
             if not self._check_api_reply(rsc_reply, noerror_only=True):
-                msg = _("Error creating a LINSTOR resource")
+                msg = _("Error creating a LINSTOR controller resource")
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
@@ -841,32 +885,56 @@ class LinstorBaseDriver(driver.VolumeDriver):
     def delete_volume(self, volume):
         drbd_rsc_name = self._drbd_resource_name_from_cinder_volume(volume)
         rsc_list_reply = self._get_api_resource_list()
+        diskful_nodes = self._get_snapshot_nodes(drbd_rsc_name)
+        diskless_nodes = self._get_diskless_nodes(drbd_rsc_name)
 
-        if rsc_list_reply:
-            # Delete Resources
-            for rsc in rsc_list_reply['resources']:
-                if rsc['name'] != drbd_rsc_name:
-                    continue
+        # If autoplace was used, use Resource class
+        if self.ap_count:
 
-                rsc_reply = self._api_rsc_delete(
-                    node_name=rsc['nodeName'],
-                    rsc_name=drbd_rsc_name)
-                if not self._check_api_reply(rsc_reply, noerror_only=True):
-                    msg = _("Error deleting a LINSTOR resource")
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
+            rsc_reply = self._api_rsc_auto_delete(drbd_rsc_name)
+            if not rsc_reply:
+                msg = _("Error deleting an autoplaced LINSTOR resource")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-            # Delete VD
-            vd_reply = self._api_volume_dfn_delete(drbd_rsc_name, 0)
-            if not vd_reply:
-                if not self._check_api_reply(vd_reply):
-                    msg = _("Error deleting a LINSTOR volume definition")
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
+        # Delete all resources in a cluster manually if not autoplaced
+        else:
+            if rsc_list_reply:
+                # Remove diskless nodes first
+                if diskless_nodes:
+                    for node in diskless_nodes:
+                        rsc_reply = self._api_rsc_delete(
+                            node_name=node,
+                            rsc_name=drbd_rsc_name)
+                        if not self._check_api_reply(rsc_reply,
+                                                     noerror_only=True):
+                            msg = _("Error deleting a diskless LINSTOR rsc")
+                            LOG.error(msg)
+                            raise exception.VolumeBackendAPIException(data=msg)
 
-            # Delete RD
-            # Will fail if snapshot exists but expected
-            self._api_rsc_dfn_delete(drbd_rsc_name)
+                # Remove diskful nodes
+                if diskful_nodes:
+                    for node in diskful_nodes:
+                        rsc_reply = self._api_rsc_delete(
+                            node_name=node,
+                            rsc_name=drbd_rsc_name)
+                        if not self._check_api_reply(rsc_reply,
+                                                     noerror_only=True):
+                            msg = _("Error deleting a LINSTOR resource")
+                            LOG.error(msg)
+                            raise exception.VolumeBackendAPIException(data=msg)
+
+                # Delete VD
+                vd_reply = self._api_volume_dfn_delete(drbd_rsc_name, 0)
+                if not vd_reply:
+                    if not self._check_api_reply(vd_reply):
+                        msg = _("Error deleting a LINSTOR volume definition")
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
+
+                # Delete RD
+                # Will fail if snapshot exists but expected
+                self._api_rsc_dfn_delete(drbd_rsc_name)
 
         return True
 
@@ -877,7 +945,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
         extend_reply = self._get_api_volume_extend(rsc_target_name, new_size)
 
         if not self._check_api_reply(extend_reply, noerror_only=True):
-            msg = _("ERROR Linstor Volume Extend")
+            msg = _("ERROR extending a LINSTOR volume")
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -895,11 +963,10 @@ class LinstorBaseDriver(driver.VolumeDriver):
         self.delete_snapshot(snapshot)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        # self.create_volume(volume) already called by Cinder, and works.
-        # Need to check return values
+        # self.create_volume(volume) already called by Cinder, and works
         full_rsc_name = self._drbd_resource_name_from_cinder_volume(volume)
 
-        # This creates a LINSTOR volume at the original size.
+        # This creates a LINSTOR volume from the source image
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
@@ -923,13 +990,9 @@ class LinstorBaseDriver(driver.VolumeDriver):
         return (False, None)
 
     def check_for_setup_error(self):
-
         msg = None
         if linstor is None:
             msg = _('Linstor python package not found')
-
-        if proto is None:
-            msg = _('Protobuf python package not found')
 
         if msg is not None:
             LOG.error(msg)
@@ -954,7 +1017,7 @@ class LinstorBaseDriver(driver.VolumeDriver):
 # Class with iSCSI interface methods
 @interface.volumedriver
 class LinstorIscsiDriver(LinstorBaseDriver):
-    """Cinder iSCSI driver that uses Linstor for storage."""
+    """Cinder iSCSI driver that uses LINSTOR for storage."""
 
     def __init__(self, *args, **kwargs):
         super(LinstorIscsiDriver, self).__init__(*args, **kwargs)
@@ -965,7 +1028,7 @@ class LinstorIscsiDriver(LinstorBaseDriver):
             self.helper_driver = self.helper_name
             self.target_driver = None
         else:
-            self.helper_name = self.configuration.safe_get('target_helper')
+            self.helper_name = self.configuration.safe_get('iscsi_helper')
             self.helper_driver = self.target_mapping[self.helper_name]
             self.target_driver = importutils.import_object(
                 self.helper_driver,
@@ -1024,7 +1087,7 @@ class LinstorIscsiDriver(LinstorBaseDriver):
 # Class with DRBD transport mode
 @interface.volumedriver
 class LinstorDrbdDriver(LinstorBaseDriver):
-    """Cinder DRBD driver that uses Linstor for storage."""
+    """Cinder DRBD driver that uses LINSTOR for storage."""
 
     def __init__(self, *args, **kwargs):
         super(LinstorDrbdDriver, self).__init__(*args, **kwargs)

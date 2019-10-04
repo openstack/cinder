@@ -1,4 +1,4 @@
-# Copyright (c) 2018 LINBIT HA Solutions GmbH
+# Copyright (c) 2018-2019 LINBIT HA Solutions GmbH
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -26,442 +26,303 @@ from cinder.volume.drivers import linstordrv as drv
 CONF = cfg.CONF
 
 CINDER_UNKNOWN = 'unknown'
-LVM = 'Lvm'
-LVMTHIN = 'LvmThin'
+DISKLESS = 'DISKLESS'
+LVM = 'LVM'
+LVM_THIN = 'LVM_THIN'
+ZFS = 'ZFS'
+ZFS_THIN = 'ZFS_THIN'
 DRIVER = 'cinder.volume.drivers.linstordrv.'
 
 RESOURCE = {
-    'name': 'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
+    'name': 'CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
     'volume': {
-        'device_path': '/dev/drbd1000',
-    },
+        'device_path': '/dev/drbd1000'
+    }
 }
 
-RESOURCE_LIST = {
-    'resourceStates': [
+RESOURCE_LIST = [{
+    'layer_object': {
+        'children': [{
+            'storage': {
+                'storage_volumes': [{
+                    'allocated_size_kib': 1048576,
+                    'device_path':
+                    '/dev/vol/CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131_00000',
+                    'disk_state': '[]',
+                    'usable_size_kib': 1048576,
+                    'volume_number': 0}]},
+            'type': 'STORAGE'}],
+        'drbd': {
+            'al_size': 32,
+            'al_stripes': 1,
+            'drbd_resource_definition': {
+                'al_stripe_size_kib': 32,
+                'al_stripes': 1,
+                'down': False,
+                'peer_slots': 7,
+                'port': 7005,
+                'secret': 'poQZ0Ad/Bq8DT9fA7ydB',
+                'transport_type': 'IP'},
+            'drbd_volumes': [{
+                'allocated_size_kib': 1044740,
+                'backing_device':
+                    '/dev/vol/CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131_00000',
+                'device_path': '/dev/drbd1005',
+                'drbd_volume_definition': {
+                    'minor_number': 1005,
+                    'volume_number': 0},
+                'usable_size_kib': 1044480}],
+            'node_id': 0,
+            'peer_slots': 7},
+        'type': 'DRBD'},
+    'name': 'CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'node_name': 'node-2',
+    'state': {'in_use': False},
+    'uuid': 'a4ab4670-c5fc-4590-a3a2-39c4685c8c32',
+    'volumes': [{
+        'allocated_size_kib': 45403,
+        'device_path': '/dev/drbd1005',
+        'layer_data_list': [{
+            'data': {
+                'allocated_size_kib': 1044740,
+                'backing_device':
+                '/dev/vol/CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131_00000',
+                'device_path': '/dev/drbd1005',
+                'drbd_volume_definition': {
+                    'minor_number': 1005,
+                    'volume_number': 0},
+                'usable_size_kib': 1044480},
+            'type': 'DRBD'}, {
+            'data': {
+                'allocated_size_kib': 1048576,
+                'device_path':
+                '/dev/vol/CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131_00000',
+                'disk_state': '[]',
+                'usable_size_kib': 1048576,
+                'volume_number': 0},
+            'type': 'STORAGE'}
+        ],
+        'props': {
+            'RestoreFromResource': 'CV_123a2fdc-365f-472e-bb8e-484788712abc',
+            'RestoreFromSnapshot': 'SN_68edb708-48de-4da1-9953-b9de9da9f1b8'
+        },
+        'provider_kind': 'LVM_THIN',
+        'state': {'disk_state': 'UpToDate'},
+        'storage_pool_name': 'DfltStorPool',
+        'uuid': 'e270ba0c-b284-4f21-85cc-602f132a2251',
+        'volume_number': 0}]}, {
+    'flags': ['DISKLESS'],
+    'layer_object': {
+        'children': [{
+            'storage': {
+                'storage_volumes': [{
+                    'allocated_size_kib': 0,
+                    'usable_size_kib': 1044480,
+                    'volume_number': 0}]},
+            'type': 'STORAGE'}],
+        'drbd': {
+            'al_size': 32,
+            'al_stripes': 1,
+            'drbd_resource_definition': {
+                'al_stripe_size_kib': 32,
+                'al_stripes': 1,
+                'down': False,
+                'peer_slots': 7,
+                'port': 7005,
+                'secret': 'poQZ0Ad/Bq8DT9fA7ydB',
+                'transport_type': 'IP'},
+            'drbd_volumes': [{
+                'allocated_size_kib': 1044740,
+                'device_path': '/dev/drbd1005',
+                'drbd_volume_definition': {
+                    'minor_number': 1005,
+                    'volume_number': 0},
+                'usable_size_kib': 1044480}],
+            'flags': ['DISKLESS'],
+            'node_id': 1,
+            'peer_slots': 7},
+        'type': 'DRBD'},
+    'name': 'CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'node_name': 'node-1',
+    'state': {'in_use': False},
+    'uuid': '11e853df-6f66-4cd9-9fbc-f3f7cc98d5cf',
+    'volumes': [{
+        'allocated_size_kib': 45403,
+        'device_path': '/dev/drbd1005',
+        'layer_data_list': [
+            {
+                'data': {
+                    'allocated_size_kib': 1044740,
+                    'device_path': '/dev/drbd1005',
+                    'drbd_volume_definition': {
+                        'minor_number': 1005,
+                        'volume_number': 0},
+                    'usable_size_kib': 1044480},
+                'type': 'DRBD'
+            },
+            {
+                'data': {
+                    'allocated_size_kib': 0,
+                    'usable_size_kib': 1044480,
+                    'volume_number': 0
+                },
+                'type': 'STORAGE'
+            }
+        ],
+        'provider_kind': 'DISKLESS',
+        'state': {'disk_state': 'Diskless'},
+        'storage_pool_name': 'DfltStorPool',
+        'uuid': '27b4aeec-2b42-41c9-b186-86afc8778046',
+        'volume_number': 0
+    }]}]
+
+RESOURCE_LIST_RESP = ['node-1', 'node-2']
+
+SNAPSHOT_LIST_RESP = ['node-1']
+
+DISKLESS_LIST_RESP = ['node-1']
+
+RESOURCE_DFN_LIST = [{
+    'layer_data': [
         {
-            'rscName': 'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'nodeName': 'node_one',
-            'inUse': False,
-            'vlmStates': [
-                {
-                    'vlmNr': 0,
-                    'diskState': 'Diskless',
-                }
-            ],
+            'data': {
+                'al_stripe_size_kib': 32,
+                'al_stripes': 1,
+                'down': False,
+                'peer_slots': 7,
+                'port': 7005,
+                'secret': 'poQZ0Ad/Bq8DT9fA7ydB',
+                'transport_type': 'IP'
+            },
+            'type': 'DRBD'
         },
         {
-            'rscName': 'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'nodeName': 'node_two',
-            'inUse': False,
-            'vlmStates': [
-                {
-                    'vlmNr': 0,
-                    'diskState': 'UpToDate',
-                }
-            ],
-        },
-    ],
-    'resources': [
-        {
-            'name': 'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'nodeId': 0,
-            'nodeName': 'node_one',
-            'nodeUuid': '67939f68-2b26-41b7-b32e-a20b77664aef',
-            'props': [{'key': 'PeerSlots', 'value': '7'}],
-            'rscDfnUuid': '03623665-35a3-4caa-aa92-0c8badbda84a',
-            'uuid': '559a229e-2b97-4d20-8f6d-87778bbe2f9e',
-            'vlms': [
-                {
-                    'backingDisk': '/dev/vg-35/f1_00000',
-                    'devicePath': '/dev/drbd1000',
-                    'metaDisk': 'internal',
-                    'storPoolName': 'DfltStorPool',
-                    'storPoolUuid': 'd2f293f5-5d73-4447-a14b-70efe01302be',
-                    'vlmDfnUuid': '0eedabe4-3c20-4eff-af74-b2ec2304ab0c',
-                    'vlmMinorNr': 1000,
-                    'vlmNr': 0,
-                    'vlmUuid': '38e48fb8-e0af-4317-8aab-aabb46db4cf8'
-                }
-            ]
-        },
-        {
-            'name': 'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'nodeId': 1,
-            'nodeName': 'node_two',
-            'nodeUuid': '82c4c5a5-8290-481e-9e35-1c71094b0cab',
-            'props': [{'key': 'PeerSlots', 'value': '7'}],
-            'rscDfnUuid': '03623665-35a3-4caa-aa92-0c8badbda84a',
-            'rscFlags': ['DISKLESS'],
-            'uuid': '23d3d331-ad0c-43f3-975b-d1048e09dc23',
-            'vlms': [
-                {
-                    'backingDisk': 'none',
-                    'devicePath': '/dev/drbd1000',
-                    'metaDisk': 'internal',
-                    'storPoolName': 'DfltStorPool',
-                    'storPoolUuid': '85ef7894-0682-4019-b95a-1b25e81c0cb5',
-                    'vlmDfnUuid': '0eedabe4-3c20-4eff-af74-b2ec2304ab0c',
-                    'vlmMinorNr': 1000,
-                    'vlmNr': 0,
-                    'vlmUuid': 'd25b6c91-680f-4aa6-97c3-533e4bf4e659'
-                }
-            ]
+            'type': 'STORAGE'
         }
-    ]
-}
+    ],
+    'name': 'CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'props': {'DrbdPrimarySetOn': 'node-1'},
+    'uuid': '9a684294-6db4-40c8-bfeb-e5351200b9db'
+}]
 
-RESOURCE_LIST_RESP = ['node_two', 'node_one']
+RESOURCE_DFN_LIST_RESP = [{
+    'rd_name': u'CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'rd_uuid': u'9a684294-6db4-40c8-bfeb-e5351200b9db',
+}]
 
-SNAPSHOT_LIST_RESP = ['node_two']
-
-RESOURCE_DFN_LIST = {
-    'rscDfns': [
-        {
-            'rscDfnPort': 7002,
-            'rscDfnProps': [{'key': u'DrbdPrimarySetOn',
-                             'value': u'NODE_TWO'}],
-            'rscDfnSecret': u'syxflfoMqj84cUUcsqta',
-            'rscDfnUuid': u'f55f0c28-455b-458f-a05d-b5f7f16b5c22',
-            'rscName': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'vlmDfns': [
-                {
-                    'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                    'vlmMinor': 1001,
-                    'vlmNr': 0,
-                    'vlmProps': [{'key': u'DrbdCurrentGi',
-                                  'value': u'2286D24524D26AA'}],
-                    'vlmSize': '1044480'}
-            ]
-        },
-    ]
-}
-
-RESOURCE_DFN_LIST_RESP = [
+NODES_LIST = [
     {
-        'rd_name': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-        'rd_port': 7002,
-        'rd_size': 1.0,
-        'rd_uuid': u'f55f0c28-455b-458f-a05d-b5f7f16b5c22',
-        'vlm_dfn_uuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b'
+        'connection_status': 'ONLINE',
+        'name': 'node-1',
+        'net_interfaces': [{
+            'address': '192.168.8.63',
+            'name': 'default',
+            'satellite_encryption_type': 'PLAIN',
+            'satellite_port': 3366,
+            'uuid': '9c5b727f-0c62-4040-9a33-96a4fd4aaac3'}],
+        'props': {'CurStltConnName': 'default'},
+        'type': 'COMBINED',
+        'uuid': '69b88ffb-50d9-4576-9843-d7bf4724d043'
+    },
+    {
+        'connection_status': 'ONLINE',
+        'name': 'node-2',
+        'net_interfaces': [{
+            'address': '192.168.8.102',
+            'name': 'default',
+            'satellite_encryption_type': 'PLAIN',
+            'satellite_port': 3366,
+            'uuid': '3f911fc9-4f9b-4155-b9da-047d5242484c'}],
+        'props': {'CurStltConnName': 'default'},
+        'type': 'SATELLITE',
+        'uuid': '26bde754-0f05-499c-a63c-9f4e5f30556e'
     }
 ]
-
-NODES_LIST = {
-    'nodes': [
-        {
-            'connectionStatus': 2,
-            'name': u'node_two',
-            'netInterfaces': [
-                {
-                    'address': u'192.168.66.113',
-                    'name': u'default',
-                    'stltEncryptionType': u'PLAIN',
-                    'stltPort': 3366,
-                    'uuid': u'224e50c3-09a8-4cf8-b701-13663a66aecd'
-                }
-            ],
-            'props': [{'key': u'CurStltConnName', 'value': u'default'}],
-            'type': u'COMBINED',
-            'uuid': u'67939f68-2b26-41b7-b32e-a20b77664aef'
-        },
-        {
-            'connectionStatus': 2,
-            'name': u'node_one',
-            'netInterfaces': [
-                {
-                    'address': u'192.168.66.115',
-                    'name': u'default',
-                    'stltEncryptionType': u'PLAIN',
-                    'stltPort': 3366,
-                    'uuid': u'36f42ec9-9999-4ad7-a889-8d7dbb498163'
-                }
-            ],
-            'props': [{'key': u'CurStltConnName', 'value': u'default'}],
-            'type': u'COMBINED',
-            'uuid': u'82c4c5a5-8290-481e-9e35-1c71094b0cab'
-        }
-    ]
-}
 
 NODES_RESP = [
+    {'node_address': '192.168.8.63', 'node_name': 'node-1'},
+    {'node_address': '192.168.8.102', 'node_name': 'node-2'}
+]
+
+STORAGE_POOL_DEF = [{'storage_pool_name': 'DfltStorPool'}]
+
+STORAGE_POOL_DEF_RESP = ['DfltStorPool']
+
+STORAGE_POOL_LIST = [
     {
-        'node_address': u'192.168.66.113',
-        'node_name': u'node_two',
-        'node_uuid': u'67939f68-2b26-41b7-b32e-a20b77664aef'
+        'free_capacity': 104815656,
+        'free_space_mgr_name': 'node-2:DfltStorPool',
+        'node_name': 'node-2',
+        'props': {
+            'StorDriver/LvmVg': 'vol',
+            'StorDriver/ThinPool': 'thin_pool'
+        },
+        'provider_kind': 'LVM_THIN',
+        'static_traits': {
+            'Provisioning': 'Thin',
+            'SupportsSnapshots': 'true'
+        },
+        'storage_pool_name': 'DfltStorPool',
+        'total_capacity': 104857600,
+        'uuid': '004faf29-be1a-4d74-9470-038bcee2c611'
     },
     {
-        'node_address': u'192.168.66.115',
-        'node_name': u'node_one',
-        'node_uuid': u'82c4c5a5-8290-481e-9e35-1c71094b0cab'
+        'free_capacity': 9223372036854775807,
+        'free_space_mgr_name': 'node-1:DfltStorPool',
+        'node_name': 'node-1',
+        'provider_kind': 'DISKLESS',
+        'static_traits': {'SupportsSnapshots': 'false'},
+        'storage_pool_name': 'DfltStorPool',
+        'total_capacity': 9223372036854775807,
+        'uuid': '897da09e-1316-45c0-a308-c07008af42df'
     }
 ]
-
-STORAGE_POOL_DEF = {
-    'storPoolDfns': [
-        {
-            'storPoolName': u'DfltStorPool',
-            'uuid': u'f51611c6-528f-4793-a87a-866d09e6733a'
-        }
-    ]
-}
-
-STORAGE_POOL_DEF_RESP = [
-    {
-        'spd_name': u'DfltStorPool',
-        'spd_uuid': u'f51611c6-528f-4793-a87a-866d09e6733a'
-    }
-]
-
-STORAGE_POOL_LIST = {
-    'storPools': [
-        {
-            'driver': u'LvmThinDriver',
-            'freeSpace': {
-                'freeCapacity': '36700160',
-                'storPoolName': u'DfltStorPool',
-                'storPoolUuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-                'totalCapacity': '36700160'
-            },
-            'nodeName': u'node_two',
-            'nodeUuid': u'67939f68-2b26-41b7-b32e-a20b77664aef',
-            'props': [{'key': u'StorDriver/LvmVg', 'value': u'vg-35'},
-                      {'key': u'StorDriver/ThinPool',
-                       'value': u'thinpool'}],
-            'staticTraits': [{'key': u'Provisioning', 'value': u'Thin'},
-                             {'key': u'SupportsSnapshots',
-                              'value': u'true'}],
-            'storPoolDfnUuid': u'f51611c6-528f-4793-a87a-866d09e6733a',
-            'storPoolName': u'DfltStorPool',
-            'storPoolUuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-            'vlms': [
-                {
-                    'backingDisk':
-                        u'/dev/vg-35/CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-                    'devicePath': u'/dev/drbd1001',
-                    'metaDisk': u'internal',
-                    'storPoolName': u'DfltStorPool',
-                    'storPoolUuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-                    'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                    'vlmMinorNr': 1001,
-                    'vlmNr': 0,
-                    'vlmUuid': u'b91392ae-904a-4bc6-862f-9c7aca629b35'
-                },
-                {
-                    'backingDisk': u'/dev/vg-35/f1_00000',
-                    'devicePath': u'/dev/drbd1000',
-                    'metaDisk': u'internal',
-                    'storPoolName': u'DfltStorPool',
-                    'storPoolUuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-                    'vlmDfnUuid': u'0eedabe4-3c20-4eff-af74-b2ec2304ab0c',
-                    'vlmMinorNr': 1000,
-                    'vlmNr': 0,
-                    'vlmUuid': u'38e48fb8-e0af-4317-8aab-aabb46db4cf8'
-                }
-            ]
-        },
-        {
-            'driver': u'DisklessDriver',
-            'freeSpace': {
-                'freeCapacity': '9223372036854775807',
-                'storPoolName': u'DfltStorPool',
-                'storPoolUuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-                'totalCapacity': '9223372036854775807'
-            },
-            'nodeName': u'node_one',
-            'nodeUuid': u'82c4c5a5-8290-481e-9e35-1c71094b0cab',
-            'staticTraits': [{'key': u'SupportsSnapshots',
-                              'value': u'false'}],
-            'storPoolDfnUuid': u'f51611c6-528f-4793-a87a-866d09e6733a',
-            'storPoolName': u'DfltStorPool',
-            'storPoolUuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-            'vlms': [
-                {
-                    'backingDisk': u'none',
-                    'devicePath': u'/dev/drbd1001',
-                    'metaDisk': u'internal',
-                    'storPoolName': u'DfltStorPool',
-                    'storPoolUuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-                    'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                    'vlmMinorNr': 1001,
-                    'vlmNr': 0,
-                    'vlmUuid': u'4c63ee46-acb0-4aa5-8758-8fa8f65fdd5a'
-                },
-                {
-                    'backingDisk': u'none',
-                    'devicePath': u'/dev/drbd1000',
-                    'metaDisk': u'internal',
-                    'storPoolName': u'DfltStorPool',
-                    'storPoolUuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-                    'vlmDfnUuid': u'0eedabe4-3c20-4eff-af74-b2ec2304ab0c',
-                    'vlmMinorNr': 1000,
-                    'vlmNr': 0,
-                    'vlmUuid': u'd25b6c91-680f-4aa6-97c3-533e4bf4e659'
-                }
-            ]
-        }
-    ]
-}
 
 STORAGE_POOL_LIST_RESP = [
     {
-        'driver_name': 'LvmThin',
-        'node_name': u'node_two',
-        'node_uuid': u'67939f68-2b26-41b7-b32e-a20b77664aef',
-        'sp_cap': 35.0,
-        'sp_free': 35.0,
-        'sp_name': u'DfltStorPool',
-        'sp_uuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-        'sp_vlms_uuid': [u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                         u'0eedabe4-3c20-4eff-af74-b2ec2304ab0c']
+        'driver_name': 'LVM_THIN',
+        'node_name': 'node-2',
+        'sp_uuid': '004faf29-be1a-4d74-9470-038bcee2c611',
+        'sp_cap': 100.0,
+        'sp_free': 100,
+        'sp_name': u'DfltStorPool'
     },
     {
-        'driver_name': u'DisklessDriver',
-        'node_name': u'node_one',
-        'node_uuid': u'82c4c5a5-8290-481e-9e35-1c71094b0cab',
-        'sp_cap': 0.0,
+        'driver_name': 'DISKLESS',
+        'node_name': 'node-1',
+        'sp_uuid': '897da09e-1316-45c0-a308-c07008af42df',
+        'sp_allocated': 0.0,
+        'sp_cap': -1.0,
         'sp_free': -1.0,
-        'sp_name': u'DfltStorPool',
-        'sp_uuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-        'sp_vlms_uuid': [u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                         u'0eedabe4-3c20-4eff-af74-b2ec2304ab0c']
-    }
-]
-
-VOLUME_LIST = {
-    'resourceStates': [
-        {
-            'inUse': False,
-            'nodeName': u'wp-u16-cinder-dev-lg',
-            'rscName': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'vlmStates': [{'diskState': u'Diskless', 'vlmNr': 0}]
-        },
-        {
-            'nodeName': u'wp-u16-cinder-dev-1', 'rscName': u'foo'
-        },
-        {
-            'inUse': False,
-            'nodeName': u'wp-u16-cinder-dev-1',
-            'rscName': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'vlmStates': [{'diskState': u'UpToDate', 'vlmNr': 0}]
-        }
-    ],
-    'resources': [
-        {
-            'name': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'nodeId': 0,
-            'nodeName': u'wp-u16-cinder-dev-1',
-            'nodeUuid': u'67939f68-2b26-41b7-b32e-a20b77664aef',
-            'props': [{'key': u'PeerSlots', 'value': u'7'}],
-            'rscDfnUuid': u'f55f0c28-455b-458f-a05d-b5f7f16b5c22',
-            'uuid': u'2da61a7a-83b7-41d1-8a96-3a1a118dfba2',
-            'vlms': [
-                {
-                    'backingDisk':
-                        u'/dev/vg-35/CV_bc3015e6-695f-4688-91f2-' +
-                        u'1deb4321e4f0_00000',
-                    'devicePath': u'/dev/drbd1001',
-                    'metaDisk': u'internal',
-                    'storPoolName': u'DfltStorPool',
-                    'storPoolUuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-                    'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                    'vlmMinorNr': 1001,
-                    'vlmNr': 0,
-                    'vlmUuid': u'b91392ae-904a-4bc6-862f-9c7aca629b35'
-                }
-            ]
-        },
-        {
-            'name': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-            'nodeId': 1,
-            'nodeName': u'wp-u16-cinder-dev-lg',
-            'nodeUuid': u'82c4c5a5-8290-481e-9e35-1c71094b0cab',
-            'props': [{'key': u'PeerSlots', 'value': u'7'}],
-            'rscDfnUuid': u'f55f0c28-455b-458f-a05d-b5f7f16b5c22',
-            'rscFlags': [u'DISKLESS'],
-            'uuid': u'bd6472d1-dc3c-4d41-a5f0-f44271c05680',
-            'vlms': [
-                {
-                    'backingDisk': u'none',
-                    'devicePath': u'/dev/drbd1001',
-                    'metaDisk': u'internal',
-                    'storPoolName': u'DfltStorPool',
-                    'storPoolUuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-                    'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                    'vlmMinorNr': 1001,
-                    'vlmNr': 0,
-                    'vlmUuid': u'4c63ee46-acb0-4aa5-8758-8fa8f65fdd5a'
-                }
-            ]
-        }
-    ]
-}
-
-VOLUME_LIST_RESP = [
-    {
-        'node_name': u'wp-u16-cinder-dev-1',
-        'rd_name': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-        'volume': [
-            {
-                'backingDisk': u'/dev/vg-35/CV_bc3015e6-695f-4688-91f2-' +
-                               u'1deb4321e4f0_00000',
-                'devicePath': u'/dev/drbd1001',
-                'metaDisk': u'internal',
-                'storPoolName': u'DfltStorPool',
-                'storPoolUuid': u'd2f293f5-5d73-4447-a14b-70efe01302be',
-                'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                'vlmMinorNr': 1001,
-                'vlmNr': 0,
-                'vlmUuid': u'b91392ae-904a-4bc6-862f-9c7aca629b35'
-            }
-        ]
-    },
-    {
-        'node_name': u'wp-u16-cinder-dev-lg',
-        'rd_name': u'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-        'volume': [
-            {
-                'backingDisk': u'none',
-                'devicePath': u'/dev/drbd1001',
-                'metaDisk': u'internal',
-                'storPoolName': u'DfltStorPool',
-                'storPoolUuid': u'85ef7894-0682-4019-b95a-1b25e81c0cb5',
-                'vlmDfnUuid': u'89f6eff2-c4cd-4586-9ab8-8e850568b93b',
-                'vlmMinorNr': 1001,
-                'vlmNr': 0,
-                'vlmUuid': u'4c63ee46-acb0-4aa5-8758-8fa8f65fdd5a'
-            }
-        ]
+        'sp_name': 'DfltStorPool'
     }
 ]
 
 VOLUME_STATS_RESP = {
     'driver_version': '0.0.7',
-    'pools': [
-        {
-            'QoS_support': False,
-            'backend_state': 'up',
-            'filter_function': None,
-            'free_capacity_gb': 35.0,
-            'goodness_function': None,
-            'location_info': 'linstor://localhost',
-            'max_over_subscription_ratio': 0,
-            'multiattach': False,
-            'pool_name': 'lin-test-driver',
-            'provisioned_capacity_gb': 1.0,
-            'reserved_percentage': 0,
-            'thick_provisioning_support': False,
-            'thin_provisioning_support': True,
-            'total_capacity_gb': 35.0,
-            'total_volumes': 1,
-        }
-    ],
+    'pools': [{
+        'QoS_support': False,
+        'backend_state': 'up',
+        'filter_function': None,
+        'free_capacity_gb': 100,
+        'goodness_function': None,
+        'location_info': 'linstor://localhost',
+        'max_over_subscription_ratio': 0,
+        'multiattach': False,
+        'pool_name': 'lin-test-driver',
+        'provisioned_capacity_gb': 0.0,
+        'reserved_percentage': 0,
+        'thick_provisioning_support': False,
+        'thin_provisioning_support': True,
+        'total_capacity_gb': 100.0,
+        'total_volumes': 1,
+    }],
     'vendor_name': 'LINBIT',
     'volume_backend_name': 'lin-test-driver'
 }
 
 CINDER_VOLUME = {
-    'id': 'bc3015e6-695f-4688-91f2-1deb4321e4f0',
+    'id': '0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
     'name': 'test-lin-vol',
     'size': 1,
     'volume_type_id': 'linstor',
@@ -469,15 +330,15 @@ CINDER_VOLUME = {
 }
 
 SNAPSHOT = {
-    'id': 'bc3015e6-695f-4688-91f2-1deb4321e4f0',
-    'volume_id': 'bc3015e6-695f-4688-91f2-1deb4321e4f0',
+    'id': '0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'volume_id': '0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
     'volume_size': 1
 }
 
 VOLUME_NAMES = {
-    'linstor': 'CV_bc3015e6-695f-4688-91f2-1deb4321e4f0',
-    'cinder': 'bc3015e6-695f-4688-91f2-1deb4321e4f0',
-    'snap': 'SN_bc3015e6-695f-4688-91f2-1deb4321e4f0',
+    'linstor': 'CV_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'cinder': '0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
+    'snap': 'SN_0348a7d3-3bb9-452d-9f40-2cf5ebfe9131',
 }
 
 
@@ -498,14 +359,27 @@ class LinstorAPIFakeDriver(object):
     def fake_api_storage_pool_list(self):
         return STORAGE_POOL_LIST
 
-    def fake_api_volume_list(self):
-        return VOLUME_LIST
-
     def fake_api_resource_dfn_list(self):
         return RESOURCE_DFN_LIST
 
     def fake_api_snapshot_list(self):
         return SNAPSHOT_LIST_RESP
+
+
+class LinstorFakeResource(object):
+
+    def __init__(self):
+        self.volumes = [{'size': 1069547520}]
+        self.id = 0
+
+    def delete(self):
+        return True
+
+    def is_diskless(self, host):
+        if host in DISKLESS_LIST_RESP:
+            return True
+        else:
+            return False
 
 
 class LinstorBaseDriverTestCase(test.TestCase):
@@ -530,13 +404,14 @@ class LinstorBaseDriverTestCase(test.TestCase):
         self.driver.default_rsc_size = 1
         self.driver.default_vg_name = 'vg-1'
         self.driver.default_downsize_factor = int('4096')
-        self.driver.default_pool = STORAGE_POOL_DEF_RESP[0]['spd_name']
-        self.driver.host_name = 'node_one'
+        self.driver.default_pool = STORAGE_POOL_DEF_RESP[0]
+        self.driver.host_name = 'node-1'
         self.driver.diskless = True
         self.driver.default_uri = 'linstor://localhost'
         self.driver.default_backend_name = 'lin-test-driver'
         self.driver.configuration.reserved_percentage = 0
         self.driver.configuration.max_over_subscription_ratio = 0
+        self.driver.ap_count = 0
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._ping')
     def test_ping(self, m_ping):
@@ -554,10 +429,25 @@ class LinstorBaseDriverTestCase(test.TestCase):
         expected = u'bd6472d1-dc3c-4d41-a5f0-f44271c05680'
         self.assertEqual(expected, val)
 
+    @mock.patch('uuid.uuid4')
+    def test_clean_uuid_with_braces(self, m_uuid):
+        m_uuid.return_value = u'{bd6472d1-dc3c-4d41-a5f0-f44271c05680}'
+
+        val = self.driver._clean_uuid()
+        expected = u'bd6472d1-dc3c-4d41-a5f0-f44271c05680'
+
+        m_uuid.assert_called_once()
+        self.assertEqual(expected, val)
+
     # Test volume size conversions
-    def test_unit_conversions_to_linstor(self):
+    def test_unit_conversions_to_linstor_1GiB(self):
         val = self.driver._vol_size_to_linstor(1)
         expected = 1044480   # 1048575 - 4096
+        self.assertEqual(expected, val)
+
+    def test_unit_conversions_to_linstor_2GiB(self):
+        val = self.driver._vol_size_to_linstor(2)
+        expected = 2093056   # 2097152 - 4096
         self.assertEqual(expected, val)
 
     def test_unit_conversions_to_cinder(self):
@@ -565,10 +455,22 @@ class LinstorBaseDriverTestCase(test.TestCase):
         expected = 1
         self.assertEqual(expected, val)
 
+    def test_unit_conversions_to_cinder_2GiB(self):
+        val = self.driver._vol_size_to_cinder(2097152)
+        expected = 2
+        self.assertEqual(expected, val)
+
     def test_is_clean_volume_name(self):
         val = self.driver._is_clean_volume_name(VOLUME_NAMES['cinder'],
                                                 drv.DM_VN_PREFIX)
         expected = VOLUME_NAMES['linstor']
+        self.assertEqual(expected, val)
+
+    def test_is_clean_volume_name_invalid(self):
+        wrong_uuid = 'bc3015e6-695f-4688-91f2-invaliduuid1'
+        val = self.driver._is_clean_volume_name(wrong_uuid,
+                                                drv.DM_VN_PREFIX)
+        expected = None
         self.assertEqual(expected, val)
 
     def test_snapshot_name_from_cinder_snapshot(self):
@@ -600,7 +502,9 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
 
         val = self.driver._get_rsc_path(VOLUME_NAMES['linstor'])
-        expected = '/dev/drbd1000'
+        expected = '/dev/drbd1005'
+
+        m_rsc_list.assert_called_once()
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
@@ -608,7 +512,9 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
 
         val = self.driver._get_local_path(CINDER_VOLUME)
-        expected = '/dev/drbd1000'
+        expected = '/dev/drbd1005'
+
+        m_rsc_list.assert_called_once()
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_dfn_list')
@@ -618,6 +524,8 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver._get_spd()
         expected = STORAGE_POOL_DEF_RESP
+
+        m_spd_list.assert_called_once()
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
@@ -627,6 +535,8 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver._get_storage_pool()
         expected = STORAGE_POOL_LIST_RESP
+
+        m_sp_list.assert_called_once()
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_dfn_list')
@@ -636,6 +546,8 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver._get_resource_definitions()
         expected = RESOURCE_DFN_LIST_RESP
+
+        m_rscd_list.assert_called_once()
         self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_snapshot_nodes')
@@ -644,24 +556,43 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver._get_snapshot_nodes(VOLUME_NAMES['linstor'])
         expected = SNAPSHOT_LIST_RESP
+
+        m_rsc_list.assert_called_once()
         self.assertEqual(expected, val)
 
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_nodes_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
+    def test_get_diskless_nodes(self, m_rsc_list):
+        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
+
+        val = self.driver._get_diskless_nodes(RESOURCE['name'])
+        expected = DISKLESS_LIST_RESP
+
+        m_rsc_list.assert_called_once()
+        self.assertEqual(expected, val)
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_node_list')
     def test_get_linstor_nodes(self, m_node_list):
         m_node_list.return_value = self._fake_driver.fake_api_node_list()
 
         val = self.driver._get_linstor_nodes()
         expected = RESOURCE_LIST_RESP
+
+        m_node_list.assert_called_once()
         self.assertEqual(expected, val)
 
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_nodes_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_node_list')
     def test_get_nodes(self, m_node_list):
         m_node_list.return_value = self._fake_driver.fake_api_node_list()
 
         val = self.driver._get_nodes()
         expected = NODES_RESP
+
+        m_node_list.assert_called_once()
         self.assertEqual(expected, val)
 
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_size')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_is_diskless')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
     @mock.patch(DRIVER + 'LinstorBaseDriver.get_goodness_function')
     @mock.patch(DRIVER + 'LinstorBaseDriver.get_filter_function')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_dfn_list')
@@ -670,80 +601,78 @@ class LinstorBaseDriverTestCase(test.TestCase):
                               m_sp_list,
                               m_rscd_list,
                               m_filter,
-                              m_goodness):
+                              m_goodness,
+                              m_rsc_list,
+                              m_diskless,
+                              m_rsc_size):
         m_sp_list.return_value = (
             self._fake_driver.fake_api_storage_pool_list())
         m_rscd_list.return_value = (
             self._fake_driver.fake_api_resource_dfn_list())
         m_filter.return_value = None
         m_goodness.return_value = None
+        m_rsc_list.return_value = RESOURCE_LIST
+        m_diskless.return_value = True
+        m_rsc_size.return_value = 1069547520
 
         val = self.driver._get_volume_stats()
         expected = VOLUME_STATS_RESP
+
+        m_sp_list.assert_called_once()
+        m_rscd_list.assert_called_once()
         self.assertEqual(expected, val)
 
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_create')
     def test_create_snapshot_fail(self,
-                                  m_snap_create,
-                                  m_api_reply,
-                                  m_rsc_list):
-        m_snap_create.return_value = None
-        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
-        m_api_reply.return_value = False
+                                  m_snap_create):
+        m_snap_create.return_value = False
 
         self.assertRaises(cinder_exception.VolumeBackendAPIException,
                           self.driver.create_snapshot, SNAPSHOT)
 
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_create')
     def test_create_snapshot_success(self,
-                                     m_snap_create,
-                                     m_api_reply,
-                                     m_rsc_list):
-        m_snap_create.return_value = None
-        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
-        m_api_reply.return_value = True
+                                     m_snap_create):
+        m_snap_create.return_value = True
 
         # No exception should be raised
         self.assertIsNone(self.driver.create_snapshot(SNAPSHOT))
 
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_dfn_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_delete')
     def test_delete_snapshot_fail(self,
-                                  m_snap_delete,
-                                  m_api_reply,
-                                  m_rsc_list,
-                                  m_rsc_dfn_list):
-        m_snap_delete.return_value = None
-        m_api_reply.return_value = False
-        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
-        m_rsc_dfn_list.return_value = (
-            self._fake_driver.fake_api_resource_dfn_list())
+                                  m_snap_delete):
+        m_snap_delete.return_value = False
 
         self.assertRaises(cinder_exception.VolumeBackendAPIException,
                           self.driver.delete_snapshot, SNAPSHOT)
 
-    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_snapshot_nodes')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_delete')
     def test_delete_snapshot_success(self,
                                      m_snap_delete,
-                                     m_api_reply,
-                                     m_rsc_list,
-                                     m_rsc_dfn_delete):
-        m_snap_delete.return_value = None
-        m_api_reply.return_value = True
-        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
-        m_rsc_dfn_delete.return_value = True
+                                     m_snap_nodes):
+        m_snap_delete.return_value = True
+        m_snap_nodes.return_value = self._fake_driver.fake_api_snapshot_list()
 
         # No exception should be raised
         self.driver.delete_snapshot(SNAPSHOT)
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_snapshot_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_delete')
+    def test_delete_snapshot_success_cleanup_rd(self,
+                                                m_snap_delete,
+                                                m_snap_nodes,
+                                                m_rd_delete):
+        m_snap_delete.return_value = True
+        m_snap_nodes.return_value = []
+        m_rd_delete.return_value = None
+
+        # No exception should be raised
+        self.driver.delete_snapshot(SNAPSHOT)
+
+        # Resource Definition Delete should run once
+        m_rd_delete.assert_called_once()
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_set_sp')
@@ -768,8 +697,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_api_reply.return_value = True
         m_snap_vd_restore.return_value = True
         m_nodes = []
-        m_nodes.append('for test')
-        m_nodes.remove('for test')
         m_lin_nodes.return_value = m_nodes
         m_snap_rsc_restore.return_value = True
         m_rsc_create.return_value = True
@@ -778,8 +705,87 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_sp_list.return_value = (
             self._fake_driver.fake_api_storage_pool_list())
 
+        # No exception should be raised
         self.assertIsNone(self.driver.create_volume_from_snapshot(
             CINDER_VOLUME, SNAPSHOT))
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_set_sp')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_volume_extend')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_create')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_resource_restore')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_linstor_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_volume_dfn_restore')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_create')
+    def test_create_volume_from_snapshot_fail_restore(self,
+                                                      m_rsc_dfn_create,
+                                                      m_api_reply,
+                                                      m_snap_vd_restore,
+                                                      m_lin_nodes,
+                                                      m_snap_rsc_restore,
+                                                      m_rsc_create,
+                                                      m_vol_extend,
+                                                      m_vol_dfn,
+                                                      m_sp_list):
+        m_rsc_dfn_create.return_value = True
+        m_api_reply.return_value = True
+        m_snap_vd_restore.return_value = True
+        m_nodes = []
+        m_lin_nodes.return_value = m_nodes
+        m_snap_rsc_restore.return_value = False
+        m_rsc_create.return_value = True
+        m_vol_extend.return_value = True
+        m_vol_dfn.return_value = True
+        m_sp_list.return_value = (
+            self._fake_driver.fake_api_storage_pool_list())
+
+        # Failing to restore a snapshot should raise an exception
+        self.assertRaises(cinder_exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          CINDER_VOLUME, SNAPSHOT)
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver.delete_volume')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_set_sp')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_volume_extend')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_create')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_resource_restore')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_linstor_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_volume_dfn_restore')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_create')
+    def test_create_volume_from_snapshot_fail_extend(self,
+                                                     m_rsc_dfn_create,
+                                                     m_api_reply,
+                                                     m_snap_vd_restore,
+                                                     m_lin_nodes,
+                                                     m_snap_rsc_restore,
+                                                     m_rsc_create,
+                                                     m_vol_extend,
+                                                     m_vol_dfn,
+                                                     m_sp_list,
+                                                     m_delete_volume):
+        m_rsc_dfn_create.return_value = True
+        m_api_reply.return_value = False
+        m_snap_vd_restore.return_value = True
+        m_nodes = []
+        m_lin_nodes.return_value = m_nodes
+        m_snap_rsc_restore.return_value = True
+        m_rsc_create.return_value = True
+        m_vol_extend.return_value = True
+        m_vol_dfn.return_value = True
+        m_sp_list.return_value = (
+            self._fake_driver.fake_api_storage_pool_list())
+        m_delete_volume.return_value = True
+
+        # Failing to extend the volume after a snapshot restoration should
+        # raise an exception
+        new_volume = CINDER_VOLUME
+        new_volume['size'] = 2
+        self.assertRaises(cinder_exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          new_volume, SNAPSHOT)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_create')
@@ -787,7 +793,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_storage_pool_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_dfn_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_nodes_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_node_list')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
     def test_create_volume_fail_no_linstor_nodes(self,
                                                  m_sp_list,
@@ -824,7 +830,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_storage_pool_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_dfn_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_nodes_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_node_list')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
     def test_create_volume_fail_rsc_create(self,
                                            m_sp_list,
@@ -862,7 +868,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_storage_pool_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_dfn_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_nodes_list')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_node_list')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
     def test_create_volume(self,
                            m_sp_list,
@@ -893,8 +899,9 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver.create_volume(test_volume)
         expected = {}
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_auto_delete')
     @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_delete')
@@ -905,12 +912,14 @@ class LinstorBaseDriverTestCase(test.TestCase):
                                            m_rsc_delete,
                                            m_vol_dfn_delete,
                                            m_rsc_dfn_delete,
-                                           m_api_reply):
+                                           m_api_reply,
+                                           m_rsc_auto_delete):
         m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
         m_rsc_delete.return_value = True
         m_vol_dfn_delete.return_value = True
         m_rsc_dfn_delete.return_value = True
         m_api_reply.return_value = False
+        m_rsc_auto_delete.return_value = True
 
         test_volume = CINDER_VOLUME
         test_volume['display_name'] = 'linstor_test'
@@ -920,6 +929,109 @@ class LinstorBaseDriverTestCase(test.TestCase):
         self.assertRaises(cinder_exception.VolumeBackendAPIException,
                           self.driver.delete_volume, test_volume)
 
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_auto_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_diskless_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
+    def test_delete_volume_fail_diskless_remove(self,
+                                                m_rsc_list,
+                                                m_rsc_delete,
+                                                m_vol_dfn_delete,
+                                                m_rsc_dfn_delete,
+                                                m_api_reply,
+                                                m_diskless,
+                                                m_rsc_auto_delete):
+        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
+        m_rsc_delete.return_value = False
+        m_vol_dfn_delete.return_value = True
+        m_rsc_dfn_delete.return_value = True
+        m_api_reply.return_value = False
+        m_diskless.return_value = ['foo']
+        m_rsc_auto_delete.return_value = True
+
+        test_volume = CINDER_VOLUME
+        test_volume['display_name'] = 'linstor_test'
+        test_volume['host'] = 'node_one'
+        test_volume['size'] = 1
+
+        # Raises exception for failing to delete a diskless resource
+        self.assertRaises(cinder_exception.VolumeBackendAPIException,
+                          self.driver.delete_volume, test_volume)
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_auto_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_snapshot_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_diskless_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
+    def test_delete_volume_fail_diskful_remove(self,
+                                               m_rsc_list,
+                                               m_rsc_delete,
+                                               m_vol_dfn_delete,
+                                               m_rsc_dfn_delete,
+                                               m_api_reply,
+                                               m_diskless,
+                                               m_snap_nodes,
+                                               m_rsc_auto_delete):
+        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
+        m_rsc_delete.return_value = False
+        m_vol_dfn_delete.return_value = True
+        m_rsc_dfn_delete.return_value = True
+        m_api_reply.return_value = False
+        m_diskless.return_value = []
+        m_snap_nodes.return_value = ['foo']
+        m_rsc_auto_delete.return_value = True
+
+        test_volume = CINDER_VOLUME
+        test_volume['display_name'] = 'linstor_test'
+        test_volume['host'] = 'node_one'
+        test_volume['size'] = 1
+
+        # Raises exception for failing to delete a diskful resource
+        self.assertRaises(cinder_exception.VolumeBackendAPIException,
+                          self.driver.delete_volume, test_volume)
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_auto_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_snapshot_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_diskless_nodes')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_delete')
+    @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_resource_list')
+    def test_delete_volume_fail_volume_definition(self,
+                                                  m_rsc_list,
+                                                  m_rsc_delete,
+                                                  m_vol_dfn_delete,
+                                                  m_rsc_dfn_delete,
+                                                  m_api_reply,
+                                                  m_diskless,
+                                                  m_snap_nodes,
+                                                  m_rsc_auto_delete):
+        m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
+        m_rsc_delete.return_value = True
+        m_vol_dfn_delete.return_value = False
+        m_rsc_dfn_delete.return_value = True
+        m_api_reply.return_value = False
+        m_diskless.return_value = []
+        m_snap_nodes.return_value = []
+        m_rsc_auto_delete.return_value = True
+
+        test_volume = CINDER_VOLUME
+        test_volume['display_name'] = 'linstor_test'
+        test_volume['host'] = 'node_one'
+        test_volume['size'] = 1
+
+        # Raises exception for failing to delete a volume definition
+        self.assertRaises(cinder_exception.VolumeBackendAPIException,
+                          self.driver.delete_volume, test_volume)
+
+    @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_auto_delete')
     @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_dfn_delete')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_delete')
@@ -930,12 +1042,14 @@ class LinstorBaseDriverTestCase(test.TestCase):
                            m_rsc_delete,
                            m_vol_dfn_delete,
                            m_rsc_dfn_delete,
-                           m_api_reply):
+                           m_api_reply,
+                           m_rsc_auto_delete):
         m_rsc_list.return_value = self._fake_driver.fake_api_resource_list()
         m_rsc_delete.return_value = True
         m_vol_dfn_delete.return_value = True
         m_rsc_dfn_delete.return_value = True
         m_api_reply.return_value = True
+        m_rsc_auto_delete.return_value = True
 
         test_volume = CINDER_VOLUME
         test_volume['display_name'] = 'linstor_test'
@@ -944,7 +1058,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver.delete_volume(test_volume)
         expected = True
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_volume_extend')
@@ -973,7 +1087,7 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
         val = self.driver.migrate_volume(m_ctxt, m_volume, m_host)
         expected = (False, None)
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
 
 class LinstorIscsiDriverTestCase(test.TestCase):
@@ -996,7 +1110,7 @@ class LinstorIscsiDriverTestCase(test.TestCase):
         self.driver.default_rsc_size = 1
         self.driver.default_vg_name = 'vg-1'
         self.driver.default_downsize_factor = int('4096')
-        self.driver.default_pool = STORAGE_POOL_DEF_RESP[0]['spd_name']
+        self.driver.default_pool = STORAGE_POOL_DEF_RESP[0]
         self.driver.host_name = 'node_one'
         self.driver.diskless = True
         self.driver.location_info = 'LinstorIscsi:linstor://localhost'
@@ -1004,22 +1118,22 @@ class LinstorIscsiDriverTestCase(test.TestCase):
         self.driver.configuration.reserved_percentage = int('0')
         self.driver.configuration.max_over_subscription_ratio = int('0')
 
+    @mock.patch(DRIVER + 'LinstorIscsiDriver._get_api_resource_list')
     @mock.patch(DRIVER + 'LinstorIscsiDriver._get_volume_stats')
-    def test_iscsi_get_volume_stats(self, m_vol_stats):
+    def test_iscsi_get_volume_stats(self, m_vol_stats, m_rsc_list):
 
         m_vol_stats.return_value = VOLUME_STATS_RESP
+        m_rsc_list.return_value = RESOURCE_LIST
 
         val = self.driver.get_volume_stats()
 
         expected = VOLUME_STATS_RESP
         expected["storage_protocol"] = 'iSCSI'
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
-    @mock.patch(DRIVER + 'proto')
     @mock.patch(DRIVER + 'linstor')
-    def test_iscsi_check_for_setup_error_pass(self, m_linstor, m_proto):
+    def test_iscsi_check_for_setup_error_pass(self, m_linstor):
         m_linstor.return_value = True
-        m_proto.return_value = True
 
         # No exception should be raised
         self.driver.check_for_setup_error()
@@ -1044,7 +1158,7 @@ class LinstorDrbdDriverTestCase(test.TestCase):
         self.driver.default_rsc_size = 1
         self.driver.default_vg_name = 'vg-1'
         self.driver.default_downsize_factor = int('4096')
-        self.driver.default_pool = STORAGE_POOL_DEF_RESP[0]['spd_name']
+        self.driver.default_pool = STORAGE_POOL_DEF_RESP[0]
         self.driver.host_name = 'node_one'
         self.driver.diskless = True
         self.driver.location_info = 'LinstorDrbd:linstor://localhost'
@@ -1054,7 +1168,7 @@ class LinstorDrbdDriverTestCase(test.TestCase):
 
     @mock.patch(DRIVER + 'LinstorDrbdDriver._get_rsc_path')
     def test_drbd_return_drbd_config(self, m_rsc_path):
-        m_rsc_path.return_value = '/dev/drbd1000'
+        m_rsc_path.return_value = '/dev/drbd1005'
 
         val = self.driver._return_drbd_config(CINDER_VOLUME)
 
@@ -1064,14 +1178,14 @@ class LinstorDrbdDriverTestCase(test.TestCase):
                 "device_path": str(m_rsc_path.return_value)
             }
         }
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorDrbdDriver._get_api_storage_pool_list')
     def test_drbd_node_in_sp(self, m_sp_list):
         m_sp_list.return_value = (
             self._fake_driver.fake_api_storage_pool_list())
 
-        val = self.driver._node_in_sp('node_two')
+        val = self.driver._node_in_sp('node-1')
         self.assertTrue(val)
 
     @mock.patch(DRIVER + 'LinstorDrbdDriver._get_volume_stats')
@@ -1081,13 +1195,11 @@ class LinstorDrbdDriverTestCase(test.TestCase):
         val = self.driver.get_volume_stats()
         expected = VOLUME_STATS_RESP
         expected["storage_protocol"] = 'DRBD'
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
-    @mock.patch(DRIVER + 'proto')
     @mock.patch(DRIVER + 'linstor')
-    def test_drbd_check_for_setup_error_pass(self, m_linstor, m_proto):
+    def test_drbd_check_for_setup_error_pass(self, m_linstor):
         m_linstor.return_value = True
-        m_proto.return_value = True
 
         # No exception should be raised
         self.driver.check_for_setup_error()
@@ -1117,7 +1229,7 @@ class LinstorDrbdDriverTestCase(test.TestCase):
                 "device_path": str(m_rsc_path.return_value)
             }
         }
-        self.assertEqual(val, expected)
+        self.assertEqual(expected, val)
 
     @mock.patch(DRIVER + 'LinstorDrbdDriver._check_api_reply')
     @mock.patch(DRIVER + 'LinstorDrbdDriver._api_rsc_delete')
