@@ -9,16 +9,17 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 # Robert Simai <robert.simai@suse.com>, 2016. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2019. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-07-25 22:11+0000\n"
+"POT-Creation-Date: 2019-10-04 05:27+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-10-13 10:55+0000\n"
-"Last-Translator: Robert Simai <robert.simai@suse.com>\n"
+"PO-Revision-Date: 2019-10-03 06:57+0000\n"
+"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -64,6 +65,12 @@ msgstr ""
 #, python-format
 msgid "%(exception)s: %(explanation)s"
 msgstr "%(exception)s: %(explanation)s"
+
+#, python-format
+msgid "%(found)i rows matched query %(meth)s, %(done)i migrated"
+msgstr ""
+"%(found)i Zeilen stimmten mit der Abfrage %(meth)s überein. %(done)i wurden "
+"migriert"
 
 #, python-format
 msgid ""
@@ -396,6 +403,10 @@ msgstr ""
 "für den Switch. Fehlercode %s."
 
 #, python-format
+msgid "Availability zone '%(az)s' is invalid."
+msgstr "Verfügbarkeits Zone '%(az)s' ist ungültig."
+
+#, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
 msgstr "Verfügbarkeitszone '%(s_az)s' ist ungültig."
 
@@ -424,30 +435,14 @@ msgstr "RBD-Sicherungsoperation ist fehlgeschlagen."
 msgid "Backup already exists in database."
 msgstr "Die Sicherungskopie ist bereits in Datenbank vorhanden."
 
-msgid "Backup id required"
-msgstr "Datensicherungs-ID erforderlich"
+#, python-format
+msgid "Backup driver reported an error: %(reason)s"
+msgstr "Sicherungstreiber meldete einen Fehler: %(reason)s"
 
 msgid "Backup operation of an encrypted volume failed."
 msgstr ""
 "Die Sicherungsoperation eines verschlüsselten Datenträgers ist "
 "fehlgeschlagen."
-
-#, python-format
-msgid ""
-"Backup service %(configured_service)s does not support verify. Backup id "
-"%(id)s is not verified. Skipping verify."
-msgstr ""
-"Der Sicherungsdienst %(configured_service)s unterstützt keine Überprüfung. "
-"Die Sicherungs-ID %(id)s wird nicht überprüft. Die Überprüfung wird "
-"übersprungen."
-
-#, python-format
-msgid ""
-"Backup service %(service)s does not support verify. Backup id %(id)s is not "
-"verified. Skipping reset."
-msgstr ""
-"Der Sicherungsdienst %(service)s unterstützt keine Überprüfung. Die "
-"Sicherungs-ID %(id)s wird nicht überprüft. Zurücksetzung wird übersprungen."
 
 #, python-format
 msgid "Backup should only have one snapshot but instead has %s"
@@ -747,6 +742,10 @@ msgid "Cannot get mcs_id by channel id: %(channel_id)s."
 msgstr "mcs_id kann nicht nach Kanal-ID abgerufen werden: %(channel_id)s."
 
 #, python-format
+msgid "Cannot perform %(action)s during system upgrade."
+msgstr "Kann %(action)s nicht ausführen während des System Upgrades."
+
+#, python-format
 msgid ""
 "Cannot provide both 'cgsnapshot_id' and 'source_cgid' to create consistency "
 "group %(name)s from source."
@@ -845,6 +844,9 @@ msgstr ""
 "Der Klontyp '%(clone_type)s' ist ungültig. Gültige Werte: '%(full_clone)s' "
 "und '%(linked_clone)s'."
 
+msgid "Cluster"
+msgstr "Cluster"
+
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr ""
@@ -854,6 +856,9 @@ msgstr ""
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
 msgstr "CommandLineHelper._wait_for_condition: %s Zeitlimit."
+
+msgid "Completed"
+msgstr "Abgeschlossen"
 
 msgid "Compression Enabler is not installed. Can not create compressed volume."
 msgstr ""
@@ -923,10 +928,6 @@ msgstr "Container ist kleiner als die erforderliche Dateigröße."
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "In %(f1)s konvertiert, Format ist nun jedoch %(f2)s."
-
-#, python-format
-msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
-msgstr "In %(vol_format)s konvertiert, Format ist nun jedoch %(file_format)s."
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -1518,6 +1519,10 @@ msgstr ""
 "%(project)s und Pool %(pool)s Rückgabecode: %(ret.status)d Nachricht: "
 "%(ret.data)s."
 
+#, python-format
+msgid "Error attempting to run %(method)s"
+msgstr "Fehler bei dem Versuch, %(method)s auszuführen."
+
 msgid "Error connecting to ceph cluster."
 msgstr "Fehler beim Herstellen der Verbindung zum ceph-Cluster."
 
@@ -1528,6 +1533,14 @@ msgstr "Fehler beim Herstellen einer Verbindung über SSH: %s"
 #, python-format
 msgid "Error creating volume: %s."
 msgstr "Fehler beim Erstellen des Datenträgers: %s"
+
+msgid ""
+"Error decoding your request. Either the URL or the request body contained "
+"characters that could not be decoded by Cinder."
+msgstr ""
+"Fehler beim Entschlüsseln Ihrer Anforderung. Entweder die URL oder der "
+"angeforderte Body enthalten Zeichen, die von Cinder nicht entschlüsselt "
+"werden konnten. "
 
 msgid "Error deleting replay profile."
 msgstr "Fehler beim Löschen des Wiedergabeprofils."
@@ -1795,6 +1808,10 @@ msgstr ""
 #, python-format
 msgid "Exception: %s"
 msgstr "Ausnahme: %s"
+
+#, python-format
+msgid "Expected a UUID but received %(uuid)s."
+msgstr "UUID erwartet, aber %(uuid)s erhalten."
 
 #, python-format
 msgid "Expected integer for node_count, svcinfo lsiogrp returned: %(node)s."
@@ -2098,6 +2115,11 @@ msgid "Failed to disassociate qos_specs: %(specs_id)s with type %(type_id)s."
 msgstr ""
 "Aufheben der Zuordnung von qos_specs fehlgeschlagen: %(specs_id)s mit Typ "
 "%(type_id)s."
+
+#, python-format
+msgid "Failed to download image %(image_href)s, reason: %(reason)s"
+msgstr ""
+"Fehler beim Herunterladen von Image %(image_href)s, Ursache: %(reason)s"
 
 msgid "Failed to execute common command."
 msgstr "Ausführen des allgemeinen Befehls fehlgeschlagen."
@@ -2912,8 +2934,15 @@ msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Oauth2-Fehler in Google-Cloudspeicher: %(reason)s"
 
 #, python-format
+msgid "Group Type %(id)s already exists."
+msgstr "Gruppen Typ %(id)s existiert bereits."
+
+#, python-format
 msgid "Group type %(group_type_id)s could not be found."
 msgstr "Gruppentyp %(group_type_id)s konnte nicht gefunden werden."
+
+msgid "Group type name can not be empty."
+msgstr "Der Gruppenname darf nicht leer sein."
 
 #, python-format
 msgid "Group type with name %(group_type_name)s could not be found."
@@ -2951,6 +2980,9 @@ msgstr "Host %s hat keine iSCSI-Initiatoren."
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr ""
 "Host nicht gefunden. Fehler beim Entfernen von %(service)s auf %(host)s."
+
+msgid "Hosts"
+msgstr "Hosts"
 
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr ""
@@ -2998,8 +3030,17 @@ msgstr "Abbild %(image_id)s ist nicht aktiv."
 msgid "Image %(image_id)s is unacceptable: %(reason)s"
 msgstr "Das Abbild %(image_id)s ist nicht zulässig: %(reason)s"
 
+#, python-format
+msgid "Image %(image_id)s size exceeded available disk space: %(reason)s"
+msgstr ""
+"Abbild  %(image_id)s Größe überschreitet die verfügbaren Plattenplatz: "
+"%(reason)s"
+
 msgid "Image location not present."
 msgstr "Abbildposition nicht vorhanden."
+
+msgid "Image quota exceeded"
+msgstr "Abbild Quota überschritten"
 
 #, python-format
 msgid ""
@@ -3019,6 +3060,15 @@ msgstr ""
 "abgestürzt ist. Wenn dies der Fall ist, kann das Problem möglicherweise "
 "behoben werden, wenn Sie den Löschversuch nach Ablauf von 30 Sekunden "
 "wiederholen."
+
+#, python-format
+msgid ""
+"Import record failed, cannot find backup service to perform the import. "
+"Request service %(service)s."
+msgstr ""
+"Importieren des Datensatzes fehlgeschlagen. Der Sicherungsdienst zum "
+"Durchführen des Imports kann nicht gefunden werden. Fordere Dienst "
+"%(service)s."
 
 msgid "Incremental backups exist for this backup."
 msgstr "Inkrementelle Sicherungen sind für diese Sicherung vorhanden."
@@ -3058,6 +3108,14 @@ msgstr "Ungültiger CgSnapshot: %(reason)s"
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Ungültige ConsistencyGroup: %(reason)s"
+
+#, python-format
+msgid "Invalid Group Status: %(reason)s"
+msgstr "Ungültiger Gruppenstatus :%(reason)s"
+
+#, python-format
+msgid "Invalid Group: %(reason)s"
+msgstr "Ungültige Gruppe:%(reason)s"
 
 #, python-format
 msgid ""
@@ -3482,9 +3540,16 @@ msgid "Map info is None due to array version not supporting hypermetro."
 msgstr ""
 "Zuordnungsinfo ist 'None', da die Array-Version hypermetro nicht unterstützt."
 
+msgid "Maximum age is count of days since epoch."
+msgstr "Das maximale Alter entspricht der Anzahl von Tagen seit der Epoche."
+
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
 msgstr "Maximale Anzahl an zulässigen Sicherungen (%(allowed)d) überschritten"
+
+#, python-format
+msgid "Maximum number of groups allowed (%(allowed)d) exceeded"
+msgstr "Die Maximale Gruppenanzahl:  (%(allowed)d) wurde überschritten"
 
 #, python-format
 msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
@@ -3514,6 +3579,14 @@ msgstr "Für diesen Datenträger ist bereits eine Metadatensicherung vorhanden."
 msgid "Metadata backup object '%s' already exists"
 msgstr "Metadatensicherungsobjekt '%s' ist bereits vorhanden."
 
+#, python-format
+msgid "Metadata property key %s greater than 255 characters."
+msgstr "Metadateneigenschaftenschlüssel %s ist größer als 255 Zeichen."
+
+#, python-format
+msgid "Metadata property key %s value greater than 255 characters."
+msgstr "Metadateneigenschaftenschlüsselwert %s ist größer als 255 Zeichen."
+
 msgid "Metadata restore failed due to incompatible version"
 msgstr ""
 "Fehler bei der Wiederherstellung der Metadaten aufgrund einer inkompatiblen "
@@ -3523,6 +3596,9 @@ msgid "Metadata restore failed due to incompatible version."
 msgstr ""
 "Metadatenwiederherstellung aufgrund einer inkompatiblen Version "
 "fehlgeschlagen."
+
+msgid "Migration"
+msgstr "Migration"
 
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
@@ -3536,6 +3612,10 @@ msgstr "Fehlende Fibre Channel-SAN-Konfigurationsparameter - fc_fabric_names"
 
 msgid "Missing request body."
 msgstr "Anforderungshauptteil fehlt."
+
+#, python-format
+msgid "Missing required element '%(element)s' in request body."
+msgstr "Erforderliches Element '%(element)s' im Body der Anfrage."
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3744,6 +3824,10 @@ msgid "No snap found with %s as backing file."
 msgstr "Es wurde keine Schattenkopie mit %s als Sicherungsdatei gefunden."
 
 #, python-format
+msgid "No snapshots found for volume %(volume_id)s."
+msgstr "Keine Schattenkopie gefunden für Datenträger %(volume_id)s."
+
+#, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "Keine solche QoS-Spezifikation %(specs_id)s vorhanden."
 
@@ -3757,6 +3841,10 @@ msgstr "Keine Unterstützung für die Wiederherstellung der Sicherungsversion %s
 #, python-format
 msgid "No target id found for volume %(volume_id)s."
 msgstr "Keine Ziel-ID für Datenträger %(volume_id)s gefunden."
+
+#, python-format
+msgid "No valid backend was found. %(reason)s"
+msgstr "Es wurde kein gültiges Backend gefunden. %(reason)s"
 
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
@@ -4138,6 +4226,14 @@ msgstr ""
 "zulässige %(name)s-Kontingent.  %(requested)s G angefordert bei einem "
 "Kontingent von %(quota)s G. %(consumed)s G wurden verbraucht."
 
+#, python-format
+msgid ""
+"Requested volume size %(size)dG is larger than maximum allowed limit "
+"%(limit)dG."
+msgstr ""
+"Die Größe des angeforderten Datenträgers %(size)dG liegt über dem maximal "
+"zulässigen Wert von %(limit)dG."
+
 msgid "Required configuration not found"
 msgstr "Erforderliche Konfiguration nicht gefunden."
 
@@ -4227,6 +4323,10 @@ msgid ""
 msgstr ""
 "Es ist nicht zulässig, Cinder mit einer VMware vCenter-Version auszuführen, "
 "die niedriger ist als  %s."
+
+#, python-format
+msgid "Running batches of %i until complete."
+msgstr "%i-Batches werden ausgeführt, bis Ausführung abgeschlossen ist."
 
 msgid "SAN product is not configured."
 msgstr "SAN-Produkt ist nicht konfiguriert."
@@ -5207,9 +5307,6 @@ msgstr "Nicht unterstützte Metadatenversion für die Sicherung (%s)"
 msgid "Unsupported backup metadata version requested"
 msgstr "Nicht unterstützte Metadatenversion für die Sicherung angefordert."
 
-msgid "Unsupported backup verify driver"
-msgstr "Nicht unterstützter Treiber zum Überprüfen der Sicherung"
-
 #, python-format
 msgid ""
 "Unsupported firmware on switch %s. Make sure switch is running firmware v6.4 "
@@ -5295,6 +5392,10 @@ msgid ""
 msgstr ""
 "Wert \"%(value)s\" ist nicht gültig für die Konfigurationsoption \"%(option)s"
 "\""
+
+#, python-format
+msgid "Value '%(param)s' for '%(param_string)s' is not a boolean."
+msgstr "Wert '%(param)s' für '%(param_string)s' ist kein boolescher Wert."
 
 #, python-format
 msgid "ValueError: %s"
@@ -5476,6 +5577,12 @@ msgstr ""
 
 msgid "Volume Type id must not be None."
 msgstr "Datenträgertyp-ID darf nicht 'None' sein."
+
+#, python-format
+msgid "Volume attachment could not be found with filter: %(filter)s."
+msgstr ""
+"Der Datenträger Anhang konnte mit dem Filter: %(filter)s nicht gefunden "
+"werden."
 
 msgid "Volume by this name already exists"
 msgstr "Ein Datenträger mit diesem Namen ist bereits vorhanden."

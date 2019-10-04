@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-07-25 22:11+0000\n"
+"POT-Creation-Date: 2019-10-04 05:27+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -413,27 +413,8 @@ msgstr "Резервная копия уже есть в базе данных."
 msgid "Backup driver reported an error: %(reason)s"
 msgstr "Драйвер резервного копирования сообщил об ошибке: %(reason)s"
 
-msgid "Backup id required"
-msgstr "Требуется ИД резервной копии"
-
 msgid "Backup operation of an encrypted volume failed."
 msgstr "Операция резервного копирования зашифрованного тома не выполнена."
-
-#, python-format
-msgid ""
-"Backup service %(configured_service)s does not support verify. Backup id "
-"%(id)s is not verified. Skipping verify."
-msgstr ""
-"Служба резервного копирования %(configured_service)s не поддерживает "
-"проверку. ИД резервной копии %(id)s не проверен. Пропуск проверки."
-
-#, python-format
-msgid ""
-"Backup service %(service)s does not support verify. Backup id %(id)s is not "
-"verified. Skipping reset."
-msgstr ""
-"Служба резервного копирования %(service)s не поддерживает проверку. ИД "
-"резервной копии %(id)s не проверен. Пропуск сброса."
 
 #, python-format
 msgid "Backup should only have one snapshot but instead has %s"
@@ -881,12 +862,6 @@ msgstr "Размер контейнера меньше размера требу
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Выполнено преобразование в %(f1)s, но в данный момент формат - %(f2)s"
-
-#, python-format
-msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
-msgstr ""
-"Выполнено преобразование в %(vol_format)s, но в данный момент формат - "
-"%(file_format)s"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -4940,9 +4915,6 @@ msgstr "Неподдерживаемая версия метаданных ре�
 
 msgid "Unsupported backup metadata version requested"
 msgstr "Запрошена неподдерживаемая версия метаданных резервной копии"
-
-msgid "Unsupported backup verify driver"
-msgstr "Неподдерживаемый драйвер проверки резервной копии"
 
 #, python-format
 msgid ""
