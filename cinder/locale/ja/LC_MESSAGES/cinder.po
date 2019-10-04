@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-07-25 22:11+0000\n"
+"POT-Creation-Date: 2019-10-03 22:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -490,27 +490,8 @@ msgstr "バックアップ RBD 操作が失敗しました。"
 msgid "Backup already exists in database."
 msgstr "データベースのバックアップが既に存在しています。"
 
-msgid "Backup id required"
-msgstr "バックアップ ID が必要です"
-
 msgid "Backup operation of an encrypted volume failed."
 msgstr "暗号化ボリュームのバックアップ操作が失敗しました。"
-
-#, python-format
-msgid ""
-"Backup service %(configured_service)s does not support verify. Backup id "
-"%(id)s is not verified. Skipping verify."
-msgstr ""
-"バックアップサービス %(configured_service)s では検査がサポートされていませ"
-"ん。バックアップ ID %(id)s は検査されません。検査をスキップします。"
-
-#, python-format
-msgid ""
-"Backup service %(service)s does not support verify. Backup id %(id)s is not "
-"verified. Skipping reset."
-msgstr ""
-"バックアップサービス %(service)s では検査がサポートされていません。バックアッ"
-"プ ID %(id)s は検査されません。リセットをスキップします。"
 
 #, python-format
 msgid "Backup should only have one snapshot but instead has %s"
@@ -1130,10 +1111,6 @@ msgstr "コンテナーサイズが必要なファイルサイズを下回って
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "%(f1)s に変換されましたが、現在の形式は %(f2)s です"
-
-#, python-format
-msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
-msgstr "%(vol_format)s に変換されましたが、現在の形式は %(file_format)s です"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -5926,9 +5903,6 @@ msgstr "サポートされないバックアップのメタデータバージョ
 
 msgid "Unsupported backup metadata version requested"
 msgstr "サポートされないバックアップメタデータバージョンが要求されました。"
-
-msgid "Unsupported backup verify driver"
-msgstr "サポートされないバックアップ検証ドライバーです。"
 
 #, python-format
 msgid ""

@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-07-25 22:11+0000\n"
+"POT-Creation-Date: 2019-10-03 22:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -405,27 +405,8 @@ msgstr "Operação RBD de backup falhou"
 msgid "Backup already exists in database."
 msgstr "Backup já existe no banco de dados."
 
-msgid "Backup id required"
-msgstr "ID de backup necessário"
-
 msgid "Backup operation of an encrypted volume failed."
 msgstr "A operação de backup de um volume criptografado falhou."
-
-#, python-format
-msgid ""
-"Backup service %(configured_service)s does not support verify. Backup id "
-"%(id)s is not verified. Skipping verify."
-msgstr ""
-"O serviço de backup %(configured_service)s não suporta verificação. O ID do "
-"backup %(id)s não foi verificado. Ignorando verificação."
-
-#, python-format
-msgid ""
-"Backup service %(service)s does not support verify. Backup id %(id)s is not "
-"verified. Skipping reset."
-msgstr ""
-"Serviço de backup %(service)s não suporta verificação. ID do backup %(id)s "
-"não foi verificado. Ignorando reconfiguração."
 
 #, python-format
 msgid "Backup should only have one snapshot but instead has %s"
@@ -886,10 +867,6 @@ msgstr "Tamanho do contêiner menor do que o tamanho do arquivo necessário."
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Convertido em %(f1)s, mas o formato agora é %(f2)s"
-
-#, python-format
-msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
-msgstr "Convertido em %(vol_format)s, mas o formato agora é %(file_format)s"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -4988,9 +4965,6 @@ msgstr "Versão de metadados de backup não suportada (%s)"
 
 msgid "Unsupported backup metadata version requested"
 msgstr "Requisitada versão de metadados de backups não-suportados"
-
-msgid "Unsupported backup verify driver"
-msgstr "Backup não suportado, verificar driver"
 
 #, python-format
 msgid ""

@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-07-25 22:11+0000\n"
+"POT-Creation-Date: 2019-10-03 22:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -427,27 +427,8 @@ msgstr "데이터베이스에 이미 백업이 있습니다. "
 msgid "Backup driver reported an error: %(reason)s"
 msgstr "백업 드라이버 오류 보고서: %(reason)s"
 
-msgid "Backup id required"
-msgstr "백업 ID 필요"
-
 msgid "Backup operation of an encrypted volume failed."
 msgstr "암호화된 볼륨의 백업 조작이 실패했습니다."
-
-#, python-format
-msgid ""
-"Backup service %(configured_service)s does not support verify. Backup id "
-"%(id)s is not verified. Skipping verify."
-msgstr ""
-"백업 서비스 %(configured_service)s이(가) 확인을 지원하지 않습니다. 백업 ID "
-"%(id)s이(가) 확인되지 않습니다. 확인을 건너뜁니다."
-
-#, python-format
-msgid ""
-"Backup service %(service)s does not support verify. Backup id %(id)s is not "
-"verified. Skipping reset."
-msgstr ""
-"백업 서비스 %(service)s이(가) 확인을 지원하지 않습니다. 백업 ID %(id)s이(가) "
-"확인되지 않습니다. 재설정을 건너뜁니다."
 
 #, python-format
 msgid "Backup should only have one snapshot but instead has %s"
@@ -913,10 +894,6 @@ msgstr "컨테이너 크기가 필요한 파일 크기보다 작습니다."
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "%(f1)s(으)로 변환되었지만 이제 형식이 %(f2)s임"
-
-#, python-format
-msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
-msgstr "%(vol_format)s(으)로 변환되었지만 이제 형식이 %(file_format)s임"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -4976,9 +4953,6 @@ msgstr "지원되지 않는 백업 메타데이터 버전(%s)"
 
 msgid "Unsupported backup metadata version requested"
 msgstr "지원되지 않는 백업 메타데이터 버전이 요청됨"
-
-msgid "Unsupported backup verify driver"
-msgstr "지원되지 않는 백업 확인 드라이버"
 
 #, python-format
 msgid ""

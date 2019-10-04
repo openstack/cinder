@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-07-25 22:11+0000\n"
+"POT-Creation-Date: 2019-10-03 22:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -424,31 +424,10 @@ msgstr "La operación de RBD de copia de seguridad ha fallado"
 msgid "Backup already exists in database."
 msgstr "La copia de seguridad ya existe en la base de datos."
 
-msgid "Backup id required"
-msgstr "Se necesita una copia de seguridad"
-
 msgid "Backup operation of an encrypted volume failed."
 msgstr ""
 "No se ha podido realizar la operación de copia de seguridad de un volumen "
 "cifrado."
-
-#, python-format
-msgid ""
-"Backup service %(configured_service)s does not support verify. Backup id "
-"%(id)s is not verified. Skipping verify."
-msgstr ""
-"El servicio de copia de seguridad %(configured_service)s no admite la "
-"verificación. El id de copia de seguridad %(id)s no se ha verificado. Se "
-"omite la verificación."
-
-#, python-format
-msgid ""
-"Backup service %(service)s does not support verify. Backup id %(id)s is not "
-"verified. Skipping reset."
-msgstr ""
-"El servicio de copia de seguridad %(service)s no soporta la verificación. El "
-"ID de copia de seguridad %(id)s no se ha verificado. Se omite el "
-"restablecimiento."
 
 #, python-format
 msgid "Backup should only have one snapshot but instead has %s"
@@ -925,11 +904,6 @@ msgstr "Tamaño de contenedor menor que tamaño de archivo necesario."
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Se ha convertido a %(f1)s, pero ahora el formato es %(f2)s"
-
-#, python-format
-msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
-msgstr ""
-"Se ha convertido a %(vol_format)s, pero ahora el formato es %(file_format)s"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -5204,9 +5178,6 @@ msgstr "Versión de metadatos de copia de seguridad no soportada (%s)"
 msgid "Unsupported backup metadata version requested"
 msgstr ""
 "Se ha solicitado una versión de metadatos de copia de seguridad no soportada"
-
-msgid "Unsupported backup verify driver"
-msgstr "Controlador de verificación de copia de seguridad no admitido"
 
 #, python-format
 msgid ""
