@@ -653,18 +653,10 @@ class MStorageISMCLI(object):
         query_status = out[15:39].strip()
         return query_status
 
-    def set_io_limit(self, ldname, specs, force_delete=True):
-        if specs['upperlimit'] is not None:
-            upper = int(specs['upperlimit'], 10)
-        else:
-            upper = None
-
-        if specs['lowerlimit'] is not None:
-            lower = int(specs['lowerlimit'], 10)
-        else:
-            lower = None
-
-        report = specs['upperreport']
+    def set_io_limit(self, ldname, qos_params, force_delete=True):
+        upper = qos_params['upperlimit']
+        lower = qos_params['lowerlimit']
+        report = qos_params['upperreport']
         if upper is None and lower is None and report is None:
             return
         cmd = 'iSMioc setlimit -ldname %s' % ldname

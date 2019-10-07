@@ -1703,3 +1703,64 @@ class SetQosSpec_test(volume_helper.MStorageDSVDriver,
         volume_type_id = '33cd6136-0465-4ee0-82fa-b5f3a9138249'
         ret = self._set_qos_spec(ldname, volume_type_id)
         self.assertIsNone(ret)
+
+    def test_get_qos_parameters(self):
+        specs = {}
+        qos_params = self.get_qos_parameters(specs, True)
+        self.assertEqual(0, qos_params['upperlimit'])
+        self.assertEqual(0, qos_params['lowerlimit'])
+        self.assertEqual('off', qos_params['upperreport'])
+
+        specs = {}
+        qos_params = self.get_qos_parameters(specs, False)
+        self.assertIsNone(qos_params['upperlimit'])
+        self.assertIsNone(qos_params['lowerlimit'])
+        self.assertIsNone(qos_params['upperreport'])
+
+        specs = {u'upperlimit': u'1000',
+                 u'lowerlimit': u'500',
+                 u'upperreport': u'off'}
+        qos_params = self.get_qos_parameters(specs, False)
+        self.assertEqual(1000, qos_params['upperlimit'])
+        self.assertEqual(500, qos_params['lowerlimit'])
+        self.assertEqual('off', qos_params['upperreport'])
+
+        specs = {u'upperreport': u'on'}
+        qos_params = self.get_qos_parameters(specs, False)
+        self.assertIsNone(qos_params['upperlimit'])
+        self.assertIsNone(qos_params['lowerlimit'])
+        self.assertEqual('on', qos_params['upperreport'])
+
+        specs = {u'upperreport': u'aaa'}
+        qos_params = self.get_qos_parameters(specs, False)
+        self.assertIsNone(qos_params['upperlimit'])
+        self.assertIsNone(qos_params['lowerlimit'])
+        self.assertIsNone(qos_params['upperreport'])
+
+        specs = {u'upperlimit': u'1000001',
+                 u'lowerlimit': u'500'}
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'Value "1000001" is not valid for '
+                                    'configuration option "upperlimit"'):
+            self.get_qos_parameters(specs, False)
+
+        specs = {u'upperlimit': u'aaa',
+                 u'lowerlimit': u'500'}
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'Value "aaa" is not valid for '
+                                    'configuration option "upperlimit"'):
+            self.get_qos_parameters(specs, False)
+
+        specs = {u'upperlimit': u'1000',
+                 u'lowerlimit': u'aaa'}
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'Value "aaa" is not valid for '
+                                    'configuration option "lowerlimit"'):
+            self.get_qos_parameters(specs, False)
+
+        specs = {u'upperlimit': u'1000',
+                 u'lowerlimit': u'1'}
+        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                                    'Value "1" is not valid for '
+                                    'configuration option "lowerlimit"'):
+            self.get_qos_parameters(specs, False)
