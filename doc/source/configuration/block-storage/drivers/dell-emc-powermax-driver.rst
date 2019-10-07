@@ -17,20 +17,7 @@ in the backend to perform PowerMax and VMAX storage operations.
 
    While ``PowerMax`` will be used throughout this document, it will be used
    to collectively categorize the following supported arrays, PowerMax 2000,
-   8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX Hybrid. Please note
-   That we will no longer be supporting the VMAX Hybrid in the ``T`` release
-   of OpenStack.
-
-.. note::
-
-   KNOWN ISSUE:
-   Workload support was dropped in PowerMax OS 5978. If a VMAX All Flash array
-   is upgraded to PowerMax OS 5978 or greater and existing volume types
-   leveraged workload i.e. DSS, DSS_REP, OLTP and OLTP_REP, attaching and
-   detaching will no longer work and the volume type will be unusable.
-   Refrain from upgrading to PowerMax OS 5978 or greater on an All Flash
-   until a fix is merged. Please contact your Dell EMC PowerMax customer
-   support representative if in any doubt.
+   8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX Hybrid.
 
 System requirements and licensing
 =================================
