@@ -14,6 +14,7 @@
 #
 
 import datetime
+import fixtures
 import socket
 import sys
 import uuid
@@ -23,6 +24,7 @@ from oslo_config import cfg
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 import oslo_versionedobjects
+import six
 
 from cinder.common import constants
 from cinder import context
@@ -534,3 +536,23 @@ def create_populated_cluster(ctxt, num_services, num_down_svcs=0, **values):
         for i in range(num_services)
     ]
     return cluster, svcs
+
+
+def set_timeout(timeout):
+    """Timeout decorator for unit test methods.
+
+    Use this decorator for tests that are expected to pass in very specific
+    amount of time, not common for all other tests.
+    It can have either big or small value.
+    """
+
+    def _decorator(f):
+
+        @six.wraps(f)
+        def _wrapper(self, *args, **kwargs):
+            self.useFixture(fixtures.Timeout(timeout, gentle=True))
+            return f(self, *args, **kwargs)
+
+        return _wrapper
+
+    return _decorator
