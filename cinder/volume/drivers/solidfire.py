@@ -217,6 +217,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                             configuration=self.configuration)
         self.default_cluster = self._create_cluster_reference()
         self.active_cluster = self.default_cluster
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
 
         # If we're failed over, we need to parse things out and set the active
         # cluster appropriately
@@ -511,7 +512,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             req = requests.post(url,
                                 data=json.dumps(payload),
                                 auth=(endpoint['login'], endpoint['passwd']),
-                                verify=False,
+                                verify=self.verify_ssl,
                                 timeout=30)
         response = req.json()
         req.close()
