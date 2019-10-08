@@ -44,7 +44,7 @@ update = {
         'volume_type': {
             'type': 'object',
             'properties': {
-                'name': parameter_types.name_allow_zero_min_length,
+                'name': parameter_types.update_name,
                 'description': parameter_types.description,
                 'is_public': parameter_types.boolean,
             },
