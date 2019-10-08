@@ -16,9 +16,8 @@
 #    under the License.
 #
 
-"""
-Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
-"""
+"""Cinder Volume driver for Fujitsu ETERNUS DX S3 series."""
+
 import ast
 import base64
 import hashlib
@@ -36,6 +35,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.fujitsu.eternus_dx import constants as CONSTANTS
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -46,98 +46,11 @@ try:
 except ImportError:
     pywbemAvailable = False
 
-VOL_PREFIX = "FJosv_"
-RAIDGROUP = 2
-TPPOOL = 5
-SNAPOPC = 4
-OPC = 5
-RETURN_TO_RESOURCEPOOL = 19
-DETACH = 8
-INITIALIZED = 2
-UNSYNCHRONIZED = 3
-BROKEN = 5
-PREPARED = 11
-REPL = "FUJITSU_ReplicationService"
-STOR_CONF = "FUJITSU_StorageConfigurationService"
-CTRL_CONF = "FUJITSU_ControllerConfigurationService"
-STOR_HWID = "FUJITSU_StorageHardwareIDManagementService"
-
-UNDEF_MSG = 'Undefined Error!!'
-JOB_RETRIES = 60
-JOB_INTERVAL_SEC = 10
-
-# Error code keyword.
-VOLUME_IS_BUSY = 32786
-DEVICE_IS_BUSY = 32787
-VOLUMENAME_IN_USE = 32788
-COPYSESSION_NOT_EXIST = 32793
-LUNAME_IN_USE = 4102
-LUNAME_NOT_EXIST = 4097  # Only for InvokeMethod(HidePaths).
-EC_REC = 3
 FJ_ETERNUS_DX_OPT_opts = [
     cfg.StrOpt('cinder_eternus_config_file',
                default='/etc/cinder/cinder_fujitsu_eternus_dx.xml',
-               help='config file for cinder eternus_dx volume driver'),
+               help='Config file for cinder eternus_dx volume driver.'),
 ]
-
-POOL_TYPE_dic = {
-    RAIDGROUP: 'RAID_GROUP',
-    TPPOOL: 'Thinporvisioning_POOL',
-}
-
-OPERATION_dic = {
-    SNAPOPC: RETURN_TO_RESOURCEPOOL,
-    OPC: DETACH,
-    EC_REC: DETACH,
-}
-
-RETCODE_dic = {
-    '0': 'Success',
-    '1': 'Method Not Supported',
-    '4': 'Failed',
-    '5': 'Invalid Parameter',
-    '4096': 'Method Parameters Checked - Job Started',
-    '4097': 'Size Not Supported',
-    '4101': 'Target/initiator combination already exposed',
-    '4102': 'Requested logical unit number in use',
-    '32769': 'Maximum number of Logical Volume in a RAID group '
-             'has been reached',
-    '32770': 'Maximum number of Logical Volume in the storage device '
-             'has been reached',
-    '32771': 'Maximum number of registered Host WWN '
-             'has been reached',
-    '32772': 'Maximum number of affinity group has been reached',
-    '32773': 'Maximum number of host affinity has been reached',
-    '32785': 'The RAID group is in busy state',
-    '32786': 'The Logical Volume is in busy state',
-    '32787': 'The device is in busy state',
-    '32788': 'Element Name is in use',
-    '32792': 'No Copy License',
-    '32793': 'Session is not exist',
-    '32796': 'Quick Format Error',
-    '32801': 'The CA port is in invalid setting',
-    '32802': 'The Logical Volume is Mainframe volume',
-    '32803': 'The RAID group is not operative',
-    '32804': 'The Logical Volume is not operative',
-    '32808': 'No Thin Provisioning License',
-    '32809': 'The Logical Element is ODX volume',
-    '32811': 'This operation cannot be performed to the NAS resources',
-    '32812': 'This operation cannot be performed to the Storage Cluster '
-             'resources',
-    '32816': 'Fatal error generic',
-    '35302': 'Invalid LogicalElement',
-    '35304': 'LogicalElement state error',
-    '35316': 'Multi-hop error',
-    '35318': 'Maximum number of multi-hop has been reached',
-    '35324': 'RAID is broken',
-    '35331': 'Maximum number of session has been reached(per device)',
-    '35333': 'Maximum number of session has been reached(per SourceElement)',
-    '35334': 'Maximum number of session has been reached(per TargetElement)',
-    '35335': 'Maximum number of Snapshot generation has been reached '
-             '(per SourceElement)',
-    '35346': 'Copy table size is not setup',
-    '35347': 'Copy table size is not enough',
-}
 
 CONF.register_opts(FJ_ETERNUS_DX_OPT_opts, group=conf.SHARED_CONF_GROUP)
 
@@ -195,11 +108,11 @@ class FJDXCommon(object):
         pool = self._find_pool(eternus_pool)
 
         if 'RSP' in pool['InstanceID']:
-            pooltype = RAIDGROUP
+            pooltype = CONSTANTS.RAIDGROUP
         else:
-            pooltype = TPPOOL
+            pooltype = CONSTANTS.TPPOOL
 
-        configservice = self._find_eternus_service(STOR_CONF)
+        configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
         if configservice is None:
             msg = (_('create_volume, volume: %(volume)s, '
                      'volumename: %(volumename)s, '
@@ -233,7 +146,7 @@ class FJDXCommon(object):
             ElementType=self._pywbem_uint(pooltype, '16'),
             Size=self._pywbem_uint(volumesize, '64'))
 
-        if rc == VOLUMENAME_IN_USE:  # Element Name is in use
+        if rc == CONSTANTS.VOLUMENAME_IN_USE:  # Element Name is in use
             LOG.warning('create_volume, '
                         'volumename: %(volumename)s, '
                         'Element Name is in use.',
@@ -280,7 +193,7 @@ class FJDXCommon(object):
                    'errordesc': errordesc,
                    'backend': systemnamelist[0]['IdentifyingNumber'],
                    'eternus_pool': eternus_pool,
-                   'pooltype': POOL_TYPE_dic[pooltype]})
+                   'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype]})
 
         # Create return value.
         element_path = {
@@ -299,7 +212,7 @@ class FJDXCommon(object):
                     'FJ_Volume_Name': volumename,
                     'FJ_Volume_No': volume_no,
                     'FJ_Pool_Name': eternus_pool,
-                    'FJ_Pool_Type': POOL_TYPE_dic[pooltype]}
+                    'FJ_Pool_Type': CONSTANTS.POOL_TYPE_dic[pooltype]}
 
         return (element_path, metadata)
 
@@ -390,8 +303,8 @@ class FJDXCommon(object):
                   {'t_volumename': t_volumename,
                    's_volumename': s_volumename})
 
-        # Get replicationservice for CreateElementReplica.
-        repservice = self._find_eternus_service(REPL)
+        # Get replication service for CreateElementReplica.
+        repservice = self._find_eternus_service(CONSTANTS.REPL)
 
         if repservice is None:
             msg = _('_create_local_cloned_volume, '
@@ -513,7 +426,7 @@ class FJDXCommon(object):
 
         volumename = vol_instance['ElementName']
 
-        configservice = self._find_eternus_service(STOR_CONF)
+        configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
         if configservice is None:
             msg = (_('_delete_volume, volumename: %(volumename)s, '
                      'Storage Configuration Service not found.')
@@ -565,7 +478,7 @@ class FJDXCommon(object):
         d_volumename = self._create_volume_name(snapshot['id'])
         s_volumename = self._create_volume_name(vol_id)
         vol_instance = self._find_lun(volume)
-        repservice = self._find_eternus_service(REPL)
+        repservice = self._find_eternus_service(CONSTANTS.REPL)
 
         # Check the existence of volume.
         if vol_instance is None:
@@ -816,11 +729,11 @@ class FJDXCommon(object):
 
         # Set pooltype.
         if 'RSP' in pool['InstanceID']:
-            pooltype = RAIDGROUP
+            pooltype = CONSTANTS.RAIDGROUP
         else:
-            pooltype = TPPOOL
+            pooltype = CONSTANTS.TPPOOL
 
-        configservice = self._find_eternus_service(STOR_CONF)
+        configservice = self._find_eternus_service(CONSTANTS.STOR_CONF)
         if configservice is None:
             msg = (_('extend_volume, volume: %(volume)s, '
                      'volumename: %(volumename)s, '
@@ -866,7 +779,7 @@ class FJDXCommon(object):
                    % {'volumename': volumename,
                       'rc': rc,
                       'errordesc': errordesc,
-                      'pooltype': POOL_TYPE_dic[pooltype]})
+                      'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype]})
 
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -881,7 +794,7 @@ class FJDXCommon(object):
                    'rc': rc,
                    'errordesc': errordesc,
                    'eternus_pool': eternus_pool,
-                   'pooltype': POOL_TYPE_dic[pooltype]})
+                   'pooltype': CONSTANTS.POOL_TYPE_dic[pooltype]})
 
         return eternus_pool
 
@@ -1179,7 +1092,7 @@ class FJDXCommon(object):
 
         # pylint: disable=E1121
         volumename = base64.urlsafe_b64encode(m.digest()).decode()
-        ret = VOL_PREFIX + six.text_type(volumename)
+        ret = CONSTANTS.VOL_PREFIX + six.text_type(volumename)
 
         LOG.debug('_create_volume_name, ret: %s', ret)
         return ret
@@ -1284,11 +1197,12 @@ class FJDXCommon(object):
         if "Job" in retdata:
             rc = self._wait_for_job_complete(self.conn, retdata)
 
-        if rc == DEVICE_IS_BUSY:
+        if rc == CONSTANTS.DEVICE_IS_BUSY:
             msg = _('Device is in Busy state')
             raise exception.VolumeBackendAPIException(data=msg)
 
-        errordesc = RETCODE_dic.get(six.text_type(rc), UNDEF_MSG)
+        errordesc = CONSTANTS.RETCODE_dic.get(six.text_type(rc),
+                                              CONSTANTS.UNDEF_MSG)
 
         ret = (rc, errordesc, retdata)
 
@@ -1528,7 +1442,7 @@ class FJDXCommon(object):
                       'find target copysession, '
                       'wait for end of copysession.')
 
-            if cpsession_instance['CopyState'] == BROKEN:
+            if cpsession_instance['CopyState'] == CONSTANTS.BROKEN:
                 msg = (_('_wait_for_copy_complete, '
                          'cpsession: %(cpsession)s, '
                          'copysession state is BROKEN.')
@@ -1557,7 +1471,7 @@ class FJDXCommon(object):
         # SnapOPC: 19 (Return To ResourcePool)
         # OPC:8 (Detach)
         # EC/REC:8 (Detach)
-        operation = OPERATION_dic.get(copytype, None)
+        operation = CONSTANTS.OPERATION_dic.get(copytype, None)
         if operation is None:
             msg = (_('_delete_copysession, '
                      'copy session type is undefined! '
@@ -1568,7 +1482,7 @@ class FJDXCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        repservice = self._find_eternus_service(REPL)
+        repservice = self._find_eternus_service(CONSTANTS.REPL)
         if repservice is None:
             msg = (_('_delete_copysession, '
                      'Cannot find Replication Service'))
@@ -1594,12 +1508,12 @@ class FJDXCommon(object):
                    'rc': rc,
                    'errordesc': errordesc})
 
-        if rc == COPYSESSION_NOT_EXIST:
+        if rc == CONSTANTS.COPYSESSION_NOT_EXIST:
             LOG.debug('_delete_copysession, '
                       'cpsession: %(cpsession)s, '
                       'copysession is not exist.',
                       {'cpsession': cpsession})
-        elif rc == VOLUME_IS_BUSY:
+        elif rc == CONSTANTS.VOLUME_IS_BUSY:
             msg = (_('_delete_copysession, '
                      'copysession: %(cpsession)s, '
                      'operation: %(operation)s, '
@@ -1688,7 +1602,7 @@ class FJDXCommon(object):
         volume_uid = vol_instance['Name']
         initiatorlist = self._find_initiator_names(connector)
         aglist = self._find_affinity_group(connector)
-        configservice = self._find_eternus_service(CTRL_CONF)
+        configservice = self._find_eternus_service(CONSTANTS.CTRL_CONF)
 
         if targetlist is None:
             targetlist = self._get_target_port()
@@ -1748,7 +1662,7 @@ class FJDXCommon(object):
                           {'errordesc': errordesc,
                            'rc': rc})
 
-                if rc != 0 and rc != LUNAME_IN_USE:
+                if rc != 0 and rc != CONSTANTS.LUNAME_IN_USE:
                     LOG.warning('_map_lun, '
                                 'lun_name: %(volume_uid)s, '
                                 'Initiator: %(initiator)s, '
@@ -1781,7 +1695,7 @@ class FJDXCommon(object):
                           {'errordesc': errordesc,
                            'rc': rc})
 
-                if rc != 0 and rc != LUNAME_IN_USE:
+                if rc != 0 and rc != CONSTANTS.LUNAME_IN_USE:
                     LOG.warning('_map_lun, '
                                 'lun_name: %(volume_uid)s, '
                                 'Initiator: %(initiator)s, '
@@ -1946,7 +1860,7 @@ class FJDXCommon(object):
                       {'volume': vol_instance.path,
                        'aglist': aglist})
 
-        configservice = self._find_eternus_service(CTRL_CONF)
+        configservice = self._find_eternus_service(CONSTANTS.CTRL_CONF)
         if configservice is None:
             msg = (_('_unmap_lun, '
                      'vol_instance.path: %(volume)s, '
@@ -1983,7 +1897,7 @@ class FJDXCommon(object):
                       {'errordesc': errordesc,
                        'rc': rc})
 
-            if rc == LUNAME_NOT_EXIST:
+            if rc == CONSTANTS.LUNAME_NOT_EXIST:
                 LOG.debug('_unmap_lun, '
                           'volumename: %(volumename)s, '
                           'Invalid LUNames.',
@@ -2118,7 +2032,7 @@ class FJDXCommon(object):
             """Called at an interval until the job is finished."""
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
-            if self.retries > JOB_RETRIES:
+            if self.retries > CONSTANTS.JOB_RETRIES:
                 LOG.error("_wait_for_job_complete, "
                           "failed after %(retries)d tries.",
                           {'retries': self.retries})
@@ -2136,7 +2050,7 @@ class FJDXCommon(object):
 
         self.wait_for_job_called = False
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_job_complete)
-        timer.start(interval=JOB_INTERVAL_SEC).wait()
+        timer.start(interval=CONSTANTS.JOB_INTERVAL_SEC).wait()
 
         jobInstanceName = job['Job']
         jobinstance = conn.GetInstance(jobInstanceName,
