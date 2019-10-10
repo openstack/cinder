@@ -14,8 +14,6 @@
      - (String) This option specifies the path of the NetApp copy offload tool binary. Ensure that the binary has execute permissions set which allow the effective user of the cinder-volume process to execute the file.
    * - ``netapp_host_type`` = ``None``
      - (String) This option defines the type of operating system for all initiators that can access a LUN. This information is used when mapping LUNs to individual hosts or groups of hosts.
-   * - ``netapp_host_type`` = ``None``
-     - (String) This option defines the type of operating system for all initiators that can access a LUN. This information is used when mapping LUNs to individual hosts or groups of hosts.
    * - ``netapp_login`` = ``None``
      - (String) Administrative user account name used to access the storage system or proxy server.
    * - ``netapp_lun_ostype`` = ``None``
