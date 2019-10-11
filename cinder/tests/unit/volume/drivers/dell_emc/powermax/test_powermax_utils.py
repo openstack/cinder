@@ -531,6 +531,30 @@ class PowerMaxUtilsTest(test.TestCase):
             sg_value, qos_extra_spec, input_prop_dict)
         self.assertEqual(input_prop_dict, ret_prop_dict)
 
+    def test_validate_qos_cast_to_int(self):
+        qos_extra_spec = {'total_iops_sec': '500',
+                          'total_bytes_sec': '104857600',
+                          'DistributionType': 'Always'}
+        property_dict = {'host_io_limit_io_sec': 500}
+        input_prop_dict = {'host_io_limit_io_sec': 500,
+                           'host_io_limit_mb_sec': 100}
+        input_key = 'total_bytes_sec'
+        ret_prop_dict = self.utils.validate_qos_input(
+            input_key, None, qos_extra_spec, property_dict)
+        self.assertEqual(input_prop_dict, ret_prop_dict)
+
+    def test_validate_qos_cast_to_int_drop_fraction(self):
+        qos_extra_spec = {'total_iops_sec': '500',
+                          'total_bytes_sec': '105000000',
+                          'DistributionType': 'Always'}
+        property_dict = {'host_io_limit_io_sec': 500}
+        input_prop_dict = {'host_io_limit_io_sec': 500,
+                           'host_io_limit_mb_sec': 100}
+        input_key = 'total_bytes_sec'
+        ret_prop_dict = self.utils.validate_qos_input(
+            input_key, None, qos_extra_spec, property_dict)
+        self.assertEqual(input_prop_dict, ret_prop_dict)
+
     def test_compare_cylinders(self):
         source_cylinders = '12345'
         target_cylinders = '12345'
