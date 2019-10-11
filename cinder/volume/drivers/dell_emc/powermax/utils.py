@@ -918,7 +918,8 @@ class PowerMaxUtils(object):
         else:
             qos_unit = "MB/sec"
             min_value = 1
-            input_value = int(qos_extra_spec['total_bytes_sec']) / units.Mi
+            input_value = int(
+                int(qos_extra_spec['total_bytes_sec']) / units.Mi)
             sg_key = 'host_io_limit_mb_sec'
         if min_value <= input_value <= max_value:
             if sg_value is None or input_value != int(sg_value):
