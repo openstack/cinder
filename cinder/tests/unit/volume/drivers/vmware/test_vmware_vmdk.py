@@ -2377,6 +2377,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vol_dev_uuid = mock.sentinel.vol_dev_uuid
         get_volume_device_uuid.return_value = vol_dev_uuid
 
+        dev_change_disk_remove = mock.sentinel.dev_change_disk_remove
+        vops._create_device_change_for_disk_removal.return_value =\
+            [dev_change_disk_remove]
+
         tmp_name = mock.sentinel.tmp_name
         generate_uuid.return_value = tmp_name
 
@@ -2402,7 +2406,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.clone_backing.assert_called_once_with(
             tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
             host=host, resource_pool=rp, folder=folder,
-            disks_to_clone=[vol_dev_uuid])
+            device_changes=[dev_change_disk_remove])
 
     @mock.patch.object(VMDK_DRIVER, '_get_disk_type')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
