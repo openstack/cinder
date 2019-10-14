@@ -967,7 +967,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
         owner = self.client.get_lun_sp(src_name)
         pool = host['capabilities'].get('pool_name', self.pool)
 
-        LOG.info('Migrating volume: %(volume), '
+        LOG.info('Migrating volume: %(volume)s, '
                  'host: %(host)s, '
                  'backend: %(volume_backend_name)s',
                  {'volume': src_name,
