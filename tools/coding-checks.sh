@@ -31,7 +31,7 @@ run_pylint() {
     if [[ "$target" = *"all"* ]]; then
         files="cinder"
     else
-        files=$(git diff --name-only --diff-filter=ACMRU $target "*.py")
+        files=$(git diff --name-only --diff-filter=ACMRU $target -- "*.py")
     fi
 
     if [ -n "${files}" ]; then
