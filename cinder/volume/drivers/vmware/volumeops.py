@@ -1166,7 +1166,34 @@ class VMwareVolumeOps(object):
         device_change = []
         for device in disk_devices:
             if device.backing.uuid not in disks_to_clone:
-                device_change.append(self._create_spec_for_disk_remove(device))
+                spec = self._create_spec_for_device_remove(device)
+                device_change.append(spec)
+
+        return device_change
+
+    def _get_vif_devices(self, vm):
+        vif_devices = []
+        hardware_devices = self._session.invoke_api(vim_util,
+                                                    'get_object_property',
+                                                    self._session.vim,
+                                                    vm,
+                                                    'config.hardware.device')
+
+        if hardware_devices.__class__.__name__ == "ArrayOfVirtualDevice":
+            hardware_devices = hardware_devices.VirtualDevice
+
+        for device in hardware_devices:
+            if hasattr(device, 'macAddress'):
+                vif_devices.append(device)
+
+        return vif_devices
+
+    def _create_device_change_for_vif_removal(self, backing):
+        devices = self._get_vif_devices(backing)
+
+        device_change = []
+        for device in devices:
+            device_change.append(self._create_spec_for_device_remove(device))
 
         return device_change
 
@@ -1289,7 +1316,7 @@ class VMwareVolumeOps(object):
         self._reconfigure_backing(backing, reconfig_spec)
         LOG.debug("Backing VM: %s reconfigured with new disk.", backing)
 
-    def _create_spec_for_disk_remove(self, disk_device):
+    def _create_spec_for_device_remove(self, disk_device):
         cf = self._session.vim.client.factory
         disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
         disk_spec.operation = 'remove'
@@ -1315,7 +1342,7 @@ class VMwareVolumeOps(object):
 
         cf = self._session.vim.client.factory
         reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
-        spec = self._create_spec_for_disk_remove(disk_device)
+        spec = self._create_spec_for_device_remove(disk_device)
         reconfig_spec.deviceChange = [spec]
         self._reconfigure_backing(backing, reconfig_spec)
 
