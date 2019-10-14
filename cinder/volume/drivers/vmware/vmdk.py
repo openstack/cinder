@@ -2295,6 +2295,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         device_changes = self.volumeops._create_device_change_for_disk_removal(
             instance, disks_to_clone=[vol_dev_uuid])
+        device_changes.extend(
+            self.volumeops._create_device_change_for_vif_removal(instance))
 
         return self.volumeops.clone_backing(
             tmp_name, instance, None, volumeops.FULL_CLONE_TYPE, datastore,
