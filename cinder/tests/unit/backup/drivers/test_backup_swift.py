@@ -309,6 +309,15 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
+    def test_backup_uncompressed_casing(self):
+        volume_id = '2b9f10a3-42b4-dead-b316-000000ceb039'
+        self._create_backup_db_entry(volume_id=volume_id)
+        self.flags(backup_compression_algorithm='None')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        service.backup(backup, self.volume_file)
+
     def test_backup_bz2(self):
         volume_id = 'dc0fee35-b44e-4f13-80d6-000000e1b50c'
         self._create_backup_db_entry(volume_id=volume_id)
