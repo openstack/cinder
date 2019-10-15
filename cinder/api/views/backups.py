@@ -31,7 +31,8 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail_list(self, request, backups, backup_count=None):
         """Detailed view of a list of backups ."""
-        return self._list_view(self.detail, request, backups, backup_count)
+        return self._list_view(self.detail, request, backups, backup_count,
+                               self._collection_name + '/detail')
 
     def summary(self, request, backup):
         """Generic, non-detailed view of a backup."""
@@ -80,12 +81,13 @@ class ViewBuilder(common.ViewBuilder):
 
         return backup_dict
 
-    def _list_view(self, func, request, backups, backup_count):
+    def _list_view(self, func, request, backups, backup_count,
+                   coll_name=_collection_name):
         """Provide a view for a list of backups."""
         backups_list = [func(request, backup)['backup'] for backup in backups]
         backups_links = self._get_collection_links(request,
                                                    backups,
-                                                   self._collection_name,
+                                                   coll_name,
                                                    backup_count)
         backups_dict = dict(backups=backups_list)
 
