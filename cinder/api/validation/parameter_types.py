@@ -125,6 +125,11 @@ name = {
 }
 
 
+update_name = {
+    'type': ['string', 'null'], 'minLength': 1, 'maxLength': 255
+}
+
+
 description = {
     'type': ['string', 'null'], 'minLength': 0, 'maxLength': 255,
     'pattern': valid_description_regex,
