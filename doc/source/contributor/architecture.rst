@@ -31,23 +31,12 @@ Components
 
 Below you will find a brief explanation of the different components.
 
-::
+.. figure:: ../images/architecture.png
+   :alt: Cinder architecture
+   :align: center
+   :width: 110%
 
-                                                  /- ( LDAP )
-                              [ Auth Manager ] ---
-                                     |            \- ( DB )
-                                     |
-                                     |
-                    cinderclient     |
-                   /             \   |                   /- [ scheduler ] -- [ volume ] -- ( iSCSI )
- [ Web Dashboard ]-               -[ api ] -- < AMQP > --
-                   \             /   |                   \- [ backup ]
-                    novaclient       |
-                                     |
-                                     |
-                                     |
-                                  < REST >
-
+..
 
 * DB: sql database for data storage. Used by all components (LINKS NOT SHOWN).
 * Web Dashboard: potential external component that talks to the api.
