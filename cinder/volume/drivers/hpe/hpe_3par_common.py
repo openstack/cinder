@@ -85,21 +85,27 @@ REMOTE_COPY_API_VERSION = 30202290
 hpe3par_opts = [
     cfg.StrOpt('hpe3par_api_url',
                default='',
-               help="3PAR WSAPI Server Url like "
-                    "https://<3par ip>:8080/api/v1"),
+               help="WSAPI Server URL. "
+                    "This setting applies to both 3PAR and Primera. "
+                    "\n       Example 1: for 3PAR, URL is: "
+                    "\n       https://<3par ip>:8080/api/v1 "
+                    "\n       Example 2: for Primera, URL is: "
+                    "\n       https://<primera ip>:443/api/v1"),
     cfg.StrOpt('hpe3par_username',
                default='',
-               help="3PAR username with the 'edit' role"),
+               help="3PAR / Primera username with the 'edit' role"),
     cfg.StrOpt('hpe3par_password',
                default='',
-               help="3PAR password for the user specified in hpe3par_username",
+               help="3PAR / Primera password for the user specified "
+                    "in hpe3par_username",
                secret=True),
     cfg.ListOpt('hpe3par_cpg',
                 default=["OpenStack"],
-                help="List of the CPG(s) to use for volume creation"),
+                help="List of the 3PAR / Primera CPG(s) to use for "
+                     "volume creation"),
     cfg.StrOpt('hpe3par_cpg_snap',
                default="",
-               help="The CPG to use for Snapshots for volumes. "
+               help="The 3PAR / Primera CPG to use for snapshots of volumes. "
                     "If empty the userCPG will be used."),
     cfg.StrOpt('hpe3par_snapshot_retention',
                default="",
@@ -111,7 +117,7 @@ hpe3par_opts = [
                     " and is deleted.  This must be larger than expiration"),
     cfg.BoolOpt('hpe3par_debug',
                 default=False,
-                help="Enable HTTP debugging to 3PAR"),
+                help="Enable HTTP debugging to 3PAR / Primera"),
     cfg.ListOpt('hpe3par_iscsi_ips',
                 default=[],
                 help="List of target iSCSI addresses to use."),
