@@ -540,12 +540,6 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         ldname = self._validate_ld_exist(
             lds, volume.id, self._properties['ld_name_format'])
 
-        # check volume status.
-        if volume.status != 'available':
-            msg = _('Specified Logical Disk %s is not available.') % ldname
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
         # check rpl attribute.
         ld = lds[ldname]
         if ld['Purpose'] != '---':
@@ -562,7 +556,10 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                       'dsthost': host})
         try:
             ret = self._migrate_volume(context, volume, host)
-            LOG.info('Migrated Volume (%s)', msgparm)
+            if ret != (False, None):
+                LOG.info('Migrated Volume (%s)', msgparm)
+            else:
+                LOG.debug('Failed to Migrate Volume (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
@@ -585,6 +582,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    'host': host})
 
         false_ret = (False, None)
+
+        # check volume status.
+        if volume.status != 'available':
+            LOG.debug('Specified volume %s is not available.', volume.id)
+            return false_ret
 
         if 'capabilities' not in host:
             LOG.debug('Host not in capabilities. Host = %s ', host)
@@ -670,7 +672,10 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                       'dsthost': host})
         try:
             ret = self._retype(context, volume, new_type, diff, host)
-            LOG.info('Retyped Volume (%s)', msgparm)
+            if ret is not False:
+                LOG.info('Retyped Volume (%s)', msgparm)
+            else:
+                LOG.debug('Failed to Retype Volume (%s)', msgparm)
             return ret
         except exception.CinderException as e:
             with excutils.save_and_reraise_exception():
@@ -695,6 +700,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                    'type': new_type,
                    'diff': diff,
                    'host': host})
+
+        # check volume attach status.
+        if volume.attach_status == 'attached':
+            LOG.debug('Specified volume %s is attached.', volume.id)
+            return False
 
         if self._check_same_backend(diff):
             ldname = self._convert_id2name(volume)
@@ -775,7 +785,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         name_id = None
         provider_location = None
-        if original_volume_status == 'available':
+        if original_volume_status in ['available', 'in-use']:
             original_name = self._convert_id2name(volume)
             new_name = self._convert_id2name(new_volume)
             try:
