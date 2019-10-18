@@ -658,13 +658,6 @@ class VolumeCreateTest(volume_helper.MStorageDSVDriver, test.TestCase):
         vol.status = 'available'
         self._validate_migrate_volume(vol, self.xml)
 
-        vol.status = 'creating'
-        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
-                                    'Specified Logical Disk'
-                                    ' LX:287RbQoP7VdwR1WsPC2fZT'
-                                    ' is not available.'):
-            self._validate_migrate_volume(vol, self.xml)
-
         vol.id = "AAAAAAAA"
         vol.status = 'available'
         with self.assertRaisesRegex(exception.NotFound,
@@ -1352,9 +1345,16 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
     def test_migrate_volume(self):
         vol = DummyVolume(constants.VOLUME2_ID)
-        moved, model_update = self.migrate_volume(None, vol,
-                                                  self.host)
+        vol.status = 'available'
+        moved, __ = self.migrate_volume(None, vol,
+                                        self.host)
         self.assertTrue(moved)
+
+        vol = DummyVolume(constants.VOLUME2_ID)
+        vol.status = 'in-use'
+        moved, __ = self.migrate_volume(None, vol,
+                                        self.host)
+        self.assertFalse(moved)
 
         vol.id = "87d8d42f-7550-4f43-9a2b-fe722bf86941"
         with self.assertRaisesRegex(exception.NotFound,
@@ -1364,11 +1364,9 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
 
         vol.id = '46045673-41e7-44a7-9333-02f07feab04b'
         vol.status = 'creating'
-        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
-                                    'Specified Logical Disk '
-                                    'LX:287RbQoP7VdwR1WsPC2fZT is '
-                                    'not available.'):
-            self._validate_migrate_volume(vol, xml_out)
+        moved, __ = self.migrate_volume(None, vol,
+                                        self.host)
+        self.assertFalse(moved)
 
         vol.id = "92dbc7f4-dbc3-4a87-aef4-d5a2ada3a9af"
         vol.status = 'available'
@@ -1415,6 +1413,14 @@ class Migrate_test(volume_helper.MStorageDSVDriver, test.TestCase):
                 'extra_specs': {}}
         retyped = self.retype(None, vol, new_type, diff, self.host)
         self.assertTrue(retyped)
+
+        vol.attach_status = 'attached'
+        diff = {'encryption': {},
+                'qos_specs': {},
+                'extra_specs': {u'volume_backend_name': (u'Storage1',
+                                                         u'Storage2')}}
+        retyped = self.retype(None, vol, new_type, diff, self.host)
+        self.assertFalse(retyped)
 
     def test_validate_retype_volume(self):
         vol = DummyVolume("87d8d42f-7550-4f43-9a2b-fe722bf86941")
