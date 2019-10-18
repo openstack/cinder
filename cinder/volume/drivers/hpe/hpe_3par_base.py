@@ -32,6 +32,7 @@ except ImportError:
 
 from oslo_log import log as logging
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.volume import driver
@@ -668,3 +669,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
             default="normal")
 
         return properties, 'HPE:3PAR'
+
+    @classmethod
+    def clean_volume_file_locks(cls, volume_id):
+        coordination.synchronized_remove('3par-' + volume_id)

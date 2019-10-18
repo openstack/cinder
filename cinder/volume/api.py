@@ -425,6 +425,7 @@ class API(base.Base):
             LOG.info("Delete volume request issued successfully.",
                      resource={'type': 'volume',
                                'id': volume.id})
+            utils.api_clean_volume_file_locks(volume.id)
             return
 
         if not unmanage_only:
@@ -533,6 +534,7 @@ class API(base.Base):
                                          volume,
                                          unmanage_only,
                                          cascade)
+        utils.api_clean_volume_file_locks(volume.id)
         LOG.info("Delete volume request issued successfully.",
                  resource=volume)
 
@@ -2297,6 +2299,7 @@ class API(base.Base):
         volume.status = status_updates['status']
         volume.attach_status = status_updates['attach_status']
         volume.save()
+
         return remaining_attachments
 
 

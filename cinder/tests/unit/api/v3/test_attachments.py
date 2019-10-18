@@ -216,7 +216,7 @@ class AttachmentsAPITestCase(test.TestCase):
     def _create_attachment(self, ctxt=None, volume_uuid=None,
                            instance_uuid=None, mountpoint=None,
                            attach_time=None, detach_time=None,
-                           attach_status=None, attach_mode=None, host=None):
+                           attach_status=None, attach_mode=None, host=''):
         """Create an attachment object."""
         ctxt = ctxt or self.ctxt
         attachment = objects.VolumeAttachment(ctxt)

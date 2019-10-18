@@ -607,6 +607,27 @@ Example from `cinder/backup/manager.py`:
    choose a generic lock name for all your locks and try to create a unique
    name for each locking domain.
 
+Drivers that use node locks based on volumes should implement method
+``clean_volume_file_locks`` and if they use locks based on the snapshots they
+should also implement ``clean_snapshot_file_locks`` and use method
+``synchronized_remove`` from ``cinder.utils``.
+
+Example for a driver that used ``cinder.utils.synchronized``:
+
+.. code-block:: python
+
+   def my_operation(self, volume):
+       @utils.synchronized('my-driver-lock' + volume.id)
+       def method():
+           pass
+
+       method()
+
+   @classmethod
+   def clean_volume_file_locks(cls, volume_id):
+       utils.synchronized_remove('my-driver-lock-' + volume_id)
+
+
 Global locks
 ~~~~~~~~~~~~
 
@@ -663,6 +684,19 @@ section.
 For a detailed description of the requirement for global locks in cinder please
 refer to the `replacing local locks with Tooz`_ and `manager local locks`_
 specs.
+
+Drivers that use global locks based on volumes should implement method
+``clean_volume_file_locks`` and if they use locks based on the snapshots they
+should also implement ``clean_snapshot_file_locks`` and use method
+``synchronized_remove`` from ``cinder.coordination``.
+
+Example for the 3PAR driver:
+
+.. code-block:: python
+
+   @classmethod
+   def clean_volume_file_locks(cls, volume_id):
+       coordination.synchronized_remove('3par-' + volume_id)
 
 
 Cinder locking

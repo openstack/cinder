@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1432387 <https://bugs.launchpad.net/cinder/+bug/1432387>`_: Try
+    to automatically clean up file locks after a resource (volume, snapshot) is
+    deleted. This will alleviate the issue of the locks directory always
+    increasing the number of files.
