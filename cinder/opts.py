@@ -163,10 +163,6 @@ from cinder.volume.drivers.windows import iscsi as \
 from cinder.volume.drivers.windows import smbfs as \
     cinder_volume_drivers_windows_smbfs
 from cinder.volume.drivers import zadara as cinder_volume_drivers_zadara
-from cinder.volume.drivers.zfssa import zfssaiscsi as \
-    cinder_volume_drivers_zfssa_zfssaiscsi
-from cinder.volume.drivers.zfssa import zfssanfs as \
-    cinder_volume_drivers_zfssa_zfssanfs
 from cinder.volume import manager as cinder_volume_manager
 from cinder.volume.targets import spdknvmf as cinder_volume_targets_spdknvmf
 from cinder.wsgi import eventlet_server as cinder_wsgi_eventletserver
@@ -369,8 +365,6 @@ def list_opts():
                 cinder_volume_drivers_windows_iscsi.windows_opts,
                 cinder_volume_drivers_windows_smbfs.volume_opts,
                 cinder_volume_drivers_zadara.zadara_opts,
-                cinder_volume_drivers_zfssa_zfssaiscsi.ZFSSA_OPTS,
-                cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
                 cinder_volume_manager.volume_backend_opts,
                 cinder_volume_targets_spdknvmf.spdk_opts,
             )),
