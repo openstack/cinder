@@ -2376,8 +2376,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             repl_configs = self.configuration.replication_device[0]
             if secondary_id and repl_configs['backend_id'] != secondary_id:
-                msg = _("Replication id (%s) does not match the configured"
-                        "on cinder.conf.") % secondary_id
+                msg = _("Replication id (%s) does not match the configured "
+                        "one in cinder.conf.") % secondary_id
                 raise exception.InvalidReplicationTarget(msg)
 
             remote = self.cluster_pairs[0]
