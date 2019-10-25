@@ -19,7 +19,7 @@ import os
 import re
 import traceback
 
-from defusedxml import lxml
+from defusedxml import ElementTree
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -291,11 +291,11 @@ class MStorageVolumeCommon(object):
         try:
             with open(product, 'r') as f:
                 xml = f.read()
-                root = lxml.fromstring(xml)
-                vendor_name = root.xpath('./VendorName')[0].text
+                root = ElementTree.fromstring(xml)
+                vendor_name = root.findall('./VendorName')[0].text
 
                 product_dict = {}
-                product_map = root.xpath('./ProductMap/Product')
+                product_map = root.findall('./ProductMap/Product')
                 for s in product_map:
                     product_dict[s.attrib['Name']] = int(s.text, 10)
 
@@ -356,7 +356,7 @@ class MStorageVolumeCommon(object):
                 'free_capacity_gb': free_capacity_gb}
 
     def set_backend_max_ld_count(self, xml, root):
-        section = root.xpath('./CMD_REQUEST')[0]
+        section = root.findall('./CMD_REQUEST')[0]
         version = section.get('version').replace('Version ', '')[0:3]
         version = float(version)
         if version < 9.1:
@@ -368,7 +368,7 @@ class MStorageVolumeCommon(object):
 
     def get_diskarray_max_ld_count(self, xml, root):
         max_ld_count = 0
-        for section in root.xpath(
+        for section in root.findall(
                 './'
                 'CMD_REQUEST/'
                 'CHAPTER[@name="Disk Array"]/'
@@ -395,10 +395,10 @@ class MStorageVolumeCommon(object):
 
     def get_pool_config(self, xml, root):
         pools = {}
-        for xmlobj in root.xpath('./'
-                                 'CMD_REQUEST/'
-                                 'CHAPTER[@name="Pool"]/'
-                                 'OBJECT[@name="Pool"]'):
+        for xmlobj in root.findall('./'
+                                   'CMD_REQUEST/'
+                                   'CHAPTER[@name="Pool"]/'
+                                   'OBJECT[@name="Pool"]'):
             section = xmlobj.find('./SECTION[@name="Pool Detail Information"]')
             if section is None:
                 msg = (_('SECTION[@name="Pool Detail Information"] '
@@ -439,9 +439,9 @@ class MStorageVolumeCommon(object):
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
                 used = int(unit.text, 10)
-                for section in xmlobj.xpath('./SECTION[@name='
-                                            '"Virtual Capacity Pool '
-                                            'Information"]'):
+                for section in xmlobj.findall('./SECTION[@name='
+                                              '"Virtual Capacity Pool '
+                                              'Information"]'):
                     unit = section.find('UNIT[@name="Actual Capacity"]')
                     if unit is None:
                         msg = (_('UNIT[@name="Actual Capacity"] not found. '
@@ -461,11 +461,11 @@ class MStorageVolumeCommon(object):
     def get_ld_config(self, xml, root, pools):
         lds = {}
         used_ldns = []
-        for section in root.xpath('./'
-                                  'CMD_REQUEST/'
-                                  'CHAPTER[@name="Logical Disk"]/'
-                                  'OBJECT[@name="Logical Disk"]/'
-                                  'SECTION[@name="LD Detail Information"]'):
+        for section in root.findall('./'
+                                    'CMD_REQUEST/'
+                                    'CHAPTER[@name="Logical Disk"]/'
+                                    'OBJECT[@name="Logical Disk"]/'
+                                    'SECTION[@name="LD Detail Information"]'):
             unit = section.find('./UNIT[@name="LDN(h)"]')
             if unit is None:
                 msg = (_('UNIT[@name="LDN(h)"] not found. '
@@ -541,20 +541,20 @@ class MStorageVolumeCommon(object):
 
     def get_iscsi_ldset_config(self, xml, root):
         ldsets = {}
-        for xmlobj in root.xpath('./'
-                                 'CMD_REQUEST/'
-                                 'CHAPTER[@name="Access Control"]/'
-                                 'OBJECT[@name="LD Set(iSCSI)"]'):
+        for xmlobj in root.findall('./'
+                                   'CMD_REQUEST/'
+                                   'CHAPTER[@name="Access Control"]/'
+                                   'OBJECT[@name="LD Set(iSCSI)"]'):
             ldsetlds = {}
             portals = []
             initiators = []
-            for unit in xmlobj.xpath('./SECTION[@name="Portal"]/'
-                                     'UNIT[@name="Portal"]'):
+            for unit in xmlobj.findall('./SECTION[@name="Portal"]/'
+                                       'UNIT[@name="Portal"]'):
                 if not unit.text.startswith('0.0.0.0:'):
                     portals.append(unit.text)
 
-            for unit in xmlobj.xpath('./SECTION[@name="Initiator List"]/'
-                                     'UNIT[@name="Initiator List"]'):
+            for unit in xmlobj.findall('./SECTION[@name="Initiator List"]/'
+                                       'UNIT[@name="Initiator List"]'):
                 initiators.append(unit.text)
 
             section = xmlobj.find('./SECTION[@name="LD Set(iSCSI)'
@@ -594,7 +594,8 @@ class MStorageVolumeCommon(object):
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
                 iqn = unit.text
-                for section in xmlobj.xpath('./SECTION[@name="LUN/LD List"]'):
+                for section in xmlobj.findall('./SECTION[@name='
+                                              '"LUN/LD List"]'):
                     unit = section.find('./UNIT[@name="LDN(h)"]')
                     if unit is None:
                         msg = (_('UNIT[@name="LDN(h)"] not found. '
@@ -616,9 +617,9 @@ class MStorageVolumeCommon(object):
                           'iqn': iqn}
                     ldsetlds[ldn] = ld
             elif tmode == 'Multi-Target':
-                for section in xmlobj.xpath('./SECTION[@name='
-                                            '"Target Information For '
-                                            'Multi-Target Mode"]'):
+                for section in xmlobj.findall('./SECTION[@name='
+                                              '"Target Information For '
+                                              'Multi-Target Mode"]'):
                     unit = section.find('./UNIT[@name="Target Name"]')
                     if unit is None:
                         msg = (_('UNIT[@name="Target Name"] not found. '
@@ -666,10 +667,10 @@ class MStorageVolumeCommon(object):
 
     def get_fc_ldset_config(self, xml, root):
         ldsets = {}
-        for xmlobj in root.xpath('./'
-                                 'CMD_REQUEST/'
-                                 'CHAPTER[@name="Access Control"]/'
-                                 'OBJECT[@name="LD Set(FC)"]'):
+        for xmlobj in root.findall('./'
+                                   'CMD_REQUEST/'
+                                   'CHAPTER[@name="Access Control"]/'
+                                   'OBJECT[@name="LD Set(FC)"]'):
             ldsetlds = {}
             section = xmlobj.find('./SECTION[@name="LD Set(FC)'
                                   ' Information"]')
@@ -693,7 +694,7 @@ class MStorageVolumeCommon(object):
             ldsetname = platform + ':' + unit.text
             wwpns = []
             ports = []
-            for section in xmlobj.xpath('./SECTION[@name="Path List"]'):
+            for section in xmlobj.findall('./SECTION[@name="Path List"]'):
                 unit = section.find('./UNIT[@name="Path"]')
                 if unit is None:
                     msg = (_('UNIT[@name="Path"] not found. '
@@ -705,7 +706,7 @@ class MStorageVolumeCommon(object):
                     ports.append(unit.text)
                 else:
                     wwpns.append(unit.text)
-            for section in xmlobj.xpath('./SECTION[@name="LUN/LD List"]'):
+            for section in xmlobj.findall('./SECTION[@name="LUN/LD List"]'):
                 unit = section.find('./UNIT[@name="LDN(h)"]')
                 if unit is None:
                     msg = (_('UNIT[@name="LDN(h)"] not found. '
@@ -735,12 +736,12 @@ class MStorageVolumeCommon(object):
 
     def get_hostport_config(self, xml, root):
         hostports = {}
-        for section in root.xpath('./'
-                                  'CMD_REQUEST/'
-                                  'CHAPTER[@name="Controller"]/'
-                                  'OBJECT[@name="Host Port"]/'
-                                  'SECTION[@name="Host Director'
-                                  '/Host Port Information"]'):
+        for section in root.findall('./'
+                                    'CMD_REQUEST/'
+                                    'CHAPTER[@name="Controller"]/'
+                                    'OBJECT[@name="Host Port"]/'
+                                    'SECTION[@name="Host Director'
+                                    '/Host Port Information"]'):
             unit = section.find('./UNIT[@name="Port No.(h)"]')
             if unit is None:
                 msg = (_('UNIT[@name="Port No.(h)"] not found. '
@@ -784,7 +785,7 @@ class MStorageVolumeCommon(object):
         return hostports
 
     def configs(self, xml):
-        root = lxml.fromstring(xml)
+        root = ElementTree.fromstring(xml)
         pools = self.get_pool_config(xml, root)
         lds, used_ldns = self.get_ld_config(xml, root, pools)
         iscsi_ldsets = self.get_iscsi_ldset_config(xml, root)
