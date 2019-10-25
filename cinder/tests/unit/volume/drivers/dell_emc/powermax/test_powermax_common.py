@@ -1382,8 +1382,8 @@ class PowerMaxCommonTest(test.TestCase):
 
     @mock.patch.object(common.PowerMaxCommon,
                        '_remove_vol_and_cleanup_replication')
-    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
-    def test_unmanage_success(self, mck_sync, mock_rm):
+    @mock.patch.object(common.PowerMaxCommon, '_clone_check')
+    def test_unmanage_success(self, mck_clone, mock_rm):
         volume = self.data.test_volume
         with mock.patch.object(self.rest, 'rename_volume') as mock_rename:
             self.common.unmanage(volume)
