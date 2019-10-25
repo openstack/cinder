@@ -363,6 +363,29 @@ xml_out = '''
      <UNIT name="LDN(h)">0006</UNIT>
     </SECTION>
    </OBJECT>
+   <OBJECT name="LD Set(iSCSI)">
+    <SECTION name="LD Set(iSCSI) Information">
+     <UNIT name="Platform">LX</UNIT>
+     <UNIT name="LD Set Name">OpenStack2</UNIT>
+     <UNIT name="Target Mode">Normal</UNIT>
+     <UNIT name="Target Name">iqn.2001-03.target0002</UNIT>
+    </SECTION>
+    <SECTION name="Portal">
+     <UNIT name="Portal">192.168.1.94:3260</UNIT>
+    </SECTION>
+    <SECTION name="Portal">
+     <UNIT name="Portal">192.168.1.95:3260</UNIT>
+    </SECTION>
+    <SECTION name="Portal">
+     <UNIT name="Portal">192.168.2.96:3260</UNIT>
+    </SECTION>
+    <SECTION name="Portal">
+     <UNIT name="Portal">192.168.2.97:3260</UNIT>
+    </SECTION>
+    <SECTION name="Initiator List">
+     <UNIT name="Initiator List">iqn.1994-05.com.redhat:13a80ea272e</UNIT>
+    </SECTION>
+   </OBJECT>
   </CHAPTER>
  <RETURN_MSG>Command Completed Successfully!!</RETURN_MSG>
  <RETURN_CODE>0</RETURN_CODE>
