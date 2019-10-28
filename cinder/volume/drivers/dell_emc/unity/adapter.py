@@ -48,7 +48,7 @@ PROTOCOL_ISCSI = 'iSCSI'
 
 
 class VolumeParams(object):
-    def __init__(self, adapter, volume):
+    def __init__(self, adapter, volume, group_specs=None):
         self._adapter = adapter
         self._volume = volume
 
@@ -65,6 +65,7 @@ class VolumeParams(object):
         self._is_in_cg = None
         self._is_replication_enabled = None
         self._tiering_policy = None
+        self.group_specs = group_specs if group_specs else {}
 
     @property
     def volume_id(self):
@@ -411,14 +412,26 @@ class CommonAdapter(object):
             is_compressed=params.is_compressed,
             tiering_policy=params.tiering_policy)
         if params.cg_id:
-            LOG.debug('Adding lun %(lun)s to cg %(cg)s.',
-                      {'lun': lun.get_id(), 'cg': params.cg_id})
+            if self.client.is_cg_replicated(params.cg_id):
+                msg = (_('Consistency group %(cg_id)s is in '
+                         'replication status, cannot add lun to it.')
+                       % {'cg_id': params.cg_id})
+                raise exception.InvalidGroupStatus(reason=msg)
+            LOG.info('Adding lun %(lun)s to cg %(cg)s.',
+                     {'lun': lun.get_id(), 'cg': params.cg_id})
             self.client.update_cg(params.cg_id, [lun.get_id()], ())
 
         model_update = self.makeup_model(lun.get_id())
 
         if params.is_replication_enabled:
-            model_update = self.setup_replications(lun, model_update)
+            if not params.cg_id:
+                model_update = self.setup_replications(
+                    lun, model_update)
+            else:
+                # Volume replication_status need be disabled
+                # And be controlled by group replication
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.DISABLED)
         return model_update
 
     def delete_volume(self, volume):
@@ -950,7 +963,10 @@ class CommonAdapter(object):
         """
 
         # Deleting cg will also delete all the luns in it.
-        self.client.delete_cg(group.id)
+        group_id = group.id
+        if self.client.is_cg_replicated(group_id):
+            self.client.delete_cg_rep_session(group_id)
+        self.client.delete_cg(group_id)
         return None, None
 
     def update_group(self, group, add_volumes, remove_volumes):
@@ -1017,6 +1033,173 @@ class CommonAdapter(object):
         cg_snap = self.client.get_snap(group_snapshot.id)
         self.client.delete_snap(cg_snap)
         return None, None
+
+    def enable_replication(self, context, group, volumes):
+        """Enable the group replication."""
+
+        @cinder_utils.retry(exception.InvalidGroup, interval=20, retries=6)
+        def _wait_until_cg_not_replicated(_client, _cg_id):
+            cg = _client.get_cg(name=_cg_id)
+            if cg.check_cg_is_replicated():
+                msg = _('The remote cg (%s) is still in replication status, '
+                        'maybe the source cg was just deleted, '
+                        'retrying.') % group_id
+                LOG.info(msg)
+                raise exception.InvalidGroup(reason=msg)
+
+            return cg
+
+        group_update = {}
+        if not volumes:
+            LOG.warning('There is no Volume in group: %s, cannot enable '
+                        'group replication')
+            return group_update, []
+        group_id = group.id
+        # check whether the group was created as cg in unity
+        group_is_cg = utils.group_is_cg(group)
+        if not group_is_cg:
+            msg = (_('Cannot enable replication on generic group '
+                     '%(group_id)s, need to use CG type instead '
+                     '(need to enable consistent_group_snapshot_enabled in '
+                     'the group type).')
+                   % {'group_id': group_id})
+            raise exception.InvalidGroupType(reason=msg)
+
+        cg = self.client.get_cg(name=group_id)
+        try:
+            if not cg.check_cg_is_replicated():
+                rep_devices = self.replication_manager.replication_devices
+                for backend_id, dst in rep_devices.items():
+                    remote_serial_number = dst.adapter.serial_number
+                    max_time = dst.max_time_out_of_sync
+                    pool_id = dst.destination_pool.get_id()
+                    _client = dst.adapter.client
+                    remote_system = self.client.get_remote_system(
+                        remote_serial_number)
+                    # check if remote cg exists and delete it
+                    # before enable replication
+                    remote_cg = _wait_until_cg_not_replicated(_client,
+                                                              group_id)
+                    remote_cg.delete()
+                    # create cg replication session
+                    self.client.create_cg_replication(
+                        group_id, pool_id, remote_system, max_time)
+                    group_update.update({
+                        'replication_status':
+                            fields.ReplicationStatus.ENABLED})
+            else:
+                LOG.info('group: %s is already in replication, no need to '
+                         'enable again.', group_id)
+        except Exception as e:
+            group_update.update({
+                'replication_status': fields.ReplicationStatus.ERROR})
+            LOG.error("Error enabling replication on group %(group)s. "
+                      "Exception received: %(e)s.",
+                      {'group': group.id, 'e': e})
+        return group_update, None
+
+    def disable_replication(self, context, group, volumes):
+        """Disable the group replication."""
+        group_update = {}
+        if not volumes:
+            # Return if empty group
+            LOG.warning('There is no Volume in group: %s, cannot disable '
+                        'group replication')
+            return group_update, []
+        group_id = group.id
+        group_is_cg = utils.group_is_cg(group)
+        if not group_is_cg:
+            msg = (_('Cannot disable replication on generic group '
+                     '%(group_id)s, need use CG type instead of '
+                     'that (need enable '
+                     'consistent_group_snapshot_enabled in '
+                     'group type).')
+                   % {'group_id': group_id})
+            raise exception.InvalidGroupType(reason=msg)
+        try:
+            if self.client.is_cg_replicated(group_id):
+                # delete rep session if exists
+                self.client.delete_cg_rep_session(group_id)
+            if not self.client.is_cg_replicated(group_id):
+                LOG.info('Group is not in replication, '
+                         'not need to disable replication again.')
+
+            group_update.update({
+                'replication_status': fields.ReplicationStatus.DISABLED})
+        except Exception as e:
+            group_update.update({
+                'replication_status': fields.ReplicationStatus.ERROR})
+            LOG.error("Error disabling replication on group %(group)s. "
+                      "Exception received: %(e)s.",
+                      {'group': group.id, 'e': e})
+        return group_update, None
+
+    def failover_replication(self, context, group, volumes,
+                             secondary_id):
+        """"Fail-over the consistent group."""
+        group_update = {}
+        volume_update_list = []
+        if not volumes:
+            # Return if empty group
+            return group_update, volume_update_list
+
+        group_is_cg = utils.group_is_cg(group)
+        group_id = group.id
+        if not group_is_cg:
+            msg = (_('Cannot failover replication on generic group '
+                     '%(group_id)s, need use CG type instead of '
+                     'that (need enable '
+                     'consistent_group_snapshot_enabled in '
+                     'group type).')
+                   % {'group_id': group_id})
+            raise exception.InvalidGroupType(reason=msg)
+
+        real_secondary_id = random.choice(
+            list(self.replication_manager.replication_devices))
+
+        group_update = {'replication_status': group.replication_status}
+        if self.client.is_cg_replicated(group_id):
+            try:
+                if secondary_id != 'default':
+                    try:
+                        # Planed failover after sync date when the source unity
+                        # is in health status
+                        self.client.failover_cg_rep_session(group_id, True)
+                    except Exception as ex:
+                        LOG.warning('ERROR happened when failover from source '
+                                    'unity, issue details: %s. Try failover '
+                                    'from target unity', ex)
+                        # Something wrong with the source unity, try failover
+                        # from target unity without sync date
+                        _adapter = self.replication_manager.replication_devices
+                        [real_secondary_id].adapter
+                        _client = _adapter.client
+                        _client.failover_cg_rep_session(group_id, False)
+                    rep_status = fields.ReplicationStatus.FAILED_OVER
+                else:
+                    # start failback when secondary_id is 'default'
+                    _adapter = self.replication_manager.replication_devices[
+                        real_secondary_id].adapter
+                    _client = _adapter.client
+                    _client.failback_cg_rep_session(group_id)
+                    rep_status = fields.ReplicationStatus.ENABLED
+            except Exception as ex:
+                rep_status = fields.ReplicationStatus.ERROR
+                LOG.error("Error failover replication on group %(group)s. "
+                          "Exception received: %(e)s.",
+                          {'group': group_id, 'e': ex})
+
+            group_update['replication_status'] = rep_status
+            for volume in volumes:
+                volume_update = {
+                    'id': volume.id,
+                    'replication_status': rep_status}
+                volume_update_list.append(volume_update)
+        return group_update, volume_update_list
+
+    def get_replication_error_status(self, context, groups):
+        """The failover only happens manually, no need to update the status."""
+        return [], []
 
     @cinder_utils.trace
     def failover(self, volumes, secondary_id=None, groups=None):

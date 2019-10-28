@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Dell EMC Unity Driver: Added consistency group replication support.
+    The storops library version 1.2.3 or newer is required.

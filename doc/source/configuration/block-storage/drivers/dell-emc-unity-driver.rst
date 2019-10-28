@@ -15,7 +15,7 @@ Prerequisites
 +===================+=================+
 | Unity OE          | 4.1.X or newer  |
 +-------------------+-----------------+
-| storops           | 1.1.0 or newer  |
+| storops           | 1.2.3 or newer  |
 +-------------------+-----------------+
 
 
@@ -43,6 +43,7 @@ Supported operations
 - Create a consistent group from a snapshot.
 - Attach a volume to multiple servers simultaneously (multiattach).
 - Volume replications.
+- Consistency group replications.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -459,47 +460,138 @@ for more detail.
 2. Add `replication_device` to storage backend settings in `cinder.conf`, then
    restart Cinder Volume service.
 
-    Example of `cinder.conf` for volume replications:
+   Example of `cinder.conf` for volume replications:
 
-    .. code-block:: ini
+   .. code-block:: ini
 
-        [unity-primary]
-        san_ip = xxx.xxx.xxx.xxx
-        ...
-        replication_device = backend_id:unity-secondary,san_ip:yyy.yyy.yyy.yyy,san_password:****,max_time_out_of_sync:60
+       [unity-primary]
+       san_ip = xxx.xxx.xxx.xxx
+       ...
+       replication_device = backend_id:unity-secondary,san_ip:yyy.yyy.yyy.yyy,san_login:username,san_password:****,max_time_out_of_sync:60
 
-    - Only one `replication_device` can be configured for each primary backend.
-    - Keys `backend_id`, `san_ip`, `san_password`, and `max_time_out_of_sync`
-      are supported in `replication_device`, while `backend_id` and `san_ip`
-      are required.
-    - `san_password` uses the same one as primary backend's if it is omitted.
-    - `max_time_out_of_sync` is the max time in minutes replications are out of
-      sync. It must be equal or greater than `0`. `0` means sync replications
-      of volumes will be created. Note that remote systems for sync replications
-      need to be created on Unity first. `60` will be used if it is omitted.
+   - Only one `replication_device` can be configured for each primary backend.
+   - Keys `backend_id`, `san_ip`, `san_password`, and `max_time_out_of_sync`
+     are supported in `replication_device`, while `backend_id` and `san_ip`
+     are required.
+   - `san_password` uses the same one as primary backend's if it is omitted.
+   - `max_time_out_of_sync` is the max time in minutes replications are out of
+     sync. It must be equal or greater than `0`. `0` means sync replications
+     of volumes will be created. Note that remote systems for sync replications
+     need to be created on Unity first. `60` will be used if it is omitted.
 
 #. Create a volume type with property `replication_enabled='<is> True'`.
 
-    .. code-block:: console
+   .. code-block:: console
 
-        $ openstack volume type create --property replication_enabled='<is> True' type-replication
+       $ openstack volume type create --property replication_enabled='<is> True' type-replication
 
 #. Any volumes with volume type of step #3 will failover to secondary backend
    after `failover_host` is executed.
 
-    .. code-block:: console
+   .. code-block:: console
 
-        $ cinder failover-host --backend_id unity-secondary stein@unity-primary
+       $ cinder failover-host --backend_id unity-secondary stein@unity-primary
 
 #. Later, they could be failed back.
 
-    .. code-block:: console
+   .. code-block:: console
 
-        $ cinder failover-host --backend_id default stein@unity-primary
+       $ cinder failover-host --backend_id default stein@unity-primary
 
 .. note:: The volume can be deleted even when it is participating in a
-    replication. The replication session will be deleted from Unity before the
-    LUN is deleted.
+   replication. The replication session will be deleted from Unity before the
+   LUN is deleted.
+
+Consistency group replications
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To enable consistency group replications, follow below steps:
+
+1. On Unisphere, configure remote system and interfaces for replications.
+
+The way could be different depending on the type of replications - sync or async.
+Refer to `Unity Replication White Paper
+<https://www.emc.com/collateral/white-papers/h15088-dell-emc-unity-replication-technologies.pdf>`_
+for more detail.
+
+2. Add `replication_device` to storage backend settings in `cinder.conf`, then
+   restart Cinder Volume service.
+
+   Example of `cinder.conf` for volume replications:
+
+   .. code-block:: ini
+
+       [unity-primary]
+       san_ip = xxx.xxx.xxx.xxx
+       ...
+       replication_device = backend_id:unity-secondary,san_ip:yyy.yyy.yyy.yyy,san_login:username,san_password:****,max_time_out_of_sync:60
+
+   - Only one `replication_device` can be configured for each primary backend.
+   - Keys `backend_id`, `san_ip`, `san_password`, and `max_time_out_of_sync`
+     are supported in `replication_device`, while `backend_id` and `san_ip`
+     are required.
+   - `san_password` uses the same one as primary backend's if it is omitted.
+   - `max_time_out_of_sync` is the max time in minutes replications are out of
+     sync. It must be equal or greater than `0`. `0` means sync replications
+     of volumes will be created. Note that remote systems for sync replications
+     need to be created on Unity first. `60` will be used if it is omitted.
+
+3. Create a volume type with property `replication_enabled='<is> True'`.
+
+   .. code-block:: console
+
+       $ openstack volume type create --property replication_enabled='<is> True' type-replication
+
+4. Create a consistency group type with properties
+   `consistent_group_snapshot_enabled='<is> True'`
+   and `consistent_group_replication_enabled='<is> True'`.
+
+   .. code-block:: console
+
+       $ cinder --os-volume-api-version 3.38 group-type-create type-cg-replication
+       $ cinder --os-volume-api-version 3.38 group-type-key type-cg-replication set
+       consistent_group_snapshot_enabled='<is> True' consistent_group_replication_enabled='<is> True'
+
+5. Create a group type with volume types support replication.
+
+   .. code-block:: console
+
+       $ cinder --os-volume-api-version 3.38 group-create --name test-cg {type-cg-replication-id} type-replication
+
+6. Create volume in the consistency group.
+
+   .. code-block:: console
+
+       $ cinder --os-volume-api-version 3.38 create --volume-type type-replication --group-id {test-cg-id}
+       --name {volume-name} {size}
+
+7. Enable consistency group replication.
+
+   .. code-block:: console
+
+       $ cinder --os-volume-api-version 3.38 group-enable-replication test-cg
+
+8. Disable consistency group replication.
+
+   .. code-block:: console
+
+       $ cinder --os-volume-api-version 3.38 group-disable-replication test-cg
+
+9. Failover consistency group replication.
+
+   .. code-block:: console
+
+       $ cinder --os-volume-api-version 3.38 group-failover-replication test-cg
+
+10. Failback consistency group replication.
+
+    .. code-block:: console
+
+        $ cinder --os-volume-api-version 3.38 group-failover-replication test-cg --secondary-backend-id default
+
+.. note:: Only support group replication of consistency group,
+    see step 4 and 5 to create consistency group support replication.
+
 
 Troubleshooting
 ~~~~~~~~~~~~~~~

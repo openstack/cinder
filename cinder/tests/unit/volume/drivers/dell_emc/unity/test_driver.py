@@ -17,6 +17,7 @@ import functools
 import unittest
 from unittest import mock
 
+from cinder.objects import fields
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
 from cinder.tests.unit.volume.drivers.dell_emc.unity import test_adapter
@@ -143,6 +144,37 @@ class MockAdapter(object):
                 'secondary_id': secondary_id,
                 'groups': groups}
 
+    @staticmethod
+    def enable_replication(context, group, volumes):
+        if volumes and group:
+            return {'replication_status':
+                    fields.ReplicationStatus.ENABLED}, None
+        return {}, None
+
+    @staticmethod
+    def disable_replication(context, group, volumes):
+        if volumes and group:
+            return {'replication_status':
+                    fields.ReplicationStatus.DISABLED}, None
+        return {}, None
+
+    @staticmethod
+    def failover_replication(context, group, volumes,
+                             secondary_backend_id):
+        group_update = {}
+        volumes_update = []
+        if volumes and group and secondary_backend_id:
+            group_update = {'replication_status':
+                            fields.ReplicationStatus.FAILED_OVER}
+            for volume in volumes:
+                volume_update = {
+                    'id': volume.id,
+                    'replication_status':
+                        fields.ReplicationStatus.FAILED_OVER}
+                volumes_update.append(volume_update)
+            return group_update, volumes_update
+        return group_update, None
+
 
 class MockReplicationManager(object):
     def __init__(self):
@@ -170,6 +202,15 @@ class UnityDriverTest(unittest.TestCase):
     def get_volume():
         return test_adapter.MockOSResource(provider_location='id^lun_43',
                                            id='id_43')
+
+    @staticmethod
+    def get_volumes():
+        volumes = []
+        for number in ['50', '51', '52', '53']:
+            volume = test_adapter.MockOSResource(
+                provider_location='id^lun_' + number, id='id_' + number)
+            volumes.append(volume)
+        return volumes
 
     @staticmethod
     def get_generic_group():
@@ -455,3 +496,36 @@ class UnityDriverTest(unittest.TestCase):
         self.assertListEqual(called['volumes'], [volume])
         self.assertEqual('secondary_unity', called['secondary_id'])
         self.assertIsNone(called['groups'])
+
+    def test_enable_replication(self):
+        cg = self.get_cg()
+        volumes = self.get_volumes()
+        result = self.driver.enable_replication(None, cg, volumes)
+        self.assertEqual(result,
+                         ({'replication_status':
+                          fields.ReplicationStatus.ENABLED},
+                          None))
+
+    def test_disable_replication(self):
+        cg = self.get_cg()
+        volumes = self.get_volumes()
+        result = self.driver.disable_replication(None, cg, volumes)
+        self.assertEqual(result,
+                         ({'replication_status':
+                          fields.ReplicationStatus.DISABLED},
+                          None))
+
+    def test_failover_replication(self):
+        cg = self.get_cg()
+        volumes = self.get_volumes()
+        result = self.driver.failover_replication(
+            None, cg, volumes, 'test_secondary_id')
+        volumes = [{'id': 'id_50', 'replication_status': 'failed-over'},
+                   {'id': 'id_51', 'replication_status': 'failed-over'},
+                   {'id': 'id_52', 'replication_status': 'failed-over'},
+                   {'id': 'id_53', 'replication_status': 'failed-over'}]
+
+        self.assertEqual(result,
+                         ({'replication_status':
+                          fields.ReplicationStatus.FAILED_OVER},
+                          volumes))

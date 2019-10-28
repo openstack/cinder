@@ -428,6 +428,38 @@ class UnityClient(object):
     def filter_snaps_in_cg_snap(self, cg_snap_id):
         return self.system.get_snap(snap_group=cg_snap_id).list
 
+    def create_cg_replication(self, cg_name, pool_id,
+                              remote_system, max_time_out_of_sync):
+        # Creates a new cg on remote system and sets up replication to it.
+        src_cg = self.get_cg(cg_name)
+        src_luns = src_cg.luns
+        return src_cg.replicate_cg_with_dst_resource_provisioning(
+            max_time_out_of_sync, src_luns, pool_id,
+            dst_cg_name=cg_name, remote_system=remote_system)
+
+    def is_cg_replicated(self, cg_name):
+        src_cg = self.get_cg(cg_name)
+        return src_cg.check_cg_is_replicated()
+
+    def delete_cg_rep_session(self, cg_name):
+        src_cg = self.get_cg(cg_name)
+        rep_sessions = self.get_replication_session(src_resource_id=src_cg.id)
+        for rep_session in rep_sessions:
+            rep_session.delete()
+
+    def failover_cg_rep_session(self, cg_name, sync):
+        src_cg = self.get_cg(cg_name)
+        rep_sessions = self.get_replication_session(src_resource_id=src_cg.id)
+        for rep_session in rep_sessions:
+            rep_session.failover(sync=sync)
+
+    def failback_cg_rep_session(self, cg_name):
+        cg = self.get_cg(cg_name)
+        # failback starts from remote replication session
+        rep_sessions = self.get_replication_session(dst_resource_id=cg.id)
+        for rep_session in rep_sessions:
+            rep_session.failback(force_full_copy=True)
+
     @staticmethod
     def create_replication(src_lun, max_time_out_of_sync,
                            dst_pool_id, remote_system):

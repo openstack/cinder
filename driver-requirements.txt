@@ -28,7 +28,7 @@ rados # LGPLv2.1
 rbd # LGPLv2.1
 
 # Dell EMC VNX and Unity
-storops>=1.1.0 # Apache-2.0
+storops>=1.2.3 # Apache-2.0
 
 # INFINIDAT
 infinisdk # BSD-3
