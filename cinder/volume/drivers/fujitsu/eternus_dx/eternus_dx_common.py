@@ -36,6 +36,7 @@ from cinder.i18n import _
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.fujitsu.eternus_dx import constants as CONSTANTS
+from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_cli
 from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -81,6 +82,8 @@ class FJDXCommon(object):
             self.configuration.iscsi_ip_address = (
                 self._get_drvcfg('EternusISCSIIP'))
         self.conn = None
+        self.fjdxcli = {}
+        self._check_user()
 
     @staticmethod
     def get_driver_options():
@@ -238,6 +241,8 @@ class FJDXCommon(object):
         if pool_type == 'RAID':
             useable_gb = free_gb
         else:
+            # If the ratio is less than the value on ETERNUS,
+            # useable_gb may be negative. Avoid over-allocation.
             max_capacity = total_gb * float(
                 self.configuration.max_over_subscription_ratio)
             useable_gb = max_capacity - prov_gb
@@ -1158,7 +1163,7 @@ class FJDXCommon(object):
         target_poolname = list(poolname_list)
         pools = []
 
-        # Get pools info form CIM instance(include info about instance path).
+        # Get pools info from CIM instance(include info about instance path).
         try:
             tppoollist = self._enum_eternus_instances(
                 'FUJITSU_ThinProvisioningPool', conn=conn)
@@ -1205,6 +1210,28 @@ class FJDXCommon(object):
                               'poolname': poolname})
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
+
+                if ptype == 'TPP':
+                    param_dict = {
+                        'pool-name': poolname
+                    }
+                    rc, errordesc, data = self._exec_eternus_cli(
+                        'show_pool_provision', **param_dict)
+
+                    if rc != 0:
+                        msg = (_('_find_pools, show_pool_provision, '
+                                 'pool name: %(pool_name)s, '
+                                 'Return code: %(rc)lu, '
+                                 'Error: %(errordesc)s, '
+                                 'Message: %(job)s.')
+                               % {'pool_name': poolname,
+                                  'rc': rc,
+                                  'errordesc': errordesc,
+                                  'job': data})
+                        LOG.error(msg)
+                        raise exception.VolumeBackendAPIException(data=msg)
+
+                    pool.provisioned_capacity_gb = data
 
                 poolinfo = self.create_pool_info(pool, volume_count, ptype)
 
@@ -2296,3 +2323,180 @@ class FJDXCommon(object):
                   'target_pool: %(target_pool)s.',
                   {'poolname': poolname, 'target_pool': target_pool})
         return poolname, target_pool
+
+    def _check_user(self):
+        """Check whether user's role is accessible to ETERNUS and Software."""
+        ret = True
+        rc, errordesc, job = self._exec_eternus_cli('check_user_role')
+        if rc != 0:
+            msg = (_('_check_user, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s, '
+                     'Message: %(job)s.')
+                   % {'rc': rc,
+                      'errordesc': errordesc,
+                      'job': job})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        if job != 'Software':
+            msg = (_('_check_user, '
+                     'Specified user(%(user)s) does not have '
+                     'Software role: %(role)s.')
+                   % {'user': self._get_drvcfg('EternusUser'),
+                      'role': job})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return ret
+
+    def _exec_eternus_cli(self, command, retry=CONSTANTS.TIMES_MIN,
+                          retry_interval=CONSTANTS.RETRY_INTERVAL,
+                          retry_code=[32787], filename=None, timeout=None,
+                          **param_dict):
+        """Execute ETERNUS CLI."""
+        LOG.debug('_exec_eternus_cli, '
+                  'command: %(a)s, '
+                  'filename: %(f)s, '
+                  'timeout: %(t)s, '
+                  'parameters: %(b)s.',
+                  {'a': command,
+                   'f': filename,
+                   't': timeout,
+                   'b': param_dict})
+
+        result = None
+        rc = None
+        retdata = None
+        errordesc = None
+        filename = self.configuration.cinder_eternus_config_file
+        storage_ip = self._get_drvcfg('EternusIP')
+        if not self.fjdxcli.get(filename):
+            user = self._get_drvcfg('EternusUser')
+            password = self._get_drvcfg('EternusPassword')
+            self.fjdxcli[filename] = (
+                eternus_dx_cli.FJDXCLI(user, storage_ip,
+                                       password=password))
+
+        for retry_num in range(retry):
+            # Execute ETERNUS CLI and get return value.
+            try:
+                out_dict = self.fjdxcli[filename].done(command, **param_dict)
+                result = out_dict.get('result')
+                rc_str = out_dict.get('rc')
+                retdata = out_dict.get('message')
+            except Exception as ex:
+                msg = (_('_exec_eternus_cli, '
+                         'unexpected error: %(ex)s.')
+                       % {'ex': ex})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            # Check ssh result.
+            if result == 255:
+                LOG.info('_exec_eternus_cli, retry, '
+                         'command: %(command)s, '
+                         'option: %(option)s, '
+                         'ip: %(ip)s, '
+                         'SSH Result: %(result)s, '
+                         'retdata: %(retdata)s, '
+                         'TryNum: %(rn)s.',
+                         {'command': command,
+                          'option': param_dict,
+                          'ip': storage_ip,
+                          'result': result,
+                          'retdata': retdata,
+                          'rn': (retry_num + 1)})
+                time.sleep(retry_interval)
+                continue
+            elif result != 0:
+                msg = (_('_exec_eternus_cli, '
+                         'unexpected error, '
+                         'command: %(command)s, '
+                         'option: %(option)s, '
+                         'ip: %(ip)s, '
+                         'resuslt: %(result)s, '
+                         'retdata: %(retdata)s.')
+                       % {'command': command,
+                          'option': param_dict,
+                          'ip': storage_ip,
+                          'result': result,
+                          'retdata': retdata})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            # Check CLI return code.
+            if rc_str.isdigit():
+                # SMI-S style return code.
+                rc = int(rc_str)
+
+                try:
+                    errordesc = CONSTANTS.RETCODE_dic[str(rc)]
+                except Exception:
+                    errordesc = 'Undefined Error!!'
+
+                if rc in retry_code:
+                    LOG.info('_exec_eternus_cli, retry, '
+                             'ip: %(ip)s, '
+                             'RetryCode: %(rc)s, '
+                             'TryNum: %(rn)s.',
+                             {'ip': storage_ip,
+                              'rc': rc,
+                              'rn': (retry_num + 1)})
+                    time.sleep(retry_interval)
+                    continue
+                if rc == 4:
+                    if ('Authentication failed' in retdata and
+                            retry_num + 1 < retry):
+                        LOG.warning('_exec_eternus_cli, retry, ip: %(ip)s, '
+                                    'Message: %(message)s, '
+                                    'TryNum: %(rn)s.',
+                                    {'ip': storage_ip,
+                                     'message': retdata,
+                                     'rn': (retry_num + 1)})
+                        time.sleep(1)
+                        continue
+
+                break
+            else:
+                # CLI style return code.
+                LOG.warning('_exec_eternus_cli, '
+                            'WARNING!! '
+                            'ip: %(ip)s, '
+                            'ReturnCode: %(rc_str)s, '
+                            'ReturnData: %(retdata)s.',
+                            {'ip': storage_ip,
+                             'rc_str': rc_str,
+                             'retdata': retdata})
+
+                errordesc = rc_str
+                rc = 4  # Failed.
+                break
+        else:
+            if 0 < result:
+                msg = (_('_exec_eternus_cli, '
+                         'cannot connect to ETERNUS. '
+                         'SSH Result: %(result)s, '
+                         'retdata: %(retdata)s.')
+                       % {'result': result,
+                          'retdata': retdata})
+
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                LOG.warning('_exec_eternus_cli, Retry was exceeded.')
+
+        ret = (rc, errordesc, retdata)
+
+        LOG.debug('_exec_eternus_cli, '
+                  'command: %(a)s, '
+                  'parameters: %(b)s, '
+                  'ip: %(ip)s, '
+                  'Return code: %(rc)s, '
+                  'Error: %(errordesc)s.',
+                  {'a': command,
+                   'b': param_dict,
+                   'ip': storage_ip,
+                   'rc': rc,
+                   'errordesc': errordesc})
+        return ret
