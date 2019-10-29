@@ -69,7 +69,7 @@ CONF = cfg.CONF
 CONF.register_opts(image_opts)
 
 QEMU_IMG_LIMITS = processutils.ProcessLimits(
-    cpu_time=8,
+    cpu_time=30,
     address_space=1 * units.Gi)
 
 
