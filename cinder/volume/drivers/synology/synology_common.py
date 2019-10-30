@@ -398,7 +398,7 @@ class APIRequest(object):
                                               reason=reason)
 
         if ('error' in result and 'code' in result["error"]
-                and result['error']['code'] == 105):
+                and result['error']['code'] in [105, 119]):
             raise SynoAuthError(reason=_('Session might have expired.'))
 
         return result
