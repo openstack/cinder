@@ -733,7 +733,8 @@ class HPE3PARBaseDriver(test.TestCase):
         'hpe3parclient.client.HPE3ParClient',
         spec=True,
     )
-    def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None):
+    def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None,
+                          is_primera=False):
 
         _m_client = _m_client.return_value
 
@@ -741,6 +742,8 @@ class HPE3PARBaseDriver(test.TestCase):
         _m_client.configure_mock(**self.mock_client_conf)
 
         _m_client.getWsApiVersion.return_value = self.wsapi_version_latest
+
+        _m_client.is_primera_array.return_value = is_primera
 
         # If m_conf, drop those over the top of the base_conf.
         if m_conf is not None:
@@ -8667,16 +8670,23 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock.call.getCPG(HPE3PAR_CPG),
             mock.call.getCPG(HPE3PAR_CPG2)]
         expected_get_ports = [mock.call.getPorts()]
+        expected_primera_check = [mock.call.is_primera_array()]
         mock_client.assert_has_calls(
             self.standard_login +
             expected_get_cpgs +
             self.standard_logout +
+            expected_primera_check +
             self.standard_login +
             expected_get_ports +
             self.standard_logout)
         mock_client.reset_mock()
 
         return mock_client
+
+    def test_iscsi_primera(self):
+        self.assertRaises(NotImplementedError, self.setup_mock_client,
+                          driver=hpedriver.HPE3PARISCSIDriver,
+                          is_primera=True)
 
     def test_initialize_connection(self):
         # setup_mock_client drive with default configuration
