@@ -1,0 +1,18 @@
+---
+security:
+  - |
+    Due to `OSSN-0085
+    <https://wiki.openstack.org/wiki/OSSN/OSSN-0085>`_:
+    Cinder configuration option can leak secret key from Ceph backend,
+    deployers using the ``rbd_keyring_conf`` option are advised to stop
+    using it immediately.  The option has been deprecated for removal
+    early in the 'V' development cycle.
+deprecations:
+  - |
+    The configuration option ``rbd_keyring_conf`` for the Ceph cinder
+    driver presents a security risk and the option is hereby deprecated
+    and scheduled to be removed early in the 'V' development cycle,
+    following the standard OpenStack deprecation policy.  For more
+    information, see `OSSN-0085
+    <https://wiki.openstack.org/wiki/OSSN/OSSN-0085>`_:
+    Cinder configuration option can leak secret key from Ceph backend.

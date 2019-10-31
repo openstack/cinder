@@ -69,6 +69,10 @@ RBD_OPTS = [
                default='',  # default determined by librados
                help='Path to the ceph configuration file'),
     cfg.StrOpt('rbd_keyring_conf',
+               deprecated_for_removal=True,
+               deprecated_reason='Use of this option exposes a security '
+                                 'vulnerability.  See OSSN-0085 for details.',
+               deprecated_since='Ussuri',
                default='',
                help='Path to the ceph keyring file'),
     cfg.BoolOpt('rbd_flatten_volume_from_snapshot',
