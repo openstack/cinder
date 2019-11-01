@@ -671,6 +671,13 @@ class BindLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
             self.vol, self.vol.size, None,
             self._convert_id2name,
             self._select_leastused_poolnumber)
+        self.mock_object(self._cli, 'get_pair_lds',
+                         return_value={'lds1', 'lds2', 'lds3'})
+        with self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                                    'Cannot create clone volume. '
+                                    'number of pairs reached 3. '
+                                    'ldname=LX:287RbQoP7VdwR1WsPC2fZT'):
+            self.create_cloned_volume(self.vol, self.src)
 
     def test_bindld_CreateCloneWaitingInterval(self):
         self.assertEqual(10, cli.get_sleep_time_for_clone(0))

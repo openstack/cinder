@@ -475,8 +475,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             if len(pair_lds) == 3:
                 msg = (_('Cannot create clone volume. '
                          'number of pairs reached 3. '
-                         '%(msg)s. ldname=%(ldname)s') %
-                       {'msg': msg, 'ldname': source_name})
+                         'ldname=%s') % source_name)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
