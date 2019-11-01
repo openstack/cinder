@@ -25,6 +25,7 @@ from cinder import utils
 
 
 QUOTAS = quota.QUOTAS
+GROUP_QUOTAS = quota.GROUP_QUOTAS
 
 
 authorize = extensions.extension_authorizer('volume', 'quota_classes')
@@ -46,9 +47,11 @@ class QuotaClassSetsController(wsgi.Controller):
             db.sqlalchemy.api.authorize_quota_class_context(context, id)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
+        quota_set = QUOTAS.get_class_quotas(context, id)
+        group_quota_set = GROUP_QUOTAS.get_class_quotas(context, id)
+        quota_set.update(group_quota_set)
 
-        return self._format_quota_set(id,
-                                      QUOTAS.get_class_quotas(context, id))
+        return self._format_quota_set(id, quota_set)
 
     def update(self, req, id, body):
         context = req.environ['cinder.context']
@@ -63,7 +66,7 @@ class QuotaClassSetsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         for key, value in body['quota_class_set'].items():
-            if key in QUOTAS:
+            if key in QUOTAS or key in GROUP_QUOTAS:
                 try:
                     value = utils.validate_integer(value, key, min_value=-1,
                                                    max_value=db.MAX_INT)
@@ -72,8 +75,12 @@ class QuotaClassSetsController(wsgi.Controller):
                     db.quota_class_create(context, quota_class, key, value)
                 except exception.AdminRequired:
                     raise webob.exc.HTTPForbidden()
-        return {'quota_class_set': QUOTAS.get_class_quotas(context,
-                                                           quota_class)}
+
+        quota_set = QUOTAS.get_class_quotas(context, quota_class)
+        group_quota_set = GROUP_QUOTAS.get_class_quotas(context, quota_class)
+        quota_set.update(group_quota_set)
+
+        return {'quota_class_set': quota_set}
 
 
 class Quota_classes(extensions.ExtensionDescriptor):
