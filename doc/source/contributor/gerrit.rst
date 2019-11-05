@@ -9,7 +9,7 @@ Gerrit
 ------
 
 Cinder uses the `Gerrit`_ tool to review proposed code changes. The review
-site is https://review.openstack.org
+site is https://review.opendev.org
 
 Gerrit is a complete replacement for Github pull requests. `All Github pull
 requests to the Cinder repository will be ignored`.
