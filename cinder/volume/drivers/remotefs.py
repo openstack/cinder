@@ -1654,6 +1654,7 @@ class RemoteFSSnapDriver(RemoteFSSnapDriverBase):
     def create_volume_from_snapshot(self, volume, snapshot):
         return self._create_volume_from_snapshot(volume, snapshot)
 
+    # TODO: should be locking on src_vref id -- bug #1852449
     @locked_volume_id_operation
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
@@ -1696,6 +1697,8 @@ class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
     def create_volume_from_snapshot(self, volume, snapshot):
         return self._create_volume_from_snapshot(volume, snapshot)
 
+    # lock the source volume id first
+    @coordination.synchronized('{self.driver_prefix}-{src_vref.id}')
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
