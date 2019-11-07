@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    PowerMax driver - the minimum version of Unisphere for PowerMax for the
+    current release is 9.1.0.5.  It is however recommended to install the
+    Security Releases(SR) of Unisphere for PowerMax if they become available.

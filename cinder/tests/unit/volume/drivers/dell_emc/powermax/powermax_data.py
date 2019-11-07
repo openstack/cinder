@@ -1034,7 +1034,7 @@ class PowerMaxData(object):
 
     data_dict = {volume_id: volume_info_dict}
     platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'
-    unisphere_version = u'V9.1.0.1054'
+    unisphere_version = u'V9.1.0.5'
     unisphere_version_90 = "V9.0.0.1"
     openstack_release = '12.0.0.0b3.dev401'
     openstack_version = '12.0.0'

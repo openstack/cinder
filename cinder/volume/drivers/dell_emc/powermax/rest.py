@@ -38,7 +38,7 @@ SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
 U4V_VERSION = '91'
-MIN_U4P_VERSION = '9.1.0.1054'
+MIN_U4P_VERSION = '9.1.0.5'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 # HTTP constants
