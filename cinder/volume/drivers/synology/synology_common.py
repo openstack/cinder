@@ -890,7 +890,7 @@ class SynoCommon(object):
         if os_name == 'DSM UC':
             return
         elif (os_name == 'DSM' and
-                ((6 > major) or (major is 6 and minor is 0 and hotfix < 2))):
+                ((6 > major) or (major == 6 and minor == 0 and hotfix < 2))):
             m = (_('DS version %s is not supported') %
                  firmware_version)
             raise exception.VolumeDriverException(message=m)

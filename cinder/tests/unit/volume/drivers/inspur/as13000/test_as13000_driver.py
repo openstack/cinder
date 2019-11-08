@@ -997,7 +997,7 @@ class AS13000DriverTestCase(test.TestCase):
         host_exist, target_name, node = (
             self.as13000_san._get_target_from_conn(host_ip))
 
-        if host_ip is 'fake_ip3':
+        if host_ip == 'fake_ip3':
             self.assertEqual((True, 'fake_target_2',
                               ['fake_node4', 'fake_node3']),
                              (host_exist, target_name, node))
