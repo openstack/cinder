@@ -34,7 +34,6 @@ try:
     from purestorage import purestorage
 except ImportError:
     purestorage = None
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -1861,7 +1860,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             raise PureDriverException(
                 reason=_("Unable to find viable secondary array from "
                          "configured targets: %(targets)s.") %
-                {"targets": six.text_type(self._replication_target_arrays)}
+                {"targets": str(self._replication_target_arrays)}
             )
 
         LOG.debug("Starting failover from %(primary)s to %(secondary)s",
@@ -2423,13 +2422,13 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
         # Check to ensure all returned portal IP addresses
         # are in iSCSI target CIDR
-        if not isinstance(self.configuration.pure_iscsi_cidr, six.text_type):
+        if not isinstance(self.configuration.pure_iscsi_cidr, str):
             cidr = self.configuration.pure_iscsi_cidr.decode('utf8')
         else:
             cidr = self.configuration.pure_iscsi_cidr
         check_cidr = ipaddress.IPv4Network(cidr)
         for target_portal in target_portals:
-            if not isinstance(target_portal.split(":")[0], six.text_type):
+            if not isinstance(target_portal.split(":")[0], str):
                 portal = (target_portal.split(":")[0]).decode('utf8')
             else:
                 portal = target_portal.split(":")[0]
