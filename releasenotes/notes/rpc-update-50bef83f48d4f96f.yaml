@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    SPDK target and volume drivers have been updated with new SPDK specific
+    RPC calls due to deprecation of some old RPC calls. Starting from Ussuri
+    release SPDK release v19.10 or higher is required.

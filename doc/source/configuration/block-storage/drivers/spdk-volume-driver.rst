@@ -15,7 +15,8 @@ SPDK NVMe-oF target installation
 --------------------------------
 
 Follow instructions available on https://spdk.io/doc/nvmf.html to install
-and configure environment with SPDK NVMe-oF target application.
+and configure environment with SPDK NVMe-oF target application. Starting
+from Ussuri release SPDK release v19.10 or higher is required.
 
 Storage pools configuration
 ---------------------------

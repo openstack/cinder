@@ -220,16 +220,16 @@ class JSONRPCException(Exception):
 
 class JSONRPCClient(object):
     def __init__(self, addr=None, port=None):
-        self.methods = {"get_bdevs": self.get_bdevs,
+        self.methods = {"bdev_get_bdevs": self.get_bdevs,
                         "construct_nvmf_subsystem":
                             self.construct_nvmf_subsystem,
-                        "delete_nvmf_subsystem": self.delete_nvmf_subsystem,
-                        "nvmf_subsystem_create": self.nvmf_subsystem_create,
+                        "nvmf_delete_subsystem": self.delete_nvmf_subsystem,
+                        "nvmf_create_subsystem": self.nvmf_subsystem_create,
                         "nvmf_subsystem_add_listener":
                             self.nvmf_subsystem_add_listener,
                         "nvmf_subsystem_add_ns":
                             self.nvmf_subsystem_add_ns,
-                        "get_nvmf_subsystems": self.get_nvmf_subsystems}
+                        "nvmf_get_subsystems": self.get_nvmf_subsystems}
         self.bdevs = copy.deepcopy(BDEVS)
         self.nvmf_subsystems = copy.deepcopy(NVMF_SUBSYSTEMS)
 
@@ -362,7 +362,7 @@ class SpdkNvmfDriverTestCase(test.TestCase):
     def test__get_spdk_volume_name(self):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
-            bdevs = self.driver._rpc_call("get_bdevs")
+            bdevs = self.driver._rpc_call("bdev_get_bdevs")
             bdev_name = bdevs[0]['name']
             volume_name = self.driver._get_spdk_volume_name(bdev_name)
             self.assertEqual(bdev_name, volume_name)
@@ -373,7 +373,7 @@ class SpdkNvmfDriverTestCase(test.TestCase):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
             nqn = self.driver._get_nqn_with_volume_name("Nvme0n1p0")
-            nqn_tmp = self.driver._rpc_call("get_nvmf_subsystems")[1]['nqn']
+            nqn_tmp = self.driver._rpc_call("nvmf_get_subsystems")[1]['nqn']
             self.assertEqual(nqn, nqn_tmp)
             nqn = self.driver._get_nqn_with_volume_name("fake")
             self.assertIsNone(nqn)
@@ -387,21 +387,21 @@ class SpdkNvmfDriverTestCase(test.TestCase):
     def test_create_nvmeof_target(self):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
-            subsystems_first = self.driver._rpc_call("get_nvmf_subsystems")
+            subsystems_first = self.driver._rpc_call("nvmf_get_subsystems")
             self.driver.create_nvmeof_target("Nvme0n1p1",
                                              "nqn.2016-06.io.spdk",
                                              "192.168.0.1",
                                              4420, "rdma", -1, -1, "")
-            subsystems_last = self.driver._rpc_call("get_nvmf_subsystems")
+            subsystems_last = self.driver._rpc_call("nvmf_get_subsystems")
             self.assertEqual(len(subsystems_first) + 1, len(subsystems_last))
 
     def test_delete_nvmeof_target(self):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
-            subsystems_first = self.driver._rpc_call("get_nvmf_subsystems")
+            subsystems_first = self.driver._rpc_call("nvmf_get_subsystems")
             target = Target()
             self.driver.delete_nvmeof_target(target)
-            subsystems_last = self.driver._rpc_call("get_nvmf_subsystems")
+            subsystems_last = self.driver._rpc_call("nvmf_get_subsystems")
             self.assertEqual(len(subsystems_first) - 1, len(subsystems_last))
             target.name = "fake"
             self.driver.delete_nvmeof_target(target)

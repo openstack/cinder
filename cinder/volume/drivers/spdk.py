@@ -92,7 +92,7 @@ class SPDKDriver(driver.VolumeDriver):
         pools_status = []
         self.lvs = []
 
-        output = self._rpc_call('get_lvol_stores')
+        output = self._rpc_call('bdev_lvol_get_lvstores')
         if output:
             for lvs in output:
                 pool = {}
@@ -128,14 +128,14 @@ class SPDKDriver(driver.VolumeDriver):
                       lvs['free_size'])
 
     def _get_spdk_volume_name(self, name):
-        output = self._rpc_call('get_bdevs')
+        output = self._rpc_call('bdev_get_bdevs')
         for bdev in output:
             for alias in bdev['aliases']:
                 if name in alias:
                     return bdev['name']
 
     def _get_spdk_lvs_uuid(self, spdk_name):
-        output = self._rpc_call('get_bdevs')
+        output = self._rpc_call('bdev_get_bdevs')
         for bdev in output:
             if spdk_name in bdev['name']:
                 return bdev['driver_specific']['lvol']['lvol_store_uuid']
@@ -153,13 +153,13 @@ class SPDKDriver(driver.VolumeDriver):
         spdk_name = self._get_spdk_volume_name(name)
         if spdk_name is not None:
             params = {'name': spdk_name}
-            self._rpc_call('destroy_lvol_bdev', params)
+            self._rpc_call('bdev_lvol_delete', params)
             LOG.debug('SPDK bdev %s deleted', spdk_name)
         else:
             LOG.debug('Could not find volume %s using SPDK driver', name)
 
     def _create_volume(self, volume, snapshot=None):
-        output = self._rpc_call('get_lvol_stores')
+        output = self._rpc_call('bdev_lvol_get_lvstores')
         for lvs in output:
             free_size = (lvs['free_clusters'] * lvs['cluster_size'])
             if free_size / units.Gi >= volume.size:
@@ -168,22 +168,22 @@ class SPDKDriver(driver.VolumeDriver):
                         'lvol_name': volume.name,
                         'size': volume.size * units.Gi,
                         'uuid': lvs['uuid']}
-                    output2 = self._rpc_call('construct_lvol_bdev', params)
+                    output2 = self._rpc_call('bdev_lvol_create', params)
                 else:
                     snapshot_spdk_name = (
                         self._get_spdk_volume_name(snapshot.name))
                     params = {
                         'clone_name': volume.name,
                         'snapshot_name': snapshot_spdk_name}
-                    output2 = self._rpc_call('clone_lvol_bdev', params)
+                    output2 = self._rpc_call('bdev_lvol_clone', params)
                     spdk_name = self._get_spdk_volume_name(volume.name)
                     params = {'name': spdk_name}
-                    self._rpc_call('inflate_lvol_bdev', params)
+                    self._rpc_call('bdev_lvol_inflate', params)
 
                     if volume.size > snapshot.volume_size:
                         params = {'name': spdk_name,
                                   'size': volume.size * units.Gi}
-                        self._rpc_call('resize_lvol_bdev', params)
+                        self._rpc_call('bdev_lvol_resize', params)
 
                 LOG.debug('SPDK created lvol: %s', output2)
 
@@ -196,7 +196,7 @@ class SPDKDriver(driver.VolumeDriver):
 
     def do_setup(self, context):
         try:
-            payload = {'method': 'get_bdevs', 'jsonrpc': '2.0', 'id': 1}
+            payload = {'method': 'bdev_get_bdevs', 'jsonrpc': '2.0', 'id': 1}
             self.url = ('http://%(ip)s:%(port)s/' %
                         {'ip': self.configuration.spdk_rpc_ip,
                          'port': self.configuration.spdk_rpc_port})
@@ -217,7 +217,7 @@ class SPDKDriver(driver.VolumeDriver):
         """Verify that requirements are in place to use LVM driver."""
 
         # If configuration is incorrect we will get exception here
-        self._rpc_call('get_bdevs')
+        self._rpc_call('bdev_get_bdevs')
 
     def create_volume(self, volume):
         """Creates a logical volume."""
@@ -269,10 +269,10 @@ class SPDKDriver(driver.VolumeDriver):
         params = {
             'lvol_name': spdk_name,
             'snapshot_name': snapshot['name']}
-        self._rpc_call('snapshot_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_snapshot', params)
 
         params = {'name': spdk_name}
-        self._rpc_call('inflate_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_inflate', params)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
@@ -281,12 +281,12 @@ class SPDKDriver(driver.VolumeDriver):
             return
 
         params = {'name': spdk_name}
-        bdev = self._rpc_call('get_bdevs', params)
+        bdev = self._rpc_call('bdev_get_bdevs', params)
         if 'clones' in bdev[0]['driver_specific']['lvol']:
             for clone in bdev[0]['driver_specific']['lvol']['clones']:
                 spdk_name = self._get_spdk_volume_name(clone)
                 params = {'name': spdk_name}
-                self._rpc_call('inflate_lvol_bdev', params)
+                self._rpc_call('bdev_lvol_inflate', params)
 
         self._delete_bdev(snapshot.name)
 
@@ -306,21 +306,21 @@ class SPDKDriver(driver.VolumeDriver):
         params = {
             'lvol_name': spdk_name,
             'snapshot_name': snapshot_name}
-        self._rpc_call('snapshot_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_snapshot', params)
 
         params = {'name': spdk_name}
-        self._rpc_call('inflate_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_inflate', params)
 
         snapshot_spdk_name = self._get_spdk_volume_name(snapshot_name)
         params = {
             'clone_name': volume.name,
             'snapshot_name': snapshot_spdk_name}
 
-        self._rpc_call('clone_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_clone', params)
 
         spdk_name = self._get_spdk_volume_name(volume.name)
         params = {'name': spdk_name}
-        self._rpc_call('inflate_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_inflate', params)
 
         self._delete_bdev(snapshot_name)
 
@@ -387,7 +387,7 @@ class SPDKDriver(driver.VolumeDriver):
         """Extend an existing volume's size."""
         spdk_name = self._get_spdk_volume_name(volume.name)
         params = {'name': spdk_name, 'size': new_size * units.Gi}
-        self._rpc_call('resize_lvol_bdev', params)
+        self._rpc_call('bdev_lvol_resize', params)
 
     # #######  Interface methods for DataPath (Target Driver) ########
     def ensure_export(self, context, volume):
