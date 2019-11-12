@@ -851,6 +851,8 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
 
         LOG.debug('configure backend.')
         lun0 = [ld for (ldn, ld) in ldset['lds'].items() if ld['lun'] == 0]
+        # NEC Storage cannot create an LV with LUN 0.
+        # Create a CV with LUN 0 to use the other LUN for an LV.
         if not lun0:
             LOG.debug('create and attach control volume.')
             used_ldns.append(lvldn)
@@ -864,6 +866,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             xml = self._cli.view_all(self._properties['ismview_path'])
             pools, lds, ldsets, used_ldns, hostports, max_ld_count = (
                 self.configs(xml))
+            ldset = validate_ldset_exist(ldsets, connector)
 
         self._cli.lvbind(bvname, lvname[3:], lvldn)
         self._cli.lvlink(svname[3:], lvname[3:])
