@@ -57,9 +57,9 @@ This will create a virtual environment, load all the packages from
 test-requirements.txt and run all unit tests as well as run flake8 and hacking
 checks against the code.
 
-You may run individual test targets, for example only py27 tests, by running::
+You may run individual test targets, for example only py37 tests, by running::
 
-    tox -e py27
+    tox -e py37
 
 Note that you can inspect the tox.ini file to get more details on the available
 options and what the test run does by default.
@@ -93,17 +93,17 @@ it's setup in the CI environment.
 Running a subset of tests using tox
 -----------------------------------
 One common activity is to just run a single test, you can do this with tox
-simply by specifying to just run py27 or py35 tests against a single test::
+simply by specifying to just run py37 tests against a single test::
 
-    tox -epy27 -- cinder.tests.unit.volume.test_availability_zone.AvailabilityZoneTestCase.test_list_availability_zones_cached
+    tox -epy37 -- cinder.tests.unit.volume.test_availability_zone.AvailabilityZoneTestCase.test_list_availability_zones_cached
 
 Or all tests in the test_volume.py file::
 
-    tox -epy27 -- cinder.tests.unit.volume.test_volume
+    tox -epy37 -- cinder.tests.unit.volume.test_volume
 
 You may also use regular expressions to run any matching tests::
 
-    tox -epy27 -- test_volume
+    tox -epy37 -- test_volume
 
 For more information on these options and details about stestr, please see the
 `stestr documentation <http://stestr.readthedocs.io/en/latest/MANUAL.html>`_.
@@ -122,44 +122,6 @@ can get around this by manually setting or updating the following line in
 
 Note that you may use any location (not just ``/tmp``!) as long as it is not
 a shared folder.
-
-**Running py35 tests**
-
-You will need to install python3-dev in order to get py35 tests to run. If you
-do not have this, you will get the following::
-
-    netifaces.c:1:20: fatal error: Python.h: No such file or directory
-        #include <Python.h>
-                ^
-        compilation terminated.
-        error: command 'x86_64-linux-gnu-gcc' failed with exit status 1
-
-        ----------------------------------------
-        <snip>
-    ERROR: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
-        oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
-        .tox/py35/bin/pip install -r/opt/stack/cinder/test-requirements.txt
-        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py35/log/py35-1.log)', 1)
-    _______________________________________________________________ summary _______________________________________________________________
-    ERROR:   py35: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
-        oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
-        .tox/py35/bin/pip install -r/opt/stack/cinder/test-requirements.txt
-        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py35/log/py35-1.log)', 1)
-
-To Fix:
-
-- On Ubuntu/Debian::
-
-    sudo apt-get install python3-dev
-
-- On Fedora 21/RHEL7/CentOS7::
-
-    sudo yum install python3-devel
-
-- On Fedora 22 and higher::
-
-    sudo dnf install python3-devel
-
 
 **Assertion types in unit tests**
 
