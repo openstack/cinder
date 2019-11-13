@@ -15,6 +15,7 @@
 
 import ast
 from copy import deepcopy
+import time
 from unittest import mock
 
 import six
@@ -1051,6 +1052,7 @@ class PowerMaxCommonTest(test.TestCase):
             mock_del.assert_called_once_with(array, device_id, volume_name)
 
     def test_delete_volume_from_srp_failed(self):
+        self.mock_object(time, 'sleep')
         array = self.data.array
         device_id = self.data.failed_resource
         volume_name = self.data.test_volume.name
