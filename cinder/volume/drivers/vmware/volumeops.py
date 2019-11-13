@@ -374,6 +374,15 @@ class VMwareVolumeOps(object):
         self._session.wait_for_task(task)
         LOG.info("Deleted the VM backing: %s.", backing)
 
+    def reload_backing(self, backing):
+        """Reload the backing.
+
+        :param backing: Managed object reference to the backing
+        """
+        LOG.debug("Reloading the VM backing: %s.", backing)
+        self._session.invoke_api(self._session.vim, 'Reload', backing)
+        LOG.info("Reloaded the VM backing: %s.", backing)
+
     # TODO(kartikaditya) Keep the methods not specific to volume in
     # a different file
     def get_host(self, instance):
@@ -617,6 +626,55 @@ class VMwareVolumeOps(object):
                                         datacenter=dc_ref,
                                         newCapacityKb=size_in_kb,
                                         eagerZero=eager_zero)
+        self._session.wait_for_task(task)
+        LOG.info("Successfully extended virtual disk: %(path)s to "
+                 "%(size)s GB.",
+                 {'path': path, 'size': requested_size_in_gb})
+
+    def extend_virtual_disk_online(self, requested_size_in_gb, path, vm_ref):
+        """Extend the virtual disk online to the requested size.
+
+        :param requested_size_in_gb: Size of the volume in GB
+        :param path: Datastore path of the virtual disk to extend
+        :param vm_ref: Reference to the VM instance
+        """
+        LOG.debug("Extending virtual disk: %(path)s to %(size)s GB.",
+                  {'path': path, 'size': requested_size_in_gb})
+        # VMWare API needs the capacity unit to be in KB, so convert the
+        # capacity unit from GB to KB.
+        cf = self._session.vim.client.factory
+        size_in_kb = requested_size_in_gb * units.Mi
+        config_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        disk = None
+        devices = self._session.invoke_api(vim_util,
+                                           'get_object_property',
+                                           self._session.vim,
+                                           vm_ref,
+                                           'config.hardware.device')
+        for device in devices['VirtualDevice']:
+            if device.__class__.__name__ == "VirtualDisk" and \
+                    device.backing.fileName == path:
+                disk = device
+                break
+        else:
+            msg = str.format("Error during online-resize of disk: %(path)s to "
+                             "%(size)s GB. Can't find the attachment",
+                             {'path': path, 'size': requested_size_in_gb})
+            raise exceptions.VimException(msg)
+
+        disk.capacityInKB = size_in_kb
+        delattr(disk, 'capacityInBytes')
+        delattr(disk, 'deviceInfo')
+        device_change = []
+        devspec = cf.create('ns0:VirtualDeviceConfigSpec')
+        devspec.operation = 'edit'
+        devspec.device = disk
+        device_change.append(devspec)
+        config_spec.deviceChange = device_change
+        task = self._session.invoke_api(self._session.vim,
+                                        "ReconfigVM_Task",
+                                        vm_ref,
+                                        spec=config_spec)
         self._session.wait_for_task(task)
         LOG.info("Successfully extended virtual disk: %(path)s to "
                  "%(size)s GB.",

@@ -153,6 +153,9 @@ vmdk_opts = [
                      ' lazily when the volume is created without any source. '
                      'The backend volume is created when the volume is '
                      'attached, uploaded to image service or during backup.'),
+    cfg.BoolOpt('vmware_online_resize',
+                default=True,
+                help='If true, enables volume resize in in-use state'),   
 ]
 
 CONF = cfg.CONF
@@ -1346,6 +1349,20 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         datacenter = self.volumeops.get_dc(backing)
         self.volumeops.extend_virtual_disk(new_size_in_gb, root_vmdk_path,
                                            datacenter)
+        self.volumeops.reload_backing(backing)
+
+    def _extend_backing_online(self, backing, new_size_in_gb, attachedvm):
+        """Extend volume backing's virtual disk online
+
+        :param backing: volume backing
+        :param new_size_in_gb: new size of virtual disk
+        :param attachedvm: the id of the vm where the virtual disk is attached
+        """
+        root_vmdk_path = self.volumeops.get_vmdk_path(backing)
+        self.volumeops.extend_virtual_disk_online(new_size_in_gb,
+                                                  root_vmdk_path,
+                                                  attachedvm)
+        self.volumeops.reload_backing(backing)
 
     def clone_image(self, context, volume, image_location,
                     image_meta, image_service):
@@ -1732,8 +1749,24 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             LOG.info("There is no backing for volume: %s; no need to "
                      "extend the virtual disk.", vol_name)
             return
-
-        # try extending vmdk in place
+        if (self._in_use(volume) and not volume['multiattach'] and
+                self.configuration.vmware_online_resize):
+            attachments = volume.volume_attachment
+            instance_uuid = attachments[0]['instance_uuid']
+            attachedvm = self.volumeops.get_backing_by_uuid(instance_uuid)
+            try:
+                self._extend_backing_online(backing, new_size, attachedvm)
+                LOG.info("Successfully extended volume: %(vol)s to size: "
+                         "%(size)s GB.",
+                         {'vol': vol_name, 'size': new_size})
+                return
+            except exceptions.NoDiskSpaceException:
+                LOG.warning("Unable to extend volume: %(vol)s to size: "
+                            "%(size)s on current datastore due to insufficient"
+                            " space.",
+                            {'vol': vol_name, 'size': new_size})
+                return
+        # try extending vmdk in place offline
         try:
             self._extend_backing(backing, new_size)
             LOG.info("Successfully extended volume: %(vol)s to size: "
