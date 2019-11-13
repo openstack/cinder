@@ -12,6 +12,7 @@
 
 import datetime
 import iso8601
+import re
 import sys
 import time
 
@@ -421,22 +422,28 @@ class TestCinderManageCmd(test.TestCase):
         exit = self.assertRaises(SystemExit,
                                  command.online_data_migrations, 10)
         self.assertEqual(1, exit.code)
-        expected = """\
-5 rows matched query mock_mig_1, 4 migrated
-6 rows matched query mock_mig_2, 6 migrated
-+------------+--------------+-----------+
-| Migration  | Total Needed | Completed |
-+------------+--------------+-----------+
-| mock_mig_1 |      5       |     4     |
-| mock_mig_2 |      6       |     6     |
-+------------+--------------+-----------+
-"""
         command.online_migrations[0].assert_has_calls([mock.call(ctxt,
                                                                  10)])
         command.online_migrations[1].assert_has_calls([mock.call(ctxt,
                                                                  6)])
 
-        self.assertEqual(expected, sys.stdout.getvalue())
+        output = sys.stdout.getvalue()
+        matches = re.findall(
+            '5 rows matched query mock_mig_1, 4 migrated',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
+        matches = re.findall(
+            '6 rows matched query mock_mig_2, 6 migrated',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
+        matches = re.findall(
+            'mock_mig_1 .* 5 .* 4',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
+        matches = re.findall(
+            'mock_mig_2 .* 6 .* 6',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
 
     @mock.patch('cinder.context.get_admin_context')
     def test_online_migrations_no_max_count(self, mock_get_context):
@@ -456,19 +463,24 @@ class TestCinderManageCmd(test.TestCase):
         exit = self.assertRaises(SystemExit,
                                  command.online_data_migrations, None)
         self.assertEqual(0, exit.code)
-        expected = """\
-Running batches of 50 until complete.
-120 rows matched query fake_migration, 50 migrated
-120 rows matched query fake_migration, 50 migrated
-120 rows matched query fake_migration, 20 migrated
-120 rows matched query fake_migration, 0 migrated
-+----------------+--------------+-----------+
-|   Migration    | Total Needed | Completed |
-+----------------+--------------+-----------+
-| fake_migration |     120      |    120    |
-+----------------+--------------+-----------+
-"""
-        self.assertEqual(expected, sys.stdout.getvalue())
+        output = sys.stdout.getvalue()
+        self.assertIn('Running batches of 50 until complete.', output)
+        matches = re.findall(
+            '120 rows matched query fake_migration, 50 migrated',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 2)
+        matches = re.findall(
+            '120 rows matched query fake_migration, 20 migrated',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
+        matches = re.findall(
+            '120 rows matched query fake_migration, 0 migrated',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
+        matches = re.findall(
+            'fake_migration .* 120 .* 120',
+            output, re.MULTILINE)
+        self.assertEqual(len(matches), 1)
 
     @mock.patch('cinder.context.get_admin_context')
     def test_online_migrations_error(self, mock_get_context):
