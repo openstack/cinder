@@ -204,7 +204,7 @@ class RADOSClient(object):
     def features(self):
         features = self.cluster.conf_get('rbd_default_features')
         if ((features is None) or (int(features) == 0)):
-            features = self.driver.rbd.RBD_FEATURE_LAYERING
+            features = self.driver.RBD_FEATURE_LAYERING
         return int(features)
 
 
@@ -222,6 +222,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     SUPPORTS_ACTIVE_ACTIVE = True
 
     SYSCONFDIR = '/etc/ceph/'
+
+    RBD_FEATURE_LAYERING = 1
+    RBD_FEATURE_EXCLUSIVE_LOCK = 4
+    RBD_FEATURE_OBJECT_MAP = 8
+    RBD_FEATURE_FAST_DIFF = 16
+    RBD_FEATURE_JOURNALING = 64
 
     def __init__(self, active_backend_id=None, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
@@ -246,6 +252,20 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         self._is_replication_enabled = False
         self._replication_targets = []
         self._target_names = []
+
+        if self.rbd is not None:
+            self.RBD_FEATURE_LAYERING = self.rbd.RBD_FEATURE_LAYERING
+            self.RBD_FEATURE_EXCLUSIVE_LOCK = \
+                self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK
+            self.RBD_FEATURE_OBJECT_MAP = self.rbd.RBD_FEATURE_OBJECT_MAP
+            self.RBD_FEATURE_FAST_DIFF = self.rbd.RBD_FEATURE_FAST_DIFF
+            self.RBD_FEATURE_JOURNALING = self.rbd.RBD_FEATURE_JOURNALING
+
+        self.MULTIATTACH_EXCLUSIONS = (
+            self.RBD_FEATURE_JOURNALING |
+            self.RBD_FEATURE_FAST_DIFF |
+            self.RBD_FEATURE_OBJECT_MAP |
+            self.RBD_FEATURE_EXCLUSIVE_LOCK)
 
     @staticmethod
     def get_driver_options():
@@ -752,13 +772,13 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         vol_name = utils.convert_str(volume.name)
         with RBDVolumeProxy(self, vol_name) as image:
             had_exclusive_lock = (image.features() &
-                                  self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK)
-            had_journaling = image.features() & self.rbd.RBD_FEATURE_JOURNALING
+                                  self.RBD_FEATURE_EXCLUSIVE_LOCK)
+            had_journaling = image.features() & self.RBD_FEATURE_JOURNALING
             if not had_exclusive_lock:
-                image.update_features(self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
+                image.update_features(self.RBD_FEATURE_EXCLUSIVE_LOCK,
                                       True)
             if not had_journaling:
-                image.update_features(self.rbd.RBD_FEATURE_JOURNALING, True)
+                image.update_features(self.RBD_FEATURE_JOURNALING, True)
             image.mirror_image_enable()
 
         driver_data = self._dumps({
@@ -769,53 +789,49 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 'replication_driver_data': driver_data}
 
     def _enable_multiattach(self, volume):
-        multipath_feature_exclusions = [
-            self.rbd.RBD_FEATURE_JOURNALING,
-            self.rbd.RBD_FEATURE_FAST_DIFF,
-            self.rbd.RBD_FEATURE_OBJECT_MAP,
-            self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
-        ]
         vol_name = utils.convert_str(volume.name)
-        image_features = None
         with RBDVolumeProxy(self, vol_name) as image:
             image_features = image.features()
-            for feature in multipath_feature_exclusions:
-                if image_features & feature:
-                    image.update_features(feature, False)
+            change_features = self.MULTIATTACH_EXCLUSIONS & image_features
+            image.update_features(change_features, False)
 
         return {'provider_location':
                 self._dumps({'saved_features': image_features})}
 
     def _disable_multiattach(self, volume):
-        multipath_feature_exclusions = [
-            self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
-            self.rbd.RBD_FEATURE_OBJECT_MAP,
-            self.rbd.RBD_FEATURE_FAST_DIFF,
-            self.rbd.RBD_FEATURE_JOURNALING,
-        ]
         vol_name = utils.convert_str(volume.name)
         with RBDVolumeProxy(self, vol_name) as image:
             try:
                 provider_location = json.loads(volume.provider_location)
                 image_features = provider_location['saved_features']
-            except Exception:
-                msg = _('Could not find saved image features.')
+                change_features = self.MULTIATTACH_EXCLUSIONS & image_features
+                image.update_features(change_features, True)
+            except IndexError:
+                msg = "Could not find saved image features."
                 raise RBDDriverException(reason=msg)
-            for feature in multipath_feature_exclusions:
-                if image_features & feature:
-                    image.update_features(feature, True)
+            except self.rbd.InvalidArgument:
+                msg = "Failed to restore image features."
+                raise RBDDriverException(reason=msg)
 
         return {'provider_location': None}
 
     def _is_replicated_type(self, volume_type):
-        # We do a safe attribute get because volume_type could be None
-        specs = getattr(volume_type, 'extra_specs', {})
-        return specs.get(EXTRA_SPECS_REPL_ENABLED) == "<is> True"
+        try:
+            extra_specs = volume_type.extra_specs
+            LOG.debug('extra_specs: %s', extra_specs)
+            return extra_specs.get(EXTRA_SPECS_REPL_ENABLED) == "<is> True"
+        except Exception:
+            LOG.debug('Unable to retrieve extra specs info')
+            return False
 
     def _is_multiattach_type(self, volume_type):
-        # We do a safe attribute get because volume_type could be None
-        specs = getattr(volume_type, 'extra_specs', {})
-        return specs.get(EXTRA_SPECS_MULTIATTACH) == "<is> True"
+        try:
+            extra_specs = volume_type.extra_specs
+            LOG.debug('extra_specs: %s', extra_specs)
+            return extra_specs.get(EXTRA_SPECS_MULTIATTACH) == "<is> True"
+        except Exception:
+            LOG.debug('Unable to retrieve extra specs info')
+            return False
 
     def _setup_volume(self, volume, volume_type=None):
 
@@ -1224,10 +1240,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             # they will be disabled here. If not, it will keep
             # what it was before.
             if not driver_data['had_journaling']:
-                image.update_features(self.rbd.RBD_FEATURE_JOURNALING, False)
+                image.update_features(self.RBD_FEATURE_JOURNALING, False)
             if not driver_data['had_exclusive_lock']:
-                image.update_features(self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
-                                      False)
+                image.update_features(self.RBD_FEATURE_EXCLUSIVE_LOCK, False)
         return {'replication_status': fields.ReplicationStatus.DISABLED,
                 'replication_driver_data': None}
 

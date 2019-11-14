@@ -423,18 +423,19 @@ class RBDTestCase(test.TestCase):
         'image.features()'will be both called for 'exclusive-lock' and
         'journaling' in this order.
         """
-        journaling_feat = 1
-        exclusive_lock_feat = 2
-        self.driver.rbd.RBD_FEATURE_JOURNALING = journaling_feat
-        self.driver.rbd.RBD_FEATURE_EXCLUSIVE_LOCK = exclusive_lock_feat
         image = self.mock_proxy.return_value.__enter__.return_value
-        image.features.return_value = 0
+
+        image_features = 0
         if exclusive_lock_enabled:
-            image.features.return_value += exclusive_lock_feat
+            image_features |= self.driver.RBD_FEATURE_EXCLUSIVE_LOCK
         if journaling_enabled:
-            image.features.return_value += journaling_feat
+            image_features |= self.driver.RBD_FEATURE_JOURNALING
+
+        image.features.return_value = image_features
+
         journaling_status = str(journaling_enabled).lower()
         exclusive_lock_status = str(exclusive_lock_enabled).lower()
+
         expected = {
             'replication_driver_data': ('{"had_exclusive_lock":%s,'
                                         '"had_journaling":%s}' %
@@ -444,14 +445,15 @@ class RBDTestCase(test.TestCase):
         }
         res = self.driver._enable_replication(self.volume_a)
         self.assertEqual(expected, res)
+
         if exclusive_lock_enabled and journaling_enabled:
             image.update_features.assert_not_called()
         elif exclusive_lock_enabled and not journaling_enabled:
-            image.update_features.assert_called_once_with(journaling_feat,
-                                                          True)
+            image.update_features.assert_called_once_with(
+                self.driver.RBD_FEATURE_JOURNALING, True)
         else:
-            calls = [call(exclusive_lock_feat, True),
-                     call(journaling_feat, True)]
+            calls = [call(self.driver.RBD_FEATURE_EXCLUSIVE_LOCK, True),
+                     call(self.driver.RBD_FEATURE_JOURNALING, True)]
             image.update_features.assert_has_calls(calls, any_order=False)
         image.mirror_image_enable.assert_called_once_with()
 
@@ -474,10 +476,10 @@ class RBDTestCase(test.TestCase):
             image.update_features.assert_not_called()
         elif had_journaling == 'false' and had_exclusive_lock == 'true':
             image.update_features.assert_called_once_with(
-                self.driver.rbd.RBD_FEATURE_JOURNALING, False)
+                self.driver.RBD_FEATURE_JOURNALING, False)
         else:
-            calls = [call(self.driver.rbd.RBD_FEATURE_JOURNALING, False),
-                     call(self.driver.rbd.RBD_FEATURE_EXCLUSIVE_LOCK,
+            calls = [call(self.driver.RBD_FEATURE_JOURNALING, False),
+                     call(self.driver.RBD_FEATURE_EXCLUSIVE_LOCK,
                           False)]
             image.update_features.assert_has_calls(calls, any_order=False)
 
@@ -2458,6 +2460,55 @@ class RBDTestCase(test.TestCase):
 
         ret = driver.get_backup_device(self.context, backup)
         self.assertEqual(ret, (self.volume_b, False))
+
+    @common_mocks
+    def test_multiattach_exclusions(self):
+        self.assertEqual(
+            self.driver.RBD_FEATURE_JOURNALING |
+            self.driver.RBD_FEATURE_FAST_DIFF |
+            self.driver.RBD_FEATURE_OBJECT_MAP |
+            self.driver.RBD_FEATURE_EXCLUSIVE_LOCK,
+            self.driver.MULTIATTACH_EXCLUSIONS)
+
+    MULTIATTACH_FULL_FEATURES = (
+        driver.RBDDriver.RBD_FEATURE_LAYERING |
+        driver.RBDDriver.RBD_FEATURE_EXCLUSIVE_LOCK |
+        driver.RBDDriver.RBD_FEATURE_OBJECT_MAP |
+        driver.RBDDriver.RBD_FEATURE_FAST_DIFF |
+        driver.RBDDriver.RBD_FEATURE_JOURNALING)
+
+    MULTIATTACH_REDUCED_FEATURES = (
+        driver.RBDDriver.RBD_FEATURE_LAYERING |
+        driver.RBDDriver.RBD_FEATURE_EXCLUSIVE_LOCK)
+
+    @ddt.data(MULTIATTACH_FULL_FEATURES, MULTIATTACH_REDUCED_FEATURES)
+    @common_mocks
+    def test_enable_multiattach(self, features):
+        image = self.mock_proxy.return_value.__enter__.return_value
+        image_features = features
+        image.features.return_value = image_features
+
+        ret = self.driver._enable_multiattach(self.volume_a)
+
+        image.update_features.assert_called_once_with(
+            self.driver.MULTIATTACH_EXCLUSIONS & image_features, False)
+
+        self.assertEqual(
+            {'provider_location':
+             "{\"saved_features\":%s}" % image_features}, ret)
+
+    @ddt.data(MULTIATTACH_FULL_FEATURES, MULTIATTACH_REDUCED_FEATURES)
+    @common_mocks
+    def test_disable_multiattach(self, features):
+        image = self.mock_proxy.return_value.__enter__.return_value
+        self.volume_a.provider_location = '{"saved_features": %s}' % features
+
+        ret = self.driver._disable_multiattach(self.volume_a)
+
+        image.update_features.assert_called_once_with(
+            self.driver.MULTIATTACH_EXCLUSIONS & features, True)
+
+        self.assertEqual({'provider_location': None}, ret)
 
 
 class ManagedRBDTestCase(test_driver.BaseDriverTestCase):
