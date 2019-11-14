@@ -59,8 +59,6 @@
         - legacy-tempest-dsvm-full-devstack-plugin-nfs:
             voting: false
             irrelevant-files: *gate-irrelevant-files
-        - neutron-grenade:
-            irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
         - tempest-full:
@@ -74,8 +72,6 @@
     gate:
       jobs:
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
-        - neutron-grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-full:
             irrelevant-files: *gate-irrelevant-files
