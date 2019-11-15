@@ -49,7 +49,7 @@ class RestClient(object):
 
     def connect(self):
         self.store_node_map(self.nodes)
-        if len(self.nodeMap) is 0:
+        if len(self.nodeMap) == 0:
             msg = _('Unable to connect to the nodes')
             raise exception.VolumeDriverException(msg)
 

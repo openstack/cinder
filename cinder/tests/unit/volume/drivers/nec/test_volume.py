@@ -535,7 +535,7 @@ class NominatePoolLDTest(volume_helper.MStorageDSVDriver, test.TestCase):
         # config:pool_backup_pools=[2]
         self.pools[1]['free'] = savePool1
 
-        if len(self.pools[0]['ld_list']) is 1024:
+        if len(self.pools[0]['ld_list']) == 1024:
             savePool2 = self.pools[2]['free']
             savePool3 = self.pools[3]['free']
             self.pools[2]['free'] = 0

@@ -506,7 +506,7 @@ class PureDriverTestCase(test.TestCase):
         self.purestorage_module.PureHTTPError = FakePureStorageHTTPError
 
     def fake_get_array(*args, **kwargs):
-        if 'action' in kwargs and kwargs['action'] is 'monitor':
+        if 'action' in kwargs and kwargs['action'] == 'monitor':
             return PERF_INFO_RAW
 
         if 'space' in kwargs and kwargs['space'] is True:

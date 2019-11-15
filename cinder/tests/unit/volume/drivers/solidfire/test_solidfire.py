@@ -183,7 +183,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def fake_issue_api_request(obj, method, params, version='1.0',
                                endpoint=None):
-        if method is 'GetClusterCapacity':
+        if method == 'GetClusterCapacity':
             data = {}
             if version == '1.0':
                 data = {'result': {'clusterCapacity': {
@@ -220,7 +220,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                         'clusterRecentIOSize': 0}}}
             return data
 
-        elif method is 'GetClusterInfo':
+        elif method == 'GetClusterInfo':
             results = {
                 'result':
                     {'clusterInfo':
@@ -233,7 +233,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                          'attributes': {}}}}
             return results
 
-        elif method is 'GetClusterVersionInfo':
+        elif method == 'GetClusterVersionInfo':
             return {'id': None, 'result': {'softwareVersionInfo':
                                            {'pendingVersion': '8.2.1.4',
                                             'packageName': '',
@@ -242,10 +242,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                                            'clusterVersion': '8.2.1.4',
                                            'clusterAPIVersion': '8.2'}}
 
-        elif method is 'AddAccount' and version == '1.0':
+        elif method == 'AddAccount' and version == '1.0':
             return {'result': {'accountID': 25}, 'id': 1}
 
-        elif method is 'GetAccountByName' and version == '1.0':
+        elif method == 'GetAccountByName' and version == '1.0':
             results = {'result': {'account':
                                   {'accountID': 25,
                                    'username': params['username'],
@@ -257,25 +257,25 @@ class SolidFireVolumeTestCase(test.TestCase):
                        "id": 1}
             return results
 
-        elif method is 'CreateVolume' and version == '1.0':
+        elif method == 'CreateVolume' and version == '1.0':
             return {'result': {'volumeID': 5}, 'id': 1}
 
-        elif method is 'CreateSnapshot' and version == '6.0':
+        elif method == 'CreateSnapshot' and version == '6.0':
             return {'result': {'snapshotID': 5}, 'id': 1}
 
-        elif method is 'DeleteVolume' and version == '1.0':
+        elif method == 'DeleteVolume' and version == '1.0':
             return {'result': {}, 'id': 1}
 
-        elif method is 'ModifyVolume' and version == '5.0':
+        elif method == 'ModifyVolume' and version == '5.0':
             return {'result': {}, 'id': 1}
 
-        elif method is 'CloneVolume':
+        elif method == 'CloneVolume':
             return {'result': {'volumeID': 6}, 'id': 2}
 
-        elif method is 'ModifyVolume':
+        elif method == 'ModifyVolume':
             return {'result': {}, 'id': 1}
 
-        elif method is 'ListVolumesForAccount' and version == '1.0':
+        elif method == 'ListVolumesForAccount' and version == '1.0':
             test_name = 'OS-VOLID-a720b3c0-d1f0-11e1-9b23-0800200c9a66'
             result = {'result': {
                 'volumes': [{'volumeID': 5,
@@ -291,7 +291,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'iqn': test_name}]}}
             return result
 
-        elif method is 'ListActiveVolumes':
+        elif method == 'ListActiveVolumes':
             test_name = "existing_volume"
             result = {'result': {
                 'volumes': [{'volumeID': 5,
@@ -306,7 +306,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'qos': None,
                              'iqn': test_name}]}}
             return result
-        elif method is 'ListVolumes':
+        elif method == 'ListVolumes':
             test_name = "get_sfvol_by_cinder"
             result = {'result': {
                 'volumes': [{'volumeID': 5,
@@ -337,13 +337,13 @@ class SolidFireVolumeTestCase(test.TestCase):
                                     != params['startVolumeID']]
                 result['result']['volumes'] = selected_volumes
             return result
-        elif method is 'DeleteSnapshot':
+        elif method == 'DeleteSnapshot':
             return {'result': {}}
-        elif method is 'GetClusterVersionInfo':
+        elif method == 'GetClusterVersionInfo':
             return {'result': {'clusterAPIVersion': '8.0'}}
-        elif method is 'StartVolumePairing':
+        elif method == 'StartVolumePairing':
             return {'result': {'volumePairingKey': 'fake-pairing-key'}}
-        elif method is 'RollbackToSnapshot':
+        elif method == 'RollbackToSnapshot':
             return {
                 "id": 1,
                 "result": {
@@ -368,7 +368,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                     "snapshotID": 1
                 }
             }
-        elif method is 'ListAccounts':
+        elif method == 'ListAccounts':
             return {
                 'result': {
                     'accounts': [{
