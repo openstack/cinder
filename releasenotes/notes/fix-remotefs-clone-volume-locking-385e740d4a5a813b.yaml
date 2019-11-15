@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    An incorrect lock in the remotefs code, which is used for the NFS driver,
+    and other similar drivers, resulted in concurrent clone volume operations
+    failing.  create_cloned_volume now locks on the source volume id, meaning
+    multiple clone operations from the same source volume are serialized.
+
+    A lock in the volume manager flow generally prevents this on normal clone
+    volume operations, but this clone method in the driver is called for
+    operations such as cloning from the cinder image-volume cache or cloning
+    from a cinder backend used as a glance store.
