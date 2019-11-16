@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-10-03 22:29+0000\n"
+"POT-Creation-Date: 2019-11-15 23:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -125,12 +125,6 @@ msgstr ""
 "プがサポートされています。実際のモードは %(vol_mode)s です。"
 
 #, python-format
-msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
-msgstr ""
-"%(service)s サービスはストレージアプライアンス %(host)s で %(status)s になっ"
-"ていません"
-
-#, python-format
 msgid ""
 "%(type)s with id %(id)s is already being cleaned up or another host has "
 "taken over it."
@@ -218,10 +212,6 @@ msgstr "%s は有効な raw または qcow2 イメージでなければなりま
 #, python-format
 msgid "%s must be an absolute path."
 msgstr "%s は絶対パスである必要があります。"
-
-#, python-format
-msgid "%s not set in cinder.conf"
-msgstr "%s が cinder.conf に設定されていません"
 
 #, python-format
 msgid "%s not set."
@@ -591,10 +581,6 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) がアレイ上に存在しません"
 
-#, python-format
-msgid "Cache volume %s does not have required properties"
-msgstr "キャッシュボリューム %s に必須のプロパティーがありません"
-
 msgid "Can not add FC port to host."
 msgstr "ホストに FC ポートを追加できません。"
 
@@ -808,10 +794,6 @@ msgstr ""
 "VF コンテキストを変更できません。指定された VF は管理可能な VF リスト "
 "%(vf_list)s で使用可能ではありません。"
 
-#, python-format
-msgid "Cannot create directory %s."
-msgstr "ディレクトリー %s を作成できません。"
-
 msgid "Cannot create encryption specs. Volume type in use."
 msgstr "暗号化仕様を作成できません。ボリュームタイプは使用中です。"
 
@@ -853,24 +835,6 @@ msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "名前 %(name)s および仕様 %(extra_specs)s を使用して volume_type を作成できま"
 "せん。"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)d volume instances."
-msgstr ""
-"キャッシュボリューム: %(cachevol_name)s を削除できません。%(updated_at)s に更"
-"新されたこのキャッシュボリュームには現在 %(numclones)d のボリュームインスタン"
-"スがあります。"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)s volume instances."
-msgstr ""
-"キャッシュボリューム: %(cachevol_name)s を削除できません。%(updated_at)s に更"
-"新されたこのキャッシュボリュームには 現在 %(numclones)s のボリュームインスタ"
-"ンスがあります。"
 
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "暗号化仕様を削除できません。ボリュームタイプは使用中です。"
@@ -972,10 +936,6 @@ msgid ""
 "Change would make usage less than 0 for the following resources: %(unders)s"
 msgstr "変更によって、次のリソースの使用量が 0 未満になります: %(unders)s"
 
-msgid "Check access permissions for the ZFS share assigned to this driver."
-msgstr ""
-"このドライバーに割り当てられている ZFS 共有のアクセス権を確認してください。"
-
 msgid "Check hostgroup associate error."
 msgstr "ホストグループ関連付けの確認のエラー。"
 
@@ -990,13 +950,6 @@ msgstr "LUN グループ関連付けの確認のエラー。"
 
 msgid "Check portgroup associate error."
 msgstr "ポートグループ関連付けの確認のエラー。"
-
-msgid ""
-"Check the state of the http service. Also ensure that the https port number "
-"is the same as the one specified in cinder.conf."
-msgstr ""
-"HTTP サービスの状態を確認してください。また、HTTPS ポート番号が cinder.conf "
-"に指定されている番号と同じであることも確認してください。"
 
 msgid "Chunk size is not multiple of block size for creating hash."
 msgstr ""
@@ -1055,12 +1008,6 @@ msgstr "コンピュートクラスター: %(cluster)s が見つかりません�
 
 msgid "Condition has no field."
 msgstr "条件にフィールドがありません。"
-
-#, python-format
-msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
-msgstr ""
-"設定 'max_over_subscription_ratio' は無効です。0 より大きくなければなりませ"
-"ん: %s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "設定エラー: dell_sc_ssn not が設定されていません。"
@@ -1548,202 +1495,6 @@ msgid "Ensure that configfs is mounted at /sys/kernel/config."
 msgstr ""
 "configfs が /sys/kernel/config でマウントされていることを確認してください。"
 
-#, python-format
-msgid ""
-"Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Clone project: %(clone_proj)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プール: %(pool)s プロジェクト: %(project)s 複製プロジェクト: %(clone_proj)s "
-"のボリューム: %(lun)s でのスナップショット: %(snapshot)s の複製中にエラーが発"
-"生しました。戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Initiator: %(initiator)s on Alias: %(alias)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"エイリアス %(alias)s でのイニシエーター %(initiator)s の作成中にエラーが発生"
-"しました。戻りコード: %(ret.status)d、メッセージ: %(ret.data)s"
-
-#, python-format
-msgid ""
-"Error Creating Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"プール %(pool)s でのプロジェクト %(project)s の作成中にエラーが発生しました。"
-"戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Property: %(property)s Type: %(type)s Description: "
-"%(description)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プロパティー: %(property)s タイプ: %(type)s 説明: %(description)s の作成中に"
-"エラーが発生しました。戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Share: %(name)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"共有 %(name)s の作成中にエラーが発生しました。戻りコード: %(ret.status)d、"
-"メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Volume: %(lun)s Size: %(size)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"ボリュームの作成中にエラーが発生しました: %(lun)s。サイズ: %(size)s、戻りコー"
-"ド: %(ret.status)d、メッセージ: %(ret.data)s。 "
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
-"Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"共有 %(share)s でスナップショット %(snapshot)s をプール %(pool)s から削除中に"
-"エラーが発生しました。プロジェクト: %(project)s、戻りコード: %(ret.status)d、"
-"メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"ボリューム %(lun)s でスナップショット %(snapshot)s をプール %(pool)s から削除"
-"しているときにエラーが発生しました。プロジェクト: %(project)s、戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Volume: %(lun)s from Pool: %(pool)s, Project: %(project)s. "
-"Return code: %(ret.status)d, Message: %(ret.data)s."
-msgstr ""
-"プール: %(pool)s、プロジェクト: %(project)s からのボリューム: %(lun)s の削除"
-"中にエラーが発生しました。戻りコード: %(ret.status)d、メッセージ: "
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting project: %(project)s on pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プール: %(pool)s のプロジェクト: %(project)s の削除中にエラーが発生しました。"
-"戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting replication action: %(id)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"レプリケーションアクション: %(id)s の削除中にエラーが発生しました。戻りコー"
-"ド: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Initiators: InitiatorGroup: %(initiatorgroup)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"イニシエーターの取得中にエラーが発生しました。InitiatorGroup: "
-"%(initiatorgroup)s 戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
-"%(data)s."
-msgstr ""
-"プール統計: プール: %(pool)sの取得中にエラーが発生しました 戻りコード: "
-"%(status)d メッセージ: %(data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プロジェクト統計: プール: %(pool)s プロジェクト: %(project)s の取得中にエラー"
-"が発生しました。戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Share: %(share)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プール %(pool)s での共有 %(share)s の取得中にエラーが発生しました。プロジェク"
-"ト: %(project)s 戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Volume: %(lun)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プール %(pool)s でのボリューム %(lun)s の取得中にエラーが発生しました。プロ"
-"ジェクト: %(project)s、戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
-msgstr ""
-"プール所有権のエラーが発生しました: %(host)s はプール %(pool)s を所有していま"
-"せん。"
-
-#, python-format
-msgid ""
-"Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プール %(pool)s のボリューム %(lun)s でのプロパティー %(props)s の設定中にエ"
-"ラーが発生しました。プロジェクト: %(project)s、戻りコード: %(ret.status)d、"
-"メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Initiator: %(iqn)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"イニシエーターの検査中にエラーが発生しました: %(iqn)s。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Pool: %(pool)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"プールの検査中にエラーが発生しました: %(pool)s。戻りコード: %(ret.status)d、"
-"メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プール %(pool)s でのプロジェクト %(project)s の検査中にエラーが発生しました。"
-"戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"サービス %(service)s の検査中にエラーが発生しました。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Target: %(alias)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"ターゲットの検査中にエラーが発生しました: %(alias)s。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying share: %(share)s on Project: %(project)s and Pool: %(pool)s "
-"Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"プロジェクト %(project)s およびプール %(pool)s で共有 %(share)s を検証中にエ"
-"ラーが発生しました。戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
 msgid "Error connecting to ceph cluster."
 msgstr "ceph クラスターへの接続エラーです。"
 
@@ -1769,14 +1520,6 @@ msgstr "ボリューム %(vol)s の削除中にエラーが発生しました: %
 #, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "エバリュエーター構文解析中にエラーが発生しました: %(reason)s"
-
-#, python-format
-msgid ""
-"Error editing share: %(share)s on Pool: %(pool)s Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"プール %(pool)s での共有 %(share)s の編集中にエラーが発生しました。戻りコー"
-"ド: %(ret.status)d メッセージ: %(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -1806,19 +1549,9 @@ msgstr "ボリュームの拡張エラーです: %(reason)s"
 msgid "Error finding %(name)s."
 msgstr "%(name)s の検索中にエラーが発生しました。"
 
-msgid ""
-"Error getting appliance version details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"アプライアンスバージョンの詳細の取得中にエラーが発生しました。戻りコード: "
-"%(ret.status)d メッセージ: %(ret.data)s。"
-
 #, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "名前 %(name)s からドメイン ID を取得中にエラーが発生しました: %(id)s。"
-
-msgid "Error getting initiator groups."
-msgstr "イニシエーターグループの取得エラー。"
 
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
@@ -1827,59 +1560,12 @@ msgstr ""
 "%(err_msg)s。"
 
 #, python-format
-msgid ""
-"Error getting replication action: %(id)s. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"レプリケーションアクション: %(id)s の取得中にエラーが発生しました。戻りコー"
-"ド: %(ret.status)d メッセージ: %(ret.data)s。"
-
-msgid ""
-"Error getting replication source details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"レプリケーションソースの詳細の取得中にエラーが発生しました。戻りコード: "
-"%(ret.status)d メッセージ: %(ret.data)s。"
-
-msgid ""
-"Error getting replication target details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"レプリケーションターゲットの詳細の取得中にエラーが発生しました。戻りコード: "
-"%(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error getting version: svc: %(svc)s.Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"バージョンの取得中にエラーが発生しました: svc: %(svc)s。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "SolidFire API 応答にエラーがあります: data=%(data)s"
 
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "ボリュームの管理中にエラーが発生しました: %s。"
-
-#, python-format
-msgid ""
-"Error modifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"サービス %(service)s の変更中にエラーが発生しました。戻りコード: "
-"%(ret.status)d、メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error moving volume: %(vol)s from source project: %(src)s to target project: "
-"%(tgt)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"ソースプロジェクト: %(src)s からターゲットプロジェクト: %(tgt)s へのボリュー"
-"ム: %(vol)s の移動中にエラーが発生しました。戻りコード: %(ret.status)d メッ"
-"セージ: %(ret.data)s。 "
 
 msgid "Error not a KeyError."
 msgstr "KeyError ではなくエラーです。"
@@ -1909,38 +1595,6 @@ msgstr "ボリューム %(vol)s の名前を変更中にエラーが発生しま
 
 msgid "Error retrieving volume size"
 msgstr "ボリュームサイズの抽出でエラーが発生しました"
-
-#, python-format
-msgid ""
-"Error sending replication update for action id: %(id)s . Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"アクション ID: %(id)s のレプリケーション更新の送信中にエラーが発生しました。"
-"戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error sending replication update. Returned error: %(err)s. Action: %(id)s."
-msgstr ""
-"レプリケーション更新の送信中にエラーが発生しました。戻されたエラー: %(err)s。"
-"アクション: %(id)s。"
-
-#, python-format
-msgid ""
-"Error setting replication inheritance to %(set)s for volume: %(vol)s project "
-"%(project)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"ボリューム: %(vol)s プロジェクト %(project)s の %(set)s へのレプリケーション"
-"継承の設定中にエラーが発生しました。戻りコード: %(ret.status)d メッセージ: "
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error severing the package: %(package)s from source: %(src)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"ソース: %(src)s からのパッケージ: %(package)s の提供中にエラーが発生しまし"
-"た。戻りコード: %(ret.status)d メッセージ: %(ret.data)s。"
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -2104,10 +1758,6 @@ msgstr "FC がプロトコルですが、wwpns が OpenStack によって提供�
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "%(volume)s の割り当て解除に失敗しました"
-
-#, python-format
-msgid "Fail to create cache volume %(volume)s. Error: %(err)s"
-msgstr "キャッシュボリューム %(volume)s の作成に失敗しました。エラー: %(err)s"
 
 #, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
@@ -2398,12 +2048,6 @@ msgstr "%s という名前のグループスナップショットが見つかり
 #, python-format
 msgid "Failed to find host %s."
 msgstr "ホスト %s を見つけることに失敗しました。"
-
-#, python-format
-msgid "Failed to find iSCSI initiator group containing %(initiator)s."
-msgstr ""
-"%(initiator)s を含む  iSCSI イニシエーターグループを見つけることに失敗しまし"
-"た。"
 
 #, python-format
 msgid "Failed to get LUN target details for the LUN %s"
@@ -4317,10 +3961,6 @@ msgstr "許可されていません。"
 msgid "Not enough space on backend (%(backend)s)"
 msgstr "バックエンド容量が不十分です (%(backend)s)"
 
-msgid "Not enough storage space in the ZFS share to perform this operation."
-msgstr ""
-"この操作を実行するために十分なストレージスペースが ZFS 共有にありません。"
-
 msgid "Not stored in rbd"
 msgstr "rbd 内に保管されていません。"
 
@@ -4572,16 +4212,6 @@ msgstr "参照には source-name または source-id が含まれていなけれ
 
 msgid "Reference must contain source-name."
 msgstr "参照には source-name が含まれていなければなりません。"
-
-msgid "Reference to volume to be managed must contain source-name."
-msgstr ""
-"管理対象のボリュームへの参照には source-name が含まれていなければなりません。"
-
-#, python-format
-msgid "Reference to volume: %s to be managed must contain source-name."
-msgstr ""
-"管理対象のボリューム: %s への参照には source-name が含まれていなければなりま"
-"せん。"
 
 #, python-format
 msgid ""
@@ -5127,14 +4757,6 @@ msgstr ""
 "GPFS ファイルシステム %(fs)s は必要なリリースレベルに達していません。現在のレ"
 "ベルは %(cur)s です。%(min)s 以上は必要です。"
 
-#, python-format
-msgid ""
-"The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s, "
-"Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
-msgstr ""
-"WebDAV 要求が失敗しました。理由: %(msg)s、戻りコード/理由: %(code)s、ソースボ"
-"リューム: %(src)s、宛先ボリューム: %(dst)s、メソッド: %(method)s。"
-
 msgid ""
 "The above error may show that the database has not been created.\n"
 "Please create a database using 'cinder-manage db sync' before running this "
@@ -5253,9 +4875,6 @@ msgid ""
 msgstr ""
 "このスナップショットの親は、削除中やアクションの取り消し中などの理由で、オリ"
 "ジナルのものではありません。このため、このスナップショットは管理できません。"
-
-msgid "The source volume for this WebDAV operation not found."
-msgstr "この WebDAV 操作のソースボリュームが見つかりません。"
 
 #, python-format
 msgid ""
@@ -5821,34 +5440,6 @@ msgid "Unknown action"
 msgstr "不明なアクション"
 
 #, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, Set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"管理対象のボリューム: %s がすでに Cinder によって管理されている場合は不明で"
-"す。ボリュームの管理を中止します。 'cinder_managed' カスタムスキーマプロパ"
-"ティーをそのボリュームに追加し、その値を False に設定してください。あるいは、"
-"Cinder の設定ポリシーの値 'zfssa_manage_policy' を 'loose' に変更してこの制限"
-"を取り除きます。"
-
-#, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"管理対象のボリューム: %s がすでに Cinder によって管理されている場合は不明で"
-"す。ボリュームの管理を中止します。 'cinder_managed' カスタムスキーマプロパ"
-"ティーをそのボリュームに追加し、その値を False に設定してください。あるいは、"
-"Cinder の設定ポリシーの値 'zfssa_manage_policy' を 'loose' に変更してこの制限"
-"を取り除きます。"
-
-#, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "不明またはサポートされないコマンド (%(cmd)s) です。"
 
@@ -5965,9 +5556,6 @@ msgstr "ユーザー ID"
 
 msgid "User does not have admin privileges"
 msgstr "ユーザーに管理者特権がありません。"
-
-msgid "User not authorized to perform WebDAV operations."
-msgstr "ユーザーは WebDAV 操作の実行が許可されていません。"
 
 msgid "User not permitted to query Data ONTAP volumes."
 msgstr "ユーザーには Data ONTAP ボリュームの照会が許可されていません。"
@@ -6133,10 +5721,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "ボリューム %s がアレイに存在しません。"
-
-#, python-format
-msgid "Volume %s doesn't exist on the ZFSSA backend."
-msgstr "ボリューム %s が ZFSSA バックエンドに存在しません。"
 
 #, python-format
 msgid ""
@@ -6421,10 +6005,6 @@ msgstr "ボリューム種別名を空にすることはできません"
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "名前 %(volume_type_name)s を持つボリューム種別が見つかりませんでした。"
-
-#, python-format
-msgid "Volume: %s is already being managed by Cinder."
-msgstr "ボリューム: %s はすでに Cinder によって管理されています。"
 
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
@@ -7342,13 +6922,6 @@ msgstr "割り当てられたグループスナップショット"
 msgid "group_type_id cannot be None"
 msgstr "group_type_id を None に設定することはできません。"
 
-msgid ""
-"http service may have been abruptly disabled or put to maintenance state in "
-"the middle of this operation."
-msgstr ""
-"この操作の途中で HTTP サービスが急に無効または保守状態になった可能性がありま"
-"す。"
-
 msgid "id cannot be None"
 msgstr "ID を None にすることはできません。"
 
@@ -7732,11 +7305,3 @@ msgstr "割り当てられたボリューム"
 
 msgid "volumes changed"
 msgstr "変更されたボリューム"
-
-#, python-format
-msgid ""
-"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
-"value is: %s."
-msgstr ""
-"zfssa_manage_policy プロパティーは 'strict' または 'loose' に設定する必要があ"
-"ります。現在の値は %s です。"

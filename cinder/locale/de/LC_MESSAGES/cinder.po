@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-10-03 22:29+0000\n"
+"POT-Creation-Date: 2019-11-15 23:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -121,12 +121,6 @@ msgstr ""
 "werden unterstützt, tatsächlicher Modus ist %(vol_mode)s."
 
 #, python-format
-msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
-msgstr ""
-"%(service)s-Dienst befindet sich nicht %(status)s auf der Speicher-"
-"Appliance: %(host)s"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -199,10 +193,6 @@ msgstr "%s muss ein gültiges raw- oder qcow2-Abbild sein."
 #, python-format
 msgid "%s must be an absolute path."
 msgstr "%s muss ein absoluter Pfad sein."
-
-#, python-format
-msgid "%s not set in cinder.conf"
-msgstr "%s in cinder.conf nicht festgelegt."
 
 #, python-format
 msgid "%s not set."
@@ -538,12 +528,6 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) ist im Array nicht vorhanden."
 
-#, python-format
-msgid "Cache volume %s does not have required properties"
-msgstr ""
-"Der Zwischenspeicherdatenträger %s hat nicht die erforderlichen "
-"Eigenschaften."
-
 msgid "Can not add FC port to host."
 msgstr "FC-Port kann nicht zu Host hinzugefügt werden."
 
@@ -683,10 +667,6 @@ msgstr ""
 "VF-Kontext kann nicht geändert werden. Die angegebene VF ist nicht in der "
 "Liste der verwaltbaren VFs %(vf_list)s enthalten."
 
-#, python-format
-msgid "Cannot create directory %s."
-msgstr "Verzeichnis %s kann nicht erstellt werden."
-
 msgid "Cannot create encryption specs. Volume type in use."
 msgstr ""
 "Verschlüsselungsspezifikationen können nicht erstellt werden. Datenträgertyp "
@@ -710,24 +690,6 @@ msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "volume_type mit dem Namen %(name)s und der Spezifikation %(extra_specs)s "
 "kann nicht erstellt werden."
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)d volume instances."
-msgstr ""
-"Zwischenspeicherdatenträger %(cachevol_name)s kann nicht gelöscht werden. Er "
-"wurde am %(updated_at)s aktualisiert und enthält zurzeit %(numclones)d "
-"Datenträgerinstanzen."
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)s volume instances."
-msgstr ""
-"Der Zwischenspeicherdatenträger %(cachevol_name)s kann nicht gelöscht "
-"werden. Er wurde am %(updated_at)s aktualisiert und enthält zurzeit "
-"%(numclones)s Datenträgerinstanzen."
 
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr ""
@@ -801,11 +763,6 @@ msgstr ""
 "Durch die Änderung wäre die Nutzung kleiner als 0 für die folgenden "
 "Ressourcen: %(unders)s"
 
-msgid "Check access permissions for the ZFS share assigned to this driver."
-msgstr ""
-"Prüfen Sie die Zugriffsberechtigungen für die diesem Treiber zugeordneten "
-"freigegebenen ZFS-Verzeichnisse."
-
 msgid "Check hostgroup associate error."
 msgstr "Fehler beim Prüfen der Hostgruppenzuordnung."
 
@@ -820,13 +777,6 @@ msgstr "Fehler beim Prüfen der LUN-Gruppenzuordnung."
 
 msgid "Check portgroup associate error."
 msgstr "Fehler beim Prüfen der Portgruppenzuordnung."
-
-msgid ""
-"Check the state of the http service. Also ensure that the https port number "
-"is the same as the one specified in cinder.conf."
-msgstr ""
-"Prüfen Sie den Zustand des http-Diensts. Stellen Sie auch sicher, dass die "
-"https-Portnummer der in cinder.conf angegebenen Portnummer entspricht."
 
 msgid "Chunk size is not multiple of block size for creating hash."
 msgstr ""
@@ -871,12 +821,6 @@ msgstr "Compute-Cluster: %(cluster)s nicht gefunden."
 
 msgid "Condition has no field."
 msgstr "Die Bedingung hat kein Feld."
-
-#, python-format
-msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
-msgstr ""
-"Die Konfiguration von 'max_over_subscription_ratio' ist ungültig. Muss > 0 "
-"sein: %s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "Konfigurationsfehler: dell_sc_ssn ist nicht festgelegt."
@@ -1323,203 +1267,6 @@ msgstr ""
 "Stellen Sie sicher, dass configfs an /sys/kernel/config eingehängt ist."
 
 #, python-format
-msgid ""
-"Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Clone project: %(clone_proj)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Klonen von Schattenkopie %(snapshot)s für Datenträger %(lun)s "
-"von Pool %(pool)s Projekt: %(project)s Klonprojekt: %(clone_proj)s. "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Initiator: %(initiator)s on Alias: %(alias)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Erstellen von Initiator %(initiator)s für Alias: %(alias)s "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Erstellen von Projekt %(project)s für Pool %(pool)s "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Property: %(property)s Type: %(type)s Description: "
-"%(description)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Erstellen der Eigenschaft: %(property)s Typ: %(type)s "
-"Beschreibung: %(description)s Rückgabecode: %(ret.status)d Nachricht: "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Share: %(name)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Erstellen von freigegebenem Verzeichnis %(name)s. Rückgabecode: "
-"%(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Volume: %(lun)s Size: %(size)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Erstellen von Datenträger %(lun)s Größe: %(size)s Rückgabecode: "
-"%(ret.status)d Nachricht: %(ret.data)s. "
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
-"Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Löschen von Schattenkopie %(snapshot)s für freigegebenes "
-"Verzeichnis %(share)s aus Pool %(pool)s Projekt: %(project)s  Rückgabecode: "
-"%(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Löschen von Schattenkopie %(snapshot)s für Datenträger %(lun)s "
-"aus Pool: %(pool)s Projekt: %(project)s.  Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting Volume: %(lun)s from Pool: %(pool)s, Project: %(project)s. "
-"Return code: %(ret.status)d, Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Löschen des Datenträgers %(lun)s aus Pool %(pool)s, Projekt: "
-"%(project)s. Rückgabecode: %(ret.status)d, Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting project: %(project)s on pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Löschen des Projekts: %(project)s auf Pool: %(pool)s. "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting replication action: %(id)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Löschen der Replikationsaktion: %(id)s. Rückgabecode: "
-"%(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Initiators: InitiatorGroup: %(initiatorgroup)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Abrufen von Initiatoren: InitiatorGroup: %(initiatorgroup)s "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s ."
-
-#, python-format
-msgid ""
-"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
-"%(data)s."
-msgstr ""
-"Fehler beim Abrufen der Poolstatistikdaten: Pool: %(pool)s Rückgabecode: "
-"%(status)d Nachricht: %(data)s."
-
-#, python-format
-msgid ""
-"Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Abrufen der Projektstatistiken: Pool: %(pool)s Projekt: "
-"%(project)s Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Share: %(share)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Abrufen von freigegebenem Verzeichnis %(share)s für Pool "
-"%(pool)s Projekt: %(project)s. Rückgabecode: %(ret.status)d Nachricht: "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Volume: %(lun)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Abrufen von Datenträger %(lun)s für Pool: %(pool)s Projekt: "
-"%(project)s. Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
-msgstr ""
-"Fehler bei Pooleigentümer: Eigner des Pools %(pool)s ist nicht %(host)s."
-
-#, python-format
-msgid ""
-"Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Festlegen der Eigenschaften %(props)s für Datenträger %(lun)s "
-"von Pool %(pool)s Projekt: %(project)s. Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Initiator: %(iqn)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Überprüfen von Initiator %(iqn)s Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Pool: %(pool)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Überprüfen von Pool %(pool)s Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Überprüfen von Projekt %(project)s für Pool %(pool)s "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Überprüfen des %(service)s-Diensts. Rückgabecode: %(ret.status)d "
-"Nachricht:  %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Target: %(alias)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Überprüfen von Ziel %(alias)s Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying share: %(share)s on Project: %(project)s and Pool: %(pool)s "
-"Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"Fehler beim Überprüfen von freigegebenem Verzeichnis %(share)s für Projekt "
-"%(project)s und Pool %(pool)s Rückgabecode: %(ret.status)d Nachricht: "
-"%(ret.data)s."
-
-#, python-format
 msgid "Error attempting to run %(method)s"
 msgstr "Fehler bei dem Versuch, %(method)s auszuführen."
 
@@ -1559,14 +1306,6 @@ msgstr "Fehler während Bewerteranalyse: %(reason)s"
 
 #, python-format
 msgid ""
-"Error editing share: %(share)s on Pool: %(pool)s Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Bearbeiten von freigegebenem Verzeichnis %(share)s für Pool "
-"%(pool)s. Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
 "Error enabling iSER for NetworkPortal: please ensure that RDMA is supported "
 "on your iSCSI port %(port)d on ip %(ip)s."
 msgstr ""
@@ -1595,53 +1334,13 @@ msgstr "Fehler beim Erweitern des Datenträgers: %(reason)s"
 msgid "Error finding %(name)s."
 msgstr "Fehler bei der Suche nach %(name)s."
 
-msgid ""
-"Error getting appliance version details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Abrufen der Details der Appliance-Version. Rückgabecode: %(ret."
-"status)d Nachricht: %(ret.data)s."
-
 #, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "Fehler beim Abrufen der Domänen-ID von Name %(name)s: %(id)s."
 
-msgid "Error getting initiator groups."
-msgstr "Fehler beim Abrufen von Initiatorgruppen."
-
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
 msgstr "Fehler beim Abrufen der Pool-ID von Name %(pool_name)s: %(err_msg)s."
-
-#, python-format
-msgid ""
-"Error getting replication action: %(id)s. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Abrufen der Replikationsaktion: %(id)s. Rückgabecode: "
-"%(ret.status)d Nachricht: %(ret.data)s."
-
-msgid ""
-"Error getting replication source details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Abrufen der Details der Replikationsquelle. Rückgabecode: %(ret."
-"status)d Nachricht: %(ret.data)s."
-
-msgid ""
-"Error getting replication target details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Abrufen der Details des Replikationsziels. Rückgabecode: %(ret."
-"status)d Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error getting version: svc: %(svc)s.Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Abrufen der Version: SVC: %(svc)s. Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
 
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
@@ -1650,23 +1349,6 @@ msgstr "Fehler in Antwort von SolidFire-API: Daten=%(data)s"
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "Fehler beim Verwalten des Datenträgers: %s"
-
-#, python-format
-msgid ""
-"Error modifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"Fehler beim Ändern von %(service)s-Dienst. Rückgabecode: %(ret.status)d "
-"Nachricht: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error moving volume: %(vol)s from source project: %(src)s to target project: "
-"%(tgt)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Verschieben des Datenträgers: %(vol)s von Quellenprojekt: "
-"%(src)s zu Zielprojekt: %(tgt)s Rückgabecode: %(ret.status)d Nachricht: "
-"%(ret.data)s."
 
 msgid "Error not a KeyError."
 msgstr "Fehler ist nicht vom Typ 'KeyError'."
@@ -1680,38 +1362,6 @@ msgstr "Fehler beim Umbenennen von Datenträger %(vol)s: %(err)s."
 
 msgid "Error retrieving volume size"
 msgstr "Fehler beim Abrufen der Datenträgergröße"
-
-#, python-format
-msgid ""
-"Error sending replication update for action id: %(id)s . Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Senden der Replikationsaktualisierung für Aktions-ID: %(id)s. "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s ."
-
-#, python-format
-msgid ""
-"Error sending replication update. Returned error: %(err)s. Action: %(id)s."
-msgstr ""
-"Fehler beim Senden der Replikationsaktualisierung. Zurückgegebener Fehler: "
-"%(err)s. Aktion: %(id)s."
-
-#, python-format
-msgid ""
-"Error setting replication inheritance to %(set)s for volume: %(vol)s project "
-"%(project)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Festlegen der Replikationsvererbung auf %(set)s für Datenträger: "
-"%(vol)s Projekt %(project)s Rückgabecode: %(ret.status)d Nachricht: "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error severing the package: %(package)s from source: %(src)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"Fehler beim Abtrennen des Pakets: %(package)s von Quelle: %(src)s "
-"Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s ."
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -1866,12 +1516,6 @@ msgstr ""
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "Zuordnung für %(volume)s konnte nicht aufgehoben werden."
-
-#, python-format
-msgid "Fail to create cache volume %(volume)s. Error: %(err)s"
-msgstr ""
-"Fehler beim Erstellen des Zwischenspeicherdatenträgers %(volume)s. Fehler: "
-"%(err)s"
 
 #, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
@@ -2159,10 +1803,6 @@ msgstr "Es konnte keine Gruppenschattenkopie mit dem Namen %s gefunden werden."
 #, python-format
 msgid "Failed to find host %s."
 msgstr "Host %s nicht gefunden."
-
-#, python-format
-msgid "Failed to find iSCSI initiator group containing %(initiator)s."
-msgstr "Die iSCSI-Initiatorgruppe mit %(initiator)s wurde nicht gefunden."
 
 #, python-format
 msgid "Failed to get LUN target details for the LUN %s"
@@ -3882,11 +3522,6 @@ msgstr "Nicht berechtigt."
 msgid "Not enough space on backend (%(backend)s)"
 msgstr "Nicht genug Speicherplatz im Backend (%(backend)s) vorhanden."
 
-msgid "Not enough storage space in the ZFS share to perform this operation."
-msgstr ""
-"Es ist nicht genügend Speicherplatz im freigegebenen ZFS-Verzeichnis zum "
-"Ausführen dieser Operation vorhanden."
-
 msgid "Not stored in rbd"
 msgstr "Nicht in RBD gespeichert."
 
@@ -4136,17 +3771,6 @@ msgstr "Referenz muss 'source-name' oder 'source-id' enthalten."
 
 msgid "Reference must contain source-name."
 msgstr "Referenz muss Element 'source-name' enthalten."
-
-msgid "Reference to volume to be managed must contain source-name."
-msgstr ""
-"Die Referenz auf den zu verwaltenden Datenträger muss 'source-name' "
-"enthalten."
-
-#, python-format
-msgid "Reference to volume: %s to be managed must contain source-name."
-msgstr ""
-"Die Referenz auf den zu verwaltenden Datenträger %s muss 'source-name' "
-"enthalten."
 
 #, python-format
 msgid ""
@@ -4603,15 +4227,6 @@ msgstr ""
 "Das GPFS-Dateisystem %(fs)s ist nicht auf dem erforderlichen Releasestand. "
 "Aktueller Stand ist %(cur)s, er muss aber mindestens %(min)s sein."
 
-#, python-format
-msgid ""
-"The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s, "
-"Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
-msgstr ""
-"Die WebDAV-Anforderung ist fehlgeschlagen. Ursache: %(msg)s, Rückgabecode/"
-"Ursache: %(code)s, Quellendatenträger: %(src)s, Zieldatenträger: %(dst)s, "
-"Methode: %(method)s."
-
 msgid ""
 "The above error may show that the database has not been created.\n"
 "Please create a database using 'cinder-manage db sync' before running this "
@@ -4707,10 +4322,6 @@ msgstr ""
 #, python-format
 msgid "The snapshot is unavailable: %(data)s"
 msgstr "Die Schattenkopie ist nicht verfügbar: %(data)s"
-
-msgid "The source volume for this WebDAV operation not found."
-msgstr ""
-"Der Quellendatenträger für diese WebDAV-Operation wurde nicht gefunden."
 
 #, python-format
 msgid ""
@@ -5224,36 +4835,6 @@ msgid "Unknown action"
 msgstr "Unbekannte Aktion"
 
 #, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, Set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"Es ist nicht bekannt, ob der zu verwaltende Datenträger %s bereits von "
-"Cinder verwaltet wird. Verwalten des Datenträgers wird abgebrochen. Fügen "
-"Sie dem Datenträger die angepasste Schemaeigenschaft 'cinder_managed' hinzu "
-"und setzen Sie den zugehörigen Wert auf 'False'. Alternativ können Sie den "
-"Wert der Cinder-Konfigurationsrichtlinie 'zfssa_manage_policy' auf 'loose' "
-"setzen, um diese Einschränkung zu entfernen."
-
-#, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"Es ist nicht bekannt, ob der zu verwaltende Datenträger %s bereits von "
-"Cinder verwaltet wird. Verwalten des Datenträgers wird abgebrochen. Fügen "
-"Sie dem Datenträger die angepasste Schemaeigenschaft 'cinder_managed' hinzu "
-"und setzen Sie den zugehörigen Wert auf 'False'. Alternativ können Sie den "
-"Wert der Cinder-Konfigurationsrichtlinie 'zfssa_manage_policy' auf 'loose' "
-"setzen, um diese Einschränkung zu entfernen."
-
-#, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "Unbekannter oder nicht unterstützter Befehl %(cmd)s"
 
@@ -5366,10 +4947,6 @@ msgstr "Benutzer-ID"
 
 msgid "User does not have admin privileges"
 msgstr "Benutzer hat keine Admin-Berechtigungen."
-
-msgid "User not authorized to perform WebDAV operations."
-msgstr ""
-"Der Benutzer ist zum Ausführen von WebDAV-Operationen nicht berechtigt."
 
 msgid "UserName is not configured."
 msgstr "UserName ist nicht konfiguriert."
@@ -5525,10 +5102,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "Der Datenträger %s ist im Array nicht vorhanden. "
-
-#, python-format
-msgid "Volume %s doesn't exist on the ZFSSA backend."
-msgstr "Der Datenträger %s ist nicht im ZFSSA-Backend vorhanden."
 
 #, python-format
 msgid ""
@@ -5791,10 +5364,6 @@ msgstr "Name des Datenträgertyps darf nicht leer sein."
 msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr ""
 "Datenträgertyp mit dem Namen %(volume_type_name)s wurde nicht gefunden."
-
-#, python-format
-msgid "Volume: %s is already being managed by Cinder."
-msgstr "Der Datenträger %s wird bereits von Cinder verwaltet."
 
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
@@ -6631,13 +6200,6 @@ msgstr ""
 "gpfs_images_share_mode wurde als copy_on_write festgelegt, aber %(vol)s und "
 "%(img)s gehören zu anderen Dateigruppen."
 
-msgid ""
-"http service may have been abruptly disabled or put to maintenance state in "
-"the middle of this operation."
-msgstr ""
-"Der http-Dienst wurde möglicherweise mitten in dieser Operation unerwartet "
-"inaktiviert oder in den Wartungsmodus versetzt."
-
 msgid "id cannot be None"
 msgstr "ID darf nicht 'None' sein."
 
@@ -6935,11 +6497,3 @@ msgstr "Datenträger zugeordnet"
 
 msgid "volumes changed"
 msgstr "Datenträger geändert"
-
-#, python-format
-msgid ""
-"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
-"value is: %s."
-msgstr ""
-"Die Eigenschaft 'zfssa_manage_policy' muss auf 'strict' oder 'loose' gesetzt "
-"sein. Aktueller Wert: %s."

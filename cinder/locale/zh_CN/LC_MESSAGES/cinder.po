@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-10-03 22:29+0000\n"
+"POT-Creation-Date: 2019-11-15 23:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -130,10 +130,6 @@ msgstr ""
 "映像或文件备份，实际方式为 %(vol_mode)s。"
 
 #, python-format
-msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
-msgstr "在以下存储设备上，%(service)s 服务并非处于 %(status)s 状态：%(host)s"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr "%(workers)d 的 %(worker_name)s 值无效，必须大于 0。"
@@ -204,10 +200,6 @@ msgstr "%s 必须为有效的 raw 映像或 qcow2 映像。"
 #, python-format
 msgid "%s must be an absolute path."
 msgstr "%s 必须为绝对路径。"
-
-#, python-format
-msgid "%s not set in cinder.conf"
-msgstr "cinder.conf 中未设置 %s"
 
 #, python-format
 msgid "%s not set."
@@ -542,10 +534,6 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "数组中不存在 CPG (%s)"
 
-#, python-format
-msgid "Cache volume %s does not have required properties"
-msgstr "高速缓存卷 %s 没有必需属性。"
-
 msgid "Can not add FC port to host."
 msgstr "无法将 FC 端口添加至主机。"
 
@@ -695,10 +683,6 @@ msgid ""
 "list %(vf_list)s."
 msgstr "无法更改 VF 上下文，指定的 VF 在管理 VF 列表 %(vf_list)s 中不可用。"
 
-#, python-format
-msgid "Cannot create directory %s."
-msgstr "无法创建目录 %s。"
-
 msgid "Cannot create encryption specs. Volume type in use."
 msgstr "无法创建加密规范。卷类型在使用中。"
 
@@ -734,22 +718,6 @@ msgstr "无法创建大小为 %s 的卷：该大小不是 8GB 的倍数。"
 #, python-format
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr "无法创建名称为 %(name)s 规格为 %(extra_specs)s 的卷类型。"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)d volume instances."
-msgstr ""
-"无法删除高速缓存卷：%(cachevol_name)s。在 %(updated_at)s 对其进行了更新，它当"
-"前具有 %(numclones)d 卷实例。"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)s volume instances."
-msgstr ""
-"无法删除高速缓存卷：%(cachevol_name)s。在 %(updated_at)s 对其进行了更新，它当"
-"前具有 %(numclones)s 卷实例。"
 
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "无法删除加密规范。卷类型在使用中。"
@@ -847,9 +815,6 @@ msgid ""
 "Change would make usage less than 0 for the following resources: %(unders)s"
 msgstr "对于下列资源，更改将导致使用量小于 0：%(unders)s"
 
-msgid "Check access permissions for the ZFS share assigned to this driver."
-msgstr "请检查分配给此驱动程序的 ZFS 共享项的访问许可权。"
-
 msgid "Check hostgroup associate error."
 msgstr "检查主机组关联时发生错误。"
 
@@ -864,13 +829,6 @@ msgstr "检查 LUN 组关联时发生错误。"
 
 msgid "Check portgroup associate error."
 msgstr "检查端口组关联时发生错误。"
-
-msgid ""
-"Check the state of the http service. Also ensure that the https port number "
-"is the same as the one specified in cinder.conf."
-msgstr ""
-"请检查 HTTP 服务的状态。另外，请确保 HTTPS 端口号与 cinder.conf 中指定的 "
-"HTTPS 端口号相同。"
 
 msgid "Chunk size is not multiple of block size for creating hash."
 msgstr "区块大小不是用于创建散列的块大小的倍数。"
@@ -922,10 +880,6 @@ msgstr "找不到计算集群 %(cluster)s。"
 
 msgid "Condition has no field."
 msgstr "条件没有任何字段。"
-
-#, python-format
-msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
-msgstr "配置“max_over_subscription_ratio”无效。必须大于 0：%s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "配置错误：未设置 dell_sc_ssn。"
@@ -1357,185 +1311,6 @@ msgstr "启用复制。"
 msgid "Ensure that configfs is mounted at /sys/kernel/config."
 msgstr "请确保 configfs 安装在 /sys/kernel/config 处。"
 
-#, python-format
-msgid ""
-"Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Clone project: %(clone_proj)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在池 %(pool)s 的卷 %(lun)s 上克隆快照 %(snapshot)s 时出错。项目：%(project)s "
-"克隆项目：%(clone_proj)s返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Initiator: %(initiator)s on Alias: %(alias)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"对别名 %(alias)s 创建发起方 %(initiator)s 时出错。返回码：%(ret.status)d 消"
-"息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"在池 %(pool)s 上创建项目 %(project)s 时出错。返回码：%(ret.status)d 消息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Property: %(property)s Type: %(type)s Description: "
-"%(description)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"创建属性 %(property)s、类型 %(type)s 和描述 %(description)s 时出错。返回码："
-"%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Share: %(name)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"创建共享项 %(name)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Volume: %(lun)s Size: %(size)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"创建大小为 %(size)s 的卷 %(lun)s 时出错。返回码：%(ret.status)d消息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
-"Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在共享项 %(share)s 上对池 %(pool)s 删除快照 %(snapshot)s 时出错。项目："
-"%(project)s 返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在卷 %(lun)s 上对池 %(pool)s 删除快照 %(snapshot)s 时出错。项目：%(project)s "
-"返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Volume: %(lun)s from Pool: %(pool)s, Project: %(project)s. "
-"Return code: %(ret.status)d, Message: %(ret.data)s."
-msgstr ""
-"从池 %(pool)s 中删除卷 %(lun)s 时出错，项目：%(project)s。返回码："
-"%(ret.status)d，消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting project: %(project)s on pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"删除池 %(pool)s 上的项目 %(project)s 时出错。返回码：%(ret.status)d 消息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting replication action: %(id)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"删除复制操作 %(id)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Initiators: InitiatorGroup: %(initiatorgroup)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"获取发起方时出错：发起方组为 %(initiatorgroup)s，返回码为 %(ret.status)d 消"
-"息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
-"%(data)s."
-msgstr "获取池统计信息时出错：池：%(pool)s 返回码：%(status)d 消息：%(data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"获取项目状态时出错：池：%(pool)s 项目：%(project)s返回码：%(ret.status)d 消"
-"息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Share: %(share)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在池 %(pool)s 上获取共享项 %(share)s 时出错。项目：%(project)s 返回码："
-"%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Volume: %(lun)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在池 %(pool)s 上获取卷 %(lun)s 时出错。项目：%(project)s 返回码："
-"%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
-msgstr "池所有权出错：池 %(pool)s 并非归 %(host)s 所有。"
-
-#, python-format
-msgid ""
-"Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在池 %(pool)s 的卷 %(lun)s 上设置属性 Props %(props)s 时出错。项目："
-"%(project)s 返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Initiator: %(iqn)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"验证启动程序 %(iqn)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Pool: %(pool)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr "验证池 %(pool)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在池 %(pool)s 上验证项目 %(project)s 时出错。返回码：%(ret.status)d，消息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"验证服务 %(service)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Target: %(alias)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr "验证目标 %(alias)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying share: %(share)s on Project: %(project)s and Pool: %(pool)s "
-"Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在项目 %(project)s 和池 %(pool)s 上验证共享项 %(share)s 时出错。返回码为 "
-"%(ret.status)d，消息为 %(ret.data)s。"
-
 msgid "Error connecting to ceph cluster."
 msgstr "连接至 ceph 集群时出错。"
 
@@ -1561,14 +1336,6 @@ msgstr "删除卷 %(vol)s 时出错：%(err)s。"
 #, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "在评估程序解析期间，发生错误：%(reason)s"
-
-#, python-format
-msgid ""
-"Error editing share: %(share)s on Pool: %(pool)s Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"在池 %(pool)s 上编辑共享项 %(share)s 时出错。返回码：%(ret.status)d，消息："
-"%(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -1598,47 +1365,13 @@ msgstr "扩展卷时出错：%(reason)s"
 msgid "Error finding %(name)s."
 msgstr "查找 %(name)s 时出错。"
 
-msgid ""
-"Error getting appliance version details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"获取设备版本详细信息时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
 #, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "从名称 %(name)s 中获取域标识 %(id)s 时出错。"
 
-msgid "Error getting initiator groups."
-msgstr "获取发起方组时，发生错误。"
-
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
 msgstr "从名称 %(pool_name)s 中获取池标识时出错：%(err_msg)s。"
-
-#, python-format
-msgid ""
-"Error getting replication action: %(id)s. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"获取复制操作 %(id)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-msgid ""
-"Error getting replication source details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr "获取复制源详细信息时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-msgid ""
-"Error getting replication target details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"获取复制目标详细信息时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error getting version: svc: %(svc)s.Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"获取版本时出错：svc：%(svc)s。返回码：%(ret.status)d 消息：%(ret.data)s。"
 
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
@@ -1647,21 +1380,6 @@ msgstr "SolidFire API响应里发生错误：data=%(data)s"
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "管理卷 %s 时出错。"
-
-#, python-format
-msgid ""
-"Error modifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"修改服务 %(service)s 时出错。返回码：%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error moving volume: %(vol)s from source project: %(src)s to target project: "
-"%(tgt)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"将卷 %(vol)s 从源项目 %(src)s 移至目标项目 %(tgt)s 时出错。返回码："
-"%(ret.status)d 消息：%(ret.data)s。"
 
 msgid "Error not a KeyError."
 msgstr "错误并非 KeyError。"
@@ -1691,35 +1409,6 @@ msgstr "重命名卷 %(vol)s 时出错：%(err)s。"
 
 msgid "Error retrieving volume size"
 msgstr "检索卷大小时出错"
-
-#, python-format
-msgid ""
-"Error sending replication update for action id: %(id)s . Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"为操作标识 %(id)s 发送复制更新时出错。返回码：%(ret.status)d 消息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error sending replication update. Returned error: %(err)s. Action: %(id)s."
-msgstr "发送复制更新时出错。所返回的错误：%(err)s。操作：%(id)s。"
-
-#, python-format
-msgid ""
-"Error setting replication inheritance to %(set)s for volume: %(vol)s project "
-"%(project)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"对于卷 %(vol)s，将复制继承设置为 %(set)s 时出错。项目：%(project)s 返回码："
-"%(ret.status)d 消息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error severing the package: %(package)s from source: %(src)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"从源 %(src)s 分割软件包 %(package)s 时出错。返回码：%(ret.status)d 消息："
-"%(ret.data)s。"
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -1864,10 +1553,6 @@ msgstr "FC 为协议，但 OpenStack 未提供 wwpns。"
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "无法取消分配 %(volume)s"
-
-#, python-format
-msgid "Fail to create cache volume %(volume)s. Error: %(err)s"
-msgstr "未能创建高速缓存卷 %(volume)s。错误：%(err)s"
 
 #, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
@@ -2129,10 +1814,6 @@ msgstr "找不到名为 %s 的组快照"
 #, python-format
 msgid "Failed to find host %s."
 msgstr "未能找到主机 %s。"
-
-#, python-format
-msgid "Failed to find iSCSI initiator group containing %(initiator)s."
-msgstr "找不到包含 %(initiator)s 的 iSCSI 启动程序组。"
 
 #, python-format
 msgid "Failed to get LUN target details for the LUN %s"
@@ -3794,9 +3475,6 @@ msgstr "未授权。"
 msgid "Not enough space on backend (%(backend)s)"
 msgstr "后端 (%(backend)s) 上没有足够的空间"
 
-msgid "Not enough storage space in the ZFS share to perform this operation."
-msgstr "ZFS 共享项中的存储空间不足，无法执行此操作。"
-
 msgid "Not stored in rbd"
 msgstr "未存储在 rbd 中"
 
@@ -4016,13 +3694,6 @@ msgstr "引用必须包含 source-name 或 source-id。"
 
 msgid "Reference must contain source-name."
 msgstr "引用必须包含源名称。"
-
-msgid "Reference to volume to be managed must contain source-name."
-msgstr "对要管理的卷的引用必须包含 source-name。"
-
-#, python-format
-msgid "Reference to volume: %s to be managed must contain source-name."
-msgstr "对要管理的卷 %s 的引用必须包含 source-name。"
 
 #, python-format
 msgid ""
@@ -4477,14 +4148,6 @@ msgstr ""
 "GPFS 文件系统 %(fs)s 未处于所要求的发行版级别。当前级别为 %(cur)s，而要求的级"
 "别必须至少为 %(min)s。"
 
-#, python-format
-msgid ""
-"The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s, "
-"Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
-msgstr ""
-"WebDAV 请求失败。原因为 %(msg)s，返回码/原因码为 %(code)s，源卷为 %(src)s，目"
-"标卷为 %(dst)s，方法为 %(method)s。"
-
 msgid ""
 "The above error may show that the database has not been created.\n"
 "Please create a database using 'cinder-manage db sync' before running this "
@@ -4573,9 +4236,6 @@ msgstr "当卷处于维护方式时，无法创建快照。"
 #, python-format
 msgid "The snapshot is unavailable: %(data)s"
 msgstr "快照不可用:%(data)s"
-
-msgid "The source volume for this WebDAV operation not found."
-msgstr "找不到此 WebDAV 操作的源卷。"
 
 #, python-format
 msgid ""
@@ -5035,30 +4695,6 @@ msgid "Unknown action"
 msgstr "操作未知"
 
 #, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, Set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"不知道要管理的卷 %s 是否已由 Cinder 管理。正在异常中止管理卷。请"
-"将“cinder_managed”定制模式属性添加至该卷，并将其值设置为 False。或者，将 "
-"Cinder 配置策略“zfssa_manage_policy”的值设置为“loose”以移除此限制。"
-
-#, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"不知道要管理的卷 %s 是否已由 Cinder 管理。正在异常中止管理卷。请"
-"将“cinder_managed”定制模式属性添加至该卷，并将其值设置为 False。或者，将 "
-"Cinder 配置策略“zfssa_manage_policy”的值设置为“loose”以移除此限制。"
-
-#, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "命令 %(cmd)s 未知或不受支持"
 
@@ -5163,9 +4799,6 @@ msgstr "用户ID"
 
 msgid "User does not have admin privileges"
 msgstr "用户没有管理员权限"
-
-msgid "User not authorized to perform WebDAV operations."
-msgstr "用户无权执行 WebDAV 操作。"
 
 msgid "UserName is not configured."
 msgstr "未配置 UserName。"
@@ -5314,10 +4947,6 @@ msgstr "卷 %s 没有指定 provider_location，正在跳过。"
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "卷 %s 在阵列上不存在。"
-
-#, python-format
-msgid "Volume %s doesn't exist on the ZFSSA backend."
-msgstr "卷 %s 在 ZFSSA 后端上不存在。"
 
 #, python-format
 msgid ""
@@ -5559,10 +5188,6 @@ msgstr "卷类型名称不能为 空."
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "名为 %(volume_type_name)s 的卷类型没有找到。"
-
-#, python-format
-msgid "Volume: %s is already being managed by Cinder."
-msgstr "卷 %s 已由 Cinder 管理。"
 
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
@@ -6388,11 +6013,6 @@ msgstr "已分配组快照"
 msgid "group_type_id cannot be None"
 msgstr "group_type_id 不能为None"
 
-msgid ""
-"http service may have been abruptly disabled or put to maintenance state in "
-"the middle of this operation."
-msgstr "HTTP 服务可能已突然禁用，或在此操作的中途进入维护状态。"
-
 msgid "id cannot be None"
 msgstr "id不能是None"
 
@@ -6684,9 +6304,3 @@ msgstr "已分配卷"
 
 msgid "volumes changed"
 msgstr "已更改卷"
-
-#, python-format
-msgid ""
-"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
-"value is: %s."
-msgstr "zfssa_manage_policy 属性需要设置为“strict”或“loose”。当前值为：%s。"

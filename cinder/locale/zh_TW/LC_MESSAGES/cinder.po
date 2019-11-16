@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-10-03 22:29+0000\n"
+"POT-Creation-Date: 2019-11-15 23:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -108,10 +108,6 @@ msgstr ""
 "映像檔或檔案備份，實際模式為%(vol_mode)s。"
 
 #, python-format
-msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
-msgstr "%(service)s 服務在儲存體軟體驅動裝置 %(host)s 上不是處於 %(status)s"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr "%(workers)d 的 %(worker_name)s 值無效，必須大於 0。"
@@ -174,10 +170,6 @@ msgstr "%s 必須是有效的原始映像檔或 qcow2 映像檔。"
 #, python-format
 msgid "%s must be an absolute path."
 msgstr "%s 必須是絕對路徑。"
-
-#, python-format
-msgid "%s not set in cinder.conf"
-msgstr "%s 未在 cinder.conf 中設定"
 
 #, python-format
 msgid "%s not set."
@@ -469,10 +461,6 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "陣列上不存在 CPG (%s)"
 
-#, python-format
-msgid "Cache volume %s does not have required properties"
-msgstr "快取磁區 %s 沒有必需的內容"
-
 msgid "Can not add FC port to host."
 msgstr "無法將 FC 埠新增至主機。"
 
@@ -583,10 +571,6 @@ msgid ""
 msgstr ""
 "無法變更 VF 環境定義，在可管理的 VF 清單 %(vf_list)s 中無法使用指定的 VF。"
 
-#, python-format
-msgid "Cannot create directory %s."
-msgstr "無法建立目錄 %s。"
-
 msgid "Cannot create encryption specs. Volume type in use."
 msgstr "無法建立加密規格。磁區類型在使用中。"
 
@@ -602,22 +586,6 @@ msgstr "無法建立大小為 %s 的磁區：不是 8 GB 的倍數。"
 #, python-format
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr "無法使用名稱 %(name)s 及規格 %(extra_specs)s 來建立 volume_type"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)d volume instances."
-msgstr ""
-"無法刪除快取磁區：%(cachevol_name)s。該快取磁區已在 %(updated_at)s 得到更新，"
-"且目前具有 %(numclones)d 個磁區實例。"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)s volume instances."
-msgstr ""
-"無法刪除快取磁區：%(cachevol_name)s。該快取磁區已在 %(updated_at)s 得到更新，"
-"且目前具有 %(numclones)s 個磁區實例。"
 
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "無法刪除加密規格。磁區類型在使用中。"
@@ -681,9 +649,6 @@ msgid ""
 "Change would make usage less than 0 for the following resources: %(unders)s"
 msgstr "變更會使下列資源的用量小於 0：%(unders)s"
 
-msgid "Check access permissions for the ZFS share assigned to this driver."
-msgstr "請檢查指派給此驅動程式之 ZFS 共用的存取權限。"
-
 msgid "Check hostgroup associate error."
 msgstr "檢查主機群組關聯時發生錯誤。"
 
@@ -698,12 +663,6 @@ msgstr "檢查 LUN 群組關聯時發生錯誤。"
 
 msgid "Check portgroup associate error."
 msgstr "檢查埠群組關聯時發生錯誤。"
-
-msgid ""
-"Check the state of the http service. Also ensure that the https port number "
-"is the same as the one specified in cinder.conf."
-msgstr ""
-"請檢查 HTTP 服務的狀態。同時確保 HTTPS 埠號與 cinder.conf 中指定的埠號相同。"
 
 msgid "Chunk size is not multiple of block size for creating hash."
 msgstr "片段大小不是用於建立雜湊之區塊大小的倍數。"
@@ -737,10 +696,6 @@ msgstr "找不到計算叢集：%(cluster)s。"
 
 msgid "Condition has no field."
 msgstr "條件不含任何欄位。"
-
-#, python-format
-msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
-msgstr "配置 'max_over_subscription_ratio' 無效。必需大於 0：%s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "配置錯誤：未設定 dell_sc_ssn。"
@@ -1145,190 +1100,6 @@ msgstr "啟用抄寫。"
 msgid "Ensure that configfs is mounted at /sys/kernel/config."
 msgstr "請確保 configfs 已裝載於 /sys/kernel/config 中。"
 
-#, python-format
-msgid ""
-"Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Clone project: %(clone_proj)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在儲存區 %(pool)s 的磁區 %(lun)s 上複製 Snapshot：%(snapshot)s 時發生錯誤專"
-"案：%(project)s，副本專案：%(clone_proj)s，回覆碼：%(ret.status)d。訊息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Initiator: %(initiator)s on Alias: %(alias)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"在別名 %(alias)s 上建立起始器 %(initiator)s 時發生錯誤。回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"在儲存區 %(pool)s 上建立專案 %(project)s 時發生錯誤。回覆碼：%(ret.status)d。"
-"訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Property: %(property)s Type: %(type)s Description: "
-"%(description)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"建立內容 %(property)s 類型 %(type)s 說明%(description)s 時發生錯誤。回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Share: %(name)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"建立共用 %(name)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Creating Volume: %(lun)s Size: %(size)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"建立磁區 %(lun)s 時發生錯誤。大小：%(size)s。回覆碼：%(ret.status)d。訊息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
-"Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在下列儲存區的共用 %(share)s 上刪除 Snapshot %(snapshot)s 時發生錯誤："
-"%(pool)s 專案：%(project)s 回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在下列儲存區的磁區 %(lun)s 上刪除 Snapshot：%(snapshot)s 時發生錯誤："
-"%(pool)s 專案：%(project)s  回覆碼：%(ret.status)d 訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Volume: %(lun)s from Pool: %(pool)s, Project: %(project)s. "
-"Return code: %(ret.status)d, Message: %(ret.data)s."
-msgstr ""
-"從儲存區 %(pool)s 刪除磁區 %(lun)s 時發生錯誤，專案 %(project)s。回覆碼："
-"%(ret.status)d，訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting project: %(project)s on pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"刪除儲存區 %(pool)s 上的專案 %(project)s 時發生錯誤。回覆碼：%(ret.status)d。"
-"訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Deleting replication action: %(id)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"刪除抄寫動作 %(id)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Initiators: InitiatorGroup: %(initiatorgroup)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"取得起始器時發生錯誤：InitiatorGroup：%(initiatorgroup)s 回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
-"%(data)s."
-msgstr ""
-"取得儲存區統計資料時發生錯誤：儲存區：%(pool)s，回覆碼：%(status)d，訊息："
-"%(data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"取得專案統計資料時發生錯誤：儲存區：%(pool)s，專案：%(project)s，回覆碼："
-"%(ret.status)d，訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Share: %(share)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"取得儲存區 %(pool)s 上的共用 %(share)s 時發生錯誤。專案：%(project)s回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Getting Volume: %(lun)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"取得儲存區 %(pool)s 上的磁區 %(lun)s 時發生錯誤。專案：%(project)s。回覆碼："
-"%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
-msgstr "錯誤的儲存區所有權：儲存區 %(pool)s 不歸 %(host)s 擁有。"
-
-#, python-format
-msgid ""
-"Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在儲存區 %(pool)s 的磁區 %(lun)s 上設定內容 Props：%(props)s 時發生錯誤專案："
-"%(project)s。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Initiator: %(iqn)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"驗證起始器 %(iqn)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Pool: %(pool)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"驗證儲存區 %(pool)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在儲存區 %(pool)s 上驗證專案 %(project)s 時發生錯誤。回覆碼：%(ret.status)d。"
-"訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"驗證服務 %(service)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying Target: %(alias)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"驗證目標 %(alias)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error Verifying share: %(share)s on Project: %(project)s and Pool: %(pool)s "
-"Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"在專案 %(project)s 及儲存區 %(pool)s 上驗證共用 %(share)s 時發生錯誤。回覆"
-"碼：%(ret.status)d，訊息：%(ret.data)s。"
-
 msgid "Error connecting to ceph cluster."
 msgstr "連接至 ceph 叢集時發生錯誤。"
 
@@ -1354,14 +1125,6 @@ msgstr "刪除磁區 %(vol)s 時發生錯誤：%(err)s。"
 #, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "評估器剖析期間發生錯誤：%(reason)s"
-
-#, python-format
-msgid ""
-"Error editing share: %(share)s on Pool: %(pool)s Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"編輯儲存區 %(pool)s 上的共用 %(share)s 時發生錯誤。回覆碼：%(ret.status)d。訊"
-"息：%(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -1391,49 +1154,13 @@ msgstr "延伸磁區時發生錯誤：%(reason)s"
 msgid "Error finding %(name)s."
 msgstr "尋找 %(name)s 時發生錯誤。"
 
-msgid ""
-"Error getting appliance version details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"取得軟體驅動裝置版本詳細資料時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret."
-"data)s。"
-
 #, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "從名稱 %(name)s 取得網域 ID 時發生錯誤：%(id)s。"
 
-msgid "Error getting initiator groups."
-msgstr "取得起始器群組時發生錯誤。"
-
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
 msgstr "從名稱 %(pool_name)s 取得儲存區 ID 時發生錯誤：%(err_msg)s。"
-
-#, python-format
-msgid ""
-"Error getting replication action: %(id)s. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"取得抄寫動作 %(id)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-msgid ""
-"Error getting replication source details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"取得抄寫來源詳細資料時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-msgid ""
-"Error getting replication target details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"取得抄寫目標詳細資料時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error getting version: svc: %(svc)s.Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"取得版本時發生錯誤：SVC：%(svc)s。回覆碼：%(ret.status)d 訊息：%(ret.data)s。"
 
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
@@ -1442,21 +1169,6 @@ msgstr "SolidFire API 回應發生錯誤：資料 = %(data)s"
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "管理磁區時發生錯誤：%s。"
-
-#, python-format
-msgid ""
-"Error modifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"修改服務 %(service)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error moving volume: %(vol)s from source project: %(src)s to target project: "
-"%(tgt)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"將磁區 %(vol)s 從來源專案 %(src)s 移至下列目標專案時發生錯誤：%(tgt)s。回覆"
-"碼：%(ret.status)d。訊息：%(ret.data)s。"
 
 msgid "Error not a KeyError."
 msgstr "此錯誤不是 KeyError。"
@@ -1470,35 +1182,6 @@ msgstr "重命名磁區 %(vol)s 時發生錯誤：%(err)s。"
 
 msgid "Error retrieving volume size"
 msgstr "擷取磁區大小時發生錯誤"
-
-#, python-format
-msgid ""
-"Error sending replication update for action id: %(id)s . Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"傳送動作識別碼 %(id)s 的抄寫更新時發生錯誤。回覆碼：%(ret.status)d。訊息："
-"%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error sending replication update. Returned error: %(err)s. Action: %(id)s."
-msgstr "傳送抄寫更新時發生錯誤。傳回的錯誤：%(err)s。動作：%(id)s。"
-
-#, python-format
-msgid ""
-"Error setting replication inheritance to %(set)s for volume: %(vol)s project "
-"%(project)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"針對磁區 %(vol)s，將抄寫繼承設定為 %(set)s 時發生錯誤，專案：%(project)s。回"
-"覆碼：%(ret.status)d。訊息：%(ret.data)s。"
-
-#, python-format
-msgid ""
-"Error severing the package: %(package)s from source: %(src)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"將套件 %(package)s 從來源 %(src)s 分離時發生錯誤。回覆碼：%(ret.status)d。訊"
-"息：%(ret.data)s。"
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -1636,10 +1319,6 @@ msgstr "FC 是通訊協定，但 OpenStack 未提供 WWPN。"
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "無法取消指派 %(volume)s"
-
-#, python-format
-msgid "Fail to create cache volume %(volume)s. Error: %(err)s"
-msgstr "無法建立快取磁區 %(volume)s。錯誤：%(err)s"
 
 #, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
@@ -1891,10 +1570,6 @@ msgstr "找不到名為 %s 的群組 Snapshot"
 #, python-format
 msgid "Failed to find host %s."
 msgstr "找不到主機 %s。"
-
-#, python-format
-msgid "Failed to find iSCSI initiator group containing %(initiator)s."
-msgstr "找不到包含 %(initiator)s 的 iSCSI 起始器群組。"
 
 #, python-format
 msgid "Failed to get LUN target details for the LUN %s"
@@ -3352,9 +3027,6 @@ msgstr "未被授權"
 msgid "Not enough space on backend (%(backend)s)"
 msgstr "後端 (%(backend)s) 上空間不足"
 
-msgid "Not enough storage space in the ZFS share to perform this operation."
-msgstr "ZFS 共用中的儲存體空間不足，無法執行此作業。"
-
 msgid "Not stored in rbd"
 msgstr "未儲存在 rbd 中"
 
@@ -3567,13 +3239,6 @@ msgstr "參照必須包含 source-name 或 source-id。"
 
 msgid "Reference must contain source-name."
 msgstr "參照必須包含 source-name。"
-
-msgid "Reference to volume to be managed must contain source-name."
-msgstr "對要管理之磁區的參照必需包含 source-name。"
-
-#, python-format
-msgid "Reference to volume: %s to be managed must contain source-name."
-msgstr "對要管理之磁區 %s 的參照必需包含 source-name。"
 
 #, python-format
 msgid ""
@@ -3969,14 +3634,6 @@ msgid ""
 msgstr ""
 "GPFS 檔案系統 %(fs)s 不是必要的版次。現行層次是 %(cur)s，必須至少是 %(min)s。"
 
-#, python-format
-msgid ""
-"The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s, "
-"Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
-msgstr ""
-"WebDAV 要求失敗。原因：%(msg)s，回覆碼/原因：%(code)s，來源磁區：%(src)s，目"
-"的地磁區：%(dst)s，方法：%(method)s。"
-
 msgid ""
 "The above error may show that the database has not been created.\n"
 "Please create a database using 'cinder-manage db sync' before running this "
@@ -4049,9 +3706,6 @@ msgstr "保留計數必須小於或等於 %s。"
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr "當磁區處於維護模式時，無法建立 Snapshot。"
-
-msgid "The source volume for this WebDAV operation not found."
-msgstr "找不到此 WebDAV 作業的來源磁區。"
 
 #, python-format
 msgid ""
@@ -4498,30 +4152,6 @@ msgid "Unknown action"
 msgstr "不明動作"
 
 #, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, Set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"如果要管理的磁區 %s 已經由 Cinder 進行管理，則是不明情況。正在終止管理磁區。"
-"請將 'cinder_managed' 自訂綱目內容新增至該磁區，並將它的值設為 False。或者，"
-"將 Cinder 配置原則 'zfssa_manage_policy' 的值設為 'loose'，以移除此限制。"
-
-#, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"如果要管理的磁區 %s 已經由 Cinder 進行管理，則是不明情況。正在終止管理磁區。"
-"請將 'cinder_managed' 自訂綱目內容新增至該磁區，並將它的值設為 False。或者，"
-"將 Cinder 配置原則 'zfssa_manage_policy' 的值設為 'loose'，以移除此限制。"
-
-#, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "不明或不支援的指令 %(cmd)s"
 
@@ -4615,9 +4245,6 @@ msgstr "使用者識別號"
 
 msgid "User does not have admin privileges"
 msgstr "使用者並沒有管理者權力"
-
-msgid "User not authorized to perform WebDAV operations."
-msgstr "使用者未獲授權來執行 WebDAV 作業。"
 
 msgid "UserName is not configured."
 msgstr "未配置 UserName。"
@@ -4748,10 +4375,6 @@ msgstr "沒有為磁區 %s 指定 provider_location，正在跳過。"
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "磁區 %s 不在陣列上。"
-
-#, python-format
-msgid "Volume %s doesn't exist on the ZFSSA backend."
-msgstr "磁區 %s 不存在於 ZFSSA 後端上。"
 
 #, python-format
 msgid ""
@@ -4978,10 +4601,6 @@ msgstr "磁區類型名稱不能為空。"
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "找不到名稱為 %(volume_type_name)s 的磁區類型。"
-
-#, python-format
-msgid "Volume: %s is already being managed by Cinder."
-msgstr "磁區 %s 已經由 Cinder 進行管理。"
 
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
@@ -5747,11 +5366,6 @@ msgstr ""
 "gpfs_images_share_mode 已設為 copy_on_write，但 %(vol)s 及 %(img)s 屬於不同的"
 "檔案集。"
 
-msgid ""
-"http service may have been abruptly disabled or put to maintenance state in "
-"the middle of this operation."
-msgstr "HTTP 服務可能已在執行此作業的中途意外停用或置於維護狀態。"
-
 msgid "id cannot be None"
 msgstr "ID 不能為 None"
 
@@ -6020,9 +5634,3 @@ msgstr "已指派磁區"
 
 msgid "volumes changed"
 msgstr "已變更磁區"
-
-#, python-format
-msgid ""
-"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
-"value is: %s."
-msgstr "zfssa_manage_policy 內容需要設為 'strict' 或 'loose'。現行值為：%s。"

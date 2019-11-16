@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-10-03 22:29+0000\n"
+"POT-Creation-Date: 2019-11-15 23:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -119,11 +119,6 @@ msgstr ""
 "%(vol_mode)s입니다."
 
 #, python-format
-msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
-msgstr ""
-"%(service)s 서비스가 스토리지 어플라이언스 %(host)s에서 %(status)s이(가) 아님"
-
-#, python-format
 msgid ""
 "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
@@ -199,10 +194,6 @@ msgstr "%s은(는) 유효한 원시 또는 qcow2 이미지여야 합니다. "
 #, python-format
 msgid "%s must be an absolute path."
 msgstr "%s은(는) 절대 경로여야 합니다. "
-
-#, python-format
-msgid "%s not set in cinder.conf"
-msgstr "cinder.conf에 %s이(가) 설정되지 않음"
 
 #, python-format
 msgid "%s not set."
@@ -528,10 +519,6 @@ msgstr ""
 msgid "CPG (%s) doesn't exist on array"
 msgstr "배열에 CPG(%s)가 없음"
 
-#, python-format
-msgid "Cache volume %s does not have required properties"
-msgstr "캐시 볼륨 %s에 필수 특성이 없음"
-
 msgid "Can not add FC port to host."
 msgstr "호스트에 FC 포트를 추가할 수 없습니다."
 
@@ -660,10 +647,6 @@ msgstr ""
 "VF 컨텍스트를 변경할 수 없음, 관리할 수 있는 VF 목록 %(vf_list)s에서 지정된 "
 "VF를 사용할 수 없습니다."
 
-#, python-format
-msgid "Cannot create directory %s."
-msgstr "디렉토리 %s을(를) 작성할 수 없습니다. "
-
 msgid "Cannot create encryption specs. Volume type in use."
 msgstr "암호화 스펙을 작성할 수 없습니다. 볼륨 유형이 사용 중입니다."
 
@@ -681,22 +664,6 @@ msgstr "크기가 %s인 볼륨을 작성할 수 없습니다. 8GB의 배수가 �
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "이름이 %(name)s이고 스펙이 %(extra_specs)s인 volume_type을 작성할 수 없음"
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)d volume instances."
-msgstr ""
-"캐시 볼륨: %(cachevol_name)s을(를) 삭제할 수 없습니다. %(updated_at)s에 업데"
-"이트되었으며 현재 %(numclones)d개 볼륨 인스턴스를 가지고 있습니다. "
-
-#, python-format
-msgid ""
-"Cannot delete cache volume: %(cachevol_name)s. It was updated at "
-"%(updated_at)s and currently has %(numclones)s volume instances."
-msgstr ""
-"캐시 볼륨: %(cachevol_name)s을(를) 삭제할 수 없습니다. %(updated_at)s에 업데"
-"이트되었으며 현재 %(numclones)s개 볼륨 인스턴스를 가지고 있습니다. "
 
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "암호화 스펙을 삭제할 수 없습니다. 볼륨 유형이 사용 중입니다."
@@ -768,9 +735,6 @@ msgid ""
 "Change would make usage less than 0 for the following resources: %(unders)s"
 msgstr "이 변경으로 인해 %(unders)s 자원의 사용량이 0보다 적게 됩니다. "
 
-msgid "Check access permissions for the ZFS share assigned to this driver."
-msgstr "이 드라이버에 지정된 ZFS 공유에 대한 액세스 권한을 확인하십시오."
-
 msgid "Check hostgroup associate error."
 msgstr "호스트 그룹 연관 확인 오류입니다. "
 
@@ -785,13 +749,6 @@ msgstr "Lun 그룹 연관 확인 오류입니다. "
 
 msgid "Check portgroup associate error."
 msgstr "포트 그룹 연관 확인 오류입니다. "
-
-msgid ""
-"Check the state of the http service. Also ensure that the https port number "
-"is the same as the one specified in cinder.conf."
-msgstr ""
-"http 서비스 상태를 확인하십시오. 또한 https 포트 번호가 cinder.conf에 지정된 "
-"번호 중 하나인지도 확인하십시오."
 
 msgid "Chunk size is not multiple of block size for creating hash."
 msgstr "청크 크기가 해시 작성을 위한 블록 크기의 배수가 아닙니다. "
@@ -840,11 +797,6 @@ msgstr "계산 클러스터: %(cluster)s을(를) 찾을 수 없습니다. "
 
 msgid "Condition has no field."
 msgstr "조건에 필드가 없습니다."
-
-#, python-format
-msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
-msgstr ""
-"구성 'max_over_subscription_ratio'가 올바르지 않습니다. 0보다 커야 함: %s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "구성 오류: dell_sc_ssn이 설정되지 않았습니다."
@@ -1262,195 +1214,6 @@ msgstr "복제를 사용으로 설정합니다. "
 msgid "Ensure that configfs is mounted at /sys/kernel/config."
 msgstr "configfs가 /sys/kernel/config에 마운트되는지 확인하십시오."
 
-#, python-format
-msgid ""
-"Error Cloning Snapshot: %(snapshot)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Clone project: %(clone_proj)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"풀: %(pool)s의 볼륨: %(lun)s에서 스냅샷: %(snapshot)s 복제 중 오류 발생 프로"
-"젝트: %(project)s 복제 프로젝트: %(clone_proj)s 리턴 코드: %(ret.status)d 메"
-"시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Initiator: %(initiator)s on Alias: %(alias)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"%(alias)s 별명에 %(initiator)s 개시자를 작성하는 중 오류 발생. 리턴 코드: "
-"%(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"%(pool)s 풀에 %(project)s 프로젝트를 작성하는 중 오류 발생. 리턴 코드: "
-"%(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Property: %(property)s Type: %(type)s Description: "
-"%(description)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"특성: %(property)s 유형: %(type)s 설명: %(description)s 작성 중 오류 발생, 리"
-"턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Share: %(name)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"공유 작성 중 오류 발생: %(name)s 리턴 코드: %(ret.status)d 메시지:  "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Creating Volume: %(lun)s Size: %(size)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"%(lun)s 볼륨(크기: %(size)s)을 작성하는 중 오류 발생. 리턴 코드: "
-"%(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
-"Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"스냅샷: %(snapshot)s 삭제 오류, 공유: %(share)s, 대상 풀: %(pool)s 프로젝트: "
-"%(project)s 리턴 코드: %(ret.status)d 메시지:  %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"%(pool)s 풀 %(project)s 프로젝트의 %(lun)s 볼륨에서 %(snapshot)s 스냅샷을 삭"
-"제하는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting Volume: %(lun)s from Pool: %(pool)s, Project: %(project)s. "
-"Return code: %(ret.status)d, Message: %(ret.data)s."
-msgstr ""
-"풀: %(pool)s에서 볼륨: %(lun)s 삭제 중 오류 발생, 프로젝트: %(project)s. 리"
-"턴 코드: %(ret.status)d, 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting project: %(project)s on pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"풀: %(pool)s에서 프로젝트: %(project)s을(를) 삭제하는 중 오류 발생, 리턴 코"
-"드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Deleting replication action: %(id)s Return code: %(ret.status)d "
-"Message: %(ret.data)s."
-msgstr ""
-"복제 조치: %(id)s 삭제 중 오류 발생, 리턴 코드: %(ret.status)d 메시지: "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Initiators: InitiatorGroup: %(initiatorgroup)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"개시자를 가져오는 중 오류 발생: 개시자 그룹: %(initiatorgroup)s 리턴 코드:"
-"%(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
-"%(data)s."
-msgstr ""
-"풀 통계 가져오기 오류: 풀: %(pool)s 리턴 코드: %(status)d 메시지: %(data)s."
-
-#, python-format
-msgid ""
-"Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"프로젝트 통계를 가져오는 중 오류 발생: 풀: %(pool)s 프로젝트: %(project)s 리"
-"턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Share: %(share)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"공유 가져오기 중 오류 발생: %(share)s 풀: %(pool)s 프로젝트: %(project)s 리"
-"턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Getting Volume: %(lun)s on Pool: %(pool)s Project: %(project)s Return "
-"code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"%(pool)s 풀 %(project)s 프로젝트에서 %(lun)s 볼륨을 가져오는 중 오류 발생. 리"
-"턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
-msgstr "풀 소유권 오류: %(host)s에서 풀 %(pool)s을(를) 소유하지 않습니다."
-
-#, python-format
-msgid ""
-"Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
-"Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"%(pool)s 풀 %(project)s 프로젝트의 %(lun)s 볼륨에서 %(props)s 특성을 가져오"
-"는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Initiator: %(iqn)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"%(iqn)s 개시자를 확인하는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지:  "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Pool: %(pool)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"%(pool)s 풀을 확인하는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지:  "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Project: %(project)s on Pool: %(pool)s Return code: "
-"%(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"%(pool)s 풀에서 %(project)s 프로젝트를 확인하는 중 오류 발생. 리턴 코드: "
-"%(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"서비스 %(service)s 확인 중 오류 발생. 리턴 코드: %(ret.status)d 메시지:"
-"%(ret.data)s인 동안에는 인스턴스 연관을 변경할 수 없습니다."
-
-#, python-format
-msgid ""
-"Error Verifying Target: %(alias)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"%(alias)s 대상을 확인하는 중 오류 발생. 리턴 코드: %(ret.status)d 메시지:  "
-"%(ret.data)s."
-
-#, python-format
-msgid ""
-"Error Verifying share: %(share)s on Project: %(project)s and Pool: %(pool)s "
-"Return code: %(ret.status)d Message: %(ret.data)s."
-msgstr ""
-"공유 확인 중 오류 발생: %(share)s, 프로젝트: %(project)s, 풀: %(pool)s, 리턴 "
-"코드: %(ret.status)d 메시지: %(ret.data)s."
-
 msgid "Error connecting to ceph cluster."
 msgstr "ceph 클러스터 연결 중에 오류가 발생했습니다. "
 
@@ -1476,14 +1239,6 @@ msgstr "볼륨 %(vol)s 삭제 중 오류 발생: %(err)s."
 #, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "평가자 구문 분석 중 오류 발생: %(reason)s"
-
-#, python-format
-msgid ""
-"Error editing share: %(share)s on Pool: %(pool)s Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"공유 편집 중 오류 발생: %(share)s 풀: %(pool)s 리턴 코드: %(ret.status)d 메시"
-"지: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -1513,53 +1268,13 @@ msgstr "볼륨 확장 중 오류 발생: %(reason)s"
 msgid "Error finding %(name)s."
 msgstr "%(name)s을(를) 찾는 중에 오류가 발생했습니다. "
 
-msgid ""
-"Error getting appliance version details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"어플라이언스 버전 세부사항을 가져오는 중에 오류가 발생했습니다. 리턴 코드: "
-"%(ret.status)d 메시지: %(ret.data)s."
-
 #, python-format
 msgid "Error getting domain id from name %(name)s: %(id)s."
 msgstr "이름 %(name)s에서 도메인 ID를 가져오는 중에 오류 발생: %(id)s."
 
-msgid "Error getting initiator groups."
-msgstr "개시자 그룹을 가져오는 중 오류가 발생했습니다."
-
 #, python-format
 msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
 msgstr "이름 %(pool_name)s에서 풀 ID를 가져오는 중에 오류 발생: %(err_msg)s."
-
-#, python-format
-msgid ""
-"Error getting replication action: %(id)s. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"복제 조치: %(id)s을(를) 가져오는 중에 오류가 발생했습니다. 리턴 코드: "
-"%(ret.status)d 메시지: %(ret.data)s."
-
-msgid ""
-"Error getting replication source details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"복제 소스 세부사항을 가져오는 중에 오류가 발생했습니다. 리턴 코드: %(ret."
-"status)d 메시지: %(ret.data)s."
-
-msgid ""
-"Error getting replication target details. Return code: %(ret.status)d "
-"Message: %(ret.data)s ."
-msgstr ""
-"복제 대상 세부사항을 가져오는 중에 오류가 발생했습니다. 리턴 코드: %(ret."
-"status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error getting version: svc: %(svc)s.Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"버전을 가져오는 중 오류 발생: svc: %(svc)s. 리턴 코드: %(ret.status)d 메시"
-"지:  %(ret.data)s."
 
 #, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
@@ -1568,23 +1283,6 @@ msgstr "SolidFire API 응답의 오류: 데이터=%(data)s"
 #, python-format
 msgid "Error managing volume: %s."
 msgstr "볼륨 관리 중 오류 발생: %s."
-
-#, python-format
-msgid ""
-"Error modifying Service: %(service)s Return code: %(ret.status)d Message: "
-"%(ret.data)s."
-msgstr ""
-"서비스 수정 중 오류 발생: %(service)s 리턴 코드: %(ret.status)d 메시지:"
-"%(ret.data)s인 동안에는 인스턴스 연관을 변경할 수 없습니다."
-
-#, python-format
-msgid ""
-"Error moving volume: %(vol)s from source project: %(src)s to target project: "
-"%(tgt)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"볼륨: %(vol)s을(를) 소스 프로젝트: %(src)s에서 대상 프로젝트: %(tgt)s(으)로 "
-"이동하는 중에 오류가 발생했습니다. 리턴 코드: %(ret.status)d 메시지: "
-"%(ret.data)s."
 
 msgid "Error not a KeyError."
 msgstr "KeyError가 아닌 오류입니다."
@@ -1598,37 +1296,6 @@ msgstr "볼륨 %(vol)s 이름 변경 중 오류 발생: %(err)s."
 
 msgid "Error retrieving volume size"
 msgstr "볼륨 크기 검색 시 오류 발생"
-
-#, python-format
-msgid ""
-"Error sending replication update for action id: %(id)s . Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"조치 id: %(id)s에 대한 복제 업데이트를 전송하는 중에 오류가 발생했습니다. 리"
-"턴 코드: %(ret.status)d 메시지: %(ret.data)s."
-
-#, python-format
-msgid ""
-"Error sending replication update. Returned error: %(err)s. Action: %(id)s."
-msgstr ""
-"복제 업데이트를 전송하는 중에 오류가 발생했습니다. 리턴된 오류: %(err)s. 조"
-"치: %(id)s."
-
-#, python-format
-msgid ""
-"Error setting replication inheritance to %(set)s for volume: %(vol)s project "
-"%(project)s Return code: %(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"볼륨: %(vol)s 프로젝트 %(project)s에 대해 복제 상속을 %(set)s(으)로 설정하는 "
-"중에 오류 발생, 리턴 코드: %(ret.status)d 메시지: %(ret.data)s ."
-
-#, python-format
-msgid ""
-"Error severing the package: %(package)s from source: %(src)s Return code: "
-"%(ret.status)d Message: %(ret.data)s ."
-msgstr ""
-"소스: %(src)s에서 패키지: %(package)s을(를) 제공하는 중 오류 발생, 리턴 코"
-"드: %(ret.status)d 메시지: %(ret.data)s."
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -1780,10 +1447,6 @@ msgstr "FC는 프로토콜이지만 OpenStack에서 wwpns를 제공하지 않습
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "%(volume)s을(를) 지정 취소하지 못함"
-
-#, python-format
-msgid "Fail to create cache volume %(volume)s. Error: %(err)s"
-msgstr "캐시 볼륨 %(volume)s을(를) 작성하지 못했습니다. 오류: %(err)s"
 
 #, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
@@ -2039,10 +1702,6 @@ msgstr "%s(이)라는 그룹 스냅샷을 찾지 못했습니다."
 #, python-format
 msgid "Failed to find host %s."
 msgstr "호스트 %s을(를) 찾지 못했습니다. "
-
-#, python-format
-msgid "Failed to find iSCSI initiator group containing %(initiator)s."
-msgstr "%(initiator)s을(를) 포함하는 iSCSI 개시자 그룹을 찾지 못했습니다."
 
 #, python-format
 msgid "Failed to get LUN target details for the LUN %s"
@@ -3650,9 +3309,6 @@ msgstr "권한이 없습니다. "
 msgid "Not enough space on backend (%(backend)s)"
 msgstr "백엔드(%(backend)s)에 공간이 충분하지 않음"
 
-msgid "Not enough storage space in the ZFS share to perform this operation."
-msgstr "ZFS 공유에서 이 조작을 수행하는 데 필요한 스토리지 공간이 부족합니다."
-
 msgid "Not stored in rbd"
 msgstr "rbd에 저장되지 않음"
 
@@ -3875,13 +3531,6 @@ msgstr "참조에는 source-name 또는 source-id가 있어야 합니다."
 
 msgid "Reference must contain source-name."
 msgstr "참조에는 source-name이 포함되어야 합니다. "
-
-msgid "Reference to volume to be managed must contain source-name."
-msgstr "관리할 볼륨에 대한 참조에 source-name이 포함되어야 합니다."
-
-#, python-format
-msgid "Reference to volume: %s to be managed must contain source-name."
-msgstr "관리할 볼륨: %s에 대한 참조에 source-name이 포함되어야 합니다."
 
 #, python-format
 msgid ""
@@ -4309,14 +3958,6 @@ msgstr ""
 "GPFS 파일 시스템 %(fs)s이(가) 필수 릴리스 레벨이 아닙니다. 현재 레벨은 "
 "%(cur)s이고, 최소 %(min)s이어야 합니다. "
 
-#, python-format
-msgid ""
-"The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s, "
-"Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
-msgstr ""
-"WebDAV 요청 실패. 이유: %(msg)s, 리턴 코드/이유: %(code)s,소스 볼륨: "
-"%(src)s, 대상 볼륨: %(dst)s, 메소드: %(method)s."
-
 msgid ""
 "The above error may show that the database has not been created.\n"
 "Please create a database using 'cinder-manage db sync' before running this "
@@ -4398,9 +4039,6 @@ msgstr "볼륨이 유지보수 모드에 있으면 스냅샷을 작성할 수 �
 #, python-format
 msgid "The snapshot is unavailable: %(data)s"
 msgstr "스냅샷 사용 불가: %(data)s"
-
-msgid "The source volume for this WebDAV operation not found."
-msgstr "이 WebDAV 조작의 소스 볼륨을 찾을 수 없습니다."
 
 #, python-format
 msgid ""
@@ -4875,32 +4513,6 @@ msgid "Unknown action"
 msgstr "알 수 없는 조치"
 
 #, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, Set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"관리할 볼륨: %s이(가) 이미 Cinder에서 관리 중인지 알 수 없습니다. 볼륨 관리"
-"를 중단합니다. 'cinder_managed' 사용자 지정 스키마 특성을 볼륨에 추가하고 값"
-"을 False로 설정합니다. 또는 cinder 구성 정책 'zfssa_manage_policy'의 값을 "
-"'loose'로 설정하여 이 제한을 제거하십시오."
-
-#, python-format
-msgid ""
-"Unknown if the volume: %s to be managed is already being managed by Cinder. "
-"Aborting manage volume. Please add 'cinder_managed' custom schema property "
-"to the volume and set its value to False. Alternatively, set the value of "
-"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
-"restriction."
-msgstr ""
-"관리할 볼륨: %s이(가) 이미 Cinder에서 관리 중인지 알 수 없습니다. 볼륨 관리"
-"를 중단합니다. 'cinder_managed' 사용자 지정 스키마 특성을 볼륨에 추가하고 값"
-"을 False로 설정합니다. 또는 cinder 구성 정책 'zfssa_manage_policy'의 값을 "
-"'loose'로 설정하여 이 제한을 제거하십시오."
-
-#, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "알 수 없거나 지원되지 않는 명령 %(cmd)s"
 
@@ -5004,9 +4616,6 @@ msgstr "사용자 ID"
 
 msgid "User does not have admin privileges"
 msgstr "사용자에게 관리자 권한이 없습니다"
-
-msgid "User not authorized to perform WebDAV operations."
-msgstr "사용자에게 WebDAV 조작을 수행할 권한이 없습니다."
 
 msgid "UserName is not configured."
 msgstr "UserName이 구성되지 않았습니다."
@@ -5142,10 +4751,6 @@ msgstr "%s 볼륨에 지정된 provider_location이 없습니다. 건너뜁니�
 #, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "배열에 %s 볼륨이 없습니다."
-
-#, python-format
-msgid "Volume %s doesn't exist on the ZFSSA backend."
-msgstr "ZFSSA 백엔드에 %s 볼륨이 없습니다."
 
 #, python-format
 msgid ""
@@ -5396,10 +5001,6 @@ msgstr "이름이 %(volume_type_name)s인 볼륨 유형을 찾을 수 없습니�
 #, python-format
 msgid "Volume type's availability zones are invalid %(az)s."
 msgstr "볼륨 타입의 가용 영역들이 올바르지 않은 %(az)s입니다. "
-
-#, python-format
-msgid "Volume: %s is already being managed by Cinder."
-msgstr "Cinder에서 이미 볼륨: %s을(를) 관리 중입니다."
 
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
@@ -6192,13 +5793,6 @@ msgstr ""
 "gpfs_images_share_mode가 copy_on_write로 설정되었지만 %(vol)s과(와) %(img)s은"
 "(는)다른 파일 세트에 속합니다."
 
-msgid ""
-"http service may have been abruptly disabled or put to maintenance state in "
-"the middle of this operation."
-msgstr ""
-"http 서비스가 갑자기 사용 안함으로 설정되었거나 이 조작을 수행하는 중에 유지"
-"보수 상태로 변경된 경우일 수 있습니다."
-
 msgid "id cannot be None"
 msgstr "id는 None일 수 없음"
 
@@ -6484,11 +6078,3 @@ msgstr "볼륨이 지정됨"
 
 msgid "volumes changed"
 msgstr "볼륨이 변경됨"
-
-#, python-format
-msgid ""
-"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
-"value is: %s."
-msgstr ""
-"zfssa_manage_policy 특성을 'strict' 또는 'loose'로 설정해야 합니다. 현재 값: "
-"%s."
