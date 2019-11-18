@@ -127,10 +127,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.3 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
         4.0.4 - Added Peer Persistence feature
+        4.0.5 - Added Primera array check. bug #1849525
 
     """
 
-    VERSION = "4.0.4"
+    VERSION = "4.0.5"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -140,6 +141,13 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         self.protocol = 'iSCSI'
 
     def _do_setup(self, common):
+        client_obj = common.client
+        is_primera = client_obj.is_primera_array()
+        if is_primera:
+            LOG.error("For Primera, only FC is supported. "
+                      "iSCSI cannot be used")
+            raise NotImplementedError()
+
         self.iscsi_ips = {}
         common.client_login()
         try:
