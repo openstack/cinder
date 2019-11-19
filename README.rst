@@ -1,18 +1,15 @@
-========================
-Team and repository tags
-========================
+================
+OpenStack Cinder
+================
 
 .. image:: https://governance.openstack.org/tc/badges/cinder.svg
     :target: https://governance.openstack.org/tc/reference/tags/index.html
 
 .. Change things from this point on
 
-======
-CINDER
-======
+OpenStack Cinder is a storage service for an open cloud computing service.
 
-You have come across a storage service for an open cloud computing service.
-It has identified itself as `Cinder`. It was abstracted from the Nova project.
+You can learn more about Cinder at:
 
 * Wiki: https://wiki.openstack.org/Cinder
 * Developer docs: https://docs.openstack.org/cinder/latest/
@@ -27,8 +24,8 @@ If you'd like to run from the master branch, you can clone the git repo:
 
     git clone https://opendev.org/openstack/cinder
 
-For developer information please see
-`HACKING.rst <https://opendev.org/openstack/cinder/src/branch/master/HACKING.rst>`_
+If you'd like to contribute, please see the information in
+`CONTRIBUTING.rst <https://opendev.org/openstack/cinder/src/branch/master/CONTRIBUTING.rst>`_
 
 You can raise bugs here https://bugs.launchpad.net/cinder
 
