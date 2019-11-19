@@ -168,14 +168,6 @@ class MockDriverConfig(object):
         return getattr(self, value, self._default)
 
 
-def mock_driver_configuration(value):
-    if value == 'max_over_subscription_ratio':
-        return 1.0
-    if value == 'reserved_percentage':
-        return 0
-    return 'RBD'
-
-
 @ddt.ddt
 class RBDTestCase(test.TestCase):
 
