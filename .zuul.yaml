@@ -1,12 +1,10 @@
 - project:
     templates:
       - openstack-lower-constraints-jobs
-      - openstack-python-jobs
       - openstack-python3-ussuri-jobs
       - publish-openstack-docs-pti
       - periodic-stable-jobs
       - check-requirements
-      - integrated-gate
       - integrated-gate-storage
       - release-notes-jobs-python3
     check:
@@ -24,6 +22,8 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+        - openstack-tox-functional-py37:
+            irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
         - openstack-tox-pylint:
@@ -48,9 +48,6 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-        - openstack-tox-functional:
-            voting: false
-            irrelevant-files: *functional-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-lvm-multibackend:
@@ -61,8 +58,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
-        - tempest-full:
-            irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
@@ -72,8 +67,6 @@
     gate:
       jobs:
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            irrelevant-files: *gate-irrelevant-files
-        - tempest-full:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files

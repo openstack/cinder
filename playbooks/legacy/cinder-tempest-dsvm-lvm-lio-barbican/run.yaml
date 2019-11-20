@@ -54,6 +54,7 @@
               # pip for stable branches.
               export DEVSTACK_PROJECT_FROM_GIT=os-brick
           fi
+          export DEVSTACK_GATE_USE_PYTHON3=True
           export DEVSTACK_GATE_TEMPEST=1
           export DEVSTACK_GATE_TEMPEST_ALL_PLUGINS=1
           # As we are setting DEVSTACK_GATE_TEMPEST_ALL_PLUGINS, we need to add
