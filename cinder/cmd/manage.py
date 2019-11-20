@@ -465,8 +465,10 @@ class VolumeCommands(object):
         rpcapi = volume_rpcapi.VolumeAPI()
         rpcapi.delete_volume(ctxt, volume)
 
-    @args('--currenthost', required=True, help='Existing volume host name')
-    @args('--newhost', required=True, help='New volume host name')
+    @args('--currenthost', required=True, help='Existing volume host name in '
+                                               'the format host@backend#pool')
+    @args('--newhost', required=True, help='New volume host name in the '
+                                           'format host@backend#pool')
     def update_host(self, currenthost, newhost):
         """Modify the host name associated with a volume.
 
