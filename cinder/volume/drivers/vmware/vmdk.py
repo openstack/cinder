@@ -155,7 +155,7 @@ vmdk_opts = [
                      'attached, uploaded to image service or during backup.'),
     cfg.BoolOpt('vmware_online_resize',
                 default=True,
-                help='If true, enables volume resize in in-use state'),   
+                help='If true, enables volume resize in in-use state'),
 ]
 
 CONF = cfg.CONF
