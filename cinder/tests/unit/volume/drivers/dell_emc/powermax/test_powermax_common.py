@@ -3101,3 +3101,17 @@ class PowerMaxCommonTest(test.TestCase):
         model_update = self.common.update_metadata(
             model_update, existing_metadata, object_metadata)
         self.assertEqual(ref_model_update, model_update)
+
+    def test_update_metadata_model_list_exception(self):
+        model_update = [{'provider_location': six.text_type(
+            self.data.provider_location)}]
+
+        existing_metadata = None
+
+        object_metadata = {'device-meta-key-1': 'device-meta-value-1',
+                           'device-meta-key-2': 'device-meta-value-2'}
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common.update_metadata, model_update, existing_metadata,
+            object_metadata)
