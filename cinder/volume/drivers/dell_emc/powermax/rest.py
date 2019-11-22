@@ -2441,6 +2441,43 @@ class PowerMaxRest(object):
         self.wait_for_job('Create storage group snapVx', status_code,
                           job, extra_specs)
 
+    def delete_storagegroup_snap(self, array, source_group,
+                                 snap_name, generation='0'):
+        """Delete a snapVx snapshot of a storage group.
+
+        :param array: the array serial number
+        :param source_group: the source group name
+        :param snap_name: the name of the snapshot
+        :param generation: the generation number of the SnapVX
+        """
+        resource_name = ("%(sg_name)s/snapshot/%(snap_name)s"
+                         "/generation/%(generation)s"
+                         % {'sg_name': source_group, 'snap_name': snap_name,
+                            'generation': generation})
+
+        self.delete_resource(
+            array, REPLICATION, 'storagegroup', resource_name=resource_name)
+
+    def get_storagegroup_snap_generation_list(
+            self, array, source_group, snap_name):
+        """Get a snapshot and its generation count information for an sg.
+
+        The most recent snapshot will have a gen number of 0. The oldest
+        snapshot will have a gen number = genCount - 1 (i.e. if there are 4
+        generations of particular snapshot, the oldest will have a gen num of
+        3).
+
+        :param array: name of the array -- str
+        :param source_group: name of the storage group -- str
+        :param snap_name: the name of the snapshot -- str
+        :returns: generation numbers -- list
+        """
+        resource_name = ("%(sg_name)s/snapshot/%(snap_name)s/generation"
+                         % {'sg_name': source_group, 'snap_name': snap_name})
+        response = self.get_resource(array, REPLICATION, 'storagegroup',
+                                     resource_name=resource_name)
+        return response.get('generations', list()) if response else list()
+
     def get_storagegroup_rdf_details(self, array, storagegroup_name,
                                      rdf_group_num):
         """Get the remote replication details of a storage group.

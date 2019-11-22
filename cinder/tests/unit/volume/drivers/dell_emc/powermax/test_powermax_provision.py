@@ -442,15 +442,39 @@ class PowerMaxProvisionTest(test.TestCase):
         array = self.data.array
         snap_name = self.data.group_snapshot_name
         source_group_name = self.data.storagegroup_name_source
-        extra_specs = self.data.extra_specs
-        src_dev_ids = [self.data.device_id]
         with mock.patch.object(
                 self.provision,
                 'delete_group_replica') as mock_delete_replica:
             self.provision.delete_group_replica(
-                array, snap_name, source_group_name, src_dev_ids, extra_specs)
+                array, snap_name, source_group_name)
             mock_delete_replica.assert_called_once_with(
-                array, snap_name, source_group_name, src_dev_ids, extra_specs)
+                array, snap_name, source_group_name)
+
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_storagegroup_snap_generation_list',
+                       side_effect=[['0', '3', '1', '2'],
+                                    ['0', '1'], ['0'], list()])
+    def test_delete_group_replica_side_effect(self, mock_list):
+        array = self.data.array
+        snap_name = self.data.group_snapshot_name
+        source_group_name = self.data.storagegroup_name_source
+        with mock.patch.object(
+                self.rest, 'delete_storagegroup_snap') as mock_del:
+            self.provision.delete_group_replica(
+                array, snap_name, source_group_name)
+            self.assertEqual(4, mock_del.call_count)
+            mock_del.reset_mock()
+            self.provision.delete_group_replica(
+                array, snap_name, source_group_name)
+            self.assertEqual(2, mock_del.call_count)
+            mock_del.reset_mock()
+            self.provision.delete_group_replica(
+                array, snap_name, source_group_name)
+            self.assertEqual(1, mock_del.call_count)
+            mock_del.reset_mock()
+            self.provision.delete_group_replica(
+                array, snap_name, source_group_name)
+            mock_del.assert_not_called()
 
     def test_link_and_break_replica(self):
         array = self.data.array
