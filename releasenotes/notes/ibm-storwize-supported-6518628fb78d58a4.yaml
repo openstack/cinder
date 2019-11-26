@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    IBM Storwize drivers had been previously marked unsupported. Testing
+    requirements have been addressed and they are now fully supported again.
+    IBM Storwize drivers allow cinder to manage volumes both in iSCSI and
+    FC environment.
