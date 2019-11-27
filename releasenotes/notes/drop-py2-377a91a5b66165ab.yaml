@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Python 2.7 support has been dropped. The last release of Cinder to support
+    py2.7 is OpenStack Train. The minimum version of Python now supported by
+    Cinder is Python 3.6.
