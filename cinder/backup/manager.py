@@ -358,10 +358,6 @@ class BackupManager(manager.ThreadPoolManager):
 
         self._notify_about_backup_usage(context, backup, "create.start")
 
-        backup.host = self.host
-        backup.availability_zone = self.az
-        backup.save()
-
         expected_status = "backing-up"
         if snapshot_id:
             actual_status = snapshot['status']
@@ -535,9 +531,6 @@ class BackupManager(manager.ThreadPoolManager):
 
         volume = objects.Volume.get_by_id(context, volume_id)
         self._notify_about_backup_usage(context, backup, "restore.start")
-
-        backup.host = self.host
-        backup.save()
 
         expected_status = [fields.VolumeStatus.RESTORING_BACKUP,
                            fields.VolumeStatus.CREATING]
@@ -715,8 +708,6 @@ class BackupManager(manager.ThreadPoolManager):
         LOG.info('Delete backup started, backup: %s.', backup.id)
 
         self._notify_about_backup_usage(context, backup, "delete.start")
-        backup.host = self.host
-        backup.save()
 
         expected_status = fields.BackupStatus.DELETING
         actual_status = backup.status
