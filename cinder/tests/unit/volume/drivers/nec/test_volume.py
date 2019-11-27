@@ -1241,6 +1241,28 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         self.assertIsNotNone(ret)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
 
+        ldset_lds0 = {'ldsetname': 'LX:OpenStack1', 'lds': {},
+                      'protocol': 'FC',
+                      'wwpn': ['1000-0090-FAA0-786A', '1000-0090-FAA0-786B'],
+                      'port': []}
+        ldset_lds1 = {'ldsetname': 'LX:OpenStack1',
+                      'lds': {16: {'ldn': 16, 'lun': 0}},
+                      'protocol': 'FC',
+                      'wwpn': ['1000-0090-FAA0-786A', '1000-0090-FAA0-786B'],
+                      'port': []}
+        return_ldset = [ldset_lds0, ldset_lds1]
+        self.mock_object(self, '_validate_fcldset_exist',
+                         side_effect=return_ldset)
+        mocker = self.mock_object(self._cli, 'addldsetld',
+                                  mock.Mock(wraps=self._cli.addldsetld))
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"]}
+        ret = self.fc_initialize_connection_snapshot(snap, connector)
+        self.assertIsNotNone(ret)
+        self.assertEqual('fibre_channel', ret['driver_volume_type'])
+        mocker.assert_any_call('LX:OpenStack1', 'LX:__ControlVolume_10h', 0)
+        mocker.assert_any_call('LX:OpenStack1',
+                               'LX:287RbQoP7VdwR1WsPC2fZT_l', 1)
+
     def test_terminate_connection_snapshot(self):
         ctx = context.RequestContext('admin', 'fake', True)
         snap = fake_volume_obj(ctx, id="46045673-41e7-44a7-9333-02f07feab04b")
