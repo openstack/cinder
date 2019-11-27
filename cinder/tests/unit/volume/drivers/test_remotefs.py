@@ -644,7 +644,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             'status': fields.SnapshotStatus.CREATING,
             'progress': '0%',
             'volume_size': src_vref.size,
-            'display_name': 'tmp-snap-%s' % src_vref['id'],
+            'display_name': 'tmp-snap-%s' % volume.id,
             'display_description': None,
             'volume_type_id': src_vref.volume_type_id,
             'encryption_key_id': None,
