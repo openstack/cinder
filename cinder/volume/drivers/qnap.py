@@ -349,10 +349,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     created_lun.find('LUNNAA').text is not None):
                 lun_naa = created_lun.find('LUNNAA').text
 
-            try_times = try_times + 3
-            eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or lun_naa != ""):
+            try_times += 3
+            if try_times > max_wait_sec or lun_naa:
                 break
+            eventlet.sleep(self.TIME_INTERVAL)
 
         LOG.debug('LUNNAA: %s', lun_naa)
         _metadata = self._get_volume_metadata(volume)
@@ -528,10 +528,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 lun_index = created_lun.find('LUNIndex').text
                 LOG.debug('LUNIndex: %s', lun_index)
 
-            try_times = try_times + 3
-            eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or lun_naa != ""):
+            try_times += 3
+            if try_times > max_wait_sec or lun_naa:
                 break
+            eventlet.sleep(self.TIME_INTERVAL)
 
         LOG.debug('LUNNAA: %s', lun_naa)
         if (volume['size'] > src_vref['size']):
@@ -580,10 +580,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                     created_snapshot.find('snapshot_id').text is not None):
                 snapshot_id = created_snapshot.find('snapshot_id').text
 
-            try_times = try_times + 3
-            eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or snapshot_id != ""):
+            try_times += 3
+            if try_times > max_wait_sec or snapshot_id:
                 break
+            eventlet.sleep(self.TIME_INTERVAL)
 
         LOG.debug('created_snapshot: %s', created_snapshot)
         LOG.debug('snapshot_id: %s', snapshot_id)
@@ -641,10 +641,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 LOG.debug('LUNNAA: %s', lun_naa)
                 LOG.debug('LUNIndex: %s', lun_index)
 
-            try_times = try_times + 3
-            eventlet.sleep(self.TIME_INTERVAL)
-            if(try_times > max_wait_sec or lun_naa != ""):
+            try_times += 3
+            if try_times > max_wait_sec or lun_naa:
                 break
+            eventlet.sleep(self.TIME_INTERVAL)
 
         if (volume['size'] > snapshot['volume_size']):
             self._extend_lun(volume, lun_naa)
@@ -875,10 +875,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                                     .find('LUNTargetList').find('row')
                                     .find('LUNNumber').text)
 
-                try_times = try_times + 3
-                eventlet.sleep(self.TIME_INTERVAL)
-                if(try_times > max_wait_sec or target_lun_id != -999):
+                try_times += 3
+                if try_times > max_wait_sec or target_lun_id != -999:
                     break
+                eventlet.sleep(self.TIME_INTERVAL)
 
             elif 'ES' in internal_model_name.upper():
                 if fw_version >= "1.1.2" and fw_version <= "1.1.3":
@@ -889,10 +889,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                             'row').find('LUNNumber').text
                     target_lun_id = int(LUNNumber)
 
-                    try_times = try_times + 3
-                    eventlet.sleep(self.TIME_INTERVAL)
-                    if(try_times > max_wait_sec or LUNNumber != ""):
+                    try_times += 3
+                    if try_times > max_wait_sec or LUNNumber:
                         break
+                    eventlet.sleep(self.TIME_INTERVAL)
                 elif "1.1.4" <= fw_version <= "2.1.9999":
                     LOG.debug('in ES FW after 1.1.4: get_one_lun_info')
                     ret = self.api_executor.get_one_lun_info(lun_index)
@@ -901,10 +901,10 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                                         .find('row').find('LUNTargetList')
                                         .find('row').find('LUNNumber').text)
 
-                    try_times = try_times + 3
-                    eventlet.sleep(self.TIME_INTERVAL)
-                    if(try_times > max_wait_sec or target_lun_id != -999):
+                    try_times += 3
+                    if try_times > max_wait_sec or target_lun_id != -999:
                         break
+                    eventlet.sleep(self.TIME_INTERVAL)
                 else:
                     break
             else:
