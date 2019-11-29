@@ -45,21 +45,21 @@ class EvalConstant(object):
             (which_dict, entry) = result.split('.')
             try:
                 result = _vars[which_dict][entry]
-            except KeyError as e:
+            except KeyError:
                 raise exception.EvaluatorParseException(
-                    _("KeyError: %s") % e)
-            except TypeError as e:
+                    _("KeyError evaluating string"))
+            except TypeError:
                 raise exception.EvaluatorParseException(
-                    _("TypeError: %s") % e)
+                    _("TypeError evaluating string"))
 
         try:
             result = int(result)
         except ValueError:
             try:
                 result = float(result)
-            except ValueError as e:
-                raise exception.EvaluatorParseException(
-                    _("ValueError: %s") % e)
+            except ValueError:
+                if isinstance(result, str):
+                    result = result.replace('"', '').replace('\'', '')
 
         return result
 
@@ -232,8 +232,9 @@ def _def_parser():
 
     alphas = pyparsing.alphas
     Combine = pyparsing.Combine
-    Forward = pyparsing.Forward
     nums = pyparsing.nums
+    quoted_string = pyparsing.quotedString
+
     oneOf = pyparsing.oneOf
     opAssoc = pyparsing.opAssoc
     operatorPrecedence = pyparsing.operatorPrecedence
@@ -243,9 +244,8 @@ def _def_parser():
     real = Combine(Word(nums) + '.' + Word(nums))
     variable = Word(alphas + '_' + '.')
     number = real | integer
-    expr = Forward()
     fn = Word(alphas + '_' + '.')
-    operand = number | variable | fn
+    operand = number | variable | fn | quoted_string
 
     signop = oneOf('+ -')
     addop = oneOf('+ -')

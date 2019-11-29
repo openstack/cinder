@@ -127,11 +127,12 @@ class EvaluatorTestCase(test.TestCase):
     def test_nonnumber_comparison(self):
         nonnumber = {'test': 'foo'}
         request = {'test': 'bar'}
-        self.assertRaises(
-            exception.EvaluatorParseException,
-            evaluator.evaluate,
-            "nonnumber.test != request.test",
-            nonnumber=nonnumber, request=request)
+        self.assertTrue(
+            evaluator.evaluate("nonnumber.test != request.test",
+                               nonnumber=nonnumber, request=request))
+        self.assertFalse(
+            evaluator.evaluate("nonnumber.test == request.test",
+                               nonnumber=nonnumber, request=request))
 
     def test_div_zero(self):
         self.assertRaises(exception.EvaluatorParseException,
