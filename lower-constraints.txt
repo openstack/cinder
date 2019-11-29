@@ -140,6 +140,7 @@ sphinx-feature-classification==0.1.0
 sphinxcontrib-websupport==1.0.1
 sqlalchemy-migrate==0.11.0
 SQLAlchemy==1.0.10
+SQLAlchemy-Utils==0.36.1
 sqlparse==0.2.4
 statsd==3.2.2
 stestr==2.0.0

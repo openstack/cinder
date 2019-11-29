@@ -853,9 +853,6 @@ class VolumeManager(manager.CleanableManager,
                 LOG.exception("Failed to update usages deleting volume.",
                               resource=volume)
 
-        # Delete glance metadata if it exists
-        self.db.volume_glance_metadata_delete_by_volume(context, volume.id)
-
         volume.destroy()
 
         # If deleting source/destination volume in a migration or a temp
@@ -3432,9 +3429,6 @@ class VolumeManager(manager.CleanableManager,
                               "failed to update usages.",
                               resource={'type': 'group',
                                         'id': group.id})
-
-            # Delete glance metadata if it exists
-            self.db.volume_glance_metadata_delete_by_volume(context, vol.id)
 
             vol.destroy()
 
