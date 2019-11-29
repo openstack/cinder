@@ -1710,35 +1710,33 @@ def volume_data_get_for_project(context, project_id,
                                         volume_type_id, host=host)
 
 
+VOLUME_DEPENDENT_MODELS = frozenset([models.VolumeMetadata,
+                                     models.VolumeAdminMetadata,
+                                     models.Transfer,
+                                     models.VolumeGlanceMetadata,
+                                     models.VolumeAttachment])
+
+
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_destroy(context, volume_id):
     session = get_session()
     now = timeutils.utcnow()
+    updated_values = {'status': 'deleted',
+                      'deleted': True,
+                      'deleted_at': now,
+                      'updated_at': literal_column('updated_at'),
+                      'migration_status': None}
     with session.begin():
-        updated_values = {'status': 'deleted',
-                          'deleted': True,
-                          'deleted_at': now,
-                          'updated_at': literal_column('updated_at'),
-                          'migration_status': None}
         model_query(context, models.Volume, session=session).\
             filter_by(id=volume_id).\
             update(updated_values)
-        model_query(context, models.VolumeMetadata, session=session).\
-            filter_by(volume_id=volume_id).\
-            update({'deleted': True,
-                    'deleted_at': now,
-                    'updated_at': literal_column('updated_at')})
-        model_query(context, models.VolumeAdminMetadata, session=session).\
-            filter_by(volume_id=volume_id).\
-            update({'deleted': True,
-                    'deleted_at': now,
-                    'updated_at': literal_column('updated_at')})
-        model_query(context, models.Transfer, session=session).\
-            filter_by(volume_id=volume_id).\
-            update({'deleted': True,
-                    'deleted_at': now,
-                    'updated_at': literal_column('updated_at')})
+        for model in VOLUME_DEPENDENT_MODELS:
+            model_query(context, model, session=session).\
+                filter_by(volume_id=volume_id).\
+                update({'deleted': True,
+                        'deleted_at': now,
+                        'updated_at': literal_column('updated_at')})
     del updated_values['updated_at']
     return updated_values
 
