@@ -282,7 +282,7 @@ class VolumeController(wsgi.Controller):
 
     def _get_volume_filter_options(self):
         """Return volume search options allowed by non-admin."""
-        return common.get_enabled_resource_filters('volume')['volume']
+        return common.get_enabled_resource_filters('volume').get('volume', [])
 
     @validation.schema(volumes.update, mv.V2_BASE_VERSION,
                        mv.get_prior_version(mv.SUPPORT_VOLUME_SCHEMA_CHANGES))
