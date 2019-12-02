@@ -83,6 +83,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Brocade_OpenStack_CI"
 
+    # TODO(smcginnis) Evaluate removing plans once we get to the V release
+    SUPPORTED = False
+
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)
         self.sb_conn_map = {}
