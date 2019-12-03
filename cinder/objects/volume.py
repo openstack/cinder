@@ -192,9 +192,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
     def __init__(self, *args, **kwargs):
         super(Volume, self).__init__(*args, **kwargs)
-        self._orig_metadata = {}
-        self._orig_admin_metadata = {}
-        self._orig_glance_metadata = {}
 
         self._reset_metadata_tracking()
 
