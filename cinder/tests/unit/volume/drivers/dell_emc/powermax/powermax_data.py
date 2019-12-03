@@ -296,6 +296,8 @@ class PowerMaxData(object):
     rep_extra_specs4['rdf_group_label'] = rdf_group_name
     rep_extra_specs5 = deepcopy(rep_extra_specs2)
     rep_extra_specs5['target_array_model'] = 'VMAX250F'
+    rep_extra_specs6 = deepcopy(rep_extra_specs3)
+    rep_extra_specs6['target_array_model'] = 'PMAX2000'
 
     rep_extra_specs_ode = deepcopy(rep_extra_specs2)
     rep_extra_specs_ode['array'] = array
