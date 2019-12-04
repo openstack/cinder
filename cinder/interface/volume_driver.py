@@ -207,6 +207,9 @@ class VolumeDriverCore(base.CinderInterface):
     def terminate_connection(self, volume, connector):
         """Remove access to a volume.
 
+        Note: If ``connector`` is ``None``, then all connections to the volume
+        should be terminated.
+
         :param volume: The volume to remove.
         :param connector: The Dictionary containing information about the
                           connection. This is optional when doing a
