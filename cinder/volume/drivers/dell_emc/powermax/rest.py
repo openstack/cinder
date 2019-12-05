@@ -552,6 +552,16 @@ class PowerMaxRest(object):
                       {'array': array})
         return array_details
 
+    def get_array_tags(self, array):
+        """Get the tags from its serial number.
+
+        :param array: the array serial number
+        :returns: tag list -- list or empty list
+        """
+        target_uri = '/%s/system/tag?array_id=%s' % (U4V_VERSION, array)
+        array_tags = self._get_request(target_uri, 'system')
+        return array_tags.get('tag_name')
+
     def is_next_gen_array(self, array):
         """Check to see if array is a next gen array(ucode 5978 or greater).
 
@@ -857,6 +867,20 @@ class PowerMaxRest(object):
             array, SLOPROVISIONING, 'storagegroup', payload, version,
             resource_name=storagegroup)
 
+    def modify_storage_array(self, array, payload):
+        """Modify a storage array (PUT operation).
+
+        :param array: the array serial number
+        :param payload: the request payload
+        :returns: status_code -- int, message -- string, server response
+        """
+        target_uri = '/%s/sloprovisioning/symmetrix/%s' % (U4V_VERSION, array)
+        status_code, message = self.request(target_uri, PUT,
+                                            request_object=payload)
+        operation = 'modify %(res)s resource' % {'res': 'symmetrix'}
+        self.check_status_code_success(operation, status_code, message)
+        return status_code, message
+
     def create_volume_from_sg(self, array, volume_name, storagegroup_name,
                               volume_size, extra_specs):
         """Create a new volume in the given storage group.
@@ -920,6 +944,58 @@ class PowerMaxRest(object):
 
         volume_dict = {'array': array, 'device_id': device_id}
         return volume_dict
+
+    def add_storage_group_tag(self, array, storagegroup_name,
+                              tag_list, extra_specs):
+        """Create a new tag(s) on a storage group
+
+        :param array: the array serial number
+        :param storagegroup_name: the storage group name
+        :param tag_list: comma delimited list
+        :param extra_specs: the extra specifications
+        """
+        payload = (
+            {"executionOption": "ASYNCHRONOUS",
+             "editStorageGroupActionParam": {
+                 "tagManagementParam": {
+                     "addTagsParam": {
+                         "tag_name": tag_list
+                     }}}})
+        status_code, job = self.modify_storage_group(
+            array, storagegroup_name, payload)
+
+        LOG.debug("Add tag to storage group: %(sg_name)s. "
+                  "Status code: %(sc)lu.",
+                  {'sg_name': storagegroup_name,
+                   'sc': status_code})
+
+        self.wait_for_job(
+            'Add tag to storage group', status_code, job, extra_specs)
+
+    def add_storage_array_tags(self, array, tag_list, extra_specs):
+        """Create a new tag(s) on a storage group
+
+        :param array: the array serial number
+        :param tag_list: comma delimited list
+        :param extra_specs: the extra specifications
+        """
+        payload = (
+            {"executionOption": "ASYNCHRONOUS",
+             "editSymmetrixActionParam": {
+                 "tagManagementParam": {
+                     "addTagsParam": {
+                         "tag_name": tag_list
+                     }}}})
+        status_code, job = self.modify_storage_array(
+            array, payload)
+
+        LOG.debug("Add tag to storage array: %(array)s. "
+                  "Status code: %(sc)lu.",
+                  {'array': array,
+                   'sc': status_code})
+
+        self.wait_for_job(
+            'Add tag to storage array', status_code, job, extra_specs)
 
     def check_volume_device_id(self, array, device_id, volume_id,
                                name_id=None):

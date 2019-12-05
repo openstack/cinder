@@ -137,7 +137,10 @@ powermax_opts = [
     cfg.ListOpt(utils.POWERMAX_PORT_GROUPS,
                 bounds=True,
                 help='List of port groups containing frontend ports '
-                     'configured prior for server connection.')]
+                     'configured prior for server connection.'),
+    cfg.ListOpt(utils.POWERMAX_ARRAY_TAG_LIST,
+                bounds=True,
+                help='List of user assigned name for storage array.')]
 
 
 CONF.register_opts(powermax_opts, group=configuration.SHARED_CONF_GROUP)
@@ -181,6 +184,7 @@ class PowerMaxCommon(object):
         self.extend_replicated_vol = False
         self.rep_devices = []
         self.failover = False
+        self.powermax_array_tag_list = None
 
         # Gather environment info
         self._get_replication_info()
@@ -214,6 +218,8 @@ class PowerMaxCommon(object):
         self.snapvx_unlink_limit = self._get_unlink_configuration_value(
             utils.VMAX_SNAPVX_UNLINK_LIMIT,
             utils.POWERMAX_SNAPVX_UNLINK_LIMIT)
+        self.powermax_array_tag_list = self.configuration.safe_get(
+            utils.POWERMAX_ARRAY_TAG_LIST)
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
         mosr = volume_utils.get_max_over_subscription_ratio(
@@ -457,9 +463,13 @@ class PowerMaxCommon(object):
             model_update, volume.metadata, self.get_volume_metadata(
                 volume_dict['array'], volume_dict['device_id']))
 
+        array_tag_list = self.get_tags_of_storage_array(
+            extra_specs[utils.ARRAY])
+
         self.volume_metadata.capture_create_volume(
             volume_dict['device_id'], volume, group_name, group_id,
-            extra_specs, rep_info_dict, 'create')
+            extra_specs, rep_info_dict, 'create',
+            array_tag_list=array_tag_list)
 
         LOG.info("Leaving create_volume: %(name)s. Volume dict: %(dict)s.",
                  {'name': volume_name, 'dict': volume_dict})
@@ -523,10 +533,12 @@ class PowerMaxCommon(object):
         model_update = self.update_metadata(
             model_update, volume.metadata, self.get_volume_metadata(
                 clone_dict['array'], clone_dict['device_id']))
+        array_tag_list = self.get_tags_of_storage_array(
+            extra_specs[utils.ARRAY])
         self.volume_metadata.capture_create_volume(
             clone_dict['device_id'], volume, None, None,
             extra_specs, rep_info_dict, 'createFromSnapshot',
-            source_snapshot_id=snapshot.id)
+            source_snapshot_id=snapshot.id, array_tag_list=array_tag_list)
 
         return model_update
 
@@ -553,11 +565,14 @@ class PowerMaxCommon(object):
         model_update = self.update_metadata(
             model_update, clone_volume.metadata, self.get_volume_metadata(
                 clone_dict['array'], clone_dict['device_id']))
+        array_tag_list = self.get_tags_of_storage_array(
+            extra_specs[utils.ARRAY])
         self.volume_metadata.capture_create_volume(
             clone_dict['device_id'], clone_volume, None, None,
             extra_specs, rep_info_dict, 'createFromVolume',
             temporary_snapvx=clone_dict.get('snap_name'),
-            source_device_id=clone_dict.get('source_device_id'))
+            source_device_id=clone_dict.get('source_device_id'),
+            array_tag_list=array_tag_list)
         return model_update
 
     def _replicate_volume(self, volume, volume_name, volume_dict, extra_specs,
@@ -870,17 +885,54 @@ class PowerMaxCommon(object):
                         rep_extra_specs[utils.ARRAY], remote_port_group))
             device_info_dict['is_multipath'] = is_multipath
 
+        array_tag_list = self.get_tags_of_storage_array(
+            extra_specs[utils.ARRAY])
+        if array_tag_list:
+            masking_view_dict['array_tag_list'] = array_tag_list
+
         if is_multiattach and LOG.isEnabledFor(logging.DEBUG):
             masking_view_dict['mv_list'], masking_view_dict['sg_list'] = (
                 self._get_mvs_and_sgs_from_volume(
                     extra_specs[utils.ARRAY],
                     masking_view_dict[utils.DEVICE_ID]))
+        elif not is_multiattach and LOG.isEnabledFor(logging.DEBUG):
+            masking_view_dict['tag_list'] = self.get_tags_of_storage_group(
+                extra_specs[utils.ARRAY], masking_view_dict[utils.SG_NAME])
 
         self.volume_metadata.capture_attach_info(
             volume, extra_specs, masking_view_dict, connector['host'],
             is_multipath, is_multiattach)
 
         return device_info_dict
+
+    def get_tags_of_storage_group(self, array, storage_group_name):
+        """Get the tag information from a storage group
+
+        :param array: serial number of array
+        :param storage_group_name: storage group name
+
+        :returns: tag list
+        """
+        try:
+            storage_group = self.rest.get_storage_group(
+                array, storage_group_name)
+        except Exception:
+            return None
+        return storage_group.get('tags')
+
+    def get_tags_of_storage_array(self, array):
+        """Get the tag information from an array
+
+        :param array: serial number of array
+
+        :returns: tag list
+        """
+        tag_name_list = None
+        try:
+            tag_name_list = self.rest.get_array_tags(array)
+        except Exception:
+            pass
+        return tag_name_list
 
     def _attach_metro_volume(self, volume, connector, is_multiattach,
                              extra_specs, rep_extra_specs):
@@ -1929,6 +1981,8 @@ class PowerMaxCommon(object):
             LOG.error(error_message)
             raise exception.VolumeBackendAPIException(message=error_message)
 
+        self._validate_storage_group_tag_list(extra_specs)
+
         extra_specs[utils.INTERVAL] = self.interval
         LOG.debug("The interval is set at: %(intervalInSecs)s.",
                   {'intervalInSecs': self.interval})
@@ -1990,6 +2044,10 @@ class PowerMaxCommon(object):
         else:
             extra_specs.pop(utils.DISABLECOMPRESSION, None)
 
+        self._check_and_add_tags_to_storage_array(
+            extra_specs[utils.ARRAY], self.powermax_array_tag_list,
+            extra_specs)
+
         LOG.debug("SRP is: %(srp)s, Array is: %(array)s "
                   "SLO is: %(slo)s, Workload is: %(workload)s.",
                   {'srp': extra_specs[utils.SRP],
@@ -2004,6 +2062,47 @@ class PowerMaxCommon(object):
                     extra_specs[utils.ARRAY]))
 
         return extra_specs
+
+    def _validate_storage_group_tag_list(self, extra_specs):
+        """Validate the storagetype:storagegrouptags list
+
+        :param extra_specs: the extra specifications
+        :raises: VolumeBackendAPIException:
+        """
+        tag_list = extra_specs.get(utils.STORAGE_GROUP_TAGS)
+        if tag_list:
+            if not self.utils.verify_tag_list(tag_list.split(',')):
+                exception_message = (_(
+                    "Unable to get verify "
+                    "storagetype:storagegrouptags in the Volume Type. "
+                    "Only alpha-numeric, dashes and underscores "
+                    "allowed. List values must be separated by commas. "
+                    "The number of values must not exceed 8"))
+                raise exception.VolumeBackendAPIException(
+                    message=exception_message)
+            else:
+                LOG.info("The tag list %(tag_list)s has been verified.",
+                         {'tag_list': tag_list})
+
+    def _validate_array_tag_list(self, array_tag_list):
+        """Validate the array tag list
+
+        :param array_tag_list: the array tag list
+        :raises: VolumeBackendAPIException:
+        """
+        if array_tag_list:
+            if not self.utils.verify_tag_list(array_tag_list):
+                exception_message = (_(
+                    "Unable to get verify "
+                    "config option powermax_array_tag_list. "
+                    "Only alpha-numeric, dashes and underscores "
+                    "allowed. List values must be separated by commas. "
+                    "The number of values must not exceed 8"))
+                raise exception.VolumeBackendAPIException(
+                    message=exception_message)
+            else:
+                LOG.info("The tag list %(tag_list)s has been verified.",
+                         {'tag_list': array_tag_list})
 
     def _delete_from_srp(self, array, device_id, volume_name,
                          extra_specs):
@@ -5468,3 +5567,37 @@ class PowerMaxCommon(object):
                     'SourceDeviceLabel': device_label}
 
         return metadata
+
+    def _check_and_add_tags_to_storage_array(
+            self, serial_number, array_tag_list, extra_specs):
+        """Add tags to a storage group.
+
+        :param serial_number: the array serial number
+        :param array_tag_list: the array tag list
+        :param extra_specs: the extra specifications
+        """
+        if array_tag_list:
+            existing_array_tags = self.rest.get_array_tags(serial_number)
+
+            new_tag_list = self.utils.get_new_tags(
+                self.utils.convert_list_to_string(array_tag_list),
+                self.utils.convert_list_to_string(existing_array_tags))
+            if not new_tag_list:
+                LOG.warning("No new tags to add. Existing tags "
+                            "associated with %(array)s are "
+                            "%(tags)s.",
+                            {'array': serial_number,
+                             'tags': existing_array_tags})
+            else:
+                self._validate_array_tag_list(new_tag_list)
+                LOG.info("Adding the tags %(tag_list)s to %(array)s",
+                         {'tag_list': new_tag_list,
+                          'array': serial_number})
+                try:
+                    self.rest.add_storage_array_tags(
+                        serial_number, new_tag_list, extra_specs)
+                except Exception as ex:
+                    LOG.warning("Unexpected error: %(ex)s. If you still "
+                                "want to add tags to this storage array, "
+                                "please do so on the Unisphere UI.",
+                                {'ex': ex})

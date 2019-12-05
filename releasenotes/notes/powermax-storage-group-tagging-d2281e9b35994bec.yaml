@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Dell EMC PowerMax driver now supports Unisphere storage group
+    and array tagging to allow the user to specify a user defined
+    tag to facilitate easy access and classification.
