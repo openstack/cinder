@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax driver - fix to eliminate 'cannot use the device for the function
+    because it is in a Copy Session' when attempting to delete a volume group
+    that previously had a group snapshot created on and deleted from it.
