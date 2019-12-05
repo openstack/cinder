@@ -631,10 +631,9 @@ class PureBaseVolumeDriver(san.SanDriver):
                     # Swallow any exception, just warn and continue
                     LOG.warning("Disconnect on secondary array failed with"
                                 " message: %(msg)s", {"msg": err.text})
-        # Now disconnect from the current array, removing any left over
-        # remote hosts that we maybe couldn't reach.
+        # Now disconnect from the current array
         self._disconnect(self._get_current_array(), volume,
-                         connector, remove_remote_hosts=True)
+                         connector, remove_remote_hosts=False)
 
     @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
