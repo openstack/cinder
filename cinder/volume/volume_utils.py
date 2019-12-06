@@ -51,6 +51,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import image_utils
 from cinder import objects
 from cinder.objects import fields
 from cinder import rpc
@@ -1252,3 +1253,32 @@ def update_backup_error(backup, err, status=fields.BackupStatus.ERROR):
     backup.status = status
     backup.fail_reason = err
     backup.save()
+
+
+# TODO (whoami-rajat): Remove this method when oslo.vmware calls volume_utils
+#  wrapper of upload_volume instead of image_utils.upload_volume
+def get_base_image_ref(volume):
+    # This method fetches the image_id from volume glance metadata and pass
+    # it to the driver calling it during upload volume to image operation
+    base_image_ref = None
+    if volume.glance_metadata:
+        base_image_ref = volume.glance_metadata.get('image_id')
+    return base_image_ref
+
+
+def upload_volume(context, image_service, image_meta, volume_path,
+                  volume, volume_format='raw', run_as_root=True,
+                  compress=True):
+    # retrieve store information from extra-specs
+    store_id = volume.volume_type.extra_specs.get('image_service:store_id')
+
+    # This fetches the image_id from volume glance metadata and pass
+    # it to the driver calling it during upload volume to image operation
+    base_image_ref = None
+    if volume.glance_metadata:
+        base_image_ref = volume.glance_metadata.get('image_id')
+    image_utils.upload_volume(context, image_service, image_meta, volume_path,
+                              volume_format=volume_format,
+                              run_as_root=run_as_root,
+                              compress=compress, store_id=store_id,
+                              base_image_ref=base_image_ref)

@@ -35,6 +35,7 @@ from cinder import objects
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
+from cinder.volume import volume_utils
 
 VERSION = '1.1.0'
 
@@ -553,8 +554,6 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        # retrieve store information from extra-specs
-        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
 
         # If snapshots exist, flatten to a temporary image, and upload it
 
@@ -580,12 +579,12 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             else:
                 upload_path = active_file_path
 
-            image_utils.upload_volume(context,
-                                      image_service,
-                                      image_meta,
-                                      upload_path,
-                                      root_file_fmt,
-                                      store_id=store_id)
+            volume_utils.upload_volume(context,
+                                       image_service,
+                                       image_meta,
+                                       upload_path,
+                                       volume,
+                                       root_file_fmt)
         finally:
             if temp_path:
                 self._delete(temp_path)

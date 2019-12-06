@@ -451,7 +451,8 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
             vmdk_file_path=vmdk_file_path,
             vmdk_size=volume.size * units.Gi,
             image_name=image_meta['name'],
-            store_id='fake-store')
+            store_id='fake-store',
+            base_image_ref=None)
         vops.detach_fcd.assert_called_once_with(backing, fcd_loc)
         delete_temp_backing.assert_called_once_with(backing)
 

@@ -1291,6 +1291,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             host=self._config.vmware_host_ip,
             port=self._config.vmware_host_port,
             store_id='fake-store',
+            base_image_ref=None,
             vm=backing,
             vmdk_file_path=vmdk_file_path,
             vmdk_size=volume['size'] * units.Gi,

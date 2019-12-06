@@ -33,6 +33,7 @@ from cinder import interface
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import vmdk
 from cinder.volume.drivers.vmware import volumeops as vops
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -262,6 +263,9 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
             store_id = volume.volume_type.extra_specs.get(
                 'image_service:store_id')
 
+            # TODO (whoami-rajat): Remove store_id and base_image_ref
+            #  parameters when oslo.vmware calls volume_utils wrapper of
+            #  upload_volume instead of image_utils.upload_volume
             image_transfer.upload_image(
                 context,
                 conf.vmware_image_transfer_timeout_secs,
@@ -275,7 +279,8 @@ class VMwareVStorageObjectDriver(vmdk.VMwareVcVmdkDriver):
                 vmdk_file_path=vmdk_file_path,
                 vmdk_size=volume.size * units.Gi,
                 image_name=image_meta['name'],
-                store_id=store_id)
+                store_id=store_id,
+                base_image_ref=volume_utils.get_base_image_ref(volume))
         finally:
             if attached:
                 self.volumeops.detach_fcd(backing, fcd_loc)

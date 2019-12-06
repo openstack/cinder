@@ -33,6 +33,7 @@ from cinder.image import image_utils
 from cinder import interface
 from cinder.volume import configuration
 from cinder.volume import driver
+from cinder.volume import volume_utils
 
 try:
     import linstor
@@ -662,13 +663,13 @@ class LinstorBaseDriver(driver.VolumeDriver):
             return lin_drv.all_api_responses_success(api_response)
 
     def _copy_vol_to_image(self, context, image_service, image_meta, rsc_path,
-                           store_id=None):
+                           volume):
 
-        return image_utils.upload_volume(context,
-                                         image_service,
-                                         image_meta,
-                                         rsc_path,
-                                         store_id=store_id)
+        return volume_utils.upload_volume(context,
+                                          image_service,
+                                          image_meta,
+                                          rsc_path,
+                                          volume)
 
     #
     # Snapshot
@@ -980,13 +981,11 @@ class LinstorBaseDriver(driver.VolumeDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         full_rsc_name = self._drbd_resource_name_from_cinder_volume(volume)
         rsc_path = str(self._get_rsc_path(full_rsc_name))
-        # retrieve store information from extra-specs
-        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
         self._copy_vol_to_image(context,
                                 image_service,
                                 image_meta,
                                 rsc_path,
-                                store_id=store_id)
+                                volume)
         return {}
 
     # Not supported currently

@@ -681,7 +681,7 @@ def _validate_file_format(image_data, expected_format):
 
 def upload_volume(context, image_service, image_meta, volume_path,
                   volume_format='raw', run_as_root=True, compress=True,
-                  store_id=None):
+                  store_id=None, base_image_ref=None):
     image_id = image_meta['id']
     if image_meta.get('container_format') != 'compressed':
         if (image_meta['disk_format'] == volume_format):
@@ -691,13 +691,15 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 with open(volume_path, 'rb') as image_file:
                     image_service.update(context, image_id, {},
                                          tpool.Proxy(image_file),
-                                         store_id=store_id)
+                                         store_id=store_id,
+                                         base_image_ref=base_image_ref)
             else:
                 with utils.temporary_chown(volume_path):
                     with open(volume_path, 'rb') as image_file:
                         image_service.update(context, image_id, {},
                                              tpool.Proxy(image_file),
-                                             store_id=store_id)
+                                             store_id=store_id,
+                                             base_image_ref=base_image_ref)
             return
 
     with temporary_file() as tmp:
@@ -740,7 +742,8 @@ def upload_volume(context, image_service, image_meta, volume_path,
         with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {},
                                  tpool.Proxy(image_file),
-                                 store_id=store_id)
+                                 store_id=store_id,
+                                 base_image_ref=base_image_ref)
 
 
 def check_virtual_size(virtual_size, volume_size, image_id):

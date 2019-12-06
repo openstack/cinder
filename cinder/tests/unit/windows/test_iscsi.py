@@ -415,8 +415,9 @@ class TestWindowsISCSIDriver(test.TestCase):
             expected_tmp_vhd_path)
         mock_upload_volume.assert_called_once_with(
             mock.sentinel.context, mock.sentinel.image_service,
-            fake_image_meta, expected_tmp_vhd_path, 'vhd',
-            store_id='fake-store')
+            fake_image_meta, expected_tmp_vhd_path, volume_format='vhd',
+            store_id='fake-store', base_image_ref=None,
+            compress=True, run_as_root=True)
         mock_delete_if_exists.assert_called_once_with(
             expected_tmp_vhd_path)
 

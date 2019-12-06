@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    This release includes support for Glance automatic image colocation.
+    When a volume originally created from an image is uploaded to the
+    Image service, Cinder passes Glance a reference to the original
+    image.  Glance may use this information to colocate the new image data
+    in the same image store(s) as the original image data.  Consult the
+    Glance documentation for more information.
