@@ -108,9 +108,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Fix for PowerMax OS replication settings (bug #1812685)
               - Support for storage-assisted in-use retype
                 (bp/powermax-storage-assisted-inuse-retype)
+        4.0.1 - PowerMax OS Metro formatted volumes fix (bug #1829876)
     """
 
-    VERSION = "4.0.0"
+    VERSION = "4.0.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
