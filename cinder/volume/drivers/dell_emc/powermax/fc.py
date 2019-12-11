@@ -116,9 +116,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - SnapVX noCopy mode enabled for all links
               - Volume/Snapshot backed metadata inclusion
               - Debug metadata compression and service level info fix
+        4.1.1 - QoS calulation fix
     """
 
-    VERSION = "4.1.0"
+    VERSION = "4.1.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
