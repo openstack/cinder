@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume import volume_types
 
@@ -54,7 +55,7 @@ storpool_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(storpool_opts)
+CONF.register_opts(storpool_opts, group=configuration.SHARED_CONF_GROUP)
 
 
 class StorPoolConfigurationInvalid(exception.CinderException):
