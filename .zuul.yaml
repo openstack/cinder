@@ -48,7 +48,7 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
-        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
+        - cinder-grenade-dsvm-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-lvm-multibackend:
             voting: false
@@ -66,7 +66,7 @@
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
+        - cinder-grenade-dsvm-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
@@ -82,9 +82,9 @@
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
             irrelevant-files: *gate-irrelevant-files
-        - legacy-grenade-dsvm-cinder-mn-sub-volschbak:
+        - cinder-grenade-dsvm-mn-sub-volschbak:
             irrelevant-files: *gate-irrelevant-files
-        - legacy-grenade-dsvm-cinder-mn-sub-bak:
+        - cinder-grenade-dsvm-mn-sub-bak:
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-ceph-tempest-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -142,3 +142,54 @@
     required-projects:
       - openstack/cinderlib
       - openstack/tempest
+
+- job:
+    name: cinder-grenade-dsvm-mn-sub-bak
+    parent: legacy-dsvm-base-multinode
+    # Old name: legacy-grenade-dsvm-cinder-mn-sub-bak
+    # This is py3 version for ussuri onwards rest all branch needs to be py2
+    # version which is present in openstack-zuul-jobs.
+    # We need to take care of this branch variant and python version while
+    # migrating these jobs to zuulv3.
+    branches: ^(?!(driverfixes|stable/(ocata|pike|queens|rocky|stein|train))).*$
+    run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-bak/run.yaml
+    post-run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-bak/post.yaml
+    timeout: 10800
+    required-projects:
+      - openstack/grenade
+      - openstack/devstack-gate
+      - openstack/cinder
+
+- job:
+    name: cinder-grenade-dsvm-mn-sub-volbak
+    parent: legacy-dsvm-base-multinode
+    # Old name: legacy-grenade-dsvm-cinder-mn-sub-volbak
+    # This is py3 version for ussuri onwards rest all branch needs to be py2
+    # version which is present in openstack-zuul-jobs.
+    # We need to take care of this branch variant and python version while
+    # migrating these jobs to zuulv3.
+    branches: ^(?!(driverfixes|stable/(ocata|pike|queens|rocky|stein|train))).*$
+    run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volbak/run.yaml
+    post-run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volbak/post.yaml
+    timeout: 10800
+    required-projects:
+      - openstack/grenade
+      - openstack/devstack-gate
+      - openstack/cinder
+
+- job:
+    name: cinder-grenade-dsvm-mn-sub-volschbak
+    parent: legacy-dsvm-base-multinode
+    # Old name: legacy-grenade-dsvm-cinder-mn-sub-volschbak
+    # This is py3 version for ussuri onwards rest all branch needs to be py2
+    # version which is present in openstack-zuul-jobs.
+    # We need to take care of this branch variant and python version while
+    # migrating these jobs to zuulv3.
+    branches: ^(?!(driverfixes|stable/(ocata|pike|queens|rocky|stein|train))).*$
+    run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volschbak/run.yaml
+    post-run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volschbak/post.yaml
+    timeout: 10800
+    required-projects:
+      - openstack/grenade
+      - openstack/devstack-gate
+      - openstack/cinder
