@@ -2607,7 +2607,7 @@ class PowerMaxCommon(object):
                       {'id': volume_id})
         else:
             # Check if volume is snap source
-            self._sync_check(extra_specs['array'], device_id, extra_specs)
+            self._clone_check(extra_specs['array'], device_id, extra_specs)
             # Remove volume from any openstack storage groups
             # and remove any replication
             self._remove_vol_and_cleanup_replication(
