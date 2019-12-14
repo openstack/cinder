@@ -58,7 +58,6 @@ except ImportError:
     import collections
 
 import logging as python_logging
-import prettytable
 import sys
 import time
 
@@ -67,6 +66,7 @@ from oslo_db import exception as db_exc
 from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 from oslo_utils import timeutils
+import tabulate
 
 # Need to register global_opts
 from cinder.backup import rpcapi as backup_rpcapi
@@ -384,11 +384,11 @@ class DbCommands(object):
         headers = ["{}".format(_('Migration')),
                    "{}".format(_('Total Needed')),
                    "{}".format(_('Completed')), ]
-        t = prettytable.PrettyTable(headers)
+        rows = []
         for name in sorted(migration_info.keys()):
             info = migration_info[name]
-            t.add_row([name, info[0], info[1]])
-        print(t)
+            rows.append([name, info[0], info[1]])
+        print(tabulate.tabulate(rows, headers=headers, tablefmt='psql'))
 
         # NOTE(imacdonn): In the "unlimited" case, the loop above will only
         # terminate when all possible migrations have been effected. If we're

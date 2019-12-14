@@ -14,13 +14,13 @@
 #    under the License.
 import datetime
 import platform
-import prettytable
 import six
 import time
 import traceback
 import types
 
 from oslo_log import log as logging
+import tabulate
 
 from cinder.objects import volume
 from cinder import version
@@ -237,12 +237,13 @@ class PowerMaxVolumeMetadata(object):
 
         :param datadict: the data dictionary
         """
-        t = prettytable.PrettyTable(['Key', 'Value'])
+        rows = []
         for k, v in datadict.items():
             if v is not None:
-                t.add_row([k, v])
+                rows.append([k, v])
+        t = tabulate.tabulate(rows, headers=['Key', 'Value'], tablefmt='psql')
 
-        LOG.debug('\n%(output)s\n', {'output': t})
+        LOG.debug('\n%s\n', t)
 
     def _consolidate_volume_trace_list(
             self, volume_id, volume_trace_dict, volume_key_value):
