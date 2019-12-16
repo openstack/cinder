@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    The Brocade Fibre Channel Zone Manager driver has been marked as
+    unsupported and is now deprecated. It is subject to removal during the "V"
+    development cycle, following the standard OpenStack deprecation policy.
+    The config option ``enable_unsupported_driver`` will need to be set to
+    ``True`` in the driver's section in cinder.conf to continue to use it
+    in this release.
+deprecations:
+  - |
+    The Brocade Fibre Channel Zone Manager driver has been marked as
+    unsupported and is now deprecated. It is subject to removal during the "V"
+    development cycle, following the standard OpenStack deprecation policy.
+    The config option ``enable_unsupported_driver`` will need to be set to
+    ``True`` in the driver's section in cinder.conf to continue to use it
+    in this release.

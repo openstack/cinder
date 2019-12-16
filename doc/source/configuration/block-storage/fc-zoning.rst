@@ -50,6 +50,12 @@ Brocade Fibre Channel Zone Driver
 Brocade Fibre Channel Zone Driver performs zoning operations
 through HTTP, HTTPS, or SSH.
 
+.. warning::
+
+   The Brocade Fibre Channel Zone Driver is no longer supported. It is subject
+   to removal during the "V" development cycle, following the standard
+   OpenStack deprecation policy.
+
 Set the following options in the ``cinder.conf`` configuration file under the
 ``[fc-zone-manager]`` section.
 
