@@ -263,7 +263,6 @@ def list_opts():
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.
                 instorage_mcs_iscsi_opts,
-                cinder_volume_drivers_storpool.storpool_opts,
                 cinder_volume_drivers_veritas_access_veritasiscsi.VA_VOL_OPTS,
                 cinder_volume_manager.volume_manager_opts,
                 cinder_wsgi_eventletserver.socket_opts,
@@ -357,6 +356,7 @@ def list_opts():
                 cinder_volume_drivers_san_san.san_opts,
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
                 cinder_volume_drivers_solidfire.sf_opts,
+                cinder_volume_drivers_storpool.storpool_opts,
                 cinder_volume_drivers_stx_common.common_opts,
                 cinder_volume_drivers_stx_common.iscsi_opts,
                 cinder_volume_drivers_synology_synologycommon.cinder_opts,
