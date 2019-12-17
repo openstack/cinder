@@ -83,7 +83,7 @@ class NVMET(nvmeof.NVMeOF):
 
     def _restore(self, nvmf_subsystems):
         # Dump updated JSON dict to append new subsystem
-        with tempfile.NamedTemporaryFile() as tmp_fd:
+        with tempfile.NamedTemporaryFile(mode='w') as tmp_fd:
             tmp_fd.write(json.dumps(nvmf_subsystems))
             tmp_fd.flush()
             try:
