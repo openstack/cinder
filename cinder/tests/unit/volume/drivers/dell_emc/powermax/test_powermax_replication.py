@@ -667,6 +667,9 @@ class PowerMaxReplicationTest(test.TestCase):
             self.data.remote_array, self.data.device_id2, self.extra_specs)
         self.assertEqual(2, mock_remove.call_count)
         self.assertEqual(2, mock_add.call_count)
+        mck_sync.assert_called_once_with(
+            self.data.array, self.data.device_id, self.extra_specs,
+            tgt_only=True, source_device_id=self.data.device_id)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
                        return_value=('VMAX250F', False))
