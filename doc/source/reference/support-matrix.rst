@@ -85,3 +85,6 @@ release.
    * Tintri Storage Driver
    * Veritas HyperScale Storage Driver
    * Nexenta Edge Storage Driver
+
+* Ussuri
+   * Huawei FusionStorage Driver

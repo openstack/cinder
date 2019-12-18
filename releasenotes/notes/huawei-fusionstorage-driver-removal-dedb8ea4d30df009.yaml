@@ -1,0 +1,6 @@
+upgrade:
+  - |
+    The Huawei FusionStorage driver was marked unsupported in the
+    Train release and has now been removed.  All data on
+    FusionStorage backends should be migrated to a supported
+    storage backend before upgrading your Cinder installation.
