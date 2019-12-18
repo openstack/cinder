@@ -100,7 +100,7 @@ Configure shared volume driver backends
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When configuring multiple volume backends, common configuration
-parameters can be shared using the `[backend_default]` section. As
+parameters can be shared using the `[backend_defaults]` section. As
 an example:
 
 .. code-block:: ini
@@ -108,7 +108,7 @@ an example:
    [DEFAULT]
    enabled_backends=backend1,backend2,backend3
 
-   [backend_default]
+   [backend_defaults]
    image_volume_cache_enabled = True
    volume_clear = none
    target_helper = tgtadm
@@ -125,15 +125,15 @@ an example:
    volume_group = cinder-volume-3
 
 In this configuration, ``backend2`` and ``backend3`` have the same
-``image_volume_cache_enabled`` as it is defined in the ``backend_default``
+``image_volume_cache_enabled`` as it is defined in the ``backend_defaults``
 section. In other words, ``backend2`` and ``backend3`` have enabled
 the image cache features. ``image_volume_cache_enabled`` in ``backend1``
 is False, that means any overwritten configuration in a volume backend
-will ignore the original value in ``backend_default``.
+will ignore the original value in ``backend_defaults``.
 
 .. note::
 
-   The ``backend_default`` section should be configured according to
+   The ``backend_defaults`` section should be configured according to
    your cloud environment or your backend driver information.
 
 Configure Block Storage scheduler multi back end
