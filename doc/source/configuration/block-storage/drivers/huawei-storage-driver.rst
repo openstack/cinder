@@ -123,8 +123,9 @@ iSCSI storage or Fibre Channel storage.
 **Pre-requisites**
 
 When creating a volume from image, install the ``multipath`` tool and add the
-following configuration keys in the ``[DEFAULT]`` configuration group of
-the ``/etc/cinder/cinder.conf`` file:
+following configuration keys for each backend section or in
+``[backend_defaults]`` section as a common configuration for all backends in
+``/etc/cinder/cinder.conf`` file:
 
 .. code-block:: ini
 

@@ -1119,9 +1119,9 @@ On Compute (Nova) node, add the following flag in the ``[libvirt]`` section of
 
    volume_use_multipath = True
 
-On Cinder controller node, iSCSI MPIO can be set globally in the
-[DEFAULT] section or set individually in the PowerMax backend stanza in
-:file:`/etc/cinder/cinder.conf`:
+On Cinder controller node, multipath for image transfer can be enabled in
+``/etc/cinder/cinder.conf`` for each  backend section or
+in ``[backend_defaults]`` section as a common configuration for all backends.
 
 .. code-block:: ini
 
