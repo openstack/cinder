@@ -995,7 +995,7 @@ class CommonAdapter(object):
     @cinder_utils.trace
     def failover(self, volumes, secondary_id=None, groups=None):
         # TODO(ryan) support group failover after group bp merges
-        # https://review.openstack.org/#/c/574119/
+        # https://review.opendev.org/#/c/574119/
 
         if secondary_id is None:
             LOG.debug('No secondary specified when failover. '
