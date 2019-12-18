@@ -103,7 +103,9 @@ Fibre Channel configuration example
 Multipath configuration
 -----------------------
 
-* Enable multipath for image transfer in ``/etc/cinder/cinder.conf``.
+* Enable multipath for image transfer in ``/etc/cinder/cinder.conf`` for each
+  back end or in ``[backend_defaults]`` section as a common configuration
+  for all backends.
 
    .. code-block:: ini
 
