@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The Sheepdog driver was marked unsupported in the Train release and has
+    now been removed. All data on Sheepdog backends should be migrated to a
+    supported backend before upgrading your Cinder installation.
