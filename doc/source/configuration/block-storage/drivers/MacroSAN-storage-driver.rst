@@ -23,11 +23,13 @@ To use the MacroSAN drivers, the following are required:
 - HTTPS or HTTP must be enabled on the array
 
 When creating a volume from image, install the ``multipath`` tool and add the
-following configuration keys in the ``[DEFAULT]`` configuration group of
-the ``/etc/cinder/cinder.conf`` file:
+following configuration keys for each backend section or in
+``[backend_defaults]`` section as a common configuration for all backends in
+``/etc/cinder/cinder.conf`` file:
 
 .. code-block:: ini
 
+   [cinder-iscsi-a]
    use_multipath_for_image_xfer = True
 
 When creating a instance from image, install the ``multipath`` tool and add the

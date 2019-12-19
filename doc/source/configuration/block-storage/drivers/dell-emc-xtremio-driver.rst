@@ -160,7 +160,8 @@ modified as follows:
 -  Multipathing
 
    The ``use_multipath_for_image_xfer`` parameter in the ``cinder.conf`` file
-   should be set to ``True`` as follows:
+   should be set to ``True`` for each backend  or in ``[backend_defaults]``
+   section as a common configuration for all backends.
 
    .. code-block:: ini
 
