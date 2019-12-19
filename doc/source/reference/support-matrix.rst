@@ -88,3 +88,4 @@ release.
 
 * Ussuri
    * Huawei FusionStorage Driver
+   * ProphetStor Flexvisor Driver
