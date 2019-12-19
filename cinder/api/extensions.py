@@ -281,7 +281,7 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
                          (package, relpkg, root, classname))
 
             if ext_list is not None and classname not in ext_list:
-                logger.debug("Skipping extension: %s" % classpath)
+                logger.debug("Skipping extension: %s", classpath)
                 continue
 
             try:

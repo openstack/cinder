@@ -33,6 +33,7 @@ fasteners==0.14.1
 fixtures==3.0.0
 flake8==2.5.5
 flake8-import-order==0.18.1
+flake8-logging-format==0.6.0
 future==0.16.0
 futurist==1.6.0
 gitdb2==2.0.3
