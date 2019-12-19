@@ -176,7 +176,7 @@ class InStorageMCSReplication(object):
             # Reverse the role of the primary and secondary volumes
             self.target_assistant.switch_relationship(rel_info['name'])
             return {'replication_status': fields.ReplicationStatus.FAILED_OVER}
-        except Exception as e:
+        except Exception:
             LOG.exception('Unable to fail-over the volume %(id)s to the '
                           'secondary back-end by switchrcrelationship '
                           'command.', {"id": vref.id})

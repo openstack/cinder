@@ -417,7 +417,7 @@ class RSDClient(object):
                     detail=(_("Volume %s already attached") % volume_url))
 
             node.attach_endpoint(volume.path)
-        except sushy_exceptions.InvalidParameterValueError as e:
+        except sushy_exceptions.InvalidParameterValueError:
             LOG.exception("Attach volume failed (not allowable)")
             raise RSDRetryableException(
                 reason=(_("Not allowed to attach from "

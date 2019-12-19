@@ -68,7 +68,7 @@ class CgsnapshotsController(wsgi.Controller):
         except exception.InvalidGroupSnapshot as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
         except (exception.GroupSnapshotNotFound,
-                exception.PolicyNotAuthorized) as e:
+                exception.PolicyNotAuthorized):
             # Exceptions will be handled at the wsgi level
             raise
         except Exception:

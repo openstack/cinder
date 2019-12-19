@@ -2017,7 +2017,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         mock_client.getVolume.return_value = {
             'name': mock.ANY,
-            'snapCPG': mock.ANY,
             'comment': "{'display_name': 'Foo Volume'}",
             'provisioningType': mock.ANY,
             'userCPG': 'OpenStackCPG',
@@ -2124,7 +2123,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         mock_client.getVolume.return_value = {
             'name': mock.ANY,
-            'snapCPG': mock.ANY,
             'comment': "{'display_name': 'Foo Volume'}",
             'provisioningType': mock.ANY,
             'userCPG': 'OpenStackCPG',
@@ -2224,7 +2222,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         mock_client.getVolume.return_value = {
             'name': mock.ANY,
-            'snapCPG': mock.ANY,
             'comment': "{'display_name': 'Foo Volume'}",
             'provisioningType': mock.ANY,
             'userCPG': 'OpenStackCPG',

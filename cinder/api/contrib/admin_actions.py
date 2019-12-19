@@ -174,7 +174,7 @@ class VolumeAdminController(AdminController):
 
         try:
             self.volume_api.terminate_connection(context, volume, connector)
-        except exception.VolumeBackendAPIException as error:
+        except exception.VolumeBackendAPIException:
             msg = _("Unable to terminate volume connection from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
 

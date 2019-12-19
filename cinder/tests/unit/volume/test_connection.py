@@ -88,7 +88,7 @@ class DiscardFlagTestCase(base.BaseVolumeTestCase):
         self.volume.driver.initialize_connection.return_value = conn_info
 
         def _safe_get(key):
-            if key is 'report_discard_supported':
+            if key == 'report_discard_supported':
                 return config_discard_flag
             else:
                 return None
