@@ -203,8 +203,8 @@ class RESTScheduler(object):
         self.token = ''
         self.host = host
         self.port = '8452'
-        self.user = user
-        self.passw = passw
+        self.user = user if isinstance(user, str) else user.decode()
+        self.passw = passw if isinstance(passw, str) else passw.decode()
         self.connector = connector_obj or DefaultRESTConnector(verify)
         self.connect()
 
