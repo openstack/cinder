@@ -18,8 +18,8 @@
 """Unit tests for Cisco fc zone client cli."""
 
 import time
+from unittest import mock
 
-import mock
 from oslo_concurrency import processutils
 from six.moves import range
 

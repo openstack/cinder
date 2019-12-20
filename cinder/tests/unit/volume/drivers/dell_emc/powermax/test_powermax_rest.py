@@ -15,8 +15,8 @@
 
 from copy import deepcopy
 import time
+from unittest import mock
 
-import mock
 import requests
 
 from cinder import exception

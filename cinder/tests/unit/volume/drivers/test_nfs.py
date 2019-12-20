@@ -14,15 +14,15 @@
 #    under the License.
 """Unit tests for the NFS driver module."""
 
-import ddt
 import errno
 import os
-import six
+from unittest import mock
 import uuid
 
-import mock
+import ddt
 from oslo_utils import imageutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import exception

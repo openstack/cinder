@@ -13,13 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for the Inspur InStorage volume driver.
-"""
+"""Tests for the Inspur InStorage volume driver."""
+
+from unittest import mock
 
 import ddt
 from eventlet import greenthread
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import importutils
@@ -33,6 +32,7 @@ from cinder.objects import fields
 from cinder import ssh_utils
 from cinder import test
 from cinder.tests.unit import utils as testutils
+from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.inspur.instorage import (
     replication as instorage_rep)
@@ -41,8 +41,6 @@ from cinder.volume.drivers.inspur.instorage import instorage_iscsi
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
-
-from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 
 
 CONF = cfg.CONF

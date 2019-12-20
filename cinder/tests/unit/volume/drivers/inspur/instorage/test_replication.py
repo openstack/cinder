@@ -13,14 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for the Inspur InStorage volume driver.
-"""
+"""Tests for the Inspur InStorage volume driver."""
 
 import json
+from unittest import mock
 
 from eventlet import greenthread
-import mock
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -30,6 +28,7 @@ from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as testutils
+from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.inspur.instorage import (
@@ -37,8 +36,6 @@ from cinder.volume.drivers.inspur.instorage import (
 from cinder.volume.drivers.inspur.instorage import instorage_common
 from cinder.volume.drivers.inspur.instorage import instorage_const
 from cinder.volume import volume_types
-
-from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 
 
 class InStorageMCSReplicationTestCase(test.TestCase):

@@ -10,12 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for resource filters API.
-"""
+"""Tests for resource filters API."""
+
+from unittest import mock
 
 import ddt
-import mock
 import six
 
 from cinder.api import microversions as mv

@@ -15,8 +15,9 @@
 #    under the License.
 """Tests for Volume connection test cases."""
 
+from unittest import mock
+
 import ddt
-import mock
 
 from cinder import context
 from cinder import db

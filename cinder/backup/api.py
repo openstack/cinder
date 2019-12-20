@@ -15,18 +15,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Handles all requests relating to the volume backups service.
-"""
+"""Handles all requests relating to the volume backups service."""
 
 from datetime import datetime
+import random
+
 from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 from pytz import timezone
-import random
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants

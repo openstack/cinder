@@ -15,7 +15,7 @@
 
 """Tests for volume copy throttling helpers."""
 
-import mock
+from unittest import mock
 
 from cinder import test
 from cinder import utils

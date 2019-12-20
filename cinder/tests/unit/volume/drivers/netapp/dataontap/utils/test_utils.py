@@ -12,9 +12,9 @@
 
 import json
 import socket
+from unittest import mock
 
 import ddt
-import mock
 from oslo_config import cfg
 
 from cinder import exception

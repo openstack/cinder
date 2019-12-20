@@ -14,17 +14,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Test suites for 'common' code used throughout the OpenStack HTTP API.
-"""
+"""Test suites for 'common' code used throughout the OpenStack HTTP API."""
+
+from unittest import mock
 
 import ddt
-import mock
+from oslo_config import cfg
 from testtools import matchers
 import webob
 import webob.exc
-
-from oslo_config import cfg
 
 from cinder.api import common
 from cinder import test

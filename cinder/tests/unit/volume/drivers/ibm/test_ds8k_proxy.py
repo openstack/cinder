@@ -16,10 +16,11 @@
 """Tests for the IBM DS8K family driver."""
 import ast
 import copy
+import json
+from unittest import mock
+
 import ddt
 import eventlet
-import json
-import mock
 import six
 
 from cinder import context
@@ -32,7 +33,6 @@ import cinder.volume.drivers.ibm.ibm_storage as storage
 from cinder.volume.drivers.ibm.ibm_storage import proxy
 from cinder.volume import group_types
 from cinder.volume import volume_types
-
 # mock decorator logger for all unit test cases.
 mock_logger = mock.patch.object(proxy, 'logger', lambda x: x)
 mock_logger.start()

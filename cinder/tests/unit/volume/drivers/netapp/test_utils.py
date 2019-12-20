@@ -19,10 +19,10 @@ Mock unit tests for the NetApp driver utility module
 """
 
 import copy
-import ddt
 import platform
+from unittest import mock
 
-import mock
+import ddt
 from oslo_concurrency import processutils as putils
 
 from cinder import context

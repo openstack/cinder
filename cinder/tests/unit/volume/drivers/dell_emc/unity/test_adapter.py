@@ -15,9 +15,9 @@
 
 import contextlib
 import functools
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 
 from cinder import exception

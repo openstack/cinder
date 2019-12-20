@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
-
 import copy
+import time
+from unittest import mock
+
 import ddt
-import mock
 from oslo_config import cfg
 
 from cinder import test

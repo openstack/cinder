@@ -16,13 +16,13 @@
 import collections
 import math
 import re
-import six
 import uuid
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import exception

@@ -14,8 +14,9 @@
 #    under the License.
 
 import datetime
+from unittest import mock
+
 import ddt
-import mock
 from oslo_config import cfg
 import pytz
 from six.moves import http_client

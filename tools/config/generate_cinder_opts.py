@@ -69,7 +69,8 @@ if __name__ == "__main__":
     # cinder files, otherwise any decorator that uses cinder.objects.YYY will
     # fail with exception AttributeError: 'module' object has no attribute
     # 'YYY' when running tox -egenconfig
-    opt_file.write("from cinder import objects\nobjects.register_all()\n\n")
+    opt_file.write(
+        "from cinder import objects  # noqa\nobjects.register_all()\n")
 
     targetdir = 'cinder'
 

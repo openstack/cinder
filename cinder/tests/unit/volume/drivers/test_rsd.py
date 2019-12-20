@@ -10,9 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import fixtures
-import mock
 import sys
+from unittest import mock
+
+import fixtures
 
 from cinder import exception
 from cinder.i18n import _
@@ -70,7 +71,7 @@ fake_sushy.exceptions.InvalidParameterValueError = (
 sys.modules['rsd_lib'] = fake_rsd_lib
 sys.modules['sushy'] = fake_sushy
 
-from cinder.volume.drivers import rsd as rsd_driver
+from cinder.volume.drivers import rsd as rsd_driver  # noqa
 
 
 class RSDClientTestCase(test.TestCase):

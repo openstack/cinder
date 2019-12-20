@@ -16,7 +16,7 @@
 Unit Tests for cinder.backup.rpcapi
 """
 
-import mock
+from unittest import mock
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import objects

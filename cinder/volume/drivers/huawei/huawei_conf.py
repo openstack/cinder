@@ -13,20 +13,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Set Huawei private configuration into Configuration object.
+"""Sets Huawei private configuration into Configuration object.
 
 For conveniently get private configuration. We parse Huawei config file
 and set every property into Configuration object as an attribute.
 """
 
 import base64
-from defusedxml import ElementTree as ET
 import os
 import re
-import six
 
+from defusedxml import ElementTree as ET
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder.i18n import _

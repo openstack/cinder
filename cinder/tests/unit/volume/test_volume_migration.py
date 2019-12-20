@@ -15,10 +15,10 @@
 #    under the License.
 """Tests for Volume Code."""
 
-import ddt
 import time
+from unittest import mock
 
-import mock
+import ddt
 import os_brick
 from oslo_concurrency import processutils
 from oslo_config import cfg

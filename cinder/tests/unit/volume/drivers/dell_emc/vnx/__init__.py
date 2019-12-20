@@ -14,8 +14,7 @@
 # under the License.
 
 import sys
-
-import mock
+from unittest import mock
 
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_exception
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import fake_storops

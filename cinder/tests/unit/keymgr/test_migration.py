@@ -14,7 +14,8 @@
 # under the License.
 """Tests for encryption key migration."""
 
-import mock
+from unittest import mock
+
 from oslo_config import cfg
 
 from cinder import db

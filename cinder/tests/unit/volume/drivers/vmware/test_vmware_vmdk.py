@@ -13,14 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Test suite for VMware vCenter VMDK driver.
-"""
+"""Test suite for VMware vCenter VMDK driver."""
 
 import re
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 from oslo_utils import versionutils
 from oslo_vmware import exceptions

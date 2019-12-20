@@ -14,11 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-import six
 import tempfile
+from unittest import mock
 
 from oslo_utils import units
+import six
 
 from cinder import exception
 from cinder import test

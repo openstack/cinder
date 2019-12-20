@@ -12,23 +12,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for Backup swift code.
-
-"""
+"""Tests for Backup swift code."""
 
 import bz2
-import ddt
 import filecmp
 import hashlib
 import os
 import shutil
 import tempfile
 import threading
+from unittest import mock
 import zlib
 
+import ddt
 from eventlet import tpool
-import mock
 from oslo_config import cfg
 from swiftclient import client as swift
 

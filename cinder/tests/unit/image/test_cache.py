@@ -13,9 +13,9 @@
 #    under the License.
 
 from datetime import timedelta
-import ddt
-import mock
+from unittest import mock
 
+import ddt
 from oslo_utils import timeutils
 
 from cinder import context as ctxt

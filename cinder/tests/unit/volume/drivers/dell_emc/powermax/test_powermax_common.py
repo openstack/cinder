@@ -15,7 +15,8 @@
 
 import ast
 from copy import deepcopy
-import mock
+from unittest import mock
+
 import six
 
 from cinder import exception

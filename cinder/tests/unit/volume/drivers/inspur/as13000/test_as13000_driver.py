@@ -13,14 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Volume driver test for Inspur AS13000
-"""
+"""Volume driver test for Inspur AS13000."""
 
 import json
-import mock
 import random
 import time
+from unittest import mock
 
 import ddt
 import eventlet

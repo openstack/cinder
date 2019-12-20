@@ -13,13 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for volume backup to IBM Tivoli Storage Manager (TSM).
-"""
+"""Tests for volume backup to IBM Tivoli Storage Manager (TSM)."""
 
 import json
-import mock
 import posix
+from unittest import mock
 
 from oslo_concurrency import processutils as putils
 from oslo_utils import timeutils

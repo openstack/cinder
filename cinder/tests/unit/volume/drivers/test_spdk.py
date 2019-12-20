@@ -12,7 +12,7 @@
 
 import copy
 import json
-import mock
+from unittest import mock
 
 from os_brick import initiator
 from os_brick.initiator import connector

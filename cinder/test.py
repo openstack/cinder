@@ -24,12 +24,12 @@ import copy
 import logging
 import os
 import sys
+from unittest import mock
 import uuid
 
 from eventlet import tpool
 import fixtures
 from keystonemiddleware import auth_token
-import mock
 from oslo_concurrency import lockutils
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
@@ -57,7 +57,6 @@ from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
-
 
 CONF = config.CONF
 

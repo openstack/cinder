@@ -17,9 +17,9 @@ import copy
 import os
 import re
 import sys
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder import context
 from cinder import exception

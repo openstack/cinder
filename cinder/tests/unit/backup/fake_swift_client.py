@@ -20,7 +20,6 @@ import zlib
 
 import six
 from six.moves import http_client
-
 from swiftclient import client as swift
 
 

@@ -14,9 +14,9 @@
 
 import copy
 import os
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 
 from cinder import context

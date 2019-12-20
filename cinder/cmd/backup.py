@@ -26,7 +26,6 @@ import sys
 # share the same context.
 import eventlet
 eventlet.monkey_patch()
-
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -34,13 +33,11 @@ from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
-
-from cinder import i18n
-i18n.enable_lazy()
-
 # Need to register global_opts
 from cinder.common import config  # noqa
 from cinder.db import api as session
+from cinder import i18n
+i18n.enable_lazy()
 from cinder import objects
 from cinder import service
 from cinder import utils

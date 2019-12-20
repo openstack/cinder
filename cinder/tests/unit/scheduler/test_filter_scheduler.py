@@ -12,12 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests For Filter Scheduler.
-"""
+"""Tests For Filter Scheduler."""
+
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder import context
 from cinder import exception

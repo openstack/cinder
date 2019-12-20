@@ -14,8 +14,8 @@
 
 import collections
 import functools
-
 import json
+
 import oslo_messaging as messaging
 
 from cinder import rpc

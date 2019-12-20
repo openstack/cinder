@@ -13,7 +13,7 @@
 #    under the License.
 #
 
-import mock
+from unittest import mock
 
 from cinder import test
 from cinder.volume import configuration

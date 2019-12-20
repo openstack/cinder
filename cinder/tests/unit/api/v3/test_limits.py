@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version

@@ -14,12 +14,12 @@
 #    under the License.
 import datetime
 import platform
-import six
 import time
 import traceback
 import types
 
 from oslo_log import log as logging
+import six
 import tabulate
 
 from cinder.objects import volume

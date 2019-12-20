@@ -14,22 +14,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for the IBM Storwize family and SVC volume driver.
-"""
+"""Tests for the IBM Storwize family and SVC volume driver."""
 
-import ddt
 import json
-import mock
-import paramiko
 import random
 import re
 import time
+from unittest import mock
 
+import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import units
+import paramiko
 import six
 
 from cinder import context

@@ -13,9 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for the Inspur InStorage volume driver.
-"""
+"""Tests for the Inspur InStorage volume driver."""
 
 import re
 
@@ -25,7 +23,6 @@ import six
 
 from cinder import exception
 from cinder import utils
-
 from cinder.volume.drivers.inspur.instorage import instorage_const
 from cinder.volume.drivers.inspur.instorage import instorage_fc
 from cinder.volume.drivers.inspur.instorage import instorage_iscsi

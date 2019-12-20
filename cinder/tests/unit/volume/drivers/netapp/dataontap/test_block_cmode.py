@@ -14,12 +14,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Mock unit tests for the NetApp block storage C-mode library
-"""
+"""Mock unit tests for the NetApp block storage C-mode library."""
+
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder import exception
 from cinder.objects import fields

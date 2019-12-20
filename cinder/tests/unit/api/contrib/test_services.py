@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import datetime
+from unittest import mock
 
 import ddt
 import iso8601
-import mock
 from oslo_config import cfg
 from six.moves import http_client
 

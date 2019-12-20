@@ -12,16 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import datetime
 import functools
 import json
 import os
 import sys
 import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import timeutils
 import six
 from six.moves import range

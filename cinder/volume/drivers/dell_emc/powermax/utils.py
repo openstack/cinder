@@ -18,7 +18,6 @@ import datetime
 import hashlib
 import re
 
-from cinder.objects.group import Group
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
@@ -27,6 +26,7 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.objects.group import Group
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 

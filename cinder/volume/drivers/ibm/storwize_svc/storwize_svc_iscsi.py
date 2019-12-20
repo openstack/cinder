@@ -14,8 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-ISCSI volume driver for IBM Storwize family and SVC storage systems.
+"""ISCSI volume driver for IBM Storwize family and SVC storage systems.
 
 Notes:
 1. If you specify both a password and a key file, this driver will use the
@@ -45,7 +44,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder.volume import configuration as conf
-
 from cinder.volume.drivers.ibm.storwize_svc import (
     storwize_svc_common as storwize_common)
 

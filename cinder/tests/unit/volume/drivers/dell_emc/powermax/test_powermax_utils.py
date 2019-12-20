@@ -15,10 +15,10 @@
 
 from copy import deepcopy
 import datetime
+from unittest import mock
 
 from ddt import data
 from ddt import ddt
-import mock
 import six
 
 from cinder import exception

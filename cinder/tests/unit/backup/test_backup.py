@@ -15,12 +15,12 @@
 """Tests for Backup code."""
 
 import copy
-import ddt
 import os
+from unittest import mock
 import uuid
 
+import ddt
 from eventlet import tpool
-import mock
 from os_brick.initiator.connectors import fake as fake_connectors
 from oslo_config import cfg
 from oslo_db import exception as db_exc

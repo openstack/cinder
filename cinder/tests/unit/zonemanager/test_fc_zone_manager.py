@@ -19,7 +19,7 @@
 
 """Unit tests for FC Zone Manager."""
 
-import mock
+from unittest import mock
 
 from cinder import exception
 from cinder import test

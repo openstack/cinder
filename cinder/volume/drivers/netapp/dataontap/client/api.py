@@ -15,19 +15,17 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-NetApp API for Data ONTAP and OnCommand DFM.
+"""NetApp API for Data ONTAP and OnCommand DFM.
 
 Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
+import random
 
 from eventlet import greenthread
 from eventlet import semaphore
-
 from lxml import etree
 from oslo_log import log as logging
 from oslo_utils import netutils
-import random
 import six
 from six.moves import urllib
 

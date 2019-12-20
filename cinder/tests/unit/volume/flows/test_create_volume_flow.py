@@ -14,16 +14,15 @@
 #    under the License.
 """ Tests for create_volume TaskFlow """
 
-import six
 import sys
+from unittest import mock
 import uuid
-
-import ddt
-import mock
 
 from castellan.common import exception as castellan_exc
 from castellan.tests.unit.key_manager import mock_key_manager
+import ddt
 from oslo_utils import imageutils
+import six
 
 from cinder import context
 from cinder import exception

@@ -12,17 +12,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit tests for NexentaStor 5 REST API helper
-"""
+"""Unit tests for NexentaStor 5 REST API helper."""
 
 import copy
 import hashlib
 import json
 import posixpath
+from unittest import mock
 import uuid
 
-import mock
 import requests
 import six
 

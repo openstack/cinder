@@ -16,8 +16,9 @@
 """The backups V3 api."""
 
 import copy
+from unittest import mock
+
 import ddt
-import mock
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
 import webob

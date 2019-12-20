@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Test suite for VMware VMDK driver volumeops module.
-"""
+"""Test suite for VMware VMDK driver volumeops module."""
+
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware import vim_util

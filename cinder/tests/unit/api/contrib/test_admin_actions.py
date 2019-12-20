@@ -10,9 +10,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from unittest import mock
+
 import ddt
 import fixtures
-import mock
 from oslo_concurrency import lockutils
 from oslo_config import fixture as config_fixture
 import oslo_messaging as messaging

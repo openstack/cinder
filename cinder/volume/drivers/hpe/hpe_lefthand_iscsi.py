@@ -34,12 +34,16 @@ LeftHand array.
 
 """
 
+import math
+import re
+
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import coordination
@@ -53,10 +57,6 @@ from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
-
-import math
-import re
-import six
 
 LOG = logging.getLogger(__name__)
 

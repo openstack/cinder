@@ -15,11 +15,11 @@
 
 import ast
 from copy import deepcopy
+import re
 import sys
 import time
 
 from oslo_log import log as logging
-import re
 import six
 
 from cinder import coordination

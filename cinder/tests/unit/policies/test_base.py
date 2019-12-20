@@ -12,9 +12,9 @@
 #    under the License.
 
 import uuid
-import webob
 
 from oslo_serialization import jsonutils
+import webob
 
 from cinder.api import microversions as mv
 from cinder import context as cinder_context

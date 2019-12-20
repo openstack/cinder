@@ -13,16 +13,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit tests for the NetApp NFS storage driver
-"""
+"""Unit tests for the NetApp NFS storage driver."""
 import copy
 import os
 import threading
 import time
+from unittest import mock
 
 import ddt
-import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils
 from oslo_utils import units

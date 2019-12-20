@@ -16,8 +16,9 @@
 
 # TODO(mdovgal): add tests for other TaskFlow cases
 
+from unittest import mock
+
 import ddt
-import mock
 
 from cinder import context
 from cinder import exception

@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import mock
+from unittest import mock
 
 from cinder.tests.unit.volume.drivers.dell_emc.vnx import test_base
 from cinder.volume.drivers.dell_emc.vnx import driver

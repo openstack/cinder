@@ -11,14 +11,13 @@
 #    under the License.
 
 import contextlib
+from unittest import mock
 
-import mock
 from oslo_concurrency import processutils as putils
 import six
 
 from cinder import context
 from cinder import exception
-
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
 from cinder.volume.targets import iet

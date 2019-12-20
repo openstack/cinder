@@ -13,17 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from unittest import mock
+
+from keystoneclient import exceptions
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
 
 from cinder import context
 from cinder import exception
 from cinder import quota_utils
 from cinder import test
 
-from keystoneclient import exceptions
-
-from oslo_config import cfg
-from oslo_config import fixture as config_fixture
 
 CONF = cfg.CONF
 

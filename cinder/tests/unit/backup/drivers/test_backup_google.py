@@ -14,10 +14,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for Google Backup code.
-
-"""
+"""Tests for Google Backup code."""
 
 import bz2
 import filecmp
@@ -26,10 +23,10 @@ import os
 import shutil
 import tempfile
 import threading
+from unittest import mock
 import zlib
 
 from eventlet import tpool
-import mock
 from oslo_utils import units
 
 from cinder.backup.drivers import gcs as google_dr

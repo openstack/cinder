@@ -12,12 +12,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for Backup NFS driver.
+"""Tests for Backup NFS driver."""
 
-"""
 import bz2
-import ddt
 import filecmp
 import hashlib
 import os
@@ -25,10 +22,11 @@ import shutil
 import stat
 import tempfile
 import threading
+from unittest import mock
 import zlib
 
+import ddt
 from eventlet import tpool
-import mock
 from os_brick import exception as brick_exception
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg

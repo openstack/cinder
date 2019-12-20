@@ -17,7 +17,7 @@
 Tests For Allocated Capacity Weigher.
 """
 
-import mock
+from unittest import mock
 
 from cinder.common import constants
 from cinder import context

@@ -19,7 +19,6 @@ import hashlib
 import math
 import time
 
-from cinder import utils
 from defusedxml import lxml as etree
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -29,6 +28,7 @@ import six
 
 from cinder import coordination
 from cinder.i18n import _
+from cinder import utils
 import cinder.volume.drivers.stx.exception as stx_exception
 
 LOG = logging.getLogger(__name__)

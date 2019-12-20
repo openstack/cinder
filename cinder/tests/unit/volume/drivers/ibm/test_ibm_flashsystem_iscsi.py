@@ -14,14 +14,12 @@
 #    under the License.
 #
 
-"""
-Tests for the IBM FlashSystem iSCSI volume driver.
-"""
-
-import mock
-import six
+"""Tests for the IBM FlashSystem iSCSI volume driver."""
 
 import random
+from unittest import mock
+
+import six
 
 from cinder import context
 from cinder import exception

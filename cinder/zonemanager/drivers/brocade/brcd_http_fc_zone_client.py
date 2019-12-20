@@ -18,13 +18,13 @@ Brocade south bound connector to communicate with switch using
 HTTP or HTTPS protocol.
 """
 
-import requests
-import six
 import time
 
 from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_utils import encodeutils
+import requests
+import six
 
 from cinder.i18n import _
 from cinder.zonemanager.drivers.brocade import exception as b_exception

@@ -15,11 +15,11 @@
 #    under the License.
 """Tests for global snapshot cases."""
 
-import ddt
 import os
 import sys
+from unittest import mock
 
-import mock
+import ddt
 from oslo_config import cfg
 from oslo_utils import imageutils
 

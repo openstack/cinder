@@ -14,10 +14,10 @@
 
 import errno
 import math
+from unittest import mock
 
 import cryptography
 import ddt
-import mock
 from oslo_concurrency import processutils
 from oslo_utils import units
 from six.moves import builtins

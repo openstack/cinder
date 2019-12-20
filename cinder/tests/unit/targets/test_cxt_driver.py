@@ -15,8 +15,7 @@
 
 import os
 import sys
-
-import mock
+from unittest import mock
 
 from cinder import context
 from cinder import test

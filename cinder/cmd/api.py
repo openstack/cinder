@@ -17,30 +17,26 @@
 
 """Starter script for Cinder OS API."""
 
-import eventlet
-eventlet.monkey_patch()
-
 import logging as python_logging
 import sys
 
-from cinder import objects
-
+import eventlet  # noqa
+eventlet.monkey_patch()
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
-from cinder import i18n
+from cinder import i18n  # noqa
 i18n.enable_lazy()
-
 # Need to register global_opts
 from cinder.common import config
 from cinder import coordination
+from cinder import objects
 from cinder import rpc
 from cinder import service
 from cinder import utils
 from cinder import version
-
 
 CONF = cfg.CONF
 

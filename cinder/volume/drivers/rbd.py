@@ -13,7 +13,6 @@
 #    under the License.
 """RADOS Block Device Driver"""
 
-from __future__ import absolute_import
 import binascii
 import errno
 import json
@@ -31,6 +30,12 @@ from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import units
+try:
+    import rados
+    import rbd
+except ImportError:
+    rados = None
+    rbd = None
 import six
 from six.moves import urllib
 
@@ -44,14 +49,6 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume import volume_utils
-
-try:
-    import rados
-    import rbd
-except ImportError:
-    rados = None
-    rbd = None
-
 
 LOG = logging.getLogger(__name__)
 

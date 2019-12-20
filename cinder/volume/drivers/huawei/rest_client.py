@@ -15,12 +15,12 @@
 
 import json
 import re
-import requests
-import six
 import time
 
 from oslo_log import log as logging
 from oslo_utils import excutils
+import requests
+import six
 
 from cinder import exception
 from cinder.i18n import _

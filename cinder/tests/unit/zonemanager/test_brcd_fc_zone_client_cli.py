@@ -16,8 +16,8 @@
 
 
 """Unit tests for brcd fc zone client cli."""
+from unittest import mock
 
-import mock
 from oslo_concurrency import processutils
 
 from cinder import exception

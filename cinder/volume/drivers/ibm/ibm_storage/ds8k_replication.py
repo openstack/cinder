@@ -14,10 +14,9 @@
 #    under the License.
 #
 import eventlet
-import six
-
 from oslo_log import log as logging
 from oslo_utils import excutils
+import six
 
 from cinder import coordination
 from cinder import exception

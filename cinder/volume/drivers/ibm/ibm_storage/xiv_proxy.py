@@ -15,13 +15,10 @@
 #
 import datetime
 import re
-import six
 import socket
-
 
 from oslo_log import log as logging
 from oslo_utils import importutils
-
 pyxcli = importutils.try_import("pyxcli")
 if pyxcli:
     from pyxcli import client
@@ -29,6 +26,7 @@ if pyxcli:
     from pyxcli.events import events
     from pyxcli.mirroring import mirrored_entities
     from pyxcli import transports
+import six
 
 from cinder import context
 from cinder.i18n import _

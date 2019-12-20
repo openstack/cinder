@@ -13,9 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-import mock
-import six
+from unittest import mock
 from xml.etree import ElementTree
+
+import six
 
 from cinder import context
 from cinder import exception

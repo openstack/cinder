@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
 import uuid
 
 import ddt
-import mock
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob

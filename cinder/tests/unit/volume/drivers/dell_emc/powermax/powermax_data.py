@@ -14,6 +14,7 @@
 #    under the License.
 
 from copy import deepcopy
+
 import six
 
 from cinder import context

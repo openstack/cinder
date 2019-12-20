@@ -12,13 +12,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from oslo_config import cfg
-from oslo_log import log as logging
-
 from keystoneauth1 import identity
 from keystoneauth1 import loading as ka_loading
 from keystoneclient import client
 from keystoneclient import exceptions
+from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import db
 from cinder import exception

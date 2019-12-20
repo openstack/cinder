@@ -15,9 +15,9 @@
 
 import os
 
-from cinder.db.sqlalchemy import migrate_repo
-
 from migrate.versioning.shell import main
+
+from cinder.db.sqlalchemy import migrate_repo
 
 
 if __name__ == '__main__':

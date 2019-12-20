@@ -14,8 +14,7 @@
 #    under the License.
 
 import inspect
-
-import mock
+from unittest import mock
 
 from cinder import context
 from cinder import exception

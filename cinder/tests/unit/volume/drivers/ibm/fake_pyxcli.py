@@ -14,8 +14,8 @@
 #    under the License.
 #
 """ Fake pyxcli-client for testing the driver without installing pyxcli"""
-import mock
 import sys
+from unittest import mock
 
 from cinder.tests.unit.volume.drivers.ibm import fake_pyxcli_exceptions
 

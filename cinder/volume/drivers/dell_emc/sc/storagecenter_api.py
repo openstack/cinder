@@ -15,6 +15,7 @@
 
 import json
 import os.path
+import uuid
 
 import eventlet
 from oslo_log import log as logging
@@ -22,7 +23,6 @@ from oslo_utils import excutils
 import requests
 import six
 from six.moves import http_client
-import uuid
 
 from cinder import exception
 from cinder.i18n import _

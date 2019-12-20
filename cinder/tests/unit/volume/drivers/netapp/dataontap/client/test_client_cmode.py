@@ -16,14 +16,14 @@
 #    under the License.
 
 import copy
+import time
+from unittest import mock
 import uuid
 
 import ddt
 from lxml import etree
-import mock
 import paramiko
 import six
-import time
 
 from cinder import exception
 from cinder import ssh_utils

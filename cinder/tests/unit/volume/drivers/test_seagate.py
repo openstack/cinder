@@ -16,24 +16,21 @@
 #
 """Unit tests for OpenStack Cinder Seagate driver."""
 
+from unittest import mock
+
+from defusedxml import lxml as etree
+import requests
+
 from cinder import exception
-from cinder import test
-
 from cinder.objects import fields
-
+from cinder import test
 import cinder.volume.drivers.stx.client
 import cinder.volume.drivers.stx.common
 import cinder.volume.drivers.stx.exception as stx_exception
 import cinder.volume.drivers.stx.fc
 import cinder.volume.drivers.stx.iscsi
-
 from cinder.zonemanager import utils as fczm_utils
 
-from defusedxml import lxml as etree
-
-import mock
-
-import requests
 
 STXClient = cinder.volume.drivers.stx.client.STXClient
 STXCommon = cinder.volume.drivers.stx.common.STXCommon

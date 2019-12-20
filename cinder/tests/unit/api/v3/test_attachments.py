@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for attachments Api.
-"""
+"""Tests for attachments Api."""
+
+from unittest import mock
 
 import ddt
-import mock
 from oslo_policy import policy as oslo_policy
 
 from cinder.api import microversions as mv

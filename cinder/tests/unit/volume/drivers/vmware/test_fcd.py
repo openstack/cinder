@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Test suite for VMware vCenter FCD driver.
-"""
+"""Test suite for VMware vCenter FCD driver."""
+
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 from oslo_vmware import image_transfer
 from oslo_vmware.objects import datastore

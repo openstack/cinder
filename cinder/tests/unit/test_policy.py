@@ -13,18 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import os.path
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_policy import policy as oslo_policy
 
 from cinder import context
 from cinder import exception
+from cinder import policy
 from cinder import test
 from cinder import utils
-
-from cinder import policy
 
 CONF = cfg.CONF
 

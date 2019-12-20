@@ -12,8 +12,9 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from six.moves import http_client

@@ -14,8 +14,8 @@ import copy
 import os
 import shutil
 import tempfile
+from unittest import mock
 
-import mock
 from oslo_utils import fileutils
 from oslo_utils import timeutils
 

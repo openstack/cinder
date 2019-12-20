@@ -16,13 +16,12 @@
 import binascii
 import itertools
 
-from oslo_config import cfg
-from oslo_log import log as logging
-
 from barbicanclient import client as barbican_client
 from castellan import options as castellan_options
 from keystoneauth1 import loading as ks_loading
 from keystoneauth1 import session as ks_session
+from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import coordination

@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Tests for macrosan drivers."""
-import mock
 import os
 import socket
+from unittest import mock
 
 from six.moves import UserDict
 

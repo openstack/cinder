@@ -12,13 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for GlusterFS backup driver.
-
-"""
+"""Tests for GlusterFS backup driver."""
 import os
+from unittest import mock
 
-import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 
 from cinder.backup.drivers import glusterfs

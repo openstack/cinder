@@ -14,16 +14,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Volume driver common utilities for Seagate storage arrays
-"""
+"""Volume driver common utilities for Seagate storage arrays."""
 
 import base64
-import six
 import uuid
 
 from oslo_config import cfg
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder.i18n import _

@@ -51,7 +51,8 @@ This module provides Manager, a base class for managers.
 
 """
 
-
+from eventlet import greenpool
+from eventlet import tpool
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -66,10 +67,6 @@ from cinder import objects
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
-
-from eventlet import greenpool
-from eventlet import tpool
-
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)

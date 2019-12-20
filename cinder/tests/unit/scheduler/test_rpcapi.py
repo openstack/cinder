@@ -13,14 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit Tests for cinder.scheduler.rpcapi
-"""
+"""Unit Tests for cinder.scheduler.rpcapi."""
 
 from datetime import datetime
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder import exception
 from cinder import objects

@@ -15,8 +15,6 @@
 
 from oslo_log import log as logging
 from oslo_utils import importutils
-
-
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow import task

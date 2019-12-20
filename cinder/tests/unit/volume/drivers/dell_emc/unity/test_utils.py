@@ -15,8 +15,8 @@
 
 import functools
 import unittest
+from unittest import mock
 
-import mock
 from oslo_utils import units
 
 from cinder import exception

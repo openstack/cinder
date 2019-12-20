@@ -14,19 +14,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import math
 import os
 import tempfile
+import time
+from unittest import mock
+from unittest.mock import call
 import uuid
 
 import castellan
 import ddt
-import errno
-import mock
-from mock import call
 from oslo_utils import imageutils
 from oslo_utils import units
-import time
 
 from cinder import context
 from cinder import db

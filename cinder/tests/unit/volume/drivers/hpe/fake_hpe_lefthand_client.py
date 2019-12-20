@@ -16,8 +16,7 @@
 """Fake HPE client for testing LeftHand without installing the client."""
 
 import sys
-
-import mock
+from unittest import mock
 
 from cinder.tests.unit.volume.drivers.hpe \
     import fake_hpe_client_exceptions as hpeexceptions

@@ -13,10 +13,9 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
+from oslo_log import log as logging
 from six.moves import http_client
 import webob
-
-from oslo_log import log as logging
 
 from cinder.api import common
 from cinder.api import extensions
@@ -28,7 +27,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.policies import volume_metadata as policy
 from cinder import volume
-
 
 LOG = logging.getLogger(__name__)
 

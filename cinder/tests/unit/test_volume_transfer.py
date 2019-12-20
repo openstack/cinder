@@ -12,8 +12,8 @@
 #    under the License.
 """Unit Tests for volume transfers."""
 
+from unittest import mock
 
-import mock
 from oslo_utils import timeutils
 
 from cinder import context

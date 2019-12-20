@@ -24,7 +24,6 @@ import requests.auth
 import requests.exceptions as r_exc
 # pylint: disable=E0401
 import requests.packages.urllib3.util.retry as requests_retry
-
 import six
 
 from cinder import coordination

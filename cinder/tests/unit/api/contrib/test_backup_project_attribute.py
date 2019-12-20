@@ -13,7 +13,6 @@
 #   under the License.
 
 import ddt
-
 from oslo_serialization import jsonutils
 import webob
 

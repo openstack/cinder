@@ -12,13 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests For Capacity Weigher.
-"""
+"""Tests For Capacity Weigher."""
 from datetime import datetime
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder.common import constants
 from cinder import context

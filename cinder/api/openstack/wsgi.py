@@ -14,13 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# TODO(smcginnis) update this once six has support for collections.abc
-# (https://github.com/benjaminp/six/pull/241) or clean up once we drop py2.7.
-try:
-    from collections.abc import Callable
-except ImportError:
-    from collections import Callable
-
+from collections import abc
 import functools
 import inspect
 import math
@@ -39,14 +33,11 @@ import webob.exc
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.openstack import versioned_method
 from cinder import exception
-
 from cinder import i18n
 i18n.enable_lazy()
-
 from cinder.i18n import _
 from cinder import utils
 from cinder.wsgi import common as wsgi
-
 
 LOG = logging.getLogger(__name__)
 
@@ -1095,7 +1086,7 @@ class ControllerMetaclass(type):
                 versioned_methods.append(getattr(base, VER_METHOD_ATTR))
 
         for key, value in cls_dict.items():
-            if not isinstance(value, Callable):
+            if not isinstance(value, abc.Callable):
                 continue
             if getattr(value, 'wsgi_action', None):
                 actions[value.wsgi_action] = key

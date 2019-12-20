@@ -16,7 +16,6 @@
 
 import errno
 import os
-import psutil
 import shutil
 
 from oslo_concurrency import processutils
@@ -24,6 +23,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
 from oslo_utils import fnmatch
+import psutil
 
 from cinder import compute
 from cinder import coordination

@@ -17,9 +17,9 @@ Unit tests for Veritas Access cinder driver.
 import hashlib
 import json
 import tempfile
+from unittest import mock
 from xml.dom.minidom import Document
 
-import mock
 from oslo_config import cfg
 import requests
 

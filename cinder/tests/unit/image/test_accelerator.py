@@ -12,7 +12,7 @@
 #    under the License.
 
 
-import mock
+from unittest import mock
 
 from cinder.image import accelerator
 from cinder import test

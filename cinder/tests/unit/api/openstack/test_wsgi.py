@@ -10,10 +10,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import ddt
 import inspect
+from unittest import mock
 
-import mock
+import ddt
 from oslo_utils import encodeutils
 from six.moves import http_client
 import webob

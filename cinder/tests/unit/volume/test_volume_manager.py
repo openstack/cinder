@@ -14,7 +14,7 @@
 #    under the License.
 """Tests for Volume Manager Code."""
 
-import mock
+from unittest import mock
 
 from cinder import exception
 from cinder.message import message_field

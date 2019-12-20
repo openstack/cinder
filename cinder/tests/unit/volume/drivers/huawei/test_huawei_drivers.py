@@ -15,15 +15,16 @@
 """Tests for huawei drivers."""
 import collections
 import copy
-import ddt
 import json
-import mock
 import re
-import requests
-import retrying
 import tempfile
+from unittest import mock
 from xml.dom import minidom
 from xml.etree import ElementTree
+
+import ddt
+import requests
+import retrying
 
 from cinder import context
 from cinder import exception

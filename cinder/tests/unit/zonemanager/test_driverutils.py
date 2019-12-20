@@ -14,10 +14,10 @@
 #    under the License.
 #
 
-
 """Unit tests for friendly zone name."""
-import ddt
 import string
+
+import ddt
 
 from cinder import test
 from cinder.zonemanager.drivers import driver_utils

@@ -10,9 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-import paramiko
+from unittest import mock
 import uuid
+
+import paramiko
 
 from cinder import exception
 from cinder import ssh_utils

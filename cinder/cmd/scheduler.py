@@ -17,22 +17,20 @@
 
 """Starter script for Cinder Scheduler."""
 
-import eventlet
-eventlet.monkey_patch()
-
 import logging as python_logging
 import sys
 
+import eventlet
+eventlet.monkey_patch()
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
-from cinder import i18n
-i18n.enable_lazy()
-
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder import i18n
+i18n.enable_lazy()
 from cinder import objects
 from cinder import service
 from cinder import utils
