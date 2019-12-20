@@ -706,6 +706,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     cache_entry['volume_id']
                 )
                 return model_update, True
+        except exception.SnapshotLimitReached:
+            # If this exception occurred when cloning the image-volume,
+            # it is because the image-volume reached its snapshot limit.
+            # Delete current cache entry and create a "fresh" entry
+            # NOTE: This will not delete the existing image-volume and
+            # only delete the cache entry
+            with excutils.save_and_reraise_exception():
+                self.image_volume_cache.evict(context, cache_entry)
         except NotImplementedError:
             LOG.warning('Backend does not support creating image-volume '
                         'clone. Image will be downloaded from Glance.')
@@ -789,16 +797,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                         image_id,
                         image_meta
                     )
+                except exception.SnapshotLimitReached:
+                    # This exception will be handled by the caller's
+                    # (_create_from_image) retry decorator
+                    with excutils.save_and_reraise_exception():
+                        LOG.debug("Snapshot limit reached. Creating new "
+                                  "image-volume.")
                 except exception.CinderException as e:
                     LOG.warning('Failed to create volume from image-volume '
                                 'cache, image will be downloaded from Glance. '
                                 'Error: %(exception)s',
                                 {'exception': e})
-
-                    # If an exception occurred when cloning the image-volume,
-                    # it may be the image-volume reached its snapshot limit.
-                    # Create another "fresh" cache entry.
-                    update_cache = True
 
                 # Don't cache unless directed.
                 if not cloned and update_cache:
@@ -871,6 +880,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         return model_update
 
+    @utils.retry(exception.SnapshotLimitReached, retries=1)
     def _create_from_image(self, context, volume,
                            image_location, image_id, image_meta,
                            image_service, **kwargs):

@@ -1372,3 +1372,22 @@ class ServiceUserTokenNoAuth(CinderException):
     message = _("The [service_user] send_service_user_token option was "
                 "requested, but no service auth could be loaded. Please check "
                 "the [service_user] configuration section.")
+
+
+class UnsupportedNVMETProtocol(Invalid):
+    message = _("An invalid 'target_protocol' "
+                "value was provided: %(protocol)s")
+
+
+# NVMET driver
+class NVMETTargetAddError(CinderException):
+    message = "Failed to add subsystem: %(subsystem)s"
+
+
+class NVMETTargetDeleteError(CinderException):
+    message = "Failed to delete subsystem: %(subsystem)s"
+
+
+class SnapshotLimitReached(CinderException):
+    message = _("Exceeded the configured limit of "
+                "%(set_limit)s snapshots per volume.")
