@@ -536,8 +536,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                                                             src_vref['id'])
         limit = self.configuration.safe_get('xtremio_volumes_per_glance_cache')
         if cache and limit and limit > 0 and limit <= vol['num-of-dest-snaps']:
-            raise exception.CinderException('Exceeded the configured limit of '
-                                            '%d snapshots per volume' % limit)
+            raise exception.SnapshotLimitReached(set_limit=limit)
         try:
             self.client.create_snapshot(src_vref['id'], volume['id'])
         except exception.XtremIOSnapshotsLimitExceeded as e:
