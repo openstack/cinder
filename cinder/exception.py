@@ -1117,3 +1117,8 @@ class CinderAcceleratorError(CinderException):
                 "Command %(cmd)s execution failed.\n"
                 "%(description)s\n"
                 "Reason: %(reason)s")
+
+
+class SnapshotLimitReached(CinderException):
+    message = _("Exceeded the configured limit of "
+                "%(set_limit)s snapshots per volume.")
