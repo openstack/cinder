@@ -47,6 +47,7 @@ REMOVED_DRVRS = [
     "hgst",
     "fusionstorage",
     "prophetstor",
+    "nimble",
 ]
 
 
