@@ -40,10 +40,13 @@ CONF = cfg.CONF
 SUCCESS = uc.Code.SUCCESS
 FAILURE = uc.Code.FAILURE
 WARNING = uc.Code.WARNING
-REMOVED_DRVRS = ["coprhd",
-                 "drbdmanage",
-                 "disco",
-                 "hgst", ]
+REMOVED_DRVRS = [
+    "coprhd",
+    "drbdmanage",
+    "disco",
+    "hgst",
+    "fusionstorage",
+]
 
 
 def _get_enabled_drivers():
