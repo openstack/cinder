@@ -195,7 +195,9 @@ class TestCinderStatus(testtools.TestCase):
               'cinder.volume.drivers.coprhd.scaleio.EMCCoprHDScaleIODriver',
               'cinder.volume.drivers.disco.disco.DiscoDriver',
               'cinder.volume.drivers.hgst.HGSTDriver',
-              'cinder.volume.drivers.fusionstorage.dsware.DSWAREDriver')
+              'cinder.volume.drivers.fusionstorage.dsware.DSWAREDriver',
+              'cinder.volume.drivers.prophetstor.dpl_fc.DPLFCDriver',
+              'cinder.volume.drivers.prophetstor.dpl_iscsi.DPLISCSIDriver')
     def test_check_removed_drivers_fail(self, volume_driver):
         self._set_volume_driver(
             volume_driver,

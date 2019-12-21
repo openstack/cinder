@@ -46,6 +46,7 @@ REMOVED_DRVRS = [
     "disco",
     "hgst",
     "fusionstorage",
+    "prophetstor",
 ]
 
 
