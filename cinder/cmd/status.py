@@ -48,6 +48,7 @@ REMOVED_DRVRS = [
     "fusionstorage",
     "prophetstor",
     "nimble",
+    "sheepdog",
 ]
 
 
