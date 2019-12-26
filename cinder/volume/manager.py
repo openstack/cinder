@@ -2839,7 +2839,7 @@ class VolumeManager(manager.CleanableManager,
         new_reservations = reservations
 
         # If volume types have the same contents, no need to do anything.
-        # Use the admin contex to be able to access volume extra_specs
+        # Use the admin context to be able to access volume extra_specs
         retyped = False
         diff, all_equal = volume_types.volume_types_diff(
             context.elevated(), volume.volume_type_id, new_type_id)
