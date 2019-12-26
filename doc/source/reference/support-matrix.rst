@@ -91,3 +91,4 @@ release.
    * Nimble Storage Driver
    * ProphetStor Flexvisor Driver
    * Sheepdog Driver
+   * Virtuozzo Storage Driver
