@@ -2416,7 +2416,7 @@ class VolumeManager(manager.CleanableManager,
         # swappy thing so it's a bit confusing, but it does unwind properly
         # when you step through it)
 
-        # In the new flow we simlified this and we don't need it, instead of
+        # In the new flow we simplified this and we don't need it, instead of
         # doing a bunch of swapping we just do attachment-create/delete on the
         # nova side, and then here we just do the ID swaps that are necessary
         # to maintain the old beahvior
