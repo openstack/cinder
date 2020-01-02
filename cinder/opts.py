@@ -146,8 +146,6 @@ from cinder.volume.drivers.stx import common as \
     cinder_volume_drivers_stx_common
 from cinder.volume.drivers.synology import synology_common as \
     cinder_volume_drivers_synology_synologycommon
-from cinder.volume.drivers.veritas_access import veritas_iscsi as \
-    cinder_volume_drivers_veritas_access_veritasiscsi
 from cinder.volume.drivers.vmware import vmdk as \
     cinder_volume_drivers_vmware_vmdk
 from cinder.volume.drivers.windows import iscsi as \
@@ -254,7 +252,6 @@ def list_opts():
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.
                 instorage_mcs_iscsi_opts,
-                cinder_volume_drivers_veritas_access_veritasiscsi.VA_VOL_OPTS,
                 cinder_volume_manager.volume_manager_opts,
                 cinder_wsgi_eventletserver.socket_opts,
             )),
