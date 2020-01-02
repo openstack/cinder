@@ -54,6 +54,9 @@ class VeritasCNFSDriver(nfs.NfsDriver):
     CI_WIKI_NAME = "Veritas_Access_CI"
     DRIVER_VOLUME_TYPE = 'nfs'
 
+    # TODO(jsbryant) Remove driver in the 'V' release if CI is not fixed.
+    SUPPORTED = False
+
     def __init__(self, *args, **kwargs):
         self._execute = None
         self._context = None
