@@ -1801,7 +1801,7 @@ class VolumeManager(manager.CleanableManager,
         driver_volume_type:
             a string to identify the type of volume.  This can be used by the
             calling code to determine the strategy for connecting to the
-            volume. This could be 'iscsi', 'rbd', 'sheepdog', etc.
+            volume. This could be 'iscsi', 'rbd', etc.
 
         data:
             this is the data that the calling code will use to connect to the
