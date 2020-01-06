@@ -11,7 +11,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import uuid
 
 from oslo_serialization import jsonutils
 import webob
@@ -32,15 +31,15 @@ class CinderPolicyTests(test.TestCase):
         self.project_id = fake_constants.PROJECT_ID
         self.other_project_id = fake_constants.PROJECT2_ID
         self.admin_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=self.project_id,
+            user_id=fake_constants.USER_ID, project_id=self.project_id,
             roles=['admin']
         )
         self.user_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=self.project_id,
+            user_id=fake_constants.USER2_ID, project_id=self.project_id,
             roles=['non-admin']
         )
         self.other_user_context = cinder_context.RequestContext(
-            user_id=uuid.uuid4().hex, project_id=self.other_project_id,
+            user_id=fake_constants.USER3_ID, project_id=self.other_project_id,
             roles=['non-admin']
         )
         fake_image.mock_image_service(self)

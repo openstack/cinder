@@ -14,7 +14,6 @@
 #    under the License.
 
 from unittest import mock
-import uuid
 
 from oslo_utils import timeutils
 import six
@@ -248,7 +247,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.mock_object(volume_types, 'get_volume_type',
                          return_volume_types_get_volume_type)
 
-        type_id = str(uuid.uuid4())
+        type_id = fake.VOLUME_TYPE_ID
         req = fakes.HTTPRequest.blank('/v2/%s/types/' % fake.PROJECT_ID
                                       + type_id)
         res_dict = self.controller.show(req, type_id)

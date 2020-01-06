@@ -14,7 +14,6 @@
 #    under the License.
 
 from unittest import mock
-import uuid
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -128,7 +127,7 @@ class VolumeMetaDataTest(test.TestCase):
         self.ext_mgr.extensions = {}
         self.volume_controller = volumes.VolumeController(self.ext_mgr)
         self.controller = volume_metadata.Controller()
-        self.req_id = str(uuid.uuid4())
+        self.req_id = fake.REQUEST_ID
         self.url = '/v2/%s/volumes/%s/metadata' % (
             fake.PROJECT_ID, self.req_id)
 

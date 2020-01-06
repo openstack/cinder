@@ -15,7 +15,6 @@
 
 import json
 from unittest import mock
-import uuid
 
 from oslo_config import cfg
 from oslo_utils import units
@@ -25,6 +24,7 @@ from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 
 
@@ -115,7 +115,7 @@ class TestObjectReader(object):
 
 class ChunkedDriverTestCase(test.TestCase):
 
-    def _create_backup_db_entry(self, volume_id=str(uuid.uuid4()),
+    def _create_backup_db_entry(self, volume_id=fake.VOLUME_ID,
                                 restore_volume_id=None,
                                 display_name='test_backup',
                                 display_description='this is a test backup',
@@ -123,7 +123,7 @@ class ChunkedDriverTestCase(test.TestCase):
                                 status=fields.BackupStatus.CREATING,
                                 size=1,
                                 object_count=0,
-                                project_id=str(uuid.uuid4()),
+                                project_id=fake.PROJECT_ID,
                                 service=None,
                                 temp_volume_id=None,
                                 temp_snapshot_id=None,
@@ -138,7 +138,7 @@ class ChunkedDriverTestCase(test.TestCase):
         kwargs = {}
         kwargs['volume_id'] = volume_id
         kwargs['restore_volume_id'] = restore_volume_id
-        kwargs['user_id'] = str(uuid.uuid4())
+        kwargs['user_id'] = fake.USER_ID
         kwargs['project_id'] = project_id
         kwargs['host'] = 'testhost'
         kwargs['availability_zone'] = '1'
@@ -175,8 +175,8 @@ class ChunkedDriverTestCase(test.TestCase):
         vol = {}
         vol['size'] = size
         vol['host'] = host
-        vol['user_id'] = str(uuid.uuid4())
-        vol['project_id'] = str(uuid.uuid4())
+        vol['user_id'] = fake.USER_ID
+        vol['project_id'] = fake.PROJECT_ID
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description

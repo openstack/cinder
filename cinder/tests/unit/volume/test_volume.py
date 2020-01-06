@@ -19,7 +19,6 @@ import datetime
 import enum
 import time
 from unittest import mock
-import uuid
 
 from castellan.common import exception as castellan_exception
 from castellan import key_manager
@@ -2019,9 +2018,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                       six.text_type(ex))
 
     def test_unreserve_volume_success_in_use(self):
-        UUID = six.text_type(uuid.uuid4())
         volume = tests_utils.create_volume(self.context, status='attaching')
-        tests_utils.attach_volume(self.context, volume.id, UUID,
+        tests_utils.attach_volume(self.context, volume.id, fake.INSTANCE_ID,
                                   'attached_host', 'mountpoint', mode='rw')
 
         cinder.volume.api.API().unreserve_volume(self.context, volume)

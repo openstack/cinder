@@ -13,7 +13,6 @@
 #    under the License.
 
 from unittest import mock
-import uuid
 
 import eventlet
 
@@ -252,7 +251,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         self.mock_sleep = self.mock_object(eventlet, 'sleep')
 
-        self.volid = str(uuid.uuid4())
+        self.volid = fake.VOLUME_ID
         self.volume_name = "volume" + self.volid
         self.connector = {
             'ip': '10.0.0.2',

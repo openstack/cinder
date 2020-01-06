@@ -12,8 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import uuid
-
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
@@ -71,7 +69,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         super(VolumeMigStatusAttributeTest, self).setUp()
         self.mock_object(volume.api.API, 'get', fake_volume_api_get)
         self.mock_object(volume.api.API, 'get_all', fake_volume_get_all)
-        self.UUID = uuid.uuid4()
+        self.UUID = fake.UUID1
 
     def test_get_volume_allowed(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
