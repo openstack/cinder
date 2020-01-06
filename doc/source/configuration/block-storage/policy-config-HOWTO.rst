@@ -383,7 +383,7 @@ Immediately following it, introduce a new rule::
      <admin-stuff> or <project-stuff>
 
    To construct the strict version, we need to make sure that the
-   ``not cinder:reader-admin`` part applies only the the left-hand side (the
+   ``not cinder:reader-admin`` part applies only the left-hand side (the
    <admin-stuff>).  The easiest way to do that is to structure the new rule as
    follows::
 

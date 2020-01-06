@@ -141,7 +141,7 @@ class BackingFileTemplate(string.Template):
     """Custom Template for substitutions in backing files regex strings
 
         Changes the default delimiter from '$' to '#' in order to prevent
-        clashing with the the regex end of line marker '$'.
+        clashing with the regex end of line marker '$'.
     """
     delimiter = '#'
     idpattern = r'[a-z][_a-z0-9]*'

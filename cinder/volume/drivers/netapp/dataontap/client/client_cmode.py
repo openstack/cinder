@@ -1590,7 +1590,7 @@ class Client(client_base.Client):
 
     def get_performance_counters(self, object_name, instance_uuids,
                                  counter_names):
-        """Gets or or more cDOT performance counters."""
+        """Gets more cDOT performance counters."""
 
         api_args = {
             'objectname': object_name,
