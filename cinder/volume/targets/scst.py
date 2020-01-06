@@ -223,7 +223,7 @@ class SCSTAdm(iscsi.ISCSITarget):
             # starts
         try:
             self.scst_execute('-write_config', '/etc/scst.conf')
-        except putils.ProcessExecutionError as e:
+        except putils.ProcessExecutionError:
             LOG.error("Failed to write in /etc/scst.conf.")
             raise exception.ISCSITargetHelperCommandFailed(
                 error_message="Failed to write in /etc/scst.conf.")

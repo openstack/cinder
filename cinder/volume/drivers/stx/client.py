@@ -395,7 +395,7 @@ class STXClient(object):
                     LOG.debug("volume '{}' is already mapped to {} at lun {}".
                               format(volume_name, iid, lun))
                     return int(lun)
-        except Exception as e:
+        except Exception:
             LOG.exception("failed to look up mappings for volume '%s'",
                           volume_name)
             raise

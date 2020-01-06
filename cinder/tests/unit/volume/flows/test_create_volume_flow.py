@@ -1319,7 +1319,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                                         image_id,
                                         image_meta,
                                         fake_image_service)
-        if format is 'raw' and not owner and location:
+        if format == 'raw' and not owner and location:
             fake_driver.create_cloned_volume.assert_called_once_with(
                 volume, image_volume)
             handle_bootable.assert_called_once_with(self.ctxt, volume,
@@ -1384,7 +1384,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                                         image_id,
                                         image_meta,
                                         fake_image_service)
-        if format is 'raw' and not owner and location:
+        if format == 'raw' and not owner and location:
             fake_driver.create_cloned_volume.assert_called_once_with(
                 volume, image_volume)
             handle_bootable.assert_called_once_with(self.ctxt, volume,

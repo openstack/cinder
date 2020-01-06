@@ -199,7 +199,7 @@ class ReplicaCommonDriver(object):
 
         try:
             self.wait_expect_state(replica_id, running_status)
-        except Exception as err:
+        except Exception:
             msg = _('Split replication failed.')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)

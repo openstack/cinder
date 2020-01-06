@@ -44,7 +44,6 @@ def fake_get(self, context, *args, **kwargs):
            'host': 'fake-host',
            'status': 'available',
            'encryption_key_id': None,
-           'volume_type_id': None,
            'migration_status': None,
            'availability_zone': 'fake-zone',
            'attach_status': 'detached',

@@ -179,7 +179,10 @@ class LVM(executor.Executor):
                 consumed_space = pool_size / 100 * data_percent
                 free_space = pool_size - consumed_space
                 free_space = round(free_space, 2)
-        except putils.ProcessExecutionError as err:
+        # Need noqa due to a false error about the 'err' variable being unused
+        # even though it is used in the logging. Possibly related to
+        # https://github.com/PyCQA/pyflakes/issues/378.
+        except putils.ProcessExecutionError as err:  # noqa
             LOG.exception('Error querying thin pool about data_percent')
             LOG.error('Cmd     :%s', err.cmd)
             LOG.error('StdOut  :%s', err.stdout)

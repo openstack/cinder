@@ -505,7 +505,7 @@ class Client(object):
         """Adds the `lun` to `storage_group`."""
         try:
             return storage_group.attach_alu(lun, max_retries)
-        except storops_ex.VNXAluAlreadyAttachedError as ex:
+        except storops_ex.VNXAluAlreadyAttachedError:
             # Ignore the failure due to retry.
             return storage_group.get_hlu(lun)
         except storops_ex.VNXNoHluAvailableError as ex:

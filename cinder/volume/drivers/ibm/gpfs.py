@@ -250,7 +250,7 @@ class GPFSDriver(driver.CloneableImageVD,
         try:
             fileset = fs_regex.match(out).group('fileset')
             return fileset
-        except AttributeError as exc:
+        except AttributeError:
             msg = (_('Failed to find fileset for path %(path)s, command '
                      'output: %(cmdout)s.') %
                    {'path': path,

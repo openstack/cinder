@@ -209,7 +209,7 @@ class API(base.Base):
             donor_reservations = QUOTAS.reserve(context,
                                                 project_id=donor_id,
                                                 **reserve_opts)
-        except exception.OverQuota as e:
+        except exception.OverQuota:
             donor_reservations = None
             LOG.exception("Failed to update volume providing snapshots quota:"
                           " Over quota.")

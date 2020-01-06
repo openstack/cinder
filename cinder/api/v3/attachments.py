@@ -190,7 +190,7 @@ class AttachmentsController(wsgi.Controller):
             err_msg = _(
                 "Unable to create attachment for volume (%s).") % ex.msg
             LOG.exception(err_msg)
-        except Exception as ex:
+        except Exception:
             err_msg = _("Unable to create attachment for volume.")
             LOG.exception(err_msg)
         finally:
