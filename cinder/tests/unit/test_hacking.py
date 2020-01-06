@@ -80,8 +80,6 @@ class HackingTestCase(test.TestCase):
 
     def test_no_translate_logs(self):
         self.assertEqual(1, len(list(checks.no_translate_logs(
-            "LOG.audit(_('foo'))", "cinder/scheduler/foo.py"))))
-        self.assertEqual(1, len(list(checks.no_translate_logs(
             "LOG.debug(_('foo'))", "cinder/scheduler/foo.py"))))
         self.assertEqual(1, len(list(checks.no_translate_logs(
             "LOG.error(_('foo'))", "cinder/scheduler/foo.py"))))
@@ -218,12 +216,6 @@ class HackingTestCase(test.TestCase):
         self._assert_has_errors(code, checker,
                                 expected_errors=[(2, 19, 'C311'),
                                                  (3, 18, 'C311')])
-
-    def test_check_no_log_audit(self):
-        self.assertEqual(1, len(list(checks.check_no_log_audit(
-            "LOG.audit('My test audit log')"))))
-        self.assertEqual(0, len(list(checks.check_no_log_audit(
-            "LOG.info('My info test log.')"))))
 
     def test_no_mutable_default_args(self):
         self.assertEqual(0, len(list(checks.no_mutable_default_args(
