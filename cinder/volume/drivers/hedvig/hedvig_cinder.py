@@ -90,7 +90,7 @@ class HedvigISCSIDriver(driver.ISCSIDriver, san.SanDriver):
                                           self.san_clustername)
 
     def get_volume_stats(self, refresh=False):
-        # we need to get get stats for server.
+        # we need to get stats for server.
         if refresh is True:
             total_capacity, free_capacity = self.update_volume_stats()
             stats = dict()

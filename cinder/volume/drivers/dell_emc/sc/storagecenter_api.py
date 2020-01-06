@@ -1760,7 +1760,7 @@ class SCApi(object):
         return self._find_domains(self._get_id(mapping.get('controllerPort')))
 
     def _get_iqn(self, mapping):
-        # Get our iqn from the controller port listed in our our mapping.
+        # Get our iqn from the controller port listed in our mapping.
         iqn = None
         cportid = self._get_id(mapping.get('controllerPort'))
         controllerport = self._find_controller_port(cportid)
@@ -3000,7 +3000,7 @@ class SCApi(object):
     def unmanage(self, scvolume):
         """Unmanage our volume.
 
-        We simply rename with with a prefix of `Unmanaged_`  That's it.
+        We simply rename with a prefix of `Unmanaged_`  That's it.
 
         :param scvolume: The Dell SC volume object.
         :return: Nothing.

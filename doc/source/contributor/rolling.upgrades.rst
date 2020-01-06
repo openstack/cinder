@@ -436,11 +436,10 @@ to return either a `uc.Result` where the result can be one of:
 * FAILURE, <Failure explanation>
 * WARNING, <Warning explanation>
 
-Your new function should should then be added to the `_upgrade_checks`
-tuple. For your check give the name of the Upgrade Check to be displayed
-to end users upon success or failure as well as the name of the
-function used to implement your check. Upgrade Checks should be submitted
-with Unit Tests.
+Your new function should then be added to the `_upgrade_checks` tuple.
+For your check give the name of the Upgrade Check to be displayed to end
+users upon success or failure as well as the name of the function used to
+implement your check. Upgrade Checks should be submitted with Unit Tests.
 
 The `doc/source/cli/cinder-status.rst` documentation should be updated to
 indicate the release for which your Upgrade Check was released and to

@@ -1720,7 +1720,7 @@ def _include_in_cluster(context, cluster, model, partial_rename, filters):
         value = filters.pop(field)
         # We do a special backend filter
         query = query.filter(_filter_host(getattr(model, field), value))
-        # If we want do do a partial rename and we haven't set the cluster
+        # If we want to do a partial rename and we haven't set the cluster
         # already, the value we want to set is a SQL replace of existing field
         # value.
         if partial_rename and isinstance(cluster, six.string_types):
@@ -5083,7 +5083,7 @@ def volume_glance_metadata_copy_from_volume_to_volume(context,
                                                       volume_id):
     """Update the Glance metadata for a volume.
 
-    This copies all all of the key:value pairs from the originating volume,
+    This copies all of the key:value pairs from the originating volume,
     to ensure that a volume created from the volume (clone) will
     retain the original metadata.
     """
