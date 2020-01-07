@@ -14,8 +14,8 @@
 #    under the License.
 
 import inspect
+from unittest import mock
 
-import mock
 import tooz.coordination
 import tooz.locking
 

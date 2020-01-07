@@ -19,6 +19,7 @@ import datetime
 import uuid
 
 from oslo_db import exception as db_exc
+from oslo_db.sqlalchemy import utils as sqlalchemyutils
 from oslo_utils import timeutils
 from sqlalchemy.dialects import sqlite
 
@@ -27,8 +28,6 @@ from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder import exception
 from cinder import test
-
-from oslo_db.sqlalchemy import utils as sqlalchemyutils
 
 
 class PurgeDeletedTest(test.TestCase):

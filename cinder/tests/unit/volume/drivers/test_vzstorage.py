@@ -14,12 +14,11 @@
 
 import collections
 import copy
-import ddt
 import errno
 import os
+from unittest import mock
 
-import mock
-
+import ddt
 from os_brick.remotefs import remotefs
 from oslo_utils import units
 

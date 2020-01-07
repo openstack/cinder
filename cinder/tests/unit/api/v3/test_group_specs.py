@@ -13,17 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from unittest import mock
+
 import webob
 
+from cinder.api import microversions as mv
+from cinder.api.v3 import group_specs as v3_group_specs
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import rpc
 from cinder import test
-
-from cinder.api import microversions as mv
-from cinder.api.v3 import group_specs as v3_group_specs
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 

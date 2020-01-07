@@ -15,9 +15,9 @@
 
 from copy import deepcopy
 import sys
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 from six.moves import http_client
 
@@ -42,7 +42,7 @@ def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
 patch_retry = mock.patch('cinder.utils.retry', fake_retry)
 patch_retry.start()
 sys.modules['purestorage'] = mock.Mock()
-from cinder.volume.drivers import pure
+from cinder.volume.drivers import pure  # noqa
 
 # Only mock utils.retry for cinder.volume.drivers.pure import
 patch_retry.stop()

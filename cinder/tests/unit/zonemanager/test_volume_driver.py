@@ -19,7 +19,7 @@
 
 """Unit tests for Volume Manager."""
 
-import mock
+from unittest import mock
 
 from cinder import test
 from cinder.tests import fake_driver

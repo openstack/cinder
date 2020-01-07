@@ -20,7 +20,6 @@ import socket
 import tempfile
 
 from six.moves import http_client
-
 from swiftclient import client as swift
 
 

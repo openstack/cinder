@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for volume transfer code.
-"""
+"""Tests for volume transfer code."""
 
-import mock
+from unittest import mock
+
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob

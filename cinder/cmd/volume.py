@@ -16,11 +16,14 @@
 #    under the License.
 
 """Starter script for Cinder Volume."""
+import logging as python_logging
+import os
+import re
+import shlex
+import sys
 
 import eventlet
 import eventlet.tpool
-import os
-
 # Monkey patching must go before the oslo.log import, otherwise
 # oslo.context will not use greenthread thread local and all greenthreads
 # will share the same context.
@@ -30,35 +33,24 @@ if os.name == 'nt':
     eventlet.monkey_patch(os=False)
 else:
     eventlet.monkey_patch()
-
-import logging as python_logging
-import re
-
-from cinder import exception
-from cinder import objects
-
-
-import shlex
-import sys
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
-from cinder import i18n
-i18n.enable_lazy()
-
 # Need to register global_opts
 from cinder.common import config  # noqa
 from cinder.common import constants
 from cinder.db import api as session
+from cinder import exception
+from cinder import i18n
+i18n.enable_lazy()
 from cinder.i18n import _
+from cinder import objects
 from cinder import service
 from cinder import utils
 from cinder import version
-
 
 CONF = cfg.CONF
 

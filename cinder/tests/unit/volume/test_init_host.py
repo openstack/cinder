@@ -15,7 +15,8 @@
 #    under the License.
 """Tests for volume init host method cases."""
 
-import mock
+from unittest import mock
+
 from oslo_config import cfg
 from oslo_utils import importutils
 

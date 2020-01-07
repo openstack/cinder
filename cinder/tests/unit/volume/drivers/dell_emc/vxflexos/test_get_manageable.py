@@ -14,9 +14,9 @@
 #    under the License.
 
 from copy import deepcopy
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos

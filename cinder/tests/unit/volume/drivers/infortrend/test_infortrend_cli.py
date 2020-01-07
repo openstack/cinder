@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from unittest import mock
 
 from cinder import test
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli

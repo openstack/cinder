@@ -16,14 +16,14 @@
 
 import datetime
 import itertools
-import six
+from unittest import mock
 
 import ddt
 import glanceclient.exc
 from keystoneauth1.loading import session as ks_session
 from keystoneauth1 import session
-import mock
 from oslo_config import cfg
+import six
 
 from cinder import context
 from cinder import exception

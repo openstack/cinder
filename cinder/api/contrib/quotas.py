@@ -13,10 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import webob
-
 from oslo_log import log as logging
 from oslo_utils import strutils
+import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi

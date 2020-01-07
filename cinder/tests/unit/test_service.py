@@ -15,12 +15,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit Tests for remote procedure calls using queue
-"""
+"""Unit Tests for remote procedure calls using queue."""
+
+from unittest import mock
 
 import ddt
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_db import exception as db_exc

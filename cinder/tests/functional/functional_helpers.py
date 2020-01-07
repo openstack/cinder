@@ -13,17 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Provides common functionality for functional tests
-"""
+"""Provides common functionality for functional tests."""
 import os.path
 import random
 import string
 import time
+from unittest import mock
 import uuid
 
 import fixtures
-import mock
 from oslo_config import cfg
 
 from cinder import service

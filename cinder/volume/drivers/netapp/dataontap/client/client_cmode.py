@@ -21,6 +21,7 @@ import math
 import re
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 from oslo_utils import units
 import six
 
@@ -31,9 +32,6 @@ from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import volume_utils
-
-from oslo_utils import strutils
-
 
 LOG = logging.getLogger(__name__)
 DEFAULT_MAX_PAGE_LENGTH = 50

@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for group_snapshot code.
-"""
+"""Tests for group_snapshot code."""
+
+from unittest import mock
 
 import ddt
-import mock
 from oslo_policy import policy as oslo_policy
 from six.moves import http_client
 import webob

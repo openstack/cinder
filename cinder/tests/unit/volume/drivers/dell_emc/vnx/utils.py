@@ -15,8 +15,8 @@
 
 
 from os import path
+from unittest import mock
 
-import mock
 import six
 import yaml
 

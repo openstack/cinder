@@ -14,14 +14,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for cinder.api.contrib.quotas.py
-"""
+"""Tests for cinder.api.contrib.quotas.py"""
 
+from unittest import mock
+import uuid
 
 import ddt
-import mock
-import uuid
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
 import webob.exc
 
 from cinder.api.contrib import quotas
@@ -32,10 +32,6 @@ from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test_db_api
-
-
-from oslo_config import cfg
-from oslo_config import fixture as config_fixture
 
 
 CONF = cfg.CONF

@@ -13,11 +13,11 @@
 #    under the License.
 
 import datetime
-import ddt
+from unittest import mock
 import uuid
 
+import ddt
 from iso8601 import iso8601
-import mock
 from oslo_versionedobjects import fields
 from sqlalchemy import sql
 

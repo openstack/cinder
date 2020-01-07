@@ -12,13 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
+from unittest import mock
+import uuid
+
 import ddt
 import eventlet
-import json
-import mock
 import requests
 from requests import models
-import uuid
 
 from cinder import context
 from cinder import exception

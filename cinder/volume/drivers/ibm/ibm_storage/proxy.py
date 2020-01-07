@@ -17,10 +17,10 @@ import functools
 import gettext
 import inspect
 import platform
-import six
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
+import six
 
 from cinder.i18n import _
 from cinder import version

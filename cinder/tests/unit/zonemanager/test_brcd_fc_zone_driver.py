@@ -16,8 +16,8 @@
 
 
 """Unit tests for Brocade fc zone driver."""
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 from oslo_utils import importutils
 import paramiko

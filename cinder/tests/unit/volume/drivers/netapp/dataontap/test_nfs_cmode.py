@@ -12,15 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Mock unit tests for the NetApp cmode nfs storage driver
-"""
+"""Mock unit tests for the NetApp cmode nfs storage driver."""
 
 import hashlib
+from unittest import mock
 import uuid
 
 import ddt
-import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_utils import units
 

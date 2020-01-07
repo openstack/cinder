@@ -12,15 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests For HostManager
-"""
+"""Tests For HostManager."""
 
 from datetime import datetime
 from datetime import timedelta
-import ddt
+from unittest import mock
 
-import mock
+import ddt
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 

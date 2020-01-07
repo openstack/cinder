@@ -12,10 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
 import textwrap
+from unittest import mock
 
-import mock
+import ddt
 import pycodestyle
 
 from cinder import test

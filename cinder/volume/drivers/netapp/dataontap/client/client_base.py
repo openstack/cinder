@@ -19,7 +19,6 @@ import sys
 
 from oslo_log import log as logging
 from oslo_utils import excutils
-
 import six
 
 from cinder import exception
@@ -27,7 +26,6 @@ from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
-
 
 LOG = logging.getLogger(__name__)
 

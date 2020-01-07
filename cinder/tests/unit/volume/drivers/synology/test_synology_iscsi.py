@@ -15,7 +15,7 @@
 
 """Tests for the Synology iSCSI volume driver."""
 
-import mock
+from unittest import mock
 
 from cinder import exception
 from cinder import test

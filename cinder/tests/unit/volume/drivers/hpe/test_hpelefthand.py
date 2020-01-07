@@ -17,7 +17,8 @@
 
 import copy
 import json
-import mock
+from unittest import mock
+
 from oslo_utils import units
 
 from cinder import context

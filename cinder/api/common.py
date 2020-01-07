@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
+import enum
 import json
 import os
 import re
 
-import enum
 from oslo_config import cfg
 from oslo_log import log as logging
 from six.moves import urllib

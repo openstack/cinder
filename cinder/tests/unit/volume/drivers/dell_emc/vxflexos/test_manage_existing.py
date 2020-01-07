@@ -13,6 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest.mock import patch
+
+from six.moves import urllib
+
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
@@ -20,8 +24,6 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import volume_types
-from mock import patch
-from six.moves import urllib
 
 
 class TestManageExisting(vxflexos.TestVxFlexOSDriver):

@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for the Inspur InStorage volume driver.
-"""
+"""Tests for the Inspur InStorage volume driver."""
+
+from unittest import mock
 
 from eventlet import greenthread
-import mock
 from oslo_utils import importutils
 
 from cinder import context

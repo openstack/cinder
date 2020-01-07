@@ -13,10 +13,9 @@
 #    under the License.
 """Unit Tests for volume types code."""
 
-
 import datetime
-import mock
 import time
+from unittest import mock
 
 from oslo_db import exception as db_exc
 from oslo_utils import uuidutils

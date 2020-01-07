@@ -10,10 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
 import inspect
 from itertools import chain
 
+import ddt
 from oslo_config import cfg
 
 from cinder import exception

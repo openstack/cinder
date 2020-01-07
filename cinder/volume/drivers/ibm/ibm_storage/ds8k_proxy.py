@@ -13,8 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-This is the driver that allows openstack to talk to DS8K.
+"""This is the driver that allows openstack to talk to DS8K.
 
 All volumes are thin provisioned by default, if the machine is licensed for it.
 This can be overridden by creating a volume type and specifying a key like so:
@@ -62,11 +61,11 @@ Sample settings for cinder.conf:
 """
 import ast
 import json
-import six
 
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
+import six
 
 from cinder import context
 from cinder import coordination

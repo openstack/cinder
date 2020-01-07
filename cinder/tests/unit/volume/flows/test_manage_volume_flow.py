@@ -12,7 +12,8 @@
 """ Tests for manage_existing TaskFlow """
 
 import inspect
-import mock
+from unittest import mock
+
 import taskflow.engines
 
 from cinder import context

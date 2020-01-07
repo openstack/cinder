@@ -13,8 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-ISCSI volume driver for Inspur InStorage family and MCS storage systems.
+"""ISCSI volume driver for Inspur InStorage family and MCS storage systems.
 
 Notes:
 1. Make sure you config the password or key file. If you specify both
@@ -53,7 +52,6 @@ from cinder.i18n import _
 from cinder import interface
 from cinder import utils as cinder_utils
 from cinder.volume import driver
-
 from cinder.volume.drivers.inspur.instorage import instorage_common
 
 LOG = logging.getLogger(__name__)

@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import ddt
 import os
 import socket
+from unittest import mock
 
-import mock
+import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 

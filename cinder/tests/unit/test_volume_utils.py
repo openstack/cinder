@@ -18,14 +18,14 @@
 
 import datetime
 import io
-import mock
-import six
+from unittest import mock
 
 from castellan import key_manager
 import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import db

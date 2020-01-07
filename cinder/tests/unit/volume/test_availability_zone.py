@@ -16,7 +16,7 @@
 """Test for volume availability zone."""
 
 import datetime
-import mock
+from unittest import mock
 
 from oslo_utils import timeutils
 

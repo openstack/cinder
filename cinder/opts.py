@@ -25,9 +25,8 @@ import itertools
 
 from keystoneauth1 import loading
 
-from cinder import objects
+from cinder import objects  # noqa
 objects.register_all()
-
 from cinder.api import common as cinder_api_common
 from cinder.api.middleware import auth as cinder_api_middleware_auth
 from cinder.api.views import versions as cinder_api_views_versions

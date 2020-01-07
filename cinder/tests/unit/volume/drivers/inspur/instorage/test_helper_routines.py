@@ -13,19 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Tests for the Inspur InStorage volume driver.
-"""
+"""Tests for the Inspur InStorage volume driver."""
+
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.inspur.instorage import instorage_common
-
-from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 
 
 class CLIParserTestCase(test.TestCase):

@@ -16,15 +16,15 @@
 
 import datetime
 import re
-import six
+from unittest import mock
 
 from ddt import data
 from ddt import ddt
 from ddt import file_data
 from ddt import unpack
-import mock
 from oslo_utils import timeutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import exception

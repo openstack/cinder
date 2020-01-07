@@ -12,7 +12,7 @@
 #    under the License.
 
 import datetime
-import mock
+from unittest import mock
 
 from six.moves import http_client
 import webob

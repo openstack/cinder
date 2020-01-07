@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import platform
+from unittest import mock
 
 from cinder.objects import fields
 from cinder import test

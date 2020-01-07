@@ -16,9 +16,9 @@
 
 import re
 import sys
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
 import six
 

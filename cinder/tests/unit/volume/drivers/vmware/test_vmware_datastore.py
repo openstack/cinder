@@ -13,13 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit tests for datastore module.
-"""
+"""Unit tests for datastore module."""
 
 import re
+from unittest import mock
 
-import mock
 from oslo_utils import units
 
 from cinder import test

@@ -12,7 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import mock
+from unittest import mock
 import uuid
 
 from oslo_policy import policy as oslo_policy

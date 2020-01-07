@@ -16,15 +16,13 @@
 #    under the License.
 #
 
-"""
-iSCSI Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
-"""
+"""iSCSI Cinder Volume driver for Fujitsu ETERNUS DX S3 series."""
+from oslo_log import log as logging
 import six
 
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu.eternus_dx import eternus_dx_common
-from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 

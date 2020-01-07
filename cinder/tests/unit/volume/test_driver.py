@@ -14,11 +14,11 @@
 #    under the License.
 """Tests for Volume Code."""
 
-import ddt
-import mock
 import shutil
 import tempfile
+from unittest import mock
 
+import ddt
 import os_brick
 from oslo_config import cfg
 from oslo_utils import importutils

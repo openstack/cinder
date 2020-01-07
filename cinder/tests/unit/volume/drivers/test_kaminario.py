@@ -14,11 +14,11 @@
 #    under the License.
 """Unit tests for kaminario driver."""
 import re
+import time
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import units
-import time
 
 from cinder import context
 from cinder import exception

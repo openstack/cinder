@@ -19,10 +19,10 @@ import json
 import os
 import tempfile
 import threading
+from unittest import mock
 import uuid
 
 import ddt
-import mock
 from os_brick.initiator import linuxrbd
 from oslo_concurrency import processutils
 from oslo_config import cfg

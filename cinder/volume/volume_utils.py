@@ -14,7 +14,6 @@
 
 """Volume-related Utilities and helpers."""
 
-
 import ast
 import functools
 import json
@@ -22,6 +21,7 @@ import math
 import operator
 import os
 from os import urandom
+from random import shuffle
 import re
 import socket
 import tempfile
@@ -43,7 +43,6 @@ from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
-from random import shuffle
 import six
 from six.moves import range
 
@@ -58,7 +57,6 @@ from cinder import utils
 from cinder.volume import group_types
 from cinder.volume import throttling
 from cinder.volume import volume_types
-
 
 CONF = cfg.CONF
 

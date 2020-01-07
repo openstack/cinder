@@ -12,12 +12,12 @@
 #    under the License.
 
 import datetime
-import ddt
-import iso8601
 import json
+from unittest import mock
 
+import ddt
 import fixtures
-import mock
+import iso8601
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from six.moves import http_client

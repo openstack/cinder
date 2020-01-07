@@ -13,17 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-import six
 
 from oslo_log import log as logging
 from oslo_utils import importutils
-
 pyxcli = importutils.try_import("pyxcli")
 if pyxcli:
     from pyxcli import errors
     from pyxcli.mirroring import cg_recovery_manager
     from pyxcli.mirroring import errors as m_errors
     from pyxcli.mirroring import volume_recovery_manager
+import six
 
 from cinder.i18n import _
 from cinder.volume.drivers.ibm.ibm_storage import strings

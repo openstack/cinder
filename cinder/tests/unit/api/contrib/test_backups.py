@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for Backup code.
-"""
+"""Tests for Backup code."""
+
+from unittest import mock
 
 import ddt
-import mock
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import six

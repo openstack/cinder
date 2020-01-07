@@ -12,10 +12,10 @@
 
 """Unit tests for the cinder-status CLI interfaces."""
 
-import ddt
-import mock
+from unittest import mock
 import uuid
 
+import ddt
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 import testtools

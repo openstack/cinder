@@ -16,13 +16,13 @@
 import collections
 import copy
 import distutils.version as dist_version  # pylint: disable=E0611
-import eventlet
 import math
 import os
-import six
 import string
 
+import eventlet
 from oslo_log import log as logging
+import six
 
 from cinder import coordination
 from cinder import exception

@@ -19,9 +19,9 @@ Unit tests for Windows Server 2012 OpenStack Cinder volume driver
 """
 
 import os
+from unittest import mock
 
 import ddt
-import mock
 from oslo_utils import fileutils
 from oslo_utils import units
 

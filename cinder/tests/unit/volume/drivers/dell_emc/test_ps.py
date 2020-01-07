@@ -15,9 +15,9 @@
 
 import time
 import unittest
+from unittest import mock
 
 from eventlet import greenthread
-import mock
 from oslo_concurrency import processutils
 import paramiko
 import six

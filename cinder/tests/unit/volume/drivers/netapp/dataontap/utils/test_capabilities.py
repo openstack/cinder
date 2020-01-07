@@ -15,9 +15,9 @@
 
 import collections
 import copy
+from unittest import mock
 
 import ddt
-import mock
 import six
 
 from cinder import exception

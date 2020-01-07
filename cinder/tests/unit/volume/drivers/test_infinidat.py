@@ -15,10 +15,11 @@
 """Unit tests for INFINIDAT InfiniBox volume driver."""
 
 import functools
-import mock
-from oslo_utils import units
 import platform
 import socket
+from unittest import mock
+
+from oslo_utils import units
 
 from cinder import exception
 from cinder import test

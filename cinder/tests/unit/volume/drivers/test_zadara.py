@@ -16,7 +16,8 @@
 Tests for Zadara VPSA volume driver
 """
 import copy
-import mock
+from unittest import mock
+
 import requests
 from six.moves.urllib import parse
 

@@ -17,7 +17,7 @@
 Tests for cinder.api.urlmap.py
 """
 
-import mock
+from unittest import mock
 
 from cinder.api import urlmap
 from cinder import test

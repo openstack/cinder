@@ -15,12 +15,12 @@
 
 
 import datetime
-import iso8601
 import json
+from unittest import mock
 
 import ddt
 import fixtures
-import mock
+import iso8601
 from oslo_config import cfg
 import six
 from six.moves import http_client

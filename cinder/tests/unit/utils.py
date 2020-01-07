@@ -14,12 +14,12 @@
 #
 
 import datetime
-import fixtures
 import socket
 import sys
+from unittest import mock
 import uuid
 
-import mock
+import fixtures
 from oslo_config import cfg
 from oslo_service import loopingcall
 from oslo_utils import timeutils

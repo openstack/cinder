@@ -14,9 +14,9 @@
 """Tests for the base chunkedbackupdriver class."""
 
 import json
+from unittest import mock
 import uuid
 
-import mock
 from oslo_config import cfg
 from oslo_utils import units
 

@@ -15,8 +15,7 @@
 
 import functools
 import unittest
-
-import mock
+from unittest import mock
 
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex

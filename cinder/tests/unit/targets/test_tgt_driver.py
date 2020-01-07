@@ -13,8 +13,8 @@
 import os
 import sys
 import time
+from unittest import mock
 
-import mock
 from oslo_concurrency import processutils as putils
 
 from cinder import context

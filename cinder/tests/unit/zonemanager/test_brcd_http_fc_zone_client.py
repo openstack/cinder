@@ -16,11 +16,10 @@
 
 """Unit tests for brcd fc zone client http(s)."""
 import time
+from unittest import mock
+from unittest.mock import patch
 
 from oslo_utils import encodeutils
-
-import mock
-from mock import patch
 import six
 
 from cinder import test

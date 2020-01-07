@@ -24,11 +24,9 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 import six
 
-
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
-
 from cinder.volume.drivers.dell_emc.vnx import client
 from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import replication

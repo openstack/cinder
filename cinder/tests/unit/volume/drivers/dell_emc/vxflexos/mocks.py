@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import json
-import requests
-import six
 
 from oslo_config import cfg
+import requests
+import six
 
 from cinder.volume.drivers.dell_emc.vxflexos import driver
 

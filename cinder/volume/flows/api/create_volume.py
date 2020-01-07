@@ -11,10 +11,10 @@
 #    under the License.
 
 import collections
-import six
 
 from oslo_config import cfg
 from oslo_log import log as logging
+import six
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft

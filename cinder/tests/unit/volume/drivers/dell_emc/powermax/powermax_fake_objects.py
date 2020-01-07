@@ -14,6 +14,7 @@
 #    under the License.
 
 import ast
+
 import requests
 
 from cinder import exception

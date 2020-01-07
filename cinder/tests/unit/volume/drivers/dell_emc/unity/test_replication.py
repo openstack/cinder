@@ -14,9 +14,9 @@
 # under the License.
 
 import unittest
+from unittest import mock
 
 import ddt
-from mock import mock
 
 from cinder import exception
 from cinder.volume import configuration as conf

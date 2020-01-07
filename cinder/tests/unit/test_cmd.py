@@ -11,14 +11,14 @@
 #    under the License.
 
 import datetime
-import iso8601
 import re
 import sys
 import time
+from unittest import mock
 
 import ddt
 import fixtures
-import mock
+import iso8601
 from oslo_config import cfg
 from oslo_db import exception as oslo_exception
 from oslo_utils import timeutils

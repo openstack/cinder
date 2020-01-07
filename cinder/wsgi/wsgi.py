@@ -12,21 +12,17 @@
 
 """Cinder OS API WSGI application."""
 
-
 import sys
 import warnings
-
-from cinder import objects
-
 warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import wsgi
 
-from cinder import i18n
+from cinder import objects  # noqa
+from cinder import i18n  # noqa
 i18n.enable_lazy()
-
 # Need to register global_opts
 from cinder.common import config
 from cinder.common import constants

@@ -18,15 +18,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Mock unit tests for the NetApp block storage library
-"""
+"""Mock unit tests for the NetApp block storage library"""
 
 import copy
+from unittest import mock
 import uuid
 
 import ddt
-import mock
 from oslo_log import versionutils
 from oslo_utils import units
 import six

@@ -18,14 +18,8 @@
 
 """Implementation of SQLAlchemy backend."""
 
-
 import collections
-
-try:
-    from collections.abc import Iterable
-except ImportError:
-    from collections import Iterable
-
+from collections import abc
 import datetime as dt
 import functools
 import itertools
@@ -7135,7 +7129,7 @@ def condition_db_filter(model, field, value):
     """
     orm_field = getattr(model, field)
     # For values that must match and are iterables we use IN
-    if (isinstance(value, Iterable) and
+    if (isinstance(value, abc.Iterable) and
             not isinstance(value, six.string_types)):
         # We cannot use in_ when one of the values is None
         if None not in value:
@@ -7161,7 +7155,7 @@ def condition_not_db_filter(model, field, value, auto_none=True):
     result = ~condition_db_filter(model, field, value)
 
     if (auto_none
-            and ((isinstance(value, Iterable) and
+            and ((isinstance(value, abc.Iterable) and
                   not isinstance(value, six.string_types)
                   and None not in value)
                  or (value is not None))):

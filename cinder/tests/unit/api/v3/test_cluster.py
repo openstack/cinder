@@ -14,10 +14,10 @@
 #    under the License.
 
 import datetime
+from unittest import mock
 
 import ddt
 import iso8601
-import mock
 from oslo_utils import versionutils
 
 from cinder.api import extensions

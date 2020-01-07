@@ -13,10 +13,10 @@
 #   under the License.
 
 import datetime
+from unittest import mock
 import uuid
 
 import ddt
-import mock
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils

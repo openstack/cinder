@@ -17,9 +17,9 @@
 
 from datetime import datetime
 import time
+from unittest import mock
 import uuid
 
-import mock
 from oslo_db import exception as db_exception
 import six
 

@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 import ddt
-import mock
 
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.performance \

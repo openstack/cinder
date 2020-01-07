@@ -11,12 +11,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Collects and starts tasks created from oslo_service.loopingcall.
-"""
-
+"""Collects and starts tasks created from oslo_service.loopingcall."""
 
 from collections import namedtuple
+
 from oslo_service import loopingcall
 
 LoopingTask = namedtuple('LoopingTask',

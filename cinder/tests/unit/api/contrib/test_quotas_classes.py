@@ -18,7 +18,7 @@ Tests for cinder.api.contrib.quota_classes.py
 """
 
 
-import mock
+from unittest import mock
 
 from cinder.api.contrib import quota_classes
 from cinder import context

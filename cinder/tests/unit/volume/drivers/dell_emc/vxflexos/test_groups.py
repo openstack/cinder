@@ -14,11 +14,10 @@
 #    under the License.
 
 import json
-import mock
+from unittest import mock
 
 from cinder import context
 from cinder.objects import fields
-
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot

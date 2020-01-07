@@ -13,16 +13,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Unit Tests for qos specs internal API
-"""
+"""Unit Tests for qos specs internal API."""
 
-import mock
-import six
 import time
+from unittest import mock
 
 from oslo_db import exception as db_exc
 from oslo_utils import timeutils
+import six
 
 from cinder import context
 from cinder import db

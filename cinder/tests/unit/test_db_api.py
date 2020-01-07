@@ -13,13 +13,12 @@
 
 """Unit tests for cinder.db.api."""
 
-
 import datetime
+import enum
+from unittest import mock
+from unittest.mock import call
 
 import ddt
-import enum
-import mock
-from mock import call
 from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils

@@ -15,12 +15,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for NetApp API layer
-"""
+"""Tests for NetApp API layer"""
+
+from unittest import mock
+
 import ddt
 from lxml import etree
-import mock
 from oslo_utils import netutils
 import paramiko
 import six

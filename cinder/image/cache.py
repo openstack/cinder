@@ -12,12 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from pytz import timezone
-import six
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
+from pytz import timezone
+import six
 
 from cinder import objects
 from cinder import rpc

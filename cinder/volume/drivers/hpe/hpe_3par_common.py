@@ -13,8 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""
-Volume driver common utilities for HPE 3PAR Storage array
+"""Volume driver common utilities for HPE 3PAR Storage array.
 
 The 3PAR drivers requires 3.1.3 firmware on the 3PAR array.
 
@@ -39,7 +38,6 @@ import json
 import math
 import pprint
 import re
-import six
 import uuid
 
 from oslo_config import cfg
@@ -49,6 +47,9 @@ from oslo_serialization import base64
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
+import six
+import taskflow.engines
+from taskflow.patterns import linear_flow
 
 from cinder import context
 from cinder import exception
@@ -60,9 +61,6 @@ from cinder.volume import configuration
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
-
-import taskflow.engines
-from taskflow.patterns import linear_flow
 
 try:
     import hpe3parclient

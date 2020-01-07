@@ -16,12 +16,12 @@
 import hashlib
 import os
 import re
-import six
 
 from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import fileutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import db

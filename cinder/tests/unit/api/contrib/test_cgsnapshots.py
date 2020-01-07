@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Tests for cgsnapshot code.
-"""
+"""Tests for cgsnapshot code."""
 
-import mock
+from unittest import mock
+
 from oslo_serialization import jsonutils
 from six.moves import http_client
 import webob
@@ -30,7 +29,6 @@ from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
-
 from cinder.tests.unit import utils
 import cinder.volume
 

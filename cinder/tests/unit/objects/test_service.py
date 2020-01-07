@@ -13,8 +13,9 @@
 #    under the License.
 
 import datetime
+from unittest import mock
+
 import ddt
-import mock
 from oslo_utils import timeutils
 import pytz
 import six

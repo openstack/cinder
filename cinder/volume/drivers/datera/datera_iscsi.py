@@ -25,11 +25,10 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder.volume import configuration
-from cinder.volume.drivers.san import san
-
 import cinder.volume.drivers.datera.datera_api2 as api2
 import cinder.volume.drivers.datera.datera_api21 as api21
 import cinder.volume.drivers.datera.datera_common as datc
+from cinder.volume.drivers.san import san
 
 
 LOG = logging.getLogger(__name__)

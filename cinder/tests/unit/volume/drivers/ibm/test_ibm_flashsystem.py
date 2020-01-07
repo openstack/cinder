@@ -17,13 +17,13 @@
 
 """Tests for the IBM FlashSystem volume driver."""
 
-import mock
+import random
+import re
+from unittest import mock
+
 from oslo_concurrency import processutils
 from oslo_utils import units
 import six
-
-import random
-import re
 
 from cinder import context
 from cinder import exception

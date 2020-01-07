@@ -11,7 +11,8 @@
 #    under the License.
 """Tests for Volume retype Code."""
 
-import mock
+from unittest import mock
+
 from oslo_config import cfg
 
 from cinder import context

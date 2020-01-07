@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
 
 from lxml import etree
-import mock
 from six.moves import urllib
 
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake

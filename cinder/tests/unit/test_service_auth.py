@@ -10,17 +10,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from keystoneauth1.identity.generic import password
 from keystoneauth1 import loading as ks_loading
 from keystoneauth1 import service_token
-import mock
+from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
 from cinder import service_auth
 from cinder import test
-
-from oslo_config import cfg
 
 CONF = cfg.CONF
 

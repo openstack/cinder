@@ -13,22 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ipaddress
 import re
 import uuid
 
 import eventlet
-import ipaddress
-import six
-
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
+import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.volume import volume_utils
-
 import cinder.volume.drivers.datera.datera_common as datc
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 

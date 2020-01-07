@@ -12,9 +12,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Driver for Dell EMC XtremIO Storage.
-supported XtremIO version 2.4 and up
+"""Driver for Dell EMC XtremIO Storage.
+
+Supports XtremIO version 2.4 and up.
 
 .. code-block:: none
 
@@ -36,13 +36,13 @@ supported XtremIO version 2.4 and up
 import json
 import math
 import random
-import requests
 import string
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
+import requests
 import six
 from six.moves import http_client
 
@@ -57,7 +57,6 @@ from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
-
 
 LOG = logging.getLogger(__name__)
 

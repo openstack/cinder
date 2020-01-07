@@ -12,12 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit Tests for cinder.volume.rpcapi
-"""
-import ddt
-import mock
+"""Unit Tests for cinder.volume.rpcapi."""
 
+from unittest import mock
+
+import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 

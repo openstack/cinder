@@ -14,14 +14,14 @@
 #    under the License.
 
 import base64
-from collections import OrderedDict
+import collections
+from unittest import mock
 
 from ddt import data
 from ddt import ddt
 from ddt import unpack
 from defusedxml import cElementTree as ET
 import eventlet
-import mock
 from oslo_config import cfg
 from oslo_utils import units
 import requests
@@ -40,11 +40,11 @@ FAKE_LUNNAA = {'LUNNAA': 'fakeLunNaa'}
 FAKE_SNAPSHOT = {'snapshot_id': 'fakeSnapshotId'}
 
 FAKE_PASSWORD = 'qnapadmin'
-FAKE_PARMS = OrderedDict()
+FAKE_PARMS = collections.OrderedDict()
 FAKE_PARMS['pwd'] = base64.b64encode(FAKE_PASSWORD.encode("utf-8"))
 FAKE_PARMS['serviceKey'] = 1
 FAKE_PARMS['user'] = 'admin'
-sanitized_params = OrderedDict()
+sanitized_params = collections.OrderedDict()
 
 for key in FAKE_PARMS:
     value = FAKE_PARMS[key]

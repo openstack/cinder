@@ -12,19 +12,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Volume driver for QNAP Storage.
+"""Volume driver for QNAP Storage.
+
 This driver supports QNAP Storage for iSCSI.
 """
 import base64
 from collections import OrderedDict
-import eventlet
 import functools
 import re
 import threading
 import time
 
 from defusedxml import cElementTree as ET
+import eventlet
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging

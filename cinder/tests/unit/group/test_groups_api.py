@@ -16,9 +16,9 @@
 """
 Tests for group API.
 """
+from unittest import mock
 
 import ddt
-import mock
 
 from cinder import context
 from cinder import exception

@@ -13,12 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-import six
-import webob
+from unittest import mock
 
 import ddt
 from oslo_utils import strutils
+import six
+import webob
 
 from cinder.api.contrib import types_manage
 from cinder import context

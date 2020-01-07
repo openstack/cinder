@@ -13,9 +13,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 import unittest
+from unittest import mock
 
 import ddt
-from mock import mock
 from oslo_utils import units
 
 from cinder import coordination

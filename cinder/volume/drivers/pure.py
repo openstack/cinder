@@ -12,12 +12,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Volume driver for Pure Storage FlashArray storage system.
+"""Volume driver for Pure Storage FlashArray storage system.
 
 This driver requires Purity version 4.0.0 or later.
 """
 
+from distutils import version
 import functools
 import ipaddress
 import math
@@ -25,12 +25,15 @@ import platform
 import re
 import uuid
 
-from distutils import version
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
+try:
+    from purestorage import purestorage
+except ImportError:
+    purestorage = None
 import six
 
 from cinder import exception
@@ -44,11 +47,6 @@ from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
-
-try:
-    from purestorage import purestorage
-except ImportError:
-    purestorage = None
 
 LOG = logging.getLogger(__name__)
 

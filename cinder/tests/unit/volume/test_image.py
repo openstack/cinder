@@ -16,9 +16,9 @@
 """Tests for volume and images."""
 
 import datetime
-import mock
 import os
 import tempfile
+from unittest import mock
 
 from oslo_utils import imageutils
 from oslo_utils import units

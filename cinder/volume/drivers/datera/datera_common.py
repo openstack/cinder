@@ -16,15 +16,14 @@
 import functools
 import json
 import re
-import six
 import time
 import types
 import uuid
 
 import eventlet
-import requests
-
 from oslo_log import log as logging
+import requests
+import six
 from six.moves import http_client
 
 from cinder import context

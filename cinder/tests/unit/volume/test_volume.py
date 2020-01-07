@@ -16,15 +16,15 @@
 """Tests for Volume Code."""
 
 import datetime
-import ddt
+import enum
 import time
+from unittest import mock
 import uuid
 
 from castellan.common import exception as castellan_exception
 from castellan import key_manager
-import enum
+import ddt
 import eventlet
-import mock
 import os_brick.initiator.connectors.iscsi
 from oslo_concurrency import processutils
 from oslo_config import cfg

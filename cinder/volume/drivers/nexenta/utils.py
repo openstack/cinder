@@ -14,9 +14,9 @@
 #    under the License.
 
 import re
-import six
 
 from oslo_utils import units
+import six
 import six.moves.urllib.parse as urlparse
 
 from cinder import exception

@@ -35,8 +35,6 @@ intact.
 
 """
 
-
-import requests
 import time
 
 from castellan import key_manager
@@ -51,6 +49,7 @@ from oslo_utils import timeutils
 from oslo_utils import units
 from oslo_utils import uuidutils
 profiler = importutils.try_import('osprofiler.profiler')
+import requests
 import six
 from taskflow import exceptions as tfe
 

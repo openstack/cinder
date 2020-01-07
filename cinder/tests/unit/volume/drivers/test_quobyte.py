@@ -15,19 +15,19 @@
 #    under the License.
 """Unit tests for the Quobyte driver module."""
 
-import ddt
 import errno
 import os
-import psutil
 import shutil
-import six
 import traceback
+from unittest import mock
 
-import mock
+import ddt
 from oslo_concurrency import processutils as putils
 from oslo_utils import fileutils
 from oslo_utils import imageutils
 from oslo_utils import units
+import psutil
+import six
 
 from cinder import context
 from cinder import exception

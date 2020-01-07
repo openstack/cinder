@@ -14,8 +14,7 @@
 #    under the License.
 
 import copy
-
-import mock
+from unittest import mock
 
 from cinder import exception
 from cinder import test

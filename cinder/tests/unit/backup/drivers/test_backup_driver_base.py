@@ -14,9 +14,9 @@
 #    under the License.
 """ Tests for the backup service base driver. """
 
+from unittest import mock
 import uuid
 
-import mock
 from oslo_serialization import jsonutils
 
 from cinder.backup import driver

@@ -10,12 +10,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Tests for stochastic weight handler
-"""
+"""Tests for stochastic weight handler."""
+
+import random
 
 import ddt
-import random
 
 from cinder.scheduler import base_weight
 from cinder.scheduler.weights.stochastic import StochasticHostWeightHandler

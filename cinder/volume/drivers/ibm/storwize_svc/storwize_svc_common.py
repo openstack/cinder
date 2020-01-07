@@ -15,7 +15,6 @@
 #
 
 import math
-import paramiko
 import random
 import re
 import time
@@ -31,6 +30,7 @@ from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import units
+import paramiko
 from retrying import retry
 import six
 

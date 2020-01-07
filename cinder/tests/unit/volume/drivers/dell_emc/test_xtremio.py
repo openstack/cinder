@@ -16,8 +16,8 @@
 import copy
 import re
 import time
+from unittest import mock
 
-import mock
 import six
 
 from cinder import context
