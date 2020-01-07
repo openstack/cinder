@@ -49,12 +49,6 @@ custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_print_statements = re.compile(r"\s*print\s*\(.+\).*")
 dict_constructor_with_list_copy_re = re.compile(r".*\bdict\((\[)?(\(|\[)")
 
-# NOTE(jsbryant): When other oslo libraries switch over non-namespaced
-# imports, we will need to add them to the regex below.
-oslo_namespace_imports = re.compile(r"from[\s]*oslo[.](concurrency|db"
-                                    "|config|utils|serialization|log)")
-no_contextlib_nested = re.compile(r"\s*with (contextlib\.)?nested\(")
-
 logging_instance = re.compile(
     r"(.)*LOG\.(warning|info|debug|error|exception)\(")
 
@@ -370,19 +364,21 @@ def check_timeutils_isotime(logical_line):
 
 
 def no_test_log(logical_line, filename, noqa):
-    if ('cinder/tests/tempest' in filename or
-            'cinder/tests' not in filename or noqa):
+    if ('cinder/tests' not in filename or noqa):
         return
     msg = "C309: Unit tests should not perform logging."
     if logging_instance.match(logical_line):
         yield (0, msg)
 
 
-def validate_assertTrue(logical_line):
+def validate_assertTrue(logical_line, filename):
     # Note: a comparable check cannot be implemented for
     # assertFalse(), because assertFalse(None) passes.
     # Therefore, assertEqual(False, value) is required to
     # have the strongest test.
+    if 'cinder/tests/unit' not in filename:
+        return
+
     if re.match(assert_True, logical_line):
         msg = ("C313: Unit tests should use assertTrue(value) instead"
                " of using assertEqual(True, value).")
