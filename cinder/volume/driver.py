@@ -88,14 +88,17 @@ volume_opts = [
                     'target support, ietadm for iSCSI Enterprise Target, '
                     'iscsictl for Chelsio iSCSI Target, nvmet for NVMEoF '
                     'support, spdk-nvmeof for SPDK NVMe-oF, '
-                    'or fake for testing.'),
+                    'or fake for testing. Note: The IET driver is deprecated '
+                    'and will be removed in the V release.'),
     cfg.StrOpt('volumes_dir',
                default='$state_path/volumes',
                help='Volume configuration file storage '
                'directory'),
     cfg.StrOpt('iet_conf',
                default='/etc/iet/ietd.conf',
-               help='IET configuration file'),
+               deprecated_for_removal=True,
+               deprecated_reason='IET target driver is no longer supported.',
+               help='DEPRECATED: IET configuration file'),
     cfg.StrOpt('chiscsi_conf',
                default='/etc/chelsio-iscsi/chiscsi.conf',
                help='Chiscsi (CXT) global defaults configuration file'),
@@ -346,26 +349,26 @@ CONF.import_opt('backup_use_same_host', 'cinder.backup.api')
 class BaseVD(object):
     """Executes commands relating to Volumes.
 
-       Base Driver for Cinder Volume Control Path,
-       This includes supported/required implementation
-       for API calls.  Also provides *generic* implementation
-       of core features like cloning, copy_image_to_volume etc,
-       this way drivers that inherit from this base class and
-       don't offer their own impl can fall back on a general
-       solution here.
+    Base Driver for Cinder Volume Control Path,
+    This includes supported/required implementation
+    for API calls.  Also provides *generic* implementation
+    of core features like cloning, copy_image_to_volume etc,
+    this way drivers that inherit from this base class and
+    don't offer their own impl can fall back on a general
+    solution here.
 
-       Key thing to keep in mind with this driver is that it's
-       intended that these drivers ONLY implement Control Path
-       details (create, delete, extend...), while transport or
-       data path related implementation should be a *member object*
-       that we call a connector.  The point here is that for example
-       don't allow the LVM driver to implement iSCSI methods, instead
-       call whatever connector it has configured via conf file
-       (iSCSI{LIO, TGT, IET}, FC, etc).
+    Key thing to keep in mind with this driver is that it's
+    intended that these drivers ONLY implement Control Path
+    details (create, delete, extend...), while transport or
+    data path related implementation should be a *member object*
+    that we call a connector.  The point here is that for example
+    don't allow the LVM driver to implement iSCSI methods, instead
+    call whatever connector it has configured via conf file
+    (iSCSI{LIO, TGT, ET}, FC, etc).
 
-       In the base class and for example the LVM driver we do this via a has-a
-       relationship and just provide an interface to the specific connector
-       methods.  How you do this in your own driver is of course up to you.
+    In the base class and for example the LVM driver we do this via a has-a
+    relationship and just provide an interface to the specific connector
+    methods.  How you do this in your own driver is of course up to you.
     """
     VERSION = "N/A"
 
@@ -424,7 +427,7 @@ class BaseVD(object):
 
         # We set these mappings up in the base driver so they
         # can be used by children
-        # (intended for LVM and BlockDevice, but others could use as well)
+        # (intended for LVM, but others could use as well)
         self.target_mapping = {
             'fake': 'cinder.volume.targets.fake.FakeTarget',
             'ietadm': 'cinder.volume.targets.iet.IetAdm',
@@ -2516,9 +2519,9 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
 class ProxyVD(object):
     """Proxy Volume Driver to mark proxy drivers
 
-        If a driver uses a proxy class (e.g. by using __setattr__ and
-        __getattr__) without directly inheriting from base volume driver this
-        class can help marking them and retrieve the actual used driver object.
+    If a driver uses a proxy class (e.g. by using __setattr__ and
+    __getattr__) without directly inheriting from base volume driver this
+    class can help marking them and retrieve the actual used driver object.
     """
     def _get_driver(self):
         """Returns the actual driver object.

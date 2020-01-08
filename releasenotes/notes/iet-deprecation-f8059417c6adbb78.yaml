@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    The IET iSCSI target driver has been marked deprecated and will be
+    removed in the "V" release. The IET iSCSI target project is no longer
+    active and is not supported by all distributions. It is recommended to
+    migrate to a supported distribution and iSCSI target prior to upgrading.
+deprecations:
+  - |
+    The IET iSCSI target driver has been marked deprecated and will be
+    removed in the "V" release. The IET iSCSI target project is no longer
+    active and is not supported by all distributions. It is recommended to
+    migrate to a supported distribution and iSCSI target prior to upgrading.
