@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-11-15 23:43+0000\n"
+"POT-Creation-Date: 2020-01-07 21:20+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -241,14 +241,6 @@ msgstr "'qemu-img info' の解析に失敗しました。"
 msgid "'success' not found"
 msgstr "'success' が見つかりません。"
 
-#, python-format
-msgid ""
-"(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
-"(Stderr: %(stderr)s)"
-msgstr ""
-"(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
-"(Stderr: %(stderr)s)"
-
 msgid "400 Bad Request"
 msgstr "413 Request entity too large"
 
@@ -348,10 +340,6 @@ msgid "An error has occurred during backup operation"
 msgstr "バックアップ操作中にエラーが発生しました。"
 
 #, python-format
-msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
-msgstr "SheepdogDriver でエラーが発生しました。(理由: %(reason)s)"
-
-#, python-format
 msgid ""
 "An error occurred during the LUNcopy operation. LUNcopy name: "
 "%(luncopyname)s. LUNcopy status: %(luncopystatus)s. LUNcopy state: "
@@ -363,18 +351,6 @@ msgstr ""
 #, python-format
 msgid "An error occurred while attempting to modify Snapshot '%s'."
 msgstr "スナップショット '%s' を変更しようとした際にエラーが発生しました。"
-
-#, python-format
-msgid "An error occurred while reading volume \"%s\"."
-msgstr "ボリューム \"%s\" の読み取り中にエラーが発生しました。"
-
-#, python-format
-msgid "An error occurred while seeking for volume \"%s\"."
-msgstr "ボリューム \"%s\" のシーク中にエラーが発生しました。"
-
-#, python-format
-msgid "An error occurred while writing to volume \"%s\"."
-msgstr "ボリューム \"%s\" への書き込み中にエラーが発生しました。"
 
 msgid "An unknown error occurred."
 msgstr "不明なエラーが発生しました。"
@@ -459,11 +435,6 @@ msgstr "使用可能カテゴリー:"
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "バックエンドが存在しません(%(backend)s)"
-
-msgid "Backend storage did not configure fiber channel target."
-msgstr ""
-"バックエンドストレージによってファイバーチャネルターゲットは設定されませんで"
-"した。"
 
 msgid "Backing up an in-use volume must use the force flag."
 msgstr ""
@@ -986,12 +957,6 @@ msgstr "クラスター %(name)s は既に存在します。"
 #, python-format
 msgid "Cluster %s successfully removed."
 msgstr "クラスター %s は正常に削除されました。"
-
-msgid ""
-"Cluster is not formatted. You should probably perform \"dog cluster format\"."
-msgstr ""
-"クラスターの形式が正しく設定されていません。ドッグクラスター形式を実行する必"
-"要があるかもしれません。"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -1756,10 +1721,6 @@ msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC がプロトコルですが、wwpns が OpenStack によって提供されていません。"
 
 #, python-format
-msgid "Faield to unassign %(volume)s"
-msgstr "%(volume)s の割り当て解除に失敗しました"
-
-#, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "ファブリック %(fabric)s の接続の追加に失敗しました。エラー: %(err)s"
 
@@ -1838,11 +1799,6 @@ msgid "Failed to connect to Dell REST API"
 msgstr "Dell REST API への接続に失敗しました"
 
 #, python-format
-msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
-msgstr ""
-"シープデーモンへの接続に失敗しました。アドレス: %(addr)s、 ポート: %(port)s"
-
-#, python-format
 msgid "Failed to copy image to volume: %(reason)s"
 msgstr "イメージをボリュームにコピーできませんでした: %(reason)s"
 
@@ -1873,18 +1829,6 @@ msgstr "ボリュームグループを作成できませんでした: %(vg_name)
 
 msgid "Failed to create api volume flow."
 msgstr "API ボリュームフローの作成に失敗しました。"
-
-#, python-format
-msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
-msgstr "%(reason)s が原因で cg スナップショット %(id)s の作成に失敗しました。"
-
-#, python-format
-msgid "Failed to create consistency group %(id)s due to %(reason)s."
-msgstr "%(reason)s が原因で整合性グループ %(id)s の作成に失敗しました。"
-
-#, python-format
-msgid "Failed to create consistency group %(id)s:%(ret)s."
-msgstr "整合性グループ %(id)s の作成に失敗しました: %(ret)s。"
 
 #, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
@@ -1956,14 +1900,6 @@ msgstr "シンプールの作成に失敗しました。エラーメッセージ
 #, python-format
 msgid "Failed to create volume %s"
 msgstr "ボリューム %s の作成に失敗しました。"
-
-#, python-format
-msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
-msgstr "%(reason)s が原因で cgsnapshot %(id)s の削除に失敗しました。"
-
-#, python-format
-msgid "Failed to delete consistency group %(id)s due to %(reason)s."
-msgstr "%(reason)s が原因で整合性グループ %(id)s の削除に失敗しました。"
 
 #, python-format
 msgid ""
@@ -2403,32 +2339,6 @@ msgid "Failure staging LUN %s to tmp."
 msgstr "LUN %s を一時 lun へステージング中に障害が発生しました。"
 
 #, python-format
-msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
-msgstr ""
-"Fexvisor は %(reason)s が原因でボリューム %(id)s の追加に失敗しました。"
-
-#, python-format
-msgid ""
-"Fexvisor failed to join the volume %(vol)s in the group %(group)s due to "
-"%(ret)s."
-msgstr ""
-"Fexvisor は %(ret)s が原因でグループ %(group)s でのボリューム %(vol)s の結合"
-"に失敗しました。"
-
-#, python-format
-msgid ""
-"Fexvisor failed to remove the volume %(vol)s in the group %(group)s due to "
-"%(ret)s."
-msgstr ""
-"Fexvisor は %(ret)s が原因で グループ  %(group)s でのボリューム %(vol)s の削"
-"除に失敗しました。"
-
-#, python-format
-msgid "Fexvisor failed to remove volume %(id)s due to %(reason)s."
-msgstr ""
-"Fexvisor は %(reason)s が原因でボリューム %(id)s の削除に失敗しました。"
-
-#, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "ファイバーチャネル SAN ルックアップ障害: %(reason)s"
 
@@ -2483,195 +2393,6 @@ msgid ""
 msgstr ""
 "Flash キャッシュポリシーは、WSAPI バージョン「%(fcache_version)s」バージョン"
 "「%(version)s」がインストールされていることを必要としています。"
-
-#, python-format
-msgid "Flexvisor assign volume failed.:%(id)s:%(status)s."
-msgstr ""
-"Flexvisor によるボリュームの割り当てが失敗しました: %(id)s:%(status)s。"
-
-#, python-format
-msgid "Flexvisor assign volume failed:%(id)s:%(status)s."
-msgstr ""
-"Flexvisor によるボリュームの割り当てが失敗しました: %(id)s:%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor could not find volume %(id)s snapshot in the group %(vgid)s "
-"snapshot %(vgsid)s."
-msgstr ""
-"Flexvisor はグループ %(vgid)s スナップショット %(vgsid)s でボリューム %(id)s "
-"スナップショットを見つけられませんでした。"
-
-#, python-format
-msgid "Flexvisor create volume failed.:%(volumeid)s:%(status)s."
-msgstr ""
-"Flexvisor によるボリュームの作成が失敗しました: %(volumeid)s:%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed deleting volume %(id)s: %(status)s."
-msgstr "Flexvisor はボリューム %(id)s の削除に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to add volume %(id)s to group %(cgid)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s をグループ %(cgid)s に追加できませんでした。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to assign volume %(id)s due to unable to query status by "
-"event id."
-msgstr ""
-"Flexvisor は、イベント ID でステータスを照会できないことが原因でボリューム "
-"%(id)s を割り当てることに失敗しました。"
-
-#, python-format
-msgid "Flexvisor failed to assign volume %(id)s: %(status)s."
-msgstr "Flexvisor はボリューム %(id)s の割り当てに失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to assign volume %(volume)s iqn %(iqn)s."
-msgstr ""
-"Flexvisor はボリューム %(volume)s iqn %(iqn)s の割り当てに失敗しました。"
-
-#, python-format
-msgid "Flexvisor failed to clone volume %(id)s: %(status)s."
-msgstr "Flexvisor はボリューム %(id)s の複製に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to clone volume (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s の複製に失敗しました (イベントの取得に失敗しま"
-"した)。"
-
-#, python-format
-msgid "Flexvisor failed to create snapshot for volume %(id)s: %(status)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s のスナップショットを作成することに失敗しまし"
-"た: %(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to create snapshot for volume (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s のスナップショットを作成することに失敗しました "
-"(イベントの取得に失敗しました)。"
-
-#, python-format
-msgid "Flexvisor failed to create volume %(id)s in the group %(vgid)s."
-msgstr ""
-"Flexvisor はグループ %(vgid)s 内でボリューム %(id)s を作成できませんでした。"
-
-#, python-format
-msgid "Flexvisor failed to create volume %(volume)s: %(status)s."
-msgstr "Flexvisor はボリューム %(volume)s の作成に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume (get event) %s."
-msgstr "Flexvisor はボリューム %s の作成 (イベントの取得) に失敗しました。"
-
-#, python-format
-msgid "Flexvisor failed to create volume from snapshot %(id)s: %(status)s."
-msgstr ""
-"Flexvisor はスナップショット %(id)s からのボリュームの作成に失敗しました: "
-"%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume from snapshot %(id)s:%(status)s."
-msgstr ""
-"Flexvisor はスナップショット %(id)s からのボリュームの作成に失敗しました: "
-"%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to create volume from snapshot (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor はスナップショット %(id)s からのボリュームの作成に失敗しました (イ"
-"ベントの取得に失敗しました)。"
-
-#, python-format
-msgid "Flexvisor failed to delete snapshot %(id)s: %(status)s."
-msgstr "Flexvisor はスナップショット %(id)s の削除に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to delete snapshot (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor はスナップショット %(id)s の削除に失敗しました (イベントの取得に失"
-"敗しました)。"
-
-#, python-format
-msgid "Flexvisor failed to delete volume %(id)s: %(status)s."
-msgstr "Flexvisor はボリューム %(id)s の削除に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to extend volume %(id)s: %(status)s."
-msgstr "Flexvisor はボリューム %(id)s の拡張に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to extend volume %(id)s:%(status)s."
-msgstr "Flexvisor はボリューム %(id)s の拡張に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to extend volume (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s の拡張に失敗しました (イベントの取得に失敗しま"
-"した)。"
-
-#, python-format
-msgid "Flexvisor failed to get pool info %(id)s: %(status)s."
-msgstr "Flexvisor はプール情報 %(id)s の取得に失敗しました: %(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to get snapshot id of volume %(id)s from group %(vgid)s."
-msgstr ""
-"Flexvisor はグループ %(vgid)s からボリューム %(id)s のスナップショット ID を"
-"取得できませんでした。"
-
-#, python-format
-msgid "Flexvisor failed to remove volume %(id)s from group %(cgid)s."
-msgstr ""
-"Flexvisor はグループ %(cgid)s からのボリューム %(id)s の削除に失敗しました。"
-
-#, python-format
-msgid "Flexvisor failed to spawn volume from snapshot %(id)s:%(status)s."
-msgstr ""
-"Flexvisor はスナップショット %(id)s からのボリュームの作成に失敗しました: "
-"%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to spawn volume from snapshot (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor はスナップショット %(id)s からのボリュームの作成に失敗しました (イ"
-"ベントの取得に失敗しました)。"
-
-#, python-format
-msgid "Flexvisor failed to unassign volume %(id)s: %(status)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s の割り当て解除に失敗しました: %(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to unassign volume (get event) %(id)s."
-msgstr ""
-"Flexvisor はボリューム %(id)s の割り当て解除 (イベントの取得) に失敗しまし"
-"た。"
-
-#, python-format
-msgid "Flexvisor failed to unassign volume:%(id)s:%(status)s."
-msgstr "Flexvisor はボリューム %(id)s の割り当て解除に失敗しました: %(status)s"
-
-#, python-format
-msgid "Flexvisor unable to find the source volume %(id)s info."
-msgstr "Flexvisor はソースボリューム %(id)s 情報を検出できません。"
-
-#, python-format
-msgid "Flexvisor unassign volume failed:%(id)s:%(status)s."
-msgstr ""
-"Flexvisor によるボリュームの割り当て解除が失敗しました: %(id)s:%(status)s。"
-
-#, python-format
-msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
-msgstr "Flexvisor ボリューム %(id)s はグループ %(vgid)s の結合に失敗しました。"
 
 #, python-format
 msgid "Folder %s does not exist in Nexenta Store appliance"
@@ -2984,9 +2705,6 @@ msgstr "ホスト %(host)s が見つかりませんでした。"
 msgid "Host %s has no FC initiators"
 msgstr "ホスト %s に FC イニシエーターがありません"
 
-msgid "Host attach volume failed!"
-msgstr "ホストへのボリュームの接続に失敗しました。"
-
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr ""
@@ -3151,13 +2869,6 @@ msgid "Invalid allocated quotas defined for the following project quotas: %s"
 msgstr ""
 "以下のプロジェクトのクォータに定義した割り当て済みのクォータが無効です: %s"
 
-msgid "Invalid argument - negative seek offset."
-msgstr "引数が無効です。シークオフセットが負の値です。"
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported."
-msgstr "引数が無効です。whence=%s はサポートされません。"
-
 #, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "接続モード '%(mode)s' はボリューム %(volume_id)s には無効です。"
@@ -3173,15 +2884,6 @@ msgstr "認証キーが無効です: %(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "無効なバックアップ: %(reason)s"
-
-#, python-format
-msgid "Invalid connection initialization response of volume %(name)s"
-msgstr "ボリューム %(name)s の接続初期化応答が無効です"
-
-#, python-format
-msgid ""
-"Invalid connection initialization response of volume %(name)s: %(output)s"
-msgstr "ボリューム %(name)s の接続初期化応答が無効です: %(output)s"
 
 #, python-format
 msgid "Invalid content type %(content_type)s."
@@ -3299,9 +3001,6 @@ msgstr "無効なセカンダリー ID %s。"
 msgid "Invalid service catalog json."
 msgstr "無効なサービスカタログ JSON。"
 
-msgid "Invalid sheepdog cluster status."
-msgstr "シープドッグクラスターの状態が無効です。"
-
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
 msgstr "無効なスナップショット: %(reason)s"
@@ -3399,10 +3098,6 @@ msgid ""
 msgstr ""
 "無効な volume_type %s が指定されました (要求するタイプは、このグループでサ"
 "ポートされていなければなりません)。"
-
-#, python-format
-msgid "Invalid wwpns format %(wwpns)s"
-msgstr "wwpn 形式 %(wwpns)s は無効です"
 
 msgid "Issue encountered waiting for job."
 msgstr "ジョブの待機中に問題が発生しました。"
@@ -3799,9 +3494,6 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "新規のボリュームタイプが要求仕様に指定されていません。"
 
-msgid "Nimble Cinder Driver exception"
-msgstr "Nimble Cinder ドライバー例外"
-
 msgid "No FC initiator can be added to host."
 msgstr "ホストには FC イニシエーターを追加できません。"
 
@@ -3845,10 +3537,6 @@ msgstr "ターゲット配列に iSCSI に対応するポートがありませ�
 
 msgid "No initiator connected to fabric."
 msgstr "ファブリックに接続されたイニシエーターはありません。"
-
-#, python-format
-msgid "No initiator group found for initiator %s"
-msgstr "イニシエーター %s のイニシエーターグループが見つかりません。"
 
 #, python-format
 msgid "No interface found on cluster for ip %s"
@@ -3895,9 +3583,6 @@ msgstr ""
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "そのような QoS 仕様 %(specs_id)s は存在しません。"
-
-msgid "No suitable discovery ip found"
-msgstr "適切なディスカバリー ip が見つかりません。"
 
 msgid "No suitable host was found to failover."
 msgstr "フェイルオーバーに適したホストが見つかりませんでした。"
@@ -3995,9 +3680,6 @@ msgstr ""
 "直近の親またはルートプロジェクトに割り当てられたトークンを持つユーザーのみ"
 "が、子のクォータを参照することができます。"
 
-msgid "Only volumes managed by OpenStack can be unmanaged."
-msgstr "非管理に設定できるのは、OpenStack が管理するボリュームのみです。"
-
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr "状態=%(status)s で操作が失敗しました。フルダンプ: %(data)s"
@@ -4054,9 +3736,6 @@ msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "ポリシーは %(action)s の実行を許可していません。"
 
 msgid "Pool is not available in the volume host field."
-msgstr "プールがボリュームホストフィールドにありません。"
-
-msgid "Pool is not available in the volume host fields."
 msgstr "プールがボリュームホストフィールドにありません。"
 
 #, python-format
@@ -4491,10 +4170,6 @@ msgid ""
 msgstr ""
 "形式が無効であるため、共有 %s は無視されました。address:/export 形式でなけれ"
 "ばなりません。nas_host および nas_share_path の設定を確認してください。"
-
-#, python-format
-msgid "Sheepdog I/O Error, command was: \"%s\"."
-msgstr "シープドッグの I/O エラー。実行されたコマンド: \"%s\"."
 
 msgid ""
 "Show operations can only be made to projects in the same hierarchy of the "
@@ -5410,9 +5085,6 @@ msgstr ""
 msgid "Unexpected over quota on %(name)s."
 msgstr "%(name)s で、予期せずクォータを超過しました。"
 
-msgid "Unexpected response from Nimble API"
-msgstr "Nimble API からの予期しない応答"
-
 msgid "Unexpected status code"
 msgstr "予期しないステータスコード"
 
@@ -5723,13 +5395,6 @@ msgid "Volume %s doesn't exist on array."
 msgstr "ボリューム %s がアレイに存在しません。"
 
 #, python-format
-msgid ""
-"Volume %s is online. Set volume to offline for managing using OpenStack."
-msgstr ""
-"ボリューム %s がオンラインです。OpenStack を使用して管理するために、ボリュー"
-"ムをオフラインに設定してください。"
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "ボリューム %s は整合性グループの一部であってはなりません。"
 
@@ -5898,9 +5563,6 @@ msgstr "ボリュームがまだホストに割り当てられていません。
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "%(volume_id)s のボリューム複製が見つかりませんでした。"
 
-msgid "Volume should have agent-type set as None."
-msgstr "ボリュームには agent-type として None を設定する必要があります。"
-
 #, python-format
 msgid ""
 "Volume size %(volume_size)sGB cannot be smaller than the image minDisk size "
@@ -6026,12 +5688,6 @@ msgstr "%(config)s の VzStorage のコンフィグファイルが存在しま�
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
 msgstr "同期の待機が失敗しました。実行状態: %s。"
-
-msgid ""
-"Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
-msgstr ""
-"すべてのノードがクラスターに接続するのを待機しています。すべてのシープデーモ"
-"ンが稼働中であることを確認してください。"
 
 msgid "We should not do switch over on primary array."
 msgstr "プライマリーアレイで切り替えを行ってはなりません。"
@@ -6833,9 +6489,6 @@ msgstr ""
 
 msgid "fake"
 msgstr "偽"
-
-msgid "fileno is not supported by SheepdogIOWrapper"
-msgstr "SheepdogIOWrapper は fileno をサポートしません。"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"

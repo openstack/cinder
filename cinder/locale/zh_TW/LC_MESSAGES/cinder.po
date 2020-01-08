@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-11-15 23:43+0000\n"
+"POT-Creation-Date: 2020-01-07 21:20+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -192,14 +192,6 @@ msgstr "必須指定 'consistencygroup_id'"
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' 剖析失敗。"
 
-#, python-format
-msgid ""
-"(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
-"(Stderr: %(stderr)s)"
-msgstr ""
-"（指令：%(cmd)s）（回覆碼：%(exit_code)s）（標準輸出：%(stdout)s）（標準錯"
-"誤：%(stderr)s）"
-
 msgid "A concurrent, possibly contradictory, request has been made."
 msgstr "已發出並行（可能矛盾）的要求。"
 
@@ -279,14 +271,6 @@ msgstr ""
 "LUNcopy 作業期間發生錯誤。LUNcopy 名稱：%(luncopyname)s。LUNcopy 狀態 "
 "(status)：%(luncopystatus)s。LUNcopy 狀態 (state)：%(luncopystate)s。"
 
-#, python-format
-msgid "An error occurred while reading volume \"%s\"."
-msgstr "讀取磁區 \"%s\" 時發生錯誤。"
-
-#, python-format
-msgid "An error occurred while writing to volume \"%s\"."
-msgstr "寫入磁區 \"%s\" 時發生錯誤。"
-
 msgid "An unknown exception occurred."
 msgstr "發生一個未知例外"
 
@@ -352,9 +336,6 @@ msgstr "可用的種類："
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "後端不存在 (%(backend)s)"
-
-msgid "Backend storage did not configure fiber channel target."
-msgstr "後端儲存體未配置光纖通道目標。"
 
 msgid "Backing up an in-use volume must use the force flag."
 msgstr "備份使用中的磁區必須使用強制旗標。"
@@ -678,10 +659,6 @@ msgid ""
 msgstr ""
 "複製類型 '%(clone_type)s' 無效；有效值為：'%(full_clone)s' 和 "
 "'%(linked_clone)s'。"
-
-msgid ""
-"Cluster is not formatted. You should probably perform \"dog cluster format\"."
-msgstr "叢集未格式化。您可能應該執行 \"dog cluster format\"。"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -1317,10 +1294,6 @@ msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC 是通訊協定，但 OpenStack 未提供 WWPN。"
 
 #, python-format
-msgid "Faield to unassign %(volume)s"
-msgstr "無法取消指派 %(volume)s"
-
-#, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "無法給架構 %(fabric)s 新增連線：錯誤：%(err)s"
 
@@ -1388,10 +1361,6 @@ msgid "Failed to connect to Dell REST API"
 msgstr "無法連接至 Dell REST API"
 
 #, python-format
-msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
-msgstr "無法連接 sheep 常駐程式。位址：%(addr)s，埠：%(port)s"
-
-#, python-format
 msgid "Failed to copy image to volume: %(reason)s"
 msgstr "無法將映像檔複製到磁區：%(reason)s"
 
@@ -1415,18 +1384,6 @@ msgstr "無法建立磁區群組：%(vg_name)s"
 
 msgid "Failed to create api volume flow."
 msgstr "無法建立 API 磁區流程。"
-
-#, python-format
-msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
-msgstr "由於 %(reason)s，無法建立 cg Snapshot %(id)s。"
-
-#, python-format
-msgid "Failed to create consistency group %(id)s due to %(reason)s."
-msgstr "由於 %(reason)s，無法建立一致性群組 %(id)s。"
-
-#, python-format
-msgid "Failed to create consistency group %(id)s:%(ret)s."
-msgstr "無法建立一致性群組 %(id)s：%(ret)s。"
 
 #, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
@@ -1492,14 +1449,6 @@ msgstr "無法建立小型儲存區，錯誤訊息為：%s"
 #, python-format
 msgid "Failed to create volume %s"
 msgstr "無法建立磁區 %s"
-
-#, python-format
-msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
-msgstr "由於 %(reason)s，無法刪除 cg Snapshot %(id)s。"
-
-#, python-format
-msgid "Failed to delete consistency group %(id)s due to %(reason)s."
-msgstr "由於 %(reason)s，無法刪除一致性群組 %(id)s。"
 
 #, python-format
 msgid ""
@@ -1864,26 +1813,6 @@ msgid "Failure staging LUN %s to tmp."
 msgstr "將 LUN %s 暫置到 tmp 時失敗。"
 
 #, python-format
-msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
-msgstr "由於 %(reason)s，Fexvisor 無法新增磁區 %(id)s。"
-
-#, python-format
-msgid ""
-"Fexvisor failed to join the volume %(vol)s in the group %(group)s due to "
-"%(ret)s."
-msgstr "Fexvisor 無法結合群組 %(group)s 中的磁區 %(vol)s，原因：%(ret)s。"
-
-#, python-format
-msgid ""
-"Fexvisor failed to remove the volume %(vol)s in the group %(group)s due to "
-"%(ret)s."
-msgstr "Fexvisor 無法移除群組 %(group)s 中的磁區 %(vol)s，原因：%(ret)s。"
-
-#, python-format
-msgid "Fexvisor failed to remove volume %(id)s due to %(reason)s."
-msgstr "Fexvisor 無法移除磁區 %(id)s，原因：%(reason)s。"
-
-#, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "「光纖通道」SAN 查閱失敗：%(reason)s"
 
@@ -1932,159 +1861,6 @@ msgid ""
 msgstr ""
 "「快閃記憶體快取原則」需要 WSAPI '%(fcache_version)s' 版，已安裝 "
 "'%(version)s' 版。"
-
-#, python-format
-msgid "Flexvisor assign volume failed.:%(id)s:%(status)s."
-msgstr "Flexvisor 指派磁區失敗：%(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor assign volume failed:%(id)s:%(status)s."
-msgstr "Flexvisor 指派磁區失敗：%(id)s：%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor could not find volume %(id)s snapshot in the group %(vgid)s "
-"snapshot %(vgsid)s."
-msgstr ""
-"Flexvisor 在群組 %(vgid)s Snapshot %(vgsid)s 中找不到磁區 %(id)s Snapshot。"
-
-#, python-format
-msgid "Flexvisor create volume failed.:%(volumeid)s:%(status)s."
-msgstr "Flexvisor 建立磁區失敗：%(volumeid)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed deleting volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法刪除磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to add volume %(id)s to group %(cgid)s."
-msgstr "Flexvisor 無法將磁區 %(id)s 新增至群組 %(cgid)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to assign volume %(id)s due to unable to query status by "
-"event id."
-msgstr "Flexvisor 無法指派磁區 %(id)s，原因是無法依事件 ID 來查詢狀態。"
-
-#, python-format
-msgid "Flexvisor failed to assign volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法指派磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to assign volume %(volume)s iqn %(iqn)s."
-msgstr "Flexvisor 無法指派磁區 %(volume)s iqn %(iqn)s。"
-
-#, python-format
-msgid "Flexvisor failed to clone volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法複製磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to clone volume (failed to get event) %(id)s."
-msgstr "Flexvisor 無法複製磁區（無法取得事件）%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to create snapshot for volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法建立磁區 %(id)s 的 Snapshot：%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to create snapshot for volume (failed to get event) %(id)s."
-msgstr "Flexvisor 無法建立下列磁區的 Snapshot（無法取得事件）：%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume %(id)s in the group %(vgid)s."
-msgstr "Flexvisor 無法在群組 %(vgid)s 中建立磁區 %(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume %(volume)s: %(status)s."
-msgstr "Flexvisor 無法建立磁區 %(volume)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume (get event) %s."
-msgstr "Flexvisor 無法建立磁區（取得事件）%s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume from snapshot %(id)s: %(status)s."
-msgstr "Flexvisor 無法從 Snapshot %(id)s 建立磁區：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to create volume from snapshot %(id)s:%(status)s."
-msgstr "Flexvisor 無法從 Snapshot %(id)s 建立磁區：%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to create volume from snapshot (failed to get event) %(id)s."
-msgstr "Flexvisor 無法從下列 Snapshot 建立磁區（無法取得事件）：%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to delete snapshot %(id)s: %(status)s."
-msgstr "Flexvisor 無法刪除 Snapshot %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to delete snapshot (failed to get event) %(id)s."
-msgstr "Flexvisor 無法刪除 Snapshot（無法取得事件）%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to delete volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法刪除磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to extend volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法延伸磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to extend volume %(id)s:%(status)s."
-msgstr "Flexvisor 無法延伸磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to extend volume (failed to get event) %(id)s."
-msgstr "Flexvisor 無法延伸磁區（無法取得事件）%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to get pool info %(id)s: %(status)s."
-msgstr "Flexvisor 無法取得儲存區資訊 %(id)s：%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to get snapshot id of volume %(id)s from group %(vgid)s."
-msgstr "Flexvisor 無法從群組 %(vgid)s 取得磁區 %(id)s 的 Snapshot ID。"
-
-#, python-format
-msgid "Flexvisor failed to remove volume %(id)s from group %(cgid)s."
-msgstr "Flexvisor 無法從群組 %(cgid)s 中移除磁區 %(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to spawn volume from snapshot %(id)s:%(status)s."
-msgstr "Flexvisor 無法從 Snapshot %(id)s 大量產生磁區：%(status)s。"
-
-#, python-format
-msgid ""
-"Flexvisor failed to spawn volume from snapshot (failed to get event) %(id)s."
-msgstr "Flexvisor 無法從下列 Snapshot 大量產生磁區（無法取得事件）：%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to unassign volume %(id)s: %(status)s."
-msgstr "Flexvisor 無法取消指派磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor failed to unassign volume (get event) %(id)s."
-msgstr "Flexvisor 無法取消指派磁區（取得事件）%(id)s。"
-
-#, python-format
-msgid "Flexvisor failed to unassign volume:%(id)s:%(status)s."
-msgstr "Flexvisor 無法取消指派磁區 %(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor unable to find the source volume %(id)s info."
-msgstr "Flexvisor 找不到來源磁區 %(id)s 資訊。"
-
-#, python-format
-msgid "Flexvisor unassign volume failed:%(id)s:%(status)s."
-msgstr "Flexvisor 取消指派磁區失敗：%(id)s：%(status)s。"
-
-#, python-format
-msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
-msgstr "Flexvisor 磁區 %(id)s 無法加入群組 %(vgid)s 中。"
 
 #, python-format
 msgid "Folder %s does not exist in Nexenta Store appliance"
@@ -2407,13 +2183,6 @@ msgstr "XtremIO %(cur)s 版無效，需要 %(min)s 版或更高版本"
 msgid "Invalid allocated quotas defined for the following project quotas: %s"
 msgstr "為下列專案配額定義的已配置配額無效：%s"
 
-msgid "Invalid argument - negative seek offset."
-msgstr "無效的引數 - 負數探查偏移。"
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported."
-msgstr "無效的引數 - 不支援 whence=%s。"
-
 #, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "連接模式 '%(mode)s' 不適用於磁區 %(volume_id)s。"
@@ -2425,15 +2194,6 @@ msgstr "無效的鑑別金鑰：%(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "無效的備份：%(reason)s"
-
-#, python-format
-msgid "Invalid connection initialization response of volume %(name)s"
-msgstr "磁區 %(name)s 的連線起始設定回應無效"
-
-#, python-format
-msgid ""
-"Invalid connection initialization response of volume %(name)s: %(output)s"
-msgstr "磁區 %(name)s 的連線起始設定回應無效：%(output)s"
 
 #, python-format
 msgid "Invalid content type %(content_type)s."
@@ -2542,9 +2302,6 @@ msgstr "次要 ID %s 無效。"
 msgid "Invalid service catalog json."
 msgstr "無效的服務型錄 JSON。"
 
-msgid "Invalid sheepdog cluster status."
-msgstr "sheepdog 叢集狀態無效。"
-
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
 msgstr "無效的 Snapshot：%(reason)s"
@@ -2622,10 +2379,6 @@ msgid ""
 "Invalid volume_type provided: %s (requested type must be supported by this "
 "consistency group)."
 msgstr "提供的 volume_type 無效：%s（所要求的類型必須受此一致性群組支援）。"
-
-#, python-format
-msgid "Invalid wwpns format %(wwpns)s"
-msgstr "無效的 WWPN 格式 %(wwpns)s"
 
 msgid "Issue encountered waiting for job."
 msgstr "等待工作時遇到問題。"
@@ -2909,9 +2662,6 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "request_spec 中沒有指定新的磁區類型。"
 
-msgid "Nimble Cinder Driver exception"
-msgstr "Nimble Cinder 驅動程式異常狀況"
-
 msgid "No FC initiator can be added to host."
 msgstr "任何 FC 起始器均無法新增至主機。"
 
@@ -2947,10 +2697,6 @@ msgstr "目標陣列上沒有支援 iSCSI 的埠。"
 
 msgid "No initiator connected to fabric."
 msgstr "沒有起始器已連接至光纖。"
-
-#, python-format
-msgid "No initiator group found for initiator %s"
-msgstr "找不到起始器 %s 的起始器群組"
 
 #, python-format
 msgid "No interface found on cluster for ip %s"
@@ -2989,9 +2735,6 @@ msgstr "找不到含有 %s 的 Snapshot 來作為備用檔。"
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "沒有這類服務品質規格 %(specs_id)s。"
-
-msgid "No suitable discovery ip found"
-msgstr "找不到適當的探索 IP"
 
 #, python-format
 msgid "No support to restore backup version %s"
@@ -3057,9 +2800,6 @@ msgid ""
 msgstr ""
 "只容許具備已限定為原生母項或 root 專案範圍之記號的使用者來查看其子項配額。"
 
-msgid "Only volumes managed by OpenStack can be unmanaged."
-msgstr "只能取消管理由 OpenStack 進行管理的磁區。"
-
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr "作業失敗，狀態 = %(status)s。完整傾出：%(data)s"
@@ -3100,9 +2840,6 @@ msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "原則不容許執行 %(action)s。"
 
 msgid "Pool is not available in the volume host field."
-msgstr "在磁區主機欄位中無法使用儲存區。"
-
-msgid "Pool is not available in the volume host fields."
 msgstr "在磁區主機欄位中無法使用儲存區。"
 
 #, python-format
@@ -3457,10 +3194,6 @@ msgstr "設定配對次要存取時發生錯誤。"
 
 msgid "Sets thin provisioning."
 msgstr "設定精簡供應。"
-
-#, python-format
-msgid "Sheepdog I/O Error, command was: \"%s\"."
-msgstr "Sheepdog I/O 錯誤，指令為：\"%s\"。"
 
 msgid ""
 "Show operations can only be made to projects in the same hierarchy of the "
@@ -4122,9 +3855,6 @@ msgstr "非預期的 CLI 回應：標頭/列不符。標頭：%(header)s、列�
 msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
 msgstr "非預期的輸出。預期 [%(expected)s]，但卻接收到 [%(output)s]"
 
-msgid "Unexpected response from Nimble API"
-msgstr "來自 Nimble API 的非預期回應"
-
 msgid "Unexpected status code"
 msgstr "非預期的狀態碼"
 
@@ -4377,11 +4107,6 @@ msgid "Volume %s doesn't exist on array."
 msgstr "磁區 %s 不在陣列上。"
 
 #, python-format
-msgid ""
-"Volume %s is online. Set volume to offline for managing using OpenStack."
-msgstr "磁區 %s 在線上。請將磁區設為離線，以使用 OpenStack 進行管理。"
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "磁區 %s 不得為一致性群組的一部分。"
 
@@ -4513,9 +4238,6 @@ msgstr "尚未將磁區指派給主機。"
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "找不到 %(volume_id)s 的磁區抄寫。"
 
-msgid "Volume should have agent-type set as None."
-msgstr "磁區應該將代理程式類型設定為「無」。"
-
 #, python-format
 msgid ""
 "Volume size %(volume_size)sGB cannot be smaller than the image minDisk size "
@@ -4619,10 +4341,6 @@ msgstr "%(config)s 處的 VzStorage 配置檔不存在。"
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
 msgstr "等待同步失敗。執行中狀態：%s。"
-
-msgid ""
-"Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
-msgstr "正在等待所有節點結合叢集。請確保所有 sheep 常駐程式都在執行中。"
 
 msgid "We should not do switch over on primary array."
 msgstr "我們不應切換到主要陣列上。"
@@ -5316,9 +5034,6 @@ msgstr "extend_volume，磁區名稱：%(volumename)s，找不到磁區。"
 
 msgid "fake"
 msgstr "偽造"
-
-msgid "fileno is not supported by SheepdogIOWrapper"
-msgstr "SheepdogIOWrapper 不支援 fileno"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"

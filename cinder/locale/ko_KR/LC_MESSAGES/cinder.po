@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2019-11-15 23:43+0000\n"
+"POT-Creation-Date: 2020-01-07 21:20+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -216,14 +216,6 @@ msgstr "'consistencygroup_id'를 지정해야 함"
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' 구문 분석에 실패했습니다. "
 
-#, python-format
-msgid ""
-"(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
-"(Stderr: %(stderr)s)"
-msgstr ""
-"(명령: %(cmd)s) (리턴 코드: %(exit_code)s) (Stdout: %(stdout)s) (Stderr: "
-"%(stderr)s)"
-
 msgid "A concurrent, possibly contradictory, request has been made."
 msgstr "동시에 모순된 요청이 수행되었습니다."
 
@@ -310,14 +302,6 @@ msgstr ""
 "상태: %(luncopystatus)s. LUNcopy 상태: %(luncopystate)s."
 
 #, python-format
-msgid "An error occurred while reading volume \"%s\"."
-msgstr "볼륨 \"%s\"을(를) 읽는 중에 오류가 발생했습니다. "
-
-#, python-format
-msgid "An error occurred while writing to volume \"%s\"."
-msgstr "볼륨 \"%s\"에 쓰는 중에 오류가 발생했습니다. "
-
-#, python-format
 msgid "An invalid 'name' value was provided. %(reason)s"
 msgstr "유효하지 않은 'name' 값이 제공되었습니다. %(reason)s"
 
@@ -397,9 +381,6 @@ msgstr "사용 가능한 카테고리:"
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "백엔드가 존재하지 않음(%(backend)s)"
-
-msgid "Backend storage did not configure fiber channel target."
-msgstr "백엔드 스토리지가 파이버 채널 대상을 구성하지 않았습니다."
 
 msgid "Backing up an in-use volume must use the force flag."
 msgstr "사용 중인 볼륨을 백업하려면 강제 실행 플래그를 사용해야 합니다. "
@@ -776,12 +757,6 @@ msgstr "%(id)s 클러스터가 아직 호스트를 가지고 있습니다."
 #, python-format
 msgid "Cluster %(name)s already exists."
 msgstr "%(name)s(이)라는 이름을 가진 클라스터가 이미 존재합니다."
-
-msgid ""
-"Cluster is not formatted. You should probably perform \"dog cluster format\"."
-msgstr ""
-"클러스터가 형식화되지 않았습니다. \"dog 클러스터 형식화\"를 수행해야 할 수 있"
-"습니다. "
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -1445,10 +1420,6 @@ msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC는 프로토콜이지만 OpenStack에서 wwpns를 제공하지 않습니다. "
 
 #, python-format
-msgid "Faield to unassign %(volume)s"
-msgstr "%(volume)s을(를) 지정 취소하지 못함"
-
-#, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "패브릭=%(fabric)s에 대한 연결 추가 실패: 오류:%(err)s"
 
@@ -1518,10 +1489,6 @@ msgid "Failed to connect to Dell REST API"
 msgstr "Dell REST API에 연결하는 데 실패"
 
 #, python-format
-msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
-msgstr "sheep 디먼에 연결하지 못했습니다. 주소: %(addr)s, 포트: %(port)s"
-
-#, python-format
 msgid "Failed to copy image to volume: %(reason)s"
 msgstr "볼륨에 이미지를 복사할 수 없음: %(reason)s"
 
@@ -1545,18 +1512,6 @@ msgstr "볼륨 그룹을 작성할 수 없음: %(vg_name)s"
 
 msgid "Failed to create api volume flow."
 msgstr "api 볼륨 플로우 작성에 실패했습니다. "
-
-#, python-format
-msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
-msgstr "%(reason)s(으)로 인해 cg 스냅샷 %(id)s을(를) 작성할 수 없습니다."
-
-#, python-format
-msgid "Failed to create consistency group %(id)s due to %(reason)s."
-msgstr "%(reason)s(으)로 인해 일관성 그룹 %(id)s을(를) 작성할 수 없습니다."
-
-#, python-format
-msgid "Failed to create consistency group %(id)s:%(ret)s."
-msgstr "일관성 그룹 %(id)s 작성 실패: %(ret)s."
 
 #, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
@@ -1623,14 +1578,6 @@ msgstr "씬 풀을 작성하지 못함, 오류 메시지: %s"
 #, python-format
 msgid "Failed to create volume %s"
 msgstr "%s 볼륨을 작성하지 못함 "
-
-#, python-format
-msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
-msgstr "%(reason)s(으)로 인해 cg 스냅샷 %(id)s을(를) 삭제할 수 없습니다."
-
-#, python-format
-msgid "Failed to delete consistency group %(id)s due to %(reason)s."
-msgstr "%(reason)s(으)로 인해 일관성 그룹 %(id)s을(를) 삭제할 수 없습니다."
 
 #, python-format
 msgid ""
@@ -2015,32 +1962,6 @@ msgid "Failure staging LUN %s to tmp."
 msgstr "LUN %s을(를) tmp로 스테이징하지 못했습니다."
 
 #, python-format
-msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
-msgstr ""
-"%(reason)s(으)로 인해 Fexvisor에서 볼륨 %(id)s을(를) 추가하지 못했습니다."
-
-#, python-format
-msgid ""
-"Fexvisor failed to join the volume %(vol)s in the group %(group)s due to "
-"%(ret)s."
-msgstr ""
-"%(ret)s(으)로 인해 Fexvisor가 그룹 %(group)s에서 볼륨 %(vol)s을(를) 결합하지 "
-"못했습니다. "
-
-#, python-format
-msgid ""
-"Fexvisor failed to remove the volume %(vol)s in the group %(group)s due to "
-"%(ret)s."
-msgstr ""
-"%(ret)s(으)로 인해 Fexvisor가 그룹 %(group)s에서 볼륨 %(vol)s을(를) 제거하지 "
-"못했습니다. "
-
-#, python-format
-msgid "Fexvisor failed to remove volume %(id)s due to %(reason)s."
-msgstr ""
-"%(reason)s(으)로 인해 Fexvisor가 볼륨 %(id)s을(를) 제거하지 못했습니다. "
-
-#, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "파이버 채널 SAN 검색 실패: %(reason)s"
 
@@ -2092,166 +2013,6 @@ msgid ""
 msgstr ""
 "플래시 캐시 정책에는 WSAPI 버전 '%(fcache_version)s' 버전 '%(version)s'이"
 "(가) 설치되어 있어야 합니다. "
-
-#, python-format
-msgid "Flexvisor assign volume failed.:%(id)s:%(status)s."
-msgstr "Flexvisor 볼륨 지정 실패:%(id)s:%(status)s."
-
-#, python-format
-msgid "Flexvisor assign volume failed:%(id)s:%(status)s."
-msgstr "Flexvisor 볼륨 지정 실패:%(id)s:%(status)s."
-
-#, python-format
-msgid ""
-"Flexvisor could not find volume %(id)s snapshot in the group %(vgid)s "
-"snapshot %(vgsid)s."
-msgstr ""
-"Flexvisor에서 볼륨 %(id)s 스냅샷을 그룹 %(vgid)s 스냅샷 %(vgsid)s에서 찾을 "
-"수 없습니다."
-
-#, python-format
-msgid "Flexvisor create volume failed.:%(volumeid)s:%(status)s."
-msgstr "Flexvisor 볼륨 작성 실패:%(volumeid)s:%(status)s."
-
-#, python-format
-msgid "Flexvisor failed deleting volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 삭제하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to add volume %(id)s to group %(cgid)s."
-msgstr "Flexvisor에서 볼륨 %(id)s을(를) 그룹 %(cgid)s에 추가하지 못했습니다."
-
-#, python-format
-msgid ""
-"Flexvisor failed to assign volume %(id)s due to unable to query status by "
-"event id."
-msgstr ""
-"이벤트 ID로 상태를 조회할 수 없어 Flexvisor가 %(id)s 볼륨을 지정하지 못했습니"
-"다."
-
-#, python-format
-msgid "Flexvisor failed to assign volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 지정하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to assign volume %(volume)s iqn %(iqn)s."
-msgstr "Flexvisor에서 볼륨 %(volume)s에 iqn %(iqn)s을(를) 지정하지 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to clone volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 복제하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to clone volume (failed to get event) %(id)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 복제하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to create snapshot for volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨의 스냅샷을 작성하지 못함: %(status)s."
-
-#, python-format
-msgid ""
-"Flexvisor failed to create snapshot for volume (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor가 %(id)s 볼륨의 스냅샷을 작성하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to create volume %(id)s in the group %(vgid)s."
-msgstr "Flexvisor에서 볼륨 %(id)s을(를) 그룹 %(vgid)s에 작성하지 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to create volume %(volume)s: %(status)s."
-msgstr "Flexvisor가 %(volume)s 볼륨을 작성하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to create volume (get event) %s."
-msgstr "Flexvisor가 %s 볼륨을 작성하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to create volume from snapshot %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 스냅샷에서 볼륨을 작성하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to create volume from snapshot %(id)s:%(status)s."
-msgstr "Flexvisor가 %(id)s 스냅샷에서 볼륨을 작성하지 못함: %(status)s."
-
-#, python-format
-msgid ""
-"Flexvisor failed to create volume from snapshot (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor가 %(id)s 스냅샷에서 볼륨을 작성하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to delete snapshot %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 스냅샷을 삭제하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to delete snapshot (failed to get event) %(id)s."
-msgstr "Flexvisor가 %(id)s 스냅샷을 삭제하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to delete volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 삭제하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to extend volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 확장하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to extend volume %(id)s:%(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 확장하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to extend volume (failed to get event) %(id)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 확장하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to get pool info %(id)s: %(status)s."
-msgstr "Flexvisor가 풀 정보 %(id)s을(를) 가져오지 못함: %(status)s."
-
-#, python-format
-msgid ""
-"Flexvisor failed to get snapshot id of volume %(id)s from group %(vgid)s."
-msgstr ""
-"Flexvisor가 그룹 %(vgid)s에서 볼륨 %(id)s의 스냅샷 ID를 가져오지 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to remove volume %(id)s from group %(cgid)s."
-msgstr "Flexvisor가 그룹 %(cgid)s에서 볼륨 %(id)s을(를) 제거하지 못했습니다. "
-
-#, python-format
-msgid "Flexvisor failed to spawn volume from snapshot %(id)s:%(status)s."
-msgstr "Flexvisor가 %(id)s 스냅샷에서 볼륨을 파생하지 못함: %(status)s."
-
-#, python-format
-msgid ""
-"Flexvisor failed to spawn volume from snapshot (failed to get event) %(id)s."
-msgstr ""
-"Flexvisor가 %(id)s 스냅샷에서 볼륨을 파생하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to unassign volume %(id)s: %(status)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 지정 취소하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor failed to unassign volume (get event) %(id)s."
-msgstr "Flexvisor가 %(id)s 볼륨을 지정 취소하지(이벤트를 가져오지) 못했습니다."
-
-#, python-format
-msgid "Flexvisor failed to unassign volume:%(id)s:%(status)s."
-msgstr "Flexvisor에서 볼륨 %(id)s을(를) 지정 취소하지 못함: %(status)s."
-
-#, python-format
-msgid "Flexvisor unable to find the source volume %(id)s info."
-msgstr "Flexvisor에서 소스 볼륨 %(id)s 정보를 찾을 수 없습니다."
-
-#, python-format
-msgid "Flexvisor unassign volume failed:%(id)s:%(status)s."
-msgstr "Flexvisor 볼륨 지정 취소 실패:%(id)s:%(status)s."
-
-#, python-format
-msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
-msgstr "Flexvisor 볼륨 %(id)s에서 그룹 %(vgid)s을(를) 결합하지 못했습니다."
 
 #, python-format
 msgid "Folder %s does not exist in Nexenta Store appliance"
@@ -2633,13 +2394,6 @@ msgstr "올바르지 않은 XtremIO 버전 %(cur)s, %(min)s 이상의 버전이 
 msgid "Invalid allocated quotas defined for the following project quotas: %s"
 msgstr "다음 프로젝트 할당량에 잘못 할당된 할당량이 정의됨 : %s"
 
-msgid "Invalid argument - negative seek offset."
-msgstr "올바르지 않은 인수 - 음수 찾기 오프셋. "
-
-#, python-format
-msgid "Invalid argument - whence=%s not supported."
-msgstr "올바르지 않은 인수 - whence=%s은(는) 지원되지 않습니다. "
-
 #, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "볼륨 %(volume_id)s의  연결 모드 '%(mode)s'가 잘못 되었습니다."
@@ -2651,15 +2405,6 @@ msgstr "잘못된 인증 키: %(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "올바르지 않은 백업: %(reason)s"
-
-#, python-format
-msgid "Invalid connection initialization response of volume %(name)s"
-msgstr "볼륨 %(name)s의 올바르지 않은 연결 초기화 응답"
-
-#, python-format
-msgid ""
-"Invalid connection initialization response of volume %(name)s: %(output)s"
-msgstr "볼륨 %(name)s의 올바르지 않은 연결 초기화 응답: %(output)s"
 
 #, python-format
 msgid "Invalid content type %(content_type)s."
@@ -2782,9 +2527,6 @@ msgstr "올바르지 않은 보조 id %s."
 msgid "Invalid service catalog json."
 msgstr "올바르지 않은 서비스 카탈로그 json입니다. "
 
-msgid "Invalid sheepdog cluster status."
-msgstr "Sheepdog 클러스터 상태가 올바르지 않습니다. "
-
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
 msgstr "잘못된 스냅샷: %(reason)s"
@@ -2866,10 +2608,6 @@ msgid ""
 msgstr ""
 "올바르지 않은 volume_type이 제공됨: %s(이 일관성 그룹이 요청된 유형을지원해"
 "야 함)."
-
-#, python-format
-msgid "Invalid wwpns format %(wwpns)s"
-msgstr "올바르지 않은 wwpn 형식 %(wwpns)s"
 
 msgid "Issue encountered waiting for job."
 msgstr "작업 대기 중에 문제가 발생했습니다."
@@ -3182,9 +2920,6 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "새 볼륨 유형이 request_spec에서 지정되지 않았습니다."
 
-msgid "Nimble Cinder Driver exception"
-msgstr "Nimble Cinder 드라이버 예외"
-
 msgid "No FC initiator can be added to host."
 msgstr "FC 개시자를 호스트에 추가할 수 없습니다."
 
@@ -3220,10 +2955,6 @@ msgstr "대상 배열에 iSCSI 사용 포트가 없습니다. "
 
 msgid "No initiator connected to fabric."
 msgstr "개시자가 패브릭에 연결되지 않았습니다."
-
-#, python-format
-msgid "No initiator group found for initiator %s"
-msgstr "%s 개시자의 개시자 그룹을 찾을 수 없음"
 
 #, python-format
 msgid "No interface found on cluster for ip %s"
@@ -3266,9 +2997,6 @@ msgstr "%(volume_id)s 볼륨에 대한 스냅샷이 없습니다."
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "해당하는 QoS 스펙 %(specs_id)s이(가) 없습니다. "
-
-msgid "No suitable discovery ip found"
-msgstr "적합한 발견 ip를 찾을 수 없음"
 
 #, python-format
 msgid "No support to restore backup version %s"
@@ -3342,9 +3070,6 @@ msgstr ""
 "직속 상위 또는 루트 프로젝트로 범위가 지정된 토큰을 가진 사용자만 하위 할당량"
 "을 볼 수 있습니다. "
 
-msgid "Only volumes managed by OpenStack can be unmanaged."
-msgstr "OpenStack에서 관리하는 볼류만 관리를 취소할 수 있습니다."
-
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr "조작이 상태=%(status)s과(와) 함께 실패했습니다. 전체 덤프: %(data)s"
@@ -3386,9 +3111,6 @@ msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "정책이 %(action)s이(가) 수행되도록 허용하지 않습니다."
 
 msgid "Pool is not available in the volume host field."
-msgstr "볼륨 호스트 필드에서 풀을 사용할 수 없습니다."
-
-msgid "Pool is not available in the volume host fields."
 msgstr "볼륨 호스트 필드에서 풀을 사용할 수 없습니다."
 
 #, python-format
@@ -3763,10 +3485,6 @@ msgstr "쌍 보조 액세스 설정 오류."
 
 msgid "Sets thin provisioning."
 msgstr "씬 프로비저닝을 설정합니다. "
-
-#, python-format
-msgid "Sheepdog I/O Error, command was: \"%s\"."
-msgstr "Sheepdog I/O 오류, 명령: \"%s\"."
 
 msgid ""
 "Show operations can only be made to projects in the same hierarchy of the "
@@ -4483,9 +4201,6 @@ msgstr ""
 "예상치 못한 결과입니다. [%(expected)s]을(를) 예상했지만 [%(output)s]을(를) 수"
 "신했습니다."
 
-msgid "Unexpected response from Nimble API"
-msgstr "Nimble API로부터의 예기치 않은 응답"
-
 msgid "Unexpected status code"
 msgstr "예기치 않은 상태 코드"
 
@@ -4753,13 +4468,6 @@ msgid "Volume %s doesn't exist on array."
 msgstr "배열에 %s 볼륨이 없습니다."
 
 #, python-format
-msgid ""
-"Volume %s is online. Set volume to offline for managing using OpenStack."
-msgstr ""
-"볼륨 %s이(가) 온라인입니다. OpenStack을 사용하여 관리할 볼륨을 오프라인으로 "
-"설정합니다."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "볼륨 %s이(가) 일관성 그룹의 일부가 아니어야 합니다. "
 
@@ -4902,9 +4610,6 @@ msgstr "볼륨을 아직 호스트에 지정하지 않았습니다."
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "%(volume_id)s의 볼륨 복제를 찾을 수 없습니다. "
 
-msgid "Volume should have agent-type set as None."
-msgstr "볼륨의 에이전트 유형은 None으로 설정되어야 합니다. "
-
 #, python-format
 msgid ""
 "Volume size %(volume_size)sGB cannot be smaller than the image minDisk size "
@@ -5020,12 +4725,6 @@ msgstr "%(config)s의 VzStorage 구성 파일이 존재하지 않습니다. "
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
 msgstr "동기화 대기 실패. 실행 상태: %s."
-
-msgid ""
-"Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
-msgstr ""
-"모든 노드가 클러스터를 결합할 때까지 기다리는 중입니다. 모든 sheep 디먼이 실"
-"행 중인지 확인하십시오. "
 
 msgid "We should not do switch over on primary array."
 msgstr "기본 배열로 전환할 수 없습니다."
@@ -5741,9 +5440,6 @@ msgstr "extend_volume, volumename: %(volumename)s, 볼륨을 찾을 수 없습�
 
 msgid "fake"
 msgstr "fake"
-
-msgid "fileno is not supported by SheepdogIOWrapper"
-msgstr "SheepdogIOWrapper는 fileno를 지원하지 않음"
 
 #, python-format
 msgid "fmt=%(fmt)s backed by: %(backing_file)s"
