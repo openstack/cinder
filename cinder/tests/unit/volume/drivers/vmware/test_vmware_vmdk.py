@@ -1821,13 +1821,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
+    @mock.patch.object(VMDK_DRIVER, '_get_connection_import_data')
     def _test_get_connection_info(
-            self, get_storage_profile_id, vops, vmdk_connector=False):
-        volume = self._create_volume_obj()
+            self, get_connection_import_data, get_storage_profile_id, vops,
+            vmdk_connector=False):
+        volume = self._create_volume_obj(status='restoring-backup')
         backing = mock.Mock(value='ref-1')
 
         profile_id = mock.sentinel.profile_id
         get_storage_profile_id.return_value = profile_id
+
+        get_connection_import_data.return_value = {'folder': 'folder-1'}
 
         if vmdk_connector:
             vmdk_path = mock.sentinel.vmdk_path
@@ -1856,6 +1860,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             self.assertEqual(vmdk_path, ret['data']['vmdk_path'])
             self.assertEqual('ds-1', ret['data']['datastore'])
             self.assertEqual('dc-1', ret['data']['datacenter'])
+            self.assertEqual('folder-1', ret['data']['import_data']['folder'])
 
             config = self._driver.configuration
             exp_config = {
@@ -1878,6 +1883,82 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     def test_get_connection_info_vmdk_connector(self):
         self._test_get_connection_info(vmdk_connector=True)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_config')
+    @mock.patch.object(VMDK_DRIVER, '_get_adapter_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_disk_type')
+    def test_get_connection_import_data(self, get_disk_type, get_adapter_type,
+                                        get_extra_config,
+                                        select_ds_for_volume, vops):
+        volume = self._create_volume_obj(size=1)
+        folder = mock.Mock(value=mock.Mock())
+        rp = mock.Mock(value=mock.Mock())
+        mock_data = {
+            'folder': folder.value,
+            'resource_pool': rp.value,
+            'vm': {
+                'path_name': '[ds-1]',
+                'guest_id': 'guest-id',
+                'num_cpus': 1,
+                'memory_mb': 128,
+                'vmx_version': 'vmx-8',
+                'extension_key': 'foo-extension-key',
+                'extension_type': 'foo-extension-type',
+                'extra_config': {}
+            },
+            'adapter_type': mock.Mock(),
+            'controller': {
+                'type': 'controllerTypeOne',
+                'key': 1,
+                'create': True,
+                'shared_bus': 'shared',
+                'bus_number': 1
+            },
+            'disk': {
+                'type': 'diskTypeOne',
+                'key': -101,
+                'capacity_in_kb': 1024 * 1024,
+                'eagerly_scrub': None,
+                'thin_provisioned': True
+            }
+        }
+
+        vops.get_controller_type.return_value = mock_data['controller']['type']
+        vops.get_controller_key_and_spec.return_value = (mock_data[
+                                                             'controller'][
+                                                             'key'],
+                                                         mock.Mock())
+        vops.get_vm_path_name.return_value = mock_data['vm']['path_name']
+        vops.get_vm_guest_id.return_value = mock_data['vm']['guest_id']
+        vops.get_vm_num_cpus.return_value = mock_data['vm']['num_cpus']
+        vops.get_vm_memory_mb.return_value = mock_data['vm']['memory_mb']
+        vops.get_vmx_version.return_value = mock_data['vm']['vmx_version']
+        vops._extension_key = mock_data['vm']['extension_key']
+        vops._extension_type = mock_data['vm']['extension_type']
+        vops.get_controller_device_shared_bus.return_value = mock_data[
+            'controller']['shared_bus']
+        vops.get_controller_device_default_bus_number.return_value = \
+            mock_data['controller']['bus_number']
+        vops.get_disk_device_key.return_value = mock_data['disk']['key']
+        vops.get_disk_capacity_in_kb.return_value = mock_data['disk'][
+            'capacity_in_kb']
+        vops.get_disk_eagerly_scrub.return_value = mock_data['disk'][
+            'eagerly_scrub']
+        vops.get_disk_thin_provisioned.return_value = mock_data['disk'][
+            'thin_provisioned']
+
+        get_disk_type.return_value = mock_data['disk']['type']
+        select_ds_for_volume.return_value = (mock.Mock(), rp, folder,
+                                             mock.Mock())
+        get_extra_config.return_value = mock_data['vm']['extra_config']
+        get_adapter_type.return_value = mock_data['adapter_type']
+
+        data = self._driver._get_connection_import_data(volume)
+
+        self.assertEqual(mock_data, data)
+
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch('oslo_vmware.vim_util.get_moref')

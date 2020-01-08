@@ -680,6 +680,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             }
             connection_info['data']['config'] = vmdk_connector_config
 
+            # instruct os-brick to use ImportVApp and HttpNfc upload for
+            # disconnecting the volume
+            if volume['status'] == 'restoring-backup':
+                connection_info['data']['import_data'] = \
+                    self._get_connection_import_data(volume)
+
         LOG.debug("Returning connection_info (volume: '%(volume)s', volume_id:"
                   " '%(volume_id)s'), profile_id: '%(profile_id)s' for "
                   "connector: %(connector)s.",
@@ -689,6 +695,58 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                    'connector': connector})
 
         return connection_info
+
+    def _get_connection_import_data(self, volume):
+        (host, rp, folder, summary) = self._select_ds_for_volume(
+            volume)
+        extra_config = self._get_extra_config(volume)
+        if volumeops.BACKING_UUID_KEY in extra_config:
+            extra_config.pop(volumeops.BACKING_UUID_KEY)
+        disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
+        size_kb = volume['size'] * units.Mi
+        adapter_type = self._get_adapter_type(volume)
+        controller_type = self.volumeops.get_controller_type(adapter_type)
+        controller_key, controller_spec = \
+            self.volumeops.get_controller_key_and_spec(adapter_type)
+        return {
+            'folder': folder.value,
+            'resource_pool': rp.value,
+            'vm': {
+                'path_name': self.volumeops.get_vm_path_name(
+                    summary.name),
+                'guest_id': self.volumeops.get_vm_guest_id(),
+                'num_cpus': self.volumeops.get_vm_num_cpus(),
+                'memory_mb': self.volumeops.get_vm_memory_mb(),
+                'vmx_version': self.volumeops.get_vmx_version(),
+                'extension_key': self.volumeops._extension_key,
+                'extension_type': self.volumeops._extension_type,
+                'extra_config': extra_config,
+            },
+            'adapter_type': adapter_type,
+            'controller': {
+                'type': controller_type,
+                'key': controller_key,
+                'create': controller_spec is not None,
+                'shared_bus':
+                    self.volumeops.get_controller_device_shared_bus(
+                        controller_type),
+                'bus_number':
+                    self.volumeops
+                        .get_controller_device_default_bus_number()
+            },
+            'disk': {
+                'type': disk_type,
+                'key': self.volumeops.get_disk_device_key(
+                    controller_key),
+                'capacity_in_kb':
+                    self.volumeops.get_disk_capacity_in_kb(size_kb),
+                'eagerly_scrub':
+                    self.volumeops.get_disk_eagerly_scrub(disk_type),
+                'thin_provisioned':
+                    self.volumeops.get_disk_thin_provisioned(disk_type)
+
+            }
+        }
 
     def _initialize_connection(self, volume, connector):
         """Get information of volume's backing.
@@ -752,7 +810,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return self._initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
-        pass
+        if 'platform' in connector and 'os_type' in connector and \
+                volume['status'] == 'restoring-backup':
+            backing = self.volumeops.get_backing_by_uuid(volume['id'])
+            self.volumeops.update_backing_disk_uuid(backing, volume['id'])
 
     def create_export(self, context, volume, connector):
         pass

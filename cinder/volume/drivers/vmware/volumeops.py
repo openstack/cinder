@@ -680,6 +680,20 @@ class VMwareVolumeOps(object):
                  "%(size)s GB.",
                  {'path': path, 'size': requested_size_in_gb})
 
+    @staticmethod
+    def get_controller_device_shared_bus(controller_type):
+        if ControllerType.is_scsi_controller(controller_type):
+            return 'noSharing'
+        return None
+
+    @staticmethod
+    def get_controller_device_default_bus_number():
+        return 0
+
+    @staticmethod
+    def get_controller_type(adapter_type):
+        return ControllerType.get_controller_type(adapter_type)
+
     def _create_controller_config_spec(self, adapter_type):
         """Returns config spec for adding a disk controller."""
         cf = self._session.vim.client.factory
@@ -687,29 +701,56 @@ class VMwareVolumeOps(object):
         controller_type = ControllerType.get_controller_type(adapter_type)
         controller_device = cf.create('ns0:%s' % controller_type)
         controller_device.key = -100
-        controller_device.busNumber = 0
-        if ControllerType.is_scsi_controller(controller_type):
-            controller_device.sharedBus = 'noSharing'
+        controller_device.busNumber = \
+            self.get_controller_device_default_bus_number()
+        shared_bus = self.get_controller_device_shared_bus(controller_type)
+        if shared_bus:
+            controller_device.sharedBus = shared_bus
 
         controller_spec = cf.create('ns0:VirtualDeviceConfigSpec')
         controller_spec.operation = 'add'
         controller_spec.device = controller_device
         return controller_spec
 
+    @staticmethod
+    def get_disk_eagerly_scrub(disk_type):
+        if disk_type == VirtualDiskType.EAGER_ZEROED_THICK:
+            return True
+        return None
+
+    @staticmethod
+    def get_disk_thin_provisioned(disk_type):
+        if disk_type == VirtualDiskType.THIN:
+            return True
+        return None
+
     def _create_disk_backing(self, disk_type, vmdk_ds_file_path):
         """Creates file backing for virtual disk."""
         cf = self._session.vim.client.factory
         disk_device_bkng = cf.create('ns0:VirtualDiskFlatVer2BackingInfo')
 
-        if disk_type == VirtualDiskType.EAGER_ZEROED_THICK:
+        eagerly_scrub = self.get_disk_eagerly_scrub(disk_type)
+        thin_provisioned = self.get_disk_thin_provisioned(disk_type)
+
+        if eagerly_scrub:
             disk_device_bkng.eagerlyScrub = True
-        elif disk_type == VirtualDiskType.THIN:
+        elif thin_provisioned:
             disk_device_bkng.thinProvisioned = True
 
         disk_device_bkng.fileName = vmdk_ds_file_path or ''
         disk_device_bkng.diskMode = 'persistent'
 
         return disk_device_bkng
+
+    @staticmethod
+    def get_disk_capacity_in_kb(size_kb):
+        return max(MIN_VIRTUAL_DISK_SIZE_KB, int(size_kb))
+
+    @staticmethod
+    def get_disk_device_key(controller_key):
+        if controller_key < 0:
+            return controller_key - 1
+        return -101
 
     def _create_virtual_disk_config_spec(self, size_kb, disk_type,
                                          controller_key, profile_id,
@@ -719,12 +760,8 @@ class VMwareVolumeOps(object):
 
         disk_device = cf.create('ns0:VirtualDisk')
         # disk size should be at least 4MB for VASA provider
-        min_size_kb = MIN_VIRTUAL_DISK_SIZE_KB
-        disk_device.capacityInKB = max(min_size_kb, int(size_kb))
-        if controller_key < 0:
-            disk_device.key = controller_key - 1
-        else:
-            disk_device.key = -101
+        disk_device.capacityInKB = self.get_disk_capacity_in_kb(size_kb)
+        disk_device.key = self.get_disk_device_key(controller_key)
         disk_device.unitNumber = 0
         disk_device.controllerKey = controller_key
         disk_device.backing = self._create_disk_backing(disk_type,
@@ -742,6 +779,18 @@ class VMwareVolumeOps(object):
 
         return disk_spec
 
+    def get_controller_key_and_spec(self, adapter_type):
+        controller_spec = None
+        if adapter_type == 'ide':
+            # For IDE disks, use one of the default IDE controllers (with keys
+            # 200 and 201) created as part of backing VM creation.
+            controller_key = 200
+        else:
+            controller_spec = self._create_controller_config_spec(adapter_type)
+            controller_key = controller_spec.device.key
+
+        return controller_key, controller_spec
+
     def _create_specs_for_disk_add(self, size_kb, disk_type, adapter_type,
                                    profile_id, vmdk_ds_file_path=None):
         """Create controller and disk config specs for adding a new disk.
@@ -755,14 +804,8 @@ class VMwareVolumeOps(object):
                                   not created for the virtual disk.
         :return: list containing controller and disk config specs
         """
-        controller_spec = None
-        if adapter_type == 'ide':
-            # For IDE disks, use one of the default IDE controllers (with keys
-            # 200 and 201) created as part of backing VM creation.
-            controller_key = 200
-        else:
-            controller_spec = self._create_controller_config_spec(adapter_type)
-            controller_key = controller_spec.device.key
+        (controller_key, controller_spec) = self.get_controller_key_and_spec(
+            adapter_type)
 
         disk_spec = self._create_virtual_disk_config_spec(size_kb,
                                                           disk_type,
@@ -794,6 +837,25 @@ class VMwareVolumeOps(object):
         managed_by.type = self._extension_type
         return managed_by
 
+    @staticmethod
+    def get_vm_path_name(ds_name):
+        return '[%s]' % ds_name
+
+    @staticmethod
+    def get_vm_num_cpus():
+        return 1
+
+    @staticmethod
+    def get_vm_memory_mb():
+        return 128
+
+    @staticmethod
+    def get_vm_guest_id():
+        return 'otherGuest'
+
+    def get_vmx_version(self):
+        return self._vmx_version or "vmx-08"
+
     def _get_create_spec_disk_less(self, name, ds_name, profileId=None,
                                    extra_config=None):
         """Return spec for creating disk-less backing.
@@ -807,19 +869,19 @@ class VMwareVolumeOps(object):
         """
         cf = self._session.vim.client.factory
         vm_file_info = cf.create('ns0:VirtualMachineFileInfo')
-        vm_file_info.vmPathName = '[%s]' % ds_name
+        vm_file_info.vmPathName = self.get_vm_path_name(ds_name)
 
         create_spec = cf.create('ns0:VirtualMachineConfigSpec')
         create_spec.name = name
-        create_spec.guestId = 'otherGuest'
-        create_spec.numCPUs = 1
-        create_spec.memoryMB = 128
+        create_spec.guestId = self.get_vm_guest_id()
+        create_spec.numCPUs = self.get_vm_num_cpus()
+        create_spec.memoryMB = self.get_vm_memory_mb()
         create_spec.files = vm_file_info
         # Set the default hardware version to a compatible version supported by
         # vSphere 5.0. This will ensure that the backing VM can be migrated
         # without any incompatibility issues in a mixed cluster of ESX hosts
         # with versions 5.0 or above.
-        create_spec.version = self._vmx_version or "vmx-08"
+        create_spec.version = self.get_vmx_version()
 
         if profileId:
             vmProfile = cf.create('ns0:VirtualMachineDefinedProfileSpec')
