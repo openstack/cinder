@@ -87,7 +87,6 @@ release.
    * Nexenta Edge Storage Driver
 
 * Ussuri
-   * Huawei FusionStorage Driver
    * Nimble Storage Driver
    * ProphetStor Flexvisor Driver
    * Sheepdog Driver
