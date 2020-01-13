@@ -84,7 +84,7 @@ oslo.serialization==2.18.0
 oslo.service==1.24.0
 oslo.utils==3.34.0
 oslo.versionedobjects==1.31.2
-oslo.vmware==2.17.0
+oslo.vmware==2.35.0
 oslotest==3.2.0
 osprofiler==1.4.0
 paramiko==2.0.0
