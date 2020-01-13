@@ -833,7 +833,7 @@ class PowerMaxMaskingTest(test.TestCase):
                    self.data.masking_view_name_f]
         with mock.patch.object(
                 rest.PowerMaxRest, 'get_masking_views_by_initiator_group',
-                side_effect=[mv_list, []]):
+                side_effect=[mv_list, mv_list, [], []]):
             self.mask._last_volume_delete_initiator_group(
                 self.data.array, self.data.initiatorgroup_name_i,
                 self.data.connector['host'])
@@ -974,7 +974,8 @@ class PowerMaxMaskingTest(test.TestCase):
     def test_pre_multiattach(self, mock_return):
         mv_dict = self.mask.pre_multiattach(
             self.data.array, self.data.device_id,
-            self.data.masking_view_dict_multiattach, self.data.extra_specs)
+            self.data.masking_view_dict_multiattach,
+            self.data.extra_specs)
         mock_return.assert_not_called()
         self.assertEqual(self.data.storagegroup_name_f,
                          mv_dict[utils.FAST_SG])
@@ -993,7 +994,8 @@ class PowerMaxMaskingTest(test.TestCase):
                                return_value='DiamondDSS'):
             self.mask.pre_multiattach(
                 self.data.array, self.data.device_id,
-                self.data.masking_view_dict_multiattach, self.data.extra_specs)
+                self.data.masking_view_dict_multiattach,
+                self.data.extra_specs)
             utils.PowerMaxUtils.truncate_string.assert_called_once_with(
                 'DiamondDSS', 10)
 
@@ -1007,7 +1009,8 @@ class PowerMaxMaskingTest(test.TestCase):
             self, mock_return, mock_sg):
         for x in range(0, 2):
             self.mask.return_volume_to_fast_managed_group(
-                self.data.array, self.data.device_id, self.data.extra_specs)
+                self.data.array, self.data.device_id,
+                self.data.extra_specs)
         no_slo_specs = deepcopy(self.data.extra_specs)
         no_slo_specs[utils.SLO] = None
         self.mask.return_volume_to_fast_managed_group(
@@ -1093,3 +1096,44 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.array, self.data.add_volume_sg_info_dict,
             self.data.extra_specs_tags)
         mock_except.assert_called()
+
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_masking_views_from_storage_group',
+                       return_value=[tpd.PowerMaxData.masking_view_name_f])
+    def test_get_host_and_port_group_labels(self, mock_mv):
+        host_label, port_group_label = (
+            self.mask._get_host_and_port_group_labels(
+                self.data.array, self.data.parent_sg_f))
+        self.assertEqual('HostX', host_label)
+        self.assertEqual('OS-fibre-PG', port_group_label)
+
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_masking_views_from_storage_group',
+                       return_value=['OS-HostX699ea-I-p-name3b02c-MV'])
+    def test_get_host_and_port_group_labels_complex(self, mock_mv):
+        host_label, port_group_label = (
+            self.mask._get_host_and_port_group_labels(
+                self.data.array, self.data.parent_sg_f))
+        self.assertEqual('HostX699ea', host_label)
+        self.assertEqual('p-name3b02c', port_group_label)
+
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_masking_views_from_storage_group',
+                       return_value=['OS-myhost-I-myportgroup-MV'])
+    def test_get_host_and_port_group_labels_plain(self, mock_mv):
+        host_label, port_group_label = (
+            self.mask._get_host_and_port_group_labels(
+                self.data.array, self.data.parent_sg_f))
+        self.assertEqual('myhost', host_label)
+        self.assertEqual('myportgroup', port_group_label)
+
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_masking_views_from_storage_group',
+                       return_value=[
+                           'OS-host-with-dash-I-portgroup-with-dashes-MV'])
+    def test_get_host_and_port_group_labels_dashes(self, mock_mv):
+        host_label, port_group_label = (
+            self.mask._get_host_and_port_group_labels(
+                self.data.array, self.data.parent_sg_f))
+        self.assertEqual('host-with-dash', host_label)
+        self.assertEqual('portgroup-with-dashes', port_group_label)

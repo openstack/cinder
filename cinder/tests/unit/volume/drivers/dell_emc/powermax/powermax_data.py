@@ -44,6 +44,7 @@ class PowerMaxData(object):
     port_group_name_f = 'OS-fibre-PG'
     port_group_name_i = 'OS-iscsi-PG'
     masking_view_name_f = 'OS-HostX-F-OS-fibre-PG-MV'
+    masking_view_name_Y_f = 'OS-HostY-F-OS-fibre-PG-MV'
     masking_view_name_i = 'OS-HostX-SRP_1-I-OS-iscsi-PG-MV'
     initiatorgroup_name_f = 'OS-HostX-F-IG'
     initiatorgroup_name_i = 'OS-HostX-I-IG'
@@ -277,7 +278,8 @@ class PowerMaxData(object):
         'storagetype:storagegrouptags': u'good, comma,  separated,list'}
     vol_type_extra_specs_tags_bad = {
         'storagetype:storagegrouptags': u'B&d, [list]'}
-
+    extra_specs_port_group_template = deepcopy(extra_specs)
+    extra_specs_port_group_template['port_group_template'] = 'portGroupName'
     extra_specs_migrate = deepcopy(extra_specs)
     extra_specs_migrate[utils.PORTGROUPNAME] = port_group_name_f
 
@@ -401,7 +403,9 @@ class PowerMaxData(object):
         'storagegroup_name': storagegroup_name_f,
         'volume_name': test_volume.name,
         'workload': workload,
-        'replication_enabled': False}
+        'replication_enabled': False,
+        'used_host_name': 'HostX',
+        'port_group_label': port_group_name_f}
 
     masking_view_dict_no_slo = deepcopy(masking_view_dict)
     masking_view_dict_no_slo.update(

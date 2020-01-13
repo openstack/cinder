@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Dell EMC PowerMax driver now faciliates the user to override the
+    short host name and port group name seen in PowerMax masking view
+    and storage view terminology. This means the user can give more
+    meaningful names, especially when the short host name exceeds 16
+    characters and the port group name exceeds 12 characters, which
+    is the condition where the driver truncates these values.

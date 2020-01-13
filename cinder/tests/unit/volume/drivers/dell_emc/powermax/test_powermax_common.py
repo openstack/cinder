@@ -44,9 +44,11 @@ class PowerMaxCommonTest(test.TestCase):
         self.mock_object(volume_utils, 'get_max_over_subscription_ratio',
                          return_value=1.0)
         configuration = tpfo.FakeConfiguration(
-            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            emc_file=None, volume_backend_name='CommonTests', interval=1,
+            retries=1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f])
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f],
+            powermax_port_group_name_template='portGroupName')
         rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=configuration)
@@ -71,7 +73,6 @@ class PowerMaxCommonTest(test.TestCase):
                        side_effect=[[], tpd.PowerMaxData.array_info_wl])
     def test_gather_info_tests(self, mck_parse, mck_combo, mck_rest,
                                mck_nextgen, mck_ucode):
-
         # Use-Case 1: Gather info no-opts
         configuration = tpfo.FakeConfiguration(
             None, 'config_group', None, None)
@@ -81,6 +82,54 @@ class PowerMaxCommonTest(test.TestCase):
         self.common._gather_info()
         self.assertTrue(self.common.next_gen)
         self.assertEqual(self.common.ucode_level, self.data.next_gen_ucode)
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_gather_info')
+    def test_get_attributes_from_config_short_host_template(
+            self, mock_gather):
+        configuration = tpfo.FakeConfiguration(
+            emc_file=None, volume_backend_name='config_group', interval='10',
+            retries='10', replication_device=None,
+            powermax_short_host_name_template='shortHostName')
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
+        driver.common._get_attributes_from_config()
+        self.assertEqual(
+            'shortHostName', driver.common.powermax_short_host_name_template)
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_gather_info')
+    def test_get_attributes_from_config_no_short_host_template(
+            self, mock_gather):
+        configuration = tpfo.FakeConfiguration(
+            emc_file=None, volume_backend_name='config_group', interval='10',
+            retries='10', replication_device=None)
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
+        driver.common._get_attributes_from_config()
+        self.assertIsNone(driver.common.powermax_short_host_name_template)
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_gather_info')
+    def test_get_attributes_from_config_port_group_template(
+            self, mock_gather):
+        configuration = tpfo.FakeConfiguration(
+            emc_file=None, volume_backend_name='config_group', interval='10',
+            retries='10', replication_device=None,
+            powermax_port_group_name_template='portGroupName')
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
+        driver.common._get_attributes_from_config()
+        self.assertEqual(
+            'portGroupName', driver.common.powermax_port_group_name_template)
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_gather_info')
+    def test_get_attributes_from_config_no_port_group_template(
+            self, mock_gather):
+        configuration = tpfo.FakeConfiguration(
+            emc_file=None, volume_backend_name='config_group', interval='10',
+            retries='10', replication_device=None)
+        driver = fc.PowerMaxFCDriver(configuration=configuration)
+        driver.common._get_attributes_from_config()
+        self.assertIsNone(driver.common.powermax_port_group_name_template)
 
     def test_get_slo_workload_combinations_powermax(self):
         array_info = self.common.get_attributes_from_cinder_config()
@@ -266,7 +315,8 @@ class PowerMaxCommonTest(test.TestCase):
             array, volume, device_id, extra_specs, self.data.connector, False)
         mock_rm.assert_called_once_with(
             array, volume, device_id, volume_name,
-            extra_specs, True, self.data.connector, async_grp=None)
+            extra_specs, True, self.data.connector, async_grp=None,
+            host_template=None)
 
     @mock.patch.object(masking.PowerMaxMasking,
                        'return_volume_to_fast_managed_group')
@@ -281,7 +331,8 @@ class PowerMaxCommonTest(test.TestCase):
             array, volume, device_id, extra_specs, self.data.connector, True)
         mock_rm.assert_called_once_with(
             array, volume, device_id, volume_name,
-            extra_specs, False, self.data.connector, async_grp=None)
+            extra_specs, False, self.data.connector, async_grp=None,
+            host_template=None)
         mock_return.assert_called_once()
 
     def test_unmap_lun(self):
@@ -295,7 +346,18 @@ class PowerMaxCommonTest(test.TestCase):
             self.common._unmap_lun(volume, connector)
             mock_remove.assert_called_once_with(
                 array, volume, device_id, extra_specs,
-                connector, False, async_grp=None)
+                connector, False, async_grp=None, host_template=None)
+
+    def test_unmap_lun_force(self):
+        volume = self.data.test_volume
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        connector = deepcopy(self.data.connector)
+        del connector['host']
+        with mock.patch.object(
+                self.common.utils, 'get_host_short_name') as mock_host:
+            self.common._unmap_lun(volume, connector)
+            mock_host.assert_not_called()
 
     @mock.patch.object(common.PowerMaxCommon, '_remove_members')
     def test_unmap_lun_attachments(self, mock_rm):
@@ -326,7 +388,7 @@ class PowerMaxCommonTest(test.TestCase):
                 self.common._unmap_lun(volume, connector)
                 mock_remove.assert_called_once_with(
                     array, volume, device_id, extra_specs,
-                    connector, False, async_grp=None)
+                    connector, False, async_grp=None, host_template=None)
 
     def test_unmap_lun_not_mapped(self):
         volume = self.data.test_volume
@@ -349,7 +411,7 @@ class PowerMaxCommonTest(test.TestCase):
             self.common._unmap_lun(volume, None)
             mock_remove.assert_called_once_with(
                 array, volume, device_id, extra_specs, None,
-                False, async_grp=None)
+                False, async_grp=None, host_template=None)
 
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
@@ -612,7 +674,9 @@ class PowerMaxCommonTest(test.TestCase):
 
     @mock.patch.object(
         common.PowerMaxCommon, '_get_masking_views_from_volume',
-        return_value=([], [tpd.PowerMaxData.masking_view_name_f]))
+        return_value=([tpd.PowerMaxData.masking_view_name_f],
+                      [tpd.PowerMaxData.masking_view_name_f,
+                       tpd.PowerMaxData.masking_view_name_Y_f]))
     def test_find_host_lun_id_multiattach(self, mock_mask):
         volume = self.data.test_volume
         extra_specs = self.data.extra_specs
@@ -629,6 +693,27 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.test_volume, 'HostX',
             self.data.extra_specs, self.data.rep_extra_specs)
         mock_tgt.assert_called_once()
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_mv_connections_for_vol',
+                       return_value='1')
+    @mock.patch.object(common.PowerMaxCommon, '_get_masking_views_from_volume',
+                       side_effect=[([], ['OS-HostX-I-PG-MV']),
+                                    (['OS-HostX-I-PG-MV'],
+                                     ['OS-HostX-I-PG-MV'])])
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=tpd.PowerMaxData.volume_details[0])
+    def test_find_host_lun_id_backward_compatible(
+            self, mock_vol, mock_mvs, mock_mv_conns):
+        expected_dict = {'hostlunid': '1', 'maskingview': 'OS-HostX-I-PG-MV',
+                         'array': '000197800123', 'device_id': '00001'}
+        self.common.powermax_short_host_name_template = (
+            'shortHostName[:7]finance')
+        masked_vols, is_multiattach = self.common.find_host_lun_id(
+            self.data.test_volume, 'HostX',
+            self.data.extra_specs)
+        self.assertEqual(expected_dict, masked_vols)
+        self.assertFalse(is_multiattach)
+        mock_mv_conns.assert_called_once()
 
     def test_get_masking_views_from_volume(self):
         array = self.data.array
@@ -691,6 +776,7 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs[utils.WORKLOAD] = self.data.workload
         ref_mv_dict = self.data.masking_view_dict
         self.common.next_gen = False
+        self.common.powermax_port_group_name_template = 'portGroupName'
         masking_view_dict = self.common._populate_masking_dict(
             volume, connector, extra_specs)
         self.assertEqual(ref_mv_dict, masking_view_dict)
@@ -1140,6 +1226,31 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.test_volume, self.data.connector)
         self.assertEqual([self.data.wwnn1], metro_wwns)
 
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_get_target_wwns_from_masking_view')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_host_name_label',
+                       return_value = 'my_short_h94485')
+    @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
+                       return_value=False)
+    def test_get_target_wwns_host_override(
+            self, mock_rep_check, mock_label, mock_mv):
+        host_record = {'host': 'my_short_host_name'}
+        connector = deepcopy(self.data.connector)
+        connector.update(host_record)
+        extra_specs = {'pool_name': 'Diamond+DSS+SRP_1+000197800123',
+                       'srp': 'SRP_1', 'array': '000197800123',
+                       'storagetype:portgroupname': 'OS-fibre-PG',
+                       'interval': 1, 'retries': 1, 'slo': 'Diamond',
+                       'workload': 'DSS'}
+        host_template = 'shortHostName[:10]uuid[:5]'
+        self.common.powermax_short_host_name_template = host_template
+        self.common.get_target_wwns_from_masking_view(
+            self.data.test_volume, connector)
+        mock_label.assert_called_once_with(
+            connector['host'], host_template)
+        mock_mv.assert_called_once_with(
+            self.data.device_id, 'my_short_h94485', extra_specs)
+
     def test_get_port_group_from_masking_view(self):
         array = self.data.array
         maskingview_name = self.data.masking_view_name_f
@@ -1462,7 +1573,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
                        return_value=tpd.PowerMaxData.sg_details[1])
     @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
-                       return_value=('OS-Test-SG', '', '', ''))
+                       return_value=('OS-Test-SG', '', ''))
     @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
                        return_value=True)
     @mock.patch.object(masking.PowerMaxMasking,
@@ -1498,7 +1609,7 @@ class PowerMaxCommonTest(test.TestCase):
         rest.PowerMaxRest, 'get_volume',
         return_value=tpd.PowerMaxData.volume_details_attached)
     @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
-                       return_value=('OS-Test-SG', '', '', ''))
+                       return_value=('OS-Test-SG', '', ''))
     @mock.patch.object(provision.PowerMaxProvision, 'create_storage_group')
     @mock.patch.object(masking.PowerMaxMasking, 'add_child_sg_to_parent_sg')
     @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
@@ -1542,7 +1653,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
                        side_effect=[tpd.PowerMaxData.sg_details[1], None])
     @mock.patch.object(utils.PowerMaxUtils, 'get_child_sg_name',
-                       return_value=('OS-Test-SG', '', '', ''))
+                       return_value=('OS-Test-SG', '', ''))
     @mock.patch.object(rest.PowerMaxRest, 'is_child_sg_in_parent_sg',
                        return_value=False)
     @mock.patch.object(masking.PowerMaxMasking,

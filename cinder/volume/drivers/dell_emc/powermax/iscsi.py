@@ -122,6 +122,8 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Volume/Snapshot backed metadata inclusion
               - Debug metadata compression and service level info fix
         4.2.0 - Support of Unisphere storage group and array tags
+              - User defined override for short host name and port group name
+                (bp powermax-user-defined-hostname-portgroup)
     """
 
     VERSION = "4.2.0"

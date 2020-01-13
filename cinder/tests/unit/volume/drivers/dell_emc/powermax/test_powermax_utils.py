@@ -450,6 +450,7 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_get_child_sg_name(self):
         host_name = 'HostX'
+        port_group_label = self.data.port_group_name_f
         # Slo and rep enabled
         extra_specs1 = {
             'pool_name': u'Diamond+DSS+SRP_1+000197800123',
@@ -463,23 +464,24 @@ class PowerMaxUtilsTest(test.TestCase):
             'rep_mode': 'Synchronous',
             utils.PORTGROUPNAME: self.data.port_group_name_f}
 
-        child_sg_name, do_disable_compression, rep_enabled, pg_name = (
-            self.utils.get_child_sg_name(host_name, extra_specs1))
+        child_sg_name, do_disable_compression, rep_enabled = (
+            self.utils.get_child_sg_name(
+                host_name, extra_specs1, port_group_label))
         re_name = self.data.storagegroup_name_f + '-RE'
         self.assertEqual(re_name, child_sg_name)
         # Disable compression
         extra_specs2 = deepcopy(self.data.extra_specs_disable_compression)
-        extra_specs2[utils.PORTGROUPNAME] = self.data.port_group_name_f
-        child_sg_name, do_disable_compression, rep_enabled, pg_name = (
-            self.utils.get_child_sg_name(host_name, extra_specs2))
+        child_sg_name, do_disable_compression, rep_enabled = (
+            self.utils.get_child_sg_name(
+                host_name, extra_specs2, port_group_label))
         cd_name = self.data.storagegroup_name_f + '-CD'
         self.assertEqual(cd_name, child_sg_name)
         # No slo
         extra_specs3 = deepcopy(self.data.extra_specs)
         extra_specs3[utils.SLO] = None
-        extra_specs3[utils.PORTGROUPNAME] = self.data.port_group_name_f
-        child_sg_name, do_disable_compression, rep_enabled, pg_name = (
-            self.utils.get_child_sg_name(host_name, extra_specs3))
+        child_sg_name, do_disable_compression, rep_enabled = (
+            self.utils.get_child_sg_name(
+                host_name, extra_specs3, port_group_label))
         self.assertEqual(self.data.no_slo_sg_name, child_sg_name)
 
     def test_change_multiattach(self):
@@ -732,3 +734,285 @@ class PowerMaxUtilsTest(test.TestCase):
         input_list = 'one,two,three'
         output_string = self.utils.convert_list_to_string(input_list)
         self.assertEqual('one,two,three', output_string)
+
+    def test_regex_check_case_2(self):
+        test_template = 'shortHostName[:10]uuid[:5]'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertTrue(is_ok)
+        self.assertEqual('2', case)
+
+    def test_regex_check_case_3(self):
+        test_template = 'shortHostName[-10:]uuid[:5]'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertTrue(is_ok)
+        self.assertEqual('3', case)
+
+    def test_regex_check_case_4(self):
+        test_template = 'shortHostName[:7]finance'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertTrue(is_ok)
+        self.assertEqual('4', case)
+
+    def test_regex_check_case_5(self):
+        test_template = 'shortHostName[-6:]production'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertTrue(is_ok)
+        self.assertEqual('5', case)
+
+    def test_regex_check_case_2_misspelt(self):
+        test_template = 'shortHstName[:10]uuid[:5]'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_3_misspelt(self):
+        test_template = 'shortHostName[-10:]uud[:5]'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_4_misspelt(self):
+        test_template = 'shortHotName[:7]finance'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_5_misspelt(self):
+        test_template = 'shortHstName[-6:]production'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_4_invalid_chars(self):
+        test_template = 'shortHostName[:7]f*n&nce'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_5_invalid_chars(self):
+        test_template = 'shortHostName[-6:]pr*ducti*n'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_2_missing_square_bracket(self):
+        test_template = 'shortHostName[:10uuid[:5]'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_regex_check_case_4_missing_square_bracket(self):
+        test_template = 'shortHostName[:10finance'
+        is_ok, case = self.utils.regex_check(test_template, True)
+        self.assertFalse(is_ok)
+        self.assertEqual('0', case)
+
+    def test_prepare_string_entity_case_2(self):
+        test_template = 'shortHostName[:10]uuid[:5]'
+        altered_string = self.utils.prepare_string_entity(
+            test_template, 'my_short_host_name', True)
+        self.assertEqual(
+            'my_short_host_name[:10]uuid[:5]',
+            altered_string)
+
+    def test_prepare_string_entity_case_3(self):
+        test_template = 'shortHostName[-10:]uuid[:5]'
+        altered_string = self.utils.prepare_string_entity(
+            test_template, 'my_short_host_name', True)
+        self.assertEqual(
+            'my_short_host_name[-10:]uuid[:5]',
+            altered_string)
+
+    def test_prepare_string_entity_case_4(self):
+        test_template = 'shortHostName[:7]finance'
+        altered_string = self.utils.prepare_string_entity(
+            test_template, 'my_short_host_name', True)
+        self.assertEqual(
+            'my_short_host_name[:7]finance',
+            altered_string)
+
+    def test_prepare_string_entity_case_5(self):
+        test_template = 'shortHostName[-6:]production'
+        altered_string = self.utils.prepare_string_entity(
+            test_template, 'my_short_host_name', True)
+        self.assertEqual(
+            'my_short_host_name[-6:]production',
+            altered_string)
+
+    def test_prepare_string_with_uuid_case_2(self):
+        test_template = 'shortHostName[:10]uuid[:5]'
+        pass_two, uuid = self.utils.prepare_string_with_uuid(
+            test_template, 'my_short_host_name', True)
+        self.assertEqual(
+            'my_short_host_name[:10]944854dce45898b544a1cb9071d3cc35[:5]',
+            pass_two)
+        self.assertEqual('944854dce45898b544a1cb9071d3cc35', uuid)
+
+    def test_prepare_string_with_uuid_case_3(self):
+        test_template = 'shortHostName[-10:]uuid[:5]'
+        pass_two, uuid = self.utils.prepare_string_with_uuid(
+            test_template, 'my_short_host_name', True)
+        self.assertEqual(
+            'my_short_host_name[-10:]944854dce45898b544a1cb9071d3cc35[:5]',
+            pass_two)
+        self.assertEqual('944854dce45898b544a1cb9071d3cc35', uuid)
+
+    def test_check_upper_limit_short_host(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.check_upper_limit,
+                          12, 12, True)
+
+    def test_check_upper_limit_short_host_case_4(self):
+        user_define_name = 'Little_too_long'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.check_upper_limit,
+                          12, len(user_define_name), True)
+
+    def test_validate_short_host_name_from_template_case_1(self):
+        test_template = 'shortHostName'
+        short_host_name = 'my_short_host'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('my_short_host', result_string)
+
+    def test_validate_short_host_name_from_template_case_1_exceeds_16char(
+            self):
+        test_template = 'shortHostName'
+        short_host_name = 'my_short_host_greater_than_16chars'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('6chars0bc43f914e', result_string)
+
+    def test_validate_short_host_name_from_template_case_1_template_misspelt(
+            self):
+        test_template = 'shortHstName'
+        short_host_name = 'my_short_host'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.validate_short_host_name_from_template,
+                          test_template, short_host_name)
+
+    def test_validate_short_host_name_from_template_case_2(self):
+        test_template = 'shortHostName[:10]uuid[:5]'
+        short_host_name = 'my_short_host_name'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('my_short_h94485', result_string)
+
+    def test_validate_short_host_name_from_template_case_2_shorter_than(self):
+        test_template = 'shortHostName[:10]uuid[:5]'
+        short_host_name = 'HostX'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('HostX699ea', result_string)
+
+    def test_validate_short_host_name_from_template_case_3(self):
+        test_template = 'shortHostName[-10:]uuid[:5]'
+        short_host_name = 'my_short_host_name'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('_host_name94485', result_string)
+
+    def test_validate_short_host_name_from_template_case_3_shorter_than(self):
+        test_template = 'shortHostName[-10:]uuid[:5]'
+        short_host_name = 'HostX'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('HostX699ea', result_string)
+
+    def test_validate_short_host_name_from_template_case_4(self):
+        test_template = 'shortHostName[:7]finance'
+        short_host_name = 'my_short_host_name'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('my_shorfinance', result_string)
+
+    def test_validate_short_host_name_from_template_case_5(self):
+        test_template = 'shortHostName[-6:]production'
+        short_host_name = 'my_short_host_name'
+        result_string = self.utils.validate_short_host_name_from_template(
+            test_template, short_host_name)
+        self.assertEqual('t_nameproduction', result_string)
+
+    def test_validate_short_host_name_exception_missing_minus(self):
+        test_template = 'shortHostName[6:]production'
+        short_host_name = 'my_short_host_name'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.validate_short_host_name_from_template,
+                          test_template, short_host_name)
+
+    def test_validate_port_group_from_template_case_1(self):
+        test_template = 'portGroupName'
+        port_group_name = 'my_pg'
+        result_string = self.utils.validate_port_group_name_from_template(
+            test_template, port_group_name)
+        self.assertEqual('my_pg', result_string)
+
+    def test_validate_port_group_from_template_case_1_long(self):
+        test_template = 'portGroupName'
+        port_group_name = 'my_port_group_name'
+        result_string = self.utils.validate_port_group_name_from_template(
+            test_template, port_group_name)
+        self.assertEqual('p_name5ba163', result_string)
+
+    def test_validate_port_group_from_template_case_1_misspelt(self):
+        test_template = 'portGr*upName'
+        port_group_name = 'my_port_group_name'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.validate_port_group_name_from_template,
+                          test_template, port_group_name)
+
+    def test_validate_port_group_from_template_case_2(self):
+        test_template = 'portGroupName[:6]uuid[:5]'
+        port_group_name = 'my_port_group_name'
+        result_string = self.utils.validate_port_group_name_from_template(
+            test_template, port_group_name)
+        self.assertEqual('my_por3b02c', result_string)
+
+    def test_validate_port_group_from_template_case_3(self):
+        test_template = 'portGroupName[-6:]uuid[:5]'
+        port_group_name = 'my_port_group_name'
+        result_string = self.utils.validate_port_group_name_from_template(
+            test_template, port_group_name)
+        self.assertEqual('p_name3b02c', result_string)
+
+    def test_validate_port_group_from_template_case_4(self):
+        test_template = 'portGroupName[:6]test'
+        port_group_name = 'my_port_group_name'
+        result_string = self.utils.validate_port_group_name_from_template(
+            test_template, port_group_name)
+        self.assertEqual('my_portest', result_string)
+
+    def test_validate_port_group_from_template_case_5(self):
+        test_template = 'portGroupName[-7:]test'
+        port_group_name = 'my_port_group_name'
+        result_string = self.utils.validate_port_group_name_from_template(
+            test_template, port_group_name)
+        self.assertEqual('up_nametest', result_string)
+
+    def test_validate_port_group_name_exception_missing_minus(self):
+        test_template = 'portGroupName[6:]test'
+        port_group_name = 'my_port_group_name'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.validate_port_group_name_from_template,
+                          test_template, port_group_name)
+
+    def test_validate_port_group_name_exception_chars_exceeded(self):
+        test_template = 'portGroupName[:10]test'
+        port_group_name = 'my_port_group_name'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.validate_port_group_name_from_template,
+                          test_template, port_group_name)
+
+    def test_get_port_name_label_default(self):
+        port_name_in = 'my_port_group_name'
+        port_group_template = 'portGroupName'
+        port_name_out = self.utils.get_port_name_label(
+            port_name_in, port_group_template)
+        self.assertEqual('p_name5ba163', port_name_out)
+
+    def test_get_port_name_label_template(self):
+        port_name_in = 'my_port_group_name'
+        port_group_template = 'portGroupName[-6:]uuid[:5]'
+        port_name_out = self.utils.get_port_name_label(
+            port_name_in, port_group_template)
+        self.assertEqual('p_name3b02c', port_name_out)
