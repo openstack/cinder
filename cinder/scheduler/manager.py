@@ -33,6 +33,7 @@ from oslo_utils import timeutils
 from oslo_utils import versionutils
 import six
 
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -101,6 +102,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
         self._startup_delay = True
+        self.backup_api = backup_rpcapi.BackupAPI()
         self.volume_api = volume_rpcapi.VolumeAPI()
         self.sch_api = scheduler_rpcapi.SchedulerAPI()
         self.message_api = mess_api.API()
@@ -261,6 +263,15 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
     def request_service_capabilities(self, context):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
+        try:
+            self.backup_api.publish_service_capabilities(context)
+        except exception.ServiceTooOld as e:
+            # cinder-backup has publish_service_capabilities starting Stein
+            # release only.
+            msg = ("Failed to notify about cinder-backup service "
+                   "capabilities for host %(host)s. This is normal "
+                   "during a live upgrade. Error: %(e)s")
+            LOG.warning(msg, {'host': self.host, 'e': e})
 
     @append_operation_type()
     def migrate_volume(self, context, volume, backend, force_copy,

@@ -400,6 +400,8 @@ class HostManager(object):
 
     backend_state_cls = BackendState
 
+    ALLOWED_SERVICE_NAMES = ('volume', 'backup')
+
     REQUIRED_KEYS = frozenset([
         'pool_name',
         'total_capacity_gb',
@@ -414,6 +416,7 @@ class HostManager(object):
     def __init__(self):
         self.service_states = {}  # { <host|cluster>: {<service>: {cap k : v}}}
         self.backend_state_map = {}
+        self.backup_service_states = {}
         self.filter_handler = filters.BackendFilterHandler('cinder.scheduler.'
                                                            'filters')
         self.filter_classes = self.filter_handler.get_all_classes()
@@ -506,7 +509,7 @@ class HostManager(object):
     def update_service_capabilities(self, service_name, host, capabilities,
                                     cluster_name, timestamp):
         """Update the per-service capabilities based on this notification."""
-        if service_name != 'volume':
+        if service_name not in HostManager.ALLOWED_SERVICE_NAMES:
             LOG.debug('Ignoring %(service_name)s service update '
                       'from %(host)s',
                       {'service_name': service_name, 'host': host})
@@ -525,6 +528,15 @@ class HostManager(object):
 
         # Set the default capabilities in case None is set.
         backend = cluster_name or host
+
+        if service_name == 'backup':
+            self.backup_service_states[backend] = capabilities
+            LOG.debug("Received %(service_name)s service update from "
+                      "%(host)s: %(cap)s",
+                      {'service_name': service_name, 'host': host,
+                       'cap': capabilities})
+            return
+
         capab_old = self.service_states.get(backend, {"timestamp": 0})
         capab_last_update = self.service_states_last_update.get(
             backend, {"timestamp": 0})

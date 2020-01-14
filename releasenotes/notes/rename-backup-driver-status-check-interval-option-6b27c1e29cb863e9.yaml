@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    If you have ``backup_driver_status_check_interval`` option in your
+    cinder.conf we recommend you to use ``backup_driver_stats_polling_interval``
+    to avoid deprecation warnings in logs.
+deprecations:
+  - |
+    ``backup_driver_status_check_interval`` config option is renamed to
+    ``backup_driver_stats_polling_interval`` to be similar with volume drivers
+    configuration. Old option name support will be dropped in U release.
