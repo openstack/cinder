@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    NetApp SolidFire driver: Enabled support for Active/Active
+    (including replication) to the SolidFire driver. This allows
+    users to configure SolidFire backends in clustered environments.
