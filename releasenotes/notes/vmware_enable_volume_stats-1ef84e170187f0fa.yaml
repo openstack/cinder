@@ -1,0 +1,23 @@
+---
+upgrade:
+  - |
+    VMware vmdk driver: The vmware vmdk driver had its get_volume_stats
+    removed in a previous release due to a potential performance hit of 20%
+    at a high load.  The problem with reporting ``unknown`` back to the
+    scheduler, is that it effectively removes cinder's ability to properly
+    schedule based on capacity utilization.  When this driver is enabled in a
+    heterogenous environment without properly reporting utilization
+    statistics, the scheduler's capacity filter will always allow this driver
+    to service a provisioning request. Without reporting the backend stats,
+    the capacity filter also can't determine the reserved_percentage as well
+    as the max_over_subscription_ratio. To enable the collection of stats
+    set ``vmware_enable_volume_stats`` to True in the driver section of
+    cinder.conf.  The default setting is False.  Keep in mind that there may
+    be a degradation in performance on the vcenter when enabling this setting.
+fixes:
+  - |
+    VMware vmdk driver: The collection of volume stats, which had been
+    disabled, may now be turned on by using the ``vmware_enable_volume_stats``
+    configuration option.  The default for this option is False (no
+    stats collection).  Be aware that enabling volume stats may cause
+    performance issues under high load.
