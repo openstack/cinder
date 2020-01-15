@@ -10,8 +10,6 @@ Cinder Specific Commandments
 - [N314] Check for vi editor configuration in source files.
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
-- [N325] str() and unicode() cannot be used on an exception. Remove or use
-  six.text_type().
 - [N336] Must use a dict comprehension instead of a dict constructor with a
   sequence of key-value pairs.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of
