@@ -77,7 +77,7 @@ Configuring the array
    * ``driver_use_ssl`` must be set to True to enable use of the HTTPS
      protocol.
 
-   * ``seagate_iscsi_ips`` specfies the iSCSI IP addresses
+   * ``seagate_iscsi_ips`` specifies the iSCSI IP addresses
      for the array if using the iSCSI transport protocol
 
    In the examples below, two back ends are defined, one for pool A and one for

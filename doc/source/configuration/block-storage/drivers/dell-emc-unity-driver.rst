@@ -343,7 +343,8 @@ steps:
 #. Setup the Unity array certificate and import it to the Unity, see section
    `Storage system certificate` of `Security Configuration Guide <https://www.emc.com/collateral/TechnicalDocument/docu69321.pdf>`_.
 
-#. Import the CA certficate to the Cinder nodes on which the driver is running.
+#. Import the CA certificate to the Cinder nodes on which the driver is
+   running.
 
 #. Enable the changes on cinder nodes and restart the cinder services.
 

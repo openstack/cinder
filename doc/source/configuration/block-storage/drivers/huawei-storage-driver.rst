@@ -508,7 +508,7 @@ of the Huawei volume driver.
      - All
    * - iscsi_default_target_ip
      - ``-``
-     - Remote transacton port IP.
+     - Remote transaction port IP.
      - All
 .. important::
 

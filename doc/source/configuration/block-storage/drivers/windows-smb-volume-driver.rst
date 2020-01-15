@@ -18,7 +18,7 @@ The main reasons to use the Windows SMB driver are:
 * suitable for a various range of deployment types and sizes
 
 The ``cinder-volume`` service as well as the required Python components will
-be installed directly onto designated Windows nodes (prefferably the ones
+be installed directly onto designated Windows nodes (preferably the ones
 exposing the shares).
 
 Common deployment scenarios
@@ -33,7 +33,7 @@ The SMB driver is designed to support a variety of scenarios, such as:
 By using SoFS shares, the virtual disk images are stored on Cluster Shared
 Volumes (``CSV``).
 
-A common practice involves depoying CSVs on top of SAN backed LUNs
+A common practice involves deploying CSVs on top of SAN backed LUNs
 (exposed to all the nodes of the cluster through iSCSI or Fibre Channel). In
 absence of a SAN, Storage Spaces/Storage Spaces Direct (``S2D``) may be used
 for the underlying storage.
@@ -84,8 +84,9 @@ Active-Active Cinder clustering is currently experimental and should not be
 used in production. This implies having multiple Cinder Volume services
 handling the same share simultaneously.
 
-On the other hand, Active-Pasive clustering can easily be achieved, configuring
-the Cinder Volume service as clustered using Microsoft Failover Cluster.
+On the other hand, Active-Passive clustering can easily be achieved,
+configuring the Cinder Volume service as clustered using Microsoft Failover
+Cluster.
 
 By using SoFS, you can provide high availability of the shares used by Cinder.
 This can be used in conjunction with the Nova Hyper-V cluster driver, which
