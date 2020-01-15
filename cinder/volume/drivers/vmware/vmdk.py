@@ -705,7 +705,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
         size_kb = volume['size'] * units.Mi
         adapter_type = self._get_adapter_type(volume)
-        controller_type = self.volumeops.get_controller_type(adapter_type)
+        controller_type = volumeops.ControllerType.get_controller_type(
+            adapter_type)
         controller_key, controller_spec = \
             self.volumeops.get_controller_key_and_spec(adapter_type)
         return {
@@ -714,9 +715,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             'vm': {
                 'path_name': self.volumeops.get_vm_path_name(
                     summary.name),
-                'guest_id': self.volumeops.get_vm_guest_id(),
-                'num_cpus': self.volumeops.get_vm_num_cpus(),
-                'memory_mb': self.volumeops.get_vm_memory_mb(),
+                'guest_id': volumeops.VM_GUEST_ID,
+                'num_cpus': volumeops.VM_NUM_CPUS,
+                'memory_mb': volumeops.VM_MEMORY_MB,
                 'vmx_version': self.volumeops.get_vmx_version(),
                 'extension_key': self.volumeops._extension_key,
                 'extension_type': self.volumeops._extension_type,
@@ -730,9 +731,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'shared_bus':
                     self.volumeops.get_controller_device_shared_bus(
                         controller_type),
-                'bus_number':
-                    self.volumeops
-                        .get_controller_device_default_bus_number()
+                'bus_number': volumeops.CONTROLLER_DEVICE_BUS_NUMBER
             },
             'disk': {
                 'type': disk_type,
@@ -813,6 +812,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         if 'platform' in connector and 'os_type' in connector and \
                 volume['status'] == 'restoring-backup':
             backing = self.volumeops.get_backing_by_uuid(volume['id'])
+            self.volumeops.rename_backing(backing, volume['name'])
             self.volumeops.update_backing_disk_uuid(backing, volume['id'])
 
     def create_export(self, context, volume, connector):

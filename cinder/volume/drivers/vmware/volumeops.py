@@ -35,7 +35,11 @@ FULL_CLONE_TYPE = 'full'
 
 BACKING_UUID_KEY = 'instanceUuid'
 MIN_VIRTUAL_DISK_SIZE_KB = 4 * units.Ki
-
+VM_GUEST_ID = 'otherGuest'
+VM_NUM_CPUS = 1
+VM_MEMORY_MB = 128
+VMX_VERSION = 'vmx-8'
+CONTROLLER_DEVICE_BUS_NUMBER = 0
 
 def split_datastore_path(datastore_path):
     """Split the datastore path to components.
@@ -686,14 +690,6 @@ class VMwareVolumeOps(object):
             return 'noSharing'
         return None
 
-    @staticmethod
-    def get_controller_device_default_bus_number():
-        return 0
-
-    @staticmethod
-    def get_controller_type(adapter_type):
-        return ControllerType.get_controller_type(adapter_type)
-
     def _create_controller_config_spec(self, adapter_type):
         """Returns config spec for adding a disk controller."""
         cf = self._session.vim.client.factory
@@ -701,8 +697,7 @@ class VMwareVolumeOps(object):
         controller_type = ControllerType.get_controller_type(adapter_type)
         controller_device = cf.create('ns0:%s' % controller_type)
         controller_device.key = -100
-        controller_device.busNumber = \
-            self.get_controller_device_default_bus_number()
+        controller_device.busNumber = CONTROLLER_DEVICE_BUS_NUMBER
         shared_bus = self.get_controller_device_shared_bus(controller_type)
         if shared_bus:
             controller_device.sharedBus = shared_bus
@@ -716,13 +711,13 @@ class VMwareVolumeOps(object):
     def get_disk_eagerly_scrub(disk_type):
         if disk_type == VirtualDiskType.EAGER_ZEROED_THICK:
             return True
-        return None
+        return False
 
     @staticmethod
     def get_disk_thin_provisioned(disk_type):
         if disk_type == VirtualDiskType.THIN:
             return True
-        return None
+        return False
 
     def _create_disk_backing(self, disk_type, vmdk_ds_file_path):
         """Creates file backing for virtual disk."""
@@ -841,20 +836,8 @@ class VMwareVolumeOps(object):
     def get_vm_path_name(ds_name):
         return '[%s]' % ds_name
 
-    @staticmethod
-    def get_vm_num_cpus():
-        return 1
-
-    @staticmethod
-    def get_vm_memory_mb():
-        return 128
-
-    @staticmethod
-    def get_vm_guest_id():
-        return 'otherGuest'
-
     def get_vmx_version(self):
-        return self._vmx_version or "vmx-08"
+        return self._vmx_version or VMX_VERSION
 
     def _get_create_spec_disk_less(self, name, ds_name, profileId=None,
                                    extra_config=None):
