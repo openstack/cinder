@@ -320,7 +320,8 @@ driver:
 - mirror_pool
 - volume_topology
 - peer_pool
-- host_site
+- flashcopy_rate
+- cycle_period_seconds
 
 These keys have the same semantics as their counterparts in the
 configuration file. They are set similarly; for example, ``rsize=2`` or
@@ -462,7 +463,9 @@ modify volume types, you can also change these extra specs properties:
 
 -  peer_pool
 
--  host_site
+-  flashcopy_rate
+
+-  cycle_period_seconds
 
 .. note::
 
