@@ -91,7 +91,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
         return req.json()['result']
 
     def _get_spdk_volume_name(self, name):
-        output = self._rpc_call('get_bdevs')
+        output = self._rpc_call('bdev_get_bdevs')
 
         for bdev in output:
             for alias in bdev['aliases']:
@@ -99,7 +99,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
                     return bdev['name']
 
     def _get_nqn_with_volume_name(self, name):
-        output = self._rpc_call('get_nvmf_subsystems')
+        output = self._rpc_call('nvmf_get_subsystems')
 
         spdk_name = self._get_spdk_volume_name(name)
 
@@ -112,7 +112,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
     def _get_first_free_node(self):
         cnode_num = []
 
-        output = self._rpc_call('get_nvmf_subsystems')
+        output = self._rpc_call('nvmf_get_subsystems')
 
         # Get node numbers for nqn string like this: nqn.2016-06.io.spdk:cnode1
 
@@ -149,7 +149,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
                 'allow_any_host': True,
                 'serial_number': serial,
             }
-            self._rpc_call('nvmf_subsystem_create', params)
+            self._rpc_call('nvmf_create_subsystem', params)
 
             listen_address = {
                 'trtype': transport_type,
@@ -189,7 +189,7 @@ class SpdkNvmf(nvmeof.NVMeOF):
         if nqn is not None:
             try:
                 params = {'nqn': nqn}
-                self._rpc_call('delete_nvmf_subsystem', params)
+                self._rpc_call('nvmf_delete_subsystem', params)
                 LOG.debug('SPDK subsystem %s deleted', nqn)
             except Exception as e:
                 LOG.debug('SPDK ERROR: subsystem not deleted: %s', e)
