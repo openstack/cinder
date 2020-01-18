@@ -47,6 +47,7 @@ REMOVED_DRVRS = [
     "prophetstor",
     "nimble",
     "sheepdog",
+    "vzstorage",
 ]
 
 
