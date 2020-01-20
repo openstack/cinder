@@ -1,6 +1,12 @@
 # block-box
 Standalone Cinder Containerized using Docker Compose
 
+** This was a proof of concept for running Cinder services in containers
+and is no longer supported.**
+
+There are several projects that support containerized services now. A good
+place to start may be the [LOCI Project](https://opendev.org/openstack/loci).
+
 ## Cinder
 Provides Block Storage as a service as part of the OpenStack Project.
 This project deploys Cinder in containers using docker-compose and
