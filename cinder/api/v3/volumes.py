@@ -207,8 +207,6 @@ class VolumeController(volumes_v2.VolumeController):
             self.volume_api.revert_to_snapshot(context, volume, l_snap)
         except (exception.InvalidVolume, exception.InvalidSnapshot) as e:
             raise exc.HTTPConflict(explanation=six.text_type(e))
-        except exception.VolumeSizeExceedsAvailableQuota as e:
-            raise exc.HTTPForbidden(explanation=six.text_type(e))
 
     def _get_image_snapshot(self, context, image_uuid):
         image_snapshot = None
