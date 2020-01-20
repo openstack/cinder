@@ -75,7 +75,7 @@ class RestClient(object):
         if obj['status'] != 'ok':
             msg = _('GetSessionId failure')
             raise exception.VolumeDriverException(msg)
-        return (obj['result']['sessionId']).encode('utf-8')
+        return (obj['result']['sessionId'])
 
     def get_all_cluster_nodes(self, node):
         """Retrieves all the nodes present in the cluster
@@ -143,12 +143,12 @@ class RestClient(object):
         :param node:  hostname of the node
         :return: REST response
         """
-        data = urllib.parse.urlencode(data)
+        data = urllib.parse.urlencode(data).encode("utf-8")
         req = urllib.request.Request("http://%s/rest/" % node, data)
         response = urllib.request.urlopen(req)
         json_str = response.read()
         obj = json.loads(json_str)
-        LOG.debug("Rest call output %s ", json_str)
+        LOG.debug("Rest call output %s ", obj)
         return obj
 
     def make_rest_call(self, data, node):
@@ -178,7 +178,7 @@ class RestClient(object):
                           "exception - %s", data, node, e.args)
                 node = self.get_pages_host()
         else:
-            msg = _('REST call status - %s') % obj['status']
+            msg = _('REST call status - Retry limit reached')
             raise exception.VolumeDriverException(msg)
 
     def create_vdisk(self, vDiskInfo):
@@ -223,7 +223,7 @@ class RestClient(object):
                 'type': 'ResizeDisks',
                 'category': 'VirtualDiskManagement',
                 'params': {
-                    'virtualDisks': [vDiskName.encode('utf-8')],
+                    'virtualDisks': [vDiskName],
                     'size': {
                         'unit': "GB",
                         'value': value
@@ -252,7 +252,7 @@ class RestClient(object):
                 'type': 'DeleteVDisk',
                 'category': 'VirtualDiskManagement',
                 'params': {
-                    'virtualDisks': [vDiskName.encode('utf-8')],
+                    'virtualDisks': [vDiskName],
                 },
                 'sessionId': sessionId,
             }
@@ -280,8 +280,8 @@ class RestClient(object):
                     'type': 'GetLun',
                     'category': 'VirtualDiskManagement',
                     'params': {
-                        'virtualDisk': vDiskName.encode('utf-8'),
-                        'target': target.encode('utf-8'),
+                        'virtualDisk': vDiskName,
+                        'target': target,
                     },
                     'sessionId': sessionId,
                 }
@@ -309,7 +309,7 @@ class RestClient(object):
                 'type': 'GetIqn',
                 'category': 'VirtualDiskManagement',
                 'params': {
-                    'host': host.encode('utf-8'),
+                    'host': host,
                 },
                 'sessionId': sessionId,
             }
@@ -338,8 +338,8 @@ class RestClient(object):
                 'type': 'AddLun',
                 'category': 'VirtualDiskManagement',
                 'params': {
-                    'virtualDisks': [vDiskName.encode('utf-8')],
-                    'targets': [tgtHost.encode('utf-8')],
+                    'virtualDisks': [vDiskName],
+                    'targets': [tgtHost],
                     'readonly': readonly,
                 },
                 'sessionId': sessionId,
@@ -371,8 +371,8 @@ class RestClient(object):
                 'type': 'UnmapLun',
                 'category': 'VirtualDiskManagement',
                 'params': {
-                    'virtualDisk': vDiskName.encode('utf-8'),
-                    'target': target.encode('utf-8'),
+                    'virtualDisk': vDiskName,
+                    'target': target,
                 },
                 'sessionId': sessionId,
             }
@@ -406,10 +406,10 @@ class RestClient(object):
                 'type': 'PersistACLAccess',
                 'category': 'VirtualDiskManagement',
                 'params': {
-                    'virtualDisks': [vDiskName.encode('utf-8')],
-                    'host': host.encode('utf-8'),
-                    'type': type.encode('utf-8'),
-                    'address': address.encode('utf-8')
+                    'virtualDisks': [vDiskName],
+                    'host': host,
+                    'type': type,
+                    'address': address
                 },
                 'sessionId': sessionId,
             }
@@ -435,21 +435,21 @@ class RestClient(object):
                 'type': 'MakeSnapshot',
                 'category': 'SnapshotManagement',
                 'params': {
-                    'virtualDisks': [vDiskName.encode('utf-8')],
+                    'virtualDisks': [vDiskName],
                 },
                 'sessionId': sessionId,
             }
         }
         if snapshotId:
             param = data['request']['params']
-            param['openstackSID'] = snapshotId.encode('utf-8')
+            param['openstackSID'] = snapshotId
         obj = self.make_rest_call(data=data, node=node)
 
         if obj['status'] != 'ok' or obj['result'][0]['status'] != 'ok':
             errmsg = _('REST call status - %s') % obj['status']
             raise exception.VolumeDriverException(errmsg)
 
-        return obj['result'][0]['snapshotName'].encode('utf-8')
+        return obj['result'][0]['snapshotName']
 
     def clone_vdisk(self, srcVolName, dstVolName, size):
         """Rest Call to clone vdisk
@@ -463,8 +463,8 @@ class RestClient(object):
                 'type': 'CloneVdisk',
                 'category': 'SnapshotManagement',
                 'params': {
-                    'srcVolName': srcVolName.encode('utf-8'),
-                    'cloneVolName': dstVolName.encode('utf-8'),
+                    'srcVolName': srcVolName,
+                    'cloneVolName': dstVolName,
                     'size': size
                 },
                 'sessionId': sessionId,
@@ -506,8 +506,8 @@ class RestClient(object):
         total = obj['result']['capacity']['total']['value']
         used = obj['result']['capacity']['used']['value']
         capacity = obj['result']['capacity']
-        total_unit = capacity['total']['units'].encode('utf-8')
-        used_unit = capacity['used']['units'].encode('utf-8')
+        total_unit = capacity['total']['units']
+        used_unit = capacity['used']['units']
         total_capacity = self.get_val_in_gb(total, total_unit)
         used_capacity = self.get_val_in_gb(used, used_unit)
         free_capacity = total_capacity - used_capacity
@@ -527,9 +527,9 @@ class RestClient(object):
                 'type': 'CloneVdisk',
                 'category': 'SnapshotManagement',
                 'params': {
-                    'cloneVolName': dstVolName.encode('utf-8'),
-                    'openstackSID': snapshotID.encode('utf-8'),
-                    'srcVolName': srcVolName.encode('utf-8'),
+                    'cloneVolName': dstVolName,
+                    'openstackSID': snapshotID,
+                    'srcVolName': srcVolName,
                     'size': size
                 },
                 'sessionId': sessionId,
@@ -554,9 +554,9 @@ class RestClient(object):
                 'type': 'DeleteSnapshot',
                 'category': 'SnapshotManagement',
                 'params': {
-                    'snapshotName': snapshotName.encode('utf-8'),
-                    'openstackSID': snapshotId.encode('utf-8'),
-                    'openstackVolName': vDiskName.encode('utf-8')
+                    'snapshotName': snapshotName,
+                    'openstackSID': snapshotId,
+                    'openstackVolName': vDiskName
                 },
                 'sessionId': sessionId,
             }
@@ -610,7 +610,7 @@ class RestClient(object):
         if not self.nodeMap:
             msg = _('NodeMap is empty')
             raise exception.VolumeDriverException(msg)
-        return random.choice(self.nodeMap.keys())
+        return random.choice(list(self.nodeMap.keys()))
 
     def retrieve_session_id(self, node):
         """returns sessionID of the given node
