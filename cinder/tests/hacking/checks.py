@@ -369,12 +369,6 @@ def check_timeutils_strtime(logical_line):
         yield(0, msg)
 
 
-def no_log_warn(logical_line):
-    msg = "C307: LOG.warn is deprecated, please use LOG.warning!"
-    if "LOG.warn(" in logical_line:
-        yield (0, msg)
-
-
 def dict_constructor_with_list_copy(logical_line):
     msg = ("N336: Must use a dict comprehension instead of a dict constructor "
            "with a sequence of key-value pairs.")
@@ -422,7 +416,6 @@ def factory(register):
     register(check_unicode_usage)
     register(check_no_print_statements)
     register(check_no_log_audit)
-    register(no_log_warn)
     register(dict_constructor_with_list_copy)
     register(no_test_log)
     register(validate_assertTrue)

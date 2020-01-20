@@ -392,8 +392,8 @@ class STXClient(object):
                 lun = obj.findtext("PROPERTY[@name='lun']")
                 iid = obj.findtext("PROPERTY[@name='identifier']")
                 if iid in ids:
-                    LOG.debug("volume '{}' is already mapped to {} at lun {}".
-                              format(volume_name, iid, lun))
+                    LOG.debug("volume '%s' is already mapped to %s at lun %s",
+                              volume_name, iid, lun)
                     return int(lun)
         except Exception:
             LOG.exception("failed to look up mappings for volume '%s'",

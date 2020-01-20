@@ -37,9 +37,8 @@ def hsexecute(cmdarg_json):
         (cmd_out, cmd_err) = putils.execute("hscli", cmdarg_json)
     except (putils.UnknownArgumentError, putils.ProcessExecutionError,
             OSError):
-        LOG.error("Exception in running the command for %s",
-                  cmdarg_json,
-                  exc_info=True)
+        LOG.exception("Exception in running the command for %s",
+                      cmdarg_json)
         raise exception.UnableToExecuteHyperScaleCmd(command=cmdarg_json)
 
     return (cmd_out, cmd_err)

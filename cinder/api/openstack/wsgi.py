@@ -600,13 +600,11 @@ class ResourceExceptionHandler(object):
             raise Fault(exception.ConvertedException(
                 code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):
-            exc_info = (ex_type, ex_value, ex_traceback)
-            LOG.error('Exception handling resource: %s',
-                      ex_value, exc_info=exc_info)
+            LOG.exception('Exception handling resource:')
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
             LOG.info("Fault thrown: %s", ex_value)
-            raise ex_value
+            raise
         elif isinstance(ex_value, webob.exc.HTTPException):
             LOG.info("HTTP exception thrown: %s", ex_value)
             raise Fault(ex_value)

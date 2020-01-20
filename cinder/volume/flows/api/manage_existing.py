@@ -126,7 +126,7 @@ class ManageCastTask(flow_utils.CinderTask):
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info
-        LOG.error('Unexpected build error:', exc_info=exc_info)
+        LOG.error('Unexpected build error:', exc_info=exc_info)  # noqa
 
 
 def get_flow(scheduler_rpcapi, db_api, create_what):

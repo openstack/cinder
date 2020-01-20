@@ -1036,7 +1036,7 @@ class LinstorIscsiDriver(LinstorBaseDriver):
                 db=self.db,
                 executor=self._execute)
 
-        LOG.info('START: LINSTOR DRBD driver {}'.format(self.helper_name))
+        LOG.info('START: LINSTOR DRBD driver %s', self.helper_name)
 
     def get_volume_stats(self, refresh=False):
         data = self._get_volume_stats()
