@@ -48,6 +48,7 @@ REMOVED_DRVRS = [
     "nimble",
     "sheepdog",
     "vzstorage",
+    "veritas_access",
 ]
 
 

@@ -201,7 +201,9 @@ class TestCinderStatus(testtools.TestCase):
               'cinder.volume.drivers.nimble.NimbleFCDriver',
               'cinder.volume.drivers.nimble.NimbleISCSIDriver',
               'cinder.volume.drivers.sheepdog.SheepdogDriver',
-              'cinder.volume.drivers.vzstorage.VZStorageDriver')
+              'cinder.volume.drivers.vzstorage.VZStorageDriver',
+              'cinder.volume.drivers.veritas_access.veritas_iscsi.'
+              'ACCESSIscsiDriver')
     def test_check_removed_drivers_fail(self, volume_driver):
         self._set_volume_driver(
             volume_driver,
