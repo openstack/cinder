@@ -26,6 +26,8 @@ from cinder.volume import configuration as conf
 
 with mock.patch.dict('sys.modules', pywbem=mock.Mock()):
     from cinder.volume.drivers.fujitsu.eternus_dx \
+        import eternus_dx_cli
+    from cinder.volume.drivers.fujitsu.eternus_dx \
         import eternus_dx_common as dx_common
     from cinder.volume.drivers.fujitsu.eternus_dx \
         import eternus_dx_fc as dx_fc
@@ -888,9 +890,36 @@ class FJFCDriverTestCase(test.TestCase):
         self.mock_object(dx_common.FJDXCommon, '_create_eternus_instance_name',
                          instancename.fake_create_eternus_instance_name)
 
+        self.mock_object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus',
+                         self.fake_exec_cli_with_eternus)
         # Set iscsi driver to self.driver.
         driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
         self.driver = driver
+
+    def fake_exec_cli_with_eternus(self, exec_cmdline):
+        if exec_cmdline == "show users":
+            ret = ('\r\nCLI> show users\r\n00\r\n'
+                   '3B\r\nf.ce\tMaintainer\t01\t00'
+                   '\t00\t00\r\ntestuser\tSoftware'
+                   '\t01\t01\t00\t00\r\nCLI> ')
+            return ret
+        elif exec_cmdline.startswith('show volumes'):
+            ret = ('\r\nCLI> %s\r\n00\r\n0560\r\n0000'
+                   '\tFJosv_0qJ4rpOHgFE8ipcJOMfBmg=='
+                   '\tA001\t0B\t00\t0000\tabcd1234_TPP'
+                   '\t0000000000200000\t00\t00'
+                   '\t00000000\t0050\tFF\t00\tFF'
+                   '\tFF\t20\tFF\tFFFF\t00'
+                   '\t600000E00D2A0000002A011500140000'
+                   '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
+                   '\t00\tFF\r\n0001\tFJosv_UkCZqMFZW3SU_JzxjHiKfg=='
+                   '\tA001\t0B\t00\t0000\tabcd1234_OSVD'
+                   '\t0000000000200000\t00\t00\t00000000'
+                   '\t0050\tFF\t00\tFF\tFF\t20\tFF\tFFFF'
+                   '\t00\t600000E00D2A0000002A0115001E0000'
+                   '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
+                   '\t00\tFF' % exec_cmdline)
+            return ret
 
     def fake_safe_get(self, str=None):
         return str
@@ -1029,9 +1058,36 @@ class FJISCSIDriverTestCase(test.TestCase):
         self.mock_object(dx_common.FJDXCommon, '_get_mapdata_iscsi',
                          self.fake_get_mapdata)
 
+        self.mock_object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus',
+                         self.fake_exec_cli_with_eternus)
         # Set iscsi driver to self.driver.
         driver = dx_iscsi.FJDXISCSIDriver(configuration=self.configuration)
         self.driver = driver
+
+    def fake_exec_cli_with_eternus(self, exec_cmdline):
+        if exec_cmdline == "show users":
+            ret = ('\r\nCLI> show users\r\n00\r\n'
+                   '3B\r\nf.ce\tMaintainer\t01\t00'
+                   '\t00\t00\r\ntestuser\tSoftware'
+                   '\t01\t01\t00\t00\r\nCLI> ')
+            return ret
+        elif exec_cmdline.startswith('show volumes'):
+            ret = ('\r\nCLI> %s\r\n00\r\n0560\r\n0000'
+                   '\tFJosv_0qJ4rpOHgFE8ipcJOMfBmg=='
+                   '\tA001\t0B\t00\t0000\tabcd1234_TPP'
+                   '\t0000000000200000\t00\t00'
+                   '\t00000000\t0050\tFF\t00\tFF'
+                   '\tFF\t20\tFF\tFFFF\t00'
+                   '\t600000E00D2A0000002A011500140000'
+                   '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
+                   '\t00\tFF\r\n0001\tFJosv_UkCZqMFZW3SU_JzxjHiKfg=='
+                   '\tA001\t0B\t00\t0000\tabcd1234_OSVD'
+                   '\t0000000000200000\t00\t00\t00000000'
+                   '\t0050\tFF\t00\tFF\tFF\t20\tFF\tFFFF'
+                   '\t00\t600000E00D2A0000002A0115001E0000'
+                   '\t00\t00\tFF\tFF\tFFFFFFFF\t00'
+                   '\t00\tFF' % exec_cmdline)
+            return ret
 
     def fake_safe_get(self, str=None):
         return str
