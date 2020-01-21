@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added the ``image_conversion_cpu_limit`` and
+    ``image_conversion_address_space_limit`` as configurable parameters. This
+    adds configurability to the image conversion process to prevent the process
+    from timing out when converting larger images.
