@@ -106,7 +106,7 @@ CONF.register_opts(nas_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(volume_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-def locked_volume_id_operation(f, external=False):
+def locked_volume_id_operation(f):
     """Lock decorator for volume operations.
 
        Takes a named lock prior to executing the operation. The lock is named
@@ -130,7 +130,7 @@ def locked_volume_id_operation(f, external=False):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         @utils.synchronized('%s-%s' % (lock_tag, volume_id),
-                            external=external)
+                            external=False)
         def lvo_inner2():
             return f(inst, *args, **kwargs)
         return lvo_inner2()
