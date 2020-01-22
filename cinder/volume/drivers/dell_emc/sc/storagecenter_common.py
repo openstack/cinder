@@ -659,7 +659,7 @@ class SCCommonDriver(driver.ManageableVD,
     def ensure_export(self, context, volume):
         """Ensure an export of a volume.
 
-        Per the eqlx driver we just make sure that the volume actually
+        Per the sc driver we just make sure that the volume actually
         exists where we think it does.
         """
         scvolume = None
