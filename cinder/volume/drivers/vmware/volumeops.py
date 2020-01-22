@@ -38,7 +38,7 @@ MIN_VIRTUAL_DISK_SIZE_KB = 4 * units.Ki
 VM_GUEST_ID = 'otherGuest'
 VM_NUM_CPUS = 1
 VM_MEMORY_MB = 128
-VMX_VERSION = 'vmx-8'
+VMX_VERSION = 'vmx-08'
 CONTROLLER_DEVICE_BUS_NUMBER = 0
 
 def split_datastore_path(datastore_path):
@@ -856,9 +856,9 @@ class VMwareVolumeOps(object):
 
         create_spec = cf.create('ns0:VirtualMachineConfigSpec')
         create_spec.name = name
-        create_spec.guestId = self.get_vm_guest_id()
-        create_spec.numCPUs = self.get_vm_num_cpus()
-        create_spec.memoryMB = self.get_vm_memory_mb()
+        create_spec.guestId = VM_GUEST_ID
+        create_spec.numCPUs = VM_NUM_CPUS
+        create_spec.memoryMB = VM_MEMORY_MB
         create_spec.files = vm_file_info
         # Set the default hardware version to a compatible version supported by
         # vSphere 5.0. This will ensure that the backing VM can be migrated
