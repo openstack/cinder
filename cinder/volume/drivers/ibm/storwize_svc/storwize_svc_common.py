@@ -488,6 +488,7 @@ class StorwizeSSH(object):
         try:
             return self.run_ssh_check_created(ssh_cmd)
         except Exception as ex:
+            # pylint: disable=E1101
             if hasattr(ex, 'msg') and 'CMMVC6372W' in ex.msg:
                 vdisk = self.lsvdisk(name)
                 if vdisk:
@@ -1211,6 +1212,7 @@ class StorwizeHelpers(object):
                                         multihostmap)
                 return int(result_lun)
             except Exception as ex:
+                # pylint: disable=E1101
                 if (not multihostmap and hasattr(ex, 'msg') and
                         'CMMVC6071E' in ex.msg):
                     LOG.warning('storwize_svc_multihostmap_enabled is set '
@@ -1445,6 +1447,7 @@ class StorwizeHelpers(object):
                     raise exception.VolumeBackendAPIException(data=ex)
                 else:
                     testValue = False
+                    # pylint: disable=E1101
                     LOG.debug('Helper.'
                               '_wait_for_condition: %(method_name)s '
                               'execution failed for %(exception)s.',
@@ -2123,12 +2126,13 @@ class StorwizeHelpers(object):
         try:
             rc_id = self.ssh.mkrcrelationship(master, aux, system,
                                               asyncmirror, cyclingmode)
-        except exception.VolumeBackendAPIException as e:
+        except exception.VolumeBackendAPIException as ex:
             rc_id = None
             # CMMVC5959E is the code in Stowize storage, meaning that
             # there is a relationship that already has this name on the
             # master cluster.
-            if 'CMMVC5959E' not in e:
+            # pylint: disable=E1101
+            if hasattr(ex, 'msg') and 'CMMVC5959E' not in ex.msg:
                 # If there is no relation between the primary and the
                 # secondary back-end storage, the exception is raised.
                 raise
