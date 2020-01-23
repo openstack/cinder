@@ -2407,7 +2407,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         for v in volumes:
             if v['status'] == "error":
                 LOG.debug("Skipping operation for Volume %s as it is "
-                          "on error state.")
+                          "on error state.", v['id'])
                 continue
 
             target_vlist = [sfv for sfv in target_vols

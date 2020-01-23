@@ -4226,7 +4226,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     else:
                         self._helpers.start_rccg(rccg_name, primary='aux')
             else:
-                LOG.warning('group %(grp)s is not in sync.')
+                LOG.warning('group %(grp)s is not in sync.',
+                            {'grp': rccg_name})
         except exception.VolumeBackendAPIException as ex:
             LOG.warning('Fail to copy data from aux group %(rccg)s to master '
                         'group. Please recheck the relationship and '
