@@ -175,3 +175,4 @@ purestorage==1.6.0
 rsd-lib==1.1.0
 storpool==4.0.0
 storpool.spopenstack==2.2.1
+dfs_sdk==1.2.25
