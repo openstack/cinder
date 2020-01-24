@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Catch argument exceptions when configuring multiattach for rbd volumes.
+    This allows multiattach images with flags already set to continue instead
+    of raising an exception and failing.
