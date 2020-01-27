@@ -2781,10 +2781,17 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual('available',
                          db.volume_get(context.get_admin_context(),
                                        volume_dst['id']).status)
-        src_glancemeta = db.volume_get(context.get_admin_context(),
-                                       volume_src['id']).volume_glance_metadata
-        dst_glancemeta = db.volume_get(context.get_admin_context(),
-                                       volume_dst['id']).volume_glance_metadata
+
+        # TODO: review all tests in this file to make sure they are
+        # using the defined db.api to access stuff rather than taking
+        # shortcuts like the following (see LP Bug #1860817):
+        # src_glancemeta = db.volume_get(context.get_admin_context(),
+        #     volume_src['id']).volume_glance_metadata
+
+        src_glancemeta = db.volume_glance_metadata_get(
+            context.get_admin_context(), volume_src['id'])
+        dst_glancemeta = db.volume_glance_metadata_get(
+            context.get_admin_context(), volume_dst['id'])
         for meta_src in src_glancemeta:
             for meta_dst in dst_glancemeta:
                 if meta_dst.key == meta_src.key:
