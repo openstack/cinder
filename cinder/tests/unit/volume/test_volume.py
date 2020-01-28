@@ -1679,6 +1679,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                 mock_execute.assert_called_once_with(
                     'cryptsetup', 'luksChangeKey',
                     '/some/device/thing',
+                    '--force-password',
                     log_errors=processutils.LOG_ALL_ERRORS,
                     process_input='qwert\nasdfg\n',
                     run_as_root=True)
