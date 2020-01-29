@@ -19,6 +19,7 @@ from unittest import mock
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import context
@@ -27,6 +28,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import gpfs
@@ -86,6 +88,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.context = context.get_admin_context()
         self.context.user_id = 'fake'
         self.context.project_id = 'fake'
+        self.updated_at = timeutils.utcnow()
         CONF.gpfs_images_dir = self.images_dir
 
     def _cleanup(self, images_dir, volumes_path):
@@ -1384,7 +1387,16 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
     @mock.patch('cinder.image.image_utils.upload_volume')
     def test_copy_volume_to_image(self, mock_upload_volume, mock_local_path):
-        volume = self._fake_volume()
+        volume = test_utils.create_volume(
+            self.context, volume_type_id=fake.VOLUME_TYPE_ID,
+            updated_at=self.updated_at)
+        extra_specs = {
+            'image_service:store_id': 'fake-store'
+        }
+        test_utils.create_volume_type(
+            self.context.elevated(), id=fake.VOLUME_TYPE_ID,
+            name="test_type", extra_specs=extra_specs)
+
         self.driver.copy_volume_to_image('', volume, '', '')
 
     @mock.patch('cinder.utils.execute')

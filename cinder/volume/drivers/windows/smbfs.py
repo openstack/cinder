@@ -553,6 +553,8 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
     @coordination.synchronized('{self.driver_prefix}-{volume.id}')
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
 
         # If snapshots exist, flatten to a temporary image, and upload it
 
@@ -582,7 +584,8 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                                       image_service,
                                       image_meta,
                                       upload_path,
-                                      root_file_fmt)
+                                      root_file_fmt,
+                                      store_id=store_id)
         finally:
             if temp_path:
                 self._delete(temp_path)

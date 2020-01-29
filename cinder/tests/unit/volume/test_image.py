@@ -89,6 +89,11 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
     def test_copy_volume_to_image_status_available(self):
         # creating volume testdata
         self.volume_attrs['instance_uuid'] = None
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'test', 'extra_specs': {
+                'image_service:store_id': 'fake_store'
+            }}).get('id')
+        self.volume_attrs['volume_type_id'] = volume_type_id
         db.volume_create(self.context, self.volume_attrs)
 
         # start test
@@ -129,6 +134,11 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         # Creating volume testdata
         self.volume_attrs['instance_uuid'] = 'b21f957d-a72f-4b93-b5a5-' \
                                              '45b1161abb02'
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'test', 'extra_specs': {
+                'image_service:store_id': 'fake_store'
+            }}).get('id')
+        self.volume_attrs['volume_type_id'] = volume_type_id
         db.volume_create(self.context, self.volume_attrs)
 
         method = 'volume_update_status_based_on_attachment'
@@ -150,6 +160,11 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
     def test_copy_volume_to_image_status_use(self):
         self.image_meta['id'] = 'a440c04b-79fa-479c-bed1-0b816eaec379'
         # creating volume testdata
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'test', 'extra_specs': {
+                'image_service:store_id': 'fake_store'
+            }}).get('id')
+        self.volume_attrs['volume_type_id'] = volume_type_id
         db.volume_create(self.context, self.volume_attrs)
 
         # start test
@@ -163,6 +178,11 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
     def test_copy_volume_to_image_exception(self):
         self.image_meta['id'] = NON_EXISTENT_IMAGE_ID
         # creating volume testdata
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'test', 'extra_specs': {
+                'image_service:store_id': 'fake_store'
+            }}).get('id')
+        self.volume_attrs['volume_type_id'] = volume_type_id
         self.volume_attrs['status'] = 'in-use'
         db.volume_create(self.context, self.volume_attrs)
 
@@ -296,6 +316,11 @@ class CopyVolumeToImageTestCase(base.BaseVolumeTestCase):
         # creating volume testdata
         self.volume_attrs['instance_uuid'] = None
         self.volume_attrs['snapshot_id'] = fake.SNAPSHOT_ID
+        volume_type_id = db.volume_type_create(
+            self.context, {'name': 'test', 'extra_specs': {
+                'image_service:store_id': 'fake_store'
+            }}).get('id')
+        self.volume_attrs['volume_type_id'] = volume_type_id
         db.volume_create(self.context, self.volume_attrs)
 
         def fake_create(context, volume, **kwargs):

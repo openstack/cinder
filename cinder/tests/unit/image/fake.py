@@ -212,7 +212,7 @@ class _FakeImageService(object):
         return self.images[image_id]
 
     def update(self, context, image_id, metadata, data=None,
-               purge_props=False):
+               purge_props=False, store_id=None):
         """Replace the contents of the given image with the new data.
 
         :raises ImageNotFound: if the image does not exist.

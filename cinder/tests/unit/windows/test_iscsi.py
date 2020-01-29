@@ -23,14 +23,17 @@ from unittest import mock
 
 import ddt
 from oslo_utils import fileutils
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as test_utils
 from cinder.tests.unit.windows import db_fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.windows import iscsi as windows_iscsi
@@ -48,6 +51,9 @@ class TestWindowsISCSIDriver(test.TestCase):
 
         self._driver = windows_iscsi.WindowsISCSIDriver(
             configuration=self.configuration)
+
+        self._context = context.get_admin_context()
+        self.updated_at = timeutils.utcnow()
 
     @mock.patch.object(fileutils, 'ensure_tree')
     def test_do_setup(self, mock_ensure_tree):
@@ -375,7 +381,18 @@ class TestWindowsISCSIDriver(test.TestCase):
 
         disk_format = 'vhd'
         fake_image_meta = db_fakes.get_fake_image_meta()
-        volume = fake_volume.fake_volume_obj(mock.sentinel.fake_context)
+
+        fake_volume = test_utils.create_volume(
+            self._context, volume_type_id=fake.VOLUME_TYPE_ID,
+            updated_at=self.updated_at)
+
+        extra_specs = {
+            'image_service:store_id': 'fake-store'
+        }
+        test_utils.create_volume_type(self._context.elevated(),
+                                      id=fake.VOLUME_TYPE_ID, name="test_type",
+                                      extra_specs=extra_specs)
+
         fake_img_conv_dir = 'fake_img_conv_dir'
         self.flags(image_conversion_dir=fake_img_conv_dir)
 
@@ -388,17 +405,18 @@ class TestWindowsISCSIDriver(test.TestCase):
             fake_image_meta['id'] + '.' + disk_format)
 
         self._driver.copy_volume_to_image(
-            mock.sentinel.context, volume,
+            mock.sentinel.context, fake_volume,
             mock.sentinel.image_service,
             fake_image_meta)
 
-        mock_tmp_snap.assert_called_once_with(volume.name)
+        mock_tmp_snap.assert_called_once_with(fake_volume.name)
         tgt_utils.export_snapshot.assert_called_once_with(
             mock.sentinel.tmp_snap_name,
             expected_tmp_vhd_path)
         mock_upload_volume.assert_called_once_with(
             mock.sentinel.context, mock.sentinel.image_service,
-            fake_image_meta, expected_tmp_vhd_path, 'vhd')
+            fake_image_meta, expected_tmp_vhd_path, 'vhd',
+            store_id='fake-store')
         mock_delete_if_exists.assert_called_once_with(
             expected_tmp_vhd_path)
 

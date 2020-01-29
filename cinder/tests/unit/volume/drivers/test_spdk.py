@@ -16,12 +16,15 @@ from unittest import mock
 
 from os_brick import initiator
 from os_brick.initiator import connector
+from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import context
 from cinder import objects
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import spdk as spdk_driver
@@ -513,6 +516,8 @@ class SpdkDriverTestCase(test.TestCase):
         self.jsonrpcclient = JSONRPCClient()
         self.driver = spdk_driver.SPDKDriver(configuration=
                                              self.configuration)
+        self._context = context.get_admin_context()
+        self.updated_at = timeutils.utcnow()
 
     def test__update_volume_stats(self):
         with mock.patch.object(self.driver, "_rpc_call",
@@ -733,16 +738,24 @@ class SpdkDriverTestCase(test.TestCase):
     def test_copy_volume_to_image(self, volume_get):
         with mock.patch.object(self.driver, "_rpc_call",
                                self.jsonrpcclient.call):
-            db_volume = fake_volume.fake_db_volume()
-            db_volume['provider_location'] = "127.0.0.1:3262 RDMA " \
-                                             "2016-06.io.spdk:cnode2"
+            provider_location = "127.0.0.1:3262 RDMA 2016-06.io.spdk:cnode2"
+            volume = test_utils.create_volume(
+                self._context, volume_type_id=fake.VOLUME_TYPE_ID,
+                updated_at=self.updated_at,
+                provider_location=provider_location)
+            extra_specs = {
+                'image_service:store_id': 'fake-store'
+            }
+            test_utils.create_volume_type(self._context.elevated(),
+                                          id=fake.VOLUME_TYPE_ID,
+                                          name="test_type",
+                                          extra_specs=extra_specs)
+
             ctxt = context.get_admin_context()
-            db_volume = objects.Volume._from_db_object(ctxt, objects.Volume(),
-                                                       db_volume)
-            volume_get.return_value = db_volume
+            volume_get.return_value = volume
             with mock.patch.object(self.driver.target_driver, "_rpc_call",
                                    self.jsonrpcclient.call):
-                self.driver.copy_volume_to_image(ctxt, db_volume, None, None)
+                self.driver.copy_volume_to_image(ctxt, volume, None, None)
 
     def test_extend_volume(self):
         with mock.patch.object(self.driver, "_rpc_call",

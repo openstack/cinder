@@ -26,6 +26,7 @@ from cinder import context as ctxt
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import image_utils
 from cinder.policies import type_extra_specs as policy
 from cinder import rpc
 from cinder.volume import volume_types
@@ -71,6 +72,10 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         specs = body['extra_specs']
 
+        if 'image_service:store_id' in specs:
+            image_service_store_id = specs['image_service:store_id']
+            image_utils.validate_stores_id(context, image_service_store_id)
+
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     specs)
@@ -94,6 +99,10 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if id not in body:
             expl = _('Request body and URI mismatch')
             raise webob.exc.HTTPBadRequest(explanation=expl)
+
+        if 'image_service:store_id' in body:
+            image_service_store_id = body['image_service:store_id']
+            image_utils.validate_stores_id(context, image_service_store_id)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,

@@ -1607,9 +1607,17 @@ class VolumeManager(manager.CleanableManager,
 
         uri = 'cinder://%s' % image_volume.id
         image_registered = None
+
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
+        location_metadata = {}
+
+        if store_id:
+            location_metadata['store'] = store_id
+
         try:
             image_registered = image_service.add_location(
-                ctx, image_meta['id'], uri, {})
+                ctx, image_meta['id'], uri, location_metadata)
         except (exception.NotAuthorized, exception.Invalid,
                 exception.NotFound):
             LOG.exception('Failed to register image volume location '

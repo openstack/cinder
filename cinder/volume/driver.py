@@ -899,12 +899,16 @@ class BaseVD(object):
                                                           enforce_multipath)
         attach_info, volume = self._attach_volume(context, volume, properties)
 
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
+
         try:
             image_utils.upload_volume(context,
                                       image_service,
                                       image_meta,
                                       attach_info['device']['path'],
-                                      compress=True)
+                                      compress=True,
+                                      store_id=store_id)
         finally:
             # Since attached volume was not used for writing we can force
             # detach it

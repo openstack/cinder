@@ -24,6 +24,7 @@ import webob
 
 from cinder.api.contrib import types_extra_specs
 from cinder import exception
+from cinder.image import glance as image_store
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -147,6 +148,65 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
+    @mock.patch.object(image_store.GlanceImageService, 'get_stores')
+    def test_create_valid_image_store(self, mock_get_stores):
+        mock_get_stores.return_value = {
+            'stores': [{
+                'default': 'true',
+                'id': 'cheap'
+            }, {
+                'id': 'read_only_store',
+                'read-only': 'true'
+            }]
+        }
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
+        body = {"extra_specs": {"image_service:store_id": "cheap"}}
+
+        self.assertEqual(0, len(self.notifier.notifications))
+        req = fakes.HTTPRequest.blank(self.api_path)
+        res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
+        self.assertEqual(1, len(self.notifier.notifications))
+        self.assertIn('created_at', self.notifier.notifications[0]['payload'])
+        self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
+        self.assertEqual(
+            'cheap', res_dict['extra_specs']['image_service:store_id'])
+
+    @mock.patch.object(image_store.GlanceImageService, 'get_stores')
+    def test_create_invalid_image_store(self, mock_get_stores):
+        mock_get_stores.return_value = {
+            'stores': [{
+                'default': 'true',
+                'id': 'cheap'
+            }, {
+                'id': 'read_only_store',
+                'read-only': 'true'
+            }]
+        }
+        body = {"extra_specs": {"image_service:store_id": "fast"}}
+        req = fakes.HTTPRequest.blank(self.api_path)
+        self.assertRaises(cinder.exception.GlanceStoreNotFound,
+                          self.controller.create,
+                          req, fake.VOLUME_ID, body=body)
+
+    @mock.patch.object(image_store.GlanceImageService, 'get_stores')
+    def test_create_read_only_image_store(self, mock_get_stores):
+        mock_get_stores.return_value = {
+            'stores': [{
+                'default': 'true',
+                'id': 'cheap'
+            }, {
+                'id': 'read_only_store',
+                'read-only': 'true'
+            }]
+        }
+        body = {"extra_specs": {"image_service:store_id": "read_only_store"}}
+        req = fakes.HTTPRequest.blank(self.api_path)
+        self.assertRaises(cinder.exception.GlanceStoreReadOnly,
+                          self.controller.create,
+                          req, fake.VOLUME_ID, body=body)
+
     @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
     def test_create_key_allowed_chars(
             self, volume_type_extra_specs_update_or_create):
@@ -194,6 +254,93 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                          res_dict['extra_specs']['other2_alphanum.-_:'])
         self.assertEqual('value3',
                          res_dict['extra_specs']['other3_alphanum.-_:'])
+
+    @mock.patch.object(image_store.GlanceImageService, 'get_stores')
+    def test_update_valid_image_store(self, mock_get_stores):
+        mock_get_stores.return_value = {
+            'stores': [{
+                'default': 'true',
+                'id': 'cheap'
+            }, {
+                'id': 'fast',
+            },
+                {
+                'id': 'read_only_store',
+                'read-only': 'true'
+            }]
+        }
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
+        body = {"image_service:store_id": "fast"}
+
+        self.assertEqual(0, len(self.notifier.notifications))
+        req = fakes.HTTPRequest.blank(
+            self.api_path + "/image_service:store_id")
+        res_dict = self.controller.update(req, fake.VOLUME_ID,
+                                          "image_service:store_id",
+                                          body=body)
+        self.assertEqual(1, len(self.notifier.notifications))
+        self.assertIn('created_at', self.notifier.notifications[0]['payload'])
+        self.assertIn('updated_at', self.notifier.notifications[0]['payload'])
+        self.assertEqual(
+            'fast', res_dict['image_service:store_id'])
+
+    @mock.patch.object(image_store.GlanceImageService, 'get_stores')
+    def test_update_invalid_image_store(self, mock_get_stores):
+        mock_get_stores.return_value = {
+            'stores': [{
+                'default': 'true',
+                'id': 'cheap'
+            }, {
+                'id': 'fast',
+            },
+                {
+                'id': 'read_only_store',
+                'read-only': 'true'
+            }]
+        }
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
+        body = {"image_service:store_id": "very_fast"}
+
+        self.assertEqual(0, len(self.notifier.notifications))
+        req = fakes.HTTPRequest.blank(
+            self.api_path + "/image_service:store_id")
+        self.assertRaises(cinder.exception.GlanceStoreNotFound,
+                          self.controller.update,
+                          req, fake.VOLUME_ID,
+                          "image_service:store_id",
+                          body=body)
+
+    @mock.patch.object(image_store.GlanceImageService, 'get_stores')
+    def test_update_read_only_image_store(self, mock_get_stores):
+        mock_get_stores.return_value = {
+            'stores': [{
+                'default': 'true',
+                'id': 'cheap'
+            }, {
+                'id': 'fast',
+            },
+                {
+                'id': 'read_only_store',
+                'read-only': 'true'
+            }]
+        }
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
+        body = {"image_service:store_id": "read_only_store"}
+
+        self.assertEqual(0, len(self.notifier.notifications))
+        req = fakes.HTTPRequest.blank(
+            self.api_path + "/image_service:store_id")
+        self.assertRaises(cinder.exception.GlanceStoreReadOnly,
+                          self.controller.update,
+                          req, fake.VOLUME_ID,
+                          "image_service:store_id",
+                          body=body)
 
     def test_update_item(self):
         self.mock_object(cinder.db,

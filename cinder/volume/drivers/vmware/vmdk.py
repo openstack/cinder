@@ -1404,6 +1404,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         host_ip = self.configuration.vmware_host_ip
         port = self.configuration.vmware_host_port
 
+        # retrieve store information from extra-specs
+        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
+
         image_transfer.upload_image(context,
                                     timeout,
                                     image_service,
@@ -1416,7 +1419,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                     vmdk_file_path=vmdk_file_path,
                                     vmdk_size=volume['size'] * units.Gi,
                                     image_name=image_meta['name'],
-                                    image_version=1)
+                                    image_version=1,
+                                    store_id=store_id)
         LOG.info("Done copying volume %(vol)s to a new image %(img)s",
                  {'vol': volume['name'], 'img': image_meta['name']})
 
