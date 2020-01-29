@@ -41,6 +41,7 @@ VM_MEMORY_MB = 128
 VMX_VERSION = 'vmx-08'
 CONTROLLER_DEVICE_BUS_NUMBER = 0
 
+
 def split_datastore_path(datastore_path):
     """Split the datastore path to components.
 
