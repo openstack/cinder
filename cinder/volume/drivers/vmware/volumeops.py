@@ -799,8 +799,8 @@ class VMwareVolumeOps(object):
                                   not created for the virtual disk.
         :return: list containing controller and disk config specs
         """
-        (controller_key, controller_spec) = self.get_controller_key_and_spec(
-            adapter_type)
+        (controller_key, controller_spec) = \
+            self.get_controller_key_and_spec(adapter_type)
 
         disk_spec = self._create_virtual_disk_config_spec(size_kb,
                                                           disk_type,
