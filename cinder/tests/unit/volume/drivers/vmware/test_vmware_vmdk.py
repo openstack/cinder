@@ -116,7 +116,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vmware_snapshot_format=self.SNAPSHOT_FORMAT,
             vmware_lazy_create=True,
             vmware_datastore_regex=None,
-            reserved_percentage=0
+            reserved_percentage=0,
+            vmware_profile_check_on_attach=True,
         )
 
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
@@ -3040,6 +3041,33 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.is_datastore_accessible.assert_called_once_with(datastore, host)
         ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
                                                               profile)
+        self.assertFalse(vops.relocate_backing.called)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_relocate_backing_nop_on_attach_if_disabled(self, ds_sel,
+                                                        get_profile, vops):
+        self._driver._storage_policy_enabled = True
+        self._driver.configuration.vmware_profile_check_on_attach = False
+        volume = self._create_volume_dict()
+
+        datastore = mock.sentinel.datastore
+        vops.get_datastore.return_value = datastore
+
+        profile = mock.sentinel.profile
+        get_profile.return_value = profile
+
+        vops.is_datastore_accessible.return_value = True
+        ds_sel.is_datastore_compliant.return_value = False
+
+        backing = mock.sentinel.backing
+        host = mock.sentinel.host
+        self._driver._relocate_backing(volume, backing, host)
+
+        get_profile.assert_called_once_with(volume)
+        vops.is_datastore_accessible.assert_called_once_with(datastore, host)
+        self.assertFalse(ds_sel.is_datastore_compliant.called)
         self.assertFalse(vops.relocate_backing.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')

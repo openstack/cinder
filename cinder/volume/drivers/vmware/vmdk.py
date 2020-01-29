@@ -169,6 +169,15 @@ vmdk_opts = [
     cfg.BoolOpt('vmware_online_resize',
                 default=True,
                 help='If true, enables volume resize in in-use state'),
+    cfg.BoolOpt('vmware_profile_check_on_attach',
+                default=True,
+                help='If False, we are not checking the storage-policy in '
+                'case of attach operation for an existing backing. This is '
+                'required to allow DS maintanance, where we remove the '
+                'storage-profile to prohibit cinder from scheduling new '
+                'volumes to that DS and move the volumes away manually. '
+                'Not disabling this would mean cinder moves the volumes '
+                'around, which can take a long time and leads to timeouts.'),
 ]
 
 CONF = cfg.CONF
@@ -2206,9 +2215,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         backing_profile = None
         if self._storage_policy_enabled:
             backing_profile = self._get_storage_profile(volume)
+        is_compliant = True
+        if self.configuration.vmware_profile_check_on_attach:
+            is_compliant = self.ds_sel.is_datastore_compliant(datastore,
+                                                              backing_profile)
         if (self.volumeops.is_datastore_accessible(datastore, host) and
-                self.ds_sel.is_datastore_compliant(datastore,
-                                                   backing_profile)):
+                is_compliant):
             LOG.debug("Datastore: %(datastore)s of backing: %(backing)s is "
                       "already accessible to instance's host: %(host)s.",
                       {'backing': backing,
