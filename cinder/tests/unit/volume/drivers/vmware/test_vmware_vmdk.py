@@ -2068,10 +2068,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         controller_type.get_controller_type.return_value = mock_data[
             'controller']['type']
-        vops.get_controller_key_and_spec.return_value = (mock_data[
-                                                             'controller'][
-                                                             'key'],
-                                                         mock.Mock())
+        vops.get_controller_key_and_spec.return_value = \
+            (mock_data['controller']['key'], mock.Mock())
         vops.get_vm_path_name.return_value = mock_data['vm']['path_name']
         vops.get_vmx_version.return_value = mock_data['vm']['vmx_version']
         vops._extension_key = mock_data['vm']['extension_key']
@@ -2095,7 +2093,6 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         data = self._driver._get_connection_import_data(volume)
 
         self.assertEqual(mock_data, data)
-
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch('oslo_vmware.vim_util.get_moref')
