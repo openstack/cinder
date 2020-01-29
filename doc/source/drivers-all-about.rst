@@ -103,8 +103,45 @@ option ``enable_unsupported_driver=True`` in the driver's configuration
 section of ``cinder.conf`` or the Cinder service will fail to load.
 
 If the issue is not corrected before the next release, the driver will be
-removed from the Cinder code repository per the standard OpenStack
-deprecation policy.
+eligible for removal from the Cinder code repository per the standard
+OpenStack deprecation policy.
+
+Driver Removal
+--------------
+**(Added January 2020**)
+
+As stated above, an unsupported driver is eligible for removal during the
+development cycle following the release in which it was marked 'unsupported'.
+(For example, a driver marked 'unsupported' in the Ussuri release is eligible
+for removal during the development cycle leading up to the Victoria release.)
+
+During the Ussuri development cycle, the Cinder team decided that drivers
+eligible for removal, at the discretion of the team, may remain in the code
+repository *as long as they continue to pass OpenStack CI testing*. When such a
+driver blocks the CI check or gate, it will be removed immediately.  (This does
+not violate the OpenStack deprecation policy because such a driver's
+deprecation period began when it was marked as 'unsupported'.)
+
+.. note::
+   Why the "at the discretion of the team" qualification?  Some vendors may
+   announce that they have no intention of continuing to support a driver.
+   In that case, the Cinder team reserves the right to remove the driver as
+   soon as the deprecation period has passed.
+
+Thus, unsupported drivers *may* remain in the code repository for multiple
+releases following their declaration as 'unsupported'.  Operators should
+therefore take into account the length of time a driver has been marked
+'unsupported' when deciding to deploy an unsupported driver.  This is because
+as an unmaintained driver ages, updates and bugfixes to libraries and other
+software it depends on may cause the driver to fail unit and functional tests,
+making it subject to immediate removal.
+
+The intent of this policy revision is twofold.  First, it gives vendors a
+longer grace period in which to make the necessary changes to have their
+drivers reinstated as 'supported'.  Second, keeping these drivers in-tree
+longer should make life easier for operators who have deployed storage backends
+with drivers that have been marked as 'unsupported'.  Operators should keep the
+above points in mind, however, when deploying such a driver.
 
 Current Cinder Drivers
 ~~~~~~~~~~~~~~~~~~~~~~
