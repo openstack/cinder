@@ -4468,16 +4468,10 @@ class PowerMaxCommon(object):
                     {'group_id': source_group.id})
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
-            # Check if the snapshot exists
-            if 'snapVXSnapshots' in volume_group:
-                if snap_name in volume_group['snapVXSnapshots']:
-                    src_devs = self._get_snap_src_dev_list(array, snapshots)
-                    self.provision.delete_group_replica(
-                        array, snap_name, vol_grp_name, src_devs, extra_specs)
-            else:
-                # Snapshot has been already deleted, return successfully
-                LOG.error("Cannot find group snapshot %(snapId)s.",
-                          {'snapId': group_snapshot.id})
+
+            self.provision.delete_group_replica(
+                array, snap_name, vol_grp_name)
+
             model_update = {'status': fields.GroupSnapshotStatus.DELETED}
             for snapshot in snapshots:
                 snapshots_model_update.append(
@@ -4855,12 +4849,9 @@ class PowerMaxCommon(object):
             # Delete the snapshot if required
             if rollback_dict.get("snap_name"):
                 try:
-                    src_dev_ids = [
-                        a for a, b in rollback_dict['list_volume_pairs']]
                     self.provision.delete_group_replica(
                         array, rollback_dict["snap_name"],
-                        rollback_dict["source_group_name"],
-                        src_dev_ids, rollback_dict['interval_retries_dict'])
+                        rollback_dict["source_group_name"])
                 except Exception as e:
                     LOG.debug("Failed to delete group snapshot. Attempting "
                               "further rollback. Exception received: %(e)s.",

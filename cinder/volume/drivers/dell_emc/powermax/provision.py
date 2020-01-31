@@ -382,8 +382,9 @@ class PowerMaxProvision(object):
             self._unlink_volume(array, "", "", snap_name, extra_specs,
                                 list_volume_pairs=list_device_pairs,
                                 generation=generation)
-        self.delete_volume_snap(array, snap_name, source_devices,
-                                restored=False, generation=generation)
+        if source_devices:
+            self.delete_volume_snap(array, snap_name, source_devices,
+                                    restored=False, generation=generation)
 
     def extend_volume(self, array, device_id, new_size, extra_specs,
                       rdf_group=None):
@@ -691,8 +692,7 @@ class PowerMaxProvision(object):
         self.rest.create_storagegroup_snap(
             array, source_group, snap_name, extra_specs)
 
-    def delete_group_replica(self, array, snap_name, source_group_name,
-                             src_dev_ids, extra_specs):
+    def delete_group_replica(self, array, snap_name, source_group_name):
         """Delete the snapshot.
 
         :param array: the array serial number
@@ -701,12 +701,19 @@ class PowerMaxProvision(object):
         :param src_dev_ids: the list of source device ids
         :param extra_specs: extra specifications
         """
-        # Delete snapvx snapshot
         LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "
                   "snapshot: %(snap_name)s.",
                   {'srcGroup': source_group_name, 'snap_name': snap_name})
-        self.delete_volume_snap_check_for_links(
-            array, snap_name, src_dev_ids, extra_specs)
+        gen_list = self.rest.get_storagegroup_snap_generation_list(
+            array, source_group_name, snap_name)
+        if gen_list:
+            gen_list.sort(reverse=True)
+            for gen in gen_list:
+                self.rest.delete_storagegroup_snap(
+                    array, source_group_name, snap_name, gen)
+        else:
+            LOG.debug("Unable to get generation number(s) for: %(srcGroup)s.",
+                      {'srcGroup': source_group_name})
 
     def link_and_break_replica(self, array, source_group_name,
                                target_group_name, snap_name, extra_specs,

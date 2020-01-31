@@ -1497,6 +1497,27 @@ class PowerMaxRestTest(test.TestCase):
             mock_create.assert_called_once_with(
                 array, source_group, snap_name, extra_specs)
 
+    def test_delete_storagegroup_snap(self):
+        array = self.data.array
+        source_group = self.data.storagegroup_name_source
+        snap_name = self.data.group_snapshot_name
+        with mock.patch.object(
+                self.rest, 'delete_storagegroup_snap') as mock_delete:
+            self.rest.delete_storagegroup_snap(
+                array, source_group, snap_name, '0')
+            mock_delete.assert_called_once_with(
+                array, source_group, snap_name, '0')
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_resource',
+                       return_value={'generations': ['0', '1']})
+    def test_get_storagegroup_snap_generation_list(self, mock_list):
+        array = self.data.array
+        source_group = self.data.storagegroup_name_source
+        snap_name = self.data.group_snapshot_name
+        ret_list = self.rest.get_storagegroup_snap_generation_list(
+            array, source_group, snap_name)
+        self.assertEqual(['0', '1'], ret_list)
+
     def test_get_storagegroup_rdf_details(self):
         details = self.rest.get_storagegroup_rdf_details(
             self.data.array, self.data.test_vol_grp_name,
