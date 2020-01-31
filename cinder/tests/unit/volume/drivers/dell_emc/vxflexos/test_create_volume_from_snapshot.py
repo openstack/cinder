@@ -22,6 +22,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 
 
 class TestCreateVolumeFromSnapShot(vxflexos.TestVxFlexOSDriver):
@@ -37,11 +38,11 @@ class TestCreateVolumeFromSnapShot(vxflexos.TestVxFlexOSDriver):
 
         self.snapshot = fake_snapshot.fake_snapshot_obj(ctx)
         self.snapshot_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.snapshot.id))
+            urllib.parse.quote(flex_utils.id_to_base64(self.snapshot.id))
         )
         self.volume = fake_volume.fake_volume_obj(ctx)
         self.volume_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
+            urllib.parse.quote(flex_utils.id_to_base64(self.volume.id))
         )
 
         self.snapshot_reply = json.dumps(
@@ -57,6 +58,8 @@ class TestCreateVolumeFromSnapShot(vxflexos.TestVxFlexOSDriver):
                 self.snapshot_name_2x_enc: self.snapshot.id,
                 'instances/System/action/snapshotVolumes':
                     self.snapshot_reply,
+                'instances/Volume::{}/action/setVolumeSize'.format(
+                    self.volume.id): None,
             },
             self.RESPONSE_MODE.BadStatus: {
                 'instances/System/action/snapshotVolumes':

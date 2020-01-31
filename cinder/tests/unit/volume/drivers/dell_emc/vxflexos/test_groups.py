@@ -72,6 +72,8 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
             'snapshotGroupId': 'sgid1'})
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
+                'instances/Volume::' + fake_volume1['provider_id']: {},
+                'instances/Volume::' + fake_volume2['provider_id']: {},
                 'instances/Volume::{}/action/removeVolume'.format(
                     fake_volume1['provider_id']
                 ): fake_volume1['provider_id'],
@@ -185,10 +187,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          result_model_update['status'])
 
-        def get_pid(snapshot):
-            return snapshot['provider_id']
-        volume_provider_list = list(map(get_pid, result_volumes_model_update))
-        self.assertListEqual(volume_provider_list, ['sid1', 'sid2'])
+        self.assertEqual(len(result_volumes_model_update), len(self.volumes))
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_src_snapshot(self, is_group_a_cg_snapshot_type):
@@ -212,10 +211,7 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
         self.assertEqual(fields.GroupStatus.AVAILABLE,
                          result_model_update['status'])
 
-        def get_pid(snapshot):
-            return snapshot['provider_id']
-        volume_provider_list = list(map(get_pid, result_volumes_model_update))
-        self.assertListEqual(volume_provider_list, ['sid1', 'sid2'])
+        self.assertEqual(len(result_volumes_model_update), len(self.volumes))
 
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_delete_group_snapshot(self, is_group_a_cg_snapshot_type):
@@ -275,10 +271,5 @@ class TestGroups(vxflexos.TestVxFlexOSDriver):
                          result_model_update['status'])
         self.assertTrue(all(snapshot['status'] == 'available' for snapshot in
                             result_snapshot_model_update))
-
-        def get_pid(snapshot):
-            return snapshot['provider_id']
-        snapshot_provider_list = list(map(get_pid,
-                                          result_snapshot_model_update))
-
-        self.assertListEqual(['sid1', 'sid2'], snapshot_provider_list)
+        self.assertEqual(len(result_snapshot_model_update),
+                         len(self.snapshots))

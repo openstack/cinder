@@ -114,6 +114,7 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         }
 
     def test_valid_configuration(self):
+        self.driver.storage_pools = self.STORAGE_POOLS
         self.driver.check_for_setup_error()
 
     def test_no_storage_pools(self):
@@ -219,8 +220,8 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         self.driver.get_volume_stats(True)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
-        '_rename_volume',
+        'cinder.volume.drivers.dell_emc.vxflexos.rest_client.RestClient.'
+        'rename_volume',
         return_value=None)
     def test_update_migrated_volume(self, mock_rename):
         test_vol = self.driver.update_migrated_volume(
@@ -230,8 +231,8 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
-        '_rename_volume',
+        'cinder.volume.drivers.dell_emc.vxflexos.rest_client.RestClient.'
+        'rename_volume',
         return_value=None)
     def test_update_unavailable_migrated_volume(self, mock_rename):
         test_vol = self.driver.update_migrated_volume(
@@ -242,8 +243,8 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
-        '_rename_volume',
+        'cinder.volume.drivers.dell_emc.vxflexos.rest_client.RestClient.'
+        'rename_volume',
         side_effect=exception.VolumeBackendAPIException(data='Error!'))
     def test_fail_update_migrated_volume(self, mock_rename):
         self.assertRaises(
@@ -257,42 +258,56 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         mock_rename.assert_called_with(self.volume, "ff" + self.volume['id'])
 
     def test_rename_volume(self):
-        rc = self.driver._rename_volume(
+        rc = self.driver.primary_client.rename_volume(
             self.volume, self.new_volume['id'])
         self.assertIsNone(rc)
 
     def test_rename_volume_illegal_syntax(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
-        rc = self.driver._rename_volume(
+        rc = self.driver.primary_client.rename_volume(
             self.volume, self.new_volume['id'])
         self.assertIsNone(rc)
 
     def test_rename_volume_non_sio(self):
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
-        rc = self.driver._rename_volume(
+        rc = self.driver.primary_client.rename_volume(
             self.volume, self.new_volume['id'])
         self.assertIsNone(rc)
 
     def test_default_provisioning_type_unspecified(self):
         empty_storage_type = {}
-        self.assertEqual(
-            'thin',
-            self.driver._find_provisioning_type(empty_storage_type))
+        provisioning, compression = (
+            self.driver._get_provisioning_and_compression(
+                empty_storage_type,
+                self.PROT_DOMAIN_NAME,
+                self.STORAGE_POOL_NAME)
+        )
+        self.assertEqual('ThinProvisioned', provisioning)
 
-    @ddt.data((True, 'thin'), (False, 'thick'))
+    @ddt.data((True, 'ThinProvisioned'), (False, 'ThickProvisioned'))
     @ddt.unpack
     def test_default_provisioning_type_thin(self, config_provisioning_type,
                                             expected_provisioning_type):
         self.override_config('san_thin_provision', config_provisioning_type,
                              configuration.SHARED_CONF_GROUP)
         self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
+        self.driver.do_setup({})
+        self.driver.primary_client = mocks.VxFlexOSClient(self.configuration)
+        self.driver.primary_client.do_setup()
         empty_storage_type = {}
-        self.assertEqual(
-            expected_provisioning_type,
-            self.driver._find_provisioning_type(empty_storage_type))
+        provisioning, compression = (
+            self.driver._get_provisioning_and_compression(
+                empty_storage_type,
+                self.PROT_DOMAIN_NAME,
+                self.STORAGE_POOL_NAME)
+        )
+        self.assertEqual(expected_provisioning_type, provisioning)
 
-    def test_get_volume_stats_v3(self):
-        self.driver.server_api_version = "3.0"
+    @mock.patch('cinder.volume.drivers.dell_emc.vxflexos.rest_client.'
+                'RestClient.query_rest_api_version',
+                return_value="3.0")
+    def test_get_volume_stats_v3(self, mock_version):
+        self.driver.storage_pools = self.STORAGE_POOLS
         zero_data = {
             'types/StoragePool/instances/action/querySelectedStatistics':
                 mocks.MockHTTPSResponse(content=json.dumps(

@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from mock import patch
+from unittest.mock import patch
 
 from cinder import context
 from cinder import exception
@@ -44,7 +44,7 @@ class TestManageExistingSnapshot(vxflexos.TestVxFlexOSDriver):
         self.snapshot['volume_type_id'] = fake.VOLUME_TYPE_ID
         self.snapshot2['volume_type_id'] = fake.VOLUME_TYPE_ID
         self.snapshot_attached = fake_snapshot.fake_snapshot_obj(
-            ctx, **{'provider_id': fake.PROVIDER3_ID})
+            ctx, **{'provider_id': fake.PROVIDER4_ID})
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
@@ -84,7 +84,7 @@ class TestManageExistingSnapshot(vxflexos.TestVxFlexOSDriver):
                     }, 200),
                 'instances/Volume::' + self.snapshot_attached['provider_id']:
                     mocks.MockHTTPSResponse({
-                        'id': fake.PROVIDER3_ID,
+                        'id': fake.PROVIDER4_ID,
                         'sizeInKb': 8388608,
                         'mappedSdcInfo': 'Mapped',
                         'ancestorVolumeId': fake.PROVIDER_ID
@@ -105,7 +105,7 @@ class TestManageExistingSnapshot(vxflexos.TestVxFlexOSDriver):
     def test_snapshot_not_found(self, _mock_volume_type):
         existing_ref = {'source-id': fake.PROVIDER2_ID}
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
-        self.assertRaises(exception.ManageExistingInvalidReference,
+        self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.manage_existing_snapshot, self.snapshot,
                           existing_ref)
 
@@ -115,7 +115,7 @@ class TestManageExistingSnapshot(vxflexos.TestVxFlexOSDriver):
         return_value={'extra_specs': {'volume_backend_name': 'ScaleIO'}})
     def test_snapshot_attached(self, _mock_volume_type):
         self.snapshot_attached['volume_type_id'] = fake.VOLUME_TYPE_ID
-        existing_ref = {'source-id': fake.PROVIDER2_ID}
+        existing_ref = {'source-id': fake.PROVIDER4_ID}
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot,

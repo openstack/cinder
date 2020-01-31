@@ -23,6 +23,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 
 
 class TestCreateClonedVolume(vxflexos.TestVxFlexOSDriver):
@@ -40,7 +41,7 @@ class TestCreateClonedVolume(vxflexos.TestVxFlexOSDriver):
 
         self.src_volume_name_2x_enc = urllib.parse.quote(
             urllib.parse.quote(
-                self.driver._id_to_base64(self.src_volume.id)
+                flex_utils.id_to_base64(self.src_volume.id)
             )
         )
 
@@ -55,7 +56,7 @@ class TestCreateClonedVolume(vxflexos.TestVxFlexOSDriver):
 
         self.new_volume_name_2x_enc = urllib.parse.quote(
             urllib.parse.quote(
-                self.driver._id_to_base64(self.new_volume.id)
+                flex_utils.id_to_base64(self.new_volume.id)
             )
         )
         self.HTTPS_MOCK_RESPONSES = {
@@ -64,6 +65,7 @@ class TestCreateClonedVolume(vxflexos.TestVxFlexOSDriver):
                 self.src_volume_name_2x_enc: self.src_volume.id,
                 'instances/System/action/snapshotVolumes': '{}'.format(
                     json.dumps(self.new_volume_extras)),
+                'instances/Volume::cloned/action/setVolumeSize': None
             },
             self.RESPONSE_MODE.BadStatus: {
                 'instances/System/action/snapshotVolumes':

@@ -58,7 +58,7 @@ class TestMultipleVersions(vxflexos.TestVxFlexOSDriver):
 
     def test_version(self):
         """Valid version request."""
-        self.driver._get_server_api_version(False)
+        self.driver.primary_client.query_rest_api_version(False)
 
     def test_version_badstatus_response(self):
         """Version api returns a bad response."""
@@ -86,8 +86,8 @@ class TestMultipleVersions(vxflexos.TestVxFlexOSDriver):
         for vers in self.good_versions:
             self.version = vers
             self.setup_response()
-            self.driver._get_server_api_version(False)
+            self.driver.primary_client.query_rest_api_version(False)
             self.assertEqual(
-                self.driver._get_server_api_version(False),
+                self.driver.primary_client.query_rest_api_version(False),
                 vers
             )

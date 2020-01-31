@@ -91,6 +91,7 @@ class TestVxFlexOSDriver(test.TestCase):
     __COMMON_HTTPS_MOCK_RESPONSES = {
         RESPONSE_MODE.Valid: {
             'login': 'login_token',
+            'version': '3.5'
         },
         RESPONSE_MODE.BadStatus: {
             'login': mocks.MockHTTPSResponse(
@@ -99,6 +100,7 @@ class TestVxFlexOSDriver(test.TestCase):
                     'message': 'Bad Login Response Test',
                 }, 403
             ),
+            'version': '3.5'
         },
     }
     __https_response_mode = RESPONSE_MODE.Valid
@@ -124,9 +126,13 @@ class TestVxFlexOSDriver(test.TestCase):
                                                 conf.SHARED_CONF_GROUP)
         self._set_overrides()
         self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
+        self.driver.primary_client = mocks.VxFlexOSClient(self.configuration)
+        self.driver.do_setup({})
 
         self.mock_object(requests, 'get', self.do_request)
         self.mock_object(requests, 'post', self.do_request)
+
+        self.driver.primary_client.do_setup()
 
     def _set_overrides(self):
         # Override the defaults to fake values

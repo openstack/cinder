@@ -24,6 +24,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 
 
 class TestCreateSnapShot(vxflexos.TestVxFlexOSDriver):
@@ -51,10 +52,10 @@ class TestCreateSnapShot(vxflexos.TestVxFlexOSDriver):
 
         snap_vol_id = self.snapshot.volume_id
         self.volume_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(snap_vol_id))
+            urllib.parse.quote(flex_utils.id_to_base64(snap_vol_id))
         )
         self.snapshot_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.snapshot.id))
+            urllib.parse.quote(flex_utils.id_to_base64(self.snapshot.id))
         )
 
         self.snapshot_reply = json.dumps(

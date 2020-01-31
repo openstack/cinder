@@ -21,6 +21,7 @@ from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 
 
 class TestExtendVolume(vxflexos.TestVxFlexOSDriver):
@@ -45,7 +46,7 @@ class TestExtendVolume(vxflexos.TestVxFlexOSDriver):
         self.volume = fake_volume_obj(ctx, **{'id': fake.VOLUME_ID,
                                               'provider_id': fake.PROVIDER_ID})
         self.volume_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
+            urllib.parse.quote(flex_utils.id_to_base64(self.volume.id))
         )
 
         self.HTTPS_MOCK_RESPONSES = {

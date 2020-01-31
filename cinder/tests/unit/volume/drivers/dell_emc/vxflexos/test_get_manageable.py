@@ -104,6 +104,7 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
     def setUp(self):
         """Setup a test case environment."""
         super(VxFlexOSManageableCase, self).setUp()
+        self.driver.storage_pools = super().STORAGE_POOLS
 
     def _test_get_manageable_things(self,
                                     vxflexos_objects=MANAGEABLE_VXFLEXOS_VOLS,
