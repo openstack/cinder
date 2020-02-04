@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Resource Filters
-================
+Resource Filters (resource_filters)
+===================================
 
 Lists all resource filters, available since
 microversion 3.33.

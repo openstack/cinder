@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Attachments
-===========
+Attachments (attachments)
+=========================
 
 Lists all, lists all with details, shows details for, creates, and
 deletes attachment.

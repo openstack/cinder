@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Generic volume groups
-=====================
+Generic volume groups (groups)
+==============================
 
 Generic volume groups enable you to create a group of volumes and
 manage them together.

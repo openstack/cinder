@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Group snapshots
-===============
+Group snapshots (group_snapshots)
+=================================
 
 Lists all, lists all with details, shows details for, creates, and
 deletes group snapshots.
