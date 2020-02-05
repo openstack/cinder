@@ -611,6 +611,16 @@ class BackupManager(manager.SchedulerDependentManager):
             # attribute as well.
             if volume_previous_status == fields.VolumeStatus.CREATING:
                 volume['launched_at'] = timeutils.utcnow()
+        old_src_backup_id = self.db.volume_metadata_get(
+            context, volume_id).get("src_backup_id", None)
+        if backup.volume_id != volume.id or (
+                old_src_backup_id and old_src_backup_id != backup.id):
+            self.db.volume_metadata_update(
+                context,
+                volume.id,
+                {'src_backup_id': backup.id},
+                False)
+
         volume.save()
         backup.status = fields.BackupStatus.AVAILABLE
         backup.save()

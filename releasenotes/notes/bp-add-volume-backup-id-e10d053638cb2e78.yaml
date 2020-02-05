@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add the property ``src_backup_id`` to the volume's metadata,
+    to record from which backup the new volume was created.
+    When restoring from a chain of incremental backups, ``src_backup_id``
+    is set to the last incremental backup used for the restore.
