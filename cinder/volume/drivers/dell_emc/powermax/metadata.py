@@ -294,6 +294,7 @@ class PowerMaxVolumeMetadata(object):
         mv_list, sg_list = [], []
         child_storage_group, parent_storage_group = None, None
         initiator_group, port_group = None, None
+        child_storage_group_tag_list = None
 
         if is_multiattach:
             successful_operation = 'multi_attach'
@@ -302,6 +303,8 @@ class PowerMaxVolumeMetadata(object):
         else:
             successful_operation = 'attach'
             child_storage_group = masking_view_dict[utils.SG_NAME]
+            child_storage_group_tag_list = (
+                masking_view_dict.get(utils.TAG_LIST, None))
             parent_storage_group = masking_view_dict[utils.PARENT_SG_NAME]
             initiator_group = masking_view_dict[utils.IG_NAME]
             port_group = masking_view_dict[utils.PORTGROUPNAME]
@@ -319,7 +322,9 @@ class PowerMaxVolumeMetadata(object):
             host=host, is_multipath=is_multipath,
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
-            mv_list=mv_list, sg_list=sg_list)
+            mv_list=mv_list, sg_list=sg_list,
+            child_storage_group_tag_list=child_storage_group_tag_list,
+            array_tag_list=masking_view_dict.get('array_tag_list', None))
 
         volume_metadata = self.update_volume_info_metadata(
             datadict, self.version_dict)
@@ -447,7 +452,8 @@ class PowerMaxVolumeMetadata(object):
     def capture_create_volume(
             self, device_id, volume, group_name, group_id, extra_specs,
             rep_info_dict, successful_operation, source_snapshot_id=None,
-            source_device_id=None, temporary_snapvx=None):
+            source_device_id=None, temporary_snapvx=None,
+            array_tag_list=None):
         """Captures create volume info in volume metadata
 
         :param device_id: device id
@@ -458,6 +464,8 @@ class PowerMaxVolumeMetadata(object):
         :param rep_info_dict: information gathered from replication
         :param successful_operation: the type of create operation
         :param source_snapshot_id: the source snapshot id
+        :param temporary_snapvx: temporary snapVX
+        :param array_tag_list: array tag list
 
         :returns: volume_metadata dict
         """
@@ -502,7 +510,8 @@ class PowerMaxVolumeMetadata(object):
                 extra_specs),
             source_device_id=source_device_id,
             temporary_snapvx=temporary_snapvx,
-            target_array_model=target_array_model)
+            target_array_model=target_array_model,
+            array_tag_list=array_tag_list)
         volume_metadata = self.update_volume_info_metadata(
             datadict, self.version_dict)
         self.print_pretty_table(volume_metadata)

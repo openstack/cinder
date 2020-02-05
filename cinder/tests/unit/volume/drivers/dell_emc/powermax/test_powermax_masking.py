@@ -234,7 +234,8 @@ class PowerMaxMaskingTest(test.TestCase):
 
     @mock.patch.object(
         rest.PowerMaxRest, 'get_storage_group',
-        side_effect=[tpd.PowerMaxData.storagegroup_name_i, None, None])
+        side_effect=[tpd.PowerMaxData.storagegroup_name_i, None,
+                     tpd.PowerMaxData.storagegroup_name_i])
     @mock.patch.object(
         provision.PowerMaxProvision, 'create_storage_group',
         side_effect=[tpd.PowerMaxData.storagegroup_name_i, None])
@@ -243,11 +244,21 @@ class PowerMaxMaskingTest(test.TestCase):
             self.driver.masking._get_or_create_storage_group(
                 self.data.array, self.maskingviewdict,
                 self.data.storagegroup_name_i, self.extra_specs)
+        self.assertEqual(3, mock_get_sg.call_count)
+        self.assertEqual(1, mock_sg.call_count)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        side_effect=[None, tpd.PowerMaxData.storagegroup_name_i])
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'create_storage_group',
+        side_effect=[tpd.PowerMaxData.storagegroup_name_i])
+    def test_get_or_create_storage_group_is_parent(self, mock_sg, mock_get_sg):
         self.driver.masking._get_or_create_storage_group(
             self.data.array, self.maskingviewdict,
             self.data.storagegroup_name_i, self.extra_specs, True)
-        self.assertEqual(3, mock_get_sg.call_count)
-        self.assertEqual(2, mock_sg.call_count)
+        self.assertEqual(2, mock_get_sg.call_count)
+        self.assertEqual(1, mock_sg.call_count)
 
     @mock.patch.object(masking.PowerMaxMasking, '_move_vol_from_default_sg',
                        return_value=None)
@@ -271,7 +282,8 @@ class PowerMaxMaskingTest(test.TestCase):
                              tpd.PowerMaxData.storagegroup_name_i]):
             _, msg = (self.driver.masking._check_existing_storage_group(
                 self.data.array, self.maskingviewdict['maskingview_name'],
-                self.data.defaultstoragegroup_name, masking_view_dict))
+                self.data.defaultstoragegroup_name, masking_view_dict,
+                self.data.extra_specs))
             self.assertIsNone(msg)
             mock_create_sg.assert_not_called()
 
@@ -280,7 +292,8 @@ class PowerMaxMaskingTest(test.TestCase):
                                    tpd.PowerMaxData.parent_sg_i, None]):
             _, msg = (self.driver.masking._check_existing_storage_group(
                 self.data.array, self.maskingviewdict['maskingview_name'],
-                self.data.defaultstoragegroup_name, masking_view_dict))
+                self.data.defaultstoragegroup_name, masking_view_dict,
+                self.data.extra_specs))
             self.assertIsNone(msg)
             mock_create_sg.assert_called_once_with(
                 self.data.array, masking_view_dict,
@@ -305,7 +318,8 @@ class PowerMaxMaskingTest(test.TestCase):
         for x in range(0, 4):
             _, msg = (self.driver.masking._check_existing_storage_group(
                 self.data.array, self.maskingviewdict['maskingview_name'],
-                self.data.defaultstoragegroup_name, masking_view_dict))
+                self.data.defaultstoragegroup_name, masking_view_dict,
+                self.data.extra_specs))
             self.assertIsNotNone(msg)
         self.assertEqual(7, mock_get_sg.call_count)
         self.assertEqual(1, mock_move.call_count)
@@ -1050,3 +1064,32 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.parent_sg_f, self.data.extra_specs)
         mock_rm.assert_called_once()
         self.assertEqual(2, mock_del.call_count)
+
+    @mock.patch.object(utils.PowerMaxUtils, 'verify_tag_list')
+    def test_add_tags_to_storage_group_disabled(self, mock_verify):
+        self.mask._add_tags_to_storage_group(
+            self.data.array, self.data.add_volume_sg_info_dict,
+            self.data.extra_specs)
+        mock_verify.assert_not_called()
+
+    @mock.patch.object(utils.PowerMaxUtils, 'verify_tag_list')
+    def test_add_tags_to_storage_group_enabled(self, mock_verify):
+        self.mask._add_tags_to_storage_group(
+            self.data.array, self.data.add_volume_sg_info_dict,
+            self.data.extra_specs_tags)
+        mock_verify.assert_called()
+
+    @mock.patch.object(utils.PowerMaxUtils, 'get_new_tags')
+    def test_add_tags_to_storage_group_existing_tags(self, mock_inter):
+        self.mask._add_tags_to_storage_group(
+            self.data.array, self.data.storage_group_with_tags,
+            self.data.extra_specs_tags)
+        mock_inter.assert_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'add_storage_group_tag',
+                       side_effect=[exception.VolumeBackendAPIException])
+    def test_add_tags_to_storage_group_exception(self, mock_except):
+        self.mask._add_tags_to_storage_group(
+            self.data.array, self.data.add_volume_sg_info_dict,
+            self.data.extra_specs_tags)
+        mock_except.assert_called()

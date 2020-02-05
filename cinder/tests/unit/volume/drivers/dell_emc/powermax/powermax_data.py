@@ -81,6 +81,7 @@ class PowerMaxData(object):
     temp_snapvx = 'temp-00001-snapshot_for_clone'
     next_gen_ucode = 5978
     gvg_group_id = 'test-gvg'
+    sg_tags = 'production,test'
 
     # connector info
     wwpn1 = '123456789012345'
@@ -272,6 +273,11 @@ class PowerMaxData(object):
                    'interval': 3,
                    'retries': 120}
 
+    vol_type_extra_specs_tags = {
+        'storagetype:storagegrouptags': u'good, comma,  separated,list'}
+    vol_type_extra_specs_tags_bad = {
+        'storagetype:storagegrouptags': u'B&d, [list]'}
+
     extra_specs_migrate = deepcopy(extra_specs)
     extra_specs_migrate[utils.PORTGROUPNAME] = port_group_name_f
 
@@ -307,6 +313,9 @@ class PowerMaxData(object):
 
     rep_extra_specs_legacy = deepcopy(rep_extra_specs_ode)
     rep_extra_specs_legacy['mode'] = 'Synchronous'
+
+    extra_specs_tags = deepcopy(extra_specs)
+    extra_specs_tags.update({utils.STORAGE_GROUP_TAGS: sg_tags})
 
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
@@ -414,6 +423,10 @@ class PowerMaxData(object):
         {utils.EXTRA_SPECS: extra_specs, utils.IS_MULTIATTACH: True,
          utils.OTHER_PARENT_SG: parent_sg_i, utils.FAST_SG:
              storagegroup_name_i, utils.NO_SLO_SG: no_slo_sg_name})
+
+    masking_view_dict_tags = deepcopy(masking_view_dict)
+    masking_view_dict_tags.update(
+        {'tag_list': sg_tags})
 
     # vmax data
     # sloprovisioning
@@ -1034,6 +1047,9 @@ class PowerMaxData(object):
         "compression_ratio_to_one": 1,
         "vp_saved_percent": 99.9
     }
+
+    storage_group_with_tags = deepcopy(add_volume_sg_info_dict)
+    storage_group_with_tags.update({"tags": sg_tags})
 
     data_dict = {volume_id: volume_info_dict}
     platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'

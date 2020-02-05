@@ -298,7 +298,7 @@ class PowerMaxMasking(object):
         """
         storage_group_name, msg = self._check_existing_storage_group(
             serial_number, maskingview_name, default_sg_name,
-            masking_view_dict)
+            masking_view_dict, extra_specs)
         if not msg:
             portgroup_name = self.rest.get_element_from_masking_view(
                 serial_number, maskingview_name, portgroup=True)
@@ -397,9 +397,11 @@ class PowerMaxMasking(object):
         storagegroup = self.rest.get_storage_group(
             serial_number, storagegroup_name)
         if storagegroup is None:
-            storagegroup = self.provision.create_storage_group(
+            storagegroup_name = self.provision.create_storage_group(
                 serial_number, storagegroup_name, srp, slo, workload,
                 extra_specs, do_disable_compression)
+            storagegroup = self.rest.get_storage_group(
+                serial_number, storagegroup_name)
 
         if storagegroup is None:
             msg = ("Cannot get or create a storage group: "
@@ -413,11 +415,55 @@ class PowerMaxMasking(object):
             self.rest.update_storagegroup_qos(
                 serial_number, storagegroup_name, extra_specs)
 
+        # If storagetype:storagegrouptags exist update storage group
+        # to add tags
+        if not parent:
+            self._add_tags_to_storage_group(
+                serial_number, storagegroup, extra_specs)
+
         return msg
+
+    def _add_tags_to_storage_group(
+            self, serial_number, storage_group, extra_specs):
+        """Add tags to a storage group.
+
+        :param serial_number: the array serial number
+        :param storage_group: the storage group object
+        :param extra_specs: the extra specifications
+        """
+        if utils.STORAGE_GROUP_TAGS in extra_specs:
+            # Check if the tags exist
+            if 'tags' in storage_group:
+                new_tag_list = self.utils.get_new_tags(
+                    extra_specs[utils.STORAGE_GROUP_TAGS],
+                    storage_group['tags'])
+                if not new_tag_list:
+                    LOG.info("No new tags to add. Existing tags "
+                             "associated with %(sg_name)s are "
+                             "%(tags)s.",
+                             {'sg_name': storage_group['storageGroupId'],
+                              'tags': storage_group['tags']})
+            else:
+                new_tag_list = (
+                    extra_specs[utils.STORAGE_GROUP_TAGS].split(","))
+
+            if self.utils.verify_tag_list(new_tag_list):
+                LOG.info("Adding the tags %(tag_list)s to %(sg_name)s",
+                         {'tag_list': new_tag_list,
+                          'sg_name': storage_group['storageGroupId']})
+                try:
+                    self.rest.add_storage_group_tag(
+                        serial_number, storage_group['storageGroupId'],
+                        new_tag_list, extra_specs)
+                except Exception as ex:
+                    LOG.warning("Unexpected error: %(ex)s. If you still "
+                                "want to add tags to this storage group, "
+                                "please do so on the Unisphere UI.",
+                                {'ex': ex})
 
     def _check_existing_storage_group(
             self, serial_number, maskingview_name,
-            default_sg_name, masking_view_dict):
+            default_sg_name, masking_view_dict, extra_specs):
         """Check if the masking view has the child storage group.
 
         Get the parent storage group associated with a masking view and check
@@ -427,6 +473,7 @@ class PowerMaxMasking(object):
         :param maskingview_name: the masking view name
         :param default_sg_name: the default sg name
         :param masking_view_dict: the masking view dict
+        :param extra_specs: the extra specifications
         :returns: storage group name, msg
         """
         msg = None
@@ -458,6 +505,8 @@ class PowerMaxMasking(object):
                 LOG.info("Retrieved child sg %(sg_name)s from %(mv_name)s",
                          {'sg_name': child_sg_name,
                           'mv_name': maskingview_name})
+                self._add_tags_to_storage_group(
+                    serial_number, child_sg, extra_specs)
             else:
                 msg = self._get_or_create_storage_group(
                     serial_number, masking_view_dict, child_sg_name,

@@ -78,6 +78,8 @@ RDF_CONS_EXEMPT = 'consExempt'
 METROBIAS = 'metro_bias'
 DEFAULT_PORT = 8443
 CLONE_SNAPSHOT_NAME = "snapshot_for_clone"
+STORAGE_GROUP_TAGS = 'storagetype:storagegrouptags'
+TAG_LIST = 'tag_list'
 
 # Multiattach constants
 IS_MULTIATTACH = 'multiattach'
@@ -109,6 +111,7 @@ POWERMAX_SRP = 'powermax_srp'
 POWERMAX_SERVICE_LEVEL = 'powermax_service_level'
 POWERMAX_PORT_GROUPS = 'powermax_port_groups'
 POWERMAX_SNAPVX_UNLINK_LIMIT = 'powermax_snapvx_unlink_limit'
+POWERMAX_ARRAY_TAG_LIST = 'powermax_array_tag_list'
 
 
 class PowerMaxUtils(object):
@@ -977,7 +980,7 @@ class PowerMaxUtils(object):
         """Get the service level and workload combination from extra specs.
 
         :param extra_specs: extra specifications
-        :return: string, string
+        :returns: string, string
         """
         service_level, workload = 'None', 'None'
         if extra_specs.get(SLO):
@@ -986,3 +989,68 @@ class PowerMaxUtils(object):
                     and 'NONE' not in extra_specs.get(WORKLOAD)):
                 workload = extra_specs.get(WORKLOAD)
         return service_level, workload
+
+    def get_new_tags(self, list_str1, list_str2):
+        """Get elements in list_str1 not in list_str2
+
+        :param list_str1: list one in string format
+        :param list_str2: list two in string format
+        :returns: list
+        """
+        list_str1 = re.sub(r"\s+", "", list_str1)
+        if not list_str1:
+            return []
+        common_list = self._get_intersection(
+            list_str1, list_str2)
+
+        my_list1 = sorted(list_str1.split(","))
+        return [x for x in my_list1 if x.lower() not in common_list]
+
+    def _get_intersection(self, list_str1, list_str2):
+        """Get the common values between 2 comma separated list
+
+        :param list_str1: list one
+        :param list_str2: list two
+        :returns: sorted list
+        """
+        list_str1 = re.sub(r"\s+", "", list_str1).lower()
+        list_str2 = re.sub(r"\s+", "", list_str2).lower()
+        my_list1 = sorted(list_str1.split(","))
+        my_list2 = sorted(list_str2.split(","))
+        sorted_common_list = (
+            sorted(list(set(my_list1).intersection(set(my_list2)))))
+        return sorted_common_list
+
+    def verify_tag_list(self, tag_list):
+        """Verify that the tag list has allowable character
+
+        :param tag_list: list of tags
+        :returns: boolean
+        """
+        if not tag_list:
+            return False
+        if not isinstance(tag_list, list):
+            LOG.warning("The list of tags %(tag_list)s is not "
+                        "in list format. Tagging will not proceed.",
+                        {'tag_list': tag_list})
+            return False
+        if len(tag_list) > 8:
+            LOG.warning("The list of tags %(tag_list)s is more "
+                        "than the upper limit of 8. Tagging will not "
+                        "proceed.",
+                        {'tag_list': tag_list})
+            return False
+        for tag in tag_list:
+            tag = tag.strip()
+            if not re.match('^[a-zA-Z0-9_\\-]+$', tag):
+                return False
+        return True
+
+    def convert_list_to_string(self, list_input):
+        """Convert a list to a comma separated list
+
+        :param list_input: list
+        :returns: string or None
+        """
+        return ','.join(map(str, list_input)) if isinstance(
+            list_input, list) else list_input

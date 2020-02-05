@@ -620,3 +620,115 @@ class PowerMaxUtilsTest(test.TestCase):
         sl_3, wl_3 = self.utils.get_service_level_workload(extra_specs)
         self.assertEqual('Diamond', sl_3)
         self.assertEqual('DSS', wl_3)
+
+    def test_get_new_tags_none(self):
+        list_str1 = 'finance, production,   test'
+        list_str2 = 'production,test,finance'
+
+        self.assertEqual(
+            [], self.utils.get_new_tags(list_str1, list_str2))
+
+    def test_get_new_tags_one(self):
+        list_str1 = 'finance, production,   test'
+        list_str2 = 'production,test'
+
+        self.assertEqual(
+            ['finance'], self.utils.get_new_tags(list_str1, list_str2))
+
+    def test_get_new_tags_two(self):
+        list_str1 = 'finance, production,   test, test2'
+        list_str2 = 'production,test'
+
+        self.assertEqual(
+            ['finance', 'test2'], self.utils.get_new_tags(
+                list_str1, list_str2))
+
+    def test_get_new_tags_case(self):
+        list_str1 = 'Finance, Production,   test, tEst2'
+        list_str2 = 'production,test'
+
+        self.assertEqual(
+            ['Finance', 'tEst2'], self.utils.get_new_tags(
+                list_str1, list_str2))
+
+    def test_get_new_tags_empty_string_first(self):
+        list_str1 = ''
+        list_str2 = 'production,test'
+
+        self.assertEqual(
+            [], self.utils.get_new_tags(
+                list_str1, list_str2))
+
+    def test_get_new_tags_empty_string_second(self):
+        list_str1 = 'production,test'
+        list_str2 = '  '
+
+        self.assertEqual(
+            ['production', 'test'], self.utils.get_new_tags(
+                list_str1, list_str2))
+
+    def test_get_intersection(self):
+        list_str1 = 'finance,production'
+        list_str2 = 'production'
+
+        common_list = self.utils._get_intersection(
+            list_str1, list_str2)
+
+        self.assertEqual(['production'], common_list)
+
+    def test_get_intersection_unordered_list(self):
+        list_str1 = 'finance,production'
+        list_str2 = 'production, finance'
+
+        common_list = (
+            self.utils._get_intersection(list_str1, list_str2))
+
+        self.assertEqual(['finance', 'production'], common_list)
+
+    def test_verify_tag_list_good(self):
+        tag_list = ['no', 'InValid', 'characters', 'dash-allowed',
+                    '123', 'underscore_allowed',
+                    ' leading_space', 'trailing-space ']
+        self.assertTrue(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_space(self):
+        tag_list = ['bad space']
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_forward_slash(self):
+        tag_list = ['\\forward\\slash']
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_square_bracket(self):
+        tag_list = ['[squareBrackets]']
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_backward_slash(self):
+        tag_list = ['/backward/slash']
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_curly_bracket(self):
+        tag_list = ['{curlyBrackets}']
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_empty_list(self):
+        tag_list = []
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_not_a_list(self):
+        tag_list = '1,2,3,4'
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_verify_tag_list_exceeds_8(self):
+        tag_list = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.assertFalse(self.utils.verify_tag_list(tag_list))
+
+    def test_convert_list_to_string(self):
+        input_list = ['one', 'two', 'three']
+        output_string = self.utils.convert_list_to_string(input_list)
+        self.assertEqual('one,two,three', output_string)
+
+    def test_convert_list_to_string_input_string(self):
+        input_list = 'one,two,three'
+        output_string = self.utils.convert_list_to_string(input_list)
+        self.assertEqual('one,two,three', output_string)

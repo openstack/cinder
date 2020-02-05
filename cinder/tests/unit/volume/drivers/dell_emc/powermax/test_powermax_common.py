@@ -1039,6 +1039,26 @@ class PowerMaxCommonTest(test.TestCase):
         ref_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         self.assertEqual('NONE', extra_specs[utils.WORKLOAD])
 
+    def test_set_vmax_extra_specs_tags_not_set(self):
+        srp_record = self.common.get_attributes_from_cinder_config()
+        extra_specs = self.common._set_vmax_extra_specs(
+            self.data.vol_type_extra_specs, srp_record)
+        self.assertTrue('storagetype:storagegrouptags' not in extra_specs)
+
+    def test_set_vmax_extra_specs_tags_set_correctly(self):
+        srp_record = self.common.get_attributes_from_cinder_config()
+        extra_specs = self.common._set_vmax_extra_specs(
+            self.data.vol_type_extra_specs_tags, srp_record)
+        self.assertEqual(
+            self.data.vol_type_extra_specs_tags[utils.STORAGE_GROUP_TAGS],
+            extra_specs[utils.STORAGE_GROUP_TAGS])
+
+    def test_set_vmax_extra_specs_tags_set_incorrectly(self):
+        srp_record = self.common.get_attributes_from_cinder_config()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._set_vmax_extra_specs,
+                          self.data.vol_type_extra_specs_tags_bad, srp_record)
+
     def test_delete_volume_from_srp_success(self):
         array = self.data.array
         device_id = self.data.device_id
@@ -3127,3 +3147,87 @@ class PowerMaxCommonTest(test.TestCase):
             exception.VolumeBackendAPIException,
             self.common.update_metadata, model_update, existing_metadata,
             object_metadata)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=tpd.PowerMaxData.add_volume_sg_info_dict)
+    def test_get_tags_of_storage_group_none(self, mock_sg):
+        self.assertIsNone(self.common.get_tags_of_storage_group(
+            self.data.array, self.data.defaultstoragegroup_name))
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=tpd.PowerMaxData.storage_group_with_tags)
+    def test_get_tags_of_storage_group_exists(self, mock_sg):
+        tag_list = self.common.get_tags_of_storage_group(
+            self.data.array, self.data.defaultstoragegroup_name)
+        self.assertEqual(tpd.PowerMaxData.sg_tags, tag_list)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       side_effect=exception.APIException)
+    def test_get_tags_of_storage_group_exception(self, mock_sg):
+        self.assertIsNone(self.common.get_tags_of_storage_group(
+            self.data.array, self.data.storagegroup_name_f))
+
+    @mock.patch.object(rest.PowerMaxRest, 'add_storage_array_tags')
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_tags',
+                       return_value=[])
+    def test_check_and_add_tags_to_storage_array(
+            self, mock_get_tags, mock_add_tags):
+        array_tag_list = ['OpenStack']
+        self.common._check_and_add_tags_to_storage_array(
+            self.data.array, array_tag_list, self.data.extra_specs)
+        mock_add_tags.assert_called_with(
+            self.data.array, array_tag_list, self.data.extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'add_storage_array_tags')
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_tags',
+                       return_value=[])
+    def test_check_and_add_tags_to_storage_array_add_2_tags(
+            self, mock_get_tags, mock_add_tags):
+        array_tag_list = ['OpenStack', 'Production']
+        self.common._check_and_add_tags_to_storage_array(
+            self.data.array, array_tag_list, self.data.extra_specs)
+        mock_add_tags.assert_called_with(
+            self.data.array, array_tag_list, self.data.extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'add_storage_array_tags')
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_tags',
+                       return_value=['Production'])
+    def test_check_and_add_tags_to_storage_array_add_1_tags(
+            self, mock_get_tags, mock_add_tags):
+        array_tag_list = ['OpenStack', 'Production']
+        add_tag_list = ['OpenStack']
+        self.common._check_and_add_tags_to_storage_array(
+            self.data.array, array_tag_list, self.data.extra_specs)
+        mock_add_tags.assert_called_with(
+            self.data.array, add_tag_list, self.data.extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'add_storage_array_tags')
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_tags',
+                       return_value=['openstack'])
+    def test_check_and_add_tags_to_storage_array_already_tagged(
+            self, mock_get_tags, mock_add_tags):
+        array_tag_list = ['OpenStack']
+        self.common._check_and_add_tags_to_storage_array(
+            self.data.array, array_tag_list, self.data.extra_specs)
+        mock_add_tags.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_tags',
+                       return_value=[])
+    def test_check_and_add_tags_to_storage_array_invalid_tag(
+            self, mock_get_tags):
+        array_tag_list = ['Open$tack']
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common._check_and_add_tags_to_storage_array,
+            self.data.array, array_tag_list, self.data.extra_specs)
+
+    def test_validate_storage_group_tag_list_good_tag_list(self):
+        self.common._validate_storage_group_tag_list(
+            self.data.vol_type_extra_specs_tags)
+
+    @mock.patch.object(utils.PowerMaxUtils, 'verify_tag_list')
+    def test_validate_storage_group_tag_list_no_tag_list(
+            self, mock_verify):
+        self.common._validate_storage_group_tag_list(
+            self.data.extra_specs)
+        mock_verify.assert_not_called()

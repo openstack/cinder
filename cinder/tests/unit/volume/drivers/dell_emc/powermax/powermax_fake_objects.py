@@ -232,6 +232,8 @@ class FakeRequestsSession(object):
                     break
         elif 'info' in url:
             return_object = self.data.version_details
+        elif 'tag' in url:
+            return_object = []
         else:
             for symm in self.data.symmetrix:
                 if symm['symmetrixId'] in url:
