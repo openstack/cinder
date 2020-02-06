@@ -151,8 +151,13 @@ Contents:
    contributor/index
    API Microversions </contributor/api_microversion_dev/>
 
+For reviewers
+-------------
+
+* :ref:`transition-guidelines`
+
 Additional reference
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 Contents:
 
@@ -165,7 +170,7 @@ Contents:
 .. only:: html
 
    Indices and tables
-   ~~~~~~~~~~~~~~~~~~
+   ------------------
 
    Contents:
 
