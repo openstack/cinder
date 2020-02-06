@@ -4205,7 +4205,8 @@ class PowerMaxCommon(object):
                 rep_extra_specs, False)
 
             # Check if volume is a copy session target
-            self._sync_check(array, device_id, extra_specs, tgt_only=True)
+            self._sync_check(array, device_id, extra_specs, tgt_only=True,
+                             source_device_id=device_id)
             # Establish replication relationship
             rdf_dict = self.rest.create_rdf_device_pair(
                 array, device_id, rdf_group_no, target_device, remote_array,
