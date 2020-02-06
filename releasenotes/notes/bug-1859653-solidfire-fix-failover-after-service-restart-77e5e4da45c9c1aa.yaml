@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NetApp SolidFire driver: Fixed an issue that causes failback
+    to fail after a volume service restart. This change fixes
+    bug `1859653 <https://bugs.launchpad.net/cinder/+bug/1859653>`_.
