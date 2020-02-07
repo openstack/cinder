@@ -1780,7 +1780,8 @@ class PowerMaxRest(object):
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
                            extra_specs, link=False, unlink=False,
                            rename=False, new_snap_name=None, restore=False,
-                           list_volume_pairs=None, generation=0):
+                           list_volume_pairs=None, generation=0,
+                           copy_mode=False):
         """Modify a snapvx snapshot
 
         :param array: the array serial number
@@ -1806,6 +1807,8 @@ class PowerMaxRest(object):
         elif restore:
             action = "Restore"
 
+        copy = 'true' if copy_mode else 'false'
+
         payload = {}
         if action == "Restore":
             operation = 'Restore snapVx snapshot'
@@ -1825,7 +1828,7 @@ class PowerMaxRest(object):
                 tgt_list.append({'name': target_id})
             payload = {"deviceNameListSource": src_list,
                        "deviceNameListTarget": tgt_list,
-                       "copy": 'false', "action": action,
+                       "copy": copy, "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
                        "symforce": 'false', "generation": generation}

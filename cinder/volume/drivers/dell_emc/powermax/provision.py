@@ -145,7 +145,7 @@ class PowerMaxProvision(object):
 
     def create_volume_replica(
             self, array, source_device_id, target_device_id,
-            snap_name, extra_specs, create_snap=False):
+            snap_name, extra_specs, create_snap=False, copy_mode=False):
         """Create a snap vx of a source and copy to a target.
 
         :param array: the array serial number
@@ -166,7 +166,7 @@ class PowerMaxProvision(object):
         def do_modify_volume_snap(src_device_id):
             self.rest.modify_volume_snap(
                 array, src_device_id, target_device_id, snap_name,
-                extra_specs, link=True)
+                extra_specs, link=True, copy_mode=copy_mode)
 
         do_modify_volume_snap(source_device_id)
 

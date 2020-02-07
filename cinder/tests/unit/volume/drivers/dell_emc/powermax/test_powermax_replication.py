@@ -503,24 +503,24 @@ class PowerMaxReplicationTest(test.TestCase):
                 self.extra_specs)
             mock_clean.assert_not_called()
 
-    @mock.patch.object(
-        common.PowerMaxCommon, 'get_remote_target_device',
-        return_value=(tpd.PowerMaxData.device_id2, '', '', '', ''))
-    @mock.patch.object(common.PowerMaxCommon,
-                       '_add_volume_to_async_rdf_managed_grp')
-    def test_cleanup_lun_replication_exception(self, mock_add, mock_tgt):
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.common.cleanup_lun_replication,
-                          self.data.test_volume, '1', self.data.device_id,
-                          self.extra_specs)
-        # is metro or async volume
-        extra_specs = deepcopy(self.extra_specs)
-        extra_specs[utils.REP_MODE] = utils.REP_METRO
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.common.cleanup_lun_replication,
-                          self.data.test_volume, '1', self.data.device_id,
-                          extra_specs)
-        mock_add.assert_called_once()
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=('VMAX250F', False))
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_remote_target')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_managed_storage_group',
+                       return_value=(
+                           tpd.PowerMaxData.rdf_managed_async_grp, {}))
+    @mock.patch.object(rest.PowerMaxRest, 'remove_vol_from_sg')
+    def test_cleanup_lun_replication_async(
+            self, mock_rm_sg, mock_get_rdf_sg, mock_clean, mock_model):
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
+        rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        rep_extra_specs['target_array_model'] = 'VMAX250F'
+        self.common.cleanup_lun_replication(
+            self.data.test_volume, '1', self.data.device_id,
+            self.extra_specs)
+        mock_rm_sg.assert_called_once_with(
+            self.data.array, self.data.rdf_managed_async_grp,
+            self.data.device_id, self.extra_specs)
 
     @mock.patch.object(common.PowerMaxCommon, '_cleanup_metro_target')
     @mock.patch.object(masking.PowerMaxMasking,
@@ -651,6 +651,21 @@ class PowerMaxReplicationTest(test.TestCase):
                     self.data.array, self.data.test_volume,
                     self.data.device_id))
             self.assertIsNone(target_device4)
+
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(tpd.PowerMaxData.rdf_group_name,
+                                     tpd.PowerMaxData.remote_array))
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       side_effect=exception.VolumeBackendAPIException(
+                           data=''))
+    def test_get_remote_target_device_no_target(
+            self, mock_get_vol, mock_get_rdf):
+        target_device, remote_array, rdf_group, local_vol_state, pair_state = (
+            self.common.get_remote_target_device(
+                self.data.array, self.data.test_volume, self.data.device_id))
+        self.assertIsNone(target_device)
+        self.assertEqual('', local_vol_state)
+        self.assertEqual('', pair_state)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
                        return_value=('VMAX250F', False))
