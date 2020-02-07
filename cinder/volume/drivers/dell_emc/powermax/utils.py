@@ -925,18 +925,66 @@ class PowerMaxUtils(object):
 
         return True
 
-    @staticmethod
-    def get_volume_attached_hostname(device_info):
-        """Parse a hostname from a storage group ID.
+    def get_volume_attached_hostname(self, volume):
+        """Get the host name from the attached volume
+
+        :param volume: the volume object
+        :returns: str -- the attached hostname
+        """
+        host_name_set = set()
+        attachment_list = volume.volume_attachment
+        LOG.debug("Volume attachment list: %(atl)s. "
+                  "Attachment type: %(at)s",
+                  {'atl': attachment_list, 'at': type(attachment_list)})
+
+        try:
+            att_list = attachment_list.objects
+        except AttributeError:
+            att_list = attachment_list
+        for att in att_list:
+            host_name_set.add(att.attached_host)
+
+        if host_name_set:
+            if len(host_name_set) > 1:
+                LOG.warning("Volume is attached to multiple instances "
+                            "on more than one compute node.")
+            else:
+                return host_name_set.pop()
+        return None
+
+    def get_rdf_managed_storage_group(self, device_info):
+        """Get the RDF managed storage group
 
         :param device_info: the device info dict
         :returns: str -- the attached hostname
+                 dict -- storage group details
         """
         try:
-            sg_id = device_info.get("storageGroupId")[0]
-            return sg_id.split('-')[1]
+            sg_list = device_info.get("storageGroupId")
+            for sg_id in sg_list:
+                sg_details = self.get_rdf_group_component_dict(sg_id)
+                if sg_details:
+                    return sg_id, sg_details
         except IndexError:
-            return None
+            return None, None
+        return None, None
+
+    def get_production_storage_group(self, device_info):
+        """Get the production storage group
+
+        :param device_info: the device info dict
+        :return: str -- the storage group id
+                 dict -- storage group details
+        """
+        try:
+            sg_list = device_info.get("storageGroupId")
+            for sg_id in sg_list:
+                sg_details = self.get_storage_group_component_dict(sg_id)
+                if sg_details:
+                    return sg_id, sg_details
+        except IndexError:
+            return None, None
+        return None, None
 
     @staticmethod
     def validate_qos_input(input_key, sg_value, qos_extra_spec, property_dict):
@@ -1373,17 +1421,30 @@ class PowerMaxUtils(object):
                     port_group_template, port_name_in))
         return port_name_out
 
-    @staticmethod
-    def get_object_components(regex_str, input_str):
-        """Get components from input string.
+    def get_storage_group_component_dict(self, storage_group_name):
+        """Parse the storage group string.
 
-        :param regex_str: the regex -- str
-        :param input_str: the input string -- str
-        :returns: dict
+        :param storage_group_name: the storage group name -- str
+        :returns: object components -- dict
         """
-        full_str = re.compile(regex_str)
-        match = full_str.match(input_str)
-        return match.groupdict() if match else None
+        regex_str = (r'^(?P<prefix>OS)-(?P<host>.+?)'
+                     r'((?P<no_slo>No_SLO)|((?P<srp>SRP.+?)-'
+                     r'(?P<sloworkload>.+?)))-(?P<portgroup>.+?)'
+                     r'(?P<after_pg>$|-CD|-RE|-RA|-RM)')
+        return self.get_object_components_and_correct_host(
+            regex_str, storage_group_name)
+
+    def get_rdf_group_component_dict(self, storage_group_name):
+        """Parse the storage group string.
+
+        :param storage_group_name: the storage group name -- str
+        :returns: object components -- dict
+        """
+        regex_str = (r'^(?P<prefix>OS)-(?P<rdf_label>.+?)-'
+                     r'(?P<sync_mode>Asynchronous|Metro)-'
+                     r'(?P<after_mode>rdf-sg)$')
+        return self.get_object_components(
+            regex_str, storage_group_name)
 
     def get_object_components_and_correct_host(self, regex_str, input_str):
         """Get components from input string.
@@ -1398,6 +1459,18 @@ class PowerMaxUtils(object):
                 object_dict['host'] = object_dict['host'][:-1]
         return object_dict
 
+    @staticmethod
+    def get_object_components(regex_str, input_str):
+        """Get components from input string.
+
+        :param regex_str: the regex -- str
+        :param input_str: the input string -- str
+        :returns: dict
+        """
+        full_str = re.compile(regex_str)
+        match = full_str.match(input_str)
+        return match.groupdict() if match else None
+
     def get_possible_initiator_name(self, host_label, protocol):
         """Get possible initiator name based on the host
 
@@ -1409,3 +1482,30 @@ class PowerMaxUtils(object):
         return ("OS-%(shortHostName)s-%(protocol)s-IG"
                 % {'shortHostName': host_label,
                    'protocol': protocol})
+
+    @staticmethod
+    def delete_values_from_dict(datadict, key_list):
+        """Delete values from a dict
+
+        :param datadict: dictionary
+        :param key_list: list of keys
+        :returns: dict
+        """
+        for key in key_list:
+            if datadict.get(key):
+                del datadict[key]
+        return datadict
+
+    @staticmethod
+    def update_values_in_dict(datadict, tuple_list):
+        """Delete values from a dict
+
+        :param datadict: dictionary
+        :param tuple_list: list of tuples
+        :returns: dict
+        """
+        for tuple in tuple_list:
+            if datadict.get(tuple[0]):
+                datadict.update({tuple[1]: datadict.get(tuple[0])})
+                del datadict[tuple[0]]
+        return datadict

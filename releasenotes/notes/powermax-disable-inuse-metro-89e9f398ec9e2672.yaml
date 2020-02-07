@@ -1,0 +1,6 @@
+---
+issues:
+  - |
+    PowerMax driver - Disabling inuse storage assisted migration to a metro
+    or asynchronous replicated volume type as this operation will
+    not facilitate FC scanning or iSCSI login of the target array.
