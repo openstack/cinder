@@ -239,4 +239,4 @@ Then run the unit test with pdb enabled:
    # Or to get a list of tests to run
 
    stestr list test_volume_utils > tests_to_run.txt
-   stestr run -n --load-list tests_to_run.txt
+   stestr run --load-list tests_to_run.txt
