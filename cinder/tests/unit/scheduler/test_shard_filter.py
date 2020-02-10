@@ -117,3 +117,21 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         caps = {'vcenter-shard': 'vc-b-0'}
         host = fakes.FakeBackendState('host1', {'capabilities': caps})
         self.assertTrue(self.filt_cls.backend_passes(host, self.props))
+
+    def test_shard_override_matches(self):
+        caps = {'vcenter-shard': 'vc-a-1'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
+        self.assertTrue(self.filt_cls.backend_passes(host, self.props))
+
+    def test_shard_override_no_match(self):
+        caps = {'vcenter-shard': 'vc-a-0'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
+        self.assertFalse(self.filt_cls.backend_passes(host, self.props))
+
+    def test_shard_override_no_data(self):
+        caps = {'vcenter-shard': 'vc-a-0'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.props['scheduler_hints'] = {'vcenter-shard': None}
+        self.assertFalse(self.filt_cls.backend_passes(host, self.props))

@@ -151,16 +151,25 @@ class ShardFilter(filters.BaseBackendFilter):
             LOG.debug('Ignoring snapshot.')
             return True
 
-        if project_id is None:
-            LOG.debug('Could not determine the project for volume %(id)s.',
-                      {'id': volid})
-            return False
+        # allow an override of the automatic shard-detection like nova does for
+        # its compute-hosts
+        scheduler_hints = filter_properties.get('scheduler_hints') or {}
+        if self._CAPABILITY_NAME in scheduler_hints:
+            shards = set([scheduler_hints[self._CAPABILITY_NAME]])
+            LOG.debug('Using overridden shards %(shards)s for scheduling.',
+                      {'shards': shards})
+        else:
+            if project_id is None:
+                LOG.debug('Could not determine the project for volume %(id)s.',
+                          {'id': volid})
+                return False
 
-        shards = self._get_shards(project_id)
-        if shards is None:
-            LOG.error('Failure retrieving shards for project %(project_id)s.',
-                      {'project_id': project_id})
-            return False
+            shards = self._get_shards(project_id)
+            if shards is None:
+                LOG.error('Failure retrieving shards for project '
+                          '%(project_id)s.',
+                          {'project_id': project_id})
+                return False
 
         if not len(shards):
             LOG.error('Project %(project_id)s is not assigned to any shard.',
