@@ -146,6 +146,11 @@ class ShardFilter(filters.BaseBackendFilter):
         if spec:
             volid = spec.get('volume_id')
 
+        if spec.get('snapshot_id'):
+            # Snapshots always use the same host as the volume.
+            LOG.debug('Ignoring snapshot.')
+            return True
+
         if project_id is None:
             LOG.debug('Could not determine the project for volume %(id)s.',
                       {'id': volid})

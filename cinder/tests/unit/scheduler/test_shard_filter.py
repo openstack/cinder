@@ -76,6 +76,28 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         host = fakes.FakeBackendState('host1', {'capabilities': caps})
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
 
+    def test_snapshot(self):
+        snap_props = {
+            'request_spec': {
+                'snapshot_id': 'asdf',
+                'volume_properties': {'size': 7}
+            }
+        }
+        caps = {'vcenter-shard': 'vc-a-1'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.assertTrue(self.filt_cls.backend_passes(host, snap_props))
+
+    def test_snapshot_None(self):
+        snap_props = {
+            'request_spec': {
+                'snapshot_id': None,
+                'volume_properties': {'size': 7}
+            }
+        }
+        caps = {'vcenter-shard': 'vc-a-1'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.assertFalse(self.filt_cls.backend_passes(host, snap_props))
+
     def test_shard_project_no_shards(self):
         caps = {'vcenter-shard': 'vc-a-1'}
         self.filt_cls._PROJECT_SHARD_CACHE['foo'] = []
