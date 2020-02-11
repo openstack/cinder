@@ -25,12 +25,6 @@ backup_id_required:
   in: path
   required: true
   type: string
-cascade:
-  description: |
-    Remove any snapshots along with the volume. Default=False.
-  in: path
-  required: false
-  type: boolean
 cgsnapshot_id_path:
   description: |
     The ID of the consistency group snapshot.
@@ -49,14 +43,6 @@ encryption_id:
   in: path
   required: true
   type: string
-force_vol_del:
-  description: |
-    Indicates whether to force delete a volume even if
-    the volume is in deleting or error_deleting. Default is ``false``.
-  in: path
-  required: false
-  type: boolean
-  min_version: 3.23
 group_id_path:
   description: |
     The ID of the group.
@@ -208,6 +194,12 @@ bootable_query:
   in: query
   required: false
   type: boolean
+cascade:
+  description: |
+    Remove any snapshots along with the volume. Default=False.
+  in: query
+  required: false
+  type: boolean
 detail:
   description: |
     Indicates whether to show pool details or only
@@ -231,6 +223,14 @@ force_del_qos:
   in: query
   required: false
   type: boolean
+force_vol_del:
+  description: |
+    Indicates whether to force delete a volume even if
+    the volume is in deleting or error_deleting. Default is ``false``.
+  in: query
+  required: false
+  type: boolean
+  min_version: 3.23
 host_query:
   description: |
     Filter the service list result by host name of the service.
