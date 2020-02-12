@@ -127,12 +127,15 @@ class TestVxFlexOSDriver(test.TestCase):
         self._set_overrides()
         self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
         self.driver.primary_client = mocks.VxFlexOSClient(self.configuration)
+        self.driver.secondary_client = mocks.VxFlexOSClient(self.configuration,
+                                                            is_primary=False)
         self.driver.do_setup({})
 
         self.mock_object(requests, 'get', self.do_request)
         self.mock_object(requests, 'post', self.do_request)
 
         self.driver.primary_client.do_setup()
+        self.driver.secondary_client.do_setup()
 
     def _set_overrides(self):
         # Override the defaults to fake values

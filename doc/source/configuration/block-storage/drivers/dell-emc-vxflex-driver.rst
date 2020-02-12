@@ -35,9 +35,14 @@ The Dell EMC VxFlex OS Block Storage driver has been tested against the
 following versions of ScaleIO and VxFlex OS and found to be compatible:
 
 * ScaleIO 2.0.x
+
 * ScaleIO 2.5.x
+
 * VxFlex OS 2.6.x
+
 * VxFlex OS 3.0.x
+
+* VxFlex OS 3.5.x
 
 Please consult the :ref:`scaleio_docs`
 to determine supported operating systems for each version
@@ -80,6 +85,7 @@ Supported operations
 
 * Create, list, update, and delete consistency group snapshots
 
+* OpenStack replication v2.1 support
 
 VxFlex OS Block Storage driver configuration
 --------------------------------------------
@@ -94,7 +100,7 @@ The configuration file is usually located at
 ``/etc/cinder/cinder.conf``.
 
 For a configuration example, refer to the example
-:ref:`cinder.conf <cg_configuration_example_emc>` .
+:ref:`cinder.conf <cg_configuration_example_emc>`.
 
 VxFlex OS driver name
 ~~~~~~~~~~~~~~~~~~~~~
@@ -231,6 +237,8 @@ Volume types can be used to specify characteristics of volumes allocated via
 the VxFlex OS Driver. These characteristics are defined as ``Extra Specs``
 within ``Volume Types``.
 
+.. _vxflexos_pd_sp:
+
 VxFlex OS Protection Domain and Storage Pool
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -301,6 +309,7 @@ is attached to an instance, and thus to a compute node/SDC.
 
 VxFlex OS compression support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Starting from version 3.0, VxFlex OS supports volume compression.
 By default driver will create volumes without compression.
 In order to create a compressed volume, a volume type which enables
@@ -337,8 +346,114 @@ limit volumes allocation only to data pools which supports compression.
 
 .. code-block:: console
 
-   $ openstack volume type set  --property compression_support='<is> True'  vxflexos_compressed
+   $ openstack volume type set  --property compression_support='<is> True' vxflexos_compressed
 
+VxFlex OS replication support
+-----------------------------
+
+Starting from version 3.5, VxFlex OS supports volume replication.
+
+Prerequisites
+~~~~~~~~~~~~~
+
+* VxFlex OS replication components must be installed on source and destination
+  systems.
+
+* Source and destination systems must have the same configuration for
+  Protection Domains and their Storage Pools (i.e. names, zero padding, etc.).
+
+* Source and destination systems must be paired and have at least one
+  Replication Consistency Group created.
+
+See :ref:`scaleio_docs` for instructions.
+
+Configure replication
+~~~~~~~~~~~~~~~~~~~~~
+
+#. Enable replication in ``cinder.conf`` file.
+
+   To enable replication feature for storage backend ``replication_device``
+   must be set as below:
+
+   .. code-block:: ini
+
+     [DEFAULT]
+     enabled_backends = vxflexos
+
+     [vxflexos]
+     volume_driver = cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver
+     volume_backend_name = vxflexos
+     san_ip = GATEWAY_IP
+     vxflexos_storage_pools = Domain1:Pool1,Domain2:Pool2
+     san_login = SIO_USER
+     san_password = SIO_PASSWD
+     san_thin_provision = false
+     replication_device = backend_id:vxflexos_repl,
+                          san_ip: REPLICATION_SYSTEM_GATEWAY_IP,
+                          san_login: REPLICATION_SYSTEM_SIO_USER,
+                          san_password: REPLICATION_SYSTEM_SIO_PASSWD
+
+   * Only one replication device is supported for storage backend.
+
+   * The following parameters are optional for replication device:
+
+     * REST API port - ``vxflexos_rest_server_port``.
+
+     * SSL certificate verification - ``driver_ssl_cert_verify`` and
+       ``driver_ssl_cert_path``.
+
+   For more information see :ref:`cg_configuration_options_emc`.
+
+#. Create volume type for volumes with replication enabled.
+
+   .. code-block:: console
+
+     $ openstack volume type create vxflexos_replicated
+     $ openstack volume type set --property replication_enabled='<is> True' vxflexos_replicated
+
+#. Set VxFlex OS Replication Consistency Group name for volume type.
+
+   .. code-block:: console
+
+     $ openstack volume type set --property vxflexos:replication_cg=<replication_cg name> \
+         vxflexos_replicated
+
+#. Set Protection Domain and Storage Pool if multiple Protection Domains
+   are specified.
+
+   VxFlex OS Replication Consistency Group is created between source and
+   destination Protection Domains. If more than one Protection Domain is
+   specified in ``cinder.conf`` you should set ``pool_name`` property for
+   volume type with appropriate Protection Domain and Storage Pool.
+   See :ref:`vxflexos_pd_sp`.
+
+Failover host
+~~~~~~~~~~~~~
+
+In the event of a disaster, or where there is a required downtime the
+administrator can issue the failover host command:
+
+.. code-block:: console
+
+   $ cinder failover-host cinder_host@vxflexos --backend_id vxflexos_repl
+
+After issuing Cinder failover-host command Cinder will switch to configured
+replication device, however to get existing instances to use this target and
+new paths to volumes it is necessary to first shelve Nova instances and then
+unshelve them, this will effectively restart the Nova instance and
+re-establish data paths between Nova instances and the volumes.
+
+.. code-block:: console
+
+   $ nova shelve <server>
+   $ nova unshelve [--availability-zone <availability_zone>] <server>
+
+If the primary system becomes available, the administrator can initiate
+failback operation using ``--backend_id default``:
+
+.. code-block:: console
+
+   $ cinder failover-host cinder_host@vxflexos --backend_id default
 
 Using VxFlex OS Storage with a containerized overcloud
 ------------------------------------------------------

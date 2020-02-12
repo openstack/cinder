@@ -17,11 +17,13 @@ Driver for Dell EMC VxFlex OS (formerly named Dell EMC ScaleIO).
 """
 
 import math
+from operator import xor
 
 from os_brick import initiator
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
+from oslo_utils import excutils
 from oslo_utils import units
 import six
 from six.moves import http_client
@@ -40,6 +42,7 @@ from cinder.volume.drivers.dell_emc.vxflexos import options
 from cinder.volume.drivers.dell_emc.vxflexos import rest_client
 from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 from cinder.volume.drivers.san import san
+from cinder.volume import manager
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
@@ -54,6 +57,7 @@ LOG = logging.getLogger(__name__)
 
 
 PROVISIONING_KEY = "provisioning:type"
+REPLICATION_CG_KEY = "vxflexos:replication_cg"
 QOS_IOPS_LIMIT_KEY = "maxIOPS"
 QOS_BANDWIDTH_LIMIT = "maxBWS"
 QOS_IOPS_PER_GB = "maxIOPSperGB"
@@ -82,9 +86,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
           2.0.5 - Change driver name, rename config file options
           3.0.0 - Add support for VxFlex OS 3.0.x and for volumes compression
           3.5.0 - Add support for VxFlex OS 3.5.x
+          3.5.1 - Add volume replication v2.1 support for VxFlex OS 3.5.x
     """
 
-    VERSION = "3.5.0"
+    VERSION = "3.5.1"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_VxFlexOS_CI"
 
@@ -96,27 +101,68 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def __init__(self, *args, **kwargs):
         super(VxFlexOSDriver, self).__init__(*args, **kwargs)
 
+        self.active_backend_id = kwargs.get("active_backend_id")
         self.configuration.append_config_values(san.san_opts)
         self.configuration.append_config_values(vxflexos_opts)
         self.statisticProperties = None
         self.storage_pools = None
         self.provisioning_type = None
         self.connector = None
+        self.replication_enabled = None
+        self.replication_device = None
+        self.failover_choices = None
         self.primary_client = None
+        self.secondary_client = None
+
+    def _init_vendor_properties(self):
+        properties = {}
+        self._set_property(
+            properties,
+            "vxflexos:replication_cg",
+            "VxFlex OS Replication Consistency Group.",
+            _("Specifies the VxFlex OS Replication Consistency group for a "
+              "volume type. Source and target volumes will be added to the "
+              "specified RCG during creation."),
+            "string")
+        return properties, "vxflexos"
 
     @staticmethod
     def get_driver_options():
         return vxflexos_opts
 
-    def _get_client(self):
+    @property
+    def _available_failover_choices(self):
+        """Available choices to failover/failback host."""
+
+        return self.failover_choices.difference({self.active_backend_id})
+
+    @property
+    def _is_failed_over(self):
+        """Check if storage backend is in FAILED_OVER state.
+
+        :return: storage backend failover state
+        """
+
+        return bool(self.active_backend_id and
+                    self.active_backend_id != "default")
+
+    def _get_client(self, secondary=False):
         """Get appropriate REST client for storage backend.
 
+        :param secondary: primary or secondary client
         :return: REST client for storage backend
         """
 
-        return self.primary_client
+        if xor(self._is_failed_over, secondary):
+            return self.secondary_client
+        else:
+            return self.primary_client
 
     def do_setup(self, context):
+        if not self.active_backend_id:
+            self.active_backend_id = manager.VolumeManager.FAILBACK_SENTINEL
+        if not self.failover_choices:
+            self.failover_choices = {manager.VolumeManager.FAILBACK_SENTINEL}
         vxflexos_storage_pools = (
             self.configuration.safe_get("vxflexos_storage_pools")
         )
@@ -138,7 +184,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
             self.configuration.num_volume_device_scan_tries
         )
         self.primary_client = rest_client.RestClient(self.configuration)
+        self.secondary_client = rest_client.RestClient(self.configuration,
+                                                       is_primary=False)
         self.primary_client.do_setup()
+        self.secondary_client.do_setup()
 
     def check_for_setup_error(self):
         client = self._get_client()
@@ -184,6 +233,40 @@ class VxFlexOSDriver(driver.VolumeDriver):
                             "Consult the VxFlex OS product documentation "
                             "for information on how to enable zero padding "
                             "and prevent this from occurring.", pool)
+        # validate replication configuration
+        if self.secondary_client.is_configured:
+            self.replication_device = self.configuration.replication_device[0]
+            self.failover_choices.add(self.replication_device["backend_id"])
+            if self._is_failed_over:
+                LOG.warning("Storage backend is in FAILED_OVER state. "
+                            "Replication is DISABLED.")
+                self.replication_enabled = False
+            else:
+                primary_version = self.primary_client.query_rest_api_version()
+                secondary_version = (
+                    self.secondary_client.query_rest_api_version()
+                )
+                if not (flex_utils.version_gte(primary_version, "3.5") and
+                        flex_utils.version_gte(secondary_version, "3.5")):
+                    LOG.info("VxFlex OS versions less than v3.5 do not "
+                             "support replication.")
+                    self.replication_enabled = False
+                else:
+                    self.replication_enabled = True
+        else:
+            self.replication_enabled = False
+
+    @property
+    def replication_targets(self):
+        """Replication targets for storage backend.
+
+        :return: replication targets
+        """
+
+        if self.replication_enabled and not self._is_failed_over:
+            return [self.replication_device]
+        else:
+            return []
 
     def _get_queryable_statistics(self, sio_type, sio_id):
         """Get statistic properties that can be obtained from VxFlex OS.
@@ -251,15 +334,224 @@ class VxFlexOSDriver(driver.VolumeDriver):
                     )
         return self.statisticProperties
 
+    def _setup_volume_replication(self, vol_or_snap, source_provider_id):
+        """Configure replication for volume or snapshot.
+
+        Create volume on secondary VxFlex OS storage backend.
+        Pair volumes and add replication pair to replication consistency group.
+
+        :param vol_or_snap: source volume/snapshot
+        :param source_provider_id: primary VxFlex OS volume id
+        """
+        try:
+            # If vol_or_snap has 'volume' attribute we are dealing
+            # with snapshot. Necessary parameters is stored in volume object.
+            entity = vol_or_snap.volume
+            entity_type = "snapshot"
+        except AttributeError:
+            entity = vol_or_snap
+            entity_type = "volume"
+        LOG.info("Configure replication for %(entity_type)s %(id)s. ",
+                 {"entity_type": entity_type, "id": vol_or_snap.id})
+        try:
+            pd_sp = volume_utils.extract_host(entity.host, "pool")
+            protection_domain_name = pd_sp.split(":")[0]
+            storage_pool_name = pd_sp.split(":")[1]
+            self._check_volume_creation_safe(protection_domain_name,
+                                             storage_pool_name,
+                                             secondary=True)
+            storage_type = self._get_volumetype_extraspecs(entity)
+            rcg_name = storage_type.get(REPLICATION_CG_KEY)
+            LOG.info("Replication Consistency Group name: %s.", rcg_name)
+            provisioning, compression = self._get_provisioning_and_compression(
+                storage_type,
+                protection_domain_name,
+                storage_pool_name,
+                secondary=True
+            )
+            dest_provider_id = self._get_client(secondary=True).create_volume(
+                protection_domain_name,
+                storage_pool_name,
+                vol_or_snap.id,
+                entity.size,
+                provisioning,
+                compression)
+            self._get_client().create_volumes_pair(rcg_name,
+                                                   source_provider_id,
+                                                   dest_provider_id)
+            LOG.info("Successfully configured replication for %(entity_type)s "
+                     "%(id)s.",
+                     {"entity_type": entity_type, "id": vol_or_snap.id})
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.error("Failed to configure replication for "
+                          "%(entity_type)s %(id)s.",
+                          {"entity_type": entity_type, "id": vol_or_snap.id})
+
+    def _teardown_volume_replication(self, provider_id):
+        """Stop volume/snapshot replication.
+
+        Unpair volumes/snapshot and remove volume/snapshot from VxFlex OS
+        secondary storage backend.
+        """
+
+        if not provider_id:
+            LOG.warning("Volume or snapshot does not have provider_id thus "
+                        "does not map to VxFlex OS volume.")
+            return
+        try:
+            pair_id, remote_pair_id, vol_id, remote_vol_id = (
+                self._get_client().get_volumes_pair_attrs("localVolumeId",
+                                                          provider_id)
+            )
+        except exception.VolumeBackendAPIException:
+            LOG.info("Replication pair for volume %s is not found. "
+                     "Replication for volume was not configured or was "
+                     "modified from storage side.", provider_id)
+            return
+        self._get_client().remove_volumes_pair(pair_id)
+        if not self._is_failed_over:
+            self._get_client(secondary=True).remove_volume(remote_vol_id)
+
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        if secondary_id not in self._available_failover_choices:
+            msg = (_("Target %(target)s is not valid choice. "
+                     "Valid choices: %(choices)s.") %
+                   {"target": secondary_id,
+                    "choices": ', '.join(self._available_failover_choices)})
+            LOG.error(msg)
+            raise exception.InvalidReplicationTarget(reason=msg)
+        is_failback = secondary_id == manager.VolumeManager.FAILBACK_SENTINEL
+        failed_over_rcgs = {}
+        model_updates = []
+        for volume in volumes:
+            storage_type = self._get_volumetype_extraspecs(volume)
+            rcg_name = storage_type.get(REPLICATION_CG_KEY)
+            if not rcg_name:
+                LOG.error("Replication Consistency Group is not specified in "
+                          "volume %s VolumeType.", volume.id)
+                failover_status = fields.ReplicationStatus.FAILOVER_ERROR
+                updates = self._generate_model_updates(volume,
+                                                       failover_status,
+                                                       is_failback)
+                model_updates.append(updates)
+                continue
+            if rcg_name in failed_over_rcgs:
+                failover_status = failed_over_rcgs[rcg_name]
+            else:
+                failover_status = self._failover_replication_cg(
+                    rcg_name, is_failback
+                )
+                failed_over_rcgs[rcg_name] = failover_status
+            updates = self._generate_model_updates(volume,
+                                                   failover_status,
+                                                   is_failback)
+            model_updates.append({"volume_id": volume.id, "updates": updates})
+        self.active_backend_id = secondary_id
+        self.replication_enabled = is_failback
+        return secondary_id, model_updates, []
+
+    def _failover_replication_cg(self, rcg_name, is_failback):
+        """Failover/failback Replication Consistency Group on storage backend.
+
+        :param rcg_name: name of VxFlex OS Replication Consistency Group
+        :param is_failback: is failover or failback
+        :return: failover status of Replication Consistency Group
+        """
+
+        action = "failback" if is_failback else "failover"
+        LOG.info("Perform %(action)s of Replication Consistency Group "
+                 "%(rcg_name)s.", {"action": action, "rcg_name": rcg_name})
+        try:
+            self._get_client(secondary=True).failover_failback_replication_cg(
+                rcg_name, is_failback
+            )
+            failover_status = fields.ReplicationStatus.FAILED_OVER
+            LOG.info("Successfully performed %(action)s of Replication "
+                     "Consistency Group %(rcg_name)s.",
+                     {"action": action, "rcg_name": rcg_name})
+        except exception.VolumeBackendAPIException:
+            LOG.error("Failed to perform %(action)s of Replication "
+                      "Consistency Group %(rcg_name)s.",
+                      {"action": action, "rcg_name": rcg_name})
+            failover_status = fields.ReplicationStatus.FAILOVER_ERROR
+        return failover_status
+
+    def _generate_model_updates(self, volume, failover_status, is_failback):
+        """Generate volume model updates after failover/failback.
+
+        Get new provider_id for volume and update volume snapshots if
+        presented.
+        """
+
+        LOG.info("Generate model updates for volume %s and its snapshots.",
+                 volume.id)
+        error_status = (fields.ReplicationStatus.ERROR if is_failback else
+                        fields.ReplicationStatus.FAILOVER_ERROR)
+        updates = {}
+        if failover_status == fields.ReplicationStatus.FAILED_OVER:
+            client = self._get_client(secondary=True)
+            try:
+                LOG.info("Query new provider_id for volume %s.", volume.id)
+                pair_id, remote_pair_id, vol_id, remote_vol_id = (
+                    client.get_volumes_pair_attrs("remoteVolumeId",
+                                                  volume.provider_id)
+                )
+                LOG.info("New provider_id for volume %(vol_id)s: "
+                         "%(provider_id)s.",
+                         {"vol_id": volume.id, "provider_id": vol_id})
+                updates["provider_id"] = vol_id
+            except exception.VolumeBackendAPIException:
+                LOG.error("Failed to query new provider_id for volume "
+                          "%(vol_id)s. Volume status will be changed to "
+                          "%(status)s.",
+                          {"vol_id": volume.id, "status": error_status})
+                updates["replication_status"] = error_status
+            for snapshot in volume.snapshots:
+                try:
+                    LOG.info("Query new provider_id for snapshot %(snap_id)s "
+                             "of volume %(vol_id)s.",
+                             {"snap_id": snapshot.id, "vol_id": volume.id})
+                    pair_id, remote_pair_id, snap_id, remote_snap_id = (
+                        client.get_volumes_pair_attrs(
+                            "remoteVolumeId", snapshot.provider_id)
+                    )
+                    LOG.info("New provider_id for snapshot %(snap_id)s "
+                             "of volume %(vol_id)s: %(provider_id)s.",
+                             {
+                                 "snap_id": snapshot.id,
+                                 "vol_id": volume.id,
+                                 "provider_id": snap_id,
+                             })
+                    snapshot.update({"provider_id": snap_id})
+                except exception.VolumeBackendAPIException:
+                    LOG.error("Failed to query new provider_id for snapshot "
+                              "%(snap_id)s of volume %(vol_id)s. "
+                              "Snapshot status will be changed to "
+                              "%(status)s.",
+                              {
+                                  "vol_id": volume.id,
+                                  "snap_id": snapshot.id,
+                                  "status": fields.SnapshotStatus.ERROR,
+                              })
+                    snapshot.update({"status": fields.SnapshotStatus.ERROR})
+                finally:
+                    snapshot.save()
+        else:
+            updates["replication_status"] = error_status
+        return updates
+
     def _get_provisioning_and_compression(self,
                                           storage_type,
                                           protection_domain_name,
-                                          storage_pool_name):
+                                          storage_pool_name,
+                                          secondary=False):
         """Get volume provisioning and compression from VolumeType extraspecs.
 
         :param storage_type: extraspecs
         :param protection_domain_name: name of VxFlex OS Protection Domain
         :param storage_pool_name: name of VxFlex OS Storage Pool
+        :param secondary: primary or secondary client
         :return: volume provisioning and compression
         """
 
@@ -275,11 +567,13 @@ class VxFlexOSDriver(driver.VolumeDriver):
         provisioning = "ThinProvisioned"
         if (provisioning_type == "thick" and
                 self._check_pool_support_thick_vols(protection_domain_name,
-                                                    storage_pool_name)):
+                                                    storage_pool_name,
+                                                    secondary)):
             provisioning = "ThickProvisioned"
         compression = "None"
         if self._check_pool_support_compression(protection_domain_name,
-                                                storage_pool_name):
+                                                storage_pool_name,
+                                                secondary):
             if provisioning_type == "compressed":
                 compression = "Normal"
         return provisioning, compression
@@ -297,20 +591,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
         pd_sp = volume_utils.extract_host(volume.host, "pool")
         protection_domain_name = pd_sp.split(":")[0]
         storage_pool_name = pd_sp.split(":")[1]
-        allowed = client.is_volume_creation_safe(protection_domain_name,
-                                                 storage_pool_name)
-        if not allowed:
-            # Do not allow volume creation on this backend.
-            # Volumes may leak data between tenants.
-            LOG.error("Volume creation rejected due to "
-                      "zero padding being disabled for pool, %s:%s. "
-                      "This behaviour can be changed by setting "
-                      "the configuration option "
-                      "vxflexos_allow_non_padded_volumes = True.",
-                      protection_domain_name, storage_pool_name)
-            msg = _("Volume creation rejected due to "
-                    "unsafe backend configuration.")
-            raise exception.VolumeBackendAPIException(data=msg)
+        self._check_volume_creation_safe(protection_domain_name,
+                                         storage_pool_name)
         storage_type = self._get_volumetype_extraspecs(volume)
         LOG.info("Create volume %(vol_id)s. Volume type: %(volume_type)s, "
                  "Storage Pool name: %(pool_name)s, Protection Domain name: "
@@ -326,14 +608,17 @@ class VxFlexOSDriver(driver.VolumeDriver):
             protection_domain_name,
             storage_pool_name
         )
-        source_provider_id = client.create_volume(protection_domain_name,
-                                                  storage_pool_name,
-                                                  volume, provisioning,
-                                                  compression)
+        provider_id = client.create_volume(protection_domain_name,
+                                           storage_pool_name,
+                                           volume.id,
+                                           volume.size,
+                                           provisioning,
+                                           compression)
         real_size = int(flex_utils.round_to_num_gran(volume.size))
         model_updates = {
-            "provider_id": source_provider_id,
+            "provider_id": provider_id,
             "size": real_size,
+            "replication_status": fields.ReplicationStatus.DISABLED,
         }
         LOG.info("Successfully created volume %(vol_id)s. "
                  "Volume size: %(size)s. VxFlex OS volume name: %(vol_name)s, "
@@ -342,8 +627,13 @@ class VxFlexOSDriver(driver.VolumeDriver):
                      "vol_id": volume.id,
                      "size": real_size,
                      "vol_name": flex_utils.id_to_base64(volume.id),
-                     "provider_id": source_provider_id,
+                     "provider_id": provider_id,
                  })
+        if volume.is_replicated():
+            self._setup_volume_replication(volume, provider_id)
+            model_updates["replication_status"] = (
+                fields.ReplicationStatus.ENABLED
+            )
         return model_updates
 
     def _check_volume_size(self, size):
@@ -361,6 +651,27 @@ class VxFlexOSDriver(driver.VolumeDriver):
                          "not multiple of 8GB.") % size)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
+
+    def _check_volume_creation_safe(self,
+                                    protection_domain_name,
+                                    storage_pool_name,
+                                    secondary=False):
+        allowed = self._get_client(secondary).is_volume_creation_safe(
+            protection_domain_name,
+            storage_pool_name
+        )
+        if not allowed:
+            # Do not allow volume creation on this backend.
+            # Volumes may leak data between tenants.
+            LOG.error("Volume creation rejected due to "
+                      "zero padding being disabled for pool, %s:%s. "
+                      "This behaviour can be changed by setting "
+                      "the configuration option "
+                      "vxflexos_allow_non_padded_volumes = True.",
+                      protection_domain_name, storage_pool_name)
+            msg = _("Volume creation rejected due to "
+                    "unsafe backend configuration.")
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def create_snapshot(self, snapshot):
         """Create volume snapshot on VxFlex OS storage backend.
@@ -388,6 +699,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
                      "snap_name": flex_utils.id_to_base64(provider_id),
                      "snap_provider_id": provider_id,
                  })
+        if snapshot.volume.is_replicated():
+            self._setup_volume_replication(snapshot, provider_id)
         return model_updates
 
     def _create_volume_from_source(self, volume, source):
@@ -409,6 +722,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         provider_id = client.snapshot_volume(source.provider_id, volume.id)
         model_updates = {
             "provider_id": provider_id,
+            "replication_status": fields.ReplicationStatus.DISABLED,
         }
         LOG.info("Successfully created volume %(vol_id)s "
                  "from source %(source_id)s. VxFlex OS volume name: "
@@ -430,6 +744,11 @@ class VxFlexOSDriver(driver.VolumeDriver):
         if volume.size > source_size:
             real_size = flex_utils.round_to_num_gran(volume.size)
             client.extend_volume(provider_id, real_size)
+        if volume.is_replicated():
+            self._setup_volume_replication(volume, provider_id)
+            model_updates["replication_status"] = (
+                fields.ReplicationStatus.ENABLED
+            )
         return model_updates
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -460,6 +779,13 @@ class VxFlexOSDriver(driver.VolumeDriver):
         volume_real_old_size = flex_utils.round_to_num_gran(volume.size)
         if volume_real_old_size == volume_new_size:
             return
+        if volume.is_replicated():
+            pair_id, remote_pair_id, vol_id, remote_vol_id = (
+                self._get_client().get_volumes_pair_attrs("localVolumeId",
+                                                          volume.provider_id)
+            )
+            self._get_client(secondary=True).extend_volume(remote_vol_id,
+                                                           volume_new_size)
         self._get_client().extend_volume(volume.provider_id, volume_new_size)
 
     def create_cloned_volume(self, volume, src_vref):
@@ -477,10 +803,14 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def delete_volume(self, volume):
         """Delete volume from VxFlex OS storage backend.
 
+        If volume is replicated, replication will be stopped first.
+
         :param volume: volume to be deleted
         """
 
         LOG.info("Delete volume %s.", volume.id)
+        if volume.is_replicated():
+            self._teardown_volume_replication(volume.provider_id)
         self._get_client().remove_volume(volume.provider_id)
 
     def delete_snapshot(self, snapshot):
@@ -490,6 +820,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
         """
 
         LOG.info("Delete snapshot %s.", snapshot.id)
+        if snapshot.volume.is_replicated():
+            self._teardown_volume_replication(snapshot.provider_id)
         self._get_client().remove_volume(snapshot.provider_id)
 
     def initialize_connection(self, volume, connector, **kwargs):
@@ -615,6 +947,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
         stats["thick_provisioning_support"] = True
         stats["thin_provisioning_support"] = True
         stats["multiattach"] = True
+        stats["replication_enabled"] = (
+            self.replication_enabled and not self._is_failed_over
+        )
+        stats["replication_targets"] = self.replication_targets
         pools = []
 
         backend_free_capacity = 0
@@ -649,6 +985,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
                 "reserved_percentage": 0,
                 "thin_provisioning_support": pool_support_thin_vols,
                 "thick_provisioning_support": pool_support_thick_vols,
+                "replication_enabled": stats["replication_enabled"],
+                "replication_targets": stats["replication_targets"],
                 "multiattach": True,
                 "provisioned_capacity_gb": provisioned_capacity,
                 "max_over_subscription_ratio":
@@ -761,24 +1099,40 @@ class VxFlexOSDriver(driver.VolumeDriver):
         )
         return total_capacity_gb, free_capacity_gb, provisioned_capacity_gb
 
-    def _check_pool_support_thick_vols(self, domain_name, pool_name):
+    def _check_pool_support_thick_vols(self,
+                                       domain_name,
+                                       pool_name,
+                                       secondary=False):
         # storage pools with fine granularity doesn't support
         # thick volumes
-        return not self._is_fine_granularity_pool(domain_name, pool_name)
+        return not self._is_fine_granularity_pool(domain_name,
+                                                  pool_name,
+                                                  secondary)
 
-    def _check_pool_support_thin_vols(self, domain_name, pool_name):
+    def _check_pool_support_thin_vols(self,
+                                      domain_name,
+                                      pool_name,
+                                      secondary=False):
         # thin volumes available since VxFlex OS 2.x
-        client = self._get_client()
+        client = self._get_client(secondary)
 
         return flex_utils.version_gte(client.query_rest_api_version(), "2.0")
 
-    def _check_pool_support_compression(self, domain_name, pool_name):
+    def _check_pool_support_compression(self,
+                                        domain_name,
+                                        pool_name,
+                                        secondary=False):
         # volume compression available only in storage pools
         # with fine granularity
-        return self._is_fine_granularity_pool(domain_name, pool_name)
+        return self._is_fine_granularity_pool(domain_name,
+                                              pool_name,
+                                              secondary)
 
-    def _is_fine_granularity_pool(self, domain_name, pool_name):
-        client = self._get_client()
+    def _is_fine_granularity_pool(self,
+                                  domain_name,
+                                  pool_name,
+                                  secondary=False):
+        client = self._get_client(secondary)
 
         if flex_utils.version_gte(client.query_rest_api_version(), "3.0"):
             r = client.get_storage_pool_properties(domain_name, pool_name)

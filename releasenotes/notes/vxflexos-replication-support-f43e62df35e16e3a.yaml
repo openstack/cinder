@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    VxFlex OS driver now supports OpenStack volume replication v2.1 for
+    VxFlex OS v3.5.0 storage backends.
