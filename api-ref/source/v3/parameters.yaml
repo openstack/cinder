@@ -549,7 +549,19 @@ attachments:
     is attached to a server instance, the attachments list includes
     the UUID of the attached server, an attachment UUID, the name of
     the attached host, if any, the volume UUID, the device, and the
-    device UUID.  Otherwise, this list is empty.
+    device UUID.  Otherwise, this list is empty. For example::
+
+      [
+        {
+          'server_id': '6c8cf6e0-4c8f-442f-9196-9679737feec6',
+          'attachment_id': '3dafcac4-1cb9-4b60-a227-d729baa10cf6',
+          'attached_at': '2019-09-30T19:30:34.000000',
+          'host_name': null,
+          'volume_id': '5d95d5ee-4bdd-4452-b9d7-d44ca10d3d53',
+          'device': '/dev/vda',
+          'id': '5d95d5ee-4bdd-4452-b9d7-d44ca10d3d53'
+        }
+      ]
   in: body
   required: true
   type: array
