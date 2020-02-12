@@ -1394,3 +1394,8 @@ class NVMETTargetAddError(CinderException):
 
 class NVMETTargetDeleteError(CinderException):
     message = "Failed to delete subsystem: %(subsystem)s"
+
+
+class SnapshotLimitReached(CinderException):
+    message = _("Exceeded the configured limit of "
+                "%(set_limit)s snapshots per volume.")
