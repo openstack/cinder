@@ -41,3 +41,5 @@ api-ref/build
 # Files created by releasenotes build
 releasenotes/build
 contrib/block-box/.db_data
+RELEASENOTES.rst
+releasenotes/notes/reno.cache
