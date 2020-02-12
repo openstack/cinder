@@ -120,8 +120,7 @@ so the only package you install is ``tox`` itself::
 
 Run the unit tests by doing::
 
-    tox -e py35
-    tox -e py27
+    tox -e py3
 
 See :doc:`testing` for more details.
 
@@ -132,22 +131,14 @@ Manually installing and using the virtualenv
 
 You can also manually install the virtual environment::
 
-  tox -e py27 --notest
-
-or::
-
-  tox -e py35 --notest
+  tox -e py3 --notest
 
 This will install all of the Python packages listed in the
 ``requirements.txt`` file into your virtualenv.
 
 To activate the Cinder virtualenv you can run::
 
-     $ source .tox/py27/bin/activate
-
-or::
-
-     $ source .tox/py35/bin/activate
+     $ source .tox/py3/bin/activate
 
 To exit your virtualenv, just type::
 
