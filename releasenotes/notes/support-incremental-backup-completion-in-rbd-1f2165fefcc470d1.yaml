@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed issue where all Ceph RBD backups would be incremental after the
+    first one. The driver now honors whether ``--incremental`` is specified or
+    not.
