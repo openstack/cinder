@@ -559,6 +559,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     'cryptsetup',
                     'luksChangeKey',
                     attach_info['device']['path'],
+                    '--force-password',
                     run_as_root=True,
                     process_input=key_str,
                     log_errors=processutils.LOG_ALL_ERRORS)
@@ -583,6 +584,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     'cryptsetup',
                     '--batch-mode',
                     'luksFormat',
+                    '--force-password',
                     '--type', encryption['provider'],
                     '--cipher', encryption['cipher'],
                     '--key-size', str(encryption['key_size']),
