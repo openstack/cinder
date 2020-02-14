@@ -8053,6 +8053,29 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.driver.retype, ctxt, volume,
                           new_type, diff, host)
 
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_flashcopy_mapping_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_vdisk_fc_mappings')
+    def test_revert_to_snapshot_with_uncompleted_clone(
+            self,
+            _get_vdisk_fc_mappings,
+            _get_flashcopy_mapping_attributes):
+        vol1 = self._generate_vol_info()
+        snap1 = self._generate_snap_info(vol1.id)
+
+        self.driver._helpers._get_vdisk_fc_mappings.return_value = ['4']
+        self.driver._helpers._get_flashcopy_mapping_attributes.return_value = {
+            'copy_rate': '50',
+            'progress': '3',
+            'status': 'copying',
+            'target_vdisk_name': 'testvol'}
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.revert_to_snapshot,
+                          self.ctxt,
+                          vol1, snap1)
+
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
@@ -8246,6 +8269,46 @@ class StorwizeHelpersTestCase(test.TestCase):
         iog = self.storwize_svc_common.select_io_group(state, opts, pool)
         self.assertTrue(iog in state['available_iogrps'])
         self.assertEqual(1, iog)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_flashcopy_mapping_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_vdisk_fc_mappings')
+    def test_pretreatment_before_revert_uncompleted_clone(
+            self,
+            _get_vdisk_fc_mappings,
+            _get_flashcopy_mapping_attributes):
+        vol = 'testvol'
+        _get_vdisk_fc_mappings.return_value = ['4']
+        _get_flashcopy_mapping_attributes.return_value = {
+            'copy_rate': '50',
+            'progress': '3',
+            'status': 'copying',
+            'target_vdisk_name': 'testvol'}
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.storwize_svc_common.pretreatment_before_revert,
+                          vol)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'stopfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_flashcopy_mapping_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_vdisk_fc_mappings')
+    def test_pretreatment_before_revert_completed_clone(
+            self,
+            _get_vdisk_fc_mappings,
+            _get_flashcopy_mapping_attributes,
+            stopfcmap):
+        vol = 'testvol'
+        _get_vdisk_fc_mappings.return_value = ['4']
+        _get_flashcopy_mapping_attributes.return_value = {
+            'copy_rate': '50',
+            'progress': '100',
+            'status': 'copying',
+            'target_vdisk_name': 'testvol'}
+        self.storwize_svc_common.pretreatment_before_revert(vol)
+        stopfcmap.assert_called_once_with('4', split=True)
 
 
 @ddt.ddt

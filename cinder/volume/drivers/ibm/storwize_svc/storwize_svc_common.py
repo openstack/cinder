@@ -612,8 +612,13 @@ class StorwizeSSH(object):
                    '-autodelete', autodel, fc_map_id]
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def stopfcmap(self, fc_map_id):
-        ssh_cmd = ['svctask', 'stopfcmap', fc_map_id]
+    def stopfcmap(self, fc_map_id, force=False, split=False):
+        ssh_cmd = ['svctask', 'stopfcmap']
+        if force:
+            ssh_cmd += ['-force']
+        if split:
+            ssh_cmd += ['-split']
+        ssh_cmd += [fc_map_id]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def rmfcmap(self, fc_map_id):
@@ -2509,6 +2514,28 @@ class StorwizeHelpers(object):
                          'independent sites, the pool %(pool)s is on the '
                          'same site as peer_pool %(peer_pool)s. ') %
                 {'pool': pool, 'peer_pool': peer_pool})
+
+    def pretreatment_before_revert(self, name):
+        mapping_ids = self._get_vdisk_fc_mappings(name)
+        for map_id in mapping_ids:
+            attrs = self._get_flashcopy_mapping_attributes(map_id)
+            if not attrs:
+                continue
+            target = attrs['target_vdisk_name']
+            copy_rate = attrs['copy_rate']
+            progress = attrs['progress']
+            status = attrs['status']
+            if status in ['copying', 'prepared'] and target == name:
+                if copy_rate != '0' and progress != '100':
+                    msg = (_('Cannot start revert since fcmap %(map_id)s '
+                             'in progress, current progress is %(progress)s')
+                           % {'map_id': map_id, 'progress': progress})
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                elif copy_rate != '0' and progress == '100':
+                    LOG.debug('Split completed clone map_id=%(map_id)s fcmap',
+                              {'map_id': map_id})
+                    self.ssh.stopfcmap(map_id, split=True)
 
 
 class CLIResponse(object):
@@ -5475,6 +5502,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if rep_type:
             raise exception.InvalidInput(
                 reason=_('Reverting replication volume is not supported.'))
+        try:
+            self._helpers.pretreatment_before_revert(volume.name)
+        except Exception as err:
+            msg = (_("Pretreatment before revert volume %(vol)s to snapshot "
+                     "%(snap)s failed due to: %(err)s.")
+                   % {"vol": volume.name, "snap": snapshot.name, "err": err})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
         opts = self._get_vdisk_params(volume.volume_type_id)
         try:
             self._helpers.run_flashcopy(
