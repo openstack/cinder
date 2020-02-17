@@ -855,7 +855,7 @@ class PowerMaxUtils(object):
         if source_vol['timeFinderInfo']['snapVXTgt'] is True:
             return False
 
-        if vol_head['nameModifier'][0:3] == 'OS-':
+        if vol_head['userDefinedIdentifier'][0:3] == 'OS-':
             return False
 
         return True

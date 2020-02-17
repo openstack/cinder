@@ -828,7 +828,8 @@ class PowerMaxData(object):
             'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
             'encapsulated': False, 'formattedName': '00001',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'maskingInfo': {'masked': False},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
@@ -853,7 +854,8 @@ class PowerMaxData(object):
             'reservationInfo': {'reserved': False}, 'mapped': False,
             'encapsulated': False, 'formattedName': '00001',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
                 'concurrentRDF': False,
@@ -876,7 +878,8 @@ class PowerMaxData(object):
             'reservationInfo': {'reserved': False}, 'mapped': False,
             'encapsulated': False, 'formattedName': '00002',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
                 'concurrentRDF': False,
@@ -899,7 +902,8 @@ class PowerMaxData(object):
             'reservationInfo': {'reserved': False}, 'mapped': False,
             'encapsulated': False, 'formattedName': '00003',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
                 'concurrentRDF': False,
@@ -922,7 +926,8 @@ class PowerMaxData(object):
             'reservationInfo': {'reserved': False}, 'mapped': False,
             'encapsulated': False, 'formattedName': '00004',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
                 'concurrentRDF': False,
@@ -947,7 +952,8 @@ class PowerMaxData(object):
             'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
             'encapsulated': False, 'formattedName': '00001',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'maskingInfo': {'masked': False},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
@@ -961,7 +967,8 @@ class PowerMaxData(object):
             'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
             'encapsulated': False, 'formattedName': '00002',
             'system_resource': False, 'numSymDevMaskingViews': 1,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'maskingInfo': {'masked': False},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
@@ -975,7 +982,8 @@ class PowerMaxData(object):
             'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
             'encapsulated': False, 'formattedName': '00003',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'maskingInfo': {'masked': False},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
@@ -989,7 +997,8 @@ class PowerMaxData(object):
             'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
             'encapsulated': False, 'formattedName': '00004',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': "", 'configuration': 'TDEV'},
+            'nameModifier': "", "userDefinedIdentifier": "N/A",
+            'configuration': 'TDEV'},
             'maskingInfo': {'masked': False},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
@@ -1003,7 +1012,8 @@ class PowerMaxData(object):
             'numStorageGroups': 0, 'reservationInfo': {'reserved': False},
             'encapsulated': False, 'formattedName': '00005',
             'system_resource': False, 'numSymDevMaskingViews': 0,
-            'nameModifier': 'OS-vol', 'configuration': 'TDEV'},
+            'nameModifier': 'OS-vol', "userDefinedIdentifier": "OS-vol",
+            'configuration': 'TDEV'},
             'maskingInfo': {'masked': False},
             'rdfInfo': {
                 'dynamicRDF': False, 'RDF': False,
