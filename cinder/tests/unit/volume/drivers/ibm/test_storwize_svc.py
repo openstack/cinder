@@ -8139,17 +8139,20 @@ class StorwizeHelpersTestCase(test.TestCase):
         fake_license_scheme = {
             'license_scheme': '9846'
         }
+        fake_9100_license_scheme = {
+            'license_scheme': 'flex'
+        }
         fake_license_invalid_scheme = {
             'license_scheme': '0000'
         }
-
         lslicense.side_effect = [fake_license_without_keys,
                                  fake_license_without_keys,
                                  fake_license,
                                  fake_license_without_keys]
         lsguicapabilities.side_effect = [fake_license_without_keys,
                                          fake_license_invalid_scheme,
-                                         fake_license_scheme]
+                                         fake_license_scheme,
+                                         fake_9100_license_scheme]
         self.assertFalse(self.storwize_svc_common.compression_enabled())
 
         self.assertFalse(self.storwize_svc_common.compression_enabled())
