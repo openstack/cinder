@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Dell EMC PS Series storage driver is not supported and
+    removed starting from the Ussuri release. It was marked as
+    deprecated in the Train release.
