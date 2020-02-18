@@ -762,6 +762,8 @@ class StorwizeHelpers(object):
             resp = self.ssh.lsguicapabilities()
             if resp.get('license_scheme', '0') == '9846':
                 return True
+            if resp.get('license_scheme', '0') == 'flex':
+                return True
         except exception.VolumeBackendAPIException:
             LOG.exception("Failed to fetch licensing scheme.")
         return False
