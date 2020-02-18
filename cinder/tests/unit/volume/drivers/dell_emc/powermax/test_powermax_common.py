@@ -3179,3 +3179,17 @@ class PowerMaxCommonTest(test.TestCase):
         remote_vol = self.common.get_and_set_remote_device_uuid(
             extra_specs, rep_extra_specs, volume_dict)
         self.assertEqual(remote_vol, self.data.device_id2)
+
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_group_utils',
+                       return_value=(None, {'interval': 1, 'retries': 1}))
+    def test_get_volume_group_info(self, mock_group_utils):
+        self.common.interval = 1
+        self.common.retries = 1
+        with mock.patch.object(
+                self.common, '_get_configuration_value') as mock_array:
+            self.common._get_volume_group_info(
+                self.data.test_group_1)
+            mock_group_utils.assert_called_once_with(
+                self.data.test_group_1, self.common.interval,
+                self.common.retries)
+            mock_array.assert_called_once()
