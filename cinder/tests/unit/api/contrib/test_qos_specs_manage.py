@@ -481,7 +481,7 @@ class QoSSpecManageApiTest(test.TestCase):
     @ddt.data(({'name': None}, exception.ValidationError),
               ({'name': ''}, exception.ValidationError),
               ({'name': '  '}, exception.ValidationError),
-              ({'name': 'n' * 256}, exception.InvalidInput))
+              ({'name': 'n' * 256}, exception.ValidationError))
     @ddt.unpack
     def test_create_qos_with_invalid_spec_name(self, value, exception_class):
         body = {'qos_specs': value}

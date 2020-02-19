@@ -157,7 +157,7 @@ def _validate_name_skip_leading_trailing_spaces(param_value):
         raise exception.InvalidName(reason=msg)
     elif len(param_value) > 255:
         msg = _("The 'name' can not be greater than 255 characters.")
-        raise exception.InvalidInput(reason=msg)
+        raise exception.InvalidName(reason=msg)
     return True
 
 
