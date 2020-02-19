@@ -764,6 +764,13 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertRaises(exception.VolumeNotFound, db.volume_get,
                           self.ctxt, volume['id'])
 
+    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    def test_volume_destroy_deletes_dependent_data(self, mock_model_query):
+        """Addresses LP Bug #1542169."""
+        db.volume_destroy(self.ctxt, fake.VOLUME_ID)
+        expected_call_count = 1 + len(sqlalchemy_api.VOLUME_DEPENDENT_MODELS)
+        self.assertEqual(expected_call_count, mock_model_query.call_count)
+
     def test_volume_get_all(self):
         volumes = [db.volume_create(self.ctxt,
                    {'host': 'h%d' % i, 'size': i})
