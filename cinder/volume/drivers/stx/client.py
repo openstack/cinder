@@ -120,7 +120,11 @@ class STXClient(object):
 
         url = self._base_url + "/login/" + digest
         try:
-            xml = requests.get(url, verify=self.ssl_verify, timeout=30)
+            if self._protocol == 'https':
+                xml = requests.get(url, verify=self.ssl_verify, timeout=30,
+                                   auth=(self._login, self._password))
+            else:
+                xml = requests.get(url, verify=self.ssl_verify, timeout=30)
         except requests.exceptions.RequestException:
             msg = _("Failed to obtain MC session key")
             LOG.exception(msg)
