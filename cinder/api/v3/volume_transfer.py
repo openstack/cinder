@@ -46,6 +46,8 @@ class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
             # as default order, but we should keep the compatible in here.
             sort_keys, sort_dirs = ['created_at', 'id'], ['asc', 'asc']
         filters = params
+        if 'name' in filters:
+            filters['display_name'] = filters.pop('name')
         LOG.debug('Listing volume transfers')
 
         transfers = self.transfer_api.get_all(context, marker=marker,

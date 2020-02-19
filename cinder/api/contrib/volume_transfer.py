@@ -61,6 +61,8 @@ class VolumeTransferController(wsgi.Controller):
         context = req.environ['cinder.context']
         filters = req.params.copy()
         LOG.debug('Listing volume transfers')
+        if 'name' in filters:
+            filters['display_name'] = filters.pop('name')
         transfers = self.transfer_api.get_all(context, filters=filters,
                                               sort_keys=['created_at', 'id'],
                                               sort_dirs=['asc', 'asc'])

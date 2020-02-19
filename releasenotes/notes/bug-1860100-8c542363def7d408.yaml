@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The volume-transfers list calls (``GET /v3/{project_id}/volume-transfers``,
+    ``GET /v3/{project_id}/volume-transfers/detail``) were not recognizing ``name``
+    as a filterable attribute.  That has been fixed in the current release.
