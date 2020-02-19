@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-01-07 21:20+0000\n"
+"POT-Creation-Date: 2020-02-19 01:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -176,10 +176,6 @@ msgstr "%s 不是一个目录。"
 #, python-format
 msgid "%s is not installed"
 msgstr "未安装 %s"
-
-#, python-format
-msgid "%s is not installed."
-msgstr "未安装 %s。"
 
 #, python-format
 msgid "%s is not set"
@@ -2069,10 +2065,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "找不到文件 %(file_path)s。"
 
 #, python-format
-msgid "File already exists at %s."
-msgstr "%s 处已存在文件。"
-
-#, python-format
 msgid "File already exists at: %s"
 msgstr "在以下位置处，已存在文件：%s"
 
@@ -2519,14 +2511,6 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "无效复制目标：%(reason)s"
 
 #, python-format
-msgid ""
-"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-msgstr ""
-"无效 Virtuozzo 存储器共享规范：%r。必须为 [MDS1[,MDS2],...:/]<CLUSTER NAME>[:"
-"PASSWORD]。"
-
-#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "XtremIO V%(cur)s 无效，需要 V%(min)s 或更高版本"
 
@@ -2641,10 +2625,6 @@ msgstr "元数据无效：  %(reason)s"
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr "安装点基准无效：%s"
-
-#, python-format
-msgid "Invalid mount point base: %s."
-msgstr "安装点基准无效：%s。"
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
@@ -3143,9 +3123,6 @@ msgstr "找不到任何已安装的 NFS 共享项"
 msgid "No mounted SMBFS shares found."
 msgstr "找不到任何已安装的 SMBFS 共享项。"
 
-msgid "No mounted Virtuozzo Storage shares found"
-msgstr "找不到任何已安装的 Virtuozzo 存储器共享项"
-
 msgid "No mounted shares found"
 msgstr "找不到任何已安装的共享项"
 
@@ -3602,10 +3579,6 @@ msgstr "%(config)s 处不存在 SMBFS 配置文件。"
 
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr "SMBFS 配置文件未设置 (smbfs_shares_config)。"
-
-#, python-format
-msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
-msgstr "SSH 命令在“%(total_attempts)r”之后失败，尝试次数：“%(command)s”"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -4411,9 +4384,6 @@ msgstr "RemoteFS 异常未知"
 msgid "Unknown SMBFS exception."
 msgstr "SMBFS 异常未知。"
 
-msgid "Unknown Virtuozzo Storage exception"
-msgstr "未知 Virtuozzo 存储器异常"
-
 msgid "Unknown action"
 msgstr "操作未知"
 
@@ -4475,10 +4445,6 @@ msgid ""
 "or higher"
 msgstr ""
 "在交换机 %s 上存在不受支持的固件。请确保交换机正在运行固件 V6.4 或更高版本"
-
-#, python-format
-msgid "Unsupported volume format %s"
-msgstr "不支持的卷格式：%s"
 
 #, python-format
 msgid "Unsupported volume format: %s "
@@ -4664,10 +4630,6 @@ msgid "Volume %s does not exist on the array."
 msgstr "卷 %s 在阵列上不存在。"
 
 #, python-format
-msgid "Volume %s does not have provider_location specified, skipping."
-msgstr "卷 %s 没有指定 provider_location，正在跳过。"
-
-#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "卷 %s 在阵列上不存在。"
 
@@ -4850,13 +4812,6 @@ msgstr "卷大小必须为 1 GB 的倍数。"
 msgid "Volume size must multiple of 1 GB."
 msgstr "卷大小必须是 1 GB 的倍数。"
 
-msgid "Volume status must be 'available'."
-msgstr "卷状态必须为“可用”。"
-
-#, python-format
-msgid "Volume status must be available for snapshot %(id)s. (is %(status)s)"
-msgstr "对于快照 %(id)s，卷状态必须为“available”。（卷状态现在为 %(status)s）"
-
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "卷至发起方组的映射已存在"
 
@@ -4907,16 +4862,6 @@ msgstr "名为 %(volume_type_name)s 的卷类型没有找到。"
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
 msgstr "卷/帐户同时超出主 SolidFire 帐户和辅助 SolidFire 帐户的限制。"
-
-#, python-format
-msgid ""
-"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
-msgstr ""
-"VzStorage 配置“vzstorage_used_ratio”无效。必须大于 0 并且小于或等于 1.0：%s。"
-
-#, python-format
-msgid "VzStorage config file at %(config)s doesn't exist."
-msgstr "%(config)s 处不存在 VzStorage 配置文件。"
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."

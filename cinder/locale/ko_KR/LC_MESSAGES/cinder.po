@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-01-07 21:20+0000\n"
+"POT-Creation-Date: 2020-02-19 01:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -169,10 +169,6 @@ msgstr "%s는 유효한 로그 레벨이 아닙니다."
 #, python-format
 msgid "%s is not installed"
 msgstr "%s이(가) 설치되지 않음"
-
-#, python-format
-msgid "%s is not installed."
-msgstr "%s이(가) 설치되어 있지 않습니다. "
 
 #, python-format
 msgid "%s is not set"
@@ -1978,10 +1974,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "%(file_path)s 파일을 찾을 수 없습니다. "
 
 #, python-format
-msgid "File already exists at %s."
-msgstr "%s에 파일이 이미 있습니다. "
-
-#, python-format
 msgid "File already exists at: %s"
 msgstr "%s에 파일이 이미 있음"
 
@@ -2379,14 +2371,6 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "올바르지 않은 복제 대상: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-msgstr ""
-"올바르지 않은 Virtuozzo 스토리지 공유 스펙: %r. 다음이어야 함: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-
-#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "올바르지 않은 XtremIO 버전 %(cur)s, %(min)s 이상의 버전이 필요함"
 
@@ -2502,10 +2486,6 @@ msgstr "잘못된 메타데이터: %(reason)s"
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr "올바르지 않은 마운트 지점 기반: %s"
-
-#, python-format
-msgid "Invalid mount point base: %s."
-msgstr "올바르지 않은 마운트 지점 기반: %s."
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
@@ -2968,9 +2948,6 @@ msgstr "마운트된 NFS 공유를 찾지 못함"
 
 msgid "No mounted SMBFS shares found."
 msgstr "마운트된 SMBFS 공유를 찾을 수 없습니다."
-
-msgid "No mounted Virtuozzo Storage shares found"
-msgstr "마운트된 Virtuozzo 스토리지 공유를 찾을 수 없습니다. "
 
 msgid "No mounted shares found"
 msgstr "마운트된 공유를 찾을 수 없음"
@@ -3437,12 +3414,6 @@ msgstr "SMBFS 구성 파일이 %(config)s에 없습니다."
 
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr "SMBFS 구성 파일이 설정되지 않았습니다(smbfs_shares_config)."
-
-#, python-format
-msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
-msgstr ""
-"'%(command)s' 명령을 '%(total_attempts)r'번 시도한 후에 SSH 명령이 실패했습니"
-"다. "
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -4221,9 +4192,6 @@ msgstr "알 수 없는 RemoteFS 예외"
 msgid "Unknown SMBFS exception."
 msgstr "알 수 없는 SMBFS 예외입니다."
 
-msgid "Unknown Virtuozzo Storage exception"
-msgstr "알 수 없는 Virtuozzo 스토리지 예외"
-
 msgid "Unknown action"
 msgstr "알 수 없는 조치"
 
@@ -4460,10 +4428,6 @@ msgid "Volume %s does not exist on the array."
 msgstr "배열에 %s 볼륨이 없습니다."
 
 #, python-format
-msgid "Volume %s does not have provider_location specified, skipping."
-msgstr "%s 볼륨에 지정된 provider_location이 없습니다. 건너뜁니다."
-
-#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "배열에 %s 볼륨이 없습니다."
 
@@ -4648,9 +4612,6 @@ msgstr "볼륨 크기는 1GB의 배수여야 합니다. "
 msgid "Volume size must multiple of 1 GB."
 msgstr "볼륨 크기는 1GB의 배수여야 합니다. "
 
-msgid "Volume status must be 'available'."
-msgstr "볼륨 상태가 '사용 가능'이어야 합니다. "
-
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "개시자 그룹에 대한 볼륨 맵핑이 이미 있음"
 
@@ -4710,17 +4671,6 @@ msgstr "볼륨 타입의 가용 영역들이 올바르지 않은 %(az)s입니다
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
 msgstr "기본 및 보조 SolidFire 계정 모두에서 볼륨/계정이 초과되었습니다."
-
-#, python-format
-msgid ""
-"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
-msgstr ""
-"VzStorage 구성 'vzstorage_used_ratio'가 올바르지 않습니다. 0보다 크고 1.0 이"
-"하여야 함: %s."
-
-#, python-format
-msgid "VzStorage config file at %(config)s doesn't exist."
-msgstr "%(config)s의 VzStorage 구성 파일이 존재하지 않습니다. "
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."

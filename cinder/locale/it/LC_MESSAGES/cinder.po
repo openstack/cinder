@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-01-07 21:20+0000\n"
+"POT-Creation-Date: 2020-02-19 01:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -155,10 +155,6 @@ msgstr "%s non è una directory."
 #, python-format
 msgid "%s is not installed"
 msgstr "%s non installato"
-
-#, python-format
-msgid "%s is not installed."
-msgstr "%s non installato."
 
 #, python-format
 msgid "%s is not set"
@@ -1998,10 +1994,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "Impossibile trovare il file %(file_path)s."
 
 #, python-format
-msgid "File already exists at %s."
-msgstr "Il file già esiste in %s."
-
-#, python-format
 msgid "File already exists at: %s"
 msgstr "Il file già esiste in: %s"
 
@@ -2357,14 +2349,6 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "Destinazione di replica non valida: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-msgstr ""
-"Specifica di condivisione Virtuozzo Storage non valida: %r. Deve essere: "
-"[MDS1[,MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-
-#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "Versione XtremIO non valida %(cur)s, è richiesta la versione %(min)s o "
@@ -2473,10 +2457,6 @@ msgstr "Metadati non validi: %(reason)s"
 
 #, python-format
 msgid "Invalid mount point base: %s"
-msgstr "Base del punto di montaggio non valida: %s"
-
-#, python-format
-msgid "Invalid mount point base: %s."
 msgstr "Base del punto di montaggio non valida: %s"
 
 #, python-format
@@ -2952,9 +2932,6 @@ msgstr "Non è stata trovata nessuna condivisione di NFS montata"
 msgid "No mounted SMBFS shares found."
 msgstr "Non è stata trovata nessuna condivisione SMBFS montata."
 
-msgid "No mounted Virtuozzo Storage shares found"
-msgstr "Non è stata trovata alcuna condivisione Virtuozzo Storage montata"
-
 msgid "No mounted shares found"
 msgstr "Non è stata trovata nessuna condivisione montata"
 
@@ -3417,11 +3394,6 @@ msgstr "Il file di configurazione SMBFS in  %(config)s non esiste."
 
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr "Il file di configurazione SMBFS non è impostato (smbfs_shares_config)."
-
-#, python-format
-msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
-msgstr ""
-"Comando SSH non riuscito dopo '%(total_attempts)r' tentativi: '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -4233,9 +4205,6 @@ msgstr "Eccezione RemoteFS sconosciuta"
 msgid "Unknown SMBFS exception."
 msgstr "Eccezione SMBFS sconosciuta."
 
-msgid "Unknown Virtuozzo Storage exception"
-msgstr "Eccezione Virtuozzo Storage sconosciuta "
-
 msgid "Unknown action"
 msgstr "Azione sconosciuta"
 
@@ -4479,10 +4448,6 @@ msgid "Volume %s does not exist on the array."
 msgstr "Il volume %s non esiste su questo array. "
 
 #, python-format
-msgid "Volume %s does not have provider_location specified, skipping."
-msgstr "Sul volume %s non è specificato provider_location; ignorato."
-
-#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "Il volume %s non esiste nell'array."
 
@@ -4673,9 +4638,6 @@ msgstr "La dimensione del volume deve essere un multiplo di 1 GB."
 msgid "Volume size must multiple of 1 GB."
 msgstr "La dimensione del volume deve essere un multiplo di 1 GB. "
 
-msgid "Volume status must be 'available'."
-msgstr "Lo stato del volume deve essere 'available'."
-
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "L'associazione del volume al gruppo iniziatori già esiste"
 
@@ -4733,17 +4695,6 @@ msgstr ""
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
 msgstr "Volumi/account superati sugli account SolidFire primario e secondario."
-
-#, python-format
-msgid ""
-"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
-msgstr ""
-"Config VzStorage 'vzstorage_used_ratio' non valida, deve essere > 0 e <= "
-"1.0: %s."
-
-#, python-format
-msgid "VzStorage config file at %(config)s doesn't exist."
-msgstr "File config VzStorage in %(config)s non esiste."
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."

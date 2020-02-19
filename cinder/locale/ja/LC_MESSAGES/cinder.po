@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-01-07 21:20+0000\n"
+"POT-Creation-Date: 2020-02-19 01:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -185,10 +185,6 @@ msgstr "%s はディレクトリーではありません。"
 
 #, python-format
 msgid "%s is not installed"
-msgstr "%s がインストールされていません。"
-
-#, python-format
-msgid "%s is not installed."
 msgstr "%s がインストールされていません。"
 
 #, python-format
@@ -1660,11 +1656,6 @@ msgid "Exception: %s"
 msgstr "例外: %s"
 
 #, python-format
-msgid "Expected higher file exists for snapshot %s"
-msgstr ""
-"スナップショット %s には、上位のファイルが存在することが期待されています。"
-
-#, python-format
 msgid "Expected integer for node_count, svcinfo lsiogrp returned: %(node)s."
 msgstr ""
 "node_count に対して整数が予期され、svcinfo lsiogrp が返されました: %(node)s。"
@@ -2358,10 +2349,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "ファイル %(file_path)s が見つかりませんでした。"
 
 #, python-format
-msgid "File already exists at %s."
-msgstr "ファイルは %s に既に存在します。"
-
-#, python-format
 msgid "File already exists at: %s"
 msgstr "ファイルは既に存在します: %s"
 
@@ -2852,14 +2839,6 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "無効なレプリケーションターゲット: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-msgstr ""
-"Virtuozzo Storage のシェアの指定が無効です: %r。[MDS1[,MDS2],...:/]<CLUSTER "
-"NAME>[:PASSWORD] である必要があります。"
-
-#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "XtremIO バージョン %(cur)s は無効です。バージョン %(min)s 以上が必要です"
@@ -2976,10 +2955,6 @@ msgstr "メタデータが無効です: %(reason)s"
 
 #, python-format
 msgid "Invalid mount point base: %s"
-msgstr "無効なマウントポイントベース: %s"
-
-#, python-format
-msgid "Invalid mount point base: %s."
 msgstr "無効なマウントポイントベース: %s"
 
 #, python-format
@@ -3551,9 +3526,6 @@ msgstr "マウントされた NFS 共有が見つかりません"
 msgid "No mounted SMBFS shares found."
 msgstr "マウントされた SMBFS 共有が見つかりません。"
 
-msgid "No mounted Virtuozzo Storage shares found"
-msgstr "マウントされた Virtuozzo Storage 共有が見つかりません"
-
 msgid "No mounted shares found"
 msgstr "マウントされた共有が見つかりません"
 
@@ -4109,11 +4081,6 @@ msgstr "%(config)s の SMBFS 構成ファイルは存在しません。"
 
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr "SMBFS 構成ファイルが設定されていません (smbfs_shares_config)。"
-
-#, python-format
-msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
-msgstr ""
-"'%(total_attempts)r' 回の試行後に SSH コマンドが失敗しました: '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -5105,9 +5072,6 @@ msgstr "不明な RemoteFS 例外"
 msgid "Unknown SMBFS exception."
 msgstr "不明な SMBFS 例外。"
 
-msgid "Unknown Virtuozzo Storage exception"
-msgstr "Virtuozzo Storage で不明な例外が発生しました"
-
 msgid "Unknown action"
 msgstr "不明なアクション"
 
@@ -5174,10 +5138,6 @@ msgid ""
 msgstr ""
 "スイッチ %s でサポートされないファームウェアです。スイッチでファームウェア "
 "v6.4 以上が実行されていることを確認してください"
-
-#, python-format
-msgid "Unsupported volume format %s"
-msgstr "ボリューム形式はサポートされていません: %s "
 
 #, python-format
 msgid "Unsupported volume format: %s "
@@ -5386,11 +5346,6 @@ msgid "Volume %s does not exist on the array."
 msgstr "ボリューム %s does はアレイに存在しません。"
 
 #, python-format
-msgid "Volume %s does not have provider_location specified, skipping."
-msgstr ""
-"ボリューム %s で provider_location が指定されていません。スキップします。"
-
-#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "ボリューム %s がアレイに存在しません。"
 
@@ -5457,10 +5412,6 @@ msgstr "ボリュームデバイスのファイルパス %s が存在しませ�
 #, python-format
 msgid "Volume device not found at %(device)s."
 msgstr "%(device)s でボリュームデバイスが見つかりません。"
-
-#, python-format
-msgid "Volume does not exists %s."
-msgstr "ボリュームが存在しません: %s"
 
 #, python-format
 msgid "Volume driver %s not initialized."
@@ -5606,15 +5557,6 @@ msgstr "ボリュームサイズは 1 GB の倍数である必要があります
 msgid "Volume size must multiple of 1 GB."
 msgstr "ボリュームサイズは 1 GB の倍数である必要があります"
 
-msgid "Volume status must be 'available'."
-msgstr "ボリュームの状態は「使用可能」でなければなりません。"
-
-#, python-format
-msgid "Volume status must be available for snapshot %(id)s. (is %(status)s)"
-msgstr ""
-"スナップショット %(id)s に関しては、ボリュームの状態が「利用可能」でなければ"
-"いけません。  (現在は %(status)s です)"
-
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "ボリュームからイニシエーターグループへのマッピングは既に存在します。"
 
@@ -5673,17 +5615,6 @@ msgid ""
 msgstr ""
 " プライマリーとセカンダリーの SolidFire アカウント上で、ボリュームとアカウン"
 "トの数量が超過しました。"
-
-#, python-format
-msgid ""
-"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
-msgstr ""
-"VzStorage の設定の 'vzstorage_used_ratio' が無効です。0 より大きく 1.0 以下で"
-"ある必要があります: %s。"
-
-#, python-format
-msgid "VzStorage config file at %(config)s doesn't exist."
-msgstr "%(config)s の VzStorage のコンフィグファイルが存在しません"
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."

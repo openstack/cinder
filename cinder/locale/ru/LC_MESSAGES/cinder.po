@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-01-07 21:20+0000\n"
+"POT-Creation-Date: 2020-02-19 01:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -158,10 +158,6 @@ msgstr "%s не является каталогом."
 #, python-format
 msgid "%s is not installed"
 msgstr "%s не установлен"
-
-#, python-format
-msgid "%s is not installed."
-msgstr "%s не установлен."
 
 #, python-format
 msgid "%s is not set"
@@ -1968,10 +1964,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "Файл %(file_path)s не может быть найден."
 
 #, python-format
-msgid "File already exists at %s."
-msgstr "Файл уже существует в %s."
-
-#, python-format
 msgid "File already exists at: %s"
 msgstr "Файл уже существует в %s"
 
@@ -2322,14 +2314,6 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "Недопустимый целевой объект репликации: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-msgstr ""
-"Недопустимая спецификация общего ресурса Virtuozzo Storage: %r. Должно быть: "
-"[MDS1[,MDS2],...:/]<ИМЯ-КЛАСТЕРА>[:ПАРОЛЬ]."
-
-#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "Недопустимая версия XtremIO %(cur)s, требуется версия не ниже %(min)s"
 
@@ -2435,10 +2419,6 @@ msgstr "Недопустимые метаданные: %(reason)s"
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr "Недопустимая база точки монтирования: %s"
-
-#, python-format
-msgid "Invalid mount point base: %s."
-msgstr "Недопустимая база точки монтирования: %s."
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
@@ -2904,9 +2884,6 @@ msgstr "Не обнаружено смонтированных общих рес
 msgid "No mounted SMBFS shares found."
 msgstr "Не обнаружено смонтированных общих ресурсов SMBFS."
 
-msgid "No mounted Virtuozzo Storage shares found"
-msgstr "Не найдены смонтированные общие ресурсы Virtuozzo Storage"
-
 msgid "No mounted shares found"
 msgstr "Не обнаружено смонтированных общих ресурсов"
 
@@ -3359,11 +3336,6 @@ msgstr "Файл конфигурации SMBFS в %(config)s не сущест�
 
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr "Файл конфигурации SMBFS не указан (smbfs_shares_config)."
-
-#, python-format
-msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
-msgstr ""
-"После '%(total_attempts)r' попыток не выполнена команда SSH: '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -4153,9 +4125,6 @@ msgstr "Неизвестная исключительная ситуация в 
 msgid "Unknown SMBFS exception."
 msgstr "Неизвестная исключительная ситуация в SMBFS."
 
-msgid "Unknown Virtuozzo Storage exception"
-msgstr "Неизвестная исключительная ситуация Virtuozzo Storage"
-
 msgid "Unknown action"
 msgstr "Неизвестное действие"
 
@@ -4394,10 +4363,6 @@ msgid "Volume %s does not exist on the array."
 msgstr "Том %s не существует в массиве."
 
 #, python-format
-msgid "Volume %s does not have provider_location specified, skipping."
-msgstr "Для тома %s не указан параметр provider_location - пропущено."
-
-#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "Том %s не существует в массиве."
 
@@ -4581,9 +4546,6 @@ msgstr "Размер тома должен быть кратным 1 ГБ."
 msgid "Volume size must multiple of 1 GB."
 msgstr "Размер тома должен быть кратен 1 ГБ."
 
-msgid "Volume status must be 'available'."
-msgstr "Состояние тома должно быть available."
-
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "Связь тома с группой инициаторов уже существует"
 
@@ -4642,17 +4604,6 @@ msgid ""
 msgstr ""
 "Число томов превышено и для основной, и для вторичной учетной записи "
 "SolidFire."
-
-#, python-format
-msgid ""
-"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
-msgstr ""
-"Конфигурация VzStorage 'vzstorage_used_ratio' недопустима. Значение должно "
-"быть больше 0 и не больше 1,0: %s."
-
-#, python-format
-msgid "VzStorage config file at %(config)s doesn't exist."
-msgstr "Файл конфигурации VzStorage в %(config)s не существует."
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."

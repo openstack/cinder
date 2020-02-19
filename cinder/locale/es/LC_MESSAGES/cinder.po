@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-01-07 21:20+0000\n"
+"POT-Creation-Date: 2020-02-19 01:28+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -162,10 +162,6 @@ msgstr "%s no es un directorio."
 #, python-format
 msgid "%s is not installed"
 msgstr "%s no está instalado"
-
-#, python-format
-msgid "%s is not installed."
-msgstr "%s no está instalado."
 
 #, python-format
 msgid "%s is not set"
@@ -2058,10 +2054,6 @@ msgid "File %(file_path)s could not be found."
 msgstr "No se ha podido encontrar el archivo %(file_path)s."
 
 #, python-format
-msgid "File already exists at %s."
-msgstr "Ya existe el archivo en %s."
-
-#, python-format
 msgid "File already exists at: %s"
 msgstr "El archivo ya existe en: %s"
 
@@ -2424,14 +2416,6 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "Destino de replicación no válido: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
-"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-msgstr ""
-"Especificación de compartición de Virtuozzo Storage no válida: %r. Debe ser: "
-"[MDS1[,MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
-
-#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "Versión de XtremIO no válida %(cur)s, se requiere la versión %(min)s o "
@@ -2541,10 +2525,6 @@ msgstr "Metadatos inválidos: %(reason)s"
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr "Base de punto de montaje no válida: %s"
-
-#, python-format
-msgid "Invalid mount point base: %s."
-msgstr "Base de punto de montaje no válida: %s."
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
@@ -3048,9 +3028,6 @@ msgstr "No se han encontrado unidades compartidas NFS montadas"
 msgid "No mounted SMBFS shares found."
 msgstr "No se han encontrado unidades compartidas SMBFS montadas"
 
-msgid "No mounted Virtuozzo Storage shares found"
-msgstr "No se han encontrado unidades compartidas de Virtuozzo Storage"
-
 msgid "No mounted shares found"
 msgstr "No se han encontrado unidades compartidas montadas"
 
@@ -3543,12 +3520,6 @@ msgstr "El archivo de configuración SMBFS en %(config)s no existe."
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr ""
 "El archivo de configuración SMBFS no se ha configurado (smbfs_shares_config)."
-
-#, python-format
-msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
-msgstr ""
-"Se ha encontrado un error en el mandato SSH tras '%(total_attempts)r' "
-"intentos: '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -4383,9 +4354,6 @@ msgstr "Excepción de RemoteFS desconocida"
 msgid "Unknown SMBFS exception."
 msgstr "Excepción de SMBFS desconocida"
 
-msgid "Unknown Virtuozzo Storage exception"
-msgstr "Excepción desconocida de Virtuozzo Storage"
-
 msgid "Unknown action"
 msgstr "Acción desconocida"
 
@@ -4635,10 +4603,6 @@ msgid "Volume %s does not exist on the array."
 msgstr "El volumen %s no existe en la matriz."
 
 #, python-format
-msgid "Volume %s does not have provider_location specified, skipping."
-msgstr "El volumen %s no tiene especificado provider_location, se salta."
-
-#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "El volumen %s no existe en la matriz."
 
@@ -4703,10 +4667,6 @@ msgstr "La vía de acceso de archivo de dispositivo de volumen %s no existe."
 #, python-format
 msgid "Volume device not found at %(device)s."
 msgstr "Dispositivo de volumen no encontrado en: %(device)s"
-
-#, python-format
-msgid "Volume does not exists %s."
-msgstr "El volumen %s no existe."
 
 #, python-format
 msgid "Volume driver %s not initialized."
@@ -4829,9 +4789,6 @@ msgstr "El tamaño del volumen debe ser un múltiplo de 1 GB."
 msgid "Volume size must multiple of 1 GB."
 msgstr "El tamaño de volumen debe ser múltiplo de 1 GB."
 
-msgid "Volume status must be 'available'."
-msgstr "El estado de volumen debe ser 'disponible'."
-
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "El volumen para la correlación del grupo de iniciadores ya existe"
 
@@ -4892,16 +4849,6 @@ msgid ""
 msgstr ""
 "Se ha superado el número de volúmenes por cuenta en las cuentas de "
 "SolidFire, tanto primarias como secundarias."
-
-#, python-format
-msgid ""
-"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
-msgstr ""
-"VzStorage config 'vzstorage_used_ratio' no válido. Debe ser > 0 y <= 1.0: %s."
-
-#, python-format
-msgid "VzStorage config file at %(config)s doesn't exist."
-msgstr "El archivo de config VzStorage en %(config)s no existe."
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
