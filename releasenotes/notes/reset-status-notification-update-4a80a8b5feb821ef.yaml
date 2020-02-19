@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    `Bug #1863806 <https://bugs.launchpad.net/cinder/+bug/1863806>`_:
+    ``os-reset_status`` notifications for volumes, snapshots, and
+    backups were being sent to nonstandard publisher_ids relative to
+    other cinder notifications for volumes, snapshots, and backups.
+    Now they are also sent to the following *standard* publisher_ids,
+    where most people would expect to find them:
+
+    * 'volume' for volume status resets
+    * 'snapshot' for snapshot status resets
+    * 'backup' for backup status resets

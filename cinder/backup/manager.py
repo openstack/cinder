@@ -990,6 +990,8 @@ class BackupManager(manager.ThreadPoolManager):
             notifier = rpc.get_notifier('backupStatusUpdate')
             notifier.info(context, "backups.reset_status.end",
                           notifier_info)
+            volume_utils.notify_about_backup_usage(context, backup,
+                                                   'reset_status.end')
 
     def check_support_to_force_delete(self, context):
         """Check if the backup driver supports force delete operation.
