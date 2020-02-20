@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed `bug #1859652 <https://bugs.launchpad.net/cinder/+bug/1859652>`_
+    to allow retyping an attached volume to SolidFire.
