@@ -1,5 +1,5 @@
 ======================================
-Dell EMC POWERMAX iSCSI and FC drivers
+Dell EMC PowerMax iSCSI and FC drivers
 ======================================
 
 The Dell EMC PowerMax drivers, ``PowerMaxISCSIDriver`` and
@@ -35,8 +35,49 @@ Download Solutions Enabler and Unisphere from the Dell EMC's support web site
 and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
 Guide`` at ``support.emc.com``.
 
+.. note::
+
+   While it is not explicitly documented  which OS versions should be
+   installed on a particular array, it is recommended to install the latest
+   PowerMax OS as supported by Unisphere for PowerMax, that the PowerMax
+   driver supports for a given OpenStack release.
+
+   +-----------+------------------------+-------------+
+   | OpenStack | Unisphere for PowerMax | PowerMax OS |
+   +===========+========================+=============+
+   | Stein     | 9.0.x                  | 5978.221    |
+   +-----------+------------------------+-------------+
+   | Rocky     | 9.0.x                  | 5978.221    |
+   +-----------+------------------------+-------------+
+
+   However, a Hybrid array can only run HyperMax OS 5977, and is still
+   supported until further notice. Some functionality will not be available
+   in older versions of the OS.  If in any doubt, please contact your customer
+   representative.
+
+
+
 Required PowerMax software suites for OpenStack
 -----------------------------------------------
+
+The storage system requires a Unisphere for PowerMax (SMC) eLicense.
+
+PowerMax
+~~~~~~~~
+There are two licenses for the PowerMax 2000 and 8000:
+
+- Essentials software package
+- Pro software package
+
+The Dell EMC PowerMax cinder driver requires the Pro software package.
+
+All Flash
+~~~~~~~~~
+For full functionality including SRDF for the VMAX All Flash, the FX package,
+or the F package plus the SRDF a la carte add on is required.
+
+Hybrid
+~~~~~~
 
 There are five Dell EMC Software Suites sold with the VMAX Hybrid arrays:
 
@@ -53,13 +94,11 @@ Suite and the Local Replication Suite) for the VMAX Hybrid.
 Using PowerMax Remote Replication functionality will also require the Remote
 Replication Suite.
 
-For full functionality including SRDF for the VMAX All Flash, the FX package,
-or the F package plus the SRDF ``a la carte`` add on is required.
 
-The storage system also requires a Unisphere for PowerMax (SMC) eLicence.
+.. note::
 
-Each are licensed separately. For further details on how to get the
-relevant license(s), reference eLicensing Support below.
+   Each are licensed separately. For further details on how to get the
+   relevant license(s), reference eLicensing Support below.
 
 
 eLicensing support
@@ -127,25 +166,49 @@ PowerMax drivers also support the following features:
 -  Extending attached volume
 -  Replicated volume retype support
 -  Retyping attached(in-use) volume
--  Unisphere high availability(HA) support
-
-.. note::
-
-   VMAX All Flash array with Solutions Enabler 8.3.0.11 or later have
-   compression enabled by default when associated with Diamond Service Level.
-   This means volumes added to any newly created storage groups will be
-   compressed.
+-  Unisphere High Availability(HA) support
 
 
 PowerMax naming conventions
 ===========================
+
+.. note::
+
+   shortHostName will be altered using the following formula, if its length
+   exceeds 16 characters. This is because the storage group and masking view
+   names cannot exceed 64 characters:
+
+   .. code-block:: text
+
+      if len(shortHostName) > 16:
+          1. Perform md5 hash on the shortHostName
+          2. Convert output of 1. to hex
+          3. Take last 6 characters of shortHostName and append output of 2.
+          4. If the length of output of 3. exceeds 16 characters, join the
+             first 8 characters and last 8 characters.
+
+.. note::
+
+   portgroup_name will be altered using the following formula, if its length
+   exceeds 12 characters. This is because the storage group and masking view
+   names cannot exceed 64 characters:
+
+   .. code-block:: text
+
+      if len(portgroup_name) > 12:
+          1. Perform md5 hash on the portgroup_name
+          2. Convert output of 1. to hex
+          3. Take last 6 characters of portgroup_name and append output of 2.
+          4. If the length of output of 3. exceeds 12 characters, join the
+             first 6 characters and last 6 characters.
+
 
 Masking view names
 ------------------
 
 Masking views are dynamically created by the PowerMax FC and iSCSI drivers
 using the following naming conventions. ``[protocol]`` is either ``I`` for
-volumes attached over iSCSI or ``F`` for volumes attached over Fiber Channel.
+volumes attached over iSCSI or ``F`` for volumes attached over Fibre Channel.
 
 .. code-block:: text
 
@@ -161,7 +224,7 @@ each new attach volume operation, the PowerMax driver retrieves the initiators
 (either WWNNs or IQNs) from OpenStack and adds or updates the contents of the
 Initiator Group as required. Names are of the following format. ``[protocol]``
 is either ``I`` for volumes attached over iSCSI or ``F`` for volumes attached
-over Fiber Channel.
+over Fibre Channel.
 
 .. code-block:: console
 
@@ -210,15 +273,16 @@ Child storage groups:
 .. note::
 
    CD and RE are only set if compression is explicitly disabled or replication
-   explicitly enabled. See the compression and replication sections below.
+   explicitly enabled. See the compression `11. All Flash compression support`_
+   and replication `Volume replication support`_ sections below.
 
 .. note::
 
    For PowerMax and any All Flash with PowerMax OS (5978) or greater, workload
-   is NONE
+   if set will be ignored and set to NONE
 
 
-PowerMax Driver Integration
+PowerMax driver integration
 ===========================
 
 1. Prerequisites
@@ -251,7 +315,7 @@ PowerMax Driver Integration
    Configuration Guide`` at ``support.emc.com``.
 
 
-2. FC Zoning with PowerMax
+2. FC zoning with PowerMax
 --------------------------
 
 Zone Manager is required when there is a fabric between the host and array.
@@ -261,8 +325,8 @@ complex and open-zoning would raise security concerns.
 3. iSCSI with PowerMax
 ----------------------
 
--  Make sure the ``iscsi-initiator-utils`` package is installed on all Compute
-   nodes.
+-  Make sure the ``open-iscsi`` package (or distro equivalent) is installed
+   on all Compute nodes.
 
 .. note::
 
@@ -270,28 +334,22 @@ complex and open-zoning would raise security concerns.
    masking view. An attach operation creates this masking view.
 
 
-4. Configure Block Storage in cinder.conf
+
+4. Configure block storage in cinder.conf
 -----------------------------------------
 
 .. note::
 
    VMAX driver was rebranded to PowerMax in Stein, so some of the driver
-   specific tags have also changed. Legacy tags like vmax_srp, vmax_array,
-   vmax_service_level and vmax_port_group, as well as the old driver
-   location, will continue to work until the 'V' release.
+   specific tags have also changed. Legacy tags like ``vmax_srp``,
+   ``vmax_array``, ``vmax_service_level`` and ``vmax_port_group``, as well
+   as the old driver location, will continue to work until the 'V' release.
 
 
 .. config-table::
    :config-target: PowerMax
 
    cinder.volume.drivers.dell_emc.powermax.common
-
-
-.. note::
-
-   For security and backend uniformity, the use of the XML file for PowerMax
-   backend configuration was deprecated in Queens and removed entirely
-   in Rocky.
 
 
 .. note::
@@ -330,7 +388,7 @@ complex and open-zoning would raise security concerns.
    +--------------------+----------------------------+---------+----------+
 
 
-Configure Block Storage in cinder.conf
+Configure block storage in cinder.conf
 
 Add the following entries to ``/etc/cinder/cinder.conf``:
 
@@ -426,80 +484,82 @@ section describing unique parameters for connections, drivers and the
    ``cinder.conf`` backend stanza.
 
 
-6. Create Volume Types
+6. Create volume types
 ----------------------
 
-   Once the ``cinder.conf`` has been updated,  :command:`openstack` commands
-   need to be issued in order to create and associate OpenStack volume types
-   with the declared ``volume_backend_names``.
+Once the ``cinder.conf`` has been updated,  :command:`openstack` commands
+need to be issued in order to create and associate OpenStack volume types
+with the declared ``volume_backend_names``.
 
-   Additionally, each volume type will need an associated ``pool_name`` - an
-   extra specification indicating the service level/ workload combination to
-   be used for that volume type.
+Additionally, each volume type will need an associated ``pool_name`` - an
+extra specification indicating the service level/ workload combination to
+be used for that volume type.
 
-   There is also the option to assign a port group to a volume type by
-   setting the ``storagetype:portgroupname`` extra specification.
+There is also the option to assign a port group to a volume type by
+setting the ``storagetype:portgroupname`` extra specification.
 
-   .. note::
+.. note::
 
-      It is possible to create as many volume types as the number of Service
-      Level and Workload(available) combination for provisioning volumes. The
-      pool_name is the additional property which has to be set and is of the
-      format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
-      This can be obtained from the output of the ``cinder get-pools--detail``.
-      Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
-      or greater.
+   It is possible to create as many volume types as the number of Service
+   Level and Workload(available) combination for provisioning volumes. The
+   pool_name is the additional property which has to be set and is of the
+   format: ``<ServiceLevel>+<Workload>+<SRP>+<Array ID>``.
+   This can be obtained from the output of the ``cinder get-pools--detail``.
+   Workload is NONE for PowerMax or any All Flash with PowerMax OS (5978)
+   or greater.
 
-   .. code-block:: console
+.. code-block:: console
 
-      $ openstack volume type create POWERMAX_ISCSI_SILVER_OLTP
-      $ openstack volume type set --property volume_backend_name=ISCSI_backend \
-                                  --property pool_name=Silver+OLTP+SRP_1+000123456789 \
-                                  --property storagetype:portgroupname=OS-PG2 \
-                                  POWERMAX_ISCSI_SILVER_OLTP
-      $ openstack volume type create POWERMAX_FC_DIAMOND_DSS
-      $ openstack volume type set --property volume_backend_name=FC_backend \
-                                  --property pool_name=Diamond+DSS+SRP_1+000123456789 \
-                                  --property storagetype:portgroupname=OS-PG1 \
-                                  POWERMAX_FC_DIAMOND_DSS
-
-
-   By issuing these commands, the Block Storage volume type
-   ``POWERMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``,
-   a Silver Service Level, and an OLTP workload.
-
-   The type ``POWERMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``,
-   a Diamond Service Level, and a DSS workload.
-
-   The ``ServiceLevel`` manages the underlying storage to provide expected
-   performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
-   managed storage groups will be created instead (storage groups not
-   associated with any service level). If ``ServiceLevel`` is ``None`` then
-   ``Workload`` must be ``None``.
-
-   .. code-block:: console
-
-      openstack volume type set --property pool_name=None+None+SRP_1+000123456789
-
-   When a ``Workload`` is added, the latency range is reduced due to the
-   added information. Setting the ``Workload`` to ``None`` means the latency
-   range will be the widest for its Service Level type. Please note that you
-   cannot set a Workload without a Service Level.
-
-   .. code-block:: console
-
-      openstack volume type set --property pool_name=Diamond+None+SRP_1+000123456789
-
-   .. note::
-
-      PowerMax and Hybrid support Optimized, Diamond, Platinum, Gold, Silver,
-      Bronze, and NONE service levels. VMAX All Flash supports Diamond and
-      None. Hybrid and All Flash support DSS_REP, DSS, OLTP_REP, OLTP, and None
-      workloads, the latter up until ucode 5977. There is no support for
-      workloads in PowerMax OS (5978) or greater.
+   $ openstack volume type create POWERMAX_ISCSI_SILVER_OLTP
+   $ openstack volume type set --property volume_backend_name=ISCSI_backend \
+                               --property pool_name=Silver+OLTP+SRP_1+000123456789 \
+                               --property storagetype:portgroupname=OS-PG2 \
+                               POWERMAX_ISCSI_SILVER_OLTP
+   $ openstack volume type create POWERMAX_FC_DIAMOND_DSS
+   $ openstack volume type set --property volume_backend_name=FC_backend \
+                               --property pool_name=Diamond+DSS+SRP_1+000123456789 \
+                               --property storagetype:portgroupname=OS-PG1 \
+                               POWERMAX_FC_DIAMOND_DSS
 
 
-7. Interval and Retries
+By issuing these commands, the Block Storage volume type
+``POWERMAX_ISCSI_SILVER_OLTP`` is associated with the ``ISCSI_backend``,
+a Silver Service Level, and an OLTP workload.
+
+The type ``POWERMAX_FC_DIAMOND_DSS`` is associated with the ``FC_backend``,
+a Diamond Service Level, and a DSS workload.
+
+The ``ServiceLevel`` manages the underlying storage to provide expected
+performance. Setting the ``ServiceLevel`` to ``None`` means that non-FAST
+managed storage groups will be created instead (storage groups not
+associated with any service level). If ``ServiceLevel`` is ``None`` then
+``Workload`` must be ``None``.
+
+.. code-block:: console
+
+   openstack volume type set --property pool_name=None+None+SRP_1+000123456789
+
+When a ``Workload`` is added, the latency range is reduced due to the
+added information. Setting the ``Workload`` to ``None`` means the latency
+range will be the widest for its Service Level type. Please note that you
+cannot set a Workload without a Service Level.
+
+.. code-block:: console
+
+   openstack volume type set --property pool_name=Diamond+None+SRP_1+000123456789
+
+.. note::
+
+   PowerMax and Hybrid support ``Optimized``, ``Diamond``, ``Platinum``,
+   ``Gold``, ``Silver``, ``Bronze``, and ``NONE`` service levels. VMAX
+   All Flash supports ``Diamond`` and `None. Hybrid and All Flash support
+   ``DSS_REP``, ``DSS``, ``OLTP_REP``, ``OLTP``, and None workloads, the
+   latter up until ucode 5977. Please refer to Stein PowerMax online
+   documentation if you wish to use ``workload``. There is no support
+   for workloads in PowerMax OS (5978) or greater.
+
+
+7. Interval and retries
 -----------------------
 
 By default, ``interval`` and ``retries`` are ``3`` seconds and ``200`` retries
@@ -530,32 +590,32 @@ Add the following lines to the PowerMax backend in the cinder.conf:
    interval = 1
    retries = 700
 
-8. CHAP Authentication Support
+8. CHAP authentication support
 ------------------------------
 
-This supports one way initiator CHAP authentication functionality into the
+This supports one-way initiator CHAP authentication functionality into the
 PowerMax backend. With CHAP one-way authentication, the storage array
 challenges the host during the initial link negotiation process and expects
 to receive a valid credential and CHAP secret in response. When challenged,
 the host transmits a CHAP credential and CHAP secret to the storage array.
-The storagearray looks for this credential and CHAP secret which stored in
+The storage array looks for this credential and CHAP secret which stored in
 the host initiator's initiator group (IG) information in the ACLX database.
 Once a positive authentication occurs, the storage array sends an acceptance
 message to the host. However, if the storage array fails to find any record
 of the credential/secret pair, it sends a rejection message, and the link is
 closed.
 
-Assumptions, Restrictions and Pre-Requisites
+Assumptions, restrictions and prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. The host initiator IQN is required along with the credentials the host
    initiator will use to log into the storage array with. The same credentials
    should be used in a multi node system if connecting to the same array.
 
-#. Enable one way CHAP authentication for the iscsi initiator on the storage
+#. Enable one-way CHAP authentication for the iSCSI initiator on the storage
    array using SYMCLI. Template and example shown below. For the purpose of
    this setup, the credential/secret used would be my_username/my_password
-   with iscsi initiator of iqn.1991-05.com.company.lcseb130
+   with iSCSI initiator of iqn.1991-05.com.company.lcseb130
 
    .. code-block:: console
 
@@ -569,7 +629,7 @@ Assumptions, Restrictions and Pre-Requisites
 
 
 
-Settings and Configuration
+Settings and configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #. Set the configuration in the PowerMax backend group in cinder.conf using the
@@ -741,8 +801,8 @@ Prerequisites - PowerMax
 Volume is created against volume type and QoS is enforced with the parameters
 above.
 
-USE CASE 2 - Preset limits
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+USE CASE 2 - Pre-set limits
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Prerequisites - PowerMax
 
@@ -865,8 +925,8 @@ The output of the command contains the xml below. It is found between the
    </iotune>
 
 
-USE CASE 3 - Preset limits
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+USE CASE 3 - Pre-set limits
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Prerequisites - PowerMax
 
@@ -1121,7 +1181,10 @@ uncompressed.
 .. note::
 
    This feature is only applicable for All Flash arrays, 250F, 450F, 850F
-   and 950F and PowerMax 2000 and 8000.
+   and 950F and PowerMax 2000 and 8000. It was first introduced Solutions
+   Enabler 8.3.0.11 or later and is enabled by default when associated with
+   a Service Level. This means volumes added to any newly created storage
+   groups will be  compressed.
 
 Use case 1 - Compression disabled create, attach, detach, and delete volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1171,7 +1234,7 @@ Please refer to the following:
 https://docs.openstack.org/cinder/latest/admin/blockstorage-over-subscription.html
 
 
-13. Live Migration support
+13. Live migration support
 --------------------------
 
 Non-live migration (sometimes referred to simply as 'migration'). The instance
@@ -1198,7 +1261,7 @@ Architecture
 
 In PowerMax, A volume cannot belong to two or more FAST storage groups at the
 same time. To get around this limitation we leverage both cascaded storage
-groups and a temporary non FAST storage group.
+groups and a temporary non-FAST storage group.
 
 A volume can remain 'live' if moved between masking views that have the same
 initiator group and port groups which preserves the host path.
@@ -1212,7 +1275,7 @@ on the volume:
 #. The volume is added to the FAST storage group within the destination
    parent storage group of the destination masking view. At this point the
    volume belongs to two storage groups.
-#. One of two things happens:
+#. One of two things happen:
 
    - If the connection to the destination instance is successful, the volume
      is removed from the non-FAST storage group in the originating masking
@@ -1227,11 +1290,12 @@ Live migration configuration
 
 Please refer to the following for more information:
 
-https://docs.openstack.org/nova/latest/admin/live-migration-usage.html
+https://docs.openstack.org/nova/latest/admin/configuring-migrations.html
 
 and
 
-https://docs.openstack.org/nova/latest/admin/configuring-migrations.html
+https://docs.openstack.org/nova/latest/admin/live-migration-usage.html
+
 
 .. note::
 
@@ -1302,7 +1366,7 @@ For our use case shown below, we have three hosts with host names HostA, HostB
 and HostC. HostA is the compute node while HostB and HostC are the compute
 nodes. The following were also used in live migration.
 
-- 2 gb bootable volume using the cirros image.
+- 2 gb bootable volume using the CirrOS image.
 - Instance created using the 2gb volume above with a flavor m1.small using
   2048 RAM, 20GB of Disk and 1 VCPU.
 
@@ -1366,7 +1430,7 @@ hosts/servers simultaneously. Please see
 https://docs.openstack.org/cinder/latest/admin/blockstorage-volume-multiattach.html
 for configuration information.
 
-Multi-attach Architecture
+Multi-attach architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In PowerMax, a volume cannot belong to two or more FAST storage groups at the
@@ -1381,7 +1445,7 @@ no service level, workload, or SRP specified).
    backend is required – the volume is attached to and detached from each
    host as normal.
 
-Example Use Case
+Example use case
 ~~~~~~~~~~~~~~~~
 
 Volume ``Multi-attach-Vol-1`` (with a multi-attach capable volume type, and
@@ -1411,21 +1475,22 @@ We then decide to detach the volume from ‘Multi-attach-Instance-B’ on HostB:
    storage group. The non-FAST managed storage group is cleaned up,
    if required.
 
-.. note::
 
-   Known issue - the multi-attach flag is still false after a retype. This
-   is being addressed in https://bugs.launchpad.net/cinder/+bug/1790840
-
-
-15. Volume Encryption support
+15. Volume encryption support
 -----------------------------
 
 Please refer to the following:
 https://docs.openstack.org/cinder/latest/configuration/block-storage/volume-encryption.html
 
 
-16. Volume metadata in logs
----------------------------
+16. Volume metadata
+-------------------
+
+Volume metadata is returned to the user in both the Cinder Volume logs and
+with volumes and snapshots created in Cinder via the UI or CLI.
+
+16.1 Volume metadata in logs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If debug is enabled in the default section of the cinder.conf, PowerMax Cinder
 driver will log additional volume information in the Cinder volume log,
@@ -1461,7 +1526,36 @@ PowerMax view point.
    | serial_number                      | 000123456789                                            |
    +------------------------------------+---------------------------------------------------------+
 
-17. Unisphere high availability(HA) support
+16.2 Metadata in the UI and CLI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default metadata will be set on all volume and snapshot objects created in
+Cinder. This information represents the state of the object on the backend
+PowerMax and will change when volume attributes are changed by performing
+actions on them such as re-type or attaching to an instance.
+
+.. code-block:: console
+
+   demo@openstack-controller:~$ cinder show powermax-volume
+
+   +--------------------------------+------------------------------------------------------------+
+   | Property                       | Value                                                      |
+   +--------------------------------+------------------------------------------------------------+
+   | metadata                       | ArrayID : 000123456789                                     |
+   |                                | ArrayModel : PowerMax_8000                                 |
+   |                                | CompressionDisabled : False                                |
+   |                                | Configuration : TDEV                                       |
+   |                                | DeviceID : 0012F                                           |
+   |                                | DeviceLabel : OS-d87edb98-60fd-49dd-bb0f-cc388cf6f3f4      |
+   |                                | Emulation : FBA                                            |
+   |                                | ReplicationEnabled : False                                 |
+   |                                | ServiceLevel : Diamond                                     |
+   |                                | Workload : None                                            |
+   | name                           | powermax-volume                                            |
+   +--------------------------------+------------------------------------------------------------+
+
+
+17. Unisphere High Availability(HA) support
 -------------------------------------------
 
 This feature facilitates high availability of Unisphere for PowerMax servers,
@@ -1620,7 +1714,7 @@ Configure the source and target arrays
 
    * ``remote_port_group`` is the name of a PowerMax port group that has been
      pre-configured to expose volumes managed by this backend in the event
-     of a failover. Make sure that this portgroup contains either all FC or
+     of a failover. Make sure that this port group contains either all FC or
      all iSCSI port groups (for a given back end), as appropriate for the
      configured driver (iSCSI or FC).
 
@@ -1675,7 +1769,7 @@ Configure the source and target arrays
    ``replication_device`` parameter has been entered in the PowerMax
    backend entry in the ``cinder.conf``, a corresponding volume type
    needs to be created ``replication_enabled`` property set. See
-   above ``Setup PowerMax drivers`` for details.
+   above `6. Create volume types`_ for details.
 
    .. code-block:: console
 
@@ -1720,6 +1814,11 @@ Most features are supported, except for the following:
 Failover host
 ~~~~~~~~~~~~~
 
+.. note::
+
+   Failover and Failback operations are not applicable in Metro
+   configurations.
+
 In the event of a disaster, or where there is required downtime, upgrade
 of the primary array for example, the administrator can issue the failover
 host command to failover to the configured target:
@@ -1728,22 +1827,38 @@ host command to failover to the configured target:
 
    # cinder failover-host cinder_host@POWERMAX_FC_REPLICATION
 
-If the primary array becomes available again, you can initiate a failback
-using the same command and specifying ``--backend_id default``:
+After issuing Cinder failover-host command Cinder will set the R2 array as the
+target array for Cinder, however to get existing instances to use this new
+array and paths to volumes it is necessary to first shelve Nova instances and
+then unshelve them, this will effectively restart the Nova instance and
+re-establish data paths between Nova instances and the volumes on the R2 array.
+
+.. code-block:: console
+
+   # nova shelve <server>
+   # nova unshelve [--availability-zone <availability_zone>] <server>
+
+When a host is in failover mode performing normal volume or snapshot
+provisioning will not be possible, failover-host mode simply provides access
+to replicated volumes to minimise environment down-time. The primary objective
+whilst in failover mode should be to get the R1 array back online.  When the
+primary array becomes available again, you can initiate a failback using the
+same failover command and specifying --backend_id default:
 
 .. code-block:: console
 
    # cinder failover-host cinder_host@POWERMAX_FC_REPLICATION --backend_id default
 
-.. note::
+After issuing the failover command to revert to the default backend host it is
+necessary to re-issue the Nova shelve and unshelve commands to restore the
+data paths between Nova instances and their corresponding back end volumes.
+Once reverted to the default backend volume and snapshot provisioning
+operations can continue as normal.
 
-   Failover and Failback operations are not applicable in Metro configurations.
-
-
-Asynchronous and Metro replication management groups
+Asynchronous and metro replication management groups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Asynchronous and Metro volumes in an RDF session, i.e. belonging to an SRDF
+Asynchronous and metro volumes in an RDF session, i.e. belonging to an SRDF
 group, must be managed together for RDF operations (although there is a
 ``consistency exempt`` option for creating and deleting pairs in an Async
 group). To facilitate this management, we create an internal RDF management
@@ -1756,7 +1871,7 @@ group. For this reason, it is imperative that the RDF group specified in the
 Metro support
 ~~~~~~~~~~~~~
 
-SRDF/Metro is a High Availabilty solution. It works by masking both sides of
+SRDF/Metro is a high availability solution. It works by masking both sides of
 the RDF relationship to the host, and presenting all paths to the host,
 appearing that they all point to the one device. In order to do this,
 there needs to be multipath software running to manage writing to the
@@ -1775,7 +1890,7 @@ Known issues
    replication volume type.
 
 
-Volume retype -  storage assisted volume migration
+Volume retype - storage assisted volume migration
 --------------------------------------------------
 
 Volume retype with storage assisted migration is supported now for
@@ -1787,7 +1902,7 @@ retype, follow these steps:
    another, use volume retype with the migration-policy to on-demand. The
    target volume type should have the same volume_backend_name configured and
    should have the desired pool_name to which you are trying to retype to
-   (please refer to ``Setup PowerMax Drivers`` for details).
+   (please refer to `6. Create volume types`_ for details).
 
    .. code-block:: console
 
@@ -1805,7 +1920,7 @@ retype, follow these steps:
 
 .. note::
 
-   With the Stein release, In Use (attached) volume retype is supported
+   With the Stein release, in-use (attached) volume retype is supported
 
 
 Generic volume group support
@@ -1865,7 +1980,7 @@ without failing over the entire host. See below for usage.
    A generic volume group can be both consistent group snapshot enabled and
    consistent group replication enabled.
 
-Storage Group Names
+Storage group names
 ~~~~~~~~~~~~~~~~~~~
 
 Storage groups are created on the PowerMax as a result of creation of generic
@@ -1877,113 +1992,22 @@ name.
 
    TruncatedGroupName_GroupUUID or GroupUUID
 
-Group type operations
-~~~~~~~~~~~~~~~~~~~~~
+Group type, group and group snapshot operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Create a group type
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.11 group-type-create GROUP_TYPE
-
-- Show a group type
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.11 group-type-show GROUP_TYPE
-
-- List group types
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.11 group-type-list
-
-- Delete group type
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.11 group-type-delete GROUP_TYPE
-
-- Set/unset a group spec
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled="<is> True"
-
-- List group types and group specs:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.11 group-specs-list
-
-Group operations
-~~~~~~~~~~~~~~~~
-
-- Create a group:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 group-create --name GROUP GROUP_TYPE VOLUME_TYPE1,VOLUME_TYPE2
-
-- Show a group:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 group-show GROUP
-
-- List all groups:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 group-list
-
-- Create a volume and add it to a group at the time of creation:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 create --volume-type VOLUME_TYPE1 --group-id GROUP_ID 1
-
-- Modify a group to add or remove volumes:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 group-update --add-volumes UUID1,UUID2 --remove-volumes UUID3,UUID4 GROUP
-
-- Delete a group
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.13 group-delete --delete-volumes GROUP
-
-Group snapshot operations
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Create a group snapshot:
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.14 group-snapshot-create --name GROUP_SNAPSHOT GROUP
-
-- Delete group snapshot(s):
-
-.. code-block:: console
-
-   cinder --os-volume-api-version 3.14 group-snapshot-delete GROUP_SNAPSHOT
-
-- Create a group from a group snapshot:
-
-.. code-block:: console
-
-   $ cinder --os-volume-api-version 3.14 group-create-from-src --group-snapshot GROUP_SNAPSHOT --name GROUP
-
-- Create a group from a source snapshot:
-
-.. code-block:: console
-
-   $ cinder --os-volume-api-version 3.14 group-create-from-src --source-group SOURCE_GROUP --name GROUP
+Please refer to the following section for the most up to date group type
+group and group replication operations https://docs.openstack.org/cinder/latest/admin/blockstorage-groups.html
 
 Group replication operations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Generic volume group operations no longer require the user to specify the
+Cinder CLI version, however, performing generic volume group replication
+operations still require this setting. When running generic volume group
+commands set the value --os-volume-api-version to 3.38.
+These commands are not listed in the latest Cinder CLI documentation so
+will remain here until added to the latest Cinder CLI version or
+deprecated from Cinder.
+
 
 - Enable group replication
 
@@ -2011,7 +2035,7 @@ Group replication operations
        --secondary-backend-id default
 
 
-Manage and Unmanage Volumes
+Manage and unmanage Volumes
 ---------------------------
 
 Managing volumes in OpenStack is the process whereby a volume which exists
@@ -2031,7 +2055,7 @@ OpenStack, the following prerequisites must be met:
 
 - The volume must a whole GB e.g. 5.5GB is not a valid size
 
-- The volume cannot be a snapvx target
+- The volume cannot be a SnapVX target
 
 
 For a volume to exist in a Cinder managed pool, it must reside in the same
@@ -2061,7 +2085,7 @@ the same format:
      - The PowerMax serial number (12 digit numerical)
 
 
-Manage Volumes
+Manage volumes
 ~~~~~~~~~~~~~~
 
 With your pool name defined you can now manage the volume into OpenStack, this
@@ -2095,7 +2119,7 @@ the same way as any other OpenStack PowerMax volume.
    PowerMax driver on a manage operation.
 
 
-Managing Volumes with Replication Enabled
+Managing volumes with replication enabled
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Whilst it is not possible to manage volumes into OpenStack that are part of a
@@ -2107,7 +2131,7 @@ volume type as the chosen volume type. Once managed, replication will be
 enabled for that volume.
 
 
-Unmanage Volume
+Unmanage volume
 ~~~~~~~~~~~~~~~
 
 Unmanaging a volume is not the same as deleting a volume. When a volume is
@@ -2136,7 +2160,7 @@ the 'OS-' prefix has been removed, this is another visual indication that
 the volume is no longer managed by OpenStack.
 
 
-Manage/Unmanage Snapshots
+Manage/unmanage snapshots
 -------------------------
 
 Users can manage PowerMax SnapVX snapshots into OpenStack if the source volume
@@ -2155,7 +2179,7 @@ Set-up, restrictions and requirements:
 
 #. It is only possible to manage or unmanage one snapshot at a time in Cinder.
 
-Manage SnapVX Snapshot
+Manage SnapVX snapshot
 ~~~~~~~~~~~~~~~~~~~~~~
 
 It is possible to manage PowerMax SnapVX snapshots into OpenStack, where the
@@ -2171,7 +2195,7 @@ the restriction around managing SnapVX source volumes has been removed.
    or volumes which exist in a replication session.
 
 
-Requirements/Restrictions:
+Requirements/restrictions:
 
 #. The SnapVX source volume must be present in and managed by Cinder.
 
@@ -2183,7 +2207,7 @@ Requirements/Restrictions:
    linked target volumes.
 
 
-Command Structure:
+Command structure:
 
 #. Identify your SnapVX snapshot for management on the PowerMax, note the name.
 
@@ -2245,7 +2269,7 @@ snapshot in this example named ``OS-PowerMaxSnapshot``. The associated snapshot
 managed by Cinder will be present for use under the name ``SnapshotManaged``.
 
 
-Unmanage Cinder Snapshot
+Unmanage cinder snapshot
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unmanaging a snapshot in Cinder is the process whereby the snapshot is removed
@@ -2310,7 +2334,7 @@ List manageable volume is filtered by:
 - Volume should not be ``encapsulated``
 - Volume should not be ``reserved``
 - Volume should not be a part of an RDF session
-- Volume should not be a snapVX Target
+- Volume should not be a SnapVX Target
 - Volume identifier should not begin with ``OS-``.
 
 Manageable snaphots
@@ -2335,7 +2359,7 @@ List manageable snapshots is filtered by:
 
    There is some delay in the syncing of the Unisphere for PowerMax database
    when the state/properties of a volume is modified using ``symcli``.  To
-   prevent this it is preferrable to modify state/properties of volumes within
+   prevent this it is preferable to modify state/properties of volumes within
    Unisphere.
 
 
@@ -2354,10 +2378,17 @@ Upgrading from SMI-S based driver to RESTAPI based driver
 Seamless upgrades from an SMI-S based driver to RESTAPI based driver,
 following the setup instructions above, are supported with a few exceptions:
 
-#. Live migration functionality will not work on already attached/in-use
-   legacy volumes. These volumes will first need to be detached and reattached
-   using the RESTAPI based driver. This is because we have changed the masking
-   view architecture from Pike to better support this functionality.
+#. OpenStack's ``live migration`` functionality will not work on already
+   attached/in-use legacy volumes without first migrating the volumes to
+   the new REST masking view structure.  This can be done by running the
+   migrate.py script in PyU4V.  Please refer to the Tools Guide in PyU4V_.
+
+   .. code-block:: text
+
+      $ pip install PyU4V
+
 
 #. Consistency groups are deprecated in Pike. Generic Volume Groups are
    supported from Pike onwards.
+
+.. _PyU4V: https://pyu4v.readthedocs.io/en/latest/
