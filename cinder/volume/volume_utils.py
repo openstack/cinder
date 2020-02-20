@@ -52,6 +52,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.objects import fields
 from cinder import rpc
 from cinder import utils
 from cinder.volume import group_types
@@ -1245,3 +1246,9 @@ def resolve_hostname(hostname):
     LOG.debug('Asked to resolve hostname %(host)s and got IP %(ip)s.',
               {'host': hostname, 'ip': ip})
     return ip
+
+
+def update_backup_error(backup, err, status=fields.BackupStatus.ERROR):
+    backup.status = status
+    backup.fail_reason = err
+    backup.save()

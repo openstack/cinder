@@ -49,6 +49,7 @@ from cinder import rpc
 from cinder.scheduler.flows import create_volume
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import volume_utils as vol_utils
 
 
 scheduler_manager_opts = [
@@ -626,3 +627,15 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
         LOG.info('Cleanup requests completed.')
         return requested, not_requested
+
+    def create_backup(self, context, backup):
+        volume = self.db.volume_get(context, backup.volume_id)
+        try:
+            host = self.driver.get_backup_host(volume)
+            backup.host = host
+            backup.save()
+            self.backup_api.create_backup(context, backup)
+        except exception.ServiceNotFound:
+            msg = "Service not found for creating backup."
+            LOG.error(msg)
+            vol_utils.update_backup_error(backup, msg)

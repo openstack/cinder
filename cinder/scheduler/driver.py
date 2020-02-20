@@ -154,3 +154,8 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_(
             "Must implement schedule_get_pools"))
+
+    def get_backup_host(self, volume, driver=None):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_(
+            "Must implement get_backup_host"))

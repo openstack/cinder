@@ -72,9 +72,10 @@ class SchedulerAPI(rpc.RPCAPI):
         3.9 - Adds create_snapshot method
         3.10 - Adds backup_id to create_volume method.
         3.11 - Adds manage_existing_snapshot method.
+        3.12 - Adds create_backup method.
     """
 
-    RPC_API_VERSION = '3.11'
+    RPC_API_VERSION = '3.12'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -260,3 +261,9 @@ class SchedulerAPI(rpc.RPCAPI):
     def get_log_levels(self, context, service, log_request):
         cctxt = self._get_cctxt(server=service.host, version='3.7')
         return cctxt.call(context, 'get_log_levels', log_request=log_request)
+
+    @rpc.assert_min_rpc_version('3.12')
+    def create_backup(self, ctxt, backup):
+        cctxt = self._get_cctxt()
+        msg_args = {'backup': backup}
+        return cctxt.cast(ctxt, 'create_backup', **msg_args)

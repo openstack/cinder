@@ -24,6 +24,7 @@ from cinder import exception
 from cinder import objects
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
+from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -44,6 +45,7 @@ class SchedulerRPCAPITestCase(test.RPCAPITestCase):
         self.fake_rs_obj = objects.RequestSpec.from_primitives({})
         self.fake_rs_dict = {'volume_id': self.volume_id}
         self.fake_fp_dict = {'availability_zone': 'fake_az'}
+        self.fake_backup_dict = fake_backup.fake_backup_obj(self.context)
 
     @ddt.data('3.0', '3.3')
     @mock.patch('oslo_messaging.RPCClient.can_send_version')
@@ -299,3 +301,11 @@ class SchedulerRPCAPITestCase(test.RPCAPITestCase):
                            service=service,
                            log_request='log_request',
                            version='3.7')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_create_backup(self, can_send_version):
+        self._test_rpc_api('create_backup',
+                           rpc_method='cast',
+                           backup=self.fake_backup_dict)
+
+        can_send_version.assert_called_once_with('3.12')

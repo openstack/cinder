@@ -521,13 +521,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         self.assertEqual(http_client.BAD_REQUEST, res.status_int)
 
-    @mock.patch('cinder.db.service_get_all')
-    def test_create_backup_json(self, _mock_service_get_all):
-        _mock_service_get_all.return_value = [
-            {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow(),
-             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
-
+    def test_create_backup_json(self):
         volume = utils.create_volume(self.context, size=5)
 
         body = {"backup": {"name": "nightly001",
@@ -548,9 +542,6 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        _mock_service_get_all.assert_called_once_with(mock.ANY,
-                                                      disabled=False,
-                                                      topic='cinder-backup')
 
         volume.destroy()
 
@@ -661,11 +652,6 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_code)
 
-        res_dict = jsonutils.loads(res.body)
-        backup = objects.Backup.get_by_id(self.context,
-                                          res_dict['backup']['id'])
-        self.assertEqual(backup_svc_az, backup.availability_zone)
-
     @mock.patch('cinder.db.service_get_all')
     def test_create_backup_inuse_no_force(self,
                                           _mock_service_get_all):
@@ -699,13 +685,7 @@ class BackupsAPITestCase(test.TestCase):
 
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
-    def test_create_backup_inuse_force(self, _mock_service_get_all):
-        _mock_service_get_all.return_value = [
-            {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow(),
-             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
-
+    def test_create_backup_inuse_force(self):
         volume = utils.create_volume(self.context, size=5, status='in-use')
         backup = utils.create_backup(self.context, volume.id,
                                      status=fields.BackupStatus.AVAILABLE,
@@ -730,20 +710,11 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        _mock_service_get_all.assert_called_once_with(mock.ANY,
-                                                      disabled=False,
-                                                      topic='cinder-backup')
 
         backup.destroy()
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
-    def test_create_backup_snapshot_json(self, _mock_service_get_all):
-        _mock_service_get_all.return_value = [
-            {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow(),
-             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
-
+    def test_create_backup_snapshot_json(self):
         volume = utils.create_volume(self.context, size=5, status='available')
 
         body = {"backup": {"name": "nightly001",
@@ -763,9 +734,6 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        _mock_service_get_all.assert_called_once_with(mock.ANY,
-                                                      disabled=False,
-                                                      topic='cinder-backup')
 
         volume.destroy()
 
@@ -868,15 +836,8 @@ class BackupsAPITestCase(test.TestCase):
                           req,
                           body=body)
 
-    @mock.patch('cinder.db.service_get_all')
     @ddt.data(False, True)
-    def test_create_backup_delta(self, backup_from_snapshot,
-                                 _mock_service_get_all):
-        _mock_service_get_all.return_value = [
-            {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow(),
-             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
-
+    def test_create_backup_delta(self, backup_from_snapshot):
         volume = utils.create_volume(self.context, size=5)
         snapshot = None
         if backup_from_snapshot:
@@ -918,9 +879,6 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        _mock_service_get_all.assert_called_once_with(mock.ANY,
-                                                      disabled=False,
-                                                      topic='cinder-backup')
 
         backup.destroy()
         if snapshot:
@@ -1091,14 +1049,7 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
-        res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.SERVICE_UNAVAILABLE, res.status_int)
-        self.assertEqual(http_client.SERVICE_UNAVAILABLE,
-                         res_dict['serviceUnavailable']['code'])
-        self.assertEqual('Service cinder-backup could not be found.',
-                         res_dict['serviceUnavailable']['message'])
-
-        volume.refresh()
+        self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertEqual('available', volume.status)
 
     @mock.patch('cinder.db.service_get_all')
@@ -1135,13 +1086,7 @@ class BackupsAPITestCase(test.TestCase):
 
         volume.destroy()
 
-    @mock.patch('cinder.db.service_get_all')
-    def test_create_backup_with_null_validate(self, _mock_service_get_all):
-        _mock_service_get_all.return_value = [
-            {'availability_zone': 'fake_az', 'host': 'testhost',
-             'disabled': 0, 'updated_at': timeutils.utcnow(),
-             'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
-
+    def test_create_backup_with_null_validate(self):
         volume = utils.create_volume(self.context, size=5)
 
         body = {"backup": {"name": None,
@@ -1162,9 +1107,7 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        _mock_service_get_all.assert_called_once_with(mock.ANY,
-                                                      disabled=False,
-                                                      topic='cinder-backup')
+
         volume.destroy()
 
     @mock.patch('cinder.db.service_get_all')
@@ -1194,9 +1137,6 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(http_client.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        _mock_service_get_all.assert_called_once_with(mock.ANY,
-                                                      disabled=False,
-                                                      topic='cinder-backup')
         volume.destroy()
 
     @mock.patch('cinder.db.service_get_all')
@@ -1471,6 +1411,7 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
+
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))

@@ -15,12 +15,8 @@
 
 """Manage backends in the current zone."""
 
-# TODO(smcginnis) update this once six has support for collections.abc
-# (https://github.com/benjaminp/six/pull/241) or clean up once we drop py2.7.
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+import collections
+import random
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -71,7 +67,7 @@ CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyDict(Mapping):
+class ReadOnlyDict(collections.Mapping):
     """A read-only dict."""
     def __init__(self, source=None):
         if source is not None:
@@ -901,3 +897,74 @@ class HostManager(object):
         # If the capability and value are not in the same type,
         # we just convert them into string to compare them.
         return str(value) == str(capability)
+
+    def get_backup_host(self, volume, driver=None):
+        if volume:
+            volume_host = volume_utils.extract_host(volume.host, 'host')
+        else:
+            volume_host = None
+        az = volume.availability_zone if volume else None
+        return self._get_available_backup_service_host(volume_host, az, driver)
+
+    def _get_any_available_backup_service(self, availability_zone,
+                                          driver=None):
+        """Get an available backup service host.
+
+        Get an available backup service host in the specified
+        availability zone.
+        """
+        services = [srv for srv in self._list_backup_services(
+            availability_zone, driver)]
+        random.shuffle(services)
+        return services[0] if services else None
+
+    def _get_available_backup_service_host(self, host, az, driver=None):
+        """Return an appropriate backup service host."""
+        backup_host = None
+        if not host or not CONF.backup_use_same_host:
+            backup_host = self._get_any_available_backup_service(az, driver)
+        elif self._is_backup_service_enabled(az, host):
+            backup_host = host
+        if not backup_host:
+            raise exception.ServiceNotFound(service_id='cinder-backup')
+        return backup_host
+
+    def _list_backup_services(self, availability_zone, driver=None):
+        """List all enabled backup services.
+
+        :returns: list -- hosts for services that are enabled for backup.
+        """
+        services = []
+
+        def _is_good_service(cap, driver, az):
+            if driver is None and az is None:
+                return True
+            match_driver = cap['driver_name'] == driver if driver else True
+            if match_driver:
+                if not az:
+                    return True
+                return cap['availability_zone'] == az
+            return False
+
+        for backend, capabilities in self.backup_service_states.items():
+            if capabilities['backend_state']:
+                if _is_good_service(capabilities, driver, availability_zone):
+                    services.append(backend)
+
+        return services
+
+    def _az_matched(self, service, availability_zone):
+        return ((not availability_zone) or
+                service.availability_zone == availability_zone)
+
+    def _is_backup_service_enabled(self, availability_zone, host):
+        """Check if there is a backup service available."""
+        topic = constants.BACKUP_TOPIC
+        ctxt = cinder_context.get_admin_context()
+        services = objects.ServiceList.get_all_by_topic(
+            ctxt, topic, disabled=False)
+        for srv in services:
+            if (self._az_matched(srv, availability_zone) and
+                    srv.host == host and srv.is_up):
+                return True
+        return False
