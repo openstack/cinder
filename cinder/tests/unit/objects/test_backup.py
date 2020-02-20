@@ -143,6 +143,20 @@ class TestBackup(test_objects.BaseObjectsTestCase):
                                 metadata={'test_key': 'test_value'})
         self.assertEqual({'test_key': 'test_value'}, backup.metadata)
 
+    @mock.patch('cinder.objects.backup.Backup.get_by_id',
+                return_value=None)
+    def test_obj_field_parent(self, mock_lzy_ld):
+        backup = objects.Backup(context=self.context,
+                                parent_id=None)
+        self.assertIsNone(backup.parent)
+
+        # Bug #1862635: should trigger a lazy load
+        backup = objects.Backup(context=self.context,
+                                parent_id=fake.UUID5)
+        # need noqa here because of pyflakes issue #202
+        _ = backup.parent  # noqa
+        mock_lzy_ld.assert_called_once()
+
     def test_import_record(self):
         utils.replace_obj_loader(self, objects.Backup)
         backup = objects.Backup(context=self.context, id=fake.BACKUP_ID,
@@ -153,6 +167,24 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
         # Make sure we don't lose data when converting from string
         self.assertDictEqual(self._expected_backup(backup), imported_backup)
+
+    @mock.patch('cinder.db.get_by_id', return_value=fake_backup)
+    def test_import_record_w_parent(self, backup_get):
+        full_backup = objects.Backup.get_by_id(self.context, fake.USER_ID)
+        self._compare(self, fake_backup, full_backup)
+
+        utils.replace_obj_loader(self, objects.Backup)
+        incr_backup = objects.Backup(context=self.context,
+                                     id=fake.BACKUP2_ID,
+                                     parent=full_backup,
+                                     parent_id=full_backup['id'],
+                                     num_dependent_backups=0)
+        export_string = incr_backup.encode_record()
+        imported_backup = objects.Backup.decode_record(export_string)
+
+        # Make sure we don't lose data when converting from string
+        self.assertDictEqual(self._expected_backup(incr_backup),
+                             imported_backup)
 
     def test_import_record_additional_info(self):
         utils.replace_obj_loader(self, objects.Backup)
@@ -175,7 +207,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
     def _expected_backup(self, backup):
         record = {name: field.to_primitive(backup, name, getattr(backup, name))
-                  for name, field in backup.fields.items()}
+                  for name, field in backup.fields.items() if name != 'parent'}
         return record
 
     def test_import_record_additional_info_cant_overwrite(self):
