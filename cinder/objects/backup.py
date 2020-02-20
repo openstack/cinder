@@ -43,7 +43,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.7: Add parent
     VERSION = '1.7'
 
-    OPTIONAL_FIELDS = ('metadata',)
+    OPTIONAL_FIELDS = ('metadata', 'parent')
 
     fields = {
         'id': fields.UUIDField(),
@@ -156,6 +156,11 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         if not self._context:
             raise exception.OrphanedObjectError(method='obj_load_attr',
                                                 objtype=self.obj_name())
+        if attrname == 'parent':
+            if self.parent_id:
+                self.parent = self.get_by_id(self._context, self.parent_id)
+            else:
+                self.parent = None
         self.obj_reset_changes(fields=[attrname])
 
     def obj_what_changed(self):
@@ -212,7 +217,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         # We don't want to export extra fields and we want to force lazy
         # loading, so we can't use dict(self) or self.obj_to_primitive
         record = {name: field.to_primitive(self, name, getattr(self, name))
-                  for name, field in self.fields.items()}
+                  for name, field in self.fields.items() if name != 'parent'}
         # We must update kwargs instead of record to ensure we don't overwrite
         # "real" data from the backup
         kwargs.update(record)
