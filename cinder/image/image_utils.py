@@ -63,14 +63,20 @@ image_opts = [
                 default=True,
                 help='When possible, compress images uploaded '
                 'to the image service'),
+    cfg.IntOpt('image_conversion_cpu_limit',
+               default=60,
+               help='CPU time limit in seconds to convert the image'),
+    cfg.IntOpt('image_conversion_address_space_limit',
+               default=1,
+               help='Address space limit in gigabytes to convert the image'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(image_opts)
 
 QEMU_IMG_LIMITS = processutils.ProcessLimits(
-    cpu_time=30,
-    address_space=1 * units.Gi)
+    cpu_time=CONF.image_conversion_cpu_limit,
+    address_space=CONF.image_conversion_address_space_limit * units.Gi)
 
 
 QEMU_IMG_FORMAT_MAP = {
