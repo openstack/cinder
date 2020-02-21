@@ -298,9 +298,15 @@ class HackingTestCase(test.TestCase):
     def test_validate_assertTrue(self):
         test_value = True
         self.assertEqual(0, len(list(checks.validate_assertTrue(
-            "assertTrue(True)"))))
+            "assertTrue(True)", 'cinder/volume/stuff/a_file.py'))))
+        self.assertEqual(0, len(list(checks.validate_assertTrue(
+            "assertTrue(True)", 'cinder/tests/unit/test_file.py'))))
+        self.assertEqual(0, len(list(checks.validate_assertTrue(
+            "assertEqual(True, %s)" % test_value,
+            'cinder/volume/stuff/a_file.py'))))
         self.assertEqual(1, len(list(checks.validate_assertTrue(
-            "assertEqual(True, %s)" % test_value))))
+            "assertEqual(True, %s)" % test_value,
+            'cinder/tests/unit/test_file.py'))))
 
     @ddt.unpack
     @ddt.data(
