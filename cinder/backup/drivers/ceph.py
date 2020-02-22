@@ -43,6 +43,7 @@ restore to a new volume (default).
 """
 
 import fcntl
+import json
 import os
 import re
 import subprocess
@@ -310,22 +311,39 @@ class CephBackupDriver(driver.BackupDriver):
         ioctx.close()
         client.shutdown()
 
-    def _get_backup_base_name(self, volume_id, backup_id=None,
-                              diff_format=False):
+    def _format_base_name(self, service_metadata):
+        base_name = json.loads(service_metadata)["base"]
+        return utils.convert_str(base_name)
+
+    def _get_backup_base_name(self, volume_id, backup=None):
         """Return name of base image used for backup.
 
         Incremental backups use a new base name so we support old and new style
         format.
         """
         # Ensure no unicode
-        if diff_format:
+        if not backup:
             return utils.convert_str("volume-%s.backup.base" % volume_id)
-        else:
-            if backup_id is None:
-                msg = _("Backup id required")
-                raise exception.InvalidParameterValue(msg)
-            return utils.convert_str("volume-%s.backup.%s"
-                                     % (volume_id, backup_id))
+
+        if backup.service_metadata:
+            return self._format_base_name(backup.service_metadata)
+
+        # 'parent' field will only be present in incremental backups. This is
+        # filled by cinder-api
+        if backup.parent:
+            # Old backups don't have the base name in the service_metadata,
+            # so we use the default RBD backup base
+            if backup.parent.service_metadata:
+                service_metadata = backup.parent.service_metadata
+                base_name = self._format_base_name(service_metadata)
+            else:
+                base_name = utils.convert_str("volume-%s.backup.base"
+                                              % volume_id)
+
+            return base_name
+
+        return utils.convert_str("volume-%s.backup.%s"
+                                 % (volume_id, backup.id))
 
     def _discard_bytes(self, volume, offset, length):
         """Trim length bytes from offset.
@@ -467,7 +485,7 @@ class CephBackupDriver(driver.BackupDriver):
         if base_name is None:
             try_diff_format = True
 
-            base_name = self._get_backup_base_name(volume_id, backup.id)
+            base_name = self._get_backup_base_name(volume_id, backup=backup)
             LOG.debug("Trying diff format basename='%(basename)s' for "
                       "backup base image of volume %(volume)s.",
                       {'basename': base_name, 'volume': volume_id})
@@ -616,7 +634,7 @@ class CephBackupDriver(driver.BackupDriver):
         if name not in rbds:
             LOG.debug("Image '%s' not found - trying diff format name", name)
             if try_diff_format:
-                name = self._get_backup_base_name(volume_id, diff_format=True)
+                name = self._get_backup_base_name(volume_id)
                 if name not in rbds:
                     LOG.debug("Diff format image '%s' not found", name)
                     return False, name
@@ -643,50 +661,79 @@ class CephBackupDriver(driver.BackupDriver):
 
         return False
 
+    def _full_rbd_backup(self, container, base_name, length):
+        """Create the base_image for a full RBD backup."""
+        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
+                                  container)) as client:
+            self._create_base_image(base_name, length, client)
+        # Now we just need to return from_snap=None and image_created=True, if
+        # there is some exception in making backup snapshot, will clean up the
+        # base image.
+        return None, True
+
+    def _incremental_rbd_backup(self, backup, base_name, length,
+                                source_rbd_image, volume_id):
+        """Select the last snapshot for a RBD incremental backup."""
+
+        container = backup.container
+        last_incr = backup.parent_id
+        LOG.debug("Trying to perform an incremental backup with container: "
+                  "%(container)s, base_name: %(base)s, source RBD image: "
+                  "%(source)s, volume ID %(volume)s and last incremental "
+                  "backup ID: %(incr)s.",
+                  {'container': container,
+                   'base': base_name,
+                   'source': source_rbd_image,
+                   'volume': volume_id,
+                   'incr': last_incr,
+                   })
+
+        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
+                                  container)) as client:
+            base_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
+                                                           base_name,
+                                                           read_only=True))
+            try:
+                from_snap = self._get_backup_snap_name(base_rbd,
+                                                       base_name,
+                                                       last_incr)
+                if from_snap is None:
+                    msg = (_(
+                        "Can't find snapshot from parent %(incr)s and "
+                        "base name image %(base)s.") %
+                        {'incr': last_incr, 'base': base_name})
+                    LOG.error(msg)
+                    raise exception.BackupRBDOperationFailed(msg)
+            finally:
+                base_rbd.close()
+
+        return from_snap, False
+
     def _backup_rbd(self, backup, volume_file, volume_name, length):
-        """Create an incremental backup from an RBD image."""
+        """Create an incremental or full backup from an RBD image."""
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = eventlet.tpool.Proxy(volume_file.rbd_image)
         volume_id = backup.volume_id
-        updates = {}
-        base_name = self._get_backup_base_name(volume_id, diff_format=True)
-        image_created = False
-        with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
-                                  backup.container)) as client:
-            # If from_snap does not exist at the destination (and the
-            # destination exists), this implies a previous backup has failed.
-            # In this case we will force a full backup.
-            #
-            # TODO(dosaboy): find a way to repair the broken backup
-            #
-            if base_name not in eventlet.tpool.Proxy(self.rbd.RBD()).list(
-                    ioctx=client.ioctx):
-                src_vol_snapshots = self.get_backup_snaps(source_rbd_image)
-                if src_vol_snapshots:
-                    # If there are source volume snapshots but base does not
-                    # exist then we delete it and set from_snap to None
-                    LOG.debug("Volume '%(volume)s' has stale source "
-                              "snapshots so deleting them.",
-                              {'volume': volume_id})
-                for snap in src_vol_snapshots:
-                    from_snap = snap['name']
-                    source_rbd_image.remove_snap(from_snap)
-                from_snap = None
+        base_name = None
 
-                # Create new base image
-                self._create_base_image(base_name, length, client)
-                image_created = True
-            else:
-                # If a from_snap is defined and is present in the source volume
-                # image but does not exist in the backup base then we look down
-                # the list of source volume snapshots and find the latest one
-                # for which a backup snapshot exist in the backup base. Until
-                # that snapshot is reached, we delete all the other snapshots
-                # for which backup snapshot does not exist.
-                from_snap = self._get_most_recent_snap(source_rbd_image,
-                                                       base_name, client)
+        # If backup.parent_id is None performs full RBD backup
+        if backup.parent_id is None:
+            base_name = self._get_backup_base_name(volume_id, backup=backup)
+            from_snap, image_created = self._full_rbd_backup(backup.container,
+                                                             base_name,
+                                                             length)
+        # Otherwise performs incremental rbd backup
+        else:
+            # Find the base name from the parent backup's service_metadata
+            base_name = self._get_backup_base_name(volume_id, backup=backup)
+            rbd_img = source_rbd_image
+            from_snap, image_created = self._incremental_rbd_backup(backup,
+                                                                    base_name,
+                                                                    length,
+                                                                    rbd_img,
+                                                                    volume_id)
 
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
                   "volume %(volume)s.",
@@ -730,14 +777,8 @@ class CephBackupDriver(driver.BackupDriver):
                           "source volume='%(volume)s'.",
                           {'snapshot': new_snap, 'volume': volume_id})
                 source_rbd_image.remove_snap(new_snap)
-        # We update the parent_id here. The from_snap is of the format:
-        # backup.BACKUP_ID.snap.TIMESTAMP. So we need to extract the
-        # backup_id of the parent only from from_snap and set it as
-        # parent_id
-        if from_snap:
-            parent_id = from_snap.split('.')
-            updates = {'parent_id': parent_id[1]}
-        return updates
+
+        return {'service_metadata': '{"base": "%s"}' % base_name}
 
     def _file_is_rbd(self, volume_file):
         """Returns True if the volume_file is actually an RBD image."""
@@ -751,7 +792,7 @@ class CephBackupDriver(driver.BackupDriver):
         image.
         """
         volume_id = backup.volume_id
-        backup_name = self._get_backup_base_name(volume_id, backup.id)
+        backup_name = self._get_backup_base_name(volume_id, backup=backup)
 
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
                                   backup.container)) as client:
@@ -854,23 +895,6 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Found snapshot '%s'", snaps[0])
         return snaps[0]
 
-    def _get_most_recent_snap(self, rbd_image, base_name, client):
-        """Get the most recent backup snapshot of the provided image.
-
-        Returns name of most recent backup snapshot or None if there are no
-        backup snapshots.
-        """
-        src_vol_backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
-        from_snap = None
-
-        for snap in src_vol_backup_snaps:
-            if self._snap_exists(base_name, snap['name'], client):
-                from_snap = snap['name']
-                break
-            rbd_image.remove_snap(snap['name'])
-
-        return from_snap
-
     def _get_volume_size_gb(self, volume):
         """Return the size in gigabytes of the given volume.
 
@@ -924,17 +948,23 @@ class CephBackupDriver(driver.BackupDriver):
         volume_file.seek(0)
         length = self._get_volume_size_gb(volume)
 
-        do_full_backup = False
-        if self._file_is_rbd(volume_file):
-            # If volume an RBD, attempt incremental backup.
-            LOG.debug("Volume file is RBD: attempting incremental backup.")
+        if backup.snapshot_id:
+            do_full_backup = True
+        elif self._file_is_rbd(volume_file):
+            # If volume an RBD, attempt incremental or full backup.
+            do_full_backup = False
+            LOG.debug("Volume file is RBD: attempting optimized backup")
             try:
-                updates = self._backup_rbd(backup, volume_file,
-                                           volume.name, length)
+                updates = self._backup_rbd(backup, volume_file, volume.name,
+                                           length)
             except exception.BackupRBDOperationFailed:
-                LOG.debug("Forcing full backup of volume %s.", volume.id)
-                do_full_backup = True
+                with excutils.save_and_reraise_exception():
+                    self.delete_backup(backup)
         else:
+            if backup.parent_id:
+                LOG.debug("Volume file is NOT RBD: can't perform"
+                          "incremental backup.")
+                raise exception.BackupRBDOperationFailed
             LOG.debug("Volume file is NOT RBD: will do full backup.")
             do_full_backup = True
 
@@ -956,11 +986,6 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Backup '%(backup_id)s' of volume %(volume_id)s finished.",
                   {'backup_id': backup.id, 'volume_id': volume.id})
 
-        # If updates is empty then set parent_id to None. This will
-        # take care if --incremental flag is used in CLI but a full
-        # backup is performed instead
-        if not updates and backup.parent_id:
-            updates = {'parent_id': None}
         return updates
 
     def _full_restore(self, backup, dest_file, dest_name, length,
@@ -975,13 +1000,10 @@ class CephBackupDriver(driver.BackupDriver):
             # If a source snapshot is provided we assume the base is diff
             # format.
             if src_snap:
-                diff_format = True
+                backup_name = self._get_backup_base_name(backup.volume_id,
+                                                         backup=backup)
             else:
-                diff_format = False
-
-            backup_name = self._get_backup_base_name(backup.volume_id,
-                                                     backup_id=backup.id,
-                                                     diff_format=diff_format)
+                backup_name = self._get_backup_base_name(backup.volume_id)
 
             # Retrieve backup volume
             src_rbd = eventlet.tpool.Proxy(self.rbd.Image(client.ioctx,
@@ -1008,7 +1030,7 @@ class CephBackupDriver(driver.BackupDriver):
         post-process and resize it back to its expected size.
         """
         backup_base = self._get_backup_base_name(backup.volume_id,
-                                                 diff_format=True)
+                                                 backup=backup)
 
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
                                   backup.container)) as client:
@@ -1033,7 +1055,7 @@ class CephBackupDriver(driver.BackupDriver):
         rbd_pool = restore_file.rbd_pool
         rbd_conf = restore_file.rbd_conf
         base_name = self._get_backup_base_name(backup.volume_id,
-                                               diff_format=True)
+                                               backup=backup)
 
         LOG.debug("Attempting incremental restore from base='%(base)s' "
                   "snap='%(snap)s'",
@@ -1165,8 +1187,10 @@ class CephBackupDriver(driver.BackupDriver):
         """
         length = int(volume.size) * units.Gi
 
-        base_name = self._get_backup_base_name(backup.volume_id,
-                                               diff_format=True)
+        if backup.service_metadata:
+            base_name = self._get_backup_base_name(backup.volume_id, backup)
+        else:
+            base_name = self._get_backup_base_name(backup.volume_id)
 
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(
                                   self, backup.container)) as client:
