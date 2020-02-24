@@ -119,6 +119,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         4.2.0 - Support of Unisphere storage group and array tags
               - User defined override for short host name and port group name
                 (bp powermax-user-defined-hostname-portgroup)
+              - Switch to Unisphere REST API public replication endpoints
     """
 
     VERSION = "4.2.0"
@@ -571,7 +572,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         :param offset: Number of volumes to skip after marker.
         :param sort_keys: Results sort key. Valid keys: size, reference.
         :param sort_dirs: Results sort direction. Valid dirs: asc, desc.
-        :return: List of dicts containing all manageable volumes.
+        :returns: List of dicts containing all manageable volumes.
         """
         return self.common.get_manageable_volumes(marker, limit, offset,
                                                   sort_keys, sort_dirs)
@@ -588,7 +589,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         :param offset: Number of snapshots to skip after marker.
         :param sort_keys: Results sort key. Valid keys: size, reference.
         :param sort_dirs: Results sort direction. Valid dirs: asc, desc.
-        :return: List of dicts containing all manageable snapshots.
+        :returns: List of dicts containing all manageable snapshots.
         """
         return self.common.get_manageable_snapshots(marker, limit, offset,
                                                     sort_keys, sort_dirs)

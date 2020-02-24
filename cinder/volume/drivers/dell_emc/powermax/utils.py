@@ -48,6 +48,7 @@ UPPER_HOST_CHARS = 16
 UPPER_PORT_GROUP_CHARS = 12
 
 ARRAY = 'array'
+REMOTE_ARRAY = 'remote_array'
 SLO = 'slo'
 WORKLOAD = 'workload'
 SRP = 'srp'
@@ -55,6 +56,7 @@ PORTGROUPNAME = 'storagetype:portgroupname'
 DEVICE_ID = 'device_id'
 INITIATOR_CHECK = 'initiator_check'
 SG_NAME = 'storagegroup_name'
+SG_ID = 'storageGroupId'
 MV_NAME = 'maskingview_name'
 IG_NAME = 'init_group_name'
 PARENT_SG_NAME = 'parent_sg_name'
@@ -76,13 +78,18 @@ RDF_FAILEDOVER_STATE = 'failed over'
 RDF_ACTIVE = 'active'
 RDF_ACTIVEACTIVE = 'activeactive'
 RDF_ACTIVEBIAS = 'activebias'
-RDF_CONS_EXEMPT = 'consExempt'
+RDF_CONS_EXEMPT = 'exempt'
+RDF_ALLOW_METRO_DELETE = 'allow_delete_metro'
+RDF_GROUP_NO = 'rdf_group_number'
 METROBIAS = 'metro_bias'
 DEFAULT_PORT = 8443
 CLONE_SNAPSHOT_NAME = "snapshot_for_clone"
 STORAGE_GROUP_TAGS = 'storagetype:storagegrouptags'
 TAG_LIST = 'tag_list'
 USED_HOST_NAME = "used_host_name"
+RDF_SYNCED_STATES = [RDF_SYNC_STATE, RDF_CONSISTENT_STATE,
+                     RDF_ACTIVEACTIVE, RDF_ACTIVEBIAS]
+FORCE_VOL_REMOVE = 'force_vol_remove'
 
 # Multiattach constants
 IS_MULTIATTACH = 'multiattach'
@@ -285,7 +292,7 @@ class PowerMaxUtils(object):
         :param snapshot_name: the old snapshot backend display name
         :param manage: (bool) if the operation is managing a snapshot
         :param unmanage: (bool) if the operation is unmanaging a snapshot
-        :return: snapshot name ready for backend PowerMax/VMAX assignment
+        :returns: snapshot name ready for backend PowerMax/VMAX assignment
         """
         new_snap_name = None
         if manage:
@@ -361,7 +368,7 @@ class PowerMaxUtils(object):
         """Construct a temporary snapshot name for clone operation
 
         :param source_device_id: the source device id
-        :return: snap_name
+        :returns: snap_name
         """
         snap_name = ("temp-%(device)s-%(snap_name)s"
                      % {'device': source_device_id,
@@ -434,7 +441,7 @@ class PowerMaxUtils(object):
 
         :param vol_is_replicated: from source
         :param new_type: from target
-        :return: bool
+        :returns: bool
         """
         is_tgt_rep = self.is_replication_enabled(new_type['extra_specs'])
         return vol_is_replicated != is_tgt_rep
@@ -477,6 +484,17 @@ class PowerMaxUtils(object):
                 raise exception.VolumeBackendAPIException(
                     message=error_message)
 
+            try:
+                rep_config['sync_retries'] = int(target['sync_retries'])
+                rep_config['sync_interval'] = int(target['sync_interval'])
+            except (KeyError, ValueError) as ke:
+                LOG.debug("SRDF Sync wait/retries options not set or set "
+                          "incorrectly, defaulting to 200 retries with a 3 "
+                          "second wait. Configuration load warning: %(ke)s.",
+                          {'ke': six.text_type(ke)})
+                rep_config['sync_retries'] = 200
+                rep_config['sync_interval'] = 3
+
             allow_extend = target.get('allow_extend', 'false')
             if strutils.bool_from_string(allow_extend):
                 rep_config['allow_extend'] = True
@@ -493,11 +511,6 @@ class PowerMaxUtils(object):
                     rep_config[METROBIAS] = True
                 else:
                     rep_config[METROBIAS] = False
-                allow_delete_metro = target.get('allow_delete_metro', 'false')
-                if strutils.bool_from_string(allow_delete_metro):
-                    rep_config['allow_delete_metro'] = True
-                else:
-                    rep_config['allow_delete_metro'] = False
             else:
                 rep_config['mode'] = REP_SYNC
 
@@ -633,7 +646,7 @@ class PowerMaxUtils(object):
         """Add legacy pools to allow extending a volume after upgrade.
 
         :param pools: the pool list
-        :return: pools - the updated pool list
+        :returns: pools - the updated pool list
         """
         extra_pools = []
         for pool in pools:
@@ -707,7 +720,7 @@ class PowerMaxUtils(object):
         synchronous, asynchronous, or metro replication mode.
 
         :param rep_mode: flag to indicate if replication is async
-        :return: prefix
+        :returns: prefix
         """
         if rep_mode == REP_ASYNC:
             prefix = "-RA"
@@ -718,11 +731,11 @@ class PowerMaxUtils(object):
         return prefix
 
     @staticmethod
-    def get_async_rdf_managed_grp_name(rep_config):
+    def get_rdf_management_group_name(rep_config):
         """Get the name of the group used for async replication management.
 
         :param rep_config: the replication configuration
-        :return: group name
+        :returns: group name
         """
         async_grp_name = ("OS-%(rdf)s-%(mode)s-rdf-sg"
                           % {'rdf': rep_config['rdf_group_label'],
@@ -736,7 +749,7 @@ class PowerMaxUtils(object):
 
         :param rep_config: the replication configuration
         :param extra_specs: the extra specifications
-        :return: bool
+        :returns: bool
         """
         is_metro = (True if self.is_replication_enabled(extra_specs)
                     and rep_config is not None
@@ -747,7 +760,7 @@ class PowerMaxUtils(object):
         """Determine if a volume is a Metro or Async.
 
         :param extra_specs: the extra specifications
-        :return: bool
+        :returns: bool
         """
         if (self.is_replication_enabled(extra_specs) and
                 extra_specs.get(REP_MODE, None) in
@@ -973,7 +986,7 @@ class PowerMaxUtils(object):
         """Get the production storage group
 
         :param device_info: the device info dict
-        :return: str -- the storage group id
+        :returns: str -- the storage group id
                  dict -- storage group details
         """
         try:
@@ -1081,21 +1094,6 @@ class PowerMaxUtils(object):
 
         my_list1 = sorted(list_str1.split(","))
         return [x for x in my_list1 if x.lower() not in common_list]
-
-    def _get_intersection(self, list_str1, list_str2):
-        """Get the common values between 2 comma separated list
-
-        :param list_str1: list one
-        :param list_str2: list two
-        :returns: sorted list
-        """
-        list_str1 = re.sub(r"\s+", "", list_str1).lower()
-        list_str2 = re.sub(r"\s+", "", list_str2).lower()
-        my_list1 = sorted(list_str1.split(","))
-        my_list2 = sorted(list_str2.split(","))
-        sorted_common_list = (
-            sorted(list(set(my_list1).intersection(set(my_list2)))))
-        return sorted_common_list
 
     def verify_tag_list(self, tag_list):
         """Verify that the tag list has allowable character
@@ -1509,3 +1507,74 @@ class PowerMaxUtils(object):
                 datadict.update({tuple[1]: datadict.get(tuple[0])})
                 del datadict[tuple[0]]
         return datadict
+
+    @staticmethod
+    def _get_intersection(list_str1, list_str2):
+        """Get the common values between 2 comma separated list
+
+        :param list_str1: list one
+        :param list_str2: list two
+        :returns: sorted list
+        """
+        list_str1 = re.sub(r"\s+", "", list_str1).lower()
+        list_str2 = re.sub(r"\s+", "", list_str2).lower()
+        my_list1 = sorted(list_str1.split(","))
+        my_list2 = sorted(list_str2.split(","))
+        sorted_common_list = (
+            sorted(list(set(my_list1).intersection(set(my_list2)))))
+        return sorted_common_list
+
+    @staticmethod
+    def get_unique_device_ids_from_lists(list_a, list_b):
+        """Get the unique values from list B that don't appear in list A.
+
+        :param list_a: list A
+        :param list_b: list B
+        :returns: values unique between two lists -- list
+        """
+        set_a = set(list_a)
+        return [dev_id for dev_id in list_b if dev_id not in set_a]
+
+    @staticmethod
+    def update_payload_for_rdf_vol_create(payload, remote_array_id,
+                                          storage_group_name):
+        """Construct the REST payload for creating RDF enabled volumes.
+
+        :param payload: the existing payload -- dict
+        :param remote_array_id: the remote array serial number -- str
+        :param storage_group_name: the storage group name -- str
+        :returns: updated payload -- dict
+        """
+        remote_dict = {"remoteSymmSGInfoParam": {
+            "remote_symmetrix_1_id": remote_array_id,
+            "remote_symmetrix_1_sgs": [storage_group_name],
+            "force": "true"}}
+
+        payload["editStorageGroupActionParam"]["expandStorageGroupParam"][
+            "addVolumeParam"].update(remote_dict)
+
+        return payload
+
+    @staticmethod
+    def is_retype_supported(volume, src_extra_specs, tgt_extra_specs):
+        """Determine if a retype operation involving Metro is supported.
+
+        :param volume: the volume object -- obj
+        :param src_extra_specs: the source extra specs -- dict
+        :param tgt_extra_specs: the target extra specs -- dict
+        :returns: is supported -- bool
+        """
+        if volume.attach_status == 'detached':
+            return True
+
+        src_rep_mode = src_extra_specs.get('rep_mode', None)
+        tgt_rep_mode = tgt_extra_specs.get('rep_mode', None)
+
+        if tgt_rep_mode != REP_METRO:
+            return True
+        else:
+            if src_rep_mode == REP_METRO:
+                return True
+            else:
+                if not src_rep_mode or src_rep_mode in [REP_SYNC, REP_ASYNC]:
+                    return False

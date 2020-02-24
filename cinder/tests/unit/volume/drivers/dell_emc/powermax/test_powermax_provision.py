@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from copy import deepcopy
 from unittest import mock
 
 from cinder import exception
@@ -26,7 +25,6 @@ from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
 from cinder.volume.drivers.dell_emc.powermax import iscsi
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
-from cinder.volume.drivers.dell_emc.powermax import utils
 from cinder.volume import volume_utils
 
 
@@ -78,6 +76,23 @@ class PowerMaxProvisionTest(test.TestCase):
             array, volume_name, storagegroup_name, volume_size, extra_specs)
         self.assertEqual(ref_dict, volume_dict)
 
+    @mock.patch.object(rest.PowerMaxRest, 'create_volume_from_sg')
+    def test_create_volume_from_sg_with_rep_info(self, mck_create):
+        array = self.data.array
+        storagegroup_name = self.data.storagegroup_name_f
+        volume_id = self.data.test_volume.id
+        volume_name = self.utils.get_volume_element_name(volume_id)
+        volume_size = self.data.test_volume.size
+        extra_specs = self.data.extra_specs
+        rep_info_dict = self.data.rep_info_dict
+
+        self.provision.create_volume_from_sg(
+            array, volume_name, storagegroup_name, volume_size, extra_specs,
+            rep_info=rep_info_dict)
+        mck_create.assert_called_once_with(
+            array, volume_name, storagegroup_name, volume_size, extra_specs,
+            rep_info_dict)
+
     def test_delete_volume_from_srp(self):
         array = self.data.array
         device_id = self.data.device_id
@@ -117,7 +132,7 @@ class PowerMaxProvisionTest(test.TestCase):
                     snap_name, extra_specs, create_snap=True)
                 mock_modify.assert_called_once_with(
                     array, source_device_id, target_device_id, snap_name,
-                    extra_specs, link=True, copy_mode=False)
+                    extra_specs, link=True, copy=False)
                 mock_create_snapvx.assert_called_once_with(
                     array, source_device_id, snap_name, extra_specs, ttl=ttl)
 
@@ -136,10 +151,10 @@ class PowerMaxProvisionTest(test.TestCase):
                     snap_name, extra_specs, create_snap=False, copy_mode=True)
                 mock_modify.assert_called_once_with(
                     array, source_device_id, target_device_id, snap_name,
-                    extra_specs, link=True, copy_mode=True)
+                    extra_specs, link=True, copy=True)
                 mock_create_snapvx.assert_not_called()
 
-    def test_break_replication_relationship(self):
+    def test_unlink_snapvx_tgt_volume(self):
         array = self.data.array
         source_device_id = self.data.device_id
         target_device_id = self.data.device_id2
@@ -148,7 +163,7 @@ class PowerMaxProvisionTest(test.TestCase):
 
         with mock.patch.object(
                 self.provision, '_unlink_volume') as mock_unlink:
-            self.provision.break_replication_relationship(
+            self.provision.unlink_snapvx_tgt_volume(
                 array, target_device_id, source_device_id, snap_name,
                 extra_specs, generation=6, loop=True)
             mock_unlink.assert_called_once_with(
@@ -374,56 +389,38 @@ class PowerMaxProvisionTest(test.TestCase):
                     self.data.array, self.data.defaultstoragegroup_name))
             self.assertEqual(ref_settings3, sg_slo_settings3)
 
-    @mock.patch.object(rest.PowerMaxRest, 'wait_for_rdf_consistent_state')
-    @mock.patch.object(rest.PowerMaxRest, 'delete_rdf_pair')
-    @mock.patch.object(rest.PowerMaxRest, 'modify_rdf_device_pair')
-    def test_break_rdf_relationship(self, mock_mod, mock_del, mock_wait):
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_delete_device_pair')
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_suspend_replication')
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_rdf_pair_sync')
+    def test_break_rdf_relationship(self, mock_wait, mock_suspend, mock_del):
         array = self.data.array
         device_id = self.data.device_id
-        target_device = self.data.device_id2
-        rdf_group_name = self.data.rdf_group_name
-        rep_extra_specs = self.data.rep_extra_specs
-        # State is suspended
-        self.provision.break_rdf_relationship(
-            array, device_id, target_device,
-            rdf_group_name, rep_extra_specs, 'Suspended')
-        mock_mod.assert_not_called()
-        mock_del.assert_called_once_with(
-            array, device_id, rdf_group_name)
-        mock_del.reset_mock()
-        # State is synchronized
-        self.provision.break_rdf_relationship(
-            array, device_id, target_device,
-            rdf_group_name, rep_extra_specs, 'Synchronized')
-        mock_mod.assert_called_once_with(
-            array, device_id, rdf_group_name, rep_extra_specs,
-            suspend=True)
-        mock_del.assert_called_once_with(
-            array, device_id, rdf_group_name)
+        sg_name = self.data.storagegroup_name_f
+        rdf_group = self.data.rdf_group_no
+        extra_specs = self.data.rep_extra_specs
+
         # sync still in progress
         self.provision.break_rdf_relationship(
-            array, device_id, target_device,
-            rdf_group_name, rep_extra_specs, 'SyncInProg')
-        mock_wait.assert_called_once()
+            array, device_id, sg_name, rdf_group, extra_specs, 'SyncInProg')
+        mock_wait.assert_called_once_with(array, rdf_group, device_id,
+                                          extra_specs)
+        mock_del.assert_called_once_with(array, rdf_group, device_id)
+        mock_wait.reset_mock()
+        mock_suspend.reset_mock()
+        mock_del.reset_mock()
 
-    @mock.patch.object(provision.PowerMaxProvision,
-                       'disable_group_replication')
-    @mock.patch.object(provision.PowerMaxProvision, 'delete_rdf_pair')
-    def test_break_metro_rdf_pair(self, mock_del, mock_disable):
-        self.provision.break_metro_rdf_pair(
-            self.data.array, self.data.device_id, self.data.device_id2,
-            self.data.rdf_group_no, self.data.rep_extra_specs, 'metro_grp')
-        mock_del.assert_called_once()
+        # State is Consistent, need to suspend
+        self.provision.break_rdf_relationship(
+            array, device_id, sg_name, rdf_group, extra_specs, 'Consistent')
+        mock_suspend.assert_called_once_with(array, sg_name, rdf_group,
+                                             extra_specs)
+        mock_del.assert_called_once_with(array, rdf_group, device_id)
+        mock_del.reset_mock()
 
-    def test_delete_rdf_pair_async(self):
-        with mock.patch.object(
-                self.provision.rest, 'delete_rdf_pair') as mock_del_rdf:
-            extra_specs = deepcopy(self.data.extra_specs)
-            extra_specs[utils.REP_MODE] = utils.REP_ASYNC
-            self.provision.delete_rdf_pair(
-                self.data.array, self.data.device_id,
-                self.data.rdf_group_no, self.data.device_id2, extra_specs)
-            mock_del_rdf.assert_called_once()
+        # State is synchronized
+        self.provision.break_rdf_relationship(
+            array, device_id, sg_name, rdf_group, extra_specs, 'Synchronized')
+        mock_del.assert_called_once_with(array, rdf_group, device_id)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
                        return_value=None)
@@ -525,50 +522,6 @@ class PowerMaxProvisionTest(test.TestCase):
             self.data.rdf_group_no, self.data.remote_array,
             self.data.extra_specs)
         mock_create.assert_called_once()
-
-    def test_enable_group_replication(self):
-        with mock.patch.object(self.rest,
-                               'modify_storagegroup_rdf') as mock_mod:
-            self.provision.enable_group_replication(
-                self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no, self.data.extra_specs)
-            mock_mod.assert_called_once()
-
-    def test_disable_group_replication(self):
-        with mock.patch.object(self.rest,
-                               'modify_storagegroup_rdf') as mock_mod:
-            self.provision.disable_group_replication(
-                self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no, self.data.extra_specs)
-            mock_mod.assert_called_once()
-
-    def test_failover_group(self):
-        with mock.patch.object(self.rest,
-                               'modify_storagegroup_rdf') as mock_fo:
-            # Failover
-            self.provision.failover_group(
-                self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no, self.data.extra_specs)
-            mock_fo.assert_called_once_with(
-                self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no, 'Failover', self.data.extra_specs)
-            mock_fo.reset_mock()
-            # Failback
-            self.provision.failover_group(
-                self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no, self.data.extra_specs, False)
-            mock_fo.assert_called_once_with(
-                self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no, 'Failback', self.data.extra_specs)
-
-    @mock.patch.object(rest.PowerMaxRest, 'modify_storagegroup_rdf')
-    @mock.patch.object(rest.PowerMaxRest, 'delete_storagegroup_rdf')
-    def test_delete_group_replication(self, mock_mod, mock_del):
-        self.provision.delete_group_replication(
-            self.data.array, self.data.test_vol_grp_name,
-            self.data.rdf_group_no, self.data.extra_specs)
-        mock_mod.assert_called_once()
-        mock_del.assert_called_once()
 
     @mock.patch.object(
         rest.PowerMaxRest, 'get_snap_linked_device_list',

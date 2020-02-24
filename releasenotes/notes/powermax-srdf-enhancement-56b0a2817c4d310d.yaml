@@ -1,0 +1,8 @@
+---
+other:
+  - |
+    PowerMax Driver - Two new replication specific configuration options
+    sync_interval and sync_retries have been added to PowerMax cinder
+    configuration.  These configuration options determine how many times to
+    retry checks to see if a SnapVX copy mode has completed with a replication
+    enabled volume, and how long to wait between retries.

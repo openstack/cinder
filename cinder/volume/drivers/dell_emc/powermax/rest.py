@@ -26,7 +26,6 @@ import requests.exceptions as r_exc
 import requests.packages.urllib3.util.retry as requests_retry
 import six
 
-from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
@@ -99,7 +98,6 @@ class PowerMaxRest(object):
         """Set the environment failover Unisphere targets and configuration..
 
         :param failover_info: failover target record
-        :return:
         """
         self.u4p_failover_enabled = True
         self.primary_u4p = failover_info['u4p_primary']
@@ -283,8 +281,8 @@ class PowerMaxRest(object):
         except Exception as e:
             msg = _("The %(method)s request to URL %(url)s failed with "
                     "exception %(e)s")
-            LOG.exception(msg, {'method': method, 'url': url,
-                                'e': six.text_type(e)})
+            LOG.error(msg, {'method': method, 'url': url,
+                            'e': six.text_type(e)})
             raise exception.VolumeBackendAPIException(
                 message=(msg, {'method': method, 'url': url,
                                'e': six.text_type(e)}))
@@ -323,7 +321,7 @@ class PowerMaxRest(object):
                         kwargs['result'], kwargs['task'] = result, task
             except Exception:
                 exception_message = (_("Issue encountered waiting for job."))
-                LOG.exception(exception_message)
+                LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
 
@@ -579,7 +577,7 @@ class PowerMaxRest(object):
     def get_uni_version(self):
         """Get the unisphere version from the server.
 
-        :return: version and major_version(e.g. ("V8.4.0.16", "84"))
+        :returns: version and major_version(e.g. ("V8.4.0.16", "84"))
         """
         version, major_version = None, None
         response = self.get_unisphere_version()
@@ -661,7 +659,7 @@ class PowerMaxRest(object):
         """Get the PowerMax/VMAX model.
 
         :param array: the array serial number
-        :return: the PowerMax/VMAX model
+        :returns: the PowerMax/VMAX model
         """
         vmax_version = None
         system_info = self.get_array_detail(array)
@@ -673,7 +671,7 @@ class PowerMaxRest(object):
         """Get the PowerMax/VMAX model.
 
         :param array: the array serial number
-        :return: the PowerMax/VMAX model
+        :returns: the PowerMax/VMAX model
         """
         array_model = None
         is_next_gen = False
@@ -690,7 +688,7 @@ class PowerMaxRest(object):
         """Get the PowerMax/VMAX uCode version.
 
         :param array: the array serial number
-        :return: the PowerMax/VMAX uCode version
+        :returns: the PowerMax/VMAX uCode version
         """
         ucode_version = None
         system_info = self.get_array_detail(array)
@@ -882,7 +880,7 @@ class PowerMaxRest(object):
         return status_code, message
 
     def create_volume_from_sg(self, array, volume_name, storagegroup_name,
-                              volume_size, extra_specs):
+                              volume_size, extra_specs, rep_info=None):
         """Create a new volume in the given storage group.
 
         :param array: the array serial number
@@ -890,6 +888,7 @@ class PowerMaxRest(object):
         :param storagegroup_name: the storage group name
         :param volume_size: volume size (String)
         :param extra_specs: the extra specifications
+        :param rep_info: replication info dict if volume is replication enabled
         :returns: dict -- volume_dict - the volume dict
         :raises: VolumeBackendAPIException
         """
@@ -910,6 +909,11 @@ class PowerMaxRest(object):
                                  },
                                  "volume_size": volume_size,
                                  "capacityUnit": "GB"}]}}}})
+
+        if rep_info:
+            payload = self.utils.update_payload_for_rdf_vol_create(
+                payload, rep_info[utils.REMOTE_ARRAY], storagegroup_name)
+
         status_code, job = self.modify_storage_group(
             array, storagegroup_name, payload)
 
@@ -920,9 +924,27 @@ class PowerMaxRest(object):
         task = self.wait_for_job('Create volume', status_code,
                                  job, extra_specs)
 
-        # Find the newly created volume.
         device_id = None
-        if task:
+        if rep_info:
+            updated_device_list = self.get_volume_list(
+                array, {'storageGroupId': storagegroup_name,
+                        'rdf_group_number': rep_info['rdf_group_no']})
+            unique_devices = self.utils.get_unique_device_ids_from_lists(
+                rep_info['initial_device_list'], updated_device_list)
+
+            if 0 < len(unique_devices) < 2:
+                device_id = unique_devices[0]
+                self.rename_volume(array, device_id, volume_name)
+            else:
+                raise exception.VolumeBackendAPIException(_(
+                    "There has been more than one volume created in the "
+                    "SRDF protected Storage Group since the current create "
+                    "volume process begun. Not possible to discern what "
+                    "volume has been created by PowerMax Cinder driver."))
+
+        # Find the newly created volume if not located as part of replication
+        # OPT workaround
+        if not device_id and task:
             for t in task:
                 try:
                     desc = t["description"]
@@ -936,13 +958,12 @@ class PowerMaxRest(object):
                 except Exception as e:
                     LOG.info("Could not retrieve device id from job. "
                              "Exception received was %(e)s. Attempting "
-                             "retrieval by volume_identifier.",
-                             {'e': e})
+                             "retrieval by volume_identifier.", {'e': e})
 
         if not device_id:
             device_id = self.find_volume_device_id(array, volume_name)
 
-        volume_dict = {'array': array, 'device_id': device_id}
+        volume_dict = {utils.ARRAY: array, utils.DEVICE_ID: device_id}
         return volume_dict
 
     def add_storage_group_tag(self, array, storagegroup_name,
@@ -1065,8 +1086,8 @@ class PowerMaxRest(object):
         :param extra_specs: the extra specifications
         """
 
-        force_vol_remove = ("true" if "force_vol_remove" in extra_specs
-                            else "false")
+        force_vol_remove = (
+            "true" if utils.FORCE_VOL_REMOVE in extra_specs else "false")
         if not isinstance(device_id, list):
             device_id = [device_id]
         payload = ({"executionOption": "ASYNCHRONOUS",
@@ -1393,7 +1414,7 @@ class PowerMaxRest(object):
             array, SLOPROVISIONING, 'maskingview',
             resource_name=resource_name, params=params)
         if not connection_info:
-            LOG.error('Cannot retrive masking view connection information '
+            LOG.error('Cannot retrieve masking view connection information '
                       'for %(mv)s.', {'mv': maskingview})
         else:
             try:
@@ -1850,8 +1871,7 @@ class PowerMaxRest(object):
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
                            extra_specs, link=False, unlink=False,
                            rename=False, new_snap_name=None, restore=False,
-                           list_volume_pairs=None, generation=0,
-                           copy_mode=False):
+                           list_volume_pairs=None, generation=0, copy=False):
         """Modify a snapvx snapshot
 
         :param array: the array serial number
@@ -1866,8 +1886,11 @@ class PowerMaxRest(object):
         :param restore: Flag to indicate action = Restore
         :param list_volume_pairs: list of volume pairs to link, optional
         :param generation: the generation number of the snapshot
+        :param copy: If copy mode should be used for SnapVX target links
         """
         action, operation, payload = '', '', {}
+        copy = 'true' if copy else 'false'
+
         if link:
             action = "Link"
         elif unlink:
@@ -1876,8 +1899,6 @@ class PowerMaxRest(object):
             action = "Rename"
         elif restore:
             action = "Restore"
-
-        copy = 'true' if copy_mode else 'false'
 
         payload = {}
         if action == "Restore":
@@ -2001,7 +2022,6 @@ class PowerMaxRest(object):
         rdf_grp = None
         volume_details = self.get_volume(array, device_id)
         if volume_details:
-            LOG.debug("Vol details: %(vol)s", {'vol': volume_details})
             if volume_details.get('snapvx_target'):
                 snapvx_tgt = volume_details['snapvx_target']
             if volume_details.get('snapvx_source'):
@@ -2039,7 +2059,7 @@ class PowerMaxRest(object):
             except Exception:
                 exception_message = (_("Issue encountered waiting for "
                                        "synchronization."))
-                LOG.exception(exception_message)
+                LOG.error(exception_message)
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
 
@@ -2143,7 +2163,7 @@ class PowerMaxRest(object):
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param state: filter for state of the link
-        :return: list of dict of generations with linked devices
+        :returns: list of dict of generations with linked devices
         """
         snap_dict_list = []
         snap_list = self._find_snap_vx_source_sessions(
@@ -2231,6 +2251,22 @@ class PowerMaxRest(object):
         return self.get_resource(array, REPLICATION, 'rdf_group',
                                  rdf_number)
 
+    def get_storage_group_rdf_group_state(self, array, storage_group,
+                                          rdf_group_no):
+        """Get the RDF group state from a replication enabled Storage Group.
+
+        :param array: the array serial number
+        :param storage_group: the storage group name
+        :param rdf_group_no: the RDF group number
+        :returns: storage group RDF group state
+        """
+        resource = ('storagegroup/%(sg)s/rdf_group/%(rdfg)s' % {
+            'sg': storage_group, 'rdfg': rdf_group_no})
+
+        rdf_group = self.get_resource(array, REPLICATION, resource)
+
+        return rdf_group.get('states', list()) if rdf_group else dict()
+
     def get_rdf_group_list(self, array):
         """Get rdf group list from array.
 
@@ -2252,6 +2288,19 @@ class PowerMaxRest(object):
         except (KeyError, TypeError, IndexError):
             LOG.warning("Cannot locate source RDF volume %s", src_device_id)
         return rdf_session
+
+    def get_rdf_pair_volume(self, array, rdf_group_no, device_id):
+        """Get information on an RDF pair from the source volume.
+
+        :param array: the array serial number
+        :param rdf_group_no: the RDF group number
+        :param device_id: the source device ID
+        :returns: RDF pair information -- dict
+        """
+        resource = ('rdf_group/%(rdf_group)s/volume/%(device)s' % {
+            'rdf_group': rdf_group_no, 'device': device_id})
+
+        return self.get_resource(array, REPLICATION, resource)
 
     def are_vols_rdf_paired(self, array, remote_array,
                             device_id, target_device):
@@ -2277,53 +2326,140 @@ class PowerMaxRest(object):
             LOG.warning("Cannot locate RDF session for volume %s", device_id)
         return paired, local_vol_state, rdf_pair_state
 
-    def wait_for_rdf_consistent_state(
-            self, array, remote_array, device_id, target_device, extra_specs):
-        """Wait for async pair to be in a consistent state before suspending.
+    def wait_for_rdf_group_sync(self, array, storage_group, rdf_group_no,
+                                rep_extra_specs):
+        """Wait for an RDF group to reach 'Synchronised' state.
 
         :param array: the array serial number
-        :param remote_array: the remote array serial number
-        :param device_id: the device id
-        :param target_device: the target device id
-        :param extra_specs: the extra specifications
+        :param storage_group: the storage group name
+        :param rdf_group_no: the RDF group number
+        :param rep_extra_specs: replication extra specifications
+        :raises: exception.VolumeBackendAPIException
+        """
+        def _wait_for_synced_state():
+            try:
+                kwargs['retries'] -= 1
+                if not kwargs['synced']:
+                    rdf_group_state = self.get_storage_group_rdf_group_state(
+                        array, storage_group, rdf_group_no)
+                    if rdf_group_state:
+                        kwargs['state'] = rdf_group_state[0]
+                        if kwargs['state'].lower() in utils.RDF_SYNCED_STATES:
+                            kwargs['synced'] = True
+                            kwargs['rc'] = 0
+            except Exception as e_msg:
+                ex_msg = _("Issue encountered waiting for job: %(e)s" % {
+                    'e': e_msg})
+                LOG.error(ex_msg)
+                raise exception.VolumeBackendAPIException(message=ex_msg)
+            if kwargs['retries'] == 0:
+                ex_msg = _("Wait for RDF Sync State failed after %(r)d "
+                           "tries." % {'r': rep_extra_specs['sync_retries']})
+                LOG.error(ex_msg)
+                raise exception.VolumeBackendAPIException(message=ex_msg)
+
+            if kwargs['synced']:
+                raise loopingcall.LoopingCallDone()
+
+        kwargs = {'retries': rep_extra_specs['sync_retries'],
+                  'synced': False, 'rc': 0, 'state': 'syncinprog'}
+
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_synced_state)
+        timer.start(interval=rep_extra_specs['sync_interval']).wait()
+        LOG.debug("Return code is: %(rc)lu. State is %(state)s",
+                  {'rc': kwargs['rc'], 'state': kwargs['state']})
+
+    def wait_for_rdf_pair_sync(self, array, rdf_group_no, device_id,
+                               rep_extra_specs):
+        """Wait for an RDF device pair to reach 'Synchronised' state.
+
+        :param array: the array serial number
+        :param rdf_group_no: the RDF group number
+        :param device_id: the source device ID
+        :param rep_extra_specs: replication extra specifications
+        :raises: exception.VolumeBackendAPIException
+        """
+        def _wait_for_synced_state():
+            try:
+                kwargs['retries'] -= 1
+                if not kwargs['synced']:
+                    rdf_pair = self.get_rdf_pair_volume(array, rdf_group_no,
+                                                        device_id)
+                    kwargs['state'] = rdf_pair['rdfpairState']
+
+                    if kwargs['state'].lower() in utils.RDF_SYNCED_STATES:
+                        kwargs['synced'] = True
+                        kwargs['rc'] = 0
+
+            except Exception as e_msg:
+                ex_msg = _("Issue encountered waiting for job: %(e)s" % {
+                    'e': e_msg})
+                LOG.error(ex_msg)
+                raise exception.VolumeBackendAPIException(message=ex_msg)
+
+            if kwargs['retries'] == 0:
+                ex_msg = _("Wait for RDF Sync State failed after %(r)d "
+                           "tries." % {'r': rep_extra_specs['sync_retries']})
+                LOG.error(ex_msg)
+                raise exception.VolumeBackendAPIException(message=ex_msg)
+
+            if kwargs['synced']:
+                raise loopingcall.LoopingCallDone()
+
+        kwargs = {'retries': rep_extra_specs['sync_retries'],
+                  'synced': False, 'rc': 0, 'state': 'syncinprog'}
+
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_synced_state)
+        timer.start(interval=rep_extra_specs['sync_interval']).wait()
+        LOG.debug("Return code is: %(rc)lu. State is %(state)s",
+                  {'rc': kwargs['rc'], 'state': kwargs['state']})
+
+    def rdf_resume_with_retries(self, array, rep_extra_specs):
+        """Resume RDF on a RDF group with retry operator included.
+
+        The retry operator is required here because on occassion when we are
+        waiting on a snap copy session to complete we have no way of
+        determining if the copy is complete, operation is retried until
+        either the copy completes or the max interval/retries has been met.
+
+        :param array: the array serial number
+        :param rep_extra_specs: replication extra specifications
+        :raises: exception.VolumeBackendAPIException
         """
 
-        def _wait_for_consistent_state():
-            # Called at an interval until the state of the
-            # rdf pair is 'consistent'.
-            retries = kwargs['retries']
-            try:
-                kwargs['retries'] = retries + 1
-                if not kwargs['consistent_state']:
-                    __, __, state = (
-                        self.are_vols_rdf_paired(
-                            array, remote_array, device_id, target_device))
-                    kwargs['state'] = state
-                    if state.lower() == utils.RDF_CONSISTENT_STATE:
-                        kwargs['consistent_state'] = True
-                        kwargs['rc'] = 0
-            except Exception:
-                exception_message = _("Issue encountered waiting for job.")
-                LOG.exception(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    message=exception_message)
+        def wait_for_copy_complete():
+            kwargs['retries'] -= 1
+            if not kwargs['copied']:
+                try:
+                    self.srdf_resume_replication(
+                        array, rep_extra_specs['sg_name'],
+                        rep_extra_specs['rdf_group_no'], rep_extra_specs,
+                        async_call=False)
+                    kwargs['copied'] = True
+                    kwargs['state'] = 'copy_complete'
+                    kwargs['rc'] = 0
+                    raise loopingcall.LoopingCallDone()
 
-            if retries > int(extra_specs[utils.RETRIES]):
-                LOG.error("_wait_for_consistent_state failed after "
-                          "%(retries)d tries.", {'retries': retries})
-                kwargs['rc'] = -1
+                except exception.VolumeBackendAPIException:
+                    LOG.debug('Snapshot copy process still ongoing, Cinder '
+                              'will retry again in %(interval)s seconds. '
+                              'There are %(retries)s remaining.', {
+                                  'interval': rep_extra_specs['sync_interval'],
+                                  'retries': kwargs['retries']})
 
-                raise loopingcall.LoopingCallDone()
-            if kwargs['consistent_state']:
-                raise loopingcall.LoopingCallDone()
+            if kwargs['retries'] == 0:
+                ex_msg = _("Wait for snapshot copy complete failed after "
+                           "%(r)d tries." % {
+                               'r': rep_extra_specs['sync_retries']})
+                LOG.error(ex_msg)
+                raise exception.VolumeBackendAPIException(message=ex_msg)
 
-        kwargs = {'retries': 0, 'consistent_state': False,
-                  'rc': 0, 'state': 'syncinprog'}
+        kwargs = {'retries': rep_extra_specs['sync_retries'],
+                  'copied': False, 'rc': 0, 'state': 'copy_in_progress'}
 
-        timer = loopingcall.FixedIntervalLoopingCall(
-            _wait_for_consistent_state)
-        timer.start(interval=int(extra_specs[utils.INTERVAL])).wait()
-        LOG.debug("Return code is: %(rc)lu. State is %(state)s",
+        timer = loopingcall.FixedIntervalLoopingCall(wait_for_copy_complete)
+        timer.start(interval=rep_extra_specs['sync_interval']).wait()
+        LOG.debug("Return code: %(rc)lu. State: %(state)s",
                   {'rc': kwargs['rc'], 'state': kwargs['state']})
 
     def get_rdf_group_number(self, array, rdf_group_label):
@@ -2345,156 +2481,300 @@ class PowerMaxRest(object):
                 number = None
         return number
 
-    @coordination.synchronized('emc-rg-{rdf_group_no}')
-    def create_rdf_device_pair(self, array, device_id, rdf_group_no,
-                               target_device, remote_array, extra_specs):
-        """Create an RDF pairing.
-
-        Create a remote replication relationship between source and target
-        devices.
-        :param array: the array serial number
-        :param device_id: the device id
-        :param rdf_group_no: the rdf group number
-        :param target_device: the target device id
-        :param remote_array: the remote array serial
-        :param extra_specs: the extra specs
-        :returns: rdf_dict
-        """
-        rep_mode = extra_specs[utils.REP_MODE]
-        if rep_mode == utils.REP_METRO:
-            rep_mode = 'Active'
-        payload = ({"deviceNameListSource": [{"name": device_id}],
-                    "deviceNameListTarget": [{"name": target_device}],
-                    "replicationMode": rep_mode,
-                    "establish": 'true',
-                    "rdfType": 'RDF1'})
-        if rep_mode == utils.REP_ASYNC:
-            payload_update = self._get_async_payload_info(array, rdf_group_no)
-            payload.update(payload_update)
-        elif rep_mode == 'Active':
-            # Check if arrays are next gen to support add data vol to existing
-            # metro enabled rdfg, else format drive before adding
-            r1_nxt_gen = self.is_next_gen_array(array)
-            r2_nxt_gen = self.is_next_gen_array(remote_array)
-            if r1_nxt_gen and r2_nxt_gen:
-                extra_specs[utils.RDF_CONS_EXEMPT] = True
-            else:
-                extra_specs[utils.RDF_CONS_EXEMPT] = False
-            payload = self.get_metro_payload_info(
-                array, payload, rdf_group_no, extra_specs)
-        resource_type = ("rdf_group/%(rdf_num)s/volume"
-                         % {'rdf_num': rdf_group_no})
-        status_code, job = self.create_resource(array, REPLICATION,
-                                                resource_type, payload,
-                                                private="/private")
-        self.wait_for_job('Create rdf pair', status_code,
-                          job, extra_specs)
-        rdf_dict = {'array': remote_array, 'device_id': target_device}
-        return rdf_dict
-
     def _get_async_payload_info(self, array, rdf_group_no):
         """Get the payload details for an async create pair.
 
         :param array: the array serial number
         :param rdf_group_no: the rdf group number
-        :return: payload_update
+        :returns: payload_update
         """
         num_vols, payload_update = 0, {}
         rdfg_details = self.get_rdf_group(array, rdf_group_no)
         if rdfg_details is not None and rdfg_details.get('numDevices'):
             num_vols = int(rdfg_details['numDevices'])
         if num_vols > 0:
-            payload_update = {'consExempt': 'true'}
+            payload_update = {'exempt': 'true'}
         return payload_update
 
     def get_metro_payload_info(self, array, payload,
-                               rdf_group_no, extra_specs):
+                               rdf_group_no, extra_specs, next_gen):
         """Get the payload details for a metro active create pair.
 
         :param array: the array serial number
         :param payload: the payload
         :param rdf_group_no: the rdf group number
         :param extra_specs: the replication configuration
-        :return: updated payload
+        :param next_gen: if the array is next gen uCode
+        :returns: updated payload
         """
         num_vols = 0
+        payload["rdfMode"] = "Active"
+        payload['rdfType'] = "RDF1"
+
         rdfg_details = self.get_rdf_group(array, rdf_group_no)
         if rdfg_details is not None and rdfg_details.get('numDevices'):
             num_vols = int(rdfg_details['numDevices'])
+
         if num_vols == 0:
             # First volume - set bias if required
-            if (extra_specs.get(utils.METROBIAS)
-                    and extra_specs[utils.METROBIAS] is True):
-                payload.update({'metroBias': 'true'})
+            if extra_specs.get(utils.METROBIAS):
+                payload.update({"metroBias": "true"})
         else:
-            if (extra_specs.get(utils.RDF_CONS_EXEMPT)
-                    and extra_specs[utils.RDF_CONS_EXEMPT] is True):
-                payload['consExempt'] = 'true'
-                payload['rdfType'] = 'RDF1'
-            else:
-                LOG.warning("Adding HyperMax OS volumes to an existing RDFG "
-                            "requires the volumes to be formatted in advance,"
-                            "please upgrade to PowerMax OS to bypass this "
-                            "restriction.")
-                payload['format'] = 'true'
-                payload['rdfType'] = 'NA'
-
-            payload.pop('establish')
+            if next_gen:
+                payload["exempt"] = "true"
+            if payload.get('establish'):
+                payload.pop('establish')
         return payload
 
-    def modify_rdf_device_pair(
-            self, array, device_id, rdf_group, extra_specs, suspend=False):
-        """Modify an rdf device pair.
+    def srdf_protect_storage_group(
+            self, array_id, remote_array_id, rdf_group_no, replication_mode,
+            sg_name, service_level, extra_specs, target_sg=None):
+        """SRDF protect a storage group.
 
-        :param array: the array serial number
-        :param device_id: the device id
-        :param rdf_group: the rdf group
-        :param extra_specs: the extra specs
-        :param suspend: flag to indicate "suspend" action
+        :param array_id: local array serial number
+        :param remote_array_id: remote array serial number
+        :param rdf_group_no: RDF group number
+        :param replication_mode: replication mode
+        :param sg_name: storage group name
+        :param service_level: service level
+        :param extra_specs: extra specifications
+        :param target_sg: target storage group -- optional
         """
-        common_opts = {"force": 'false',
-                       "symForce": 'false',
-                       "star": 'false',
-                       "hop2": 'false',
-                       "bypass": 'false'}
-        if suspend:
-            if (extra_specs.get(utils.REP_MODE)
-                    and extra_specs[utils.REP_MODE] == utils.REP_ASYNC):
-                common_opts.update({"immediate": 'false',
-                                    "consExempt": 'true'})
-            payload = {"action": "SUSPEND",
-                       "executionOption": "ASYNCHRONOUS",
-                       "suspend": common_opts}
+        remote_sg = target_sg if target_sg else sg_name
 
-        else:
-            common_opts.update({"establish": 'true',
-                                "restore": 'false',
-                                "remote": 'false',
-                                "immediate": 'false'})
-            payload = {"action": "Failover",
-                       "executionOption": "ASYNCHRONOUS",
-                       "failover": common_opts}
-        resource_name = ("%(rdf_num)s/volume/%(device_id)s"
-                         % {'rdf_num': rdf_group, 'device_id': device_id})
-        sc, job = self.modify_resource(
-            array, REPLICATION, 'rdf_group',
-            payload, resource_name=resource_name, private="/private")
-        self.wait_for_job('Modify device pair', sc,
+        payload = {
+            "executionOption": "ASYNCHRONOUS",
+            "replicationMode": replication_mode, "remoteSLO": service_level,
+            "remoteSymmId": remote_array_id, "rdfgNumber": rdf_group_no,
+            "remoteStorageGroupName": remote_sg, "establish": "true"}
+
+        # Metro specific configuration
+        if replication_mode == utils.REP_METRO:
+            bias = "true" if extra_specs[utils.METROBIAS] else "False"
+            payload.update({
+                "replicationMode": "Active", "metroBias": bias})
+
+        LOG.debug('SRDF Protect Payload: %(pay)s', {'pay': payload})
+        resource = 'storagegroup/%(sg_name)s/rdf_group' % {'sg_name': sg_name}
+        status_code, job = self.create_resource(array_id, REPLICATION,
+                                                resource, payload)
+        self.wait_for_job('SRDF Protect Storage Group', status_code,
                           job, extra_specs)
 
-    def delete_rdf_pair(self, array, device_id, rdf_group):
-        """Delete an rdf pair.
+    def srdf_modify_group(self, array, rdf_group_no, storage_group, payload,
+                          extra_specs, msg, async_call=True):
+        """Modify RDF enabled storage group replication options.
 
-        :param array: the array serial number
-        :param device_id: the device id
-        :param rdf_group: the rdf group
+        :param array: array serial number
+        :param rdf_group_no: RDF group number
+        :param storage_group: storage group name
+        :param payload: REST request payload dict
+        :param extra_specs: extra specifications
+        :param msg: message to use for logs when waiting on job to complete
+        :param async_call: if the REST call should be run, this only comes into
+                           effect when trying to resume replication and
+                           interval/retries are a factor.
         """
-        params = {'half': 'false', 'force': 'true', 'symforce': 'false',
-                  'star': 'false', 'bypass': 'false'}
-        resource_name = ("%(rdf_num)s/volume/%(device_id)s"
-                         % {'rdf_num': rdf_group, 'device_id': device_id})
-        self.delete_resource(array, REPLICATION, 'rdf_group', resource_name,
-                             params=params)
+        resource = ('storagegroup/%(sg_name)s/rdf_group/%(rdf_group_no)s' % {
+            'sg_name': storage_group, 'rdf_group_no': rdf_group_no})
+
+        if async_call:
+            payload.update({"executionOption": "ASYNCHRONOUS"})
+            status_code, job = self.modify_resource(array, REPLICATION,
+                                                    resource, payload)
+            self.wait_for_job(msg, status_code, job, extra_specs)
+        else:
+            self.modify_resource(array, REPLICATION, resource, payload)
+
+    def srdf_suspend_replication(self, array_id, storage_group, rdf_group_no,
+                                 rep_extra_specs):
+        """Suspend replication on a RDF group.
+
+        :param array_id: array serial number
+        :param storage_group: storage group name
+        :param rdf_group_no: RDF group number
+        :param rep_extra_specs: replication extra specifications
+        """
+        group_state = self.get_storage_group_rdf_group_state(
+            array_id, storage_group, rdf_group_no)
+
+        if group_state:
+            group_state = [x.lower() for x in group_state]
+
+        if utils.RDF_SUSPENDED_STATE not in group_state:
+            self.srdf_modify_group(
+                array_id, rdf_group_no, storage_group,
+                {"suspend": {"force": "true"}, "action": "Suspend"},
+                rep_extra_specs, 'Suspend SRDF Group Replication')
+        else:
+            LOG.info('SRDF Group %(grp_num)s is already in a suspended state',
+                     {'grp_num': rdf_group_no})
+
+    def srdf_resume_replication(self, array_id, storage_group, rdf_group_no,
+                                rep_extra_specs, async_call=True):
+        """Resume replication on a RDF group.
+
+        :param array_id: array serial number
+        :param storage_group: storage group name
+        :param rdf_group_no: RDF group number
+        :param rep_extra_specs: replication extra specifications
+        :param async_call: if the REST call should be run, this only comes into
+                           effect when trying to resume replication and
+                           interval/retries are a factor.
+        """
+        if self.get_storage_group(array_id, storage_group):
+            group_state = self.get_storage_group_rdf_group_state(
+                array_id, storage_group, rdf_group_no)
+            if group_state:
+                group_state = [x.lower() for x in group_state]
+            if utils.RDF_SUSPENDED_STATE in group_state:
+                payload = {"action": "Resume"}
+                if rep_extra_specs['rep_mode'] == utils.REP_METRO:
+                    payload = {"action": "Establish"}
+                    if rep_extra_specs.get(utils.METROBIAS):
+                        payload.update({"establish": {"metroBias": "true"}})
+
+                self.srdf_modify_group(
+                    array_id, rdf_group_no, storage_group, payload,
+                    rep_extra_specs, 'Resume SRDF Group Replication',
+                    async_call)
+            else:
+                LOG.debug('SRDF Group %(grp_num)s is already in a resumed '
+                          'state.', {'grp_num': rdf_group_no})
+        else:
+            LOG.debug('Storage Group %(sg)s not present on array '
+                      '%(array)s, no resume required.', {
+                          'sg': storage_group, 'array': array_id})
+
+    def srdf_establish_replication(self, array_id, storage_group, rdf_group_no,
+                                   rep_extra_specs):
+        """Establish replication on a RDF group.
+
+        :param array_id: array serial number
+        :param storage_group: storage group name
+        :param rdf_group_no: RDF group number
+        :param rep_extra_specs: replication extra specifications
+        """
+        group_state = self.get_storage_group_rdf_group_state(
+            array_id, storage_group, rdf_group_no)
+
+        if utils.RDF_SUSPENDED_STATE not in group_state:
+            LOG.info('Suspending SRDF Group %(grp_num)s', {
+                'grp_num': rdf_group_no})
+            self.srdf_modify_group(
+                array_id, rdf_group_no, storage_group, {"action": "Suspend"},
+                rep_extra_specs, 'Suspend SRDF Group Replication')
+
+        wait_msg = 'Incremental Establish SRDF Group Replication'
+        LOG.info('Initiating incremental establish on SRDF Group %(grp_num)s',
+                 {'grp_num': rdf_group_no})
+        self.srdf_modify_group(
+            array_id, rdf_group_no, storage_group, {"action": "Establish"},
+            rep_extra_specs, wait_msg)
+
+    def srdf_failover_group(self, array_id, storage_group, rdf_group_no,
+                            rep_extra_specs):
+        """Failover a RDFG/SG volume group to replication target.
+
+        :param array_id: array serial number
+        :param storage_group: storage group name
+        :param rdf_group_no: RDF group number
+        :param rep_extra_specs: replication extra specifications
+        """
+        self.srdf_modify_group(
+            array_id, rdf_group_no, storage_group, {"action": "Failover"},
+            rep_extra_specs, 'Failing over SRDF group replication')
+
+    def srdf_failback_group(self, array_id, storage_group, rdf_group_no,
+                            rep_extra_specs):
+        """Failback a RDFG/SG volume group from replication target.
+
+        :param array_id:
+        :param storage_group:
+        :param rdf_group_no:
+        :param rep_extra_specs:
+        """
+        self.srdf_modify_group(
+            array_id, rdf_group_no, storage_group, {"action": "Failback"},
+            rep_extra_specs, 'Failing back SRDF group replication')
+
+    def srdf_remove_device_pair_from_storage_group(
+            self, array_id, storage_group, remote_array_id, device_id,
+            rep_extra_specs):
+        """Remove a volume from local and remote storage groups simultaneously.
+
+        :param array_id: local array serial number
+        :param storage_group: storage group name
+        :param remote_array_id: remote array serial number
+        :param device_id: source device id
+        :param rep_extra_specs: replication extra specifications
+        """
+        payload = {
+            "editStorageGroupActionParam": {
+                "removeVolumeParam": {
+                    "volumeId": [device_id],
+                    "remoteSymmSGInfoParam": {
+                        "remote_symmetrix_1_id": remote_array_id,
+                        "remote_symmetrix_1_sgs": [storage_group]}}}}
+
+        status_code, job = self.modify_storage_group(array_id, storage_group,
+                                                     payload)
+        self.wait_for_job('SRDF Group remove device pair', status_code,
+                          job, rep_extra_specs)
+
+    def srdf_delete_device_pair(self, array, rdf_group_no, local_device_id):
+        """Delete a RDF device pair.
+
+        :param array: array serial number
+        :param rdf_group_no: RDF group number
+        :param local_device_id: local device id
+        """
+        resource = ('%(rdfg)s/volume/%(dev)s' % {
+            'rdfg': rdf_group_no, 'dev': local_device_id})
+
+        self.delete_resource(array, REPLICATION, 'rdf_group', resource)
+        LOG.debug("Device Pair successfully deleted.")
+
+    def srdf_create_device_pair(self, array, rdf_group_no, mode, device_id,
+                                rep_extra_specs, next_gen):
+        """Create a RDF device pair in an existing RDF group.
+
+        :param array: array serial number
+        :param rdf_group_no: RDF group number
+        :param mode: replication mode
+        :param device_id: local device ID
+        :param rep_extra_specs: replication extra specifications
+        :param next_gen: if the array is next gen uCode
+        :returns: replication session info -- dict
+        """
+        payload = {
+            "executionOption": "ASYNCHRONOUS", "rdfMode": mode,
+            "localDeviceListCriteriaParam": {"localDeviceList": [device_id]},
+            "rdfType": "RDF1"}
+
+        if mode == utils.REP_SYNC:
+            payload.update({"establish": "true"})
+        elif mode == utils.REP_ASYNC:
+            payload.update({"invalidateR2": "true", "exempt": "true"})
+        elif mode.lower() in [utils.REP_METRO.lower(),
+                              utils.RDF_ACTIVE.lower()]:
+            payload = self.get_metro_payload_info(
+                array, payload, rdf_group_no, rep_extra_specs, next_gen)
+
+        LOG.debug('Create Pair Payload: %(pay)s', {'pay': payload})
+        resource = 'rdf_group/%(rdfg)s/volume' % {'rdfg': rdf_group_no}
+        status_code, job = self.create_resource(
+            array, REPLICATION, resource, payload)
+        self.wait_for_job('SRDF Group remove device pair', status_code,
+                          job, rep_extra_specs)
+
+        session_info = self.get_rdf_pair_volume(array, rdf_group_no, device_id)
+        r2_device_id = session_info['remoteVolumeName']
+
+        return {'array': session_info['localSymmetrixId'],
+                'remote_array': session_info['remoteSymmetrixId'],
+                'src_device': device_id, 'tgt_device': r2_device_id,
+                'session_info': session_info}
 
     def get_storage_group_rep(self, array, storage_group_name):
         """Given a name, return storage group details wrt replication.
@@ -2646,40 +2926,6 @@ class PowerMaxRest(object):
                     break
         return mod_rqd
 
-    def modify_storagegroup_rdf(self, array, storagegroup_name,
-                                rdf_group_num, action, extra_specs):
-        """Modify the rdf state of a storage group.
-
-        :param array: the array serial number
-        :param storagegroup_name: the name of the storage group
-        :param rdf_group_num: the number of the rdf group
-        :param action: the required action
-        :param extra_specs: the extra specifications
-        """
-        # Check if group is in valid state for desired action
-        mod_reqd = self._verify_rdf_state(array, storagegroup_name,
-                                          rdf_group_num, action)
-        if mod_reqd:
-            payload = {"executionOption": "ASYNCHRONOUS", "action": action}
-            if action.lower() == 'suspend':
-                payload['suspend'] = {"force": "true"}
-            elif action.lower() == 'establish':
-                metro_bias = (
-                    True if extra_specs.get(utils.METROBIAS) and extra_specs[
-                        utils.METROBIAS] is True else False)
-                payload['establish'] = {"metroBias": metro_bias,
-                                        "full": 'false'}
-            resource_name = ('%(sg_name)s/rdf_group/%(rdf_num)s'
-                             % {'sg_name': storagegroup_name,
-                                'rdf_num': rdf_group_num})
-
-            status_code, job = self.modify_resource(
-                array, REPLICATION, 'storagegroup', payload,
-                resource_name=resource_name)
-
-            self.wait_for_job('Modify storagegroup rdf',
-                              status_code, job, extra_specs)
-
     def delete_storagegroup_rdf(self, array, storagegroup_name,
                                 rdf_group_num):
         """Delete the rdf pairs for a storage group.
@@ -2698,7 +2944,7 @@ class PowerMaxRest(object):
         """Process lists under or over the maxPageSize
 
         :param list_info: the object list information
-        :return: the result list
+        :returns: the result list
         """
         result_list = []
         try:
@@ -2735,7 +2981,7 @@ class PowerMaxRest(object):
         :param start_position: position to begin iterator from
         :param end_position: position to stop iterator
         :param max_page_size: the max page size
-        :return: list -- merged results from multiple pages
+        :returns: list -- merged results from multiple pages
         """
         iterator_result = []
         has_more_entries = True

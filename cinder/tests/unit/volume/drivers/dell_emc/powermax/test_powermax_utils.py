@@ -221,7 +221,7 @@ class PowerMaxUtilsTest(test.TestCase):
             extra_specs)
         self.assertTrue(do_disable_compression)
         # Compression disabled by no SL/WL combination
-        extra_specs2 = self.data.extra_specs
+        extra_specs2 = deepcopy(self.data.extra_specs)
         extra_specs2[utils.SLO] = None
         do_disable_compression2 = self.utils.is_compression_disabled(
             extra_specs2)
@@ -295,14 +295,29 @@ class PowerMaxUtilsTest(test.TestCase):
         rep_device_list6[0]['mode'] = 'metro'
         rep_config6 = self.utils.get_replication_config(rep_device_list6)
         self.assertFalse(rep_config6['metro_bias'])
-        self.assertFalse(rep_config6['allow_delete_metro'])
         # Success, mode is metro - metro options true
         rep_device_list7 = rep_device_list6
-        rep_device_list6[0].update(
-            {'allow_delete_metro': 'true', 'metro_use_bias': 'true'})
+        rep_device_list6[0].update({'metro_use_bias': 'true'})
         rep_config7 = self.utils.get_replication_config(rep_device_list7)
         self.assertTrue(rep_config7['metro_bias'])
-        self.assertTrue(rep_config7['allow_delete_metro'])
+
+    def test_get_replication_config_sync_retries_intervals(self):
+        # Default sync interval & retry values
+        rep_device_list1 = [{'target_device_id': self.data.remote_array,
+                             'remote_pool': self.data.srp,
+                             'remote_port_group': self.data.port_group_name_f,
+                             'rdf_group_label': self.data.rdf_group_name}]
+
+        rep_config1 = self.utils.get_replication_config(rep_device_list1)
+        self.assertEqual(200, rep_config1['sync_retries'])
+        self.assertEqual(3, rep_config1['sync_interval'])
+
+        # User set interval & retry values
+        rep_device_list2 = deepcopy(rep_device_list1)
+        rep_device_list2[0].update({'sync_retries': 300, 'sync_interval': 1})
+        rep_config2 = self.utils.get_replication_config(rep_device_list2)
+        self.assertEqual(300, rep_config2['sync_retries'])
+        self.assertEqual(1, rep_config2['sync_interval'])
 
     def test_is_volume_failed_over(self):
         vol = deepcopy(self.data.test_volume)
@@ -405,10 +420,10 @@ class PowerMaxUtilsTest(test.TestCase):
         metro_prefix = self.utils.get_replication_prefix(utils.REP_METRO)
         self.assertEqual('-RM', metro_prefix)
 
-    def test_get_async_rdf_managed_grp_name(self):
+    def test_get_rdf_management_group_name(self):
         rep_config = {'rdf_group_label': self.data.rdf_group_name,
                       'mode': utils.REP_ASYNC}
-        grp_name = self.utils.get_async_rdf_managed_grp_name(rep_config)
+        grp_name = self.utils.get_rdf_management_group_name(rep_config)
         self.assertEqual(self.data.rdf_managed_async_grp, grp_name)
 
     def test_is_metro_device(self):
@@ -422,9 +437,9 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertFalse(is_metro2)
 
     def test_does_vol_need_rdf_management_group(self):
-        self.assertFalse(self.utils.does_vol_need_rdf_management_group(
-            self.data.rep_extra_specs))
         extra_specs = deepcopy(self.data.rep_extra_specs)
+        self.assertFalse(self.utils.does_vol_need_rdf_management_group(
+            extra_specs))
         extra_specs[utils.REP_MODE] = utils.REP_ASYNC
         self.assertTrue(self.utils.does_vol_need_rdf_management_group(
             extra_specs))
@@ -1139,3 +1154,64 @@ class PowerMaxUtilsTest(test.TestCase):
         data_dict = self.utils.update_values_in_dict(
             update_dict, update_list)
         self.assertEqual(ret_dict, data_dict)
+
+    def test_get_unique_device_ids_from_lists(self):
+        list_a = ['00001', '00002', '00003']
+        list_b = ['00002', '00003', '00004']
+        unique_ids = self.utils.get_unique_device_ids_from_lists(list_a,
+                                                                 list_b)
+        self.assertEqual(['00004'], unique_ids)
+
+    def test_update_payload_for_rdf_vol_create(self):
+        payload = {
+            'array': self.data.array,
+            'editStorageGroupActionParam': {
+                'expandStorageGroupParam': {
+                    'addVolumeParam': {}}}}
+
+        updated_payload = self.utils.update_payload_for_rdf_vol_create(
+            payload, self.data.remote_array, self.data.storagegroup_name_f)
+        expected_payload = {
+            'array': self.data.array,
+            'editStorageGroupActionParam': {
+                'expandStorageGroupParam': {
+                    'addVolumeParam': {
+                        'remoteSymmSGInfoParam': {
+                            'force': 'true',
+                            'remote_symmetrix_1_id': self.data.remote_array,
+                            'remote_symmetrix_1_sgs': [
+                                self.data.storagegroup_name_f]}}}}}
+        self.assertEqual(expected_payload, updated_payload)
+
+    def test_is_retype_supported(self):
+        # Volume source type not replicated, target type Metro replicated,
+        # volume is detached, host-assisted retype supported
+        volume = self.data.test_volume
+        volume.attach_status = 'detached'
+
+        src_extra_specs = deepcopy(self.data.extra_specs)
+        src_extra_specs['rep_mode'] = None
+
+        tgt_extra_specs = deepcopy(self.data.rep_extra_specs)
+        tgt_extra_specs['rep_mode'] = utils.REP_METRO
+
+        self.assertTrue(self.utils.is_retype_supported(volume, src_extra_specs,
+                                                       tgt_extra_specs))
+
+        # Volume source type not replicated, target type Metro replicated,
+        # volume is attached, host-assisted retype not supported
+        volume.attach_status = 'attached'
+        self.assertFalse(self.utils.is_retype_supported(
+            volume, src_extra_specs, tgt_extra_specs))
+
+        # Volume source type Async replicated, target type Metro replicated,
+        # volume is attached, host-assisted retype not supported
+        src_extra_specs['rep_mode'] = utils.REP_ASYNC
+        self.assertFalse(self.utils.is_retype_supported(
+            volume, src_extra_specs, tgt_extra_specs))
+
+        # Volume source type Metro replicated, target type Metro replicated,
+        # volume is attached, host-assisted retype supported
+        src_extra_specs['rep_mode'] = utils.REP_METRO
+        self.assertTrue(self.utils.is_retype_supported(
+            volume, src_extra_specs, tgt_extra_specs))
