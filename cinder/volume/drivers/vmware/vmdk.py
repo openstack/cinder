@@ -295,7 +295,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     #         real get_volume_stats for proper scheduling of this driver.
     # 3.4.4 - Ensure datastores exist for storage profiles during
     #         get_volume_stats()
-    VERSION = '3.4.4'
+    # 3.4.4.99.0 - Added reporting of thin_provisioning_support,
+    #          max_over_subscription_ratio.
+    VERSION = '3.4.2.99.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -380,12 +382,18 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         backend_name = self.configuration.safe_get('volume_backend_name')
         if not backend_name:
             backend_name = self.__class__.__name__
+
+        max_over_subscription_ratio = self.configuration.safe_get(
+            'max_over_subscription_ratio')
         data = {'volume_backend_name': backend_name,
                 'vendor_name': 'VMware',
                 'driver_version': self.VERSION,
                 'storage_protocol': constants.VMDK,
                 'reserved_percentage': self.configuration.reserved_percentage,
-                'shared_targets': False}
+                'shared_targets': False,
+                'thin_provisioning_support': True,
+                'thick_provisioning_support': True,
+                'max_over_subscription_ratio': max_over_subscription_ratio}
         ds_summaries = self._get_datastore_summaries()
         available_hosts = self._get_hosts(self._clusters)
         global_capacity = 0
