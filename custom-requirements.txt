@@ -1,0 +1,2 @@
+# Any custom requirements that we need for ccloud
+-e git+https://github.com/sapcc/python-agentliveness.git#egg=agentliveness
