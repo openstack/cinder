@@ -1,0 +1,6 @@
+- hosts: all
+  vars:
+    tox_envlist: functional
+    zuul_work_dir: "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
+  roles:
+    - fetch-tox-output
