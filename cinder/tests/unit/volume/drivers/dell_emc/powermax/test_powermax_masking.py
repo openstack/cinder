@@ -35,9 +35,13 @@ class PowerMaxMaskingTest(test.TestCase):
         self.data = tpd.PowerMaxData()
         super(PowerMaxMaskingTest, self).setUp()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
-        configuration = mock.Mock()
-        configuration.safe_get.return_value = 'MaskingTests'
-        configuration.config_group = 'MaskingTests'
+        self.replication_device = self.data.sync_rep_device
+        configuration = tpfo.FakeConfiguration(
+            None, 'MaskingTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_f],
+            replication_device=self.replication_device)
         self._gather_info = common.PowerMaxCommon._gather_info
         common.PowerMaxCommon._get_u4p_failover_info = mock.Mock()
         common.PowerMaxCommon._gather_info = mock.Mock()
@@ -50,7 +54,7 @@ class PowerMaxMaskingTest(test.TestCase):
         self.driver = driver
         self.driver_fc = driver_fc
         self.mask = self.driver.masking
-        self.extra_specs = self.data.extra_specs
+        self.extra_specs = deepcopy(self.data.extra_specs)
         self.extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_i
         self.maskingviewdict = self.driver._populate_masking_dict(
             self.data.test_volume, self.data.connector, self.extra_specs)
@@ -148,19 +152,30 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.storagegroup_name_i, self.extra_specs)
         self.assertIsNotNone(msg)
 
+    @mock.patch.object(rest.PowerMaxRest, 'modify_storage_group',
+                       return_value=(200, tpfo.tpd.PowerMaxData.job_list[0]))
     @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
     @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
                        side_effect=[None, tpd.PowerMaxData.parent_sg_f])
     @mock.patch.object(
         rest.PowerMaxRest, 'get_num_vols_in_sg', side_effect=[2, 1, 1])
     def test_move_volume_between_storage_groups(
-            self, mock_num, mock_parent, mock_rm):
+            self, mock_num, mock_parent, mock_rm, mck_mod):
         for x in range(0, 3):
             self.driver.masking.move_volume_between_storage_groups(
                 self.data.array, self.data.device_id,
                 self.data.storagegroup_name_i, self.data.storagegroup_name_f,
                 self.data.extra_specs)
         mock_rm.assert_called_once()
+        ref_payload = (
+            {"executionOption": "ASYNCHRONOUS",
+             "editStorageGroupActionParam": {
+                 "moveVolumeToStorageGroupParam": {
+                     "volumeId": [self.data.device_id],
+                     "storageGroupId": self.data.storagegroup_name_f,
+                     "force": 'false'}}})
+        mck_mod.assert_called_with(
+            self.data.array, self.data.storagegroup_name_i, ref_payload)
 
     @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
     @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
@@ -786,6 +801,8 @@ class PowerMaxMaskingTest(test.TestCase):
         mock_return.assert_called_once()
 
     def test_add_volume_to_default_storage_group_next_gen(self):
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs.pop(utils.IS_RE, None)
         with mock.patch.object(rest.PowerMaxRest, 'is_next_gen_array',
                                return_value=True):
             with mock.patch.object(
@@ -793,11 +810,11 @@ class PowerMaxMaskingTest(test.TestCase):
                     'get_or_create_default_storage_group') as mock_get:
                 self.mask.add_volume_to_default_storage_group(
                     self.data.array, self.device_id, self.volume_name,
-                    self.extra_specs)
+                    extra_specs)
                 mock_get.assert_called_once_with(
                     self.data.array, self.data.srp,
-                    self.extra_specs[utils.SLO],
-                    'NONE', self.extra_specs, False, False, None)
+                    extra_specs[utils.SLO],
+                    'NONE', extra_specs, False, False, None)
 
     @mock.patch.object(provision.PowerMaxProvision, 'create_storage_group')
     def test_get_or_create_default_storage_group(self, mock_create_sg):
@@ -863,7 +880,8 @@ class PowerMaxMaskingTest(test.TestCase):
             mock_delete_ig.assert_called_once()
 
     def test_populate_masking_dict_init_check_false(self):
-        extra_specs = self.data.extra_specs
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         connector = self.data.connector
         with mock.patch.object(self.driver, '_get_initiator_check_flag',
                                return_value=False):
@@ -872,7 +890,8 @@ class PowerMaxMaskingTest(test.TestCase):
             self.assertFalse(masking_view_dict['initiator_check'])
 
     def test_populate_masking_dict_init_check_true(self):
-        extra_specs = self.data.extra_specs
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         connector = self.data.connector
         with mock.patch.object(self.driver, '_get_initiator_check_flag',
                                return_value=True):

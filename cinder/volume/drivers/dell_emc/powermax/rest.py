@@ -924,6 +924,7 @@ class PowerMaxRest(object):
         task = self.wait_for_job('Create volume', status_code,
                                  job, extra_specs)
 
+        # Find the newly created volume.
         device_id = None
         if rep_info:
             updated_device_list = self.get_volume_list(

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    PowerMax Driver - Support to allow the use of multiple replication modes on
+    one backend array.

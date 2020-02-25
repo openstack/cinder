@@ -65,6 +65,7 @@ VOL_NAME = 'volume_name'
 EXTRA_SPECS = 'extra_specs'
 HOST_NAME = 'short_host_name'
 IS_RE = 'replication_enabled'
+IS_RE_CAMEL = 'ReplicationEnabled'
 DISABLECOMPRESSION = 'storagetype:disablecompression'
 REP_SYNC = 'Synchronous'
 REP_ASYNC = 'Asynchronous'
@@ -82,6 +83,10 @@ RDF_CONS_EXEMPT = 'exempt'
 RDF_ALLOW_METRO_DELETE = 'allow_delete_metro'
 RDF_GROUP_NO = 'rdf_group_number'
 METROBIAS = 'metro_bias'
+BACKEND_ID = 'backend_id'
+BACKEND_ID_LEGACY_REP = 'backend_id_legacy_rep'
+REPLICATION_DEVICE_BACKEND_ID = 'storagetype:replication_device_backend_id'
+REP_CONFIG = 'rep_config'
 DEFAULT_PORT = 8443
 CLONE_SNAPSHOT_NAME = "snapshot_for_clone"
 STORAGE_GROUP_TAGS = 'storagetype:storagegrouptags'
@@ -436,15 +441,31 @@ class PowerMaxUtils(object):
         else:
             return True
 
-    def change_replication(self, vol_is_replicated, new_type):
+    def change_replication(self, curr_type_extra_specs, tgt_type_extra_specs):
         """Check if volume types have different replication status.
 
-        :param vol_is_replicated: from source
-        :param new_type: from target
+        :param curr_type_extra_specs: extra specs from source volume type
+        :param tgt_type_extra_specs: extra specs from target volume type
         :returns: bool
         """
-        is_tgt_rep = self.is_replication_enabled(new_type['extra_specs'])
-        return vol_is_replicated != is_tgt_rep
+        change_replication = False
+        # Compare non-rep & rep enabled changes
+        is_cur_rep = self.is_replication_enabled(curr_type_extra_specs)
+        is_tgt_rep = self.is_replication_enabled(tgt_type_extra_specs)
+        rep_enabled_diff = is_cur_rep != is_tgt_rep
+
+        if rep_enabled_diff:
+            change_replication = True
+        elif is_cur_rep:
+            # Both types are rep enabled, check for backend id differences
+            rdbid = REPLICATION_DEVICE_BACKEND_ID
+            curr_rep_backend_id = curr_type_extra_specs.get(rdbid, None)
+            tgt_rep_backend_id = tgt_type_extra_specs.get(rdbid, None)
+            rdbid_diff = curr_rep_backend_id != tgt_rep_backend_id
+            if rdbid_diff:
+                change_replication = True
+
+        return change_replication
 
     @staticmethod
     def is_replication_enabled(extra_specs):
@@ -463,57 +484,70 @@ class PowerMaxUtils(object):
         """Gather necessary replication configuration info.
 
         :param rep_device_list: the replication device list from cinder.conf
-        :returns: rep_config, replication configuration dict
+        :returns: rep_configs, replication configuration list
         """
-        rep_config = {}
+        rep_config = list()
         if not rep_device_list:
             return None
         else:
-            target = rep_device_list[0]
-            try:
-                rep_config['array'] = target['target_device_id']
-                rep_config['srp'] = target['remote_pool']
-                rep_config['rdf_group_label'] = target['rdf_group_label']
-                rep_config['portgroup'] = target['remote_port_group']
+            for rep_device in rep_device_list:
+                rep_config_element = {}
+                try:
+                    rep_config_element['array'] = rep_device[
+                        'target_device_id']
+                    rep_config_element['srp'] = rep_device['remote_pool']
+                    rep_config_element['rdf_group_label'] = rep_device[
+                        'rdf_group_label']
+                    rep_config_element['portgroup'] = rep_device[
+                        'remote_port_group']
 
-            except KeyError as ke:
-                error_message = (_("Failed to retrieve all necessary SRDF "
-                                   "information. Error received: %(ke)s.") %
-                                 {'ke': six.text_type(ke)})
-                LOG.exception(error_message)
-                raise exception.VolumeBackendAPIException(
-                    message=error_message)
+                except KeyError as ke:
+                    error_message = (
+                        _("Failed to retrieve all necessary SRDF "
+                          "information. Error received: %(ke)s.") %
+                        {'ke': six.text_type(ke)})
+                    LOG.exception(error_message)
+                    raise exception.VolumeBackendAPIException(
+                        message=error_message)
 
-            try:
-                rep_config['sync_retries'] = int(target['sync_retries'])
-                rep_config['sync_interval'] = int(target['sync_interval'])
-            except (KeyError, ValueError) as ke:
-                LOG.debug("SRDF Sync wait/retries options not set or set "
-                          "incorrectly, defaulting to 200 retries with a 3 "
-                          "second wait. Configuration load warning: %(ke)s.",
-                          {'ke': six.text_type(ke)})
-                rep_config['sync_retries'] = 200
-                rep_config['sync_interval'] = 3
+                try:
+                    rep_config_element['sync_retries'] = int(
+                        rep_device['sync_retries'])
+                    rep_config_element['sync_interval'] = int(
+                        rep_device['sync_interval'])
+                except (KeyError, ValueError) as ke:
+                    LOG.debug(
+                        "SRDF Sync wait/retries options not set or set "
+                        "incorrectly, defaulting to 200 retries with a 3 "
+                        "second wait. Configuration load warning: %(ke)s.",
+                        {'ke': six.text_type(ke)})
+                    rep_config_element['sync_retries'] = 200
+                    rep_config_element['sync_interval'] = 3
 
-            allow_extend = target.get('allow_extend', 'false')
-            if strutils.bool_from_string(allow_extend):
-                rep_config['allow_extend'] = True
-            else:
-                rep_config['allow_extend'] = False
-
-            rep_mode = target.get('mode', '')
-            if rep_mode.lower() in ['async', 'asynchronous']:
-                rep_config['mode'] = REP_ASYNC
-            elif rep_mode.lower() == 'metro':
-                rep_config['mode'] = REP_METRO
-                metro_bias = target.get('metro_use_bias', 'false')
-                if strutils.bool_from_string(metro_bias):
-                    rep_config[METROBIAS] = True
+                allow_extend = rep_device.get('allow_extend', 'false')
+                if strutils.bool_from_string(allow_extend):
+                    rep_config_element['allow_extend'] = True
                 else:
-                    rep_config[METROBIAS] = False
-            else:
-                rep_config['mode'] = REP_SYNC
+                    rep_config_element['allow_extend'] = False
 
+                rep_mode = rep_device.get('mode', '')
+                if rep_mode.lower() in ['async', 'asynchronous']:
+                    rep_config_element['mode'] = REP_ASYNC
+                elif rep_mode.lower() == 'metro':
+                    rep_config_element['mode'] = REP_METRO
+                    metro_bias = rep_device.get('metro_use_bias', 'false')
+                    if strutils.bool_from_string(metro_bias):
+                        rep_config_element[METROBIAS] = True
+                    else:
+                        rep_config_element[METROBIAS] = False
+                else:
+                    rep_config_element['mode'] = REP_SYNC
+
+                backend_id = rep_device.get(BACKEND_ID, '')
+                if backend_id:
+                    rep_config_element[BACKEND_ID] = backend_id
+
+                rep_config.append(rep_config_element)
         return rep_config
 
     @staticmethod
@@ -737,12 +771,12 @@ class PowerMaxUtils(object):
         :param rep_config: the replication configuration
         :returns: group name
         """
-        async_grp_name = ("OS-%(rdf)s-%(mode)s-rdf-sg"
-                          % {'rdf': rep_config['rdf_group_label'],
-                             'mode': rep_config['mode']})
-        LOG.debug("The async/ metro rdf managed group name is %(name)s",
-                  {'name': async_grp_name})
-        return async_grp_name
+        grp_name = ("OS-%(rdf)s-%(mode)s-rdf-sg" %
+                    {'rdf': rep_config['rdf_group_label'],
+                     'mode': rep_config['mode']})
+        LOG.debug("The rdf managed group name is %(name)s",
+                  {'name': grp_name})
+        return grp_name
 
     def is_metro_device(self, rep_config, extra_specs):
         """Determine if a volume is a Metro enabled device.
@@ -753,7 +787,7 @@ class PowerMaxUtils(object):
         """
         is_metro = (True if self.is_replication_enabled(extra_specs)
                     and rep_config is not None
-                    and rep_config['mode'] == REP_METRO else False)
+                    and rep_config.get('mode') == REP_METRO else False)
         return is_metro
 
     def does_vol_need_rdf_management_group(self, extra_specs):
@@ -1045,6 +1079,64 @@ class PowerMaxUtils(object):
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
         return property_dict
+
+    @staticmethod
+    def validate_multiple_rep_device(rep_devices):
+        """Validate the validity of multiple replication devices.
+
+        Validates uniqueness and presence of backend ids in rep_devices,
+        consistency in target arrays and replication modes when multiple
+        replication devices are present in cinder.conf.
+
+        :param rep_devices: rep_devices imported from cinder.conf --list
+        """
+        rdf_group_labels = set()
+        backend_ids = set()
+        rep_modes = set()
+        target_arrays = set()
+        for rep_device in rep_devices:
+            backend_id = rep_device.get(BACKEND_ID)
+            if backend_id:
+                if backend_id in backend_ids:
+                    msg = (_('Backend IDs must be unique across all '
+                             'rep_device when multiple replication devices '
+                             'are defined in cinder.conf, backend_id %s is '
+                             'defined more than once.') % backend_id)
+                    raise exception.InvalidConfigurationValue(msg)
+            else:
+                msg = _('Backend IDs must be assigned for each rep_device '
+                        'when multiple replication devices are defined in '
+                        'cinder.conf.')
+                raise exception.InvalidConfigurationValue(msg)
+            backend_ids.add(backend_id)
+
+            rdf_group_label = rep_device.get('rdf_group_label')
+            if rdf_group_label in rdf_group_labels:
+                msg = (_('RDF Group Labels must be unique across all '
+                         'rep_device when multiple replication devices are '
+                         'defined in cinder.conf. RDF Group Label %s is '
+                         'defined more than once.') % rdf_group_label)
+                raise exception.InvalidConfigurationValue(msg)
+            rdf_group_labels.add(rdf_group_label)
+
+            rep_mode = rep_device.get('mode', REP_SYNC)
+            if rep_mode in rep_modes:
+                msg = (_('RDF Modes must be unique across all '
+                         'replication_device. Found multiple instances of %s '
+                         'mode defined in cinder.conf.') % rep_mode)
+                raise exception.InvalidConfigurationValue(msg)
+            rep_modes.add(rep_mode)
+
+            target_device_id = rep_device.get('target_device_id')
+            target_arrays.add(target_device_id)
+
+        target_arrays.discard(None)
+        if len(target_arrays) > 1:
+            msg = _('Found multiple target_device_id set in cinder.conf. A '
+                    'single target_device_id value must be used across all '
+                    'replication device when defining using multiple '
+                    'replication devices.')
+            raise exception.InvalidConfigurationValue(msg)
 
     @staticmethod
     def compare_cylinders(cylinders_source, cylinder_target):
@@ -1556,19 +1648,27 @@ class PowerMaxUtils(object):
         return payload
 
     @staticmethod
-    def is_retype_supported(volume, src_extra_specs, tgt_extra_specs):
+    def is_retype_supported(volume, src_extra_specs, tgt_extra_specs,
+                            rep_configs):
         """Determine if a retype operation involving Metro is supported.
 
         :param volume: the volume object -- obj
         :param src_extra_specs: the source extra specs -- dict
         :param tgt_extra_specs: the target extra specs -- dict
+        :param rep_configs: imported cinder.conf replication devices -- dict
         :returns: is supported -- bool
         """
         if volume.attach_status == 'detached':
             return True
 
         src_rep_mode = src_extra_specs.get('rep_mode', None)
-        tgt_rep_mode = tgt_extra_specs.get('rep_mode', None)
+        tgt_rep_mode = None
+        if PowerMaxUtils.is_replication_enabled(tgt_extra_specs):
+            target_backend_id = tgt_extra_specs.get(
+                REPLICATION_DEVICE_BACKEND_ID, BACKEND_ID_LEGACY_REP)
+            target_rep_config = PowerMaxUtils.get_rep_config(
+                target_backend_id, rep_configs)
+            tgt_rep_mode = target_rep_config.get('mode', REP_SYNC)
 
         if tgt_rep_mode != REP_METRO:
             return True
@@ -1578,3 +1678,196 @@ class PowerMaxUtils(object):
             else:
                 if not src_rep_mode or src_rep_mode in [REP_SYNC, REP_ASYNC]:
                     return False
+
+    @staticmethod
+    def get_rep_config(backend_id, rep_configs):
+        """Get rep_config for given backend_id.
+
+        :param backend_id: rep config search key -- str
+        :param rep_configs: backend rep_configs -- list
+        :returns: rep_config -- dict
+        """
+        if len(rep_configs) == 1:
+            rep_device = rep_configs[0]
+        else:
+            rep_device = None
+            for rep_config in rep_configs:
+                if rep_config[BACKEND_ID] == backend_id:
+                    rep_device = rep_config
+            if rep_device is None:
+                msg = _('Could not find a rep_device with a backend_id of '
+                        '%s. Please confirm that the '
+                        'replication_device_backend_id extra spec for this '
+                        'volume type matches the backend_id of the intended '
+                        'rep_device in cinder.conf') % backend_id
+                LOG.error(msg)
+                raise exception.InvalidInput('Unable to get rep config.')
+        return rep_device
+
+    @staticmethod
+    def get_replication_targets(rep_configs):
+        """Set the replication targets for the backend.
+
+        :param rep_configs: backend rep_configs -- list
+        :returns: arrays configured for replication -- list
+        """
+        replication_targets = set()
+        if rep_configs:
+            for rep_config in rep_configs:
+                array = rep_config.get(ARRAY)
+                if array:
+                    replication_targets.add(array)
+        return list(replication_targets)
+
+    def validate_failover_request(self, is_failed_over, failover_backend_id,
+                                  rep_configs):
+        """Validate failover_host request's parameters
+
+        Validate that a failover_host operation can be performed with
+        the user entered parameters and system configuration/state
+
+        :param is_failed_over: current failover state
+        :param failover_backend_id: backend_id given during failover request
+        :param rep_configs: backend rep_configs -- list
+        :return: (bool, str) is valid, reason on invalid
+        """
+        is_valid = True
+        msg = ""
+        if is_failed_over:
+            if failover_backend_id != 'default':
+                is_valid = False
+                msg = _('Cannot failover, the backend is already in a failed '
+                        'over state, if you meant to failback, please add '
+                        '--backend_id default to the command.')
+        else:
+            if failover_backend_id == 'default':
+                is_valid = False
+                msg = _('Cannot failback, backend is not in a failed over '
+                        'state. If you meant to failover, please either omit '
+                        'the --backend_id parameter or use the --backend_id '
+                        'parameter with a valid backend id.')
+            elif len(rep_configs) > 1:
+                if failover_backend_id is None:
+                    is_valid = False
+                    msg = _('Cannot failover, no backend_id provided while '
+                            'multiple replication devices are defined in '
+                            'cinder.conf, please provide a backend_id '
+                            'which will act as new primary array by '
+                            'appending --backend_id <id> to your command.')
+                else:
+                    rc = self.get_rep_config(failover_backend_id, rep_configs)
+                    if rc is None:
+                        is_valid = False
+                        msg = _('Can not find replication device with '
+                                'backend_id of %s') % failover_backend_id
+        return is_valid, msg
+
+    def validate_replication_group_config(self, rep_configs, extra_specs_list):
+        """Validate replication group configuration
+
+        Validate the extra specs of volume types being added to
+        a volume group against rep_config imported from cinder.conf
+
+        :param rep_configs: list of replication_device dicts from cinder.conf
+        :param extra_specs_list: extra_specs of volume types added to group
+        :raises InvalidInput: If any of the validation check fail
+        """
+        if not rep_configs:
+            LOG.error('No replication devices set in cinder.conf please '
+                      'disable replication in Volume Group extra specs '
+                      'or add replication device to cinder.conf.')
+            msg = _('No replication devices are defined in cinder.conf, '
+                    'can not enable volume group replication.')
+            raise exception.InvalidInput(reason=msg)
+
+        rep_group_backend_ids = set()
+        for extra_specs in extra_specs_list:
+            target_backend_id = extra_specs.get(
+                REPLICATION_DEVICE_BACKEND_ID,
+                BACKEND_ID_LEGACY_REP)
+            try:
+                target_rep_config = self.get_rep_config(
+                    target_backend_id, rep_configs)
+                rep_group_backend_ids.add(target_backend_id)
+            except exception.InvalidInput:
+                target_rep_config = None
+
+            if not (extra_specs.get(IS_RE) == '<is> True'):
+                # Replication is disabled or not set to correct value
+                # in the Volume Type being added
+                msg = _('Replication is not enabled for a Volume Type, '
+                        'all Volume Types in a replication enabled '
+                        'Volume Group must have replication enabled.')
+                raise exception.InvalidInput(reason=msg)
+
+            if not target_rep_config:
+                # Unable to determine rep_configs to use.
+                msg = _('Unable to determine which rep_device to use from '
+                        'cinder.conf. Could not validate volume types being '
+                        'added to group.')
+                raise exception.InvalidInput(reason=msg)
+
+            # Verify that replication is Synchronous mode
+            if not target_rep_config.get('mode'):
+                LOG.warning('Unable to verify the replication mode '
+                            'of Volume Type, please ensure only '
+                            'Synchronous replication is used.')
+            elif not target_rep_config['mode'] == REP_SYNC:
+                msg = _('Replication for Volume Type is not set '
+                        'to Synchronous. Only Synchronous '
+                        'can be used with replication groups')
+                raise exception.InvalidInput(reason=msg)
+
+        if len(rep_group_backend_ids) > 1:
+            # We should only have a single backend_id
+            # (replication type) across all the Volume Types
+            msg = _('Multiple replication backend ids detected '
+                    'please ensure only a single replication device '
+                    '(backend_id) is used for all Volume Types in a '
+                    'Volume Group.')
+            raise exception.InvalidInput(reason=msg)
+
+    @staticmethod
+    def validate_non_replication_group_config(extra_specs_list):
+        """Validate volume group configuration
+
+        Validate that none of the Volume Type extra specs are
+        replication enabled.
+
+        :param extra_specs_list: list of Volume Type extra specs
+        :return: bool replication enabled found in any extra specs
+        """
+        for extra_specs in extra_specs_list:
+            if extra_specs.get(IS_RE) == '<is> True':
+                msg = _('Replication is enabled in one or more of the '
+                        'Volume Types being added to new Volume Group but '
+                        'the Volume Group is not replication enabled. Please '
+                        'enable replication in the Volume Group or select '
+                        'only non-replicated Volume Types.')
+                raise exception.InvalidInput(reason=msg)
+
+    @staticmethod
+    def get_migration_delete_extra_specs(volume, extra_specs, rep_configs):
+        """Get previous extra specs rep details during migration delete
+
+        :param volume: volume object -- volume
+        :param extra_specs: volumes extra specs -- dict
+        :param rep_configs: imported cinder.conf replication devices -- dict
+        :returns: updated extra specs -- dict
+        """
+        metadata = volume.metadata
+        replication_enabled = strutils.bool_from_string(
+            metadata.get(IS_RE_CAMEL, 'False'))
+        if replication_enabled:
+            rdfg_label = metadata['RDFG-Label']
+            rep_config = next(
+                (r_c for r_c in rep_configs if r_c[
+                    'rdf_group_label'] == rdfg_label), None)
+
+            extra_specs[IS_RE] = replication_enabled
+            extra_specs[REP_MODE] = metadata['ReplicationMode']
+            extra_specs[REP_CONFIG] = rep_config
+            extra_specs[REPLICATION_DEVICE_BACKEND_ID] = rep_config[BACKEND_ID]
+        else:
+            extra_specs.pop(IS_RE, None)
+        return extra_specs

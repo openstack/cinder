@@ -285,7 +285,7 @@ class PowerMaxProvisionTest(test.TestCase):
         device_id = self.data.device_id
         new_size = '3'
         extra_specs = self.data.extra_specs
-        rdfg_num = self.data.rdf_group_no
+        rdfg_num = self.data.rdf_group_no_1
         with mock.patch.object(self.provision.rest, 'extend_volume'
                                ) as mock_ex:
             self.provision.extend_volume(array, device_id, new_size,
@@ -396,7 +396,7 @@ class PowerMaxProvisionTest(test.TestCase):
         array = self.data.array
         device_id = self.data.device_id
         sg_name = self.data.storagegroup_name_f
-        rdf_group = self.data.rdf_group_no
+        rdf_group = self.data.rdf_group_no_1
         extra_specs = self.data.rep_extra_specs
 
         # sync still in progress
@@ -519,7 +519,7 @@ class PowerMaxProvisionTest(test.TestCase):
     def test_replicate_group(self, mock_create):
         self.rest.replicate_group(
             self.data.array, self.data.test_rep_group,
-            self.data.rdf_group_no, self.data.remote_array,
+            self.data.rdf_group_no_1, self.data.remote_array,
             self.data.extra_specs)
         mock_create.assert_called_once()
 
