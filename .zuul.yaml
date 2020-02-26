@@ -137,7 +137,7 @@
 
 - job:
     name: cinder-plugin-ceph-tempest
-    parent: devstack-plugin-ceph-tempest
+    parent: devstack-plugin-ceph-tempest-py3
     run: playbooks/tempest-and-cinderlib-run.yaml
     required-projects:
       - openstack/cinderlib
