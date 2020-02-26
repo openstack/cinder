@@ -110,9 +110,6 @@ class DSWAREDriver(driver.VolumeDriver):
     VERSION = '2.0'
     CI_WIKI_NAME = 'Huawei_FusionStorage_CI'
 
-    # TODO(jsbryant) Remove driver in the 'U' release due to no py37 support.
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
         super(DSWAREDriver, self).__init__(*args, **kwargs)
 

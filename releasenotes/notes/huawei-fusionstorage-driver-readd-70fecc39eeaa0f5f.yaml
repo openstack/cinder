@@ -1,0 +1,5 @@
+upgrade:
+  - |
+    The Huawei FusionStorage driver had previously been marked unsupported. The 3rd Party CI has
+    been restored, and the driver is now fully supported in the Ussuri release.
+
