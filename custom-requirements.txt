@@ -1,4 +1,8 @@
 # Any custom requirements that we need for ccloud
+
+# needed for osprofiler
+redis
+
 -e git+https://github.com/sapcc/python-agentliveness.git#egg=agentliveness
 -e git+https://github.com/sapcc/raven-python.git@ccloud#egg=raven
 -e git+https://github.com/sapcc/openstack-watcher-middleware.git#egg=watcher-middleware
