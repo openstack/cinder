@@ -31,6 +31,7 @@ Volume backups can be created, restored, deleted and listed.
 
 """
 
+import contextlib
 import os
 
 from castellan import key_manager
@@ -127,6 +128,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.is_initialized = False
         self._set_tpool_size(CONF.backup_native_threads_pool_size)
         self._process_number = kwargs.get('process_number', 1)
+        self._semaphore = kwargs.get('semaphore', contextlib.suppress())
         self.driver_name = CONF.backup_driver
         if self.driver_name in MAPPING:
             new_name = MAPPING[self.driver_name]
@@ -330,6 +332,7 @@ class BackupManager(manager.SchedulerDependentManager):
         if backup.temp_snapshot_id:
             self._delete_temp_snapshot(ctxt, backup)
 
+    @utils.limit_operations
     def create_backup(self, context, backup):
         """Create volume backups using configured backup service."""
         volume_id = backup.volume_id
@@ -519,6 +522,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         return False
 
+    @utils.limit_operations
     def restore_backup(self, context, backup, volume_id):
         """Restore volume backups from configured backup service."""
         LOG.info('Restore backup started, backup: %(backup_id)s '

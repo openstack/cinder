@@ -1869,6 +1869,34 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(100, tpool._nthreads)
         self.assertListEqual([], tpool._threads)
 
+    @mock.patch('cinder.backup.manager.BackupManager._run_restore')
+    def test_backup_max_operations_restore(self, mock_restore):
+        mock_sem = self.mock_object(self.backup_mgr, '_semaphore')
+        vol_id = self._create_volume_db_entry(
+            status=fields.VolumeStatus.RESTORING_BACKUP)
+        backup = self._create_backup_db_entry(
+            volume_id=vol_id, status=fields.BackupStatus.RESTORING)
+
+        self.backup_mgr.restore_backup(self.ctxt, backup, vol_id)
+
+        self.assertEqual(1, mock_sem.__enter__.call_count)
+        self.assertEqual(1, mock_restore.call_count)
+        self.assertEqual(1, mock_sem.__exit__.call_count)
+
+    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    def test_backup_max_operations_backup(self, mock_backup):
+        mock_sem = self.mock_object(self.backup_mgr, '_semaphore')
+        vol_id = self._create_volume_db_entry(
+            status=fields.VolumeStatus.BACKING_UP)
+        backup = self._create_backup_db_entry(
+            volume_id=vol_id, status=fields.BackupStatus.CREATING)
+
+        self.backup_mgr.create_backup(self.ctxt, backup)
+
+        self.assertEqual(1, mock_sem.__enter__.call_count)
+        self.assertEqual(1, mock_backup.call_count)
+        self.assertEqual(1, mock_sem.__exit__.call_count)
+
 
 @ddt.ddt
 class BackupAPITestCase(BaseBackupTest):

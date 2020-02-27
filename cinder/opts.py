@@ -210,7 +210,7 @@ def list_opts():
                 cinder_backup_drivers_swift.swiftbackup_service_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
                 cinder_backup_manager.backup_manager_opts,
-                [cinder_cmd_backup.backup_workers_opt],
+                cinder_cmd_backup.backup_cmd_opts,
                 [cinder_cmd_volume.cluster_opt],
                 cinder_common_config.api_opts,
                 cinder_common_config.core_opts,

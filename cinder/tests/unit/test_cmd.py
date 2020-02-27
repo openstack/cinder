@@ -96,25 +96,31 @@ class TestCinderBackupCmd(test.TestCase):
         super(TestCinderBackupCmd, self).setUp()
         sys.argv = ['cinder-backup']
 
+    @mock.patch('cinder.utils.Semaphore')
     @mock.patch('cinder.service.get_launcher')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.utils.monkey_patch')
     @mock.patch('oslo_log.log.setup')
     def test_main_multiprocess(self, log_setup, monkey_patch, service_create,
-                               get_launcher):
+                               get_launcher, mock_semaphore):
         CONF.set_override('backup_workers', 2)
+        mock_semaphore.side_effect = [mock.sentinel.semaphore1,
+                                      mock.sentinel.semaphore2]
         cinder_backup.main()
 
         self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
 
+        # Both calls must receive the same semaphore
         c1 = mock.call(binary=constants.BACKUP_BINARY,
                        coordination=True,
                        process_number=1,
+                       semaphore=mock.sentinel.semaphore1,
                        service_name='backup')
         c2 = mock.call(binary=constants.BACKUP_BINARY,
                        coordination=True,
                        process_number=2,
+                       semaphore=mock.sentinel.semaphore1,
                        service_name='backup')
         service_create.assert_has_calls([c1, c2])
 

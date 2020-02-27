@@ -21,9 +21,10 @@ import logging as python_logging
 import shlex
 import sys
 
-# NOTE(geguileo): Monkey patching must go before OSLO.log import, otherwise
-# OSLO.context will not use greenthread thread local and all greenthreads will
-# share the same context.
+# NOTE: Monkey patching must go before OSLO.log import, otherwise OSLO.context
+# will not use greenthread thread local and all greenthreads will share the
+# same context.  It's also a good idea to monkey patch everything before
+# loading multiprocessing
 import eventlet
 eventlet.monkey_patch()
 # Monkey patch the original current_thread to use the up-to-date _active
@@ -53,12 +54,18 @@ from cinder import version
 
 CONF = cfg.CONF
 
-backup_workers_opt = cfg.IntOpt(
-    'backup_workers',
-    default=1, min=1, max=processutils.get_worker_count(),
-    help='Number of backup processes to launch. Improves performance with '
-    'concurrent backups.')
-CONF.register_opt(backup_workers_opt)
+backup_cmd_opts = [
+    cfg.IntOpt('backup_workers',
+               default=1, min=1, max=processutils.get_worker_count(),
+               help='Number of backup processes to launch. '
+               'Improves performance with concurrent backups.'),
+    cfg.IntOpt('backup_max_operations',
+               default=15,
+               min=0,
+               help='Maximum number of concurrent memory heavy operations: '
+                    'backup and restore. Value of 0 means unlimited'),
+]
+CONF.register_opts(backup_cmd_opts)
 
 LOG = None
 
@@ -69,12 +76,13 @@ LOG = None
 _EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN']
 
 
-def _launch_backup_process(launcher, num_process):
+def _launch_backup_process(launcher, num_process, _semaphore):
     try:
         server = service.Service.create(binary='cinder-backup',
                                         coordination=True,
                                         service_name='backup',
-                                        process_number=num_process)
+                                        process_number=num_process,
+                                        semaphore=_semaphore)
     except Exception:
         LOG.exception('Backup service %s failed to start.', CONF.host)
         sys.exit(1)
@@ -101,11 +109,13 @@ def main():
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     global LOG
     LOG = logging.getLogger(__name__)
+    semaphore = utils.semaphore_factory(CONF.backup_max_operations,
+                                        CONF.backup_workers)
 
     LOG.info('Backup running with %s processes.', CONF.backup_workers)
     launcher = service.get_launcher()
 
     for i in range(1, CONF.backup_workers + 1):
-        _launch_backup_process(launcher, i)
+        _launch_backup_process(launcher, i, semaphore)
 
     launcher.wait()
