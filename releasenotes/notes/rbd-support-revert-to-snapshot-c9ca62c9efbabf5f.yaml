@@ -1,0 +1,36 @@
+---
+features:
+  - |
+    RBD driver: support added for reverting a volume to the most recent
+    snapshot taken.
+
+    Please be aware of the following known issues with this operation
+    and the Ceph storage backend:
+
+    * Rolling back a volume to a snapshot overwrites the current volume
+      with the data from the snapshot, and the time it takes to complete
+      this operation increases with the size of the volume.
+
+      It is faster to create a new volume from a snapshot.  You may
+      wish to recommend this option to your users whose use cases do not
+      strictly require revert-to-snapshot.
+
+    * The efficiency of revert-to-snapshot is also dependent upon the
+      Ceph storage backend in use, namely, whether or not BlueStore is
+      being used in your Ceph installation.
+
+    Please consult the Ceph documentation for details.
+issues:
+  - |
+    RBD driver: There are some known issues concerning the revert-to-snapshot
+    support added in this release.
+
+    * The time it takes to complete the revert-to-snapshot operation increases
+      with the size of the volume.  It is faster to create a new volume from
+      a snapshot.
+
+    * The efficiency of revert-to-snapshot depends upon the Ceph storage
+      backend in use, particularly whether or not BlueStore is being used
+      in your Ceph installation.
+
+    Please consult the Ceph documentation for details.

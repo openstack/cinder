@@ -1232,6 +1232,32 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 LOG.info("Snapshot %s does not exist in backend.",
                          snap_name)
 
+    def snapshot_revert_use_temp_snapshot(self):
+        """Disable the use of a temporary snapshot on revert."""
+        return False
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert a volume to a given snapshot."""
+        # NOTE(rosmaita): The Ceph documentation notes that this operation is
+        # inefficient on the backend for large volumes, and that the preferred
+        # method of returning to a pre-existing state in Ceph is to clone from
+        # a snapshot.
+        # So why don't we do something like that here?
+        # (a) an end user can do the more efficient operation on their own if
+        #     they value speed over the convenience of reverting their existing
+        #     volume
+        # (b) revert-to-snapshot is properly a backend operation, and should
+        #     be handled by the backend -- trying to "fake it" in this driver
+        #     is both dishonest and likely to cause subtle bugs
+        # (c) the Ceph project undergoes continual improvement.  It may be
+        #     the case that there are things an operator can do on the Ceph
+        #     side (for example, use BlueStore for the Ceph backend storage)
+        #     to improve the efficiency of this operation.
+        # Thus, a motivated operator reading this is encouraged to consult
+        # the Ceph documentation.
+        with RBDVolumeProxy(self, volume.name) as image:
+            image.rollback_to_snap(snapshot.name)
+
     def _disable_replication(self, volume):
         """Disable replication on the given volume."""
         vol_name = utils.convert_str(volume.name)
