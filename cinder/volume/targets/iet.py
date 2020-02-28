@@ -16,6 +16,7 @@ import stat
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
+from oslo_log import versionutils
 
 from cinder import exception
 import cinder.privsep.targets.iet
@@ -34,6 +35,11 @@ class IetAdm(iscsi.ISCSITarget):
         self.iscsi_iotype = self.configuration.safe_get('iscsi_iotype')
         self.auth_type = 'IncomingUser'
         self.iet_sessions = '/proc/net/iet/session'
+        versionutils.report_deprecated_feature(
+            LOG,
+            'The IET iSCSI target is deprecated and will be removed in the '
+            '"V" release. It is recommended to use the LIO or TGT targets '
+            'instead.')
 
     def _get_target(self, iqn):
 
