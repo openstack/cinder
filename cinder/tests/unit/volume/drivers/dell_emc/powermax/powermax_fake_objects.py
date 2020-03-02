@@ -323,6 +323,10 @@ class FakeConfiguration(object):
                 self.u4p_failover_timeout = value
             elif key == 'u4p_primary':
                 self.u4p_primary = value
+            elif key == 'powermax_short_host_name_template':
+                self.powermax_short_host_name_template = value
+            elif key == 'powermax_port_group_name_template':
+                self.powermax_port_group_name_template = value
 
     def safe_get(self, key):
         try:

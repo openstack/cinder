@@ -150,6 +150,19 @@ class PowerMaxFCTest(test.TestCase):
 
     @mock.patch.object(
         common.PowerMaxCommon, 'get_masking_views_from_volume',
+        side_effect = ([(None, False),
+                        ([tpd.PowerMaxData.masking_view_name_f], False)]))
+    def test_get_zoning_mappings_retry_backward_compatibility(
+            self, mock_views):
+        with mock.patch.object(self.common.utils, 'get_host_name_label',
+                               return_value=None) as mock_label:
+            self.driver._get_zoning_mappings(
+                self.data.test_volume, self.data.connector)
+            self.assertEqual(2, mock_label.call_count)
+            self.assertEqual(2, mock_views.call_count)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_masking_views_from_volume',
         return_value=([tpd.PowerMaxData.masking_view_name_f], True))
     def test_get_zoning_mappings_metro(self, mock_mv):
         ref_mappings = self.data.zoning_mappings_metro

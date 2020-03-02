@@ -140,7 +140,13 @@ powermax_opts = [
                      'configured prior for server connection.'),
     cfg.ListOpt(utils.POWERMAX_ARRAY_TAG_LIST,
                 bounds=True,
-                help='List of user assigned name for storage array.')]
+                help='List of user assigned name for storage array.'),
+    cfg.StrOpt(utils.POWERMAX_SHORT_HOST_NAME_TEMPLATE,
+               default='shortHostName',
+               help='User defined override for short host name.'),
+    cfg.StrOpt(utils.POWERMAX_PORT_GROUP_NAME_TEMPLATE,
+               default='portGroupName',
+               help='User defined override for port group name.')]
 
 
 CONF.register_opts(powermax_opts, group=configuration.SHARED_CONF_GROUP)
@@ -185,6 +191,8 @@ class PowerMaxCommon(object):
         self.rep_devices = []
         self.failover = False
         self.powermax_array_tag_list = None
+        self.powermax_short_host_name_template = None
+        self.powermax_port_group_name_template = None
 
         # Gather environment info
         self._get_replication_info()
@@ -220,6 +228,10 @@ class PowerMaxCommon(object):
             utils.POWERMAX_SNAPVX_UNLINK_LIMIT)
         self.powermax_array_tag_list = self.configuration.safe_get(
             utils.POWERMAX_ARRAY_TAG_LIST)
+        self.powermax_short_host_name_template = self.configuration.safe_get(
+            utils.POWERMAX_SHORT_HOST_NAME_TEMPLATE)
+        self.powermax_port_group_name_template = self.configuration.safe_get(
+            utils.POWERMAX_PORT_GROUP_NAME_TEMPLATE)
         self.pool_info['backend_name'] = (
             self.configuration.safe_get('volume_backend_name'))
         mosr = volume_utils.get_max_over_subscription_ratio(
@@ -673,7 +685,7 @@ class PowerMaxCommon(object):
 
     def _remove_members(self, array, volume, device_id,
                         extra_specs, connector, is_multiattach,
-                        async_grp=None):
+                        async_grp=None, host_template=None):
         """This method unmaps a volume from a host.
 
         Removes volume from the storage group that belongs to a masking view.
@@ -690,7 +702,8 @@ class PowerMaxCommon(object):
         reset = False if is_multiattach else True
         self.masking.remove_and_reset_members(
             array, volume, device_id, volume_name,
-            extra_specs, reset, connector, async_grp=async_grp)
+            extra_specs, reset, connector, async_grp=async_grp,
+            host_template=host_template)
         if is_multiattach:
             self.masking.return_volume_to_fast_managed_group(
                 array, device_id, extra_specs)
@@ -713,7 +726,7 @@ class PowerMaxCommon(object):
         async_grp = None
         LOG.info("Unmap volume: %(volume)s.", {'volume': volume})
         if connector is not None:
-            host = self.utils.get_host_short_name(connector['host'])
+            host_name = connector.get('host')
             attachment_list = volume.volume_attachment
             LOG.debug("Volume attachment list: %(atl)s. "
                       "Attachment type: %(at)s",
@@ -725,7 +738,7 @@ class PowerMaxCommon(object):
             if att_list is not None:
                 host_list = [att.connector['host'] for att in att_list if
                              att is not None and att.connector is not None]
-                current_host_occurances = host_list.count(host)
+                current_host_occurances = host_list.count(host_name)
                 if current_host_occurances > 1:
                     LOG.info("Volume is attached to multiple instances on "
                              "this host. Not removing the volume from the "
@@ -734,10 +747,10 @@ class PowerMaxCommon(object):
         else:
             LOG.warning("Cannot get host name from connector object - "
                         "assuming force-detach.")
-            host = None
+            host_name = None
 
         device_info, is_multiattach = (
-            self.find_host_lun_id(volume, host, extra_specs))
+            self.find_host_lun_id(volume, host_name, extra_specs))
         if 'hostlunid' not in device_info:
             LOG.info("Volume %s is not mapped. No volume to unmap.",
                      volume_name)
@@ -746,23 +759,25 @@ class PowerMaxCommon(object):
         if self.utils.does_vol_need_rdf_management_group(extra_specs):
             async_grp = self.utils.get_async_rdf_managed_grp_name(
                 self.rep_config)
-        self._remove_members(array, volume, device_info['device_id'],
-                             extra_specs, connector, is_multiattach,
-                             async_grp=async_grp)
+        self._remove_members(
+            array, volume, device_info['device_id'], extra_specs, connector,
+            is_multiattach, async_grp=async_grp,
+            host_template=self.powermax_short_host_name_template)
         if self.utils.is_metro_device(self.rep_config, extra_specs):
             # Need to remove from remote masking view
             device_info, __ = (self.find_host_lun_id(
-                volume, host, extra_specs, rep_extra_specs))
+                volume, host_name, extra_specs, rep_extra_specs))
             if 'hostlunid' in device_info:
                 self._remove_members(
                     rep_extra_specs[utils.ARRAY], volume,
                     device_info['device_id'], rep_extra_specs, connector,
-                    is_multiattach, async_grp=async_grp)
+                    is_multiattach, async_grp=async_grp,
+                    host_template=self.powermax_short_host_name_template)
             else:
                 # Make an attempt to clean up initiator group
                 self.masking.attempt_ig_cleanup(
                     connector, self.protocol, rep_extra_specs[utils.ARRAY],
-                    True)
+                    True, host_template=self.powermax_short_host_name_template)
         if is_multiattach and LOG.isEnabledFor(logging.DEBUG):
             mv_list, sg_list = (
                 self._get_mvs_and_sgs_from_volume(
@@ -817,7 +832,7 @@ class PowerMaxCommon(object):
         if self.utils.is_volume_failed_over(volume):
             extra_specs = rep_extra_specs
         device_info_dict, is_multiattach = (
-            self.find_host_lun_id(volume, connector['host'], extra_specs))
+            self.find_host_lun_id(volume, connector.get('host'), extra_specs))
         masking_view_dict = self._populate_masking_dict(
             volume, connector, extra_specs)
         masking_view_dict[utils.IS_MULTIATTACH] = is_multiattach
@@ -843,7 +858,7 @@ class PowerMaxCommon(object):
                     device_info_dict['maskingview']))
             if self.utils.is_metro_device(self.rep_config, extra_specs):
                 remote_info_dict, is_multiattach = (
-                    self.find_host_lun_id(volume, connector['host'],
+                    self.find_host_lun_id(volume, connector.get('host'),
                                           extra_specs, rep_extra_specs))
                 if remote_info_dict.get('hostlunid') is None:
                     # Need to attach on remote side
@@ -987,7 +1002,7 @@ class PowerMaxCommon(object):
         # Find host lun id again after the volume is exported to the host.
 
         device_info_dict, __ = self.find_host_lun_id(
-            volume, connector['host'], extra_specs, rep_extra_specs)
+            volume, connector.get('host'), extra_specs, rep_extra_specs)
         if 'hostlunid' not in device_info_dict:
             # Did not successfully attach to host, so a rollback is required.
             error_message = (_("Error Attaching volume %(vol)s. Cannot "
@@ -1499,13 +1514,23 @@ class PowerMaxCommon(object):
             device_id = self.get_remote_target_device(
                 extra_specs[utils.ARRAY], volume, device_id)[0]
             extra_specs = rep_extra_specs
-        host_name = self.utils.get_host_short_name(host) if host else None
+
+        host_name = self.utils.get_host_name_label(
+            host, self.powermax_short_host_name_template) if host else None
         if device_id:
             array = extra_specs[utils.ARRAY]
             # Return only masking views for this host
             host_maskingviews, all_masking_view_list = (
                 self._get_masking_views_from_volume(
                     array, device_id, host_name))
+            if not host_maskingviews:
+                # Backward compatibility if a new template was added to
+                # an existing backend.
+                host_name = self.utils.get_host_short_name(
+                    host) if host else None
+                host_maskingviews, all_masking_view_list = (
+                    self._get_masking_views_from_volume_for_host(
+                        all_masking_view_list, host_name))
 
             for maskingview in host_maskingviews:
                 host_lun_id = self.rest.find_mv_connections_for_vol(
@@ -1516,6 +1541,7 @@ class PowerMaxCommon(object):
                                   'array': array,
                                   'device_id': device_id}
                     maskedvols = devicedict
+
             if not maskedvols:
                 LOG.debug(
                     "Host lun id not found for volume: %(volume_name)s "
@@ -1573,17 +1599,28 @@ class PowerMaxCommon(object):
         :returns: masking view list, all masking view list
         """
         LOG.debug("Getting masking views from volume")
-        host_maskingview_list, all_masking_view_list = [], []
-        host_compare = True if host else False
         mvs, __ = self._get_mvs_and_sgs_from_volume(array, device_id)
-        for mv in mvs:
-            all_masking_view_list.append(mv)
-            if host_compare:
-                if host.lower() in mv.lower():
-                    host_maskingview_list.append(mv)
-        maskingview_list = (host_maskingview_list if host_compare else
-                            all_masking_view_list)
-        return maskingview_list, all_masking_view_list
+        return self._get_masking_views_from_volume_for_host(mvs, host)
+
+    def _get_masking_views_from_volume_for_host(
+            self, masking_views, host_name):
+        """Check all masking views for host_name
+
+        :param masking_views: list of masking view
+        :param host_name: the host name for comparision
+        :returns: masking view list, all masking view list
+        """
+        LOG.debug("Getting masking views from volume for host %(host)s ",
+                  {'host': host_name})
+        host_masking_view_list, all_masking_view_list = [], []
+        for masking_view in masking_views:
+            all_masking_view_list.append(masking_view)
+            if host_name:
+                if host_name.lower() in masking_view.lower():
+                    host_masking_view_list.append(masking_view)
+        host_masking_view_list = (host_masking_view_list if host_name else
+                                  all_masking_view_list)
+        return host_masking_view_list, all_masking_view_list
 
     def _get_mvs_and_sgs_from_volume(self, array, device_id):
         """Helper function to retrieve masking views and storage groups.
@@ -1664,7 +1701,10 @@ class PowerMaxCommon(object):
             raise exception.VolumeBackendAPIException(exception_message)
 
         protocol = self.utils.get_short_protocol_type(self.protocol)
-        short_host_name = self.utils.get_host_short_name(connector['host'])
+        short_host_name = self.utils.get_host_name_label(
+            connector['host'], self.powermax_short_host_name_template)
+        masking_view_dict[utils.USED_HOST_NAME] = short_host_name
+
         masking_view_dict[utils.SLO] = extra_specs[utils.SLO]
         masking_view_dict[utils.WORKLOAD] = 'NONE' if self.next_gen else (
             extra_specs[utils.WORKLOAD])
@@ -1675,19 +1715,27 @@ class PowerMaxCommon(object):
                         "in cinder.conf or as an extra spec. Port group "
                         "cannot be left empty as creating a new masking "
                         "view will fail.")
+        masking_view_dict[utils.PORT_GROUP_LABEL] = (
+            self.utils.get_port_name_label(
+                extra_specs[utils.PORTGROUPNAME],
+                self.powermax_port_group_name_template))
+
         masking_view_dict[utils.PORTGROUPNAME] = (
             extra_specs[utils.PORTGROUPNAME])
         masking_view_dict[utils.INITIATOR_CHECK] = (
             self._get_initiator_check_flag())
 
-        child_sg_name, do_disable_compression, rep_enabled, short_pg_name = (
-            self.utils.get_child_sg_name(short_host_name, extra_specs))
+        child_sg_name, do_disable_compression, rep_enabled = (
+            self.utils.get_child_sg_name(
+                short_host_name, extra_specs,
+                masking_view_dict[utils.PORT_GROUP_LABEL]))
         masking_view_dict[utils.DISABLECOMPRESSION] = do_disable_compression
         masking_view_dict[utils.IS_RE] = rep_enabled
         mv_prefix = (
             "OS-%(shortHostName)s-%(protocol)s-%(pg)s"
             % {'shortHostName': short_host_name,
-               'protocol': protocol, 'pg': short_pg_name})
+               'protocol': protocol,
+               'pg': masking_view_dict[utils.PORT_GROUP_LABEL]})
 
         masking_view_dict[utils.SG_NAME] = child_sg_name
 
@@ -2159,7 +2207,8 @@ class PowerMaxCommon(object):
         """
         metro_wwns = []
         host = connector['host']
-        short_host_name = self.utils.get_host_short_name(host)
+        short_host_name = self.utils.get_host_name_label(
+            host, self.powermax_short_host_name_template) if host else None
         extra_specs = self._initial_setup(volume)
         rep_extra_specs = self._get_replication_extra_specs(
             extra_specs, self.rep_config)
@@ -3443,8 +3492,12 @@ class PowerMaxCommon(object):
                 {'volume_name': device_id})
             return False, None
 
-        target_sg_name, __, __, __ = self.utils.get_child_sg_name(
-            attached_host, target_extra_specs)
+        port_group_label = self.utils.get_port_name_label(
+            target_extra_specs[utils.PORTGROUPNAME],
+            self.powermax_port_group_name_template)
+
+        target_sg_name, __, __ = self.utils.get_child_sg_name(
+            attached_host, target_extra_specs, port_group_label)
         target_sg = self.rest.get_storage_group(array, target_sg_name)
 
         if not target_sg:

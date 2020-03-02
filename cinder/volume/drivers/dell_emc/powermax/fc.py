@@ -117,6 +117,8 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Volume/Snapshot backed metadata inclusion
               - Debug metadata compression and service level info fix
         4.2.0 - Support of Unisphere storage group and array tags
+              - User defined override for short host name and port group name
+                (bp powermax-user-defined-hostname-portgroup)
     """
 
     VERSION = "4.2.0"
@@ -332,7 +334,8 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         loc = volume.provider_location
         name = ast.literal_eval(loc)
-        host = self.common.utils.get_host_short_name(connector['host'])
+        host_label = self.common.utils.get_host_name_label(
+            connector['host'], self.common.powermax_short_host_name_template)
         zoning_mappings = {}
         try:
             array = name['array']
@@ -345,7 +348,14 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
 
         masking_views, is_metro = (
             self.common.get_masking_views_from_volume(
-                array, volume, device_id, host))
+                array, volume, device_id, host_label))
+        if not masking_views:
+            # Backward compatibility with pre Ussuri short host name.
+            host_label = self.common.utils.get_host_short_name(
+                connector['host'])
+            masking_views, is_metro = (
+                self.common.get_masking_views_from_volume(
+                    array, volume, device_id, host_label))
         if masking_views:
             portgroup = (
                 self.common.get_port_group_from_masking_view(
@@ -379,7 +389,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
             else:
                 masking_views, __ = (
                     self.common.get_masking_views_from_volume(
-                        metro_array, volume, metro_device_id, host))
+                        metro_array, volume, metro_device_id, host_label))
                 if masking_views:
                     metro_portgroup = (
                         self.common.get_port_group_from_masking_view(
