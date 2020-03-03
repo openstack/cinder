@@ -32,6 +32,7 @@ from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
 from cinder.volume.drivers.dell_emc.powermax import common
 from cinder.volume.drivers.dell_emc.powermax import fc
 from cinder.volume.drivers.dell_emc.powermax import masking
+from cinder.volume.drivers.dell_emc.powermax import metadata
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
@@ -540,12 +541,13 @@ class PowerMaxCommonTest(test.TestCase):
             mock_unmap.assert_called_once_with(
                 volume, connector)
 
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata, 'capture_extend_info')
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_array_ode_capabilities_check',
                        return_value=[True] * 4)
     @mock.patch.object(common.PowerMaxCommon, '_extend_vol_validation_checks')
     def test_extend_vol_no_rep_success(self, mck_val_chk, mck_ode_chk,
-                                       mck_extend):
+                                       mck_extend, mck_capture):
         volume = self.data.test_volume
         array = self.data.array
         device_id = self.data.device_id
@@ -555,6 +557,8 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.extend_volume(volume, new_size)
         mck_extend.assert_called_once_with(
             array, device_id, new_size, ref_extra_specs, None)
+        mck_capture.assert_called_once_with(
+            volume, new_size, device_id, ref_extra_specs, array)
 
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
