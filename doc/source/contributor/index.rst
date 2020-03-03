@@ -23,6 +23,15 @@ Content includes architectural overviews, tips and tricks for setting up a
 development environment, and information on Cinder's lower level programming
 APIs.
 
+Getting Started
+---------------
+.. toctree::
+    :maxdepth: 2
+
+    contributing
+
+.. _programming-howtos:
+
 Programming HowTos and Tutorials
 --------------------------------
 .. toctree::
@@ -43,6 +52,8 @@ Programming HowTos and Tutorials
     rolling.upgrades
     groups
 
+.. _managing-development:
+
 Managing the Development Cycle
 ------------------------------
 .. toctree::
@@ -56,6 +67,8 @@ Documentation Contribution
    :maxdepth: 2
 
    documentation
+
+.. _background-concepts:
 
 Background Concepts for Cinder
 ------------------------------

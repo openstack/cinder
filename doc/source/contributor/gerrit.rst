@@ -1,3 +1,5 @@
+.. _reviewing-cinder:
+
 Code Reviews
 ============
 

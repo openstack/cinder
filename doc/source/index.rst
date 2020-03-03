@@ -135,11 +135,6 @@ information needed to get started. This section should help get you started.
 Please feel free to also ask any questions in the **#openstack-cinder** IRC
 channel.
 
-Getting started
-~~~~~~~~~~~~~~~
-
-* `OpenStack Contributor Guide <https://docs.openstack.org/contributors/>`_
-
 Contributing to Cinder
 ~~~~~~~~~~~~~~~~~~~~~~
 
