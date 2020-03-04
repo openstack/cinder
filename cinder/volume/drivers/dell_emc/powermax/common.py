@@ -211,10 +211,19 @@ class PowerMaxCommon(object):
                       "longer supported.")
         self.rest.set_rest_credentials(array_info)
         if array_info:
+            serial_number = array_info['SerialNumber']
             self.array_model, self.next_gen = (
-                self.rest.get_array_model_info(array_info['SerialNumber']))
-            self.ucode_level = self.rest.get_array_ucode_version(
-                array_info['SerialNumber'])
+                self.rest.get_array_model_info(serial_number))
+            self.ucode_level = self.rest.get_array_ucode_version(serial_number)
+            if self.replication_enabled:
+                if serial_number in self.replication_targets:
+                    msg = (_("The same array serial number (%s) is defined "
+                             "for powermax_array and replication_device in "
+                             "cinder.conf. Please ensure your "
+                             "target_device_id points to a different "
+                             "array." % serial_number))
+                    LOG.error(msg)
+                    raise exception.InvalidConfigurationValue(msg)
         finalarrayinfolist = self._get_slo_workload_combinations(
             array_info)
         self.pool_info['arrays_info'] = finalarrayinfolist
