@@ -130,8 +130,10 @@ class BackendState(object):
         self.thin_provisioning_support = False
         self.thick_provisioning_support = False
         # Does this backend support attaching a volume to more than
-        # once host/instance?
+        # one host/instance?
         self.multiattach = False
+        self.filter_function = None
+        self.goodness_function = 0
 
         # PoolState for all pools
         self.pools = {}
@@ -294,6 +296,15 @@ class BackendState(object):
         if not pool_cap.get('timestamp', None):
             pool_cap['timestamp'] = self.updated
 
+        if('filter_function' not in pool_cap and
+                'filter_function' in self.capabilities):
+            pool_cap['filter_function'] = self.capabilities['filter_function']
+
+        if('goodness_function' not in pool_cap and
+                'goodness_function' in self.capabilities):
+            pool_cap['goodness_function'] = (
+                self.capabilities['goodness_function'])
+
     def update_backend(self, capability):
         self.volume_backend_name = capability.get('volume_backend_name', None)
         self.vendor_name = capability.get('vendor_name', None)
@@ -389,6 +400,9 @@ class PoolState(BackendState):
                     capability, CONF.max_over_subscription_ratio))
 
             self.multiattach = capability.get('multiattach', False)
+
+            self.filter_function = capability.get('filter_function', None)
+            self.goodness_function = capability.get('goodness_function', 0)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
