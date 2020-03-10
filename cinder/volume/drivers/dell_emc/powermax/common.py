@@ -1091,6 +1091,9 @@ class PowerMaxCommon(object):
             self.provision.extend_volume(
                 array, device_id, new_size, ex_specs, rdf_grp_no)
 
+        self.volume_metadata.capture_extend_info(volume, new_size, device_id,
+                                                 ex_specs, array)
+
         LOG.debug("Leaving extend_volume: %(volume_name)s. ",
                   {'volume_name': vol_name})
 
