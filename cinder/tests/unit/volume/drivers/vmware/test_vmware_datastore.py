@@ -297,6 +297,8 @@ class DatastoreTest(test.TestCase):
         self.assertIsNone(self._ds_sel._select_best_datastore({}))
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
+                '_is_host_usable')
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 'is_host_in_buildup_cluster')
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 'get_profile_id')
@@ -308,7 +310,7 @@ class DatastoreTest(test.TestCase):
                 '_select_best_datastore')
     def test_select_datastore(
             self, select_best_datastore, filter_datastores, get_datastores,
-            get_profile_id, is_buildup):
+            get_profile_id, is_buildup, is_usable):
 
         profile_id = mock.sentinel.profile_id
         get_profile_id.return_value = profile_id
@@ -323,6 +325,7 @@ class DatastoreTest(test.TestCase):
         select_best_datastore.return_value = best_datastore
 
         is_buildup.return_value = False
+        is_usable.return_value = True
 
         size_bytes = 1024
         req = {self._ds_sel.SIZE_BYTES: size_bytes}

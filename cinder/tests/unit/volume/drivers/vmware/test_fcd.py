@@ -69,6 +69,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
         self._config.vmware_storage_profile = None
         self._config.reserved_percentage = self.RESERVED_PERCENTAGE
+        self._config.vmware_datastores_as_pools = False
         self._driver = fcd.VMwareVStorageObjectDriver(
             configuration=self._config)
         self._driver._vc_version = self.VC_VERSION
@@ -88,40 +89,21 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self.assertTrue(self._driver._storage_policy_enabled)
 
     @mock.patch.object(VMDK_DRIVER, 'session')
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
-    def test_get_volume_stats(self, _get_datastore_summaries, vops,
-                              session):
-        FREE_GB = 7
-        TOTAL_GB = 11
-
-        class ObjMock(object):
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-
-        _get_datastore_summaries.return_value = \
-            ObjMock(objects= [
-                ObjMock(propSet = [
-                    ObjMock(name = "host",
-                            val = ObjMock(DatastoreHostMount = [])),
-                    ObjMock(name = "summary",
-                            val = ObjMock(freeSpace = FREE_GB * units.Gi,
-                                          capacity = TOTAL_GB * units.Gi,
-                                          accessible = True))
-                ])
-            ])
-
-        vops._in_maintenance.return_value = False
-
+    def test_get_volume_stats(self, session):
+        retr_result_mock = mock.Mock(spec=['objects'])
+        retr_result_mock.objects = []
+        session.vim.RetrievePropertiesEx.return_value = retr_result_mock
+        session.vim.service_content.about.instanceUuid = 'fake-service'
         stats = self._driver.get_volume_stats()
 
         self.assertEqual('VMware', stats['vendor_name'])
         self.assertEqual(self._driver.VERSION, stats['driver_version'])
         self.assertEqual(self._driver.STORAGE_TYPE, stats['storage_protocol'])
-        self.assertEqual(self.RESERVED_PERCENTAGE,
-                         stats['reserved_percentage'])
-        self.assertEqual(TOTAL_GB, stats['total_capacity_gb'])
-        self.assertEqual(FREE_GB, stats['free_capacity_gb'])
+        self.assertEqual(0, stats['reserved_percentage'])
+        self.assertEqual(0, stats['total_capacity_gb'])
+        self.assertEqual(0, stats['free_capacity_gb'])
+        self.assertEqual(vmdk.LOCATION_DRIVER_NAME + ":fake-service",
+                         stats['location_info'])
 
     def _create_volume_dict(self,
                             vol_id=VOL_ID,

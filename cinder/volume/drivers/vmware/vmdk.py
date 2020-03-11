@@ -139,6 +139,7 @@ vmdk_opts = [
                     help='Name of a vCenter compute cluster where volumes '
                          'should be created.'),
     cfg.MultiStrOpt('vmware_storage_profile',
+                    default=[],
                     help='Names of storage profiles to be monitored. Only '
                          'used when vmware_enable_volume_stats is True.'),
     cfg.IntOpt('vmware_connection_pool_size',
@@ -166,7 +167,7 @@ vmdk_opts = [
                help='Regular expression pattern to match the name of '
                     'datastores where backend volumes are created.'),
     cfg.BoolOpt('vmware_enable_volume_stats',
-                default=False,
+                default=True,
                 help='If true, this enables the fetching of the volume stats '
                      'from the backend.   This has potential performance '
                      'issues at scale.  When False, the driver will not '
@@ -197,6 +198,13 @@ vmdk_opts = [
                'datastores, and vmware_random_datastore_range is set to 5 '
                'Then it will filter in 5 datastores prior to randomizing '
                'the datastores to pick from.'),
+    cfg.BoolOpt('vmware_datastores_as_pools',
+                default=False,
+                help='Enable reporting individual datastores as pools. '
+                'This allows the cinder scheduler to pick which datastore '
+                'a volume lives on.  This also enables managing capacity '
+                'for each datastore by cinder.  '
+                )
 ]
 
 CONF = cfg.CONF
@@ -319,7 +327,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 3.4.2.99.1 - VMware implementation of volume migration
     # 3.4.2.99.2 - Added soft sharding volume migration, fixed a small issue
     #          in check_for_setup_error where storage_profile not set.
-    VERSION = '3.4.2.99.2'
+    # 3.4.2.99.3 - Add support for reporting each datastore as a pool.
+    VERSION = '3.4.2.99.3'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -348,6 +357,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             remote_api.VmdkDriverRemoteService(self)
         ])
         self._remote_api = remote_api.VmdkDriverRemoteApi()
+        self._storage_profiles = []
 
     @staticmethod
     def get_driver_options():
@@ -391,7 +401,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                   % storage_profile)
                         raise exception.InvalidInput(reason=reason)
 
-
     def _update_volume_stats(self):
         if self.configuration.safe_get('vmware_enable_volume_stats'):
             self._stats = self._get_volume_stats()
@@ -423,90 +432,24 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             'vmware_service_instance_uuid:%s' %
             self._vcenter_instance_uuid]
 
-    def _get_volume_stats(self):
-        """Fetch the stats about the backend.
+    def _collect_backend_stats(self):
+        """Build the call and return the results for stats."""
 
-        This can be slow at scale, but allows
-        properly provisioning scheduling.
-        """
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        if not backend_name:
-            backend_name = self.__class__.__name__
-
-        max_over_subscription_ratio = self.configuration.safe_get(
-            'max_over_subscription_ratio')
-        data = {'volume_backend_name': backend_name,
-                'vendor_name': 'VMware',
-                'driver_version': self.VERSION,
-                'storage_protocol': constants.VMDK,
-                'reserved_percentage': self.configuration.reserved_percentage,
-                'shared_targets': False,
-                'thin_provisioning_support': True,
-                'thick_provisioning_support': True,
-                'max_over_subscription_ratio': max_over_subscription_ratio,
-                'connection_capabilities': self._get_connection_capabilities()}
-        ds_summaries = self._get_datastore_summaries()
-        available_hosts = self._get_hosts(self._clusters)
-        global_capacity = 0
-        global_free = 0
-        if ds_summaries:
-            with vim_util.WithRetrieval(
-                    self.session.vim, ds_summaries) as objects:
-                for ds in objects:
-                    ds_props = self._get_object_properties(ds)
-                    summary = ds_props['summary']
-                    if self._is_datastore_accessible(summary,
-                                                     ds_props['host'],
-                                                     available_hosts):
-                        global_capacity += summary.capacity
-                        global_free += summary.freeSpace
-
-        data['total_capacity_gb'] = round(global_capacity / units.Gi)
-        data['free_capacity_gb'] = round(global_free / units.Gi)
-        location_info = '%(driver_name)s:%(vcenter)s' % {
-            'driver_name': LOCATION_DRIVER_NAME,
-            'vcenter': self.session.vim.service_content.about.instanceUuid}
-        data['location_info'] = location_info
-        self._stats = data
-        return data
-
-    def _get_datastore_summaries(self):
         client_factory = self.session.vim.client.factory
         object_specs = []
-        if (self._storage_policy_enabled
-                and self.configuration.vmware_storage_profile):
-            # Get all available storage profiles on the vCenter and extract the
-            # IDs of those that we want to observe
-            profiles_ids = []
-            for profile in pbm.get_all_profiles(self.session):
-                if profile.name in self.configuration.vmware_storage_profile:
-                    profiles_ids.append(profile.profileId)
+        result = []
+        if (self._storage_policy_enabled and self._storage_profiles):
             # Get all matching Datastores for each profile
-            datastores = {}
-            for profile_id in profiles_ids:
-                for pbm_hub in pbm.filter_hubs_by_profile(self.session,
-                                                          None,
-                                                          profile_id):
-                    if pbm_hub.hubType != "Datastore":
-                        # We are not interested in Datastore Clusters for now
-                        continue
-                    if pbm_hub.hubId not in datastores:
-                        # Reconstruct a managed object reference to datastore
-                        datastores[pbm_hub.hubId] = vim_util.get_moref(
-                            pbm_hub.hubId, "Datastore")
-            # Build property collector object specs out of them
-            for datastore_ref in datastores.values():
-                object_specs.append(
-                    vim_util.build_object_spec(client_factory,
-                                               datastore_ref,
-                                               []))
-
+            LOG.debug("Storage Profile = '%s'", self._storage_profiles)
+            datastores = self._get_datastores_for_profiles()
             if not datastores:
                 LOG.warning("No Datastores found for storage profile(s) "
                             "''%s'",
                             ', '.join(
                                 self.configuration.safe_get(
                                     'vmware_storage_profile')))
+
+            return None, datastores
         else:
             # Build a catch-all object spec that would reach all datastores
             object_specs.append(
@@ -515,46 +458,120 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     self.session.vim.service_content.rootFolder,
                     [vim_util.build_recursive_traversal_spec(client_factory)]))
 
-        # If there are no datastores, we won't have object_specs and will
-        # fail when trying to get stats
-        if not object_specs:
-            return
+        # If there are no datastores, then object specs are empty
+        # we can't query vcenter with empty object specs, or we'll
+        # get errors.
+        if object_specs:
+            prop_spec = vim_util.build_property_spec(
+                client_factory, 'Datastore', ['summary'])
+            filter_spec = vim_util.build_property_filter_spec(
+                client_factory, prop_spec, object_specs)
+            options = client_factory.create('ns0:RetrieveOptions')
+            max_objects = self.configuration.vmware_max_objects_retrieval
+            options.maxObjects = max_objects
+            result = self.session.vim.RetrievePropertiesEx(
+                self.session.vim.service_content.propertyCollector,
+                specSet=[filter_spec],
+                options=options)
 
-        prop_spec = vim_util.build_property_spec(client_factory, 'Datastore',
-                                                 ['summary', 'host'])
-        filter_spec = vim_util.build_property_filter_spec(client_factory,
-                                                          prop_spec,
-                                                          object_specs)
-        options = client_factory.create('ns0:RetrieveOptions')
-        options.maxObjects = self.configuration.vmware_max_objects_retrieval
-        result = self.session.vim.RetrievePropertiesEx(
-            self.session.vim.service_content.propertyCollector,
-            specSet=[filter_spec],
-            options=options)
-        return result
+        return (result, {})
 
-    def _get_object_properties(self, obj_content):
-        props = {}
-        if hasattr(obj_content, 'propSet'):
-            prop_set = obj_content.propSet
-            if prop_set:
-                props = {prop.name: prop.val for prop in prop_set}
-        return props
+    @volume_utils.trace
+    def _get_volume_stats(self):
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        if not backend_name:
+            backend_name = self.__class__.__name__
 
-    def _is_datastore_accessible(self, ds_summary, ds_host_mounts,
-                                 available_hosts):
-        # available_hosts empty => vmware_cluster_name not specified => don't
-        # filter by hosts
-        cluster_access_to_ds = not available_hosts
-        for host_mount in ds_host_mounts.DatastoreHostMount:
-            for avlbl_host in available_hosts:
-                avlbl_host_value = vim_util.get_moref_value(avlbl_host)
-                host_mount_key_value = vim_util.get_moref_value(host_mount.key)
-                if avlbl_host_value == host_mount_key_value:
-                    cluster_access_to_ds = True
-        return (ds_summary.accessible
-                and not self.volumeops._in_maintenance(ds_summary)
-                and cluster_access_to_ds)
+        location_info = '%(driver_name)s:%(vcenter)s' % {
+            'driver_name': LOCATION_DRIVER_NAME,
+            'vcenter': self.session.vim.service_content.about.instanceUuid}
+        reserved_percentage = self.configuration.reserved_percentage
+        max_over_subscription_ratio = self.configuration.safe_get(
+            'max_over_subscription_ratio')
+
+        backend_state = 'up'
+        data = {'volume_backend_name': backend_name,
+                'vendor_name': 'VMware',
+                'driver_version': self.VERSION,
+                'storage_protocol': 'vmdk',
+                'location_info': location_info,
+                'backend_state': backend_state,
+                }
+
+        result, datastores = self._collect_backend_stats()
+        connection_capabilities = self._get_connection_capabilities()
+        if not datastores:
+            backend_state = 'down'
+            data['backend_state'] = backend_state
+        if self.configuration.vmware_datastores_as_pools:
+            pools = []
+            for ds_name in datastores:
+                datastore = datastores[ds_name]
+                summary = datastore["summary"]
+                storage_profile = datastore["storage_profile"].get("name")
+
+                pool_state = 'down'
+                if self.ds_sel.is_datastore_usable(summary):
+                    pool_state = 'up'
+
+                pool = {'pool_name': summary.name,
+                        'total_capacity_gb': round(
+                            summary.capacity / units.Gi),
+                        'free_capacity_gb': round(
+                            summary.freeSpace / units.Gi),
+                        'thin_provisioning_support': True,
+                        'thick_provisioning_support': True,
+                        'max_over_subscription_ratio': (
+                            max_over_subscription_ratio),
+                        'reserved_percentage': reserved_percentage,
+                        'multiattach': False,
+                        'datastore_type': summary.type,
+                        'location_url': summary.url,
+                        'location_info': location_info,
+                        'storage_profile': storage_profile,
+                        'connection_capabilities': connection_capabilities,
+                        'backend_state': backend_state,
+                        'pool_state': pool_state
+                        }
+
+                # Add any custom attributes associated with the datastore
+                if "custom_attributes" in datastore:
+                    pool['custom_attributes'] = datastore['custom_attributes']
+
+                pools.append(pool)
+            data['pools'] = pools
+            return data
+
+        if (self._storage_policy_enabled and self._storage_profiles):
+            global_capacity = global_free = 0
+            # Pools are disabled, but storage profiles are enabled.
+            # so we collect all the stats from all the datastores returned
+            for ds_name in datastores:
+                datastore = datastores[ds_name]
+                summary = datastore["summary"]
+                global_capacity += summary.capacity
+                global_free += summary.freeSpace
+
+        else:
+            global_capacity = global_free = 0
+            with vim_util.WithRetrieval(self.session.vim, result) as objects:
+                for ds in objects:
+                    summary = ds.propSet[0].val
+                    global_capacity += summary.capacity
+                    global_free += summary.freeSpace
+
+        data_no_pools = {
+            'reserved_percentage': self.configuration.reserved_percentage,
+            'total_capacity_gb': round(global_capacity / units.Gi),
+            'free_capacity_gb': round(global_free / units.Gi),
+            'thin_provisioning_support': True,
+            'thick_provisioning_support': True,
+            'max_over_subscription_ratio': max_over_subscription_ratio,
+            'connection_capabilities': connection_capabilities,
+        }
+        data.update(data_no_pools)
+
+        return data
 
     def _verify_volume_creation(self, volume):
         """Verify that the volume can be created.
@@ -680,6 +697,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return {EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
                 volumeops.BACKING_UUID_KEY: volume['id']}
 
+    @volume_utils.trace
     def _create_backing(self, volume, host=None, create_params=None):
         """Create volume backing under the given host.
 
@@ -691,9 +709,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                               backing VM creation
         :return: Reference to the created backing
         """
-        create_params = create_params or {}
+
         (host_ref, resource_pool, folder,
-         summary) = self._select_ds_for_volume(volume, host)
+            summary) = self._select_ds_for_volume(volume, host)
+
+        create_params = create_params or {}
 
         # check if a storage profile needs to be associated with the backing VM
         profile_id = self._get_storage_profile_id(volume)
@@ -738,6 +758,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                 extra_config=extra_config)
 
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
+        if (self.configuration.vmware_datastores_as_pools and
+                self._is_pool_outdated_for_volume(volume)):
+            # TODO(walt) - this writes the volume update to the db. :(
+            # This sucks, but don't have any other way
+            new_host = self._new_host_for_volume(volume)
+            LOG.info("Changing volume host from {} to {}".format(
+                volume.host, new_host
+            ))
+            model_update = {'host': new_host}
+            volume.update(model_update)
+            volume.save()
         return backing
 
     def _get_hosts(self, clusters):
@@ -777,25 +808,108 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             self._dc_cache[vim_util.get_moref_value(resource_pool)] = dc
         return dc
 
-    def _select_ds_for_volume(self, volume, host=None, create_params=None):
+    @volume_utils.trace
+    def _select_ds_by_name_for_volume(self, datastore_name, volume):
+
+        # we need a host_ref, resource_pool, folder and summary
+        (host_ref,
+         resource_pool,
+         summary) = self.ds_sel.select_datastore_by_name(datastore_name)
+
+        if not summary:
+            # couldn't find the datastore by name
+            return (None, None, None, None)
+
+        # Get the host_ref
+        dc = self._get_dc(resource_pool)
+        folder = self._get_volume_group_folder(dc, volume['project_id'])
+
+        return (host_ref, resource_pool, folder, summary)
+
+    @volume_utils.trace
+    def _is_pool_outdated_for_volume(self, volume):
+        """When datastores as pools is enabled.
+
+        This check determines if the pool name is the same as the
+        volume_backend_name when vmware_datastores_as_pools is enabled.
+
+        This can happen when lazy create is enabled, vmware_datastores_as_pools
+        is disabled and a volume is created.  There will be no backing for
+        the volume.  Then you enable vmware_datastores_as_pools and the driver
+        tries to automatically update the host entry for the volume.  Since
+        the volume has no backing, there is no datastore chosen for the
+        volume, and then the host will still remain as
+        service@backend_name#backend_name instead of
+        service@backend_name#pool
+
+        We have to ensure that if we do create the backing finally for
+        this volume, that we force a cinder db update for the host.
+        """
+
+        host_entry = volume_utils.extract_host(volume['host'], 'backend')
+        backend_name = host_entry.split('@')[1]
+        datastore_name = volume_utils.extract_host(volume['host'], 'pool')
+        if self.configuration.vmware_datastores_as_pools:
+            return backend_name == datastore_name
+        else:
+            return False
+
+    @volume_utils.trace
+    def _select_ds_for_volume(self, volume, host=None, create_params=None,
+                              cinder_host=None):
         """Select datastore that can accommodate the given volume's backing.
+
+        host is a vmware esxi host
+        cinder_host is a service@backend_name#pool
 
         Returns the selected datastore summary along with a compute host and
         its resource pool and folder where the volume can be created
         :return: (host, resource_pool, folder, summary)
         """
-        # Form requirements for datastore selection.
-        create_params = create_params or {}
-        size = create_params.get(CREATE_PARAM_DISK_SIZE, volume['size'])
+        datastore_picked = False
+        if self.configuration.vmware_datastores_as_pools:
+            # we pick the datastore from the pool name
+            if not cinder_host:
+                cinder_host = volume['host']
 
-        req = {}
-        req[hub.DatastoreSelector.SIZE_BYTES] = size * units.Gi
-        req[hub.DatastoreSelector.PROFILE_NAME] = self._get_storage_profile(
-            volume)
+            host_entry = volume_utils.extract_host(cinder_host, 'backend')
+            host_parts = host_entry.split('@')
+            datastore_name = volume_utils.extract_host(cinder_host, 'pool')
+            # we might be a volume that has no backing yet that couldn't
+            # have had their host entry updated due to lazy create.
+            # IF so the backend name and pool name are the same, so a
+            # datastore wasn't picked for this volume.
+            if datastore_name != host_parts[1]:
+                (host_ref, resource_pool,
+                    folder, summary) = self._select_ds_by_name_for_volume(
+                        datastore_name, volume)
+                if summary:
+                    # we were able to use the datastore from the host entry
+                    # so don't use fallback.
+                    datastore_picked = True
+                else:
+                    raise exception.InvalidInput(
+                        "Couldn't find datastore with name '%s'" %
+                        datastore_name)
+            else:
+                LOG.info("Volume backend name and pool name are same.  Using "
+                         "Fallback mechanism to pick a datastore.")
 
-        (host_ref, resource_pool, summary) = self._select_datastore(req, host)
-        dc = self._get_dc(resource_pool)
-        folder = self._get_volume_group_folder(dc, volume['project_id'])
+        if not datastore_picked:
+            # Form requirements for datastore selection.
+            create_params = create_params or {}
+            size = create_params.get(CREATE_PARAM_DISK_SIZE, volume['size'])
+
+            req = {}
+            req[hub.DatastoreSelector.SIZE_BYTES] = size * units.Gi
+            req[hub.DatastoreSelector.PROFILE_NAME] = (
+                self._get_storage_profile(volume)
+            )
+
+            (host_ref, resource_pool, summary) = self._select_datastore(req,
+                                                                        host)
+            dc = self._get_dc(resource_pool)
+            folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         return (host_ref, resource_pool, folder, summary)
 
@@ -2273,9 +2387,179 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         self.volumeops.build_backing_ref_cache()
 
+        # Cache the storage profiles, so we don't
+        # have to fetch them every time.
+        if self.configuration.vmware_storage_profile:
+            self._get_storage_profiles()
+
         LOG.info("Successfully setup driver: %(driver)s for server: "
                  "%(ip)s.", {'driver': self.__class__.__name__,
                              'ip': self.configuration.vmware_host_ip})
+
+    def _get_storage_profiles(self):
+        """Fetch the list of configured storage profiles we use."""
+
+        LOG.debug("Profiles = '%s'", self.configuration.vmware_storage_profile)
+        for profile in pbm.get_all_profiles(self.session):
+            if profile.name in self.configuration.vmware_storage_profile:
+                profile_dict = {"name": profile.name,
+                                "id": profile.profileId}
+                self._storage_profiles.append(profile_dict)
+
+    def _volume_provider_metadata(self, volume, backing=None):
+        if not backing:
+            backing = self.volumeops.get_backing(volume.name, volume.id)
+
+        ds = self.volumeops.get_datastore(backing)
+        summary = self.volumeops.get_summary(ds)
+        profile = self._get_storage_profile(volume)
+        vcenter_uuid = (
+            self.session.vim.service_content.about.instanceUuid
+        )
+        provider_info = {
+            'vmware_vcenter_id': vcenter_uuid,
+            'vmware_ds_name': summary.name,
+            'vmware_profile_name': profile,
+        }
+
+        return provider_info
+
+    def _get_datastores_for_profiles(self):
+        datastores = {}
+        for profile in self._storage_profiles:
+            for h in pbm.filter_hubs_by_profile(self.session,
+                                                None,
+                                                profile['id']):
+                if h.hubType != "Datastore":
+                    # We are not interested in Datastore Clusters for now
+                    continue
+                if h.hubId not in datastores:
+                    # Reconstruct a managed object reference to that
+                    # datastore
+                    ds = vim_util.get_moref(h.hubId, "Datastore")
+                    objects = self.volumeops.get_datastore_properties(ds)
+                    summary = objects['summary']
+                    datastores[summary.name] = {'summary': summary,
+                                                'storage_profile': profile,
+                                                'datastore_object': ds}
+                    if ('availableField' in objects and
+                            'customValue' in objects):
+                        custom_fields = {}
+                        for junk, field in objects['availableField']:
+                            for v in field:
+                                custom_fields[v.key] = v.name
+
+                        custom_attributes = {}
+                        for junk, attr in objects['customValue']:
+                            for v in attr:
+                                field = custom_fields[v.key]
+                                custom_attributes[field] = v.value
+                        datastores[summary.name][
+                            "custom_attributes"] = custom_attributes
+        return datastores
+
+    def _new_host_for_volume(self, volume):
+        pool_info = volume_utils.extract_host(
+            volume.host, level='pool', default_pool_name=True)
+        model = self._volume_provider_metadata(volume)
+        if pool_info != model['vmware_ds_name']:
+            host = volume_utils.extract_host(
+                volume.host, level='host')
+            back = volume_utils.extract_host(volume.host)
+            backend = back.split('@')[1]
+
+            new_host = '{}@{}#{}'.format(
+                host, backend,
+                model['vmware_ds_name']
+            )
+            return new_host
+
+    @volume_utils.trace
+    def update_provider_info(self, volumes, snapshots):
+        """Ensure we have a provider_id set on volumes.
+
+        If there is a provider_id already set then skip, if it is missing then
+        we will update it based on the volume object. We can always compute
+        the id if we have the full volume object, but not all driver API's
+        give us that info.
+
+        We have to save each volume entry if they update their host, otherwise
+        cinder volume manager doesn't see that volume as part of the host
+        allocated_capacity calculation, which happens right after this call
+        completes.
+
+        We don't care about snapshots, they just use the volume's provider_id.
+        """
+        LOG.info("HOST {} : volumes {}".format(self.host, len(volumes)))
+        if self.configuration.vmware_datastores_as_pools:
+            LOG.info("vmware_datastores_as_pools is enabled. "
+                     "Checking host entries for volumes and snapshots.")
+            datastores = self._get_datastores_for_profiles()
+            ds_keys = datastores.keys()
+            vol_updates = []
+            LOG.info("Process {} volumes".format(len(volumes)))
+            for vol in volumes:
+                # make sure we have the correc host info
+                if vol['status'] in ['in-use', 'available']:
+                    # do we need to update the host?
+                    pool_info = volume_utils.extract_host(
+                        vol.host, level='pool', default_pool_name=True)
+
+                    # IF the pool has already been set correctly, then
+                    # no need to make api calls to vcenter to fetch the
+                    # datastore name from the volume backing information.
+                    # this will save time on every startup
+                    if (pool_info not in ds_keys or
+                            pool_info == volume_utils.DEFAULT_POOL_NAME):
+                        LOG.debug("Updating host for volume {}".format(vol.id))
+
+                        try:
+                            new_host = self._new_host_for_volume(vol)
+                            if new_host:
+                                vol.update({'host': new_host})
+                                vol.save()
+                        except Exception as ex:
+                            LOG.warning("Couldn't update host for {} because "
+                                        " {}".format(vol.id, ex))
+                    else:
+                        LOG.debug("Keeping host for volume {}".format(vol.id))
+
+            LOG.info("HOST COMPLETE {}".format(self.host))
+            return vol_updates, None
+        else:
+            # Since pools are not enabled, we should ensure that the datastore
+            # isn't part of the host.  This allows us to go backwards to
+            # not using datastores as pools.
+            LOG.info("vmware_datastores_as_pools is disabled.")
+
+            vol_updates = []
+            for vol in volumes:
+                # make sure we have the correc host info
+                if vol['status'] in ['in-use', 'available']:
+                    # do we need to update the host?
+                    pool_info = volume_utils.extract_host(
+                        vol.host, level='pool')
+                    backend_info = volume_utils.extract_host(
+                        vol.host, level='backend'
+                    )
+                    backend = backend_info.split("@")
+                    LOG.info("Volume host '{}' backend '{}'  pool '{}'".format(
+                        vol.host, backend[1], pool_info))
+
+                    # we need to force the host back to
+                    # host@backend#backend
+                    new_host = "{}@{}#{}".format(
+                        backend[0],
+                        backend[1],
+                        backend[1]
+                    )
+                    if new_host != vol.host:
+                        LOG.info("Setting host to {}".format(new_host))
+                        vol.update({'host': new_host})
+                        vol.save()
+
+            LOG.info("HOST COMPLETE {}".format(self.host))
+            return vol_updates, None
 
     def _get_volume_group_folder(self, datacenter, project_id, snapshot=False):
         """Get inventory folder for organizing volume backings and snapshots.
@@ -2401,9 +2685,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         host = None
         rp = None
         folder = None
-        if clone_type != volumeops.LINKED_CLONE_TYPE:
-            # Pick a datastore where to create the full clone under any host
-            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
+        if not clone_type == volumeops.LINKED_CLONE_TYPE:
+            # Pick a datastore where to create the full clone under
+            # any host
+            (host, rp, folder, summary) = self._select_ds_for_volume(
+                volume)
             datastore = summary.datastore
         extra_config = self._get_extra_config(volume)
         clone = self.volumeops.clone_backing(volume['name'], backing,
@@ -2433,6 +2719,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                  VMwareVcVmdkDriver._get_disk_type(volume))
         LOG.info("Successfully created clone: %s.", clone)
 
+    @volume_utils.trace
     def _create_volume_from_template(self, volume, path):
         LOG.debug("Creating backing for volume: %(volume_id)s from template "
                   "at path: %(path)s.",
@@ -2442,6 +2729,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         # Create temporary backing by cloning the template.
         tmp_name = uuidutils.generate_uuid()
+
         (host, rp, folder, summary) = self._select_ds_for_volume(volume)
         datastore = summary.datastore
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
@@ -2641,6 +2929,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         else:
             self.volumeops.revert_to_snapshot(backing, snapshot.name)
 
+    @volume_utils.trace
     def migrate_volume(self, context, volume, host):
         """Migrate a volume to the specified host.
 
@@ -2687,8 +2976,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                             backing)
 
     def _migrate_unattached(self, context, dest_host, volume, backing):
-        ds_info = self._remote_api.select_ds_for_volume(context, dest_host,
-                                                        volume)
+        ds_info = self._remote_api.select_ds_for_volume(context,
+                                                        cinder_host=dest_host,
+                                                        volume=volume)
         service_locator = self._remote_api.get_service_locator_info(context,
                                                                     dest_host)
         host_ref = vim_util.get_moref(ds_info['host'], 'HostSystem')
