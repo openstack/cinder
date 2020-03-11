@@ -25,6 +25,7 @@ from oslo_vmware import pbm
 from oslo_vmware import vim_util
 
 from cinder import coordination
+from cinder import exception
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
@@ -121,6 +122,22 @@ class DatastoreSelector(object):
             cache[host_cluster.value] = result
         return result
 
+    def _is_host_usable(self, host_ref, host_prop_map=None):
+        if host_prop_map is None:
+            host_prop_map = {}
+        props = host_prop_map.get(host_ref.value)
+        if props is None:
+            props = self._get_host_properties(host_ref)
+            host_prop_map[host_ref.value] = props
+
+        runtime = props.get('runtime')
+        parent = props.get('parent')
+        if runtime and parent:
+            return (runtime.connectionState == 'connected' and
+                    not runtime.inMaintenanceMode)
+        else:
+            return False
+
     def _filter_hosts(self, hosts):
         """Filter out any hosts that are in a cluster marked buildup."""
 
@@ -128,11 +145,15 @@ class DatastoreSelector(object):
         cache = {}
         if hosts:
             if isinstance(hosts, Iterable):
+                host_prop_map = {}
                 for host in hosts:
-                    if not self.is_host_in_buildup_cluster(host, cache):
+                    if (not self.is_host_in_buildup_cluster(host, cache)
+                            and self._is_host_usable(
+                                host, host_prop_map=host_prop_map)):
                         valid_hosts.append(host)
             else:
-                if not self.is_host_in_buildup_cluster(hosts, cache):
+                if (not self.is_host_in_buildup_cluster(hosts, cache)
+                        and self._is_host_usable(host)):
                     valid_hosts.append(hosts)
 
         return valid_hosts
@@ -225,6 +246,41 @@ class DatastoreSelector(object):
 
         return datastores
 
+    def select_datastore_by_name(self, name):
+        """Find a datastore by it's name.
+
+            Returns a host_ref and datastore summary.
+        """
+
+        resource_pool = None
+        datastore = None
+        datastores = self._get_datastores()
+        for k, v in datastores.items():
+            if v['summary'].name == name:
+                datastore = v
+
+        if not datastore:
+            # this shouldn't ever happen as the scheduler told us
+            # to use this named datastore
+            return (None, None, None)
+
+        summary = datastore['summary']
+        # pick a host that's available
+        hosts = [host['key'] for host in datastore['host']]
+        hosts = self._filter_hosts(hosts)
+        if not hosts:
+            raise exception.InvalidInput(
+                "No hosts available for datastore '%s'" % name)
+
+        host = random.choice(hosts)
+
+        # host_ref = datastore['host'][0]['key']
+        host_props = self._get_host_properties(host)
+        parent = host_props.get('parent')
+
+        resource_pool = self._get_resource_pool(parent)
+        return (host, resource_pool, summary)
+
     def _get_host_properties(self, host_ref):
         retrieve_result = self._session.invoke_api(vim_util,
                                                    'get_object_properties',
@@ -256,30 +312,17 @@ class DatastoreSelector(object):
 
         host_prop_map = {}
 
-        def _is_host_usable(host_ref):
-            props = host_prop_map.get(host_ref.value)
-            if props is None:
-                props = self._get_host_properties(host_ref)
-                host_prop_map[host_ref.value] = props
-
-            runtime = props.get('runtime')
-            parent = props.get('parent')
-            if runtime and parent:
-                return (runtime.connectionState == 'connected' and
-                        not runtime.inMaintenanceMode)
-            else:
-                return False
-
         valid_host_refs = valid_host_refs or []
         valid_hosts = [host_ref.value for host_ref in valid_host_refs]
 
-        def _select_host(host_mounts):
+        def _select_host(host_mounts, host_prop_map):
             random.shuffle(host_mounts)
             for host_mount in host_mounts:
                 if valid_hosts and host_mount.key.value not in valid_hosts:
                     continue
                 if (self._vops._is_usable(host_mount.mountInfo) and
-                        _is_host_usable(host_mount.key)):
+                        self._is_host_usable(host_mount.key,
+                                             host_prop_map=host_prop_map)):
                     return host_mount.key
 
         sorted_ds_props = sorted(datastores.values(), key=_sort_key)
@@ -290,7 +333,8 @@ class DatastoreSelector(object):
             random.shuffle(sorted_ds_props)
 
         for ds_props in sorted_ds_props:
-            host_ref = _select_host(ds_props['host'])
+            host_ref = _select_host(
+                ds_props['host'], host_prop_map=host_prop_map)
             if host_ref:
                 rp = self._get_resource_pool(
                     host_prop_map[host_ref.value]['parent'])

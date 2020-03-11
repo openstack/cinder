@@ -121,6 +121,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vmware_storage_profile=[self.STORAGE_PROFILE],
             vmware_select_random_best_datastore=False,
             vmware_random_datastore_range=None,
+            vmware_datastores_as_pools=False,
         )
 
         self._db = mock.Mock()
@@ -181,46 +182,82 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_profile_id_by_name.assert_called_once_with(session, 'gold')
 
     @mock.patch.object(VMDK_DRIVER, 'session')
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
-    def test_get_volume_stats(self, _get_datastore_summaries, vops,
-                              session):
+    def test_get_volume_stats_no_pools(self, session):
         retr_result_mock = mock.Mock(spec=['objects'])
         retr_result_mock.objects = []
         session.vim.RetrievePropertiesEx.return_value = retr_result_mock
         session.vim.service_content.about.instanceUuid = 'fake-service'
-        FREE_GB = 7
-        TOTAL_GB = 11
-
-        class ObjMock(object):
-            def __init__(self, **kwargs):
-                self.__dict__.update(kwargs)
-
-        _get_datastore_summaries.return_value = (ObjMock(objects= [
-            ObjMock(propSet = [
-                ObjMock(name = "host",
-                        val = ObjMock(DatastoreHostMount = [])),
-                ObjMock(name = "summary",
-                        val = ObjMock(freeSpace = FREE_GB * units.Gi,
-                                      capacity = TOTAL_GB * units.Gi,
-                                      accessible = True))
-            ])
-        ]))
-
-        vops._in_maintenance.return_value = False
-        # Enable volume stats collection from backend
-        self._driver.configuration.vmware_enable_volume_stats = True
-
         stats = self._driver.get_volume_stats()
 
         self.assertEqual('VMware', stats['vendor_name'])
         self.assertEqual(self._driver.VERSION, stats['driver_version'])
         self.assertEqual('vmdk', stats['storage_protocol'])
-        self.assertEqual(self._config.reserved_percentage,
-                         stats['reserved_percentage'])
-        self.assertEqual(TOTAL_GB, stats['total_capacity_gb'])
-        self.assertEqual(FREE_GB, stats['free_capacity_gb'])
-        self.assertFalse(stats['shared_targets'])
+        self.assertEqual(0, stats['reserved_percentage'])
+        self.assertEqual(0, stats['total_capacity_gb'])
+        self.assertEqual(0, stats['free_capacity_gb'])
+        self.assertEqual(vmdk.LOCATION_DRIVER_NAME + ":fake-service",
+                         stats['location_info'])
+
+    def _fake_stats_result(self):
+        ds_attrs = {
+            "value": "datastore-85",
+        }
+        ds = mock.Mock(**ds_attrs)
+
+        summary_attrs = {
+            "datastore": ds,
+            "name": "datastore2",
+            "url": "ds:///vmfs/volumes/5ed14b0e-ee8de32d-2014-525400b59848/",
+            "capacity": 10000000000000,
+            "freeSpace": 5000000000000,
+            "uncommitted": 5000000000000,
+            "accessible": True,
+            "multipleHostAccess": False,
+            "type": "VMFS",
+            "maintenanceMode": "normal",
+        }
+        summary = mock.Mock(**summary_attrs)
+        summary.name = "datastore2"
+
+        propset_attrs = {"val": summary}
+        _propSet = mock.MagicMock(**propset_attrs)
+
+        class props(object):
+            propSet = [_propSet]
+
+        class result(object):
+            objects = [props()]
+
+        datastores = {"datastore-85": {"summary": summary,
+                                       "storage_profile": "Gold"}}
+        return result(), datastores
+
+    @mock.patch.object(VMDK_DRIVER, '_collect_backend_stats')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def test_get_volume_stats_pools(self, session, mock_stats):
+        fake_result, fake_datastore_profiles = self._fake_stats_result()
+        mock_stats.return_value = (fake_result, fake_datastore_profiles)
+        self._config.vmware_datastores_as_pools = True
+        self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
+                                               additional_endpoints=[],
+                                               db=self._db)
+
+        retr_result_mock = mock.Mock(spec=['objects'])
+        retr_result_mock.objects = []
+        session.vim.RetrievePropertiesEx.return_value = retr_result_mock
+        session.vim.service_content.about.instanceUuid = 'fake-service'
+        stats = self._driver.get_volume_stats()
+
+        self.assertEqual('VMware', stats['vendor_name'])
+        self.assertEqual(self._driver.VERSION, stats['driver_version'])
+        self.assertEqual('vmdk', stats['storage_protocol'])
+        self.assertIn('pools', stats)
+        self.assertEqual(1, len(stats["pools"]))
+        self.assertEqual(0, stats["pools"][0]['reserved_percentage'])
+        self.assertEqual(9313, stats["pools"][0]['total_capacity_gb'])
+        self.assertEqual(4657, stats["pools"][0]['free_capacity_gb'])
+        self.assertEqual('up', stats["pools"][0]['backend_state'])
+        self.assertFalse(stats["pools"][0]['Multiattach'])
         self.assertEqual(vmdk.LOCATION_DRIVER_NAME + ":fake-service",
                          stats['location_info'])
 
@@ -3618,7 +3655,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 mock.sentinel.context, dest_host)
 
             r_api.select_ds_for_volume.assert_called_once_with(
-                mock.sentinel.context, dest_host, volume)
+                mock.sentinel.context, volume=volume, cinder_host=dest_host)
 
             get_moref.assert_has_calls([
                 mock.call(ds_info['host'], 'HostSystem'),

@@ -40,7 +40,7 @@ class VmdkDriverRemoteApiTest(test.RPCAPITestCase):
         self._test_rpc_api('select_ds_for_volume',
                            rpc_method='call',
                            server=self._fake_host,
-                           host=self._fake_host,
+                           cinder_host=self._fake_host,
                            volume=self._fake_volume)
 
     def test_move_backing_to_folder(self):
@@ -91,7 +91,7 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
         ret_val = self._service.select_ds_for_volume(self._ctxt,
                                                      self._fake_volume)
         self._driver._select_ds_for_volume.assert_called_once_with(
-            self._fake_volume)
+            self._fake_volume, cinder_host=None)
         self.assertEqual({
             'host': fake_host.value,
             'resource_pool': fake_rp.value,

@@ -41,9 +41,10 @@ class VmdkDriverRemoteApi(rpc.RPCAPI):
         cctxt = self._get_cctxt(host)
         return cctxt.call(ctxt, 'get_service_locator_info')
 
-    def select_ds_for_volume(self, ctxt, host, volume):
-        cctxt = self._get_cctxt(host)
-        return cctxt.call(ctxt, 'select_ds_for_volume', volume=volume)
+    def select_ds_for_volume(self, ctxt, cinder_host, volume):
+        cctxt = self._get_cctxt(cinder_host)
+        return cctxt.call(ctxt, 'select_ds_for_volume', volume=volume,
+                          cinder_host=cinder_host)
 
     def move_volume_backing_to_folder(self, ctxt, host, volume, folder):
         cctxt = self._get_cctxt(host)
@@ -67,9 +68,15 @@ class VmdkDriverRemoteService(object):
     def get_service_locator_info(self, ctxt):
         return self._driver.service_locator_info
 
-    def select_ds_for_volume(self, ctxt, volume):
+    def select_ds_for_volume(self, ctxt, volume, cinder_host=None):
+        """Select datastore for volume.
+
+        cinder_host is a host@backend_name#pool entry.
+        host is an vmware host, which is returned from the driver call
+        to select_ds_for_volume and returned as part of this call
+        """
         (host, rp, folder, summary) = self._driver._select_ds_for_volume(
-            volume)
+            volume, cinder_host=cinder_host)
 
         profile_id = self._driver._get_storage_profile_id(volume)
 
