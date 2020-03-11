@@ -1,0 +1,10 @@
+{
+    "qos_specs": [
+        {
+            "consumer": "back-end",
+            "id": "62c17294-2e52-4877-a01f-a30388749d9d",
+            "name": "reliability-spec",
+            "specs": {}
+        }
+    ]
+}

@@ -59,5 +59,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/limits-show-response.json
+.. literalinclude:: ./samples/limits/limits-show-response.json
    :language: javascript

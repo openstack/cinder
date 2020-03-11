@@ -1,0 +1,18 @@
+{
+    "qos_specs": {
+        "specs": {},
+        "consumer": "back-end",
+        "name": "reliability-spec",
+        "id": "599ef437-1c99-42ec-9fc6-239d0519fef1"
+    },
+    "links": [
+        {
+            "href": "http://23.253.248.171:8776/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/qos-specs/599ef437-1c99-42ec-9fc6-239d0519fef1",
+            "rel": "self"
+        },
+        {
+            "href": "http://23.253.248.171:8776/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/qos-specs/599ef437-1c99-42ec-9fc6-239d0519fef1",
+            "rel": "bookmark"
+        }
+    ]
+}
