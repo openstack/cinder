@@ -55,7 +55,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quotas-show-response.json
+.. literalinclude:: ./samples/quota_sets/quotas-show-response.json
    :language: javascript
 
 
@@ -106,7 +106,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quotas-show-usage-response.json
+.. literalinclude:: ./samples/quota_sets/quotas-show-usage-response.json
    :language: javascript
 
 
@@ -149,7 +149,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/quotas-update-request.json
+.. literalinclude:: ./samples/quota_sets/quotas-update-request.json
    :language: javascript
 
 
@@ -173,7 +173,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quotas-update-response.json
+.. literalinclude:: ./samples/quota_sets/quotas-update-response.json
    :language: javascript
 
 Delete quotas for a project
@@ -248,7 +248,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quotas-show-defaults-response.json
+.. literalinclude:: ./samples/quota_sets/quotas-show-defaults-response.json
    :language: javascript
 
 

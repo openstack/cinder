@@ -60,7 +60,7 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quota-classes-show-response.json
+.. literalinclude:: ./samples/quota_classes/quota-classes-show-response.json
    :language: javascript
 
 Update quota classes for a project
@@ -103,7 +103,7 @@ Request
 Request Example
 ---------------
 
-.. literalinclude:: ./samples/quota-classes-update-request.json
+.. literalinclude:: ./samples/quota_classes/quota-classes-update-request.json
    :language: javascript
 
 
@@ -127,5 +127,5 @@ Response Parameters
 Response Example
 ----------------
 
-.. literalinclude:: ./samples/quota-classes-update-response.json
+.. literalinclude:: ./samples/quota_classes/quota-classes-update-response.json
    :language: javascript
