@@ -73,6 +73,8 @@ Supported operations
 
 * Create a volume from a snapshot
 
+* Revert a volume to a snapshot
+
 * Copy an image to a volume
 
 * Copy a volume to an image

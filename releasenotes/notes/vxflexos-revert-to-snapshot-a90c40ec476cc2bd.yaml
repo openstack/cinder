@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    VxFlex OS driver now supports storage-assisted revert volume to snapshot.

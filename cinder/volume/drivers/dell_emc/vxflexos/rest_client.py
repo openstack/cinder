@@ -686,3 +686,20 @@ class RestClient(object):
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(msg)
         return response
+
+    def overwrite_volume_content(self, volume, snapshot):
+        url = "/instances/Volume::%(vol_id)s/action/overwriteVolumeContent"
+
+        params = {"srcVolumeId": snapshot.provider_id}
+        r, response = self.execute_vxflexos_post_request(
+            url,
+            params=params,
+            vol_id=volume.provider_id
+        )
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to revert volume %(vol_id)s to snapshot "
+                     "%(snap_id)s: %(err)s.") % {"vol_id": volume.id,
+                                                 "snap_id": snapshot.id,
+                                                 "err": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(msg)
