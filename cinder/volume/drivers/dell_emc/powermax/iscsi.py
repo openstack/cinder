@@ -124,9 +124,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.1.1 - QoS calulation fix
         4.1.2 - Volume group delete fix (bug #1853589)
         4.1.3 - Retype attached replication fix (#1851371)
+        4.1.4 - Legacy volume not found fix (#1867163)
     """
 
-    VERSION = "4.1.3"
+    VERSION = "4.1.4"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
