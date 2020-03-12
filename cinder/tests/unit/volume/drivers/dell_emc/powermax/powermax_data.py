@@ -648,6 +648,15 @@ class PowerMaxData(object):
          'storageGroupId': [
              rdf_managed_async_grp, storagegroup_name_f + '-RA']})
 
+    volume_details_legacy = {'cap_gb': 2,
+                             'num_of_storage_groups': 1,
+                             'volumeId': device_id,
+                             'volume_identifier': test_volume.id,
+                             'wwn': volume_wwn,
+                             'snapvx_target': 'false',
+                             'snapvx_source': 'false',
+                             'storageGroupId': []}
+
     volume_list = [
         {'id': '6b70de13-98c5-46b2-8f24-e4e96a8988fa',
          'count': 2,

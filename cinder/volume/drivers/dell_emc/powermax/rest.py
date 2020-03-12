@@ -1018,8 +1018,12 @@ class PowerMaxRest(object):
                       'Device id = %(di)s',
                       {'en': element_name, 'vi': vol_identifier,
                        'di': device_id})
-            if vol_identifier == element_name:
+            if vol_identifier in element_name:
                 found_device_id = device_id
+                if vol_identifier != element_name:
+                    LOG.debug("Device %(di)s is a legacy volume created using "
+                              "SMI-S.",
+                              {'di': device_id})
             elif name_id:
                 # This may be host-assisted migration case
                 element_name = self.utils.get_volume_element_name(name_id)
