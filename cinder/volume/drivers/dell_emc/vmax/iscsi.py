@@ -107,9 +107,10 @@ class VMAXISCSIDriver(san.SanISCSIDriver):
              - Fix for initiator retrieval and short hostname unmapping
                 (bugs #1783855 #1783867)
               - Fix for HyperMax OS Upgrade Bug (bug #1790141)
+        3.2.3 - Legacy volume not found fix (#1867163)
     """
 
-    VERSION = "3.2.2"
+    VERSION = "3.2.3"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
 
