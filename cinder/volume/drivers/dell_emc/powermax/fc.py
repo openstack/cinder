@@ -110,9 +110,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
                 (bp/powermax-storage-assisted-inuse-retype)
         4.0.1 - PowerMax OS Metro formatted volumes fix (bug #1829876)
         4.0.2 - Volume group delete failure (bug #1853589)
+        4.0.3 - Legacy volume not found fix (#1867163)
     """
 
-    VERSION = "4.0.2"
+    VERSION = "4.0.3"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

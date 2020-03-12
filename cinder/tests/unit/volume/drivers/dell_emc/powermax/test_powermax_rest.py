@@ -610,6 +610,26 @@ class PowerMaxRestTest(test.TestCase):
             name_id=self.data.test_clone_volume._name_id)
         self.assertEqual(self.data.device_id, found_dev_id)
 
+    def test_check_volume_device_id_legacy_case(self):
+        element_name = self.utils.get_volume_element_name(
+            self.data.test_volume.id)
+        with mock.patch.object(self.rest, 'get_volume',
+                               return_value=self.data.volume_details_legacy):
+            found_dev_id = self.rest.check_volume_device_id(
+                self.data.array, self.data.device_id, element_name)
+        self.assertEqual(self.data.device_id, found_dev_id)
+
+    def test_check_volume_device_id_legacy_case_no_match(self):
+        element_name = self.utils.get_volume_element_name(
+            self.data.test_volume.id)
+        volume_details_no_match = deepcopy(self.data.volume_details_legacy)
+        volume_details_no_match['volume_identifier'] = 'no_match'
+        with mock.patch.object(self.rest, 'get_volume',
+                               return_value=volume_details_no_match):
+            found_dev_id = self.rest.check_volume_device_id(
+                self.data.array, self.data.device_id, element_name)
+        self.assertIsNone(found_dev_id)
+
     def test_find_mv_connections_for_vol(self):
         device_id = self.data.device_id
         ref_lun_id = int(
