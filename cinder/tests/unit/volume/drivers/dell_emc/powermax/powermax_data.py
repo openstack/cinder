@@ -1482,3 +1482,33 @@ class PowerMaxData(object):
                   rdf_managed_async_grp]
 
     r2_sg_list = deepcopy(r1_sg_list)
+    replication_model = (
+        {'provider_location': six.text_type(provider_location),
+         'metadata': {'DeviceID': device_id,
+                      'DeviceLabel': 'OS-%s' % volume_id,
+                      'ArrayID': array,
+                      'ArrayModel': array_model,
+                      'ServiceLevel': 'Silver',
+                      'Workload': 'NONE',
+                      'Emulation': 'FBA',
+                      'Configuration': 'TDEV',
+                      'CompressionDisabled': False,
+                      'R2-DeviceID': device_id2,
+                      'R2-ArrayID': remote_array,
+                      'R2-ArrayModel': array_model,
+                      'ReplicationMode': 'Synchronous',
+                      'RDFG-Label': rdf_group_name_1,
+                      'R1-RDFG': rdf_group_no_1,
+                      'R2-RDFG': rdf_group_no_1}})
+
+    non_replication_model = (
+        {'provider_location': six.text_type(provider_location),
+         'metadata': {'DeviceID': device_id,
+                      'DeviceLabel': 'OS-%s' % volume_id,
+                      'ArrayID': array,
+                      'ArrayModel': array_model,
+                      'ServiceLevel': 'Silver',
+                      'Workload': 'NONE',
+                      'Emulation': 'FBA',
+                      'Configuration': 'TDEV',
+                      'CompressionDisabled': False}})

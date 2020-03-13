@@ -3068,6 +3068,11 @@ class PowerMaxCommonTest(test.TestCase):
             self.common.update_metadata, model_update, existing_metadata,
             object_metadata)
 
+    def test_remove_stale_data(self):
+        ret_model_update = self.common.remove_stale_data(
+            self.data.replication_model)
+        self.assertEqual(self.data.non_replication_model, ret_model_update)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
                        return_value=tpd.PowerMaxData.add_volume_sg_info_dict)
     def test_get_tags_of_storage_group_none(self, mock_sg):
