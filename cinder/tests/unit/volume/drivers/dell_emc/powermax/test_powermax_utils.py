@@ -511,14 +511,13 @@ class PowerMaxUtilsTest(test.TestCase):
                 self.utils.is_snapshot_manageable(volume))
 
     def test_get_volume_attached_hostname(self):
-        device_info_pass = self.data.volume_details_attached
+
+        attached_volume = deepcopy(self.data.test_volume)
+        attached_volume.volume_attachment.objects = [
+            self.data.test_volume_attachment]
         # Success
-        hostname = self.utils.get_volume_attached_hostname(device_info_pass)
+        hostname = self.utils.get_volume_attached_hostname(attached_volume)
         self.assertEqual('HostX', hostname)
-        # Fail
-        device_info_fail = self.data.volume_details_no_sg
-        hostname = self.utils.get_volume_attached_hostname(device_info_fail)
-        self.assertIsNone(hostname)
 
     def test_validate_qos_input_exception(self):
         qos_extra_spec = {'total_iops_sec': 90, 'DistributionType': 'Wrong',
@@ -1016,3 +1015,127 @@ class PowerMaxUtilsTest(test.TestCase):
         port_name_out = self.utils.get_port_name_label(
             port_name_in, port_group_template)
         self.assertEqual('p_name3b02c', port_name_out)
+
+    def test_get_rdf_managed_storage_group(self):
+        rdf_component_dict = ('OS-23_24_007-Asynchronous-rdf-sg',
+                              {'prefix': 'OS',
+                               'rdf_label': '23_24_007',
+                               'sync_mode': 'Asynchronous',
+                               'after_mode': 'rdf-sg'})
+
+        async_rdf_details = (
+            self.utils.get_rdf_managed_storage_group(
+                self.data.volume_details_attached_async))
+        self.assertEqual(rdf_component_dict, async_rdf_details)
+
+    def test_get_storage_group_component_dict_no_slo(self):
+        """Test for get_storage_group_component_dict.
+
+        REST and no SLO.
+        """
+        sg_no_slo = 'OS-myhost-No_SLO-os-iscsi-pg'
+        component_dict = self.utils.get_storage_group_component_dict(
+            sg_no_slo)
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('No_SLO', component_dict['no_slo'])
+        self.assertEqual('os-iscsi-pg', component_dict['portgroup'])
+        self.assertIsNone(component_dict['sloworkload'])
+        self.assertIsNone(component_dict['srp'])
+
+    def test_get_storage_group_component_dict_slo_workload_2(self):
+        """Test for get_storage_group_component_dict.
+
+        SLO, workload and test 2.
+        """
+        sg_slo_workload = 'OS-myhost-SRP_1-DiamodOLTP-os-iscsi-pg-RE'
+        component_dict = self.utils.get_storage_group_component_dict(
+            sg_slo_workload)
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('os-iscsi-pg', component_dict['portgroup'])
+        self.assertEqual('DiamodOLTP', component_dict['sloworkload'])
+        self.assertIsNone(component_dict['no_slo'])
+
+    def test_get_storage_group_component_dict_compression_disabled(self):
+        """Test for get_storage_group_component_dict.
+
+        Compression disabled.
+        """
+        sg_compression_disabled = 'OS-myhost-SRP_1-DiamodNONE-os-iscsi-pg-CD'
+        component_dict = self.utils.get_storage_group_component_dict(
+            sg_compression_disabled)
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('os-iscsi-pg', component_dict['portgroup'])
+        self.assertEqual('DiamodNONE', component_dict['sloworkload'])
+        self.assertEqual('-CD', component_dict['after_pg'])
+        self.assertIsNone(component_dict['no_slo'])
+
+    def test_get_storage_group_component_dict_replication_enabled(self):
+        """Test for get_storage_group_component_dict.
+
+        Replication enabled.
+        """
+        sg_slo_workload_rep = 'OS-myhost-SRP_1-DiamodOLTP-os-iscsi-pg-RE'
+        component_dict = self.utils.get_storage_group_component_dict(
+            sg_slo_workload_rep)
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('os-iscsi-pg', component_dict['portgroup'])
+        self.assertEqual('DiamodOLTP', component_dict['sloworkload'])
+        self.assertEqual('-RE', component_dict['after_pg'])
+        self.assertIsNone(component_dict['no_slo'])
+
+    def test_get_storage_group_component_dict_slo_no_workload(self):
+        """Test for get_storage_group_component_dict.
+
+        SLO and no workload.
+        """
+        sg_slo_no_workload = 'OS-myhost-SRP_1-DiamodNONE-os-iscsi-pg'
+        component_dict = self.utils.get_storage_group_component_dict(
+            sg_slo_no_workload)
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('os-iscsi-pg', component_dict['portgroup'])
+        self.assertEqual('DiamodNONE', component_dict['sloworkload'])
+        self.assertIsNone(component_dict['no_slo'])
+
+    def test_get_storage_group_component_dict_dashes(self):
+        """Test for get_storage_group_component_dict, dashes."""
+        sg_host_with_dashes = (
+            'OS-host-with-dashes-SRP_1-DiamodOLTP-myportgroup-RE')
+        component_dict = self.utils.get_storage_group_component_dict(
+            sg_host_with_dashes)
+        self.assertEqual('host-with-dashes', component_dict['host'])
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('DiamodOLTP', component_dict['sloworkload'])
+        self.assertEqual('myportgroup', component_dict['portgroup'])
+        self.assertEqual('-RE', component_dict['after_pg'])
+
+    def test_delete_values_from_dict(self):
+        """Test delete_values_from_dict"""
+        delete_list = ['rdf_group_no', 'rep_mode', 'target_array_model',
+                       'service_level', 'remote_array', 'target_device_id',
+                       'replication_status', 'rdf_group_label']
+        data_dict = self.utils.delete_values_from_dict(
+            self.data.retype_metadata_dict, delete_list)
+        self.assertEqual({'device_id': self.data.device_id}, data_dict)
+
+    def test_update_values_in_dict(self):
+        """Test delete_values_from_dict"""
+        update_list = [('default_sg_name', 'source_sg_name'),
+                       ('service_level', 'source_service_level')]
+
+        update_dict = {'default_sg_name': 'default-sg',
+                       'service_level': 'Diamond'}
+        ret_dict = {'source_sg_name': 'default-sg',
+                    'source_service_level': 'Diamond'}
+        data_dict = self.utils.update_values_in_dict(
+            update_dict, update_list)
+        self.assertEqual(ret_dict, data_dict)

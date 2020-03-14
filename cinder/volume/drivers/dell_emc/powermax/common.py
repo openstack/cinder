@@ -1513,7 +1513,7 @@ class PowerMaxCommon(object):
         is_multiattach = False
         volume_name = volume.name
         device_id = self._find_device_on_array(volume, extra_specs)
-        if rep_extra_specs is not None:
+        if rep_extra_specs:
             device_id = self.get_remote_target_device(
                 extra_specs[utils.ARRAY], volume, device_id)[0]
             extra_specs = rep_extra_specs
@@ -2355,7 +2355,7 @@ class PowerMaxCommon(object):
                 create_snap = True
             self.provision.create_volume_replica(
                 array, source_device_id, target_device_id,
-                snap_name, extra_specs, create_snap)
+                snap_name, extra_specs, create_snap, copy_mode=True)
         except Exception as e:
             if target_device_id:
                 LOG.warning("Create replica failed. Cleaning up the target "
@@ -2516,7 +2516,7 @@ class PowerMaxCommon(object):
                 array, device_id, tgt_only=True)
             source_device_id = tgt_session['source_vol_id']
             LOG.debug("Target %(tgt)s source device %(src)s",
-                      {'target': device_id, 'src': source_device_id})
+                      {'tgt': device_id, 'src': source_device_id})
 
         return source_device_id
 
@@ -3317,9 +3317,15 @@ class PowerMaxCommon(object):
             # Scenario: Rep was not enabled, target VT has rep enabled, need to
             # enable replication
             elif not was_rep_enabled and is_rep_enabled:
-                metro_bias = utils.METROBIAS
-                if metro_bias in self.rep_config:
-                    extra_specs[metro_bias] = self.rep_config[metro_bias]
+                if self.rep_config['mode'] is utils.REP_METRO or (
+                        self.rep_config['mode'] is utils.REP_ASYNC):
+                    LOG.warning("Volume %(device_id)s cannot be retyped to "
+                                "%(mode)s in an attached state. Please "
+                                "detach first or use On Demand Migration "
+                                "Policy to run host assisted migration.",
+                                {'device_id': device_id,
+                                 'mode': self.rep_config['mode']})
+                    return False, model_update
                 rep_status, rep_driver_data, rep_info_dict = (
                     self.setup_inuse_volume_replication(
                         array, volume, device_id, extra_specs))
@@ -3332,21 +3338,6 @@ class PowerMaxCommon(object):
                 array, srp, volume, device_id, extra_specs,
                 target_slo, target_workload, target_extra_specs,
                 is_compression_disabled)
-
-            # Ensure that storage groups for metro volumes stay consistent
-            if not was_rep_enabled and is_rep_enabled and (
-                    self.rep_config['mode'] is utils.REP_METRO):
-                async_sg = self.utils.get_async_rdf_managed_grp_name(
-                    self.rep_config)
-                sg_exists = self.rest.get_storage_group(array, async_sg)
-                if not sg_exists:
-                    self.rest.create_storage_group(
-                        array, async_sg, extra_specs['srp'],
-                        extra_specs['slo'], extra_specs['workload'],
-                        extra_specs)
-                self.masking.add_volume_to_storage_group(
-                    array, device_id, async_sg, volume_name, extra_specs,
-                    True)
 
             # If the volume was replication enabled both before and after
             # retype, the volume needs to be retyped on the remote array also
@@ -3482,12 +3473,17 @@ class PowerMaxCommon(object):
         """
         success = False
         device_info = self.rest.get_volume(array, device_id)
-        source_sg_name = device_info['storageGroupId'][0]
+        if len(device_info.get('storageGroupId')) > 1:
+            LOG.warning('Device id %(dev)s is in more than 1 storage group.',
+                        {'dev': device_id})
+        # Get the source group
+        source_sg_name, __ = self.utils.get_production_storage_group(
+            device_info)
         source_sg = self.rest.get_storage_group(array, source_sg_name)
         target_extra_specs[utils.PORTGROUPNAME] = extra_specs[
             utils.PORTGROUPNAME]
 
-        attached_host = self.utils.get_volume_attached_hostname(device_info)
+        attached_host = self.utils.get_volume_attached_hostname(volume)
         if not attached_host:
             LOG.error(
                 "There was an issue retrieving attached host from volume "
@@ -3881,7 +3877,7 @@ class PowerMaxCommon(object):
                  local_vol_state, pair_state) = (
                     self.get_remote_target_device(array, volume, device_id))
 
-                if target_device is not None:
+                if target_device:
                     # Clean-up target
                     self._cleanup_remote_target(
                         array, volume, remote_array, device_id, target_device,
@@ -3889,22 +3885,24 @@ class PowerMaxCommon(object):
                     LOG.info('Successfully destroyed replication for '
                              'volume: %(volume)s',
                              {'volume': volume_name})
+
+                    # Remove the source volume from the rdf management storage
+                    # group if it exists there
+                    device_info = self.rest.get_volume(array, device_id)
+                    rdf_sg, __ = self.utils.get_rdf_managed_storage_group(
+                        device_info)
+                    if rdf_sg:
+                        self.rest.remove_vol_from_sg(
+                            array, rdf_sg, device_id, extra_specs)
+                        LOG.info('Removed device %(dev)s from storage '
+                                 'group %(sg)s.',
+                                 {'dev': device_id,
+                                  'sg': rdf_sg})
                 else:
                     LOG.warning('Replication target not found for '
                                 'replication-enabled volume: %(volume)s',
                                 {'volume': volume_name})
         except Exception as e:
-            if extra_specs.get(utils.REP_MODE, None) in [
-                    utils.REP_ASYNC, utils.REP_METRO]:
-                (target_device, remote_array, rdf_group_no,
-                 local_vol_state, pair_state) = (
-                    self.get_remote_target_device(
-                        extra_specs[utils.ARRAY], volume, device_id))
-                if target_device is not None:
-                    # Return devices to their async rdf management groups
-                    self._add_volume_to_async_rdf_managed_grp(
-                        extra_specs[utils.ARRAY], device_id, volume_name,
-                        remote_array, target_device, extra_specs)
             exception_message = (
                 _('Cannot get necessary information to cleanup '
                   'replication target for volume: %(volume)s. '
@@ -4219,15 +4217,22 @@ class PowerMaxCommon(object):
             replication_keybindings = ast.literal_eval(rep_target_data)
             remote_array = replication_keybindings['array']
             remote_device = replication_keybindings['device_id']
-            target_device_info = self.rest.get_volume(
-                remote_array, remote_device)
-            if target_device_info is not None:
+            try:
+                target_device_info = self.rest.get_volume(
+                    remote_array, remote_device)
+            except exception.VolumeBackendAPIException:
+                target_device_info = None
+            if target_device_info:
                 target_device = remote_device
                 are_vols_paired, local_vol_state, pair_state = (
                     self.rest.are_vols_rdf_paired(
                         array, remote_array, device_id, target_device))
                 if not are_vols_paired:
                     target_device = None
+            else:
+                LOG.warning('Unable to find device %s(dev)s on remote '
+                            'array %(array)s',
+                            {'dev': remote_device, 'array': remote_array})
         except (KeyError, ValueError):
             target_device = None
         return (target_device, remote_array, rdf_group,
