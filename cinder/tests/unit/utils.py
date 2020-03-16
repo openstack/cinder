@@ -15,7 +15,6 @@
 
 import datetime
 import socket
-import sys
 from unittest import mock
 import uuid
 
@@ -443,7 +442,7 @@ file_spec = None
 
 
 def get_file_spec():
-    """Return a Python 2 and 3 compatible version of a 'file' spec.
+    """Return a 'file' spec.
 
     This is to be used anywhere that you need to do something such as
     mock.MagicMock(spec=file) to mock out something with the file attributes.
@@ -454,14 +453,9 @@ def get_file_spec():
     global file_spec
     # set on first use
     if file_spec is None:
-        if sys.version_info[0] == 3:
-            import _io
-            file_spec = list(set(dir(_io.TextIOWrapper)).union(
-                set(dir(_io.BytesIO))))
-        else:
-            # NOTE(jsbryant): Pep8 on py3 based systems will fail because
-            # 'file' has been removed.  Using noqa here to avoid the failure.
-            file_spec = file  # noqa
+        import _io
+        file_spec = list(set(dir(_io.TextIOWrapper)).union(
+            set(dir(_io.BytesIO))))
 
 
 def generate_timeout_series(timeout):
