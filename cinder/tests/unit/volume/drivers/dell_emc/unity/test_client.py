@@ -65,7 +65,7 @@ class MockResource(object):
             raise ex.UnityResourceNotFoundError()
         elif self.get_id() == 'snap_in_use':
             raise ex.UnityDeleteAttachedSnapError()
-        elif self.name == 'empty_host':
+        elif self.name == 'empty-host':
             raise ex.HostDeleteIsCalled()
 
     @property
@@ -564,7 +564,8 @@ class ClientTest(unittest.TestCase):
         host = MockResource(name='empty-host')
         self.client.host_cache['empty-host'] = host
         self.assertRaises(ex.HostDeleteIsCalled,
-                          self.client.delete_host_wo_lock(host))
+                          self.client.delete_host_wo_lock,
+                          host)
 
     def test_delete_host_wo_lock_remove_from_cache(self):
         host = MockResource(name='empty-host-in-cache')
