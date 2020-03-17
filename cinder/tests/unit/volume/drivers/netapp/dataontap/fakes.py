@@ -538,6 +538,15 @@ test_snapshot.volume_id = 'fake_volume_id'
 test_snapshot.provider_location = PROVIDER_LOCATION
 
 
+class test_iscsi_attachment(object):
+    def __getattr__(self, key):
+        return getattr(self, key)
+
+
+test_iscsi_attachment = test_iscsi_attachment()
+test_iscsi_attachment.connector = ISCSI_CONNECTOR
+
+
 def get_fake_net_interface_get_iter_response():
     return etree.XML("""<results status="passed">
         <num-records>1</num-records>
