@@ -260,6 +260,33 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                           'fake_volume', fake.FC_FORMATTED_INITIATORS,
                           protocol, None)
 
+    def test__is_multiattached_true(self):
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            fake.test_iscsi_attachment,
+            fake.test_iscsi_attachment,
+        ]
+
+        self.assertTrue(self.library._is_multiattached(
+            volume,
+            fake.ISCSI_CONNECTOR))
+
+    def test__is_multiattached_false(self):
+        volume1 = copy.deepcopy(fake.test_volume)
+        volume1.multiattach = True
+        volume1.volume_attachment = []
+        volume2 = copy.deepcopy(fake.test_volume)
+        volume2.multiattach = False
+        volume2.volume_attachment = []
+
+        self.assertFalse(self.library._is_multiattached(
+            volume1,
+            fake.ISCSI_CONNECTOR))
+        self.assertFalse(self.library._is_multiattached(
+            volume2,
+            fake.ISCSI_CONNECTOR))
+
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_find_mapped_lun_igroup')
     def test_unmap_lun_empty(self, mock_find_mapped_lun_igroup):
@@ -301,6 +328,50 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                  mock.call(fake.LUN_PATH,
                            fake.ISCSI_MULTI_MAP_LIST[1]['initiator-group'])]
         self.zapi_client.unmap_lun.assert_has_calls(calls)
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_unmap_lun')
+    def test_terminate_connection_iscsi_multiattach(self, mock_unmap_lun):
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            fake.test_iscsi_attachment,
+            fake.test_iscsi_attachment,
+        ]
+
+        self.library.terminate_connection_iscsi(volume, fake.ISCSI_CONNECTOR)
+
+        mock_unmap_lun.assert_not_called()
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_unmap_lun')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')
+    def test_terminate_connection_iscsi_last_attachment(self,
+                                                        mock_get_lun_attr,
+                                                        mock_unmap_lun):
+        mock_get_lun_attr.return_value = {'Path': fake.PATH}
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [fake.test_iscsi_attachment]
+
+        self.library.terminate_connection_iscsi(volume, fake.ISCSI_CONNECTOR)
+
+        mock_unmap_lun.assert_called_once_with(
+            fake.PATH, [fake.ISCSI_CONNECTOR['initiator']])
+
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_unmap_lun')
+    @mock.patch.object(block_base.NetAppBlockStorageLibrary, '_get_lun_attr')
+    def test_terminate_connection_iscsi_all_initiators(self, mock_get_lun_attr,
+                                                       mock_unmap_lun):
+        mock_get_lun_attr.return_value = {'Path': fake.PATH}
+        volume = copy.deepcopy(fake.test_volume)
+        volume.multiattach = True
+        volume.volume_attachment = [
+            fake.test_iscsi_attachment,
+            fake.test_iscsi_attachment,
+        ]
+
+        self.library.terminate_connection_iscsi(volume, None)
+
+        mock_unmap_lun.assert_called_once_with(fake.PATH, [])
 
     def test_find_mapped_lun_igroup(self):
         self.assertRaises(NotImplementedError,
