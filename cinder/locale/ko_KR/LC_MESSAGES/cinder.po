@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-02-19 01:28+0000\n"
+"POT-Creation-Date: 2020-03-16 13:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2599,10 +2599,6 @@ msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr "복제가 적절하게 구성되지 않았으므로 장애 복구 실행에 실패했습니다."
 
-#, python-format
-msgid "KeyError: %s"
-msgstr "KeyError: %s"
-
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "중첩 할당량 지원을 받기 위해 Keystone 버전 3 이상을 사용해야 합니다."
 
@@ -3921,10 +3917,6 @@ msgid "Type cannot be converted into NaElement."
 msgstr "유형을 NaElement로 변환할 수 없습니다."
 
 #, python-format
-msgid "TypeError: %s"
-msgstr "TypeError: %s"
-
-#, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s이(가) 추가 및 제거 볼륨 목록에 있습니다. "
 
@@ -4325,10 +4317,6 @@ msgstr "볼륨 연결 유효성 검증에 실패했습니다(오류: %(err)s). "
 msgid ""
 "Value \"%(value)s\" is not valid for configuration option \"%(option)s\""
 msgstr "값 \"%(value)s\"이(가) 구성 옵션 \"%(option)s\"에 대해 올바르지 않음"
-
-#, python-format
-msgid "ValueError: %s"
-msgstr "ValueError: %s"
 
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."

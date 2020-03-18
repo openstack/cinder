@@ -1,15 +1,16 @@
 # Andi Chandler <andi@gowling.com>, 2017. #zanata
 # Andi Chandler <andi@gowling.com>, 2018. #zanata
 # Andi Chandler <andi@gowling.com>, 2019. #zanata
+# Andi Chandler <andi@gowling.com>, 2020. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-02-19 01:24+0000\n"
+"POT-Creation-Date: 2020-03-16 13:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2019-12-22 08:11+0000\n"
+"PO-Revision-Date: 2020-03-18 12:11+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -88,6 +89,9 @@ msgstr "12.0.1"
 msgid "12.0.10"
 msgstr "12.0.10"
 
+msgid "12.0.10-6"
+msgstr "12.0.10-6"
+
 msgid "12.0.2"
 msgstr "12.0.2"
 
@@ -130,6 +134,12 @@ msgstr "13.0.6"
 msgid "13.0.7"
 msgstr "13.0.7"
 
+msgid "13.0.8"
+msgstr "13.0.8"
+
+msgid "13.0.9"
+msgstr "13.0.9"
+
 msgid "14.0.0"
 msgstr "14.0.0"
 
@@ -139,8 +149,26 @@ msgstr "14.0.1"
 msgid "14.0.2"
 msgstr "14.0.2"
 
+msgid "14.0.3"
+msgstr "14.0.3"
+
+msgid "14.0.3-10"
+msgstr "14.0.3-10"
+
 msgid "15.0.0"
 msgstr "15.0.0"
+
+msgid "15.0.1"
+msgstr "15.0.1"
+
+msgid "15.0.1-18"
+msgstr "15.0.1-18"
+
+msgid "16.0.0.0b1"
+msgstr "16.0.0.0b1"
+
+msgid "16.0.0.0b1-35"
+msgstr "16.0.0.0b1-35"
 
 msgid ""
 "3PAR driver creates FC VLUN of match-set type instead of host sees. With "
@@ -250,6 +278,15 @@ msgstr ""
 "the ``backup_driver`` configuration setting."
 
 msgid ""
+"A new check is added to the ``cinder-status upgrade check`` CLI to check for "
+"the use of the deprecated ``cinder.quota.NestedDbQuotaDriver``. This driver "
+"will be replaced by a new, OpenStack-wide, nested quota management."
+msgstr ""
+"A new check is added to the ``cinder-status upgrade check`` CLI to check for "
+"the use of the deprecated ``cinder.quota.NestedDbQuotaDriver``. This driver "
+"will be replaced by a new, OpenStack-wide, nested quota management."
+
+msgid ""
 "A new cinder-manage command, reset_active_backend, was added to promote a "
 "failed-over backend participating in replication.  This allows you to reset "
 "a backend without manually editing the database.  A backend undergoing "
@@ -281,6 +318,18 @@ msgstr ""
 "A new target, spdk-nvmeof, is added for the SPDK driver over RDMA. It allows "
 "Cinder to use SPDK target in order to create/delete subsystems on attaching/"
 "detaching an SPDK volume to/from an instance."
+
+msgid ""
+"A new volume driver, SPDK, is added for Storage Performance Development Kit "
+"NVMe-oF target handling, that allows Cinder to manage volumes in SPDK NVMe-"
+"oF driver."
+msgstr ""
+"A new volume driver, SPDK, is added for Storage Performance Development Kit "
+"NVMe-oF target handling, that allows Cinder to manage volumes in SPDK NVMe-"
+"oF driver."
+
+msgid "A new volume is created without a type"
+msgstr "A new volume is created without a type"
 
 msgid ""
 "Add 'LUNType' configuration verification for Huawei driver when connecting "
@@ -4110,6 +4159,9 @@ msgstr ""
 "create a volume directly from a backup. For instance, you can use the "
 "command: ``cinder create <size> --backup-id <backup_id>`` in cinderclient."
 
+msgid "Stein Series Release Notes"
+msgstr "Stein Series Release Notes"
+
 msgid ""
 "Storage assisted volume migration from one Pool/SLO/Workload combination to "
 "another, on the same array, via retype, for the VMAX driver. Both All Flash "
@@ -5910,6 +5962,9 @@ msgstr ""
 "schema migration in Pike, so you won't be able to upgrade to Pike without "
 "that."
 
+msgid "Train Series Release Notes"
+msgstr "Train Series Release Notes"
+
 msgid ""
 "Two new policies \"volume_extension:type_get\" and \"volume_extension:"
 "type_get_all\" have been added to control type show and type list APIs."
@@ -6326,6 +6381,17 @@ msgid "ZTE"
 msgstr "ZTE"
 
 msgid ""
+"Zadara VPSA Driver: Added new driver authentication method to use VPSA API "
+"access key, and deprecate exisiting authentication method that used username "
+"and password combination. The deprecated config inputs will be removed in "
+"the next official release after Train."
+msgstr ""
+"Zadara VPSA Driver: Added new driver authentication method to use VPSA API "
+"access key, and deprecate existing authentication method that used username "
+"and password combination. The deprecated config inputs will be removed in "
+"the next official release after Train."
+
+msgid ""
 "[`Community Goal <https://governance.openstack.org/tc/goals/stein/upgrade-"
 "checkers.html>`_] Support has been added for developers to write pre-upgrade "
 "checks. Operators can run these checks using ``cinder-status upgrade "
@@ -6348,6 +6414,17 @@ msgstr ""
 "[`bug 1772421 <https://bugs.launchpad.net/keystone/+bug/1772421>`_] "
 "INFINIDAT fixed a bug in volume extension feature where volumes were not "
 "extended to target size but added the given target size."
+
+msgid ""
+"`Bug 1809249 <https://bugs.launchpad.net/cinder/+bug/1809249>`_ - 3PAR "
+"driver adds the config option `hpe3par_target_nsp` that can be set to the "
+"3PAR backend to use when multipath is not enabled and the Fibre Channel Zone "
+"Manager is not used."
+msgstr ""
+"`Bug 1809249 <https://bugs.launchpad.net/cinder/+bug/1809249>`_ - 3PAR "
+"driver adds the config option `hpe3par_target_nsp` that can be set to the "
+"3PAR backend to use when multipath is not enabled and the Fibre Channel Zone "
+"Manager is not used."
 
 msgid ""
 "``\"admin_or_storage_type_admin\": \"is_admin:True or role:storage_type_admin"
@@ -6377,6 +6454,24 @@ msgstr ""
 "and administrator can create AZ volume type that includes AZ restrictions by "
 "adding a list of AZs to the extra specs similar to: ``RESKEY:"
 "availability_zones: az1,az2``."
+
+msgid "``backend_stats_polling_interval``"
+msgstr "``backend_stats_polling_interval``"
+
+msgid "``backup_driver_init_check_interval``"
+msgstr "``backup_driver_init_check_interval``"
+
+msgid "``backup_driver_status_check_interval``"
+msgstr "``backup_driver_status_check_interval``"
+
+msgid ""
+"``backup_driver_status_check_interval`` config option is renamed to "
+"``backup_driver_stats_polling_interval`` to be similar with volume drivers "
+"configuration. Old option name support will be dropped in U release."
+msgstr ""
+"``backup_driver_status_check_interval`` config option is renamed to "
+"``backup_driver_stats_polling_interval`` to be similar with volume drivers "
+"configuration. Old option name support will be dropped in U release."
 
 msgid "``choice_client``"
 msgstr "``choice_client``"
@@ -6438,6 +6533,9 @@ msgstr "``retry_interval``"
 
 msgid "``retry_interval`` to ``disco_retry_interval``"
 msgstr "``retry_interval`` to ``disco_retry_interval``"
+
+msgid "``scheduler_driver_init_wait_time``"
+msgstr "``scheduler_driver_init_wait_time``"
 
 msgid "``snapshot_check_timeout`` to ``disco_snapshot_check_timeout``"
 msgstr "``snapshot_check_timeout`` to ``disco_snapshot_check_timeout``"
@@ -6563,6 +6661,15 @@ msgid ""
 msgstr ""
 "use oslo_middleware.sizelimit rather than cinder.api.middleware.sizelimit "
 "compatibility shim"
+
+msgid ""
+"vSphere 6.7 added support for vStorageObject snapshots. The "
+"VMwareVStorageObjectDriver is updated to use VStorageObject snapshots for "
+"volume snapshots."
+msgstr ""
+"vSphere 6.7 added support for vStorageObject snapshots. The "
+"VMwareVStorageObjectDriver is updated to use VStorageObject snapshots for "
+"volume snapshots."
 
 msgid ""
 "volume readonly update: \"POST /v3/{project_id}/volumes/{volume_id}/action\""

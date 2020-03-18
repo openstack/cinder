@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-02-19 01:28+0000\n"
+"POT-Creation-Date: 2020-03-16 13:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2575,10 +2575,6 @@ msgstr ""
 "Esecuzione del failover non riuscita perché la replica non è configurata "
 "correttamente."
 
-#, python-format
-msgid "KeyError: %s"
-msgstr "KeyError: %s"
-
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr ""
 "Keystone versione 3 o successiva deve essere utilizzato per ottenere il "
@@ -3925,10 +3921,6 @@ msgid "Type cannot be converted into NaElement."
 msgstr "Il tipo non può essere convertito in NaElement."
 
 #, python-format
-msgid "TypeError: %s"
-msgstr "TypeError: %s"
-
-#, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr ""
 "Gli UUID %s sono presenti nell'elenco dei volumi di aggiunta e rimozione."
@@ -4345,10 +4337,6 @@ msgid ""
 msgstr ""
 "Il valore \"%(value)s\" non è valido per l'opzione di configurazione "
 "\"%(option)s\""
-
-#, python-format
-msgid "ValueError: %s"
-msgstr "ValueError: %s"
 
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."

@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-02-19 01:28+0000\n"
+"POT-Creation-Date: 2020-03-16 13:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2754,10 +2754,6 @@ msgstr "Kaminario可重试异常:%(reason)s"
 msgid "KaminarioCinderDriver failure: %(reason)s"
 msgstr "Kaminario Cinder 驱动程序故障:%(reason)s"
 
-#, python-format
-msgid "KeyError: %s"
-msgstr "KeyError：%s"
-
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "必须使用 Keystone 版本 3 或更高版本来获取嵌套配额支持。"
 
@@ -4118,10 +4114,6 @@ msgid "Type cannot be converted into NaElement."
 msgstr "此类型不能转换为 NaElement。"
 
 #, python-format
-msgid "TypeError: %s"
-msgstr "TypeError：%s"
-
-#, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s 同时位于“添加卷”和“移除卷”列表中。"
 
@@ -4514,10 +4506,6 @@ msgstr "验证卷连接失败（错误：%(err)s）。"
 msgid ""
 "Value \"%(value)s\" is not valid for configuration option \"%(option)s\""
 msgstr "值“%(value)s”对于配置选项“%(option)s”无效"
-
-#, python-format
-msgid "ValueError: %s"
-msgstr "ValueError：%s"
 
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."

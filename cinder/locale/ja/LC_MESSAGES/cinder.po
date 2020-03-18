@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-02-27 21:29+0000\n"
+"POT-Creation-Date: 2020-03-16 13:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3097,10 +3097,6 @@ msgstr "再試行可能な Kaminario 例外: %(reason)s"
 msgid "KaminarioCinderDriver failure: %(reason)s"
 msgstr "Kaminario Cinder ドライバー障害です: %(reason)s"
 
-#, python-format
-msgid "KeyError: %s"
-msgstr "KeyError: %s"
-
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr ""
 "ネストされたクォータを使用するには、Keystone のバージョン 3 以降を使用する必"
@@ -4759,10 +4755,6 @@ msgid "Type cannot be converted into NaElement."
 msgstr "タイプは NaElement に変換できません。"
 
 #, python-format
-msgid "TypeError: %s"
-msgstr "TypeError: %s"
-
-#, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s が、ボリュームの追加リストと削除リストの両方に存在します。"
 
@@ -5225,10 +5217,6 @@ msgstr "ボリューム接続の検証に失敗しました (エラー: %(err)s)
 msgid ""
 "Value \"%(value)s\" is not valid for configuration option \"%(option)s\""
 msgstr "構成オプション \"%(option)s\" の値 \"%(value)s\" は無効です。"
-
-#, python-format
-msgid "ValueError: %s"
-msgstr "ValueError: %s"
 
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
