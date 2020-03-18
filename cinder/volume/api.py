@@ -242,6 +242,9 @@ class API(base.Base):
                     'than zero).') % size
             raise exception.InvalidInput(reason=msg)
 
+        # ensure we pass the volume_type provisioning filter on size
+        volume_types.provision_filter_on_size(context, volume_type, size)
+
         if consistencygroup and (not cgsnapshot and not source_cg):
             if not volume_type:
                 msg = _("volume_type must be provided when creating "
@@ -1385,6 +1388,14 @@ class API(base.Base):
                                                     'size': volume.size})
             raise exception.InvalidInput(reason=msg)
 
+        # Make sure we pass the potential size limitations in the volume type
+        try:
+            volume_type = volume_types.get_volume_type(context,
+                                                       volume.volume_type_id)
+        except (exception.InvalidVolumeType, exception.VolumeTypeNotFound):
+            volume_type = None
+        volume_types.provision_filter_on_size(context, volume_type, new_size)
+
         result = volume.conditional_update(value, expected)
         if not result:
             msg = (_("Volume %(vol_id)s status must be '%(expected)s' "
@@ -1635,6 +1646,9 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         new_type_id = new_type['id']
+
+        # Make sure we pass the potential size limitations in the volume type
+        volume_types.provision_filter_on_size(context, new_type, volume.size)
 
         # NOTE(jdg): We check here if multiattach is involved in either side
         # of the retype, we can't change multiattach on an in-use volume

@@ -15,6 +15,7 @@ import mock
 from oslo_config import cfg
 
 from cinder import context
+from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.policies import volume_actions as vol_action_policies
@@ -146,3 +147,56 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
         mock_authorize.assert_has_calls(
             [mock.call(vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY)
              ])
+
+    def test_retype_with_volume_type_resize_limits(self):
+
+        def _create_min_max_size_dict(min_size, max_size):
+            return {volume_types.MIN_SIZE_KEY: min_size,
+                    volume_types.MAX_SIZE_KEY: max_size}
+
+        def _setup_volume_types():
+            spec_dict = _create_min_max_size_dict(2, 4)
+            sized_vol_type_dict = {'name': 'limit_type',
+                                   'extra_specs': spec_dict}
+            db.volume_type_create(self.context, sized_vol_type_dict)
+            self.sized_vol_type = db.volume_type_get_by_name(
+                self.context, sized_vol_type_dict['name'])
+
+            unsized_vol_type_dict = {'name': 'unsized_type', 'extra_specs': {}}
+            db.volume_type_create(context.get_admin_context(),
+                                  unsized_vol_type_dict)
+            self.unsized_vol_type = db.volume_type_get_by_name(
+                self.context, unsized_vol_type_dict['name'])
+
+        _setup_volume_types()
+        volume_1 = tests_utils.create_volume(
+            self.context,
+            host=CONF.host,
+            status='available',
+            volume_type_id=self.default_vol_type.id,
+            size=1)
+        volume_3 = tests_utils.create_volume(
+            self.context,
+            host=CONF.host,
+            status='available',
+            volume_type_id=self.default_vol_type.id,
+            size=3)
+        volume_9 = tests_utils.create_volume(
+            self.context,
+            host=CONF.host,
+            status='available',
+            volume_type_id=self.default_vol_type.id,
+            size=9)
+
+        self.assertRaises(exception.InvalidInput,
+                          self.volume_api.retype,
+                          self.context, volume_1,
+                          'limit_type',
+                          migration_policy='on-demand')
+        self.assertRaises(exception.InvalidInput,
+                          self.volume_api.retype,
+                          self.context, volume_9,
+                          'limit_type',
+                          migration_policy='on-demand')
+        self.volume_api.retype(self.context, volume_3,
+                               'limit_type', migration_policy='on-demand')

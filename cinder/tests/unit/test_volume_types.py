@@ -594,3 +594,52 @@ class VolumeTypeTestCase(test.TestCase):
             'volume_type_project.test_suffix',
             {'volume_type_id': volume_type_id,
              'project_id': project_id})
+
+    def test_provision_filter_on_size(self):
+        volume_types.create(self.ctxt, "type1",
+                            {"key1": "val1", "key2": "val2"})
+        volume_types.create(self.ctxt, "type2",
+                            {volume_types.MIN_SIZE_KEY: "12",
+                             "key3": "val3"})
+        volume_types.create(self.ctxt, "type3",
+                            {volume_types.MAX_SIZE_KEY: "99",
+                             "key4": "val4"})
+        volume_types.create(self.ctxt, "type4",
+                            {volume_types.MIN_SIZE_KEY: "24",
+                             volume_types.MAX_SIZE_KEY: "99",
+                             "key4": "val4"})
+
+        # Make sure we don't fail if there is no volume type
+        volume_types.provision_filter_on_size(self.ctxt, None, "11")
+
+        # Make sure we don't raise if there are no min/max set
+        type1 = volume_types.get_by_name_or_id(self.ctxt, 'type1')
+        volume_types.provision_filter_on_size(self.ctxt, type1, "11")
+
+        # verify minimum size requirements
+        type2 = volume_types.get_by_name_or_id(self.ctxt, 'type2')
+        self.assertRaises(exception.InvalidInput,
+                          volume_types.provision_filter_on_size,
+                          self.ctxt, type2, "11")
+        volume_types.provision_filter_on_size(self.ctxt, type2, "12")
+        volume_types.provision_filter_on_size(self.ctxt, type2, "100")
+
+        # verify max size requirements
+        type3 = volume_types.get_by_name_or_id(self.ctxt, 'type3')
+        self.assertRaises(exception.InvalidInput,
+                          volume_types.provision_filter_on_size,
+                          self.ctxt, type3, "100")
+        volume_types.provision_filter_on_size(self.ctxt, type3, "99")
+        volume_types.provision_filter_on_size(self.ctxt, type3, "1")
+
+        # verify min and max
+        type4 = volume_types.get_by_name_or_id(self.ctxt, 'type4')
+        self.assertRaises(exception.InvalidInput,
+                          volume_types.provision_filter_on_size,
+                          self.ctxt, type4, "20")
+        self.assertRaises(exception.InvalidInput,
+                          volume_types.provision_filter_on_size,
+                          self.ctxt, type4, "130")
+        volume_types.provision_filter_on_size(self.ctxt, type4, "24")
+        volume_types.provision_filter_on_size(self.ctxt, type4, "99")
+        volume_types.provision_filter_on_size(self.ctxt, type4, "30")

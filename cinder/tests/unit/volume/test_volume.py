@@ -97,6 +97,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.service_id = 1
         self.user_context = context.RequestContext(user_id=fake.USER_ID,
                                                    project_id=fake.PROJECT_ID)
+        self._setup_volume_types()
 
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
@@ -182,6 +183,26 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         # ...lets switch it and check again!
         self.volume.driver._initialized = False
         self.assertFalse(self.volume.is_working())
+
+    def _create_min_max_size_dict(self, min_size, max_size):
+        return {volume_types.MIN_SIZE_KEY: min_size,
+                volume_types.MAX_SIZE_KEY: max_size}
+
+    def _setup_volume_types(self):
+        """Creates 2 types, one with size limits, one without."""
+
+        spec_dict = self._create_min_max_size_dict(2, 4)
+        sized_vol_type_dict = {'name': 'limit',
+                               'extra_specs': spec_dict}
+        db.volume_type_create(self.context, sized_vol_type_dict)
+        self.sized_vol_type = db.volume_type_get_by_name(
+            self.context, sized_vol_type_dict['name'])
+
+        unsized_vol_type_dict = {'name': 'unsized', 'extra_specs': {}}
+        db.volume_type_create(context.get_admin_context(),
+                              unsized_vol_type_dict)
+        self.unsized_vol_type = db.volume_type_get_by_name(
+            self.context, unsized_vol_type_dict['name'])
 
     @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch.object(QUOTAS, 'reserve')
@@ -613,6 +634,35 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                    'description',
                                    volume_type=db_vol_type)
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
+
+    @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.MagicMock())
+    @mock.patch('cinder.quota.QUOTAS.commit', new=mock.MagicMock())
+    @mock.patch('cinder.quota.QUOTAS.reserve', return_value=["RESERVATION"])
+    def test_create_volume_with_volume_type_size_limits(self, _mock_reserve):
+        """Test that volume type size limits are enforced."""
+        volume_api = cinder.volume.api.API()
+
+        volume = volume_api.create(self.context,
+                                   2,
+                                   'name',
+                                   'description',
+                                   volume_type=self.sized_vol_type)
+        self.assertEqual(self.sized_vol_type['id'], volume['volume_type_id'])
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          1,
+                          'name',
+                          'description',
+                          volume_type=self.sized_vol_type)
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.create,
+                          self.context,
+                          5,
+                          'name',
+                          'description',
+                          volume_type=self.sized_vol_type)
 
     def test_create_volume_with_multiattach_volume_type(self):
         """Test volume creation with multiattach volume type."""
@@ -2432,6 +2482,26 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         # clean up
         self.volume.delete_volume(self.context, volume)
+
+    @mock.patch.object(QUOTAS, 'limit_check')
+    @mock.patch.object(QUOTAS, 'reserve')
+    def test_extend_volume_with_volume_type_limit(self, reserve, limit_check):
+        """Test volume can be extended at API level."""
+        volume_api = cinder.volume.api.API()
+        volume = tests_utils.create_volume(
+            self.context, size=2,
+            volume_type_id=self.sized_vol_type['id'])
+
+        volume_api.scheduler_rpcapi = mock.MagicMock()
+        volume_api.scheduler_rpcapi.extend_volume = mock.MagicMock()
+
+        volume_api._extend(self.context, volume, 3)
+
+        self.assertRaises(exception.InvalidInput,
+                          volume_api._extend,
+                          self.context,
+                          volume,
+                          5)
 
     def test_extend_volume_driver_not_initialized(self):
         """Test volume can be extended at API level."""

@@ -39,6 +39,9 @@ QUOTAS = quota.QUOTAS
 ENCRYPTION_IGNORED_FIELDS = ['volume_type_id', 'created_at', 'updated_at',
                              'deleted_at', 'encryption_id']
 
+MIN_SIZE_KEY = "provisioning:min_vol_size"
+MAX_SIZE_KEY = "provisioning:max_vol_size"
+
 
 def create(context,
            name,
@@ -375,3 +378,35 @@ def volume_types_encryption_changed(context, vol_type_id1, vol_type_id2):
     enc1_filtered = _get_encryption(enc1) if enc1 else None
     enc2_filtered = _get_encryption(enc2) if enc2 else None
     return enc1_filtered != enc2_filtered
+
+
+def provision_filter_on_size(context, volume_type, size):
+    """This function filters volume provisioning requests on size limits.
+
+    If a volume type has provisioning size min/max set, this filter
+    will ensure that the volume size requested is within the size
+    limits specified in the volume type.
+    """
+
+    if volume_type:
+        size_int = int(size)
+        extra_specs = volume_type.get('extra_specs', {})
+        min_size = extra_specs.get(MIN_SIZE_KEY)
+        if min_size and size_int < int(min_size):
+            msg = _("Specified volume size of '%(req_size)d' is less "
+                    "than the minimum required size of '%(min_size)s' "
+                    "for volume type '%(vol_type)s'.") % {
+                'req_size': size_int, 'min_size': min_size,
+                'vol_type': volume_type['name']
+            }
+            raise exception.InvalidInput(reason=msg)
+
+        max_size = extra_specs.get(MAX_SIZE_KEY)
+        if max_size and size_int > int(max_size):
+            msg = _("Specified volume size of '%(req_size)d' is "
+                    "greater than the maximum allowable size of "
+                    "'%(max_size)s' for volume type '%(vol_type)s'."
+                    ) % {
+                'req_size': size_int, 'max_size': max_size,
+                'vol_type': volume_type['name']}
+            raise exception.InvalidInput(reason=msg)
