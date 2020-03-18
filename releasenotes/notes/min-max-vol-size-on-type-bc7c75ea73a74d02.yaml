@@ -1,0 +1,5 @@
+---
+features:
+  - Ability to add minimum and maximum volume size restrictions which
+    can be set on a per volume-type granularity.  New volume type keys of
+    'provisioning:min_vol_size' and 'provisioning:max_vol_size'.
