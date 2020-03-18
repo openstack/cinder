@@ -321,9 +321,13 @@ class SolidFireDriver(san.SanISCSIDriver):
         except SolidFireAPIException:
             pass
 
-    @staticmethod
-    def get_driver_options():
-        return sf_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'driver_ssl_cert_verify',
+            'replication_device', 'reserved_percentage',
+            'max_over_subscription_ratio')
+        return sf_opts + additional_opts
 
     def _init_vendor_properties(self):
         properties = {}

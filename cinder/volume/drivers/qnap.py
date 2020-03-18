@@ -106,9 +106,13 @@ class QnapISCSIDriver(san.SanISCSIDriver):
         self.target_iqns = []
         self.nasInfoCache = {}
 
-    @staticmethod
-    def get_driver_options():
-        return qnap_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'target_ip_address', 'san_login', 'san_password', 'use_chap_auth',
+            'chap_username', 'chap_password', 'driver_ssl_cert_verify',
+            'reserved_percentage')
+        return qnap_opts + additional_opts
 
     def _check_config(self):
         """Ensure that the flags we care about are set."""

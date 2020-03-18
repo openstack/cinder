@@ -142,9 +142,14 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
                 configuration=self.configuration,
                 active_backend_id=self.active_backend_id))
 
-    @staticmethod
-    def get_driver_options():
-        return common.powermax_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'driver_ssl_cert_verify',
+            'max_over_subscription_ratio', 'reserved_percentage',
+            'replication_device', 'use_chap_auth', 'chap_username',
+            'chap_password')
+        return common.powermax_opts + additional_opts
 
     def check_for_setup_error(self):
         pass

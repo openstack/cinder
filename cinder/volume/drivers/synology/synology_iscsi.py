@@ -44,9 +44,14 @@ class SynoISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(common.cinder_opts)
         self.stats = {}
 
-    @staticmethod
-    def get_driver_options():
-        return common.cinder_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'target_ip_address', 'target_protocol', 'target_port',
+            'driver_use_ssl', 'use_chap_auth', 'chap_username',
+            'chap_password', 'iscsi_secondary_ip_addresses', 'target_prefix',
+            'reserved_percentage', 'max_over_subscription_ratio')
+        return common.cinder_opts + additional_opts
 
     def do_setup(self, context):
         self.common = common.SynoCommon(self.configuration, 'iscsi')

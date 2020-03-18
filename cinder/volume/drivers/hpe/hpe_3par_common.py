@@ -58,6 +58,7 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
+from cinder.volume import driver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
@@ -367,9 +368,14 @@ class HPE3PARCommon(object):
     def get_version(self):
         return self.VERSION
 
-    @staticmethod
-    def get_driver_options():
-        return hpe3par_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = driver.BaseVD._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'reserved_percentage',
+            'max_over_subscription_ratio', 'replication_device', 'target_port',
+            'san_ssh_port', 'ssh_conn_timeout', 'san_private_key',
+            'target_ip_address')
+        return hpe3par_opts + additional_opts
 
     def check_flags(self, options, required_flags):
         for flag in required_flags:
