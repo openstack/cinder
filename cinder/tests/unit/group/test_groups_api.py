@@ -500,6 +500,7 @@ class GroupAPITestCase(test.TestCase):
         vol1.destroy()
         grp_snap.destroy()
 
+    @mock.patch('cinder.group.api.API._update_volumes_host')
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
     @mock.patch('cinder.db.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
@@ -512,7 +513,8 @@ class GroupAPITestCase(test.TestCase):
                                     mock_snap_get_all, mock_group_snap_get,
                                     mock_volume_api_create,
                                     mock_mapping_create,
-                                    mock_get_volume_type):
+                                    mock_get_volume_type,
+                                    mock_update_volumes_host):
         vol_type = fake_volume.fake_volume_type_obj(
             self.ctxt,
             id=fake.VOLUME_TYPE_ID,
@@ -566,12 +568,17 @@ class GroupAPITestCase(test.TestCase):
         mock_rpc_create_group_from_src.assert_called_once_with(
             self.ctxt, grp, grp_snap)
 
+        mock_update_volumes_host.assert_called_once_with(
+            self.ctxt, grp
+        )
+
         vol2.destroy()
         grp.destroy()
         snap.destroy()
         vol1.destroy()
         grp_snap.destroy()
 
+    @mock.patch('cinder.group.api.API._update_volumes_host')
     @mock.patch('cinder.objects.VolumeType.get_by_name_or_id')
     @mock.patch('cinder.db.group_volume_type_mapping_create')
     @mock.patch('cinder.volume.api.API.create')
@@ -583,7 +590,8 @@ class GroupAPITestCase(test.TestCase):
                                      mock_group_get,
                                      mock_volume_api_create,
                                      mock_mapping_create,
-                                     mock_get_volume_type):
+                                     mock_get_volume_type,
+                                     mock_update_volumes_host):
         vol_type = fake_volume.fake_volume_type_obj(
             self.ctxt,
             id=fake.VOLUME_TYPE_ID,
@@ -630,6 +638,10 @@ class GroupAPITestCase(test.TestCase):
 
         mock_rpc_create_group_from_src.assert_called_once_with(
             self.ctxt, grp2, None, grp)
+
+        mock_update_volumes_host.assert_called_once_with(
+            self.ctxt, grp2
+        )
 
         vol2.destroy()
         grp2.destroy()
@@ -780,6 +792,42 @@ class GroupAPITestCase(test.TestCase):
                           group_api.create_from_src,
                           self.ctxt, 'group', 'desc',
                           group_snapshot_id=None, source_group_id=group.id)
+
+    @mock.patch('cinder.objects.volume.Volume.host',
+                new_callable=mock.PropertyMock)
+    @mock.patch('cinder.objects.volume.Volume.cluster_name',
+                new_callable=mock.PropertyMock)
+    @mock.patch('cinder.objects.VolumeList.get_all_by_generic_group')
+    def test_update_volumes_host(self, mock_volume_get_all, mock_cluster_name,
+                                 mock_host):
+        vol_type = utils.create_volume_type(self.ctxt, name='test_vol_type')
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[vol_type['id']],
+                                 availability_zone='nova',
+                                 status=fields.GroupStatus.CREATING,
+                                 cluster_name='fake_cluster')
+
+        vol1 = utils.create_volume(
+            self.ctxt,
+            availability_zone=grp.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=grp.id)
+
+        mock_volume = mock.Mock()
+        mock_volume_get_all.return_value = [mock_volume]
+        group_api = cinder.group.api.API()
+        group_api._update_volumes_host(None, grp)
+
+        mock_cluster_name.assert_called()
+        mock_host.assert_called()
+
+        self.assertEqual(grp.host, mock_volume.host)
+        self.assertEqual(grp.cluster_name, mock_volume.cluster_name)
+        mock_volume.save.assert_called_once_with()
+
+        vol1.destroy()
+
+        grp.destroy()
 
     def test_delete_group_frozen(self):
         service = utils.create_service(self.ctxt, {'frozen': True})

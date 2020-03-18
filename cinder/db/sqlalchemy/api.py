@@ -6129,15 +6129,18 @@ def group_create(context, values, group_snapshot_id=None,
             values.pop('group_type_id', None)
             values.pop('availability_zone', None)
             values.pop('host', None)
+            values.pop('cluster_name', None)
             # NOTE(xyang): Save volume_type_ids to update later.
             volume_type_ids = values.pop('volume_type_ids', [])
 
             sel = session.query(group_model.group_type_id,
                                 group_model.availability_zone,
                                 group_model.host,
+                                group_model.cluster_name,
                                 *(bindparam(k, v) for k, v in values.items())
                                 ).filter(*conditions)
-            names = ['group_type_id', 'availability_zone', 'host']
+            names = ['group_type_id', 'availability_zone', 'host',
+                     'cluster_name']
             names.extend(values.keys())
             insert_stmt = group_model.__table__.insert().from_select(
                 names, sel)
