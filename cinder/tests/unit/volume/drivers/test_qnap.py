@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
 import collections
 from unittest import mock
 
@@ -39,19 +38,13 @@ CONF = cfg.CONF
 FAKE_LUNNAA = {'LUNNAA': 'fakeLunNaa'}
 FAKE_SNAPSHOT = {'snapshot_id': 'fakeSnapshotId'}
 
+FAKE_USER = 'admin'
 FAKE_PASSWORD = 'qnapadmin'
-FAKE_PARMS = collections.OrderedDict()
-FAKE_PARMS['pwd'] = base64.b64encode(FAKE_PASSWORD.encode("utf-8"))
-FAKE_PARMS['serviceKey'] = 1
-FAKE_PARMS['user'] = 'admin'
-sanitized_params = collections.OrderedDict()
-
-for key in FAKE_PARMS:
-    value = FAKE_PARMS[key]
-    if value is not None:
-        sanitized_params[key] = six.text_type(value)
-sanitized_params = utils.create_ordereddict(sanitized_params)
-global_sanitized_params = urllib.parse.urlencode(sanitized_params)
+FAKE_PASSWORD_ENCODED = 'cW5hcGFkbWlu'  # Base64 encoding of FAKE_PASSWORD
+FAKE_PARMS = collections.OrderedDict(pwd=FAKE_PASSWORD_ENCODED,
+                                     serviceKey='1',
+                                     user=FAKE_USER)
+global_sanitized_params = urllib.parse.urlencode(FAKE_PARMS)
 
 header = {
     'charset': 'utf-8',
@@ -1179,13 +1172,13 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin', 'qnapadmin', mng_url,
+                FAKE_USER, FAKE_PASSWORD, mng_url,
                 '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
         self.driver.do_setup('context')
 
         self.assertEqual('fakeSid', self.driver.api_executor.sid)
-        self.assertEqual('admin', self.driver.api_executor.username)
-        self.assertEqual('qnapadmin', self.driver.api_executor.password)
+        self.assertEqual(FAKE_USER, self.driver.api_executor.username)
+        self.assertEqual(FAKE_PASSWORD, self.driver.api_executor.password)
         self.assertEqual('1.2.3.4', self.driver.api_executor.ip)
         self.assertEqual(port, self.driver.api_executor.port)
         self.assertEqual(ssl, self.driver.api_executor.ssl)
@@ -1206,7 +1199,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin', 'qnapadmin', mng_url,
+                FAKE_USER, FAKE_PASSWORD, mng_url,
                 '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
 
         del self.driver.configuration.qnap_management_url
@@ -1231,7 +1224,7 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin', 'qnapadmin', mng_url,
+                FAKE_USER, FAKE_PASSWORD, mng_url,
                 '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.do_setup, 'context')
@@ -1251,14 +1244,14 @@ class QnapDriverLoginTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin', 'qnapadmin', mng_url,
+                FAKE_USER, FAKE_PASSWORD, mng_url,
                 '1.2.3.4', 'Storage Pool 1', True, verify_ssl=ssl))
         self.driver.do_setup('context')
         self.driver.check_for_setup_error()
 
         self.assertEqual('fakeSid', self.driver.api_executor.sid)
-        self.assertEqual('admin', self.driver.api_executor.username)
-        self.assertEqual('qnapadmin', self.driver.api_executor.password)
+        self.assertEqual(FAKE_USER, self.driver.api_executor.username)
+        self.assertEqual(FAKE_PASSWORD, self.driver.api_executor.password)
         self.assertEqual('1.2.3.4', self.driver.api_executor.ip)
         self.assertEqual(port, self.driver.api_executor.port)
         self.assertEqual(ssl, self.driver.api_executor.ssl)
@@ -1342,8 +1335,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1386,8 +1379,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1419,8 +1412,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1452,8 +1445,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1498,8 +1491,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 'Pool1',
                 True))
@@ -1562,8 +1555,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1597,8 +1590,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1635,8 +1628,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1663,8 +1656,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1703,8 +1696,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1754,8 +1747,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1787,8 +1780,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1834,8 +1827,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1866,8 +1859,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1917,8 +1910,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -1972,8 +1965,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2028,8 +2021,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2086,8 +2079,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -2129,8 +2122,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2170,8 +2163,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2208,8 +2201,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2235,8 +2228,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2267,8 +2260,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2304,8 +2297,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2335,8 +2328,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2360,8 +2353,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             'ES1640dc ', 'ES1640dc ', '1.1.3')
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2405,8 +2398,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             'ES1640dc ', 'ES1640dc ', '1.1.3')
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2431,8 +2424,8 @@ class QnapDriverVolumeTestCase(QnapDriverBaseTestCase):
             'ES1640dc ', 'ES1640dc ', '1.1.3')
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2462,8 +2455,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2522,8 +2515,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2584,8 +2577,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2613,8 +2606,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2639,8 +2632,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2685,8 +2678,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2709,8 +2702,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2733,8 +2726,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2779,8 +2772,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2827,8 +2820,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2851,8 +2844,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2875,8 +2868,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2924,8 +2917,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2948,8 +2941,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -2970,8 +2963,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3026,8 +3019,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3050,8 +3043,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3073,8 +3066,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3105,8 +3098,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3152,8 +3145,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3176,8 +3169,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3200,8 +3193,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3246,8 +3239,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3270,8 +3263,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3294,8 +3287,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3341,8 +3334,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3365,8 +3358,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3389,8 +3382,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3434,8 +3427,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3455,8 +3448,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3498,8 +3491,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3542,8 +3535,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3586,8 +3579,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3632,8 +3625,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3655,8 +3648,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3702,8 +3695,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3726,8 +3719,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3774,8 +3767,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3799,8 +3792,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3824,8 +3817,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3873,8 +3866,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3897,8 +3890,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3921,8 +3914,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -3963,8 +3956,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4005,8 +3998,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4049,8 +4042,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4073,8 +4066,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4097,8 +4090,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4144,8 +4137,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4168,8 +4161,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4192,8 +4185,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4248,8 +4241,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4278,8 +4271,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4308,8 +4301,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4349,8 +4342,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4391,8 +4384,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4430,8 +4423,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4473,8 +4466,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4497,8 +4490,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4543,8 +4536,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4567,8 +4560,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4591,8 +4584,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4637,8 +4630,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4662,8 +4655,8 @@ class QnapAPIExecutorEsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -4713,8 +4706,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4771,8 +4764,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4831,8 +4824,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4860,8 +4853,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4886,8 +4879,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4933,8 +4926,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4957,8 +4950,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -4981,8 +4974,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5026,8 +5019,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5073,8 +5066,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5097,8 +5090,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5121,8 +5114,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5169,8 +5162,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5193,8 +5186,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5217,8 +5210,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5264,8 +5257,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5288,8 +5281,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5312,8 +5305,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5360,8 +5353,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5383,8 +5376,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5406,8 +5399,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5454,8 +5447,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5478,8 +5471,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5502,8 +5495,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5540,8 +5533,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5564,8 +5557,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5612,8 +5605,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5637,8 +5630,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5662,8 +5655,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5710,8 +5703,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5734,8 +5727,8 @@ class QnapAPIExecutorTsTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Storage Pool 1',
@@ -5765,8 +5758,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -5825,8 +5818,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -5887,8 +5880,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -5916,8 +5909,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -5942,8 +5935,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
@@ -5981,8 +5974,8 @@ class QnapAPIExecutorTesTestCase(QnapDriverBaseTestCase):
 
         self.driver = qnap.QnapISCSIDriver(
             configuration=create_configuration(
-                'admin',
-                'qnapadmin',
+                FAKE_USER,
+                FAKE_PASSWORD,
                 'http://1.2.3.4:8080',
                 '1.2.3.4',
                 'Pool1',
