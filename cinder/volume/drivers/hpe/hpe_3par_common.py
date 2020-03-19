@@ -57,6 +57,7 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
+from cinder.volume import driver
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
@@ -296,11 +297,12 @@ class HPE3PARCommon(object):
         4.0.13 - Fixed detaching issue for volume with type multiattach
                  enabled. bug #1834660
         4.0.14 - Added Peer Persistence feature
+        4.0.15 - Support duplicated FQDN in network. Bug #1834695
 
 
     """
 
-    VERSION = "4.0.14"
+    VERSION = "4.0.15"
 
     stats = {}
 
@@ -371,7 +373,7 @@ class HPE3PARCommon(object):
 
     @staticmethod
     def get_driver_options():
-        return hpe3par_opts
+        return hpe3par_opts + driver.fqdn_opts
 
     def check_flags(self, options, required_flags):
         for flag in required_flags:
@@ -1447,19 +1449,29 @@ class HPE3PARCommon(object):
                 raise exception.VolumeBackendAPIException(
                     data=e.get_description())
 
-    def _safe_hostname(self, hostname):
+    def _safe_hostname(self, hostname, connector=None):
         """We have to use a safe hostname length for 3PAR host names."""
-        try:
-            index = hostname.index('.')
-        except ValueError:
-            # couldn't find it
-            index = len(hostname)
+        SHARED_CONF_GROUP = 'backend_defaults'
+        shared_backend_conf = CONF._get(SHARED_CONF_GROUP)
+        unique_fqdn_network = shared_backend_conf.unique_fqdn_network
+        LOG.debug("unique_fqdn_network: %(fqdn)s",
+                  {'fqdn': unique_fqdn_network})
+        if(not unique_fqdn_network and connector.get('initiator')):
+            iqn = connector.get('initiator')
+            iqn = iqn.replace(":", "-")
+            return iqn[::-1][:31]
+        else:
+            try:
+                index = hostname.index('.')
+            except ValueError:
+                # couldn't find it
+                index = len(hostname)
 
-        # we'll just chop this off for now.
-        if index > 31:
-            index = 31
+            # we'll just chop this off for now.
+            if index > 31:
+                index = 31
 
-        return hostname[:index]
+            return hostname[:index]
 
     def _get_3par_host(self, hostname):
         return self.client.getHost(hostname)

@@ -495,7 +495,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
             if is_force_detach:
                 common.terminate_connection(volume, None, None)
             else:
-                hostname = common._safe_hostname(connector['host'])
+                hostname = common._safe_hostname(connector['host'], connector)
                 common.terminate_connection(
                     volume,
                     hostname,
@@ -601,7 +601,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         domain = None
         username = None
         password = None
-        hostname = common._safe_hostname(connector['host'])
+        hostname = common._safe_hostname(connector['host'], connector)
 
         if remote_target:
             cpg = common._get_cpg_from_cpg_map(
