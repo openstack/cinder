@@ -81,6 +81,7 @@ iSCSI configuration example
    volume_backend_name = IFT-ISCSI
    infortrend_pools_name = POOL-1,POOL-2
    san_ip = MANAGEMENT_PORT_IP
+   san_password = MANAGEMENT_PASSWORD
    infortrend_slots_a_channels_id = 0,1,2,3
    infortrend_slots_b_channels_id = 0,1,2,3
 
@@ -98,6 +99,7 @@ Fibre Channel configuration example
    volume_backend_name = IFT-FC
    infortrend_pools_name = POOL-1,POOL-2,POOL-3
    san_ip = MANAGEMENT_PORT_IP
+   san_password = MANAGEMENT_PASSWORD
    infortrend_slots_a_channels_id = 4,5
 
 Multipath configuration
