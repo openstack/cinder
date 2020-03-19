@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-16 13:44+0000\n"
+"POT-Creation-Date: 2020-03-18 14:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -894,6 +894,10 @@ msgstr "容器大小小于所需文件大小。"
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "已转换为 %(f1)s，但现在格式为 %(f2)s"
+
+#, python-format
+msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
+msgstr "已转换为 %(vol_format)s，但现在格式为 %(file_format)s"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -1859,12 +1863,6 @@ msgstr "未能登录到 %s 阵列（无效登录？）。"
 
 msgid "Failed to login with all rest URLs."
 msgstr "未能使用所有 REST URL 进行登录。"
-
-#, python-format
-msgid ""
-"Failed to make a request to Datera cluster endpoint due to the following "
-"reason: %s"
-msgstr "由于以下原因，未能对 Datera 集群端点进行请求：%s"
 
 msgid "Failed to manage api volume flow."
 msgstr "未能管理 API 卷流。"
@@ -3458,10 +3456,6 @@ msgid "Request body contains too many items"
 msgstr "请求主体包含太多items"
 
 #, python-format
-msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
-msgstr "针对 Datera 集群的请求返回了不正确的状态：%(status)s | %(reason)s"
-
-#, python-format
 msgid ""
 "Requested backup exceeds allowed Backup gigabytes quota. Requested "
 "%(requested)sG, quota is %(quota)sG and %(consumed)sG has been consumed."
@@ -3727,9 +3721,6 @@ msgstr "源卷未在迁移中。"
 msgid "Specified logical volume does not exist."
 msgstr "所指定的逻辑卷不存在。"
 
-msgid "Specifies IP pool to use for volume"
-msgstr "为使用卷指定IP池。"
-
 msgid ""
 "Specifies number of replicas for each volume. Can only be increased once "
 "volume is created"
@@ -3884,12 +3875,6 @@ msgstr "主机未准备好故障返回。请重新同步卷并在 LeftHand 后�
 
 msgid "The method update_migrated_volume is not implemented."
 msgstr "未实现方法 update_migrated_volume。"
-
-msgid "The name to use for storage instances created"
-msgstr "存储实例使用的名称已创建。"
-
-msgid "The name to use for volumes created"
-msgstr "卷使用的名称已创建。"
 
 msgid "The parent backup must be available for incremental backup."
 msgstr "父备份必须可用于增量备份。"
@@ -5546,12 +5531,6 @@ msgid ""
 msgstr ""
 "将对象写入 swift 时出错，swift %(etag)s 中对象的 MD5 与发送至 swift %(md5)s "
 "的对象的 MD5 不同"
-
-msgid ""
-"existing_ref argument must be of this format:app_inst_name:storage_inst_name:"
-"vol_name"
-msgstr ""
-"参数 existing_ref 的格式必须为：app_inst_name:storage_inst_name:vol_name。"
 
 #, python-format
 msgid "extend_volume, eternus_pool: %(eternus_pool)s, pool not found."

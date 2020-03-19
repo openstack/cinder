@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-16 13:44+0000\n"
+"POT-Creation-Date: 2020-03-18 14:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -783,6 +783,12 @@ msgstr "Размер контейнера меньше размера требу
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Выполнено преобразование в %(f1)s, но в данный момент формат - %(f2)s"
+
+#, python-format
+msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
+msgstr ""
+"Выполнено преобразование в %(vol_format)s, но в данный момент формат - "
+"%(file_format)s"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -1735,14 +1741,6 @@ msgstr "Не удалось войти в массив %s (неправильн�
 
 msgid "Failed to login with all rest URLs."
 msgstr "Не удалось войти через все URL REST."
-
-#, python-format
-msgid ""
-"Failed to make a request to Datera cluster endpoint due to the following "
-"reason: %s"
-msgstr ""
-"Не удалось создать запрос к конечной точке кластера Datera по следующей "
-"причине: %s"
 
 msgid "Failed to manage api volume flow."
 msgstr "Сбой управления потоком тома api."
@@ -3212,11 +3210,6 @@ msgstr "Тело запроса и URI не совпадают"
 
 msgid "Request body contains too many items"
 msgstr "Тело запроса содержит избыточное количество объектов"
-
-#, python-format
-msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
-msgstr ""
-"Запрос к кластеру Datera вернул неверное состояние: %(status)s | %(reason)s"
 
 #, python-format
 msgid ""

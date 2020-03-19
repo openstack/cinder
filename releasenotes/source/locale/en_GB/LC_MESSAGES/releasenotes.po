@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-03-16 13:40+0000\n"
+"POT-Creation-Date: 2020-03-18 14:36+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -152,9 +152,6 @@ msgstr "14.0.2"
 msgid "14.0.3"
 msgstr "14.0.3"
 
-msgid "14.0.3-10"
-msgstr "14.0.3-10"
-
 msgid "15.0.0"
 msgstr "15.0.0"
 
@@ -166,9 +163,6 @@ msgstr "15.0.1-18"
 
 msgid "16.0.0.0b1"
 msgstr "16.0.0.0b1"
-
-msgid "16.0.0.0b1-35"
-msgstr "16.0.0.0b1-35"
 
 msgid ""
 "3PAR driver creates FC VLUN of match-set type instead of host sees. With "

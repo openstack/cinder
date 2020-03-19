@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-16 13:44+0000\n"
+"POT-Creation-Date: 2020-03-18 14:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -820,6 +820,11 @@ msgstr "Tamaño de contenedor menor que tamaño de archivo necesario."
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "Se ha convertido a %(f1)s, pero ahora el formato es %(f2)s"
+
+#, python-format
+msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
+msgstr ""
+"Se ha convertido a %(vol_format)s, pero ahora el formato es %(file_format)s"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -1815,14 +1820,6 @@ msgstr ""
 
 msgid "Failed to login with all rest URLs."
 msgstr "No se ha podido iniciar sesión con todos los URL rest."
-
-#, python-format
-msgid ""
-"Failed to make a request to Datera cluster endpoint due to the following "
-"reason: %s"
-msgstr ""
-"No se ha podido hacer una solicitud al punto final del clúster de Datera "
-"debido al siguiente motivo: %s"
 
 msgid "Failed to manage api volume flow."
 msgstr "No se ha podido gestionar el flujo de volumen de la API."
@@ -3383,12 +3380,6 @@ msgstr "Discrepancia de URI y cuerpo de solicitud"
 
 msgid "Request body contains too many items"
 msgstr "El cuerpo de solicitud contiene demasiados elementos"
-
-#, python-format
-msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
-msgstr ""
-"La solicitud al clúster de Datera ha devuelto un estado incorrecto: "
-"%(status)s | %(reason)s"
 
 #, python-format
 msgid ""

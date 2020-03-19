@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-16 13:44+0000\n"
+"POT-Creation-Date: 2020-03-18 14:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -817,6 +817,10 @@ msgstr "컨테이너 크기가 필요한 파일 크기보다 작습니다."
 #, python-format
 msgid "Converted to %(f1)s, but format is now %(f2)s"
 msgstr "%(f1)s(으)로 변환되었지만 이제 형식이 %(f2)s임"
+
+#, python-format
+msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
+msgstr "%(vol_format)s(으)로 변환되었지만 이제 형식이 %(file_format)s임"
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
@@ -1753,12 +1757,6 @@ msgstr "%s 배열에 로그온하지 못했습니다(올바르지 않은 로그�
 
 msgid "Failed to login with all rest URLs."
 msgstr "모든 나머지 URL로 로그인하지 못했습니다. "
-
-#, python-format
-msgid ""
-"Failed to make a request to Datera cluster endpoint due to the following "
-"reason: %s"
-msgstr "다음 이유로 Datera 클러스터 엔드포인트에 요청을 작성하지 못함: %s"
 
 msgid "Failed to manage api volume flow."
 msgstr "API 볼륨 플로우를 관리하지 못했습니다. "
@@ -3286,11 +3284,6 @@ msgstr "요청 본문 및 URI 불일치"
 
 msgid "Request body contains too many items"
 msgstr "요청 본문에 너무 많은 항목이 들어있음"
-
-#, python-format
-msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
-msgstr ""
-"Datera 클러스터에 대한 요청이 잘못된 상태를 리턴함: %(status)s | %(reason)s"
 
 #, python-format
 msgid ""
