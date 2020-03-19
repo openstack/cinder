@@ -71,7 +71,7 @@ IRC
     answered: http://eavesdrop.openstack.org/irclogs/%23openstack-cinder/
 
 weekly meeting
-    Wednesdays at 14:00 UTC in ``#openstack-meeting-4`` on Freenode.
+    Wednesdays at 14:00 UTC in ``#openstack-meeting-alt`` on Freenode.
     Meetings are logged: http://eavesdrop.openstack.org/meetings/cinder/
 
     More information (including a link to the Agenda, some pointers on
