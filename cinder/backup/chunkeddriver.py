@@ -711,9 +711,12 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 LOG.debug('decompressing data using %s algorithm',
                           compression_algorithm)
                 decompressed = decompressor.decompress(body)
+                body = None  # Allow Python to free it
                 volume_file.write(decompressed)
+                decompressed = None  # Allow Python to free it
             else:
                 volume_file.write(body)
+                body = None  # Allow Python to free it
 
             # force flush every write to avoid long blocking write on close
             volume_file.flush()
