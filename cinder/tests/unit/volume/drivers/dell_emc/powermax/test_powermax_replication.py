@@ -1208,3 +1208,93 @@ class PowerMaxReplicationTest(test.TestCase):
                 extra_specs, rep_extra_specs, volume_dict))
 
         self.assertEqual(ref_replication_update, replication_update)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, '_delete_from_srp')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volumes_in_storage_group', return_value=0)
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'remove_volume_from_sg')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'srdf_delete_device_pair')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'srdf_suspend_replication')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'wait_for_rdf_group_sync')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+        return_value=[utils.RDF_SYNCINPROG_STATE])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        side_effect=[tpd.PowerMaxData.r1_sg_list, tpd.PowerMaxData.r2_sg_list])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_rdf_pair_volume',
+        return_value=tpd.PowerMaxData.rdf_group_vol_details)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.ex_specs_rep_config[utils.REP_CONFIG])
+    def test_break_rdf_device_pair_session_metro_async(
+            self, mck_get_rep, mck_get_rdf, mck_get_sg, mck_get_sg_state,
+            mck_wait, mck_suspend, mck_delete_rdf_pair, mck_remove,
+            mck_get_vols, mck_delete):
+
+        array = self.data.array
+        device_id = self.data.device_id
+        volume_name = self.data.test_volume.name
+        extra_specs = deepcopy(self.data.ex_specs_rep_config)
+
+        rep_extra_specs, resume_rdf = (
+            self.common.break_rdf_device_pair_session(
+                array, device_id, volume_name, extra_specs))
+
+        extra_specs[utils.REP_CONFIG]['force_vol_remove'] = True
+        self.assertEqual(extra_specs[utils.REP_CONFIG], rep_extra_specs)
+        self.assertFalse(resume_rdf)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, '_delete_from_srp')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volumes_in_storage_group', return_value=10)
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'remove_volume_from_sg')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'srdf_delete_device_pair')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'srdf_suspend_replication')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'wait_for_rdf_group_sync')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+        return_value=[utils.RDF_SYNCINPROG_STATE])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        side_effect=[tpd.PowerMaxData.r1_sg_list, tpd.PowerMaxData.r2_sg_list])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_rdf_pair_volume',
+        return_value=tpd.PowerMaxData.rdf_group_vol_details)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=(
+            tpd.PowerMaxData.ex_specs_rep_config_sync[utils.REP_CONFIG]))
+    def test_break_rdf_device_pair_session_sync(
+            self, mck_get_rep, mck_get_rdf, mck_get_sg, mck_get_sg_state,
+            mck_wait, mck_suspend, mck_delete_rdf_pair, mck_remove,
+            mck_get_vols, mck_delete):
+
+        array = self.data.array
+        device_id = self.data.device_id
+        volume_name = self.data.test_volume.name
+        extra_specs = deepcopy(self.data.ex_specs_rep_config)
+        extra_specs[utils.REP_MODE] = utils.REP_SYNC
+        extra_specs[utils.REP_CONFIG]['mode'] = utils.REP_SYNC
+
+        rep_extra_specs, resume_rdf = (
+            self.common.break_rdf_device_pair_session(
+                array, device_id, volume_name, extra_specs))
+
+        extra_specs[utils.REP_CONFIG]['force_vol_remove'] = True
+        extra_specs[utils.REP_CONFIG]['mgmt_sg_name'] = (
+            self.data.default_sg_no_slo_re_enabled)
+
+        self.assertEqual(extra_specs[utils.REP_CONFIG], rep_extra_specs)
+        self.assertTrue(resume_rdf)

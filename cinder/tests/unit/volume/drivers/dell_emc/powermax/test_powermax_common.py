@@ -320,6 +320,41 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(self.data.replication_update, update)
         self.assertEqual(self.data.rep_info_dict, info)
 
+    @mock.patch.object(common.PowerMaxCommon, 'gather_replication_updates',
+                       return_value=(tpd.PowerMaxData.replication_update,
+                                     tpd.PowerMaxData.rep_info_dict))
+    @mock.patch.object(common.PowerMaxCommon, 'get_and_set_remote_device_uuid',
+                       return_value=tpd.PowerMaxData.device_id2)
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(
+        common.PowerMaxCommon, 'configure_volume_replication',
+        return_value=(None, None, None, tpd.PowerMaxData.rep_extra_specs_mgmt,
+                      True))
+    @mock.patch.object(common.PowerMaxCommon, 'srdf_protect_storage_group')
+    @mock.patch.object(provision.PowerMaxProvision, 'create_volume_from_sg',
+                       return_value=tpd.PowerMaxData.volume_create_info_dict)
+    @mock.patch.object(common.PowerMaxCommon, 'prepare_replication_details',
+                       return_value=(True, {}, {}, False))
+    def test_create_replication_enabled_volume_not_first_rdfg_volume(
+            self, mck_prepare, mck_create, mck_protect, mck_configure,
+            mck_resume, mck_get_set, mck_updates):
+
+        array = self.data.array
+        volume = self.data.test_volume
+        volume_name = volume.name
+        volume_size = volume.size
+        rep_extra_specs = self.data.rep_extra_specs
+        storagegroup_name = self.data.storagegroup_name_f
+
+        self.common._create_replication_enabled_volume(
+            array, volume, volume_name, volume_size, rep_extra_specs,
+            storagegroup_name, rep_extra_specs['rep_mode'])
+
+        mck_prepare.assert_called_once()
+        mck_protect.assert_not_called()
+        mck_configure.assert_called_once()
+        mck_resume.assert_called_once()
+
     @mock.patch.object(common.PowerMaxCommon, '_clone_check')
     @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
                        return_value='')
@@ -2100,26 +2135,6 @@ class PowerMaxCommonTest(test.TestCase):
             model_update, __ = self.common._delete_group(
                 group, volumes)
         self.assertEqual(ref_model_update, model_update)
-
-    # TODO: FIX THIS
-    # @mock.patch.object(
-    #     common.PowerMaxCommon, '_get_clone_vol_info',
-    #     return_value=(tpd.PowerMaxData.device_id,
-    #                   tpd.PowerMaxData.extra_specs, 1, 'tgt_vol'))
-    # @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
-    #                    return_value=True)
-    # @mock.patch.object(volume_utils, 'is_group_a_type',
-    #                    return_value=False)
-    # @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
-    #                    return_value='')
-    # def test_create_group_from_src_success(self, mck_meta, mock_type,
-    #                                        mock_cg_type, mock_info):
-    #     ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
-    #     model_update, volumes_model_update = (
-    #         self.common.create_group_from_src(
-    #             None, self.data.test_group_1, [self.data.test_volume],
-    #             self.data.test_group_snapshot_1, [], None, []))
-    #     self.assertEqual(ref_model_update, model_update)
 
     @mock.patch.object(
         common.PowerMaxCommon, '_remove_vol_and_cleanup_replication')
