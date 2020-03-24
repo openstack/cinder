@@ -3,6 +3,7 @@
 # Copyright (c) 2015 EMC Corporation
 # Copyright (C) 2015 Kevin Fox <kevin@efox.cc>
 # Copyright (C) 2015 Tom Barron <tpb@dyncloud.net>
+# Copyright (C) 2020 SAP SE
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,6 +24,7 @@
 
 import abc
 import hashlib
+import io
 import json
 import os
 
@@ -31,6 +33,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
+from oslo_utils import importutils
 from oslo_utils import units
 import six
 
@@ -75,7 +78,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
     """
 
     DRIVER_VERSION = '1.0.0'
-    DRIVER_VERSION_MAPPING = {'1.0.0': '_restore_v1'}
+    DRIVER_VERSION_MAPPING = {
+        '1.0.0': 'cinder.backup.chunkeddriver.BackupRestoreHandleV1'
+    }
 
     def _get_compressor(self, algorithm):
         try:
@@ -623,76 +628,6 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
         self._finalize_backup(backup, container, object_meta, object_sha256)
 
-    def _restore_v1(self, backup, volume_id, metadata, volume_file):
-        """Restore a v1 volume backup."""
-        backup_id = backup['id']
-        LOG.debug('v1 volume backup restore of %s started.', backup_id)
-        extra_metadata = metadata.get('extra_metadata')
-        container = backup['container']
-        metadata_objects = metadata['objects']
-        metadata_object_names = []
-        for obj in metadata_objects:
-            metadata_object_names.extend(obj.keys())
-        LOG.debug('metadata_object_names = %s.', metadata_object_names)
-        prune_list = [self._metadata_filename(backup),
-                      self._sha256_filename(backup)]
-        object_names = [object_name for object_name in
-                        self._generate_object_names(backup)
-                        if object_name not in prune_list]
-        if sorted(object_names) != sorted(metadata_object_names):
-            err = _('restore_backup aborted, actual object list '
-                    'does not match object list stored in metadata.')
-            raise exception.InvalidBackup(reason=err)
-
-        for metadata_object in metadata_objects:
-            object_name, obj = list(metadata_object.items())[0]
-            LOG.debug('restoring object. backup: %(backup_id)s, '
-                      'container: %(container)s, object name: '
-                      '%(object_name)s, volume: %(volume_id)s.',
-                      {
-                          'backup_id': backup_id,
-                          'container': container,
-                          'object_name': object_name,
-                          'volume_id': volume_id,
-                      })
-
-            with self._get_object_reader(
-                    container, object_name,
-                    extra_metadata=extra_metadata) as reader:
-                body = reader.read()
-            compression_algorithm = metadata_object[object_name]['compression']
-            decompressor = self._get_compressor(compression_algorithm)
-            volume_file.seek(obj['offset'])
-            if decompressor is not None:
-                LOG.debug('decompressing data using %s algorithm',
-                          compression_algorithm)
-                decompressed = decompressor.decompress(body)
-                body = None  # Allow Python to free it
-                volume_file.write(decompressed)
-                decompressed = None  # Allow Python to free it
-            else:
-                volume_file.write(body)
-                body = None  # Allow Python to free it
-
-            # force flush every write to avoid long blocking write on close
-            volume_file.flush()
-
-            # Be tolerant to IO implementations that do not support fileno()
-            try:
-                fileno = volume_file.fileno()
-            except IOError:
-                LOG.info("volume_file does not support fileno() so skipping "
-                         "fsync()")
-            else:
-                os.fsync(fileno)
-
-            # Restoring a backup to a volume can take some time. Yield so other
-            # threads can run, allowing for among other things the service
-            # status to be updated
-            eventlet.sleep(0)
-        LOG.debug('v1 volume backup restore of %s finished.',
-                  backup_id)
-
     def restore(self, backup, volume_id, volume_file):
         """Restore the given volume backup from backup repository."""
         backup_id = backup['id']
@@ -711,9 +646,12 @@ class ChunkedBackupDriver(driver.BackupDriver):
         metadata_version = metadata['version']
         LOG.debug('Restoring backup version %s', metadata_version)
         try:
-            restore_func = getattr(self, self.DRIVER_VERSION_MAPPING.get(
-                metadata_version))
-        except TypeError:
+            restore_handle = importutils.import_object(
+                self.DRIVER_VERSION_MAPPING[metadata_version],
+                self,
+                volume_id,
+                volume_file)
+        except (KeyError, ImportError):
             err = (_('No support to restore backup version %s')
                    % metadata_version)
             raise exception.InvalidBackup(reason=err)
@@ -729,14 +667,13 @@ class ChunkedBackupDriver(driver.BackupDriver):
             backup_list.append(prev_backup)
             current_backup = prev_backup
 
-        # Do a full restore first, then layer the incremental backups
-        # on top of it in order.
+        # Layer the backups in order, from the parent to the last child
         index = len(backup_list) - 1
         while index >= 0:
             backup1 = backup_list[index]
             index = index - 1
             metadata = self._read_metadata(backup1)
-            restore_func(backup1, volume_id, metadata, volume_file)
+            restore_handle.add_backup(backup1, metadata)
 
             volume_meta = metadata.get('volume_meta', None)
             try:
@@ -748,6 +685,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 msg = _("Metadata restore failed due to incompatible version.")
                 LOG.error(msg)
                 raise exception.BackupOperationError(msg)
+
+        restore_handle.finish_restore()
 
         LOG.debug('restore %(backup_id)s to %(volume_id)s finished.',
                   {'backup_id': backup_id, 'volume_id': volume_id})
@@ -783,3 +722,230 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 eventlet.sleep(0)
 
         LOG.debug('delete %s finished.', backup['id'])
+
+
+@six.add_metaclass(abc.ABCMeta)
+class BackupRestoreHandle(object):
+    """Class used to reconstruct a backup from chunks."""
+    def __init__(self, chunked_driver, volume_id, volume_file):
+        self._driver = chunked_driver
+        self._volume_id = volume_id
+        self._volume_file = volume_file
+        self._segments = []
+        self._object_readers = {}
+        self._idx = -1
+
+    @abc.abstractmethod
+    def add_backup(self, backup, metadata):
+        """This is called for each backup in the incremental backups chain."""
+        return
+
+    def finish_restore(self):
+        for segment in self._segments:
+            LOG.debug('restoring object. backup: %(backup_id)s, '
+                      'container: %(container)s, object name: '
+                      '%(object_name)s, volume: %(volume_id)s.',
+                      {
+                          'backup_id': segment.obj['backup_id'],
+                          'container': segment.obj['container'],
+                          'object_name': segment.obj['name'],
+                          'volume_id': self._volume_id,
+                      })
+
+            # write the segment bytes to the file
+            self._volume_file.write(self._read_segment(segment))
+
+            # force flush every write to avoid long blocking write on close
+            self._volume_file.flush()
+
+            # Be tolerant to IO implementations that do not support fileno()
+            try:
+                fileno = self._volume_file.fileno()
+            except IOError:
+                LOG.info("volume_file does not support fileno() so skipping "
+                         "fsync()")
+            else:
+                os.fsync(fileno)
+
+            # Restoring a backup to a volume can take some time. Yield so other
+            # threads can run, allowing for among other things the service
+            # status to be updated
+            eventlet.sleep(0)
+
+    def _read_segment(self, segment):
+        """Reads the bytes of a segment"""
+        buff_reader = self._get_reader(segment)
+        # seek inside the backup chunk containing this segment
+        offset_diff = segment.offset - segment.obj['offset']
+        buff_reader.seek(offset_diff)
+        # read the segment's length from the chunk
+        data = buff_reader.read(segment.length)
+        eventlet.tpool.execute(self._clear_reader, segment)
+        return data
+
+    def _get_reader(self, segment):
+        """Keeps an internal cache of object readers.
+
+        Avoids calling the storage backend multiple times for objects which
+        have been split into multiple segments due to merging.
+        """
+        obj_name = segment.obj['name']
+        obj_reader = self._object_readers.get(obj_name)
+        if not obj_reader:
+            obj_reader = self._get_new_reader(segment)
+            self._object_readers[obj_name] = obj_reader
+        return obj_reader
+
+    def _get_new_reader(self, segment):
+        with self._driver._get_object_reader(
+                segment.obj['container'],
+                segment.obj['name'],
+                extra_metadata=segment.obj['extra_metadata']) \
+                as reader:
+            return io.BytesIO(self._get_raw_bytes(reader, segment.obj))
+
+    def _get_raw_bytes(self, reader, obj):
+        """Get the bytes of a backup chunk, decompressing if needed"""
+        compression_algorithm = obj['compression']
+        decompressor = self._driver._get_compressor(compression_algorithm)
+        if decompressor is not None:
+            LOG.debug('decompressing data using %s algorithm',
+                      compression_algorithm)
+            return decompressor.decompress(reader.read())
+        return reader.read()
+
+    def _clear_reader(self, segment):
+        """Clear the object reader for a segment, if needed.
+
+        If there is no further segment for the same object, we close and
+        remove the corresponding object reader, freeing up the memory.
+        """
+        obj_name = segment.obj['name']
+        for _segment in self._segments[self._idx + 1:]:
+            if obj_name == _segment.obj['name']:
+                return
+
+        self._object_readers[obj_name].close()
+        self._object_readers.pop(obj_name)
+
+    def add_object(self, metadata_object):
+        """Merges a backup chunk over the self._segments list.
+
+        The backup chunks are expected to come in order.
+        :param metadata_object: the backup chunk
+        """
+        # make a copy because we will modify it later
+        alt_obj = metadata_object.copy()
+        found = False
+        idx = 0
+        while idx < len(self._segments):
+            segment = self._segments[idx]
+            offset = alt_obj['offset']
+            length = alt_obj['length']
+            end = offset + length
+
+            # the object can be merged with this segment
+            if segment.offset <= offset < segment.end:
+                found = True
+                # remove the segment from the list, we're going to re-add
+                # only parts of it to the list or nothing at all
+                self._segments.pop(idx)
+
+                # if the object starts after this segment's offset, then we
+                # keep the beginning of this segment
+                diff = offset - segment.offset
+                if diff > 0:
+                    self._segments.insert(idx,
+                                          Segment.of(segment,
+                                                     length=diff))
+                    idx += 1
+
+                # if the object ends before this segment's end, then we keep
+                # the last part of this segment, otherwise we don't
+                diff = segment.end - end
+                if diff > 0:
+                    self._segments.insert(idx, Segment(alt_obj))
+                    idx += 1
+                    self._segments.insert(idx,
+                                          Segment.of(segment,
+                                                     length=diff,
+                                                     offset=end))
+                    idx += 1
+                else:
+                    self._segments.insert(idx,
+                                          Segment(alt_obj,
+                                                  length=length + diff))
+                    idx += 1
+                    # if there is nothing left from this object, we're done
+                    if diff == 0:
+                        break
+                    # if there is something left from this object, continue
+                    # merging it over the next segment
+                    alt_obj['offset'] = segment.end
+                    alt_obj['length'] = abs(diff)
+            else:
+                idx += 1
+
+        # we did not find a segment which can be merged with this object,
+        # so we're adding this object straight to the list, just as it is.
+        if not found:
+            self._segments.append(Segment(alt_obj))
+
+
+class BackupRestoreHandleV1(BackupRestoreHandle):
+    """Handles restoring of V1 backups."""
+
+    def add_backup(self, backup, metadata):
+        """Processes a v1 volume backup for being restored."""
+        metadata_objects = metadata['objects']
+        metadata_object_names = []
+        for obj in metadata_objects:
+            metadata_object_names.extend(obj.keys())
+        LOG.debug('metadata_object_names = %s.', metadata_object_names)
+        prune_list = [self._driver._metadata_filename(backup),
+                      self._driver._sha256_filename(backup)]
+        object_names = [object_name for object_name in
+                        self._driver._generate_object_names(backup)
+                        if object_name not in prune_list]
+        if sorted(object_names) != sorted(metadata_object_names):
+            err = _('restore_backup aborted, actual object list '
+                    'does not match object list stored in metadata.')
+            raise exception.InvalidBackup(reason=err)
+
+        for metadata_object in metadata_objects:
+            object_name, obj = list(metadata_object.items())[0]
+            # keep the information needed to read the object from the
+            # storage backend
+            obj['name'] = object_name
+            obj['backup_id'] = backup['id']
+            obj['container'] = backup['container']
+            obj['extra_metadata'] = metadata.get('extra_metadata')
+
+            self.add_object(obj)
+
+
+class Segment(object):
+    """Class being used to represent a segment of a backup object (chunk).
+
+    It helps keeping track of multiple segments of the same chunk, in the
+    context of using only a few parts of a chunk for restoring incremental
+    backups.
+
+    :param obj: The original backup chunk this segment belongs to
+    :param offset: (optional) offset where this segment starts. Default is
+                    obj['offset']. It must be relative to the backup file.
+    :param length: (optional) length of this segment
+    """
+
+    def __init__(self, obj, offset=None, length=None):
+        self.obj = obj
+        self.offset = obj['offset'] if offset is None else offset
+        self.length = obj['length'] if length is None else length
+        self.end = self.offset + self.length
+
+    @staticmethod
+    def of(segment, offset=None, length=None):
+        """Returns a new segment with different offset and/or length."""
+        return Segment(segment.obj,
+                       segment.offset if offset is None else offset,
+                       segment.length if length is None else length)
