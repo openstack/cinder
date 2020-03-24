@@ -162,6 +162,25 @@ class PowerMaxMaskingTest(test.TestCase):
                 self.data.extra_specs)
         mock_rm.assert_called_once()
 
+    @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
+    @mock.patch.object(masking.PowerMaxMasking, 'get_parent_sg_from_child',
+                       side_effect=[None, tpd.PowerMaxData.parent_sg_f])
+    @mock.patch.object(rest.PowerMaxRest, 'move_volume_between_storage_groups')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_num_vols_in_sg', return_value=1)
+    def test_force_move_volume_between_storage_groups(
+            self, mock_num, mock_move, mock_parent, mock_rm):
+
+        self.driver.masking.move_volume_between_storage_groups(
+            self.data.array, self.data.device_id,
+            self.data.storagegroup_name_i, self.data.storagegroup_name_f,
+            self.data.extra_specs, force=True)
+
+        mock_move.assert_called_once_with(
+            self.data.array, self.data.device_id,
+            self.data.storagegroup_name_i, self.data.storagegroup_name_f,
+            self.data.extra_specs, True)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_masking_view',
                        side_effect=[tpd.PowerMaxData.maskingview,
                                     tpd.PowerMaxData.maskingview, None])

@@ -531,7 +531,7 @@ class PowerMaxMasking(object):
         "emc-sg-{target_storagegroup_name}-{serial_number}")
     def move_volume_between_storage_groups(
             self, serial_number, device_id, source_storagegroup_name,
-            target_storagegroup_name, extra_specs):
+            target_storagegroup_name, extra_specs, force=False):
         """Move a volume between storage groups.
 
         :param serial_number: the array serial number
@@ -539,6 +539,7 @@ class PowerMaxMasking(object):
         :param source_storagegroup_name: the source sg
         :param target_storagegroup_name: the target sg
         :param extra_specs: the extra specifications
+        :param force: optional Force flag required for replicated vols
         """
         num_vol_in_sg = self.rest.get_num_vols_in_sg(
             serial_number, source_storagegroup_name)
@@ -548,7 +549,7 @@ class PowerMaxMasking(object):
                    'sg_name': source_storagegroup_name})
         self.rest.move_volume_between_storage_groups(
             serial_number, device_id, source_storagegroup_name,
-            target_storagegroup_name, extra_specs)
+            target_storagegroup_name, extra_specs, force)
         if num_vol_in_sg == 1:
             # Check if storage group is a child sg
             parent_sg_name = self.get_parent_sg_from_child(

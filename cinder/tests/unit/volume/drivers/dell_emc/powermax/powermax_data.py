@@ -40,6 +40,8 @@ class PowerMaxData(object):
     srp = 'SRP_1'
     srp2 = 'SRP_2'
     slo = 'Diamond'
+    slo_diamond = 'Diamond'
+    slo_silver = 'Silver'
     workload = 'DSS'
     port_group_name_f = 'OS-fibre-PG'
     port_group_name_i = 'OS-iscsi-PG'
@@ -57,6 +59,7 @@ class PowerMaxData(object):
     default_sg_no_slo = 'OS-no_SLO-SG'
     default_sg_compr_disabled = 'OS-SRP_1-Diamond-DSS-CD-SG'
     default_sg_re_enabled = 'OS-SRP_1-Diamond-DSS-RE-SG'
+    default_sg_no_slo_re_enabled = 'OS-SRP_1-Diamond-NONE-RE-SG'
     failed_resource = 'OS-failed-resource'
     fake_host = 'HostX@Backend#Diamond+DSS+SRP_1+000197800123'
     new_host = 'HostX@Backend#Silver+OLTP+SRP_1+000197800123'
@@ -172,6 +175,11 @@ class PowerMaxData(object):
 
     provider_location5 = {'array': remote_array,
                           'device_id': device_id}
+
+    replication_update = (
+        {'replication_status': 'enabled',
+         'replication_driver_data': six.text_type(
+             {'array': remote_array, 'device_id': device_id2})})
 
     legacy_provider_location = {
         'classname': 'Symm_StorageVolume',
@@ -296,6 +304,10 @@ class PowerMaxData(object):
     rep_extra_specs['retries'] = 1
     rep_extra_specs['srp'] = srp2
     rep_extra_specs['rep_mode'] = 'Synchronous'
+    rep_extra_specs['sync_interval'] = 3
+    rep_extra_specs['sync_retries'] = 200
+    rep_extra_specs['rdf_group_label'] = rdf_group_name
+    rep_extra_specs['rdf_group_no'] = rdf_group_no
     rep_extra_specs2 = deepcopy(rep_extra_specs)
     rep_extra_specs2[utils.PORTGROUPNAME] = port_group_name_f
     rep_extra_specs3 = deepcopy(rep_extra_specs)
@@ -318,6 +330,36 @@ class PowerMaxData(object):
 
     extra_specs_tags = deepcopy(extra_specs)
     extra_specs_tags.update({utils.STORAGE_GROUP_TAGS: sg_tags})
+
+    rep_extra_specs_mgmt = deepcopy(rep_extra_specs)
+    rep_extra_specs_mgmt['srp'] = srp
+    rep_extra_specs_mgmt['mgmt_sg_name'] = rdf_managed_async_grp
+    rep_extra_specs_mgmt['sg_name'] = default_sg_no_slo_re_enabled
+    rep_extra_specs_mgmt['rdf_group_no'] = rdf_group_no
+    rep_extra_specs_mgmt['rdf_group_label'] = rdf_group_name
+    rep_extra_specs_mgmt['target_array_model'] = array_model
+    rep_extra_specs_mgmt['slo'] = 'Diamond'
+    rep_extra_specs_mgmt['workload'] = 'NONE'
+    rep_extra_specs_mgmt['sync_interval'] = 2
+    rep_extra_specs_mgmt['sync_retries'] = 200
+
+    rep_extra_specs_metro = deepcopy(rep_extra_specs)
+    rep_extra_specs_metro[utils.REP_MODE] = utils.REP_METRO
+    rep_extra_specs_metro[utils.METROBIAS] = True
+    rep_extra_specs_metro['replication_enabled'] = '<is> True'
+
+    rep_config = {
+        'array': remote_array, 'srp': srp, 'portgroup': port_group_name_i,
+        'rdf_group_no': rdf_group_no, 'sync_retries': 200,
+        'sync_interval': 1, 'rdf_group_label': rdf_group_name,
+        'allow_extend': True, 'mode': utils.REP_METRO}
+
+    ex_specs_rep_config = deepcopy(rep_extra_specs_metro)
+    ex_specs_rep_config['array'] = array
+    ex_specs_rep_config['rep_config'] = rep_config
+
+    ex_specs_rep_config_no_extend = deepcopy(ex_specs_rep_config)
+    ex_specs_rep_config_no_extend['rep_config']['allow_extend'] = False
 
     test_volume_type_1 = volume_type.VolumeType(
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
@@ -559,6 +601,16 @@ class PowerMaxData(object):
                        'rdfGroupNumber': rdf_group_no,
                        'states': ['Failed Over']}]
 
+    sg_rdf_group_details = {
+        "storageGroupName": test_vol_grp_name,
+        "symmetrixId": array,
+        "volumeRdfTypes": ["R1"],
+        "modes": ["Asynchronous"],
+        "totalTracks": 8205,
+        "largerRdfSides": ["Equal"],
+        "rdfGroupNumber": 1,
+        "states": ["suspended"]}
+
     sg_list = {'storageGroupId': [storagegroup_name_f,
                                   defaultstoragegroup_name]}
 
@@ -780,6 +832,14 @@ class PowerMaxData(object):
                              'rdfMode': 'Synchronous',
                              'remoteVolumeState': 'Write Disabled',
                              'remoteSymmetrixId': remote_array}
+
+    rdf_group_vol_details_not_synced = {
+        'remoteRdfGroupNumber': rdf_group_no, 'localSymmetrixId': array,
+        'volumeConfig': 'RDF1+TDEV', 'localRdfGroupNumber': rdf_group_no,
+        'localVolumeName': device_id, 'rdfpairState': 'syncinprog',
+        'remoteVolumeName': device_id2, 'localVolumeState': 'Ready',
+        'rdfMode': 'Synchronous', 'remoteVolumeState': 'Write Disabled',
+        'remoteSymmetrixId': remote_array}
 
     # system
     job_list = [{'status': 'SUCCEEDED',
@@ -1262,3 +1322,33 @@ class PowerMaxData(object):
         'default_sg_name': 'default-sg',
         'service_level': 'Diamond'
     }
+
+    rep_info_dict = {
+        'device_id': device_id,
+        'local_array': array, 'remote_array': remote_array,
+        'target_device_id': device_id2, 'target_name': 'test_vol',
+        'rdf_group_no': rdf_group_no, 'rep_mode': 'Metro',
+        'replication_status': 'Enabled', 'rdf_group_label': rdf_group_name,
+        'target_array_model': array_model,
+        'rdf_mgmt_grp': rdf_managed_async_grp}
+
+    create_vol_with_replication_payload = {
+        'executionOption': 'ASYNCHRONOUS',
+        'editStorageGroupActionParam': {
+            'expandStorageGroupParam': {
+                'addVolumeParam': {
+                    'emulation': 'FBA',
+                    'create_new_volumes': 'False',
+                    'volumeAttributes': [
+                        {'num_of_vols': 1,
+                         'volumeIdentifier': {
+                             'identifier_name': (
+                                 volume_details[0]['volume_identifier']),
+                             'volumeIdentifierChoice': 'identifier_name'},
+                         'volume_size': test_volume.size,
+                         'capacityUnit': 'GB'}],
+                    'remoteSymmSGInfoParam': {
+                        'force': 'true',
+                        'remote_symmetrix_1_id': remote_array,
+                        'remote_symmetrix_1_sgs': [
+                            defaultstoragegroup_name]}}}}}

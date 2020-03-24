@@ -79,15 +79,16 @@ class PowerMaxProvision(object):
         return do_create_storage_group(storagegroup_name, array)
 
     def create_volume_from_sg(self, array, volume_name, storagegroup_name,
-                              volume_size, extra_specs):
+                              volume_size, extra_specs, rep_info=None):
         """Create a new volume in the given storage group.
 
         :param array: the array serial number
-        :param volume_name: the volume name (String)
+        :param volume_name: the volume name -- string
         :param storagegroup_name: the storage group name
-        :param volume_size: volume size (String)
-        :param extra_specs: the extra specifications
-        :returns: dict -- volume_dict - the volume dict
+        :param volume_size: volume size -- string
+        :param extra_specs: extra specifications
+        :param rep_info: replication session info dict -- optional
+        :returns: volume info -- dict
         """
         @coordination.synchronized("emc-sg-{storage_group}-{array}")
         def do_create_volume_from_sg(storage_group, array):
@@ -95,7 +96,7 @@ class PowerMaxProvision(object):
 
             volume_dict = self.rest.create_volume_from_sg(
                 array, volume_name, storage_group,
-                volume_size, extra_specs)
+                volume_size, extra_specs, rep_info)
 
             LOG.debug("Create volume from storage group "
                       "took: %(delta)s H:MM:SS.",
@@ -154,6 +155,7 @@ class PowerMaxProvision(object):
         :param snap_name: the name for the snap shot
         :param extra_specs: extra specifications
         :param create_snap: Flag for create snapvx
+        :param copy_mode: If copy mode should be used for SnapVX target links
         """
         start_time = time.time()
         if create_snap:
@@ -166,7 +168,7 @@ class PowerMaxProvision(object):
         def do_modify_volume_snap(src_device_id):
             self.rest.modify_volume_snap(
                 array, src_device_id, target_device_id, snap_name,
-                extra_specs, link=True, copy_mode=copy_mode)
+                extra_specs, link=True, copy=copy_mode)
 
         do_modify_volume_snap(source_device_id)
 
@@ -174,7 +176,7 @@ class PowerMaxProvision(object):
                   {'delta': self.utils.get_time_delta(start_time,
                                                       time.time())})
 
-    def break_replication_relationship(
+    def unlink_snapvx_tgt_volume(
             self, array, target_device_id, source_device_id, snap_name,
             extra_specs, generation=0, loop=True):
         """Unlink a snapshot from its target volume.
@@ -213,7 +215,7 @@ class PowerMaxProvision(object):
         :param list_volume_pairs: list of volume pairs, optional
         :param generation: the generation number of the snapshot
         :param loop: if looping call is required for handling retries
-        :return: return code
+        :returns: return code
         """
         def _unlink_vol():
             """Called at an interval until the synchronization is finished.
@@ -548,105 +550,32 @@ class PowerMaxProvision(object):
         return '%(slo)s+%(workload)s' % {'slo': slo, 'workload': workload}
 
     @coordination.synchronized('emc-rg-{rdf_group}')
-    def break_rdf_relationship(self, array, device_id, target_device,
+    def break_rdf_relationship(self, array, device_id, sg_name,
                                rdf_group, rep_extra_specs, state):
         """Break the rdf relationship between a pair of devices.
 
+        Resuming replication after suspending is necessary where this function
+        is called from. Doing so in here will disrupt the ability to perform
+        further actions on the RDFG without suspending again.
+
         :param array: the array serial number
         :param device_id: the source device id
-        :param target_device: target device id
+        :param sg_name: storage grto
         :param rdf_group: the rdf group number
         :param rep_extra_specs: replication extra specs
         :param state: the state of the rdf pair
         """
-        LOG.info("Suspending rdf pair: source device: %(src)s "
-                 "target device: %(tgt)s.",
-                 {'src': device_id, 'tgt': target_device})
+        LOG.info("Suspending RDF group %(rdf)s to delete source device "
+                 "%(dev)s RDF pair.", {'rdf': rdf_group, 'dev': device_id})
+
         if state.lower() == utils.RDF_SYNCINPROG_STATE:
-            self.rest.wait_for_rdf_consistent_state(
-                array, device_id, target_device,
-                rep_extra_specs, state)
-        if state.lower() == utils.RDF_SUSPENDED_STATE:
-            LOG.info("RDF pair is already suspended")
-        else:
-            self.rest.modify_rdf_device_pair(
-                array, device_id, rdf_group, rep_extra_specs, suspend=True)
-        self.delete_rdf_pair(array, device_id, rdf_group,
-                             target_device, rep_extra_specs)
+            self.rest.wait_for_rdf_pair_sync(
+                array, rdf_group, device_id, rep_extra_specs)
+        if state.lower() != utils.RDF_SUSPENDED_STATE:
+            self.rest.srdf_suspend_replication(
+                array, sg_name, rdf_group, rep_extra_specs)
 
-    def break_metro_rdf_pair(self, array, device_id, target_device,
-                             rdf_group, rep_extra_specs, metro_grp):
-        """Delete replication for a Metro device pair.
-
-        Need to suspend the entire group before we can delete a single pair.
-        :param array: the array serial number
-        :param device_id: the device id
-        :param target_device: the target device id
-        :param rdf_group: the rdf group number
-        :param rep_extra_specs: the replication extra specifications
-        :param metro_grp: the metro storage group name
-        """
-        # Suspend I/O on the RDF links...
-        LOG.info("Suspending I/O for all volumes in the RDF group: %(rdfg)s",
-                 {'rdfg': rdf_group})
-        self.disable_group_replication(
-            array, metro_grp, rdf_group, rep_extra_specs)
-        self.delete_rdf_pair(array, device_id, rdf_group,
-                             target_device, rep_extra_specs)
-
-    def delete_rdf_pair(
-            self, array, device_id, rdf_group, target_device, extra_specs):
-        """Delete an rdf pairing.
-
-        If the replication mode is synchronous, only one attempt is required
-        to delete the pair. Otherwise, we need to wait until all the tracks
-        are cleared before the delete will be successful. As there is
-        currently no way to track this information, we keep attempting the
-        operation until it is successful.
-
-        :param array: the array serial number
-        :param device_id: source volume device id
-        :param rdf_group: the rdf group number
-        :param target_device: the target device
-        :param extra_specs: extra specifications
-        """
-        LOG.info("Deleting rdf pair: source device: %(src)s "
-                 "target device: %(tgt)s.",
-                 {'src': device_id, 'tgt': target_device})
-        if (extra_specs.get(utils.REP_MODE) and
-                extra_specs.get(utils.REP_MODE) == utils.REP_SYNC):
-            return self.rest.delete_rdf_pair(array, device_id, rdf_group)
-
-        def _delete_pair():
-            """Delete a rdf volume pair.
-
-            Called at an interval until all the tracks are cleared
-            and the operation is successful.
-
-            :raises: loopingcall.LoopingCallDone
-            """
-            retries = kwargs['retries']
-            try:
-                kwargs['retries'] = retries + 1
-                if not kwargs['delete_pair_success']:
-                    self.rest.delete_rdf_pair(
-                        array, device_id, rdf_group)
-                    kwargs['delete_pair_success'] = True
-            except exception.VolumeBackendAPIException:
-                pass
-
-            if kwargs['retries'] > UNLINK_RETRIES:
-                LOG.error("Delete volume pair failed after %(retries)d "
-                          "tries.", {'retries': retries})
-                raise loopingcall.LoopingCallDone(retvalue=30)
-            if kwargs['delete_pair_success']:
-                raise loopingcall.LoopingCallDone()
-
-        kwargs = {'retries': 0,
-                  'delete_pair_success': False}
-        timer = loopingcall.FixedIntervalLoopingCall(_delete_pair)
-        rc = timer.start(interval=UNLINK_INTERVAL).wait()
-        return rc
+        self.rest.srdf_delete_device_pair(array, rdf_group, device_id)
 
     def get_or_create_volume_group(self, array, group, extra_specs):
         """Get or create a volume group.
@@ -657,7 +586,7 @@ class PowerMaxProvision(object):
         :param array: the array serial number
         :param group: the group object
         :param extra_specs: the extra specifications
-        :return: group name
+        :returns: group name
         """
         vol_grp_name = self.utils.update_volume_group_name(group)
         return self.get_or_create_group(array, vol_grp_name, extra_specs)
@@ -668,7 +597,7 @@ class PowerMaxProvision(object):
         :param array: the array serial number
         :param group_name: the group name
         :param extra_specs: the extra specifications
-        :return: group name
+        :returns: group name
         """
         storage_group = self.rest.get_storage_group(array, group_name)
         if not storage_group:
@@ -708,8 +637,6 @@ class PowerMaxProvision(object):
         :param array: the array serial number
         :param snap_name: the name for the snap shot
         :param source_group_name: the source group name
-        :param src_dev_ids: the list of source device ids
-        :param extra_specs: extra specifications
         """
         LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "
                   "snapshot: %(snap_name)s.",
@@ -761,75 +688,6 @@ class PowerMaxProvision(object):
                        'snap_name': snap_name})
             source_devices = [a for a, b in list_volume_pairs]
             self.delete_volume_snap(array, snap_name, source_devices)
-
-    def enable_group_replication(self, array, storagegroup_name,
-                                 rdf_group_num, extra_specs, establish=False):
-        """Resume rdf replication on a storage group.
-
-        Replication is enabled by default. This allows resuming
-        replication on a suspended group.
-        :param array: the array serial number
-        :param storagegroup_name: the storagegroup name
-        :param rdf_group_num: the rdf group number
-        :param extra_specs: the extra specifications
-        :param establish: flag to indicate 'establish' instead of 'resume'
-        """
-        action = "Establish" if establish is True else "Resume"
-        self.rest.modify_storagegroup_rdf(
-            array, storagegroup_name, rdf_group_num, action, extra_specs)
-
-    def disable_group_replication(self, array, storagegroup_name,
-                                  rdf_group_num, extra_specs):
-        """Suspend rdf replication on a storage group.
-
-        This does not delete the rdf pairs, that can only be done
-        by deleting the group. This method suspends all i/o activity
-        on the rdf links.
-        :param array: the array serial number
-        :param storagegroup_name: the storagegroup name
-        :param rdf_group_num: the rdf group number
-        :param extra_specs: the extra specifications
-        """
-        action = "Suspend"
-        self.rest.modify_storagegroup_rdf(
-            array, storagegroup_name, rdf_group_num, action, extra_specs)
-
-    def failover_group(self, array, storagegroup_name,
-                       rdf_group_num, extra_specs, failover=True):
-        """Failover or failback replication on a storage group.
-
-        :param array: the array serial number
-        :param storagegroup_name: the storagegroup name
-        :param rdf_group_num: the rdf group number
-        :param extra_specs: the extra specifications
-        :param failover: flag to indicate failover/ failback
-        """
-        action = "Failover" if failover else "Failback"
-        self.rest.modify_storagegroup_rdf(
-            array, storagegroup_name, rdf_group_num, action, extra_specs)
-
-    def delete_group_replication(self, array, storagegroup_name,
-                                 rdf_group_num, extra_specs):
-        """Split replication for a group and delete the pairs.
-
-        :param array: the array serial number
-        :param storagegroup_name: the storage group name
-        :param rdf_group_num: the rdf group number
-        :param extra_specs: the extra specifications
-        """
-        group_details = self.rest.get_storage_group_rep(
-            array, storagegroup_name)
-        if (group_details and group_details.get('rdf')
-                and group_details['rdf'] is True):
-            action = "Split"
-            LOG.debug("Splitting remote replication for group %(sg)s",
-                      {'sg': storagegroup_name})
-            self.rest.modify_storagegroup_rdf(
-                array, storagegroup_name, rdf_group_num, action, extra_specs)
-            LOG.debug("Deleting remote replication for group %(sg)s",
-                      {'sg': storagegroup_name})
-            self.rest.delete_storagegroup_rdf(
-                array, storagegroup_name, rdf_group_num)
 
     def revert_volume_snapshot(self, array, source_device_id,
                                snap_name, extra_specs):
