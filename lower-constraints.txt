@@ -144,7 +144,6 @@ sqlparse==0.2.4
 statsd==3.2.2
 stestr==2.2.0
 stevedore==1.20.0
-suds-jurko==0.6
 tabulate==0.8.5
 taskflow==3.2.0
 Tempita==0.5.2
