@@ -9,7 +9,6 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - cinder-tempest-dsvm-lvm-lio-barbican
         - cinder-tox-bandit-baseline:
             voting: false
         - openstack-tox-functional-py36:
@@ -47,12 +46,14 @@
               - ^setup.cfg$
               - ^tools/.*$
               - ^tox.ini$
+        - cinder-tempest-plugin-lvm-lio-barbican:
+            irrelevant-files: *functional-irrelevant-files
         - cinder-grenade-dsvm-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
-        - legacy-tempest-dsvm-lvm-multibackend:
+        - cinder-tempest-lvm-multibackend:
             voting: false
             irrelevant-files: *gate-irrelevant-files
-        - legacy-tempest-dsvm-full-devstack-plugin-nfs:
+        - devstack-plugin-nfs-tempest-full:
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
@@ -79,8 +80,6 @@
       jobs:
         - tempest-cinder-v2-api:
             irrelevant-files: *gate-irrelevant-files
-        - legacy-tempest-dsvm-zeromq-multibackend:
-            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
             irrelevant-files: *gate-irrelevant-files
         - cinder-grenade-dsvm-mn-sub-volschbak:
@@ -93,22 +92,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3-opensuse15:
             irrelevant-files: *gate-irrelevant-files
-
-- job:
-    # Previously named legacy-tempest-dsvm-full-lio
-    name: cinder-tempest-dsvm-lvm-lio-barbican
-    parent: legacy-dsvm-base
-    run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio-barbican/run.yaml
-    post-run: playbooks/legacy/cinder-tempest-dsvm-lvm-lio-barbican/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/barbican
-      - openstack/cinderlib
-      - openstack/python-barbicanclient
-      - openstack/tempest
-      - openstack/os-brick
-    irrelevant-files: *gate-irrelevant-files
 
 - job:
     # Security testing for known issues
@@ -139,10 +122,16 @@
 - job:
     name: cinder-plugin-ceph-tempest
     parent: devstack-plugin-ceph-tempest-py3
+    roles:
+      - zuul: opendev.org/openstack/cinderlib
+      - zuul: opendev.org/openstack/cinder-tempest-plugin
     run: playbooks/tempest-and-cinderlib-run.yaml
+    post-run: playbooks/post-cinderlib.yaml
     required-projects:
-      - openstack/cinderlib
-      - openstack/tempest
+      - opendev.org/openstack/cinderlib
+    vars:
+      zuul_additional_subunit_dirs:
+        - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
 
 - job:
     name: cinder-grenade-dsvm-mn-sub-bak
@@ -194,3 +183,23 @@
       - openstack/grenade
       - openstack/devstack-gate
       - openstack/cinder
+
+- job:
+    name: cinder-tempest-lvm-multibackend
+    parent: devstack-tempest
+    description: |
+      Cinder tempest job based on LVM and multiple backends.
+      Former names for this job were:
+        * legacy-tempest-dsvm-lvm-multibackend
+    timeout: 10800
+    required-projects:
+      - opendev.org/openstack/cinder-tempest-plugin
+    vars:
+      tox_envlist: all
+      tempest_test_regex: '(?!.*\[.*\bslow\b.*\])(^tempest\.(api|scenario)|(^cinder_tempest_plugin))'
+      tempest_plugins:
+        - cinder-tempest-plugin
+      devstack_localrc:
+        CINDER_ENABLED_BACKENDS: 'lvm:lvmdriver-1,lvm:lvmdriver-2'
+        CINDER_VOLUME_CLEAR: none
+    irrelevant-files: *gate-irrelevant-files

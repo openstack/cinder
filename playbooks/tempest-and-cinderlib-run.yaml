@@ -1,4 +1,4 @@
-# Playbook imported from https://opendev.org/openstack/tempest/src/branch/master/playbooks/devstack-tempest.yaml
+# Playbook imported from https://opendev.org/openstack/tempest/src/tag/23.0.0/playbooks/devstack-tempest.yaml
 
 # Changes that run through devstack-tempest are likely to have an impact on
 # the devstack part of the job, so we keep devstack in the main play to
@@ -18,6 +18,11 @@
     - setup-tempest-run-dir
     - setup-tempest-data-dir
     - acl-devstack-files
-    - run-tempest
-
-- import_playbook: cinderlib-run.yaml cinderlib_hosts=tempest
+    - role: run-tempest
+      # ignore the errors, so that run-cinderlib-tests is always executed
+      ignore_errors: yes
+    - role: change-devstack-data-owner
+      devstack_data_subdir_changed: cinder
+      devstack_data_subdir_owner: zuul
+    - role: run-cinderlib-tests
+      cinderlib_base_dir: "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
