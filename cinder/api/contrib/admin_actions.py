@@ -31,6 +31,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
 from cinder import volume
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -61,6 +62,9 @@ class AdminController(wsgi.Controller):
         raise NotImplementedError()
 
     def validate_update(self, req, body):
+        raise NotImplementedError()
+
+    def _notify_reset_status(self, context, id, message):
         raise NotImplementedError()
 
     def authorize(self, context, action_name, target_obj=None):
@@ -97,10 +101,13 @@ class AdminController(wsgi.Controller):
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
 
+        # calling notifier here for volumeStatusUpdate is deprecated.
+        # Will be replaced with _notify_reset_status()
         notifier_info = dict(id=id, update=update)
         notifier = rpc.get_notifier('volumeStatusUpdate')
         notifier.info(context, self.collection + '.reset_status.start',
                       notifier_info)
+        self._notify_reset_status(context, id, 'reset_status.start')
 
         # Not found exception will be handled at the wsgi level
         self._update(context, id, update)
@@ -110,6 +117,7 @@ class AdminController(wsgi.Controller):
 
         notifier.info(context, self.collection + '.reset_status.end',
                       notifier_info)
+        self._notify_reset_status(context, id, 'reset_status.end')
 
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-force_delete')
@@ -126,6 +134,11 @@ class VolumeAdminController(AdminController):
     """AdminController for Volumes."""
 
     collection = 'volumes'
+
+    def _notify_reset_status(self, context, id, message):
+        volume = objects.Volume.get_by_id(context, id)
+        volume_utils.notify_about_volume_usage(context, volume,
+                                               message)
 
     def _update(self, *args, **kwargs):
         context = args[0]
@@ -242,6 +255,11 @@ class SnapshotAdminController(AdminController):
 
     collection = 'snapshots'
 
+    def _notify_reset_status(self, context, id, message):
+        snapshot = objects.Snapshot.get_by_id(context, id)
+        volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                 message)
+
     @validation.schema(admin_actions.reset_status_snapshot)
     def validate_update(self, req, body):
         status = body['os-reset_status']['status']
@@ -269,6 +287,11 @@ class BackupAdminController(AdminController):
 
     collection = 'backups'
 
+    def _notify_reset_status(self, context, id, message):
+        backup = objects.Backup.get_by_id(context, id)
+        volume_utils.notify_about_backup_usage(context, backup,
+                                               message)
+
     def _get(self, *args, **kwargs):
         return self.backup_api.get(*args, **kwargs)
 
@@ -291,6 +314,7 @@ class BackupAdminController(AdminController):
         notifier = rpc.get_notifier('backupStatusUpdate')
         notifier.info(context, self.collection + '.reset_status.start',
                       notifier_info)
+        self._notify_reset_status(context, id, 'reset_status.start')
 
         # Not found exception will be handled at the wsgi level
         self.backup_api.reset_status(context=context, backup_id=id,

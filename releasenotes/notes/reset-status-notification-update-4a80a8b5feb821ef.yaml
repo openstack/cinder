@@ -1,0 +1,26 @@
+---
+deprecations:
+  - |
+    In this release, sending ``os-reset_status`` notifications to the
+    following *nonstandard* publisher_ids is DEPRECATED:
+
+    * 'volumeStatusUpdate' for volume status resets
+    * 'volumeStatusUpdate' for snapshot status resets
+    * 'backupStatusUpdate' for backup status resets
+
+    The notifications continue to be published to the above during the
+    deprecation period.  Beginning with this release, the ``os-reset_status``
+    notifications are also sent to the following *standard* publisher_ids:
+
+    * 'volume' for volume status resets
+    * 'snapshot' for snapshot status resets
+    * 'backup' for backup status resets
+
+    This will allow consumers of these notifications to make a smooth
+    transition.  In the Victoria release, ``os-reset_status`` notifications
+    will *only* be sent to the standard publisher_ids.
+fixes:
+  - |
+    ``os-reset_status`` notifications for volumes, snapshots and backups will
+    now go to the standard publisher id for volume, snapshot and backup like
+    all other notifications for volume, snapshot and backup.
