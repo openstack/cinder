@@ -53,6 +53,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         super(NetAppCmodeClientTestCase, self).setUp()
 
         self.mock_object(client_cmode.Client, '_init_ssh_client')
+        self.mock_object(client_cmode.Client, 'get_ontap_version',
+                         return_value='9.6')
         with mock.patch.object(client_cmode.Client,
                                'get_ontapi_version',
                                return_value=(1, 20)):
