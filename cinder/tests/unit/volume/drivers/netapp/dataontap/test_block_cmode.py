@@ -92,6 +92,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                        'check_api_permissions')
     @mock.patch.object(na_utils, 'check_flags')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
+    @mock.patch.object(client_base.Client, 'get_ontap_version',
+                       mock.MagicMock(return_value='9.6'))
     def test_do_setup(self, super_do_setup, mock_check_flags,
                       mock_check_api_permissions, mock_cluster_user_supported):
         self.mock_object(client_base.Client, '_init_ssh_client')
@@ -419,7 +421,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'SSD',
             'replication_enabled': False,
-            'online_extend_support': False,
+            'online_extend_support': True,
         }]
 
         expected[0].update({'QoS_support': cluster_credentials})
