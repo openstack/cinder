@@ -264,7 +264,8 @@ def get_internal_tenant_context():
     if project_id and user_id:
         return RequestContext(user_id=user_id,
                               project_id=project_id,
-                              is_admin=True)
+                              is_admin=True,
+                              overwrite=False)
     else:
         LOG.warning('Unable to get internal tenant context: Missing '
                     'required config parameters.')
