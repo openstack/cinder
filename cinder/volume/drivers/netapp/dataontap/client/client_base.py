@@ -32,6 +32,7 @@ from cinder.volume.drivers.netapp import utils as na_utils
 LOG = logging.getLogger(__name__)
 
 DELETED_PREFIX = 'deleted_cinder_'
+MAX_SIZE_FOR_A_LUN = '17555678822400'
 
 
 @six.add_metaclass(utils.TraceWrapperMetaclass)
@@ -62,6 +63,27 @@ class Client(object):
         """Set up the repository of available Data ONTAP features."""
         self.features = na_utils.Features()
 
+    def get_ontap_version(self, cached=True):
+        """Gets the ONTAP version."""
+
+        if cached:
+            return self.connection.get_ontap_version()
+
+        ontap_version = netapp_api.NaElement("system-get-version")
+        result = self.connection.invoke_successfully(ontap_version, True)
+
+        version_tuple = result.get_child_by_name(
+            'version-tuple') or netapp_api.NaElement('none')
+        system_version_tuple = version_tuple.get_child_by_name(
+            'system-version-tuple') or netapp_api.NaElement('none')
+
+        generation = system_version_tuple.get_child_content("generation")
+        major = system_version_tuple.get_child_content("major")
+
+        return '%(generation)s.%(major)s' % {
+            'generation': generation,
+            'major': major}
+
     def get_ontapi_version(self, cached=True):
         """Gets the supported ontapi version."""
 
@@ -89,9 +111,23 @@ class Client(object):
         """Issues API request for creating LUN on volume."""
 
         path = '/vol/%s/%s' % (volume_name, lun_name)
-        params = {'path': path, 'size': six.text_type(size),
+        space_reservation = metadata['SpaceReserved']
+        initial_size = size
+        ontap_version = self.get_ontap_version()
+
+        # On older ONTAP versions the extend size is limited to its
+        # geometry on max_resize_size. In order to remove this
+        # limitation we create the LUN with its maximum possible size
+        # and then shrink to the requested size.
+        if ontap_version < '9.5':
+            initial_size = MAX_SIZE_FOR_A_LUN
+            # In order to create a LUN with its maximum size (16TB),
+            # the space_reservation needs to be disabled
+            space_reservation = 'false'
+
+        params = {'path': path, 'size': str(initial_size),
                   'ostype': metadata['OsType'],
-                  'space-reservation-enabled': metadata['SpaceReserved']}
+                  'space-reservation-enabled': space_reservation}
         version = self.get_ontapi_version()
         if version >= (1, 110):
             params['use-exact-size'] = 'true'
@@ -110,6 +146,21 @@ class Client(object):
                           {'lun_name': lun_name,
                            'volume_name': volume_name,
                            'ex': ex})
+
+        if ontap_version < '9.5':
+            self.do_direct_resize(path, six.text_type(size))
+            if metadata['SpaceReserved'] == 'true':
+                self.set_lun_space_reservation(path, True)
+
+    def set_lun_space_reservation(self, path, flag):
+        """Sets the LUN space reservation on ONTAP."""
+
+        lun_modify_space_reservation = (
+            netapp_api.NaElement.create_node_with_children(
+                'lun-set-space-reservation-info', **{
+                    'path': path,
+                    'enable': str(flag)}))
+        self.connection.invoke_successfully(lun_modify_space_reservation, True)
 
     def destroy_lun(self, path, force=True):
         """Destroys the LUN at the path."""

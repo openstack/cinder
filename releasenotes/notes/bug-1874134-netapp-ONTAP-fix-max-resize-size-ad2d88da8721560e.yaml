@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix bug `#1874134 <https://bugs.launchpad.net/cinder/+bug/1874134>`_,
+    allowing an iSCSI or FCP volume to be extended to a size up to 16TB
+    regardless of its original size, even if it's attached to an instance.

@@ -592,18 +592,26 @@ class NetAppBlockStorageLibrary(object):
         new_size_bytes = six.text_type(int(new_size) * units.Gi)
         # Reused by clone scenarios.
         # Hence comparing the stored size.
-        if curr_size_bytes != new_size_bytes:
+        if curr_size_bytes == new_size_bytes:
+            LOG.info("No need to extend volume %s"
+                     " as it is already the requested new size.", name)
+            return
+
+        ontap_version = self.zapi_client.get_ontap_version(cached=True)
+
+        if ontap_version >= '9.5':
+            self.zapi_client.do_direct_resize(path, new_size_bytes)
+        else:
             lun_geometry = self.zapi_client.get_lun_geometry(path)
-            if (lun_geometry and lun_geometry.get("max_resize")
-                    and int(lun_geometry.get("max_resize")) >=
+            if (lun_geometry and int(lun_geometry.get("max_resize", 0)) >=
                     int(new_size_bytes)):
                 self.zapi_client.do_direct_resize(path, new_size_bytes)
             else:
                 if volume['attach_status'] != 'detached':
                     msg = _('Volume %(vol_id)s cannot be resized from '
                             '%(old_size)s to %(new_size)s, because would '
-                            'exceed its max geometry %(max_geo)s while not '
-                            'being detached.')
+                            'exceed its max geometry %(max_geo)s while '
+                            'not being detached.')
                     raise exception.VolumeBackendAPIException(data=msg % {
                         'vol_id': name,
                         'old_size': curr_size_bytes,
@@ -612,10 +620,7 @@ class NetAppBlockStorageLibrary(object):
                 self._do_sub_clone_resize(
                     path, new_size_bytes,
                     qos_policy_group_name=qos_policy_group_name)
-            self.lun_table[name].size = new_size_bytes
-        else:
-            LOG.info("No need to extend volume %s"
-                     " as it is already the requested new size.", name)
+        self.lun_table[name].size = new_size_bytes
 
     def _get_vol_option(self, volume_name, option_name):
         """Get the value for the volume option."""
