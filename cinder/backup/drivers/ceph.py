@@ -909,8 +909,8 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Found snapshot '%s'", snaps[0])
         return snaps[0]
 
-    def _get_volume_size_gb(self, volume):
-        """Return the size in gigabytes of the given volume.
+    def _get_volume_size_bytes(self, volume):
+        """Return the size in bytes of the given volume.
 
         Raises exception.InvalidParameterValue if volume size is 0.
         """
@@ -960,7 +960,7 @@ class CephBackupDriver(driver.BackupDriver):
 
         # Ensure we are at the beginning of the volume
         volume_file.seek(0)
-        length = self._get_volume_size_gb(volume)
+        length = self._get_volume_size_bytes(volume)
 
         if backup.snapshot_id:
             do_full_backup = True
