@@ -56,28 +56,6 @@ class HackingTestCase(test.TestCase):
     should pass.
     """
 
-    def test_no_vi_headers(self):
-
-        lines = ['Line 1\n', 'Line 2\n', 'Line 3\n', 'Line 4\n', 'Line 5\n',
-                 'Line 6\n', 'Line 7\n', 'Line 8\n', 'Line 9\n', 'Line 10\n',
-                 'Line 11\n']
-
-        self.assertIsNone(checks.no_vi_headers(
-            "Test string foo", 1, lines))
-        self.assertEqual(2, len(list(checks.no_vi_headers(
-            "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
-            2, lines))))
-        self.assertEqual(2, len(list(checks.no_vi_headers(
-            "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
-            8, lines))))
-        self.assertIsNone(checks.no_vi_headers(
-            "Test end string for vi",
-            9, lines))
-        # vim header outside of boundary (first/last 5 lines)
-        self.assertIsNone(checks.no_vi_headers(
-            "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
-            6, lines))
-
     def test_no_translate_logs(self):
         self.assertEqual(1, len(list(checks.no_translate_logs(
             "LOG.debug(_('foo'))", "cinder/scheduler/foo.py"))))
