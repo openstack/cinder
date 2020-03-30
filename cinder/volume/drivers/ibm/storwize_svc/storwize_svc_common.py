@@ -501,9 +501,11 @@ class StorwizeSSH(object):
                 LOG.exception('Failed to create vdisk %(vol)s.',
                               {'vol': name})
 
-    def rmvdisk(self, vdisk, force=True):
+    def rmvdisk(self, vdisk, force_unmap=True, force_delete=True):
         ssh_cmd = ['svctask', 'rmvdisk']
-        if force:
+        if force_unmap and not force_delete:
+            ssh_cmd += ['-removehostmappings']
+        if force_delete:
             ssh_cmd += ['-force']
         ssh_cmd += ['"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
@@ -710,11 +712,13 @@ class StorwizeSSH(object):
                    '"%s"' % pool, '-size', size, '-unit', units] + params
         return self.run_ssh_check_created(ssh_cmd)
 
-    def rmvolume(self, volume, force=True):
+    def rmvolume(self, volume, force_unmap=True, force_delete=True):
         ssh_cmd = ['svctask', 'rmvolume']
-        if force:
+        if force_delete:
             ssh_cmd += ['-removehostmappings', '-removefcmaps',
                         '-removercrelationships']
+        elif force_unmap:
+            ssh_cmd += ['-removehostmappings']
         ssh_cmd += ['"%s"' % volume]
         self.run_ssh_assert_no_output(ssh_cmd)
 
@@ -796,6 +800,7 @@ class StorwizeHelpers(object):
             msg = _('Failed to get code level (%s).') % level
             raise exception.VolumeBackendAPIException(data=msg)
         code_level = match_obj.group().split('.')
+        LOG.info("code_level is: %s.", level)
         return {'code_level': tuple([int(x) for x in code_level]),
                 'topology': resp['topology'],
                 'system_name': resp['name'],
@@ -1699,14 +1704,16 @@ class StorwizeHelpers(object):
         hyper_pool = '%s' % peer_pool
         self.ssh.rmvolumecopy(vol_name, hyper_pool)
 
-    def delete_hyperswap_volume(self, volume, force):
+    def delete_hyperswap_volume(self, volume, force_unmap, force_delete):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
         if not self.is_vdisk_defined(volume):
             LOG.warning('Tried to delete non-existent volume %s.', volume)
             return
         self.ensure_vdisk_no_fc_mappings(volume, allow_snaps=True,
                                          allow_fctgt=True)
-        self.ssh.rmvolume(volume, force=force)
+        self.ssh.rmvolume(volume,
+                          force_unmap=force_unmap,
+                          force_delete=force_delete)
 
     def get_vdisk_attributes(self, vdisk):
         attrs = self.ssh.lsvdisk(vdisk)
@@ -1844,7 +1851,9 @@ class StorwizeHelpers(object):
 
         try:
             for snapshot in snapshots:
-                self.delete_vdisk(snapshot['name'], True)
+                self.delete_vdisk(snapshot['name'],
+                                  force_unmap=False,
+                                  force_delete=True)
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
                 fields.GroupSnapshotStatus.ERROR_DELETING)
@@ -2185,7 +2194,8 @@ class StorwizeHelpers(object):
         relationship = self.ssh.lsrcrelationship(vol_attrs['RC_name'])
         return relationship[0] if len(relationship) > 0 else None
 
-    def delete_rc_volume(self, volume_name, target_vol=False):
+    def delete_rc_volume(self, volume_name, target_vol=False,
+                         force_unmap=True):
         vol_name = volume_name
         if target_vol:
             vol_name = storwize_const.REPLICA_AUX_VOL_PREFIX + volume_name
@@ -2196,8 +2206,12 @@ class StorwizeHelpers(object):
                 self.delete_relationship(vol_name)
             # Delete change volume
             self.delete_vdisk(
-                storwize_const.REPLICA_CHG_VOL_PREFIX + vol_name, False)
-            self.delete_vdisk(vol_name, False)
+                storwize_const.REPLICA_CHG_VOL_PREFIX + vol_name,
+                force_unmap=force_unmap,
+                force_delete=False)
+            self.delete_vdisk(vol_name,
+                              force_unmap=force_unmap,
+                              force_delete=False)
         except Exception as e:
             msg = (_('Unable to delete the volume for '
                      'volume %(vol)s. Exception: %(err)s.'),
@@ -2273,7 +2287,7 @@ class StorwizeHelpers(object):
     def chpartnership(self, partnership_id):
         self.ssh.chpartnership(partnership_id)
 
-    def delete_vdisk(self, vdisk, force):
+    def delete_vdisk(self, vdisk, force_unmap, force_delete):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
         LOG.debug('Enter: delete_vdisk: vdisk %s.', vdisk)
         if not self.is_vdisk_defined(vdisk):
@@ -2281,7 +2295,9 @@ class StorwizeHelpers(object):
             return
         self.ensure_vdisk_no_fc_mappings(vdisk, allow_snaps=True,
                                          allow_fctgt=True)
-        self.ssh.rmvdisk(vdisk, force=force)
+        self.ssh.rmvdisk(vdisk,
+                         force_unmap=force_unmap,
+                         force_delete=force_delete)
         LOG.debug('Leave: delete_vdisk: vdisk %s.', vdisk)
 
     def create_copy(self, src, tgt, src_id, config, opts,
@@ -2311,7 +2327,7 @@ class StorwizeHelpers(object):
                                full_copy=full_copy)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.delete_vdisk(tgt, True)
+                self.delete_vdisk(tgt, force_unmap=False, force_delete=True)
 
         LOG.debug('Leave: _create_copy: snapshot %(tgt)s from '
                   'vdisk %(src)s.',
@@ -3098,27 +3114,33 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def delete_volume(self, volume):
         LOG.debug('enter: delete_volume: volume %s', volume['name'])
         ctxt = context.get_admin_context()
-
+        if self._state['code_level'] < (7, 7, 0, 0):
+            force_unmap = False
+        else:
+            force_unmap = True
         hyper_volume = self.is_volume_hyperswap(volume)
         if hyper_volume:
             LOG.debug('Volume %s to be deleted is a hyperswap '
                       'volume.', volume.name)
-            self._helpers.delete_hyperswap_volume(volume.name, False)
+            self._helpers.delete_hyperswap_volume(volume.name,
+                                                  force_unmap=force_unmap,
+                                                  force_delete=False)
             return
 
         rep_type = self._get_volume_replicated_type(ctxt, volume)
         if rep_type:
             if self._aux_backend_helpers:
-                self._aux_backend_helpers.delete_rc_volume(volume['name'],
-                                                           target_vol=True)
+                self._aux_backend_helpers.delete_rc_volume(
+                    volume['name'], target_vol=True, force_unmap=force_unmap)
             if not self._active_backend_id:
-                self._master_backend_helpers.delete_rc_volume(volume['name'])
+                self._master_backend_helpers.delete_rc_volume(
+                    volume['name'], force_unmap=force_unmap)
             else:
                 # If it's in fail over state, also try to delete the volume
                 # in master backend
                 try:
                     self._master_backend_helpers.delete_rc_volume(
-                        volume['name'])
+                        volume['name'], force_unmap=force_unmap)
                 except Exception as ex:
                     LOG.error('Failed to get delete volume %(volume)s in '
                               'master backend. Exception: %(err)s.',
@@ -3131,7 +3153,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
             else:
-                self._helpers.delete_vdisk(volume['name'], False)
+                self._helpers.delete_vdisk(
+                    volume['name'],
+                    force_unmap=force_unmap,
+                    force_delete=False)
 
         if volume['id'] in self._vdiskcopyops:
             del self._vdiskcopyops[volume['id']]
@@ -3175,7 +3200,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                   opts, False, self._state, pool=pool)
 
     def delete_snapshot(self, snapshot):
-        self._helpers.delete_vdisk(snapshot['name'], False)
+        if self._state['code_level'] < (7, 7, 0, 0):
+            force_unmap = False
+        else:
+            force_unmap = True
+        self._helpers.delete_vdisk(
+            snapshot['name'], force_unmap=force_unmap, force_delete=False)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         # Create volume from snapshot with a replication or hyperswap group_id
@@ -4853,13 +4883,19 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                 new_opts['flashcopy_rate'])
 
         # Delete replica if needed
+        if self._state['code_level'] < (7, 7, 0, 0):
+            force_unmap = False
+        else:
+            force_unmap = True
+
         if old_rep_type and not new_rep_type:
             self._aux_backend_helpers.delete_rc_volume(volume['name'],
-                                                       target_vol=True)
+                                                       target_vol=True,
+                                                       force_unmap=force_unmap)
             if storwize_const.GMCV == old_rep_type:
                 self._helpers.delete_vdisk(
                     storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'],
-                    False)
+                    force_unmap=force_unmap, force_delete=False)
             model_update = {'replication_status':
                             fields.ReplicationStatus.DISABLED,
                             'replication_driver_data': None,
@@ -5327,7 +5363,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         else:
             for volume in volumes:
                 try:
-                    self._helpers.delete_vdisk(volume.name, True)
+                    self._helpers.delete_vdisk(
+                        volume['name'],
+                        force_unmap=False,
+                        force_delete=True)
                     volumes_model_update.append(
                         {'id': volume.id, 'status': 'deleted'})
                 except exception.VolumeBackendAPIException as err:
@@ -5661,6 +5700,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         return vdisk
 
     def _delete_replication_grp(self, group, volumes):
+        if self._state['code_level'] < (7, 7, 0, 0):
+            force_unmap = False
+        else:
+            force_unmap = True
         model_update = {'status': fields.GroupStatus.DELETED}
         volumes_model_update = []
         rccg_name = self._get_rccg_name(group)
@@ -5674,9 +5717,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         for volume in volumes:
             try:
-                self._master_backend_helpers.delete_rc_volume(volume.name)
-                self._aux_backend_helpers.delete_rc_volume(volume.name,
-                                                           target_vol=True)
+                self._master_backend_helpers.delete_rc_volume(
+                    volume.name, force_unmap=force_unmap)
+                self._aux_backend_helpers.delete_rc_volume(
+                    volume.name, target_vol=True, force_unmap=force_unmap)
                 volumes_model_update.append(
                     {'id': volume.id, 'status': 'deleted'})
             except exception.VolumeDriverException as err:
@@ -5796,7 +5840,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         for volume in volumes:
             try:
-                self._helpers.delete_hyperswap_volume(volume.name, True)
+                self._helpers.delete_hyperswap_volume(volume.name,
+                                                      force_unmap=False,
+                                                      force_delete=True)
                 volumes_model_update.append(
                     {'id': volume.id, 'status': 'deleted'})
             except exception.VolumeDriverException as err:

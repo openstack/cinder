@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    IBM Spectrum Virtualize Family (previously known as Storwize) driver
+    cannot delete volume which has host mapping in some rare cases while
+    code_level of IBM Spectrum Virtualize Family storage lower than
+    7.7.0.0. Please upgrade to latest code to avoid this kind of issue.
