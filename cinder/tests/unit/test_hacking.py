@@ -219,12 +219,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.check_timeutils_strtime(
             "strftime"))))
 
-    def test_check_unicode_usage(self):
-        self.assertEqual(1, len(list(checks.check_unicode_usage(
-            "unicode(msg)", False))))
-        self.assertEqual(0, len(list(checks.check_unicode_usage(
-            "unicode(msg)  # noqa", True))))
-
     def test_no_print_statements(self):
         self.assertEqual(0, len(list(checks.check_no_print_statements(
             "a line with no print statement",
