@@ -1782,7 +1782,7 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.device_id
         volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
-        new_type = {'extra_specs': {}}
+        new_type = {'extra_specs': self.data.vol_type_extra_specs}
         volume = self.data.test_volume
         host = {'host': self.data.new_host}
         with mock.patch.object(self.common, '_migrate_volume') as mock_migrate:
@@ -1798,7 +1798,7 @@ class PowerMaxCommonTest(test.TestCase):
         volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
         volume = self.data.test_volume
-        new_type = {'extra_specs': {}}
+        new_type = {'extra_specs': self.data.vol_type_extra_specs}
         host = {'host': self.data.new_host}
         with mock.patch.object(
                 self.common, '_is_valid_for_storage_assisted_migration',

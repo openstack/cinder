@@ -355,6 +355,12 @@ class PowerMaxData(object):
 
     # extra-specs
     vol_type_extra_specs = {'pool_name': u'Diamond+DSS+SRP_1+000197800123'}
+    vol_type_extra_specs_none_pool = {
+        'pool_name': u'None+NONE+SRP_1+000197800123'}
+    vol_type_extra_specs_optimised_pool = {
+        'pool_name': u'Optimized+NONE+SRP_1+000197800123'}
+    vol_type_extra_specs_next_gen_pool = {
+        'pool_name': u'Optimized+SRP_1+000197800123'}
     vol_type_extra_specs_compr_disabled = {
         'pool_name': u'Diamond+DSS+SRP_1+000197800123',
         'storagetype:disablecompression': 'true'}
