@@ -41,6 +41,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
@@ -776,7 +777,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
             # instruct os-brick to use ImportVApp and HttpNfc upload for
             # disconnecting the volume
-            if volume['status'] == 'restoring-backup':
+            #
+            # If we are migrating to this volume, we need to
+            # create a writeable handle for the migration to work.
+            if (volume['status'] == 'restoring-backup' or
+               (volume['status'] == 'available' and
+                    volume['migration_status'].startswith('target:'))):
                 connection_info['data']['import_data'] = \
                     self._get_connection_import_data(volume)
 
@@ -882,6 +888,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         return self._get_connection_info(volume, backing, connector)
 
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
