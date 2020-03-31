@@ -7,7 +7,6 @@ Cinder Style Commandments
 
 Cinder Specific Commandments
 ----------------------------
-- [N314] Check for vi editor configuration in source files.
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
 - [N336] Must use a dict comprehension instead of a dict constructor with a
