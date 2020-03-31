@@ -268,9 +268,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self.RBD_FEATURE_OBJECT_MAP |
             self.RBD_FEATURE_EXCLUSIVE_LOCK)
 
-    @staticmethod
-    def get_driver_options():
-        return RBD_OPTS
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'replication_device', 'reserved_percentage',
+            'max_over_subscription_ratio', 'volume_dd_blocksize')
+        return RBD_OPTS + additional_opts
 
     def _get_target_config(self, target_id):
         """Get a replication target from known replication targets."""
