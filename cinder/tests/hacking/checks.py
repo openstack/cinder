@@ -309,20 +309,6 @@ def check_datetime_now(logical_line, noqa):
         yield(0, msg)
 
 
-_UNICODE_USAGE_REGEX = re.compile(r'\bunicode *\(')
-
-
-@core.flake8ext
-def check_unicode_usage(logical_line, noqa):
-    if noqa:
-        return
-
-    msg = "C302: Found unicode() call. Please use six.text_type()."
-
-    if _UNICODE_USAGE_REGEX.search(logical_line):
-        yield(0, msg)
-
-
 @core.flake8ext
 def check_no_print_statements(logical_line, filename, noqa):
     # CLI and utils programs do need to use 'print()' so
