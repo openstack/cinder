@@ -125,6 +125,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - User defined override for short host name and port group name
                 (bp powermax-user-defined-hostname-portgroup)
               - Switch to Unisphere REST API public replication endpoints
+              - Support for multiple replication devices
     """
 
     VERSION = "4.2.0"

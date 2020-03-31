@@ -94,6 +94,12 @@ class PowerMaxProvision(object):
         def do_create_volume_from_sg(storage_group, array):
             start_time = time.time()
 
+            if rep_info and rep_info.get('initial_device_list', False):
+                local_device_list = self.rest.get_volume_list(
+                    extra_specs['array'],
+                    {'storageGroupId': storagegroup_name})
+                rep_info['initial_device_list'] = local_device_list
+
             volume_dict = self.rest.create_volume_from_sg(
                 array, volume_name, storage_group,
                 volume_size, extra_specs, rep_info)
@@ -560,7 +566,7 @@ class PowerMaxProvision(object):
 
         :param array: the array serial number
         :param device_id: the source device id
-        :param sg_name: storage grto
+        :param sg_name: storage group
         :param rdf_group: the rdf group number
         :param rep_extra_specs: replication extra specs
         :param state: the state of the rdf pair

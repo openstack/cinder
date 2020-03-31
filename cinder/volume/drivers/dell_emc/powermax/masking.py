@@ -671,9 +671,10 @@ class PowerMaxMasking(object):
                       'sg_name': storagegroup_name})
         else:
             try:
+                force = True if extra_specs.get(utils.IS_RE) else False
                 self.add_volume_to_storage_group(
                     serial_number, device_id, storagegroup_name,
-                    volume_name, extra_specs)
+                    volume_name, extra_specs, force)
             except Exception as e:
                 msg = ("Exception adding volume %(vol)s to %(sg)s. "
                        "Exception received was %(e)s."

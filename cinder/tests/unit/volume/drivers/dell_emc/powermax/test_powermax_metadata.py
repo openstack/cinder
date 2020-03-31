@@ -112,7 +112,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
     def test_capture_failover_volume(self, mock_uvim):
         self.volume_metadata.capture_failover_volume(
             self.data.test_volume, self.data.device_id2,
-            self.data.remote_array, self.data.rdf_group_name,
+            self.data.remote_array, self.data.rdf_group_name_1,
             self.data.device_id, self.data.array,
             self.data.extra_specs, True, None,
             fields.ReplicationStatus.FAILED_OVER, utils.REP_SYNC)
@@ -162,7 +162,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
             self.data.test_volume, self.data.device_id, self.data.array,
             self.data.srp, self.data.slo, self.data.workload,
             self.data.storagegroup_name_target, False, None,
-            False)
+            False, None)
         mock_uvim.assert_called_once()
 
     def test_update_volume_info_metadata(self):

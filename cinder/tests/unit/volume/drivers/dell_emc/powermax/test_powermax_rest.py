@@ -506,6 +506,50 @@ class PowerMaxRestTest(test.TestCase):
                           self.data.failed_resource, device_id,
                           self.data.extra_specs)
 
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_job')
+    def test_remove_vol_from_sg_force_true(self, mck_wait):
+        device_id = self.data.device_id
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        expected_payload = (
+            {"executionOption": "ASYNCHRONOUS",
+             "editStorageGroupActionParam": {
+                 "removeVolumeParam": {
+                     "volumeId": [device_id],
+                     "remoteSymmSGInfoParam": {
+                         "force": "true"}}}})
+        with mock.patch.object(
+                self.rest, 'modify_storage_group', return_value=(
+                    200, tpd.PowerMaxData.job_list)) as mck_mod:
+            self.rest.remove_vol_from_sg(
+                self.data.array, self.data.storagegroup_name_f, device_id,
+                extra_specs)
+            mck_mod.assert_called_with(
+                self.data.array, self.data.storagegroup_name_f,
+                expected_payload)
+
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_job')
+    def test_remove_vol_from_sg_force_false(self, mck_wait):
+        device_id = self.data.device_id
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs.pop(utils.FORCE_VOL_REMOVE, None)
+        expected_payload = (
+            {"executionOption": "ASYNCHRONOUS",
+             "editStorageGroupActionParam": {
+                 "removeVolumeParam": {
+                     "volumeId": [device_id],
+                     "remoteSymmSGInfoParam": {
+                         "force": "false"}}}})
+        with mock.patch.object(
+                self.rest, 'modify_storage_group', return_value=(
+                    200, tpd.PowerMaxData.job_list)) as mck_mod:
+            self.rest.remove_vol_from_sg(
+                self.data.array, self.data.storagegroup_name_f, device_id,
+                extra_specs)
+            mck_mod.assert_called_with(
+                self.data.array, self.data.storagegroup_name_f,
+                expected_payload)
+
     def test_get_vmax_default_storage_group(self):
         ref_storage_group = self.data.sg_details[0]
         ref_sg_name = self.data.defaultstoragegroup_name
@@ -620,8 +664,8 @@ class PowerMaxRestTest(test.TestCase):
         array = self.data.array
         device_id = self.data.device_id
         new_size = '3'
-        extra_specs = self.data.extra_specs,
-        rdfg_num = self.data.rdf_group_no
+        extra_specs = self.data.extra_specs
+        rdfg_num = self.data.rdf_group_no_1
 
         extend_vol_payload = {'executionOption': 'ASYNCHRONOUS',
                               'editVolumeActionParam': {
@@ -1384,15 +1428,15 @@ class PowerMaxRestTest(test.TestCase):
     def test_set_storagegroup_srp(self, mock_mod):
         self.rest.set_storagegroup_srp(
             self.data.array, self.data.test_vol_grp_name,
-            self.data.srp2, self.data.extra_specs)
+            self.data.srp, self.data.extra_specs)
         mock_mod.assert_called_once()
 
     def test_get_rdf_group(self):
         with mock.patch.object(self.rest, 'get_resource') as mock_get:
-            self.rest.get_rdf_group(self.data.array, self.data.rdf_group_no)
+            self.rest.get_rdf_group(self.data.array, self.data.rdf_group_no_1)
             mock_get.assert_called_once_with(
                 self.data.array, 'replication', 'rdf_group',
-                self.data.rdf_group_no)
+                self.data.rdf_group_no_1)
 
     def test_get_rdf_group_list(self):
         rdf_list = self.rest.get_rdf_group_list(self.data.array)
@@ -1425,17 +1469,17 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_rdf_group_number(self):
         rdfg_num = self.rest.get_rdf_group_number(
-            self.data.array, self.data.rdf_group_name)
-        self.assertEqual(self.data.rdf_group_no, rdfg_num)
+            self.data.array, self.data.rdf_group_name_1)
+        self.assertEqual(self.data.rdf_group_no_1, rdfg_num)
         with mock.patch.object(self.rest, 'get_rdf_group_list',
                                return_value=None):
             rdfg_num2 = self.rest.get_rdf_group_number(
-                self.data.array, self.data.rdf_group_name)
+                self.data.array, self.data.rdf_group_name_1)
             self.assertIsNone(rdfg_num2)
         with mock.patch.object(self.rest, 'get_rdf_group',
                                return_value=None):
             rdfg_num3 = self.rest.get_rdf_group_number(
-                self.data.array, self.data.rdf_group_name)
+                self.data.array, self.data.rdf_group_name_1)
             self.assertIsNone(rdfg_num3)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
@@ -1447,26 +1491,26 @@ class PowerMaxRestTest(test.TestCase):
 
         # First volume out, Metro use bias not set
         act_payload_1 = self.rest.get_metro_payload_info(
-            self.data.array, payload_in.copy(), self.data.rdf_group_no, {},
+            self.data.array, payload_in.copy(), self.data.rdf_group_no_1, {},
             True)
         self.assertEqual(payload_in, act_payload_1)
 
         # First volume out, Metro use bias set
         act_payload_2 = self.rest.get_metro_payload_info(
-            self.data.array, payload_in.copy(), self.data.rdf_group_no,
+            self.data.array, payload_in.copy(), self.data.rdf_group_no_1,
             {'metro_bias': True}, True)
         self.assertEqual('true', act_payload_2['metroBias'])
 
         # Not first vol in RDFG, consistency exempt not set
         act_payload_3 = self.rest.get_metro_payload_info(
-            self.data.array, payload_in.copy(), self.data.rdf_group_no,
+            self.data.array, payload_in.copy(), self.data.rdf_group_no_1,
             {'exempt': False}, False)
         ref_payload_3 = {'rdfMode': 'Active', 'rdfType': 'RDF1'}
         self.assertEqual(ref_payload_3, act_payload_3)
 
         # Not first vol in RDFG, consistency exempt set
         act_payload_4 = self.rest.get_metro_payload_info(
-            self.data.array, payload_in.copy(), self.data.rdf_group_no,
+            self.data.array, payload_in.copy(), self.data.rdf_group_no_1,
             {'exempt': True}, True)
         ref_payload_4 = {'rdfType': 'RDF1', 'exempt': 'true',
                          'rdfMode': 'Active'}
@@ -1524,17 +1568,17 @@ class PowerMaxRestTest(test.TestCase):
     def test_get_storagegroup_rdf_details(self):
         details = self.rest.get_storagegroup_rdf_details(
             self.data.array, self.data.test_vol_grp_name,
-            self.data.rdf_group_no)
+            self.data.rdf_group_no_1)
         self.assertEqual(self.data.sg_rdf_details[0], details)
 
     def test_verify_rdf_state(self):
         verify1 = self.rest._verify_rdf_state(
             self.data.array, self.data.test_vol_grp_name,
-            self.data.rdf_group_no, 'Failover')
+            self.data.rdf_group_no_1, 'Failover')
         self.assertTrue(verify1)
         verify2 = self.rest._verify_rdf_state(
             self.data.array, self.data.test_fo_vol_group,
-            self.data.rdf_group_no, 'Establish')
+            self.data.rdf_group_no_1, 'Establish')
         self.assertTrue(verify2)
 
     def test_delete_storagegroup_rdf(self):
@@ -1542,7 +1586,7 @@ class PowerMaxRestTest(test.TestCase):
                 self.rest, 'delete_resource') as mock_del:
             self.rest.delete_storagegroup_rdf(
                 self.data.array, self.data.test_vol_grp_name,
-                self.data.rdf_group_no)
+                self.data.rdf_group_no_1)
             mock_del.assert_called_once()
 
     def test_is_next_gen_array(self):
@@ -1751,17 +1795,18 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=tpd.PowerMaxData.sg_rdf_group_details)
     def test_get_storage_group_rdf_group_state(self, mck_get):
         ref_get_resource = ('storagegroup/%(sg)s/rdf_group/%(rdfg)s' % {
-            'sg': self.data.test_vol_grp_name, 'rdfg': self.data.rdf_group_no})
+            'sg': self.data.test_vol_grp_name,
+            'rdfg': self.data.rdf_group_no_1})
         states = self.rest.get_storage_group_rdf_group_state(
             self.data.array, self.data.test_vol_grp_name,
-            self.data.rdf_group_no)
+            self.data.rdf_group_no_1)
         mck_get.assert_called_once_with(
             self.data.array, 'replication', ref_get_resource)
         self.assertEqual(states, [utils.RDF_SUSPENDED_STATE])
 
     @mock.patch.object(rest.PowerMaxRest, 'get_resource')
     def test_get_rdf_pair_volume(self, mck_get):
-        rdf_grp_no = self.data.rdf_group_no
+        rdf_grp_no = self.data.rdf_group_no_1
         device_id = self.data.device_id
         array = self.data.array
         ref_get_resource = ('rdf_group/%(rdf_group)s/volume/%(device)s' % {
@@ -1775,11 +1820,12 @@ class PowerMaxRestTest(test.TestCase):
     def test_srdf_protect_storage_group(self, mck_create, mck_wait):
         array_id = self.data.array
         remote_array_id = self.data.remote_array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         replication_mode = utils.REP_METRO
         sg_name = self.data.default_sg_re_enabled
         service_level = 'Diamond'
-        extra_specs = self.data.rep_extra_specs_metro
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs[utils.METROBIAS] = True
         remote_sg = self.data.rdf_managed_async_grp
 
         ref_payload = {
@@ -1787,8 +1833,8 @@ class PowerMaxRestTest(test.TestCase):
             'replicationMode': 'Active', 'remoteSLO': service_level,
             'remoteSymmId': remote_array_id, 'rdfgNumber': rdf_group_no,
             'remoteStorageGroupName': remote_sg, 'establish': 'true'}
-        ref_resource = ('storagegroup/%(sg_name)s/rdf_group' % {
-            'sg_name': sg_name})
+        ref_resource = ('storagegroup/%(sg_name)s/rdf_group' %
+                        {'sg_name': sg_name})
 
         self.rest.srdf_protect_storage_group(
             array_id, remote_array_id, rdf_group_no, replication_mode,
@@ -1801,7 +1847,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=(200, 'job'))
     def test_srdf_modify_group(self, mck_modify, mck_wait):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         payload = {'executionOption': 'ASYNCHRONOUS', 'action': 'Suspend'}
         extra_specs = self.data.rep_extra_specs
@@ -1820,7 +1866,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=(200, 'job'))
     def test_srdf_modify_group_async_call_false(self, mck_modify, mck_wait):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         payload = {'action': 'Suspend'}
         extra_specs = self.data.rep_extra_specs
@@ -1839,7 +1885,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[utils.RDF_CONSISTENT_STATE])
     def test_srdf_suspend_replication(self, mck_get, mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
 
@@ -1856,7 +1902,7 @@ class PowerMaxRestTest(test.TestCase):
     def test_srdf_suspend_replication_already_suspended(self, mck_get,
                                                         mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
 
@@ -1869,9 +1915,11 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[utils.RDF_SUSPENDED_STATE])
     def test_srdf_resume_replication(self, mck_get, mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        rep_extra_specs[utils.REP_MODE] = utils.REP_ASYNC
 
         self.rest.srdf_resume_replication(
             array_id, sg_name, rdf_group_no, rep_extra_specs)
@@ -1884,9 +1932,10 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[utils.RDF_SUSPENDED_STATE])
     def test_srdf_resume_replication_metro(self, mck_get, mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
-        rep_extra_specs = self.data.rep_extra_specs_metro
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs_metro)
+        rep_extra_specs[utils.REP_MODE] = utils.REP_METRO
 
         self.rest.srdf_resume_replication(
             array_id, sg_name, rdf_group_no, rep_extra_specs)
@@ -1901,7 +1950,7 @@ class PowerMaxRestTest(test.TestCase):
     def test_srdf_resume_replication_already_resumed(self, mck_get,
                                                      mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
 
@@ -1914,7 +1963,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[utils.RDF_CONSISTENT_STATE])
     def test_srdf_establish_replication(self, mck_get, mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
 
@@ -1932,7 +1981,7 @@ class PowerMaxRestTest(test.TestCase):
     @mock.patch.object(rest.PowerMaxRest, 'srdf_modify_group')
     def test_srdf_failover_group(self, mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
 
@@ -1945,7 +1994,7 @@ class PowerMaxRestTest(test.TestCase):
     @mock.patch.object(rest.PowerMaxRest, 'srdf_modify_group')
     def test_srdf_failback_group(self, mck_modify):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = self.data.rep_extra_specs
 
@@ -1981,7 +2030,7 @@ class PowerMaxRestTest(test.TestCase):
     @mock.patch.object(rest.PowerMaxRest, 'delete_resource')
     def test_srdf_delete_device_pair(self, mck_del):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         device_id = self.data.device_id
         ref_resource = ('%(rdfg)s/volume/%(dev)s' % {
             'rdfg': rdf_group_no, 'dev': device_id})
@@ -2001,11 +2050,12 @@ class PowerMaxRestTest(test.TestCase):
             self, mck_create, mck_wait, mck_get):
         array_id = self.data.array
         remote_array = self.data.remote_array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         mode = utils.REP_ASYNC
         device_id = self.data.device_id
         tgt_device_id = self.data.device_id2
         rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs['array'] = remote_array
 
         ref_payload = {
             'executionOption': 'ASYNCHRONOUS', 'rdfMode': mode,
@@ -2035,11 +2085,12 @@ class PowerMaxRestTest(test.TestCase):
             self, mck_create, mck_wait, mck_get):
         array_id = self.data.array
         remote_array = self.data.remote_array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         mode = utils.REP_SYNC
         device_id = self.data.device_id
         tgt_device_id = self.data.device_id2
         rep_extra_specs = self.data.rep_extra_specs
+        rep_extra_specs[utils.ARRAY] = remote_array
 
         ref_payload = {
             'executionOption': 'ASYNCHRONOUS', 'rdfMode': mode,
@@ -2063,7 +2114,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[utils.RDF_CONSISTENT_STATE])
     def test_wait_for_rdf_group_sync(self, mck_get):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs['sync_retries'] = 2
@@ -2077,7 +2128,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=[utils.RDF_SYNCINPROG_STATE])
     def test_wait_for_rdf_group_sync_fail(self, mck_get):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs['sync_retries'] = 1
@@ -2091,7 +2142,7 @@ class PowerMaxRestTest(test.TestCase):
                        return_value=tpd.PowerMaxData.rdf_group_vol_details)
     def test_wait_for_rdf_pair_sync(self, mck_get):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs['sync_retries'] = 2
@@ -2106,7 +2157,7 @@ class PowerMaxRestTest(test.TestCase):
         return_value=tpd.PowerMaxData.rdf_group_vol_details_not_synced)
     def test_wait_for_rdf_pair_sync_fail(self, mck_get):
         array_id = self.data.array
-        rdf_group_no = self.data.rdf_group_no
+        rdf_group_no = self.data.rdf_group_no_1
         sg_name = self.data.default_sg_re_enabled
         rep_extra_specs = deepcopy(self.data.rep_extra_specs)
         rep_extra_specs['sync_retries'] = 1

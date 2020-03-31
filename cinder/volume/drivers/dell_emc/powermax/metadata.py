@@ -474,7 +474,7 @@ class PowerMaxVolumeMetadata(object):
             None, None, None, None)
         rep_mode, replication_status, rdf_group_label, use_bias = (
             None, None, None, None)
-        target_array_model = None
+        target_array_model, backend_id = None, None
         if rep_info_dict:
             rdf_group_no = rep_info_dict['rdf_group_no']
             target_name = rep_info_dict['target_name']
@@ -483,6 +483,8 @@ class PowerMaxVolumeMetadata(object):
             rep_mode = rep_info_dict['rep_mode']
             replication_status = rep_info_dict['replication_status']
             rdf_group_label = rep_info_dict['rdf_group_label']
+            backend_id = rep_info_dict['backend_id']
+
             if utils.METROBIAS in extra_specs:
                 use_bias = extra_specs[utils.METROBIAS]
             target_array_model = rep_info_dict['target_array_model']
@@ -501,7 +503,7 @@ class PowerMaxVolumeMetadata(object):
             openstack_name=volume.display_name,
             source_volid=volume.source_volid,
             group_name=group_name, group_id=group_id,
-            rdf_group_no=rdf_group_no,
+            rdf_group_no=rdf_group_no, backend_id=backend_id,
             target_name=target_name, remote_array=remote_array,
             target_device_id=target_device_id,
             source_snapshot_id=source_snapshot_id,
@@ -585,8 +587,8 @@ class PowerMaxVolumeMetadata(object):
         successful_operation = "manage_existing_volume"
         rdf_group_no, target_name, remote_array, target_device_id = (
             None, None, None, None)
-        rep_mode, replication_status, rdf_group_label = (
-            None, None, None)
+        rep_mode, replication_status, rdf_group_label, backend_id = (
+            None, None, None, None)
         if rep_info_dict:
             rdf_group_no = rep_info_dict['rdf_group_no']
             target_name = rep_info_dict['target_name']
@@ -595,6 +597,7 @@ class PowerMaxVolumeMetadata(object):
             rep_mode = rep_info_dict['rep_mode']
             replication_status = rep_info_dict['replication_status']
             rdf_group_label = rep_info_dict['rdf_group_label']
+            backend_id = rep_info_dict['backend_id']
 
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
@@ -609,7 +612,7 @@ class PowerMaxVolumeMetadata(object):
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
             source_volid=volume.source_volid,
-            rdf_group_no=rdf_group_no,
+            rdf_group_no=rdf_group_no, backend_id=backend_id,
             target_name=target_name, remote_array=remote_array,
             target_device_id=target_device_id,
             rep_mode=rep_mode, replication_status=replication_status,
@@ -623,7 +626,7 @@ class PowerMaxVolumeMetadata(object):
     def capture_retype_info(
             self, volume, device_id, array, srp, target_slo,
             target_workload, target_sg_name, is_rep_enabled, rep_mode,
-            is_compression_disabled):
+            is_compression_disabled, target_backend_id):
         """Captures manage existing info in volume metadata
 
         :param volume_id: volume identifier
@@ -636,6 +639,7 @@ class PowerMaxVolumeMetadata(object):
         :param is_rep_enabled: replication enabled flag
         :param rep_mode: replication mode
         :param is_compression_disabled: compression disabled flag
+        :param target_backend_id: target replication backend id
         """
         successful_operation = "retype"
         if not target_slo:
@@ -651,12 +655,14 @@ class PowerMaxVolumeMetadata(object):
             identifier_name=self.utils.get_volume_element_name(volume.id),
             openstack_name=volume.display_name,
             is_rep_enabled=('yes' if is_rep_enabled else 'no'),
-            rep_mode=rep_mode, is_compression_disabled=(
+            backend_id=target_backend_id, rep_mode=rep_mode,
+            is_compression_disabled=(
                 True if is_compression_disabled else False))
         if not is_rep_enabled:
             delete_list = ['rdf_group_no', 'rep_mode', 'target_array_model',
                            'service_level', 'remote_array', 'target_device_id',
-                           'replication_status', 'rdf_group_label']
+                           'replication_status', 'rdf_group_label',
+                           'backend_id']
             self.utils.delete_values_from_dict(datadict, delete_list)
             update_list = [('default_sg_name', 'source_sg_name'),
                            ('service_level', 'source_service_level')]

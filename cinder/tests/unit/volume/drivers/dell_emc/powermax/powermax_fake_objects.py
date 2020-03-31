@@ -200,7 +200,7 @@ class FakeRequestsSession(object):
         elif 'rdf_group' in url:
             if self.data.device_id in url:
                 return_object = self.data.rdf_group_vol_details
-            elif self.data.rdf_group_no in url:
+            elif self.data.rdf_group_no_1 in url:
                 return_object = self.data.rdf_group_details
             else:
                 return_object = self.data.rdf_group_list
@@ -283,7 +283,7 @@ class FakeConfiguration(object):
         self.config_group = volume_backend_name
         self.san_is_local = False
         if replication_device:
-            self.replication_device = [replication_device]
+            self.replication_device = replication_device
         for key, value in kwargs.items():
             if key == 'san_login':
                 self.san_login = value

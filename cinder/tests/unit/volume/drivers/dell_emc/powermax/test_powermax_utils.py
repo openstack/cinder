@@ -41,10 +41,12 @@ class PowerMaxUtilsTest(test.TestCase):
         self.data = tpd.PowerMaxData()
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         super(PowerMaxUtilsTest, self).setUp()
+        self.replication_device = self.data.sync_rep_device
         configuration = tpfo.FakeConfiguration(
             None, 'UtilsTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i],
+            replication_device=self.replication_device)
         rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=tpfo.FakeRequestsSession())
         driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
@@ -268,13 +270,13 @@ class PowerMaxUtilsTest(test.TestCase):
         rep_device_list1 = [{'target_device_id': self.data.remote_array,
                              'remote_pool': self.data.srp,
                              'remote_port_group': self.data.port_group_name_f,
-                             'rdf_group_label': self.data.rdf_group_name}]
-        rep_config1 = self.utils.get_replication_config(rep_device_list1)
+                             'rdf_group_label': self.data.rdf_group_name_1}]
+        rep_config1 = self.utils.get_replication_config(rep_device_list1)[0]
         self.assertEqual(self.data.remote_array, rep_config1['array'])
         # Success, allow_extend true
         rep_device_list2 = rep_device_list1
         rep_device_list2[0]['allow_extend'] = 'true'
-        rep_config2 = self.utils.get_replication_config(rep_device_list2)
+        rep_config2 = self.utils.get_replication_config(rep_device_list2)[0]
         self.assertTrue(rep_config2['allow_extend'])
         # No rep_device_list
         rep_device_list3 = []
@@ -288,34 +290,50 @@ class PowerMaxUtilsTest(test.TestCase):
         # Success, mode is async
         rep_device_list5 = rep_device_list2
         rep_device_list5[0]['mode'] = 'async'
-        rep_config5 = self.utils.get_replication_config(rep_device_list5)
+        rep_config5 = self.utils.get_replication_config(rep_device_list5)[0]
         self.assertEqual(utils.REP_ASYNC, rep_config5['mode'])
         # Success, mode is metro - no other options set
         rep_device_list6 = rep_device_list5
         rep_device_list6[0]['mode'] = 'metro'
-        rep_config6 = self.utils.get_replication_config(rep_device_list6)
+        rep_config6 = self.utils.get_replication_config(rep_device_list6)[0]
         self.assertFalse(rep_config6['metro_bias'])
         # Success, mode is metro - metro options true
         rep_device_list7 = rep_device_list6
-        rep_device_list6[0].update({'metro_use_bias': 'true'})
-        rep_config7 = self.utils.get_replication_config(rep_device_list7)
+        rep_device_list7[0].update({'metro_use_bias': 'true'})
+        rep_config7 = self.utils.get_replication_config(rep_device_list7)[0]
         self.assertTrue(rep_config7['metro_bias'])
+        # Success, no backend id
+        self.assertIsNone(rep_config7.get(utils.BACKEND_ID))
+        # Success, backend id
+        rep_device_list8 = rep_device_list6
+        rep_device_list8[0].update(
+            {utils.BACKEND_ID: self.data.rep_backend_id_sync})
+        rep_config8 = self.utils.get_replication_config(rep_device_list8)[0]
+        self.assertEqual(
+            self.data.rep_backend_id_sync, rep_config8[utils.BACKEND_ID])
+        # Success, multi-rep
+        multi_rep_device_list = self.data.multi_rep_device
+        multi_rep_config = self.utils.get_replication_config(
+            multi_rep_device_list)
+        self.assertTrue(len(multi_rep_config) > 1)
+        for rep_config in multi_rep_config:
+            self.assertEqual(rep_config['array'], self.data.remote_array)
 
     def test_get_replication_config_sync_retries_intervals(self):
         # Default sync interval & retry values
         rep_device_list1 = [{'target_device_id': self.data.remote_array,
                              'remote_pool': self.data.srp,
                              'remote_port_group': self.data.port_group_name_f,
-                             'rdf_group_label': self.data.rdf_group_name}]
+                             'rdf_group_label': self.data.rdf_group_name_1}]
 
-        rep_config1 = self.utils.get_replication_config(rep_device_list1)
+        rep_config1 = self.utils.get_replication_config(rep_device_list1)[0]
         self.assertEqual(200, rep_config1['sync_retries'])
         self.assertEqual(3, rep_config1['sync_interval'])
 
         # User set interval & retry values
         rep_device_list2 = deepcopy(rep_device_list1)
         rep_device_list2[0].update({'sync_retries': 300, 'sync_interval': 1})
-        rep_config2 = self.utils.get_replication_config(rep_device_list2)
+        rep_config2 = self.utils.get_replication_config(rep_device_list2)[0]
         self.assertEqual(300, rep_config2['sync_retries'])
         self.assertEqual(1, rep_config2['sync_interval'])
 
@@ -421,7 +439,7 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertEqual('-RM', metro_prefix)
 
     def test_get_rdf_management_group_name(self):
-        rep_config = {'rdf_group_label': self.data.rdf_group_name,
+        rep_config = {'rdf_group_label': self.data.rdf_group_name_1,
                       'mode': utils.REP_ASYNC}
         grp_name = self.utils.get_rdf_management_group_name(rep_config)
         self.assertEqual(self.data.rdf_managed_async_grp, grp_name)
@@ -438,6 +456,7 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_does_vol_need_rdf_management_group(self):
         extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs['rep_mode'] = utils.REP_SYNC
         self.assertFalse(self.utils.does_vol_need_rdf_management_group(
             extra_specs))
         extra_specs[utils.REP_MODE] = utils.REP_ASYNC
@@ -459,9 +478,36 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertEqual(expected_snap_name, updated_name)
 
     def test_change_replication(self):
-        new_type = {'extra_specs': self.data.extra_specs_rep_enabled}
-        self.assertFalse(self.utils.change_replication(True, new_type))
-        self.assertTrue(self.utils.change_replication(False, new_type))
+        non_rep_extra_specs = self.data.extra_specs
+        rep_extra_specs = self.data.extra_specs_rep_enabled
+        change_rep = self.utils.change_replication(
+            non_rep_extra_specs, rep_extra_specs)
+        self.assertTrue(change_rep)
+
+    def test_change_replication_different_backend_id(self):
+        rep_extra_specs_a = deepcopy(self.data.extra_specs_rep_enabled)
+        rep_extra_specs_a[utils.REPLICATION_DEVICE_BACKEND_ID] = 'A'
+        rep_extra_specs_b = deepcopy(self.data.extra_specs_rep_enabled)
+        rep_extra_specs_b[utils.REPLICATION_DEVICE_BACKEND_ID] = 'B'
+        change_rep = self.utils.change_replication(
+            rep_extra_specs_a, rep_extra_specs_b)
+        self.assertTrue(change_rep)
+
+    def test_change_replication_no_change(self):
+        non_rep_extra_specs_a = self.data.extra_specs
+        non_rep_extra_specs_b = self.data.extra_specs
+        change_rep = self.utils.change_replication(
+            non_rep_extra_specs_a, non_rep_extra_specs_b)
+        self.assertFalse(change_rep)
+
+    def test_change_replication_no_change_same_backend_id(self):
+        rep_extra_specs_a = deepcopy(self.data.extra_specs_rep_enabled)
+        rep_extra_specs_a[utils.REPLICATION_DEVICE_BACKEND_ID] = 'A'
+        rep_extra_specs_b = deepcopy(self.data.extra_specs_rep_enabled)
+        rep_extra_specs_b[utils.REPLICATION_DEVICE_BACKEND_ID] = 'A'
+        change_rep = self.utils.change_replication(
+            rep_extra_specs_a, rep_extra_specs_b)
+        self.assertFalse(change_rep)
 
     def test_get_child_sg_name(self):
         host_name = 'HostX'
@@ -1158,8 +1204,8 @@ class PowerMaxUtilsTest(test.TestCase):
     def test_get_unique_device_ids_from_lists(self):
         list_a = ['00001', '00002', '00003']
         list_b = ['00002', '00003', '00004']
-        unique_ids = self.utils.get_unique_device_ids_from_lists(list_a,
-                                                                 list_b)
+        unique_ids = self.utils.get_unique_device_ids_from_lists(
+            list_a, list_b)
         self.assertEqual(['00004'], unique_ids)
 
     def test_update_payload_for_rdf_vol_create(self):
@@ -1195,23 +1241,305 @@ class PowerMaxUtilsTest(test.TestCase):
         tgt_extra_specs = deepcopy(self.data.rep_extra_specs)
         tgt_extra_specs['rep_mode'] = utils.REP_METRO
 
-        self.assertTrue(self.utils.is_retype_supported(volume, src_extra_specs,
-                                                       tgt_extra_specs))
+        rep_configs = self.data.multi_rep_config_list
+        src_extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = (
+            self.data.rep_backend_id_sync)
+        tgt_extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = (
+            self.data.rep_backend_id_metro)
+
+        self.assertTrue(self.utils.is_retype_supported(
+            volume, src_extra_specs, tgt_extra_specs, rep_configs))
 
         # Volume source type not replicated, target type Metro replicated,
         # volume is attached, host-assisted retype not supported
         volume.attach_status = 'attached'
         self.assertFalse(self.utils.is_retype_supported(
-            volume, src_extra_specs, tgt_extra_specs))
+            volume, src_extra_specs, tgt_extra_specs, rep_configs))
 
         # Volume source type Async replicated, target type Metro replicated,
         # volume is attached, host-assisted retype not supported
         src_extra_specs['rep_mode'] = utils.REP_ASYNC
         self.assertFalse(self.utils.is_retype_supported(
-            volume, src_extra_specs, tgt_extra_specs))
+            volume, src_extra_specs, tgt_extra_specs, rep_configs))
 
         # Volume source type Metro replicated, target type Metro replicated,
         # volume is attached, host-assisted retype supported
         src_extra_specs['rep_mode'] = utils.REP_METRO
         self.assertTrue(self.utils.is_retype_supported(
-            volume, src_extra_specs, tgt_extra_specs))
+            volume, src_extra_specs, tgt_extra_specs, rep_configs))
+
+    def test_validate_multiple_rep_device(self):
+        self.utils.validate_multiple_rep_device(self.data.multi_rep_device)
+
+    def test_validate_multiple_rep_device_non_unique_backend_id(self):
+        rep_devices = self.data.multi_rep_device
+        rep_devices[0][utils.BACKEND_ID] = rep_devices[1][utils.BACKEND_ID]
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            self.data.multi_rep_device)
+
+    def test_validate_multiple_rep_device_missing_backend_id(self):
+        rep_devices = self.data.multi_rep_device
+        rep_devices[0].pop(utils.BACKEND_ID)
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            self.data.multi_rep_device)
+
+    def test_validate_multiple_rep_device_non_unique_rdf_label(self):
+        rep_devices = self.data.multi_rep_device
+        rep_devices[0]['rdf_group_label'] = rep_devices[1]['rdf_group_label']
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            self.data.multi_rep_device)
+
+    def test_validate_multiple_rep_device_non_unique_rdf_modes(self):
+        rep_devices = [self.data.rep_dev_1, self.data.rep_dev_2]
+        rep_devices[1]['mode'] = rep_devices[0]['mode']
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            rep_devices)
+
+    def test_validate_multiple_rep_device_multiple_targets(self):
+        rep_devices = [self.data.rep_dev_1, self.data.rep_dev_2]
+        rep_devices[1]['target_device_id'] = 1234
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            rep_devices)
+
+    def test_get_rep_config_single_rep(self):
+        rep_configs = self.data.sync_rep_config_list
+        rep_config = self.utils.get_rep_config('test', rep_configs)
+        self.assertEqual(rep_config, rep_configs[0])
+
+    def test_get_rep_config_multi_rep(self):
+        rep_configs = self.data.multi_rep_config_list
+        backend_id = rep_configs[0][utils.BACKEND_ID]
+        rep_device = self.utils.get_rep_config(backend_id, rep_configs)
+        self.assertEqual(rep_configs[0], rep_device)
+
+    def test_get_rep_config_fail(self):
+        rep_configs = self.data.multi_rep_config_list
+        backend_id = 'invalid key'
+        self.assertRaises(exception.InvalidInput, self.utils.get_rep_config,
+                          backend_id, rep_configs)
+
+    def test_get_replication_targets(self):
+        rep_targets_expected = [self.data.remote_array]
+        rep_configs = self.data.multi_rep_config_list
+        rep_targets_actual = self.utils.get_replication_targets(rep_configs)
+        self.assertEqual(rep_targets_expected, rep_targets_actual)
+
+    def test_validate_failover_request_success(self):
+        is_failed_over = False
+        failover_backend_id = self.data.rep_backend_id_sync
+        rep_configs = self.data.multi_rep_config_list
+        is_valid, msg = self.utils.validate_failover_request(
+            is_failed_over, failover_backend_id, rep_configs)
+        self.assertTrue(is_valid)
+        self.assertEqual("", msg)
+
+    def test_validate_failover_request_already_failed_over(self):
+        is_failed_over = True
+        failover_backend_id = self.data.rep_backend_id_sync
+        rep_configs = self.data.multi_rep_config_list
+        is_valid, msg = self.utils.validate_failover_request(
+            is_failed_over, failover_backend_id, rep_configs)
+        self.assertFalse(is_valid)
+        expected_msg = ('Cannot failover, the backend is already in a failed '
+                        'over state, if you meant to failback, please add '
+                        '--backend_id default to the command.')
+        self.assertEqual(expected_msg, msg)
+
+    def test_validate_failover_request_invalid_failback(self):
+        is_failed_over = False
+        failover_backend_id = 'default'
+        rep_configs = self.data.multi_rep_config_list
+        is_valid, msg = self.utils.validate_failover_request(
+            is_failed_over, failover_backend_id, rep_configs)
+        self.assertFalse(is_valid)
+        expected_msg = ('Cannot failback, backend is not in a failed over '
+                        'state. If you meant to failover, please either omit '
+                        'the --backend_id parameter or use the --backend_id '
+                        'parameter with a valid backend id.')
+        self.assertEqual(expected_msg, msg)
+
+    def test_validate_failover_request_no_backend_id_multi_rep(self):
+        is_failed_over = False
+        failover_backend_id = None
+        rep_configs = self.data.multi_rep_config_list
+        is_valid, msg = self.utils.validate_failover_request(
+            is_failed_over, failover_backend_id, rep_configs)
+        self.assertFalse(is_valid)
+        expected_msg = ('Cannot failover, no backend_id provided while '
+                        'multiple replication devices are defined in '
+                        'cinder.conf, please provide a backend_id '
+                        'which will act as new primary array by '
+                        'appending --backend_id <id> to your command.')
+        self.assertEqual(expected_msg, msg)
+
+    def test_validate_failover_request_incorrect_backend_id_multi_rep(self):
+        is_failed_over = False
+        failover_backend_id = 'invalid_id'
+        rep_configs = self.data.multi_rep_config_list
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_failover_request,
+                          is_failed_over, failover_backend_id, rep_configs)
+
+    def test_validate_replication_group_config_success(self):
+        rep_configs = deepcopy(self.data.multi_rep_config_list)
+        extra_specs = deepcopy(
+            self.data.vol_type_extra_specs_rep_enabled_backend_id_sync)
+        extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = (
+            self.data.rep_backend_id_sync)
+        self.utils.validate_replication_group_config(
+            rep_configs, [extra_specs])
+
+    def test_validate_replication_group_config_no_rep_configured(self):
+        rep_configs = None
+        extra_specs_list = [
+            self.data.vol_type_extra_specs_rep_enabled_backend_id_sync]
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_replication_group_config,
+                          rep_configs, extra_specs_list)
+        try:
+            self.utils.validate_replication_group_config(
+                rep_configs, extra_specs_list)
+        except exception.InvalidInput as e:
+            expected_msg = (
+                'Invalid input received: No replication devices are defined '
+                'in cinder.conf, can not enable volume group replication.')
+            self.assertEqual(expected_msg, e.msg)
+
+    def test_validate_replication_group_config_vol_type_not_rep_enabled(self):
+        rep_configs = self.data.multi_rep_config_list
+        extra_specs_list = [self.data.vol_type_extra_specs]
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_replication_group_config,
+                          rep_configs, extra_specs_list)
+        try:
+            self.utils.validate_replication_group_config(
+                rep_configs, extra_specs_list)
+        except exception.InvalidInput as e:
+            expected_msg = (
+                'Invalid input received: Replication is not enabled for a '
+                'Volume Type, all Volume Types in a replication enabled '
+                'Volume Group must have replication enabled.')
+            self.assertEqual(expected_msg, e.msg)
+
+    def test_validate_replication_group_config_cant_get_rep_config(self):
+        rep_configs = self.data.multi_rep_config_list
+        vt_extra_specs = (
+            self.data.vol_type_extra_specs_rep_enabled_backend_id_sync)
+        vt_extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = 'invalid'
+        extra_specs_list = [vt_extra_specs]
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_replication_group_config,
+                          rep_configs, extra_specs_list)
+        try:
+            self.utils.validate_replication_group_config(
+                rep_configs, extra_specs_list)
+        except exception.InvalidInput as e:
+            expected_msg = (
+                'Invalid input received: Unable to determine which '
+                'rep_device to use from cinder.conf. Could not validate '
+                'volume types being added to group.')
+            self.assertEqual(expected_msg, e.msg)
+
+    def test_validate_replication_group_config_non_sync_mode(self):
+        rep_configs = self.data.multi_rep_config_list
+        extra_specs_list = [
+            self.data.vol_type_extra_specs_rep_enabled_backend_id_async]
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_replication_group_config,
+                          rep_configs, extra_specs_list)
+        try:
+            self.utils.validate_replication_group_config(
+                rep_configs, extra_specs_list)
+        except exception.InvalidInput as e:
+            expected_msg = (
+                'Invalid input received: Replication for Volume Type is not '
+                'set to Synchronous. Only Synchronous can be used with '
+                'replication groups')
+            self.assertEqual(expected_msg, e.msg)
+
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rep_config')
+    def test_validate_replication_group_config_multiple_rep_backend_ids(
+            self, mck_get):
+        side_effect_list = [
+            self.data.rep_config_sync, self.data.rep_config_sync_2]
+        mck_get.side_effect = side_effect_list
+        rep_configs = self.data.multi_rep_config_list
+        ex_specs_1 = deepcopy(
+            self.data.vol_type_extra_specs_rep_enabled_backend_id_sync)
+        ex_specs_2 = deepcopy(
+            self.data.vol_type_extra_specs_rep_enabled_backend_id_sync_2)
+        extra_specs_list = [ex_specs_1, ex_specs_2]
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_replication_group_config,
+                          rep_configs, extra_specs_list)
+        mck_get.side_effect = side_effect_list
+        try:
+            self.utils.validate_replication_group_config(
+                rep_configs, extra_specs_list)
+        except exception.InvalidInput as e:
+            expected_msg = (
+                'Invalid input received: Multiple replication backend ids '
+                'detected please ensure only a single replication device '
+                '(backend_id) is used for all Volume Types in a Volume '
+                'Group.')
+            self.assertEqual(expected_msg, e.msg)
+
+    def test_validate_non_replication_group_config_success(self):
+        extra_specs_list = [
+            self.data.vol_type_extra_specs]
+        self.utils.validate_non_replication_group_config(extra_specs_list)
+
+    def test_validate_non_replication_group_config_failure(self):
+        extra_specs = {'pool_name': u'Diamond+DSS+SRP_1+000197800123',
+                       utils.IS_RE: '<is> True'}
+        self.assertRaises(exception.InvalidInput,
+                          self.utils.validate_non_replication_group_config,
+                          [extra_specs])
+        try:
+            self.utils.validate_non_replication_group_config([extra_specs])
+        except exception.InvalidInput as e:
+            expected_msg = (
+                'Invalid input received: Replication is enabled in one or '
+                'more of the Volume Types being added to new Volume Group '
+                'but the Volume Group is not replication enabled. Please '
+                'enable replication in the Volume Group or select only '
+                'non-replicated Volume Types.')
+            self.assertEqual(expected_msg, e.msg)
+
+    def test_get_migration_delete_extra_specs_replicated(self):
+        volume = self.data.test_volume
+        metadata = deepcopy(self.data.volume_metadata)
+        metadata[utils.IS_RE_CAMEL] = 'True'
+        metadata['ReplicationMode'] = utils.REP_SYNC
+        metadata['RDFG-Label'] = self.data.rdf_group_name_1
+        volume.metadata = metadata
+        extra_specs = deepcopy(self.data.extra_specs)
+        rep_configs = self.data.multi_rep_config_list
+        updated_extra_specs = self.utils.get_migration_delete_extra_specs(
+            volume, extra_specs, rep_configs)
+        ref_extra_specs = deepcopy(self.data.extra_specs)
+        ref_extra_specs[utils.IS_RE] = True
+        ref_extra_specs[utils.REP_MODE] = utils.REP_SYNC
+        ref_extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+        ref_extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = (
+            self.data.rep_backend_id_sync)
+        self.assertEqual(ref_extra_specs, updated_extra_specs)
+
+    def test_get_migration_delete_extra_specs_non_replicated(self):
+        volume = self.data.test_volume
+        volume.metadata = self.data.volume_metadata
+        extra_specs = deepcopy(self.data.extra_specs)
+        extra_specs[utils.IS_RE] = True
+        updated_extra_specs = self.utils.get_migration_delete_extra_specs(
+            volume, extra_specs, None)
+        self.assertEqual(self.data.extra_specs, updated_extra_specs)
