@@ -372,3 +372,18 @@ def validate_assertTrue(logical_line, filename):
         msg = ("C313: Unit tests should use assertTrue(value) instead"
                " of using assertEqual(True, value).")
         yield(0, msg)
+
+
+third_party_mock = re.compile("^import.mock")
+from_third_party_mock = re.compile("^from.mock.import")
+
+
+@core.flake8ext
+def no_third_party_mock(logical_line):
+    # We should only use unittest.mock, not the third party mock library that
+    # was needed for py2 support.
+    if (re.match(third_party_mock, logical_line) or
+            re.match(from_third_party_mock, logical_line)):
+        msg = ('C337: Unit tests should use the standard library "mock" '
+               'module, not the third party mock lib.')
+        yield(0, msg)

@@ -14,8 +14,8 @@
 
 import errno
 import re
+from unittest import mock
 
-import mock
 from oslo_utils import units
 from six.moves import http_client
 
