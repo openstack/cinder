@@ -1929,6 +1929,12 @@ class BaseVD(object):
 
         raise NotImplementedError()
 
+    @staticmethod
+    def _get_oslo_driver_opts(*cfg_names):
+        """Return an oslo driver options list from argument string (names)."""
+        return [CONF.backend_defaults._group._opts[cfg_name]['opt']
+                for cfg_name in cfg_names]
+
 
 @six.add_metaclass(abc.ABCMeta)
 class CloneableImageVD(object):

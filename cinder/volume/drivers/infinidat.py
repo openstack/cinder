@@ -130,9 +130,15 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         self.configuration.append_config_values(infinidat_opts)
         self._lookup_service = fczm_utils.create_lookup_service()
 
-    @staticmethod
-    def get_driver_options():
-        return infinidat_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'use_chap_auth',
+            'chap_username', 'chap_password', 'san_thin_provision',
+            'use_multipath_for_image_xfer', 'enforce_multipath_for_image_xfer',
+            'num_volume_device_scan_tries', 'volume_dd_blocksize',
+            'max_over_subscription_ratio')
+        return infinidat_opts + additional_opts
 
     def _setup_and_get_system_object(self, management_address, auth):
         system = infinisdk.InfiniBox(management_address, auth=auth)

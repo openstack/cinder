@@ -219,9 +219,13 @@ class PureBaseVolumeDriver(san.SanDriver):
             'platform': platform.platform()
         }
 
-    @staticmethod
-    def get_driver_options():
-        return PURE_OPTS
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'san_ip', 'driver_ssl_cert_verify', 'driver_ssl_cert_path',
+            'use_chap_auth', 'replication_device', 'reserved_percentage',
+            'max_over_subscription_ratio')
+        return PURE_OPTS + additional_opts
 
     def parse_replication_configs(self):
         self._replication_pg_name = (

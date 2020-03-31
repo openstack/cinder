@@ -112,9 +112,25 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self.protocol = self.target_driver.protocol
         self._sparse_copy_volume = False
 
-    @staticmethod
-    def get_driver_options():
-        return volume_opts
+    @classmethod
+    def get_driver_options(cls):
+        # Imports required to have config options
+        from cinder.volume.targets import spdknvmf  # noqa
+
+        additional_opts = cls._get_oslo_driver_opts(
+            'target_ip_address', 'target_helper', 'target_protocol',
+            'volume_clear', 'volume_clear_size', 'reserved_percentage',
+            'max_over_subscription_ratio', 'volume_dd_blocksize',
+            'target_prefix', 'volumes_dir', 'iscsi_secondary_ip_addresses',
+            'target_port',
+            'iscsi_write_cache', 'iscsi_target_flags',  # TGT
+            'iet_conf', 'iscsi_iotype',  # IET
+            'nvmet_port_id',  # NVMET
+            'scst_target_iqn_name', 'scst_target_driver',  # SCST
+            'spdk_rpc_ip', 'spdk_rpc_port', 'spdk_rpc_username',   # SPDKNVMF
+            'spdk_rpc_password', 'spdk_max_queue_depth',  # SPDKNVMF
+        )
+        return volume_opts + additional_opts
 
     def _sizestr(self, size_in_g):
         return '%sg' % size_in_g

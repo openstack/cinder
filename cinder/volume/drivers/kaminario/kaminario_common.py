@@ -135,9 +135,12 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         k2_lock_sfx = self.configuration.safe_get('san_ip')
         self.k2_lock_name = "%s-%s" % (K2_LOCK_PREFIX, k2_lock_sfx)
 
-    @staticmethod
-    def get_driver_options():
-        return kaminario_opts
+    @classmethod
+    def get_driver_options(cls):
+        additional_opts = cls._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'replication_device',
+            'volume_dd_blocksize')
+        return kaminario_opts + additional_opts
 
     @utils.trace
     def check_for_setup_error(self):
