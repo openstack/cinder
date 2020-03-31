@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    PowerMax Driver - Issue with upgrades from pre Pike to Pike and later.
+    The device is not found when trying to snapshot a legacy volume.
