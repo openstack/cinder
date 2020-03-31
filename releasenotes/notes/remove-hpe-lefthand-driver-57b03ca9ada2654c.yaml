@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The HPE Lefthand Driver (iSCSI) was marked unsupported in the
+    Train release as the StoreVirtual product line has gone EOL and
+    the LeftHand OS no longer receives upgrades.  The driver has been
+    removed in this release.  All data on backends powered by HPE
+    LeftHand OS should be migrated to a supported storage backend
+    before upgrading your Cinder installation.
