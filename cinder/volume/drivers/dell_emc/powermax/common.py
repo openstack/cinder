@@ -1032,7 +1032,7 @@ class PowerMaxCommon(object):
         # Get extend workflow dependent on array gen and replication status
         if rep_enabled:
             rep_config = ex_specs[utils.REP_CONFIG]
-            rdf_grp_no, _ = self.get_rdf_details(array, rep_config)
+            rdf_grp_no, __ = self.get_rdf_details(array, rep_config)
             r1_ode, r1_ode_metro, r2_ode, r2_ode_metro = (
                 self._array_ode_capabilities_check(array, True))
 
@@ -2052,7 +2052,7 @@ class PowerMaxCommon(object):
             _is_first_vol_in_replicated_sg())
 
         if not is_first_volume:
-            __, rep_extra_specs, rep_info_dict, _ = (
+            __, rep_extra_specs, rep_info_dict, __ = (
                 self.prepare_replication_details(extra_specs))
             volume_info_dict = self.provision.create_volume_from_sg(
                 array, volume_name, storagegroup_name,
@@ -5370,7 +5370,7 @@ class PowerMaxCommon(object):
             if vol_grp_name is None:
                 raise exception.GroupNotFound(group_id=group.id)
 
-            rdf_group_no, _ = self.get_rdf_details(
+            rdf_group_no, __ = self.get_rdf_details(
                 array, extra_specs[utils.REP_CONFIG])
             self.rest.srdf_resume_replication(
                 array, vol_grp_name, rdf_group_no, extra_specs)
@@ -5412,7 +5412,7 @@ class PowerMaxCommon(object):
             if vol_grp_name is None:
                 raise exception.GroupNotFound(group_id=group.id)
 
-            rdf_group_no, _ = self.get_rdf_details(
+            rdf_group_no, __ = self.get_rdf_details(
                 array, extra_specs[utils.REP_CONFIG])
             self.rest.srdf_suspend_replication(
                 array, vol_grp_name, rdf_group_no, extra_specs)
@@ -5465,7 +5465,7 @@ class PowerMaxCommon(object):
         failover = False if secondary_backend_id == 'default' else True
 
         try:
-            rdf_group_no, _ = self.get_rdf_details(
+            rdf_group_no, __ = self.get_rdf_details(
                 array, extra_specs[utils.REP_CONFIG])
             if group:
                 volume_group = self._find_volume_group(array, group)

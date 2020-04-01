@@ -3015,7 +3015,7 @@ class PowerMaxRest(object):
 
         :returns: unisphere_meets_min_req -- boolean
         """
-        running_version, _ = self.get_uni_version()
+        running_version, __ = self.get_uni_version()
         minimum_version = MIN_U4P_VERSION
         unisphere_meets_min_req = False
 
