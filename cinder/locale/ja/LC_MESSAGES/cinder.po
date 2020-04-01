@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-18 14:40+0000\n"
+"POT-Creation-Date: 2020-04-01 03:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3465,6 +3465,9 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "新規のボリュームタイプが要求仕様に指定されていません。"
 
+msgid "Nimble Cinder Driver exception"
+msgstr "Nimble Cinder ドライバー例外"
+
 msgid "No FC initiator can be added to host."
 msgstr "ホストには FC イニシエーターを追加できません。"
 
@@ -3510,6 +3513,10 @@ msgid "No initiator connected to fabric."
 msgstr "ファブリックに接続されたイニシエーターはありません。"
 
 #, python-format
+msgid "No initiator group found for initiator %s"
+msgstr "イニシエーター %s のイニシエーターグループが見つかりません。"
+
+#, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "ip %s のクラスター上にインターフェースが見つかりませんでした"
 
@@ -3551,6 +3558,9 @@ msgstr ""
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "そのような QoS 仕様 %(specs_id)s は存在しません。"
+
+msgid "No suitable discovery ip found"
+msgstr "適切なディスカバリー ip が見つかりません。"
 
 msgid "No suitable host was found to failover."
 msgstr "フェイルオーバーに適したホストが見つかりませんでした。"
@@ -3647,6 +3657,9 @@ msgid ""
 msgstr ""
 "直近の親またはルートプロジェクトに割り当てられたトークンを持つユーザーのみ"
 "が、子のクォータを参照することができます。"
+
+msgid "Only volumes managed by OpenStack can be unmanaged."
+msgstr "非管理に設定できるのは、OpenStack が管理するボリュームのみです。"
 
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
@@ -5022,6 +5035,9 @@ msgstr ""
 msgid "Unexpected over quota on %(name)s."
 msgstr "%(name)s で、予期せずクォータを超過しました。"
 
+msgid "Unexpected response from Nimble API"
+msgstr "Nimble API からの予期しない応答"
+
 msgid "Unexpected status code"
 msgstr "予期しないステータスコード"
 
@@ -5316,6 +5332,13 @@ msgid "Volume %s doesn't exist on array."
 msgstr "ボリューム %s がアレイに存在しません。"
 
 #, python-format
+msgid ""
+"Volume %s is online. Set volume to offline for managing using OpenStack."
+msgstr ""
+"ボリューム %s がオンラインです。OpenStack を使用して管理するために、ボリュー"
+"ムをオフラインに設定してください。"
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "ボリューム %s は整合性グループの一部であってはなりません。"
 
@@ -5479,6 +5502,9 @@ msgstr "ボリュームがまだホストに割り当てられていません。
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "%(volume_id)s のボリューム複製が見つかりませんでした。"
+
+msgid "Volume should have agent-type set as None."
+msgstr "ボリュームには agent-type として None を設定する必要があります。"
 
 #, python-format
 msgid ""
