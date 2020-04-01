@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver: The detach issue for multiattach capability (`Bug
+    1834660 <https://bugs.launchpad.net/cinder/+bug/1834660>`_)  was fixed in
+    the Cinder 15.0.0 (Train) release, but due to an oversight, the fix has not
+    been announced until now.
