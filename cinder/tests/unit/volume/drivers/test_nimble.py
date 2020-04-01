@@ -15,8 +15,8 @@
 
 
 import sys
+from unittest import mock
 
-import mock
 from six.moves import http_client
 
 from cinder import context

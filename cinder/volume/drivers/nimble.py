@@ -138,9 +138,6 @@ class NimbleBaseVolumeDriver(san.SanDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nimble_Storage_CI"
 
-    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
         super(NimbleBaseVolumeDriver, self).__init__(*args, **kwargs)
         self.APIExecutor = None
