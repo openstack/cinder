@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-18 14:40+0000\n"
+"POT-Creation-Date: 2020-04-01 03:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2636,6 +2636,9 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "request_spec 中沒有指定新的磁區類型。"
 
+msgid "Nimble Cinder Driver exception"
+msgstr "Nimble Cinder 驅動程式異常狀況"
+
 msgid "No FC initiator can be added to host."
 msgstr "任何 FC 起始器均無法新增至主機。"
 
@@ -2673,6 +2676,10 @@ msgid "No initiator connected to fabric."
 msgstr "沒有起始器已連接至光纖。"
 
 #, python-format
+msgid "No initiator group found for initiator %s"
+msgstr "找不到起始器 %s 的起始器群組"
+
+#, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "在叢集上找不到 IP %s 的介面"
 
@@ -2706,6 +2713,9 @@ msgstr "找不到含有 %s 的 Snapshot 來作為備用檔。"
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "沒有這類服務品質規格 %(specs_id)s。"
+
+msgid "No suitable discovery ip found"
+msgstr "找不到適當的探索 IP"
 
 #, python-format
 msgid "No support to restore backup version %s"
@@ -2770,6 +2780,9 @@ msgid ""
 "allowed to see its children quotas."
 msgstr ""
 "只容許具備已限定為原生母項或 root 專案範圍之記號的使用者來查看其子項配額。"
+
+msgid "Only volumes managed by OpenStack can be unmanaged."
+msgstr "只能取消管理由 OpenStack 進行管理的磁區。"
 
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
@@ -3814,6 +3827,9 @@ msgstr "非預期的 CLI 回應：標頭/列不符。標頭：%(header)s、列�
 msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
 msgstr "非預期的輸出。預期 [%(expected)s]，但卻接收到 [%(output)s]"
 
+msgid "Unexpected response from Nimble API"
+msgstr "來自 Nimble API 的非預期回應"
+
 msgid "Unexpected status code"
 msgstr "非預期的狀態碼"
 
@@ -4055,6 +4071,11 @@ msgid "Volume %s doesn't exist on array."
 msgstr "磁區 %s 不在陣列上。"
 
 #, python-format
+msgid ""
+"Volume %s is online. Set volume to offline for managing using OpenStack."
+msgstr "磁區 %s 在線上。請將磁區設為離線，以使用 OpenStack 進行管理。"
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "磁區 %s 不得為一致性群組的一部分。"
 
@@ -4185,6 +4206,9 @@ msgstr "尚未將磁區指派給主機。"
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "找不到 %(volume_id)s 的磁區抄寫。"
+
+msgid "Volume should have agent-type set as None."
+msgstr "磁區應該將代理程式類型設定為「無」。"
 
 #, python-format
 msgid ""

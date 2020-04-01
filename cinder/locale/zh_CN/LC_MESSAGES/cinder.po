@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-18 14:40+0000\n"
+"POT-Creation-Date: 2020-04-01 03:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3064,6 +3064,9 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "在 request_spec 中，未指定新的卷类型。"
 
+msgid "Nimble Cinder Driver exception"
+msgstr "Nimble Cinder 驱动程序异常"
+
 msgid "No FC initiator can be added to host."
 msgstr "无法将任何 FC 启动程序添加至主机。"
 
@@ -3105,6 +3108,10 @@ msgid "No initiator connected to fabric."
 msgstr "没有任何启动程序连接至光纤网络。"
 
 #, python-format
+msgid "No initiator group found for initiator %s"
+msgstr "找不到对应启动程序 %s 的启动程序组"
+
+#, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "集群中找不到 IP %s 的接口"
 
@@ -3143,6 +3150,9 @@ msgstr "无法为该卷请求分配存储。可以尝试其他大小或卷类型
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "不存在任何此类 QoS 规范 %(specs_id)s。"
+
+msgid "No suitable discovery ip found"
+msgstr "找不到合适的发现 IP"
 
 #, python-format
 msgid "No support to restore backup version %s"
@@ -3212,6 +3222,9 @@ msgid ""
 "Only users with token scoped to immediate parents or root projects are "
 "allowed to see its children quotas."
 msgstr "只允许令牌作用域仅限于直系父代或者根项目的用户查看其子代配额。"
+
+msgid "Only volumes managed by OpenStack can be unmanaged."
+msgstr "只有 OpenStack 管理的卷才能为非受管卷。"
 
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
@@ -4341,6 +4354,9 @@ msgstr "意外输出。需要 [%(expected)s]，但接收到 [%(output)s]"
 msgid "Unexpected over quota on %(name)s."
 msgstr "%(name)s 超过预期配额。"
 
+msgid "Unexpected response from Nimble API"
+msgstr "来自 Nimble API 的意外响应"
+
 msgid "Unexpected status code"
 msgstr "意外的状态码"
 
@@ -4607,6 +4623,11 @@ msgid "Volume %s doesn't exist on array."
 msgstr "卷 %s 在阵列上不存在。"
 
 #, python-format
+msgid ""
+"Volume %s is online. Set volume to offline for managing using OpenStack."
+msgstr "卷 %s 已联机。将该卷设置为脱机以便使用 OpenStack 进行管理。"
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "卷 %s 不得是一致性组的一部分。"
 
@@ -4749,6 +4770,9 @@ msgstr "卷尚未分配给主机。"
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "找不到 %(volume_id)s 的卷复制。"
+
+msgid "Volume should have agent-type set as None."
+msgstr "卷应该将 agent-type 设置为“无”。"
 
 #, python-format
 msgid ""

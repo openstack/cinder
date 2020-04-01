@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-03-18 14:40+0000\n"
+"POT-Creation-Date: 2020-04-01 03:00+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2969,6 +2969,9 @@ msgstr ""
 msgid "New volume type not specified in request_spec."
 msgstr "No se ha especificado el tipo de volumen nuevo en request_spec."
 
+msgid "Nimble Cinder Driver exception"
+msgstr "Excepción de controlador Nimble Cinder"
+
 msgid "No FC initiator can be added to host."
 msgstr "No se puede añadir ningún iniciador FC al host."
 
@@ -3009,6 +3012,10 @@ msgid "No initiator connected to fabric."
 msgstr "No hay ningún iniciador conectado al tejido."
 
 #, python-format
+msgid "No initiator group found for initiator %s"
+msgstr "No se ha encontrado ningún grupo de iniciadores para el iniciador %s"
+
+#, python-format
 msgid "No interface found on cluster for ip %s"
 msgstr "No se ha encontrado ninguna interfaz en el clúster para la IP %s"
 
@@ -3045,6 +3052,9 @@ msgstr "No se ha encontrado archivo con %s como archivo de respaldo."
 #, python-format
 msgid "No such QoS spec %(specs_id)s."
 msgstr "No hay especificaciones de QoS %(specs_id)s."
+
+msgid "No suitable discovery ip found"
+msgstr "No se ha encontrado ningún IP de descubrimiento adecuado"
 
 #, python-format
 msgid "No support to restore backup version %s"
@@ -3118,6 +3128,10 @@ msgid ""
 msgstr ""
 "Sólo los usuarios con ámbito de señal para padres inmediatos o proyectos "
 "root pueden ver las cuotas hijo."
+
+msgid "Only volumes managed by OpenStack can be unmanaged."
+msgstr ""
+"Solo los volúmenes gestionados por OpenStack pueden dejarse de gestionar."
 
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
@@ -4317,6 +4331,9 @@ msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
 msgstr ""
 "Salida inesperada. Se esperaba[%(expected)s] pero se ha recibido [%(output)s]"
 
+msgid "Unexpected response from Nimble API"
+msgstr "Respuesta inesperada de la API Nimble"
+
 msgid "Unexpected status code"
 msgstr "Código de estado inesperado"
 
@@ -4586,6 +4603,13 @@ msgid "Volume %s doesn't exist on array."
 msgstr "El volumen %s no existe en la matriz."
 
 #, python-format
+msgid ""
+"Volume %s is online. Set volume to offline for managing using OpenStack."
+msgstr ""
+"El volumen %s está en línea. Defina el volumen como fuera de línea para "
+"gestionarlo con  OpenStack."
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "El volumen %s no debe formar parte de un grupo de consistencia."
 
@@ -4728,6 +4752,9 @@ msgstr "Aún no se ha asignado el volumen al host."
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "La réplica de volumen de %(volume_id)s no se ha encontrado."
+
+msgid "Volume should have agent-type set as None."
+msgstr "El volumen debe tener agent-type establecido como None."
 
 #, python-format
 msgid ""
