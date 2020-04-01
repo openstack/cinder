@@ -132,6 +132,7 @@ from cinder.volume.drivers.netapp import options as \
 from cinder.volume.drivers.nexenta import options as \
     cinder_volume_drivers_nexenta_options
 from cinder.volume.drivers import nfs as cinder_volume_drivers_nfs
+from cinder.volume.drivers import nimble as cinder_volume_drivers_nimble
 from cinder.volume.drivers import pure as cinder_volume_drivers_pure
 from cinder.volume.drivers import qnap as cinder_volume_drivers_qnap
 from cinder.volume.drivers import quobyte as cinder_volume_drivers_quobyte
@@ -331,6 +332,7 @@ def list_opts():
                 cinder_volume_drivers_nexenta_options.NEXENTA_RRMGR_OPTS,
                 cinder_volume_drivers_nexenta_options.NEXENTA_EDGE_OPTS,
                 cinder_volume_drivers_nfs.nfs_opts,
+                cinder_volume_drivers_nimble.nimble_opts,
                 cinder_volume_drivers_pure.PURE_OPTS,
                 cinder_volume_drivers_qnap.qnap_opts,
                 cinder_volume_drivers_quobyte.volume_opts,
