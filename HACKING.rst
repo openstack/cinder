@@ -9,23 +9,21 @@ Cinder Specific Commandments
 ----------------------------
 - [N322] Ensure default arguments are not mutable.
 - [N323] Add check for explicit import of _() to ensure proper translation.
-- [N336] Must use a dict comprehension instead of a dict constructor with a
-  sequence of key-value pairs.
 - [C301] timeutils.utcnow() from oslo_utils should be used instead of
   datetime.now().
-- [C302] six.text_type should be used instead of unicode.
-- [C303] Ensure that there are no 'print()' statements in code that is being
-  committed.
-- [C304] Enforce no use of LOG.audit messages. LOG.info should be used instead.
-- [C305] Prevent use of deprecated contextlib.nested.
+- [C303] Ensure that there are no 'print()' statements are used in code that
+  should be using LOG calls.
 - [C306] timeutils.strtime() must not be used (deprecated).
-- [C307] LOG.warn is deprecated. Enforce use of LOG.warning.
 - [C308] timeutils.isotime() must not be used (deprecated).
 - [C309] Unit tests should not perform logging.
 - [C310] Check for improper use of logging format arguments.
 - [C311] Check for proper naming and usage in option registration.
 - [C312] Validate that logs are not translated.
 - [C313] Check that assertTrue(value) is used and not assertEqual(True, value).
+- [C336] Must use a dict comprehension instead of a dict constructor with a
+  sequence of key-value pairs.
+- [C337] Ensure the standard library mock modules is used and not the third
+  party mock library that was needed for Python 2 support.
 
 General
 -------
