@@ -808,8 +808,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'vserver': self.vserver
         }
 
-        self.client.file_assign_qos(
-            fake.FLEXVOL, fake.QOS_POLICY_GROUP_NAME, fake.NFS_FILE_PATH)
+        self.client.file_assign_qos(fake.FLEXVOL, fake.QOS_POLICY_GROUP_NAME,
+                                    False, fake.NFS_FILE_PATH)
 
         self.mock_send_request.assert_has_calls([
             mock.call('file-assign-qos', api_args, False)])

@@ -165,11 +165,13 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         self.zapi_client.send_ems_log_message(pool_ems_message)
 
     def _create_lun(self, volume_name, lun_name, size,
-                    metadata, qos_policy_group_name=None):
+                    metadata, qos_policy_group_name=None,
+                    qos_policy_group_is_adaptive=False):
         """Creates a LUN, handling Data ONTAP differences as needed."""
 
         self.zapi_client.create_lun(
-            volume_name, lun_name, size, metadata, qos_policy_group_name)
+            volume_name, lun_name, size, metadata, qos_policy_group_name,
+            qos_policy_group_is_adaptive)
 
     def _create_lun_handle(self, metadata, vserver=None):
         """Returns LUN handle based on filer type."""
@@ -192,19 +194,22 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
 
     def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0, source_snapshot=None, is_snapshot=False):
+                   block_count=0, source_snapshot=None, is_snapshot=False,
+                   qos_policy_group_is_adaptive=False):
         """Clone LUN with the given handle to the new name."""
         if not space_reserved:
             space_reserved = self.lun_space_reservation
         metadata = self._get_lun_attr(name, 'metadata')
         volume = metadata['Volume']
 
-        self.zapi_client.clone_lun(volume, name, new_name, space_reserved,
-                                   qos_policy_group_name=qos_policy_group_name,
-                                   src_block=src_block, dest_block=dest_block,
-                                   block_count=block_count,
-                                   source_snapshot=source_snapshot,
-                                   is_snapshot=is_snapshot)
+        self.zapi_client.clone_lun(
+            volume, name, new_name, space_reserved,
+            qos_policy_group_name=qos_policy_group_name,
+            src_block=src_block, dest_block=dest_block,
+            block_count=block_count,
+            source_snapshot=source_snapshot,
+            is_snapshot=is_snapshot,
+            qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
 
         LOG.debug("Cloned LUN with new name %s", new_name)
         lun = self.zapi_client.get_lun_by_args(vserver=self.vserver,

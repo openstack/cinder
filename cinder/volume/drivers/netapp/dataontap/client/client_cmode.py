@@ -453,7 +453,8 @@ class Client(client_base.Client):
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
-                  block_count=0, source_snapshot=None, is_snapshot=False):
+                  block_count=0, source_snapshot=None, is_snapshot=False,
+                  qos_policy_group_is_adaptive=False):
         # ONTAP handles only 128 MB per call as of v9.1
         bc_limit = 2 ** 18  # 2^18 blocks * 512 bytes/block = 128 MB
         z_calls = int(math.ceil(block_count / float(bc_limit)))
@@ -480,8 +481,13 @@ class Client(client_base.Client):
             clone_create = netapp_api.NaElement.create_node_with_children(
                 'clone-create', **zapi_args)
             if qos_policy_group_name is not None:
-                clone_create.add_new_child('qos-policy-group-name',
-                                           qos_policy_group_name)
+                if qos_policy_group_is_adaptive:
+                    clone_create.add_new_child(
+                        'qos-adaptive-policy-group-name',
+                        qos_policy_group_name)
+                else:
+                    clone_create.add_new_child('qos-policy-group-name',
+                                               qos_policy_group_name)
             if block_count > 0:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
@@ -520,11 +526,14 @@ class Client(client_base.Client):
             return []
         return attr_list.get_children()
 
-    def file_assign_qos(self, flex_vol, qos_policy_group_name, file_path):
+    def file_assign_qos(self, flex_vol, qos_policy_group_name,
+                        qos_policy_group_is_adaptive, file_path):
         """Assigns the named QoS policy-group to a file."""
+        qos_arg_name = "qos-%spolicy-group-name" % (
+            "adaptive-" if qos_policy_group_is_adaptive else "")
         api_args = {
             'volume': flex_vol,
-            'qos-policy-group-name': qos_policy_group_name,
+            qos_arg_name: qos_policy_group_name,
             'file': file_path,
             'vserver': self.vserver,
         }
