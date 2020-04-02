@@ -86,6 +86,27 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertTrue(self.common.next_gen)
         self.assertEqual(self.common.ucode_level, self.data.next_gen_ucode)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_ucode_version',
+                       return_value=tpd.PowerMaxData.next_gen_ucode)
+    @mock.patch.object(rest.PowerMaxRest, 'get_array_model_info',
+                       return_value=('PowerMax 2000', True))
+    @mock.patch.object(rest.PowerMaxRest, 'set_rest_credentials')
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_attributes_from_cinder_config',
+        return_value={'SerialNumber': tpd.PowerMaxData.array})
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_attributes_from_config')
+    def test_gather_info_rep_enabled_duplicate_serial_numbers(
+            self, mck_get_cnf, mck_get_c_cnf, mck_set, mck_model, mck_ucode):
+        is_enabled = self.common.replication_enabled
+        targets = self.common.replication_targets
+        self.common.replication_enabled = True
+        self.common.replication_targets = [self.data.array]
+        self.assertRaises(
+            exception.InvalidConfigurationValue, self.common._gather_info)
+        self.common.replication_enabled = is_enabled
+        self.common.replication_targets = targets
+
     @mock.patch.object(common.PowerMaxCommon,
                        '_gather_info')
     def test_get_attributes_from_config_short_host_template(
