@@ -149,6 +149,7 @@ from cinder.volume.drivers.veritas_access import veritas_iscsi as \
     cinder_volume_drivers_veritas_access_veritasiscsi
 from cinder.volume.drivers.vmware import vmdk as \
     cinder_volume_drivers_vmware_vmdk
+from cinder.volume.drivers import vzstorage as cinder_volume_drivers_vzstorage
 from cinder.volume.drivers.windows import iscsi as \
     cinder_volume_drivers_windows_iscsi
 from cinder.volume.drivers.windows import smbfs as \
@@ -348,6 +349,7 @@ def list_opts():
                 cinder_volume_drivers_stx_common.iscsi_opts,
                 cinder_volume_drivers_synology_synologycommon.cinder_opts,
                 cinder_volume_drivers_vmware_vmdk.vmdk_opts,
+                cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_windows_iscsi.windows_opts,
                 cinder_volume_drivers_windows_smbfs.volume_opts,
                 cinder_volume_drivers_zadara.zadara_opts,

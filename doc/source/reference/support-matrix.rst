@@ -90,4 +90,3 @@ release.
    * HPE Lefthand Driver (iSCSI)
    * ProphetStor Flexvisor Driver
    * Sheepdog Driver
-   * Virtuozzo Storage Driver
