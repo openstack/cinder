@@ -2,7 +2,7 @@
 features:
   - Beginning with microversion 3.60, users may apply time comparison filters
     to the volume summary list and volume detail list requests by using the
-    "created_at" or "updated_at" fields. Time must be expressed in ISO
-    8601 format. See the 'Block Storage API v3 Reference
-    <https://docs.openstack.org/api-ref/block-storage/v3/index.html>'_ for
+    ``created_at`` or ``updated_at`` fields. Time must be expressed in ISO
+    8601 format. See the `Block Storage API v3 Reference
+    <https://docs.openstack.org/api-ref/block-storage/v3/index.html>`_ for
     details.
