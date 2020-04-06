@@ -1845,7 +1845,7 @@ class PowerMaxMasking(object):
                     short_host_name, port_group_label = (
                         self._get_host_and_port_group_labels(
                             serial_number, no_slo_sg_name))
-                    fast_sg_name, _, _ = self.utils.get_child_sg_name(
+                    fast_sg_name, __, __ = self.utils.get_child_sg_name(
                         short_host_name, extra_specs, port_group_label)
                     source_sg_details = self.rest.get_storage_group(
                         serial_number, no_slo_sg_name)
