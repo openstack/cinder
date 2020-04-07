@@ -1263,6 +1263,74 @@ class BackupTestCase(BaseBackupTest):
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('available', vol['status'])
         backup = db.backup_get(self.ctxt, backup.id)
+        self.assertNotEqual(backup.id, vol.metadata.get('src_backup_id'))
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
+
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('six.moves.builtins.open', wraps=open)
+    @mock.patch.object(os.path, 'isdir', return_value=False)
+    @ddt.data({'os_name': 'nt', 'exp_open_mode': 'rb+'},
+              {'os_name': 'posix', 'exp_open_mode': 'wb'})
+    @ddt.unpack
+    def test_restore_backup_new_volume(self,
+                                       mock_isdir,
+                                       mock_open,
+                                       mock_temporary_chown,
+                                       mock_get_conn,
+                                       os_name,
+                                       exp_open_mode):
+        """Test normal backup restoration."""
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(
+            status='restoring-backup', size=vol_size)
+        backup = self._create_backup_db_entry(
+            status=fields.BackupStatus.RESTORING, volume_id=vol_id)
+        vol2_id = self._create_volume_db_entry(
+            status='restoring-backup', size=vol_size)
+        backup2 = self._create_backup_db_entry(
+            status=fields.BackupStatus.RESTORING, volume_id=vol2_id)
+        vol2 = objects.Volume.get_by_id(self.ctxt, vol2_id)
+
+        properties = {}
+        mock_get_conn.return_value = properties
+        mock_secure_enabled = (
+            self.volume_mocks['secure_file_operations_enabled'])
+        mock_secure_enabled.return_value = False
+        new_vol_id = self._create_volume_db_entry(
+            status='restoring-backup', size=vol_size)
+        vol = objects.Volume.get_by_id(self.ctxt, new_vol_id)
+        attach_info = {'device': {'path': '/dev/null'}}
+        mock_attach_device = self.mock_object(self.backup_mgr,
+                                              '_attach_device')
+        self.mock_object(self.backup_mgr, '_detach_device')
+        mock_attach_device.return_value = attach_info
+
+        with mock.patch('os.name', os_name):
+            self.backup_mgr.restore_backup(self.ctxt, backup, new_vol_id)
+
+        backup.status = "restoring"
+        db.backup_update(self.ctxt, backup.id, {"status": "restoring"})
+        vol.status = 'available'
+        vol.obj_reset_changes()
+        with mock.patch('os.name', os_name):
+            self.backup_mgr.restore_backup(self.ctxt, backup, vol2_id)
+
+        vol2.status = 'restoring-backup'
+        db.volume_update(self.ctxt, vol2.id, {"status": "restoring-backup"})
+        vol2.obj_reset_changes()
+
+        with mock.patch('os.name', os_name):
+            self.backup_mgr.restore_backup(self.ctxt, backup2, vol2_id)
+
+        vol2.status = 'available'
+        vol2.obj_reset_changes()
+        vol = objects.Volume.get_by_id(self.ctxt, new_vol_id)
+        vol2 = objects.Volume.get_by_id(self.ctxt, vol2_id)
+        self.assertEqual('available', vol['status'])
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(backup.id, vol.metadata["src_backup_id"])
+        self.assertEqual(backup2.id, vol2.metadata["src_backup_id"])
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
     @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')
