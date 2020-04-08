@@ -469,6 +469,10 @@ class PowerMaxData(object):
         id='2b06255d-f5f0-4520-a953-b029196add6a', name='abc',
         extra_specs=extra_specs)
 
+    ex_specs_rep_config_sync = deepcopy(ex_specs_rep_config)
+    ex_specs_rep_config_sync[utils.REP_MODE] = utils.REP_SYNC
+    ex_specs_rep_config_sync[utils.REP_CONFIG]['mode'] = utils.REP_SYNC
+
     test_volume_type_list = volume_type.VolumeTypeList(
         objects=[test_volume_type_1])
 
@@ -1473,3 +1477,8 @@ class PowerMaxData(object):
                         'remote_symmetrix_1_id': remote_array,
                         'remote_symmetrix_1_sgs': [
                             defaultstoragegroup_name]}}}}}
+
+    r1_sg_list = [default_sg_no_slo_re_enabled,
+                  rdf_managed_async_grp]
+
+    r2_sg_list = deepcopy(r1_sg_list)

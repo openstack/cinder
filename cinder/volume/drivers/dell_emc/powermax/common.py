@@ -2053,8 +2053,14 @@ class PowerMaxCommon(object):
                         extra_specs, rep_ex_specs, rep_vol)
                 elif not rdfg_empty and not rep_info:
                     # First volume in SG, not first in RDFG
-                    self.configure_volume_replication(
-                        array, volume, vol_dict['device_id'], extra_specs)
+                    __, __, __, rep_ex_specs, resume_rdf = (
+                        self.configure_volume_replication(
+                            array, volume, vol_dict['device_id'], extra_specs))
+                    if resume_rdf:
+                        self.rest.srdf_resume_replication(
+                            array, rep_ex_specs['mgmt_sg_name'],
+                            rep_ex_specs['rdf_group_no'], extra_specs)
+
             return first_vol, rep_ex_specs, vol_dict
 
         is_first_volume, rep_extra_specs, volume_info_dict = (
@@ -2572,6 +2578,11 @@ class PowerMaxCommon(object):
                 snap_name = self.utils.get_temp_snap_name(source_device_id)
                 create_snap = True
             if replication_enabled:
+                if rep_extra_specs[utils.REP_CONFIG]['mode'] in (
+                        [utils.REP_ASYNC, utils.REP_METRO]):
+                    rep_extra_specs['sg_name'] = (
+                        self.utils.get_rdf_management_group_name(
+                            rep_extra_specs[utils.REP_CONFIG]))
                 self.rest.srdf_suspend_replication(
                     array, rep_extra_specs['sg_name'],
                     rep_extra_specs['rdf_group_no'], rep_extra_specs)
@@ -4115,19 +4126,19 @@ class PowerMaxCommon(object):
 
         # Set session attributes
         resume_rdf, mgmt_sg_name = True, None
-        rep_mode = extra_specs['rep_mode']
+
         rep_config = extra_specs[utils.REP_CONFIG]
-        if rep_mode in [utils.REP_METRO, utils.REP_ASYNC]:
-            extra_specs['force_vol_remove'] = True
         rep_extra_specs = self._get_replication_extra_specs(
             extra_specs, rep_config)
-        extra_specs['force_vol_remove'] = True
-        rep_extra_specs['force_vol_remove'] = True
+
         remote_array = rep_extra_specs['array']
         rdfg_no = rep_extra_specs['rdf_group_no']
         remote_device = self.rest.get_rdf_pair_volume(
             array, rdfg_no, device_id)
         remote_device_id = remote_device['remoteVolumeName']
+
+        extra_specs['force_vol_remove'] = True
+        rep_extra_specs['force_vol_remove'] = True
 
         # Get the names of the SGs associated with the volume on the R2 array
         # before any operations are carried out - this will be used later for
@@ -4137,29 +4148,30 @@ class PowerMaxCommon(object):
         r2_sg_names = self.rest.get_storage_groups_from_volume(
             remote_array, remote_device_id)
 
-        if rep_extra_specs['rep_mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
-            mgmt_sg_name = self.utils.get_rdf_management_group_name(
-                rep_config)
+        if rep_config['mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
+            mgmt_sg_name = self.utils.get_rdf_management_group_name(rep_config)
             sg_name = mgmt_sg_name
+            rdf_group_state = self.rest.get_storage_group_rdf_group_state(
+                array, sg_name, rdfg_no)
+            if len(rdf_group_state) > 1 or (
+                    rdf_group_state[0] not in utils.RDF_SYNCED_STATES):
+                self.rest.wait_for_rdf_group_sync(
+                    array, sg_name, rdfg_no, rep_extra_specs)
         else:
             sg_name = r1_sg_names[0]
-
-        rep_extra_specs['mgmt_sg_name'] = sg_name
-
-        rdf_group_state = self.rest.get_storage_group_rdf_group_state(
-            array, sg_name, rdfg_no)
-        # We need to wait for RDFG to be in correct state before suspending
-        if len(rdf_group_state) > 1 or (
-                rdf_group_state[0] not in utils.RDF_SYNCED_STATES):
-            self.rest.wait_for_rdf_group_sync(
-                array, sg_name, rdfg_no, rep_extra_specs)
+            rdf_pair = self.rest.get_rdf_pair_volume(
+                array, rdfg_no, device_id)
+            rdf_pair_state = rdf_pair['rdfpairState']
+            if rdf_pair_state.lower() not in utils.RDF_SYNCED_STATES:
+                self.rest.wait_for_rdf_pair_sync(
+                    array, rdfg_no, device_id, rep_extra_specs)
 
         self.rest.srdf_suspend_replication(
             array, sg_name, rdfg_no, rep_extra_specs)
         self.rest.srdf_delete_device_pair(array, rdfg_no, device_id)
 
         # Remove the volume from the R1 RDFG mgmt SG (R1)
-        if rep_extra_specs['rep_mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
+        if rep_config['mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
             self.masking.remove_volume_from_sg(
                 array, device_id, volume_name, mgmt_sg_name, extra_specs)
 
@@ -4170,12 +4182,14 @@ class PowerMaxCommon(object):
                 rep_extra_specs)
 
         if mgmt_sg_name:
-            if not self.rest.get_volumes_in_storage_group(
-                    array, mgmt_sg_name):
+            if not self.rest.get_volumes_in_storage_group(array, mgmt_sg_name):
                 resume_rdf = False
         else:
             if not self.rest.get_volumes_in_storage_group(array, sg_name):
                 resume_rdf = False
+
+        if resume_rdf:
+            rep_extra_specs['mgmt_sg_name'] = sg_name
 
         self._delete_from_srp(remote_array, remote_device_id, volume_name,
                               extra_specs)

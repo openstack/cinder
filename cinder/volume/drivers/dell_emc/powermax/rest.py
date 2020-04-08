@@ -2555,7 +2555,7 @@ class PowerMaxRest(object):
 
         # Metro specific configuration
         if replication_mode == utils.REP_METRO:
-            bias = "true" if extra_specs[utils.METROBIAS] else "False"
+            bias = "true" if extra_specs.get(utils.METROBIAS) else "false"
             payload.update({
                 "replicationMode": "Active", "metroBias": bias})
 
@@ -2606,14 +2606,14 @@ class PowerMaxRest(object):
         if group_state:
             group_state = [x.lower() for x in group_state]
 
-        if utils.RDF_SUSPENDED_STATE not in group_state:
+        if len(group_state) == 1 and utils.RDF_SUSPENDED_STATE in group_state:
+            LOG.info('SRDF Group %(grp_num)s is already in a suspended state',
+                     {'grp_num': rdf_group_no})
+        else:
             self.srdf_modify_group(
                 array_id, rdf_group_no, storage_group,
                 {"suspend": {"force": "true"}, "action": "Suspend"},
                 rep_extra_specs, 'Suspend SRDF Group Replication')
-        else:
-            LOG.info('SRDF Group %(grp_num)s is already in a suspended state',
-                     {'grp_num': rdf_group_no})
 
     def srdf_resume_replication(self, array_id, storage_group, rdf_group_no,
                                 rep_extra_specs, async_call=True):
