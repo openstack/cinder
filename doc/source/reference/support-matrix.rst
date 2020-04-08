@@ -88,5 +88,4 @@ release.
 
 * Ussuri
    * HPE Lefthand Driver (iSCSI)
-   * ProphetStor Flexvisor Driver
    * Sheepdog Driver
