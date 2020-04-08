@@ -19,6 +19,7 @@ import requests
 import six
 
 from cinder.volume.drivers.dell_emc.vxflexos import driver
+from cinder.volume.drivers.dell_emc.vxflexos import rest_client
 
 CONF = cfg.CONF
 
@@ -28,6 +29,14 @@ class VxFlexOSDriver(driver.VxFlexOSDriver):
 
     Provides some fake configuration options
     """
+    def do_setup(self, context):
+        self.provisioning_type = (
+            "thin" if self.configuration.san_thin_provision else "thick"
+        )
+        self.configuration.max_over_subscription_ratio = (
+            self.configuration.vxflexos_max_over_subscription_ratio
+        )
+
     def local_path(self, volume):
         pass
 
@@ -40,7 +49,14 @@ class VxFlexOSDriver(driver.VxFlexOSDriver):
     def unmanage(self, volume):
         pass
 
-    def _is_volume_creation_safe(self, _pd, _sp):
+
+class VxFlexOSClient(rest_client.RestClient):
+    """Mock VxFlex OS Rest Client class.
+
+    Provides some fake configuration options
+    """
+
+    def is_volume_creation_safe(self, _pd, _sp):
         return True
 
 

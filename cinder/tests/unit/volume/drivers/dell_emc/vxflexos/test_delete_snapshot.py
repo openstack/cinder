@@ -18,9 +18,11 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.fake_snapshot import fake_snapshot_obj
+from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 
 
 class TestDeleteSnapShot(vxflexos.TestVxFlexOSDriver):
@@ -34,11 +36,16 @@ class TestDeleteSnapShot(vxflexos.TestVxFlexOSDriver):
         super(TestDeleteSnapShot, self).setUp()
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
+        self.fake_volume = fake_volume_obj(
+            ctx, **{'provider_id': fake.PROVIDER_ID})
+
         self.snapshot = fake_snapshot_obj(
-            ctx, **{'provider_id': fake.SNAPSHOT_ID})
+            ctx, **{'volume': self.fake_volume,
+                    'provider_id': fake.SNAPSHOT_ID})
+
         self.snapshot_name_2x_enc = urllib.parse.quote(
             urllib.parse.quote(
-                self.driver._id_to_base64(self.snapshot.id)
+                flex_utils.id_to_base64(self.snapshot.id)
             )
         )
 
@@ -46,6 +53,7 @@ class TestDeleteSnapShot(vxflexos.TestVxFlexOSDriver):
             self.RESPONSE_MODE.Valid: {
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.snapshot.id,
+                'instances/Volume::' + self.snapshot.provider_id: {},
                 'instances/Volume::{}/action/removeMappedSdc'.format(
                     self.snapshot.provider_id
                 ): self.snapshot.id,
@@ -54,6 +62,8 @@ class TestDeleteSnapShot(vxflexos.TestVxFlexOSDriver):
                 ): self.snapshot.id,
             },
             self.RESPONSE_MODE.BadStatus: {
+                'instances/Volume::' + self.snapshot.provider_id:
+                    self.BAD_STATUS_RESPONSE,
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.BAD_STATUS_RESPONSE,
                 'instances/Volume::{}/action/removeVolume'.format(

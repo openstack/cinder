@@ -23,6 +23,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 from cinder.volume import volume_types
 
 
@@ -42,7 +43,7 @@ class TestManageExisting(vxflexos.TestVxFlexOSDriver):
             ctx, **{'provider_id': fake.PROVIDER2_ID})
         self.volume_no_provider_id = fake_volume.fake_volume_obj(ctx)
         self.volume_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
+            urllib.parse.quote(flex_utils.id_to_base64(self.volume.id))
         )
 
         self.HTTPS_MOCK_RESPONSES = {
@@ -90,7 +91,7 @@ class TestManageExisting(vxflexos.TestVxFlexOSDriver):
         self.volume['volume_type_id'] = fake.VOLUME_TYPE_ID
         existing_ref = {'source-id': fake.PROVIDER_ID}
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
-        self.assertRaises(exception.ManageExistingInvalidReference,
+        self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.manage_existing, self.volume,
                           existing_ref)
 

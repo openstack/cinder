@@ -21,6 +21,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration
+from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 
 
 class TestDeleteVolume(vxflexos.TestVxFlexOSDriver):
@@ -37,11 +38,12 @@ class TestDeleteVolume(vxflexos.TestVxFlexOSDriver):
             ctx, **{'provider_id': fake.PROVIDER_ID})
 
         self.volume_name_2x_enc = urllib.parse.quote(
-            urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
+            urllib.parse.quote(flex_utils.id_to_base64(self.volume.id))
         )
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
+                'instances/Volume::' + self.volume.provider_id: {},
                 'types/Volume/instances/getByName::' +
                 self.volume_name_2x_enc: self.volume.id,
                 'instances/Volume::{}/action/removeMappedSdc'.format(
@@ -51,6 +53,8 @@ class TestDeleteVolume(vxflexos.TestVxFlexOSDriver):
                 ): self.volume.provider_id,
             },
             self.RESPONSE_MODE.BadStatus: {
+                'instances/Volume::' + self.volume.provider_id:
+                    self.BAD_STATUS_RESPONSE,
                 'types/Volume/instances/getByName::' +
                 self.volume_name_2x_enc: mocks.MockHTTPSResponse(
                     {
