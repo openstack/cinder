@@ -37,11 +37,14 @@ ILLEGAL_SYNTAX = 0
 
 
 class RestClient(object):
-    def __init__(self, configuration):
+    def __init__(self, configuration, is_primary=True):
         self.configuration = configuration
+        self.is_primary = is_primary
         self.spCache = simplecache.SimpleCache("Storage Pool", age_minutes=5)
         self.pdCache = simplecache.SimpleCache("Protection Domain",
                                                age_minutes=5)
+        self.rcgCache = simplecache.SimpleCache("Replication CG",
+                                                age_minutes=5)
         self.rest_ip = None
         self.rest_port = None
         self.rest_username = None
@@ -72,18 +75,35 @@ class RestClient(object):
         }
 
     def do_setup(self):
-        self.rest_port = self.configuration.vxflexos_rest_server_port
-        self.verify_certificate = (
-            self.configuration.safe_get("sio_verify_server_certificate") or
-            self.configuration.safe_get("driver_ssl_cert_verify")
+        if self.is_primary:
+            get_config_value = self.configuration.safe_get
+        else:
+            replication_targets = self.configuration.safe_get(
+                "replication_device"
+            )
+            if not replication_targets:
+                return
+            elif len(replication_targets) > 1:
+                msg = _("VxFlex OS does not support more than one "
+                        "replication backend.")
+                raise exception.InvalidInput(reason=msg)
+            get_config_value = replication_targets[0].get
+        self.verify_certificate = bool(
+            get_config_value("sio_verify_server_certificate") or
+            get_config_value("driver_ssl_cert_verify")
         )
-        self.rest_ip = self.configuration.safe_get("san_ip")
-        self.rest_username = self.configuration.safe_get("san_login")
-        self.rest_password = self.configuration.safe_get("san_password")
+        self.rest_ip = get_config_value("san_ip")
+        self.rest_port = int(
+            get_config_value("vxflexos_rest_server_port") or
+            get_config_value("sio_rest_server_port") or
+            443
+        )
+        self.rest_username = get_config_value("san_login")
+        self.rest_password = get_config_value("san_password")
         if self.verify_certificate:
             self.certificate_path = (
-                self.configuration.safe_get("sio_server_certificate_path") or
-                self.configuration.safe_get("driver_ssl_cert_path")
+                get_config_value("sio_server_certificate_path") or
+                get_config_value("driver_ssl_cert_path")
             )
         if not all([self.rest_ip, self.rest_username, self.rest_password]):
             msg = _("REST server IP, username and password must be specified.")
@@ -146,7 +166,8 @@ class RestClient(object):
     def create_volume(self,
                       protection_domain_name,
                       storage_pool_name,
-                      volume,
+                      volume_id,
+                      volume_size,
                       provisioning,
                       compression):
         url = "/types/Volume/instances"
@@ -156,9 +177,9 @@ class RestClient(object):
         pool_id = self.get_storage_pool_id(protection_domain_name,
                                            storage_pool_name)
         LOG.info("Storage Pool id: %s.", pool_id)
-        volume_name = flex_utils.id_to_base64(volume.id)
+        volume_name = flex_utils.id_to_base64(volume_id)
         # units.Mi = 1024 ** 2
-        volume_size_kb = volume.size * units.Mi
+        volume_size_kb = volume_size * units.Mi
         params = {
             "protectionDomainId": domain_id,
             "storagePoolId": pool_id,
@@ -195,6 +216,124 @@ class RestClient(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response["volumeIdList"][0]
+
+    def _get_replication_cg_id_by_name(self, rcg_name):
+        url = ("/types/ReplicationConsistencyGroup/instances"
+               "/action/queryIdByKey")
+
+        if not rcg_name:
+            msg = _("Unable to query Replication CG id with None name.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        cached_val = self.rcgCache.get_value(rcg_name)
+        if cached_val is not None:
+            return cached_val
+        encoded_rcg_name = urllib.parse.quote(rcg_name, "")
+        params = {"name": encoded_rcg_name}
+        r, rcg_id = self.execute_vxflexos_post_request(url, params)
+        if not rcg_id:
+            msg = (_("Replication CG with name %s wasn't found.") % rcg_id)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if r.status_code != http_client.OK and "errorCode" in rcg_id:
+            msg = (_("Failed to get Replication CG id with name "
+                     "%(name)s: %(message)s.") %
+                   {"name": rcg_name, "message": rcg_id["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        LOG.info("Replication CG id: %s.", rcg_id)
+        self.rcgCache.update(rcg_name, rcg_id)
+        return rcg_id
+
+    def _query_volumes_pair(self,
+                            pair_id):
+        url = "/instances/ReplicationPair::%(pair_id)s"
+
+        r, response = self.execute_vxflexos_get_request(url, pair_id=pair_id)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to query volumes pair %(pair_id)s: %(err)s.") %
+                   {"pair_id": pair_id, "err": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    def _query_replication_pairs(self):
+        url = "/types/ReplicationPair/instances"
+
+        r, response = self.execute_vxflexos_get_request(url)
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to query replication pairs: %s.") %
+                   response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
+
+    @staticmethod
+    def _filter_replication_pairs(replication_pairs,
+                                  filter_key,
+                                  filter_value):
+        try:
+            return next(filter(lambda pair: pair[filter_key] == filter_value,
+                               replication_pairs))
+        except StopIteration:
+            msg = (_("Volume pair for volume with id %s is not found.")
+                   % filter_value)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_volumes_pair_attrs(self, filter_key, filter_value):
+        replication_pairs = self._query_replication_pairs()
+        founded = self._filter_replication_pairs(replication_pairs,
+                                                 filter_key,
+                                                 filter_value)
+        pair_id = founded["id"]
+        remote_pair_id = founded["remoteId"]
+        vol_provider_id = founded["localVolumeId"]
+        remote_vol_provider_id = founded["remoteVolumeId"]
+        return pair_id, remote_pair_id, vol_provider_id, remote_vol_provider_id
+
+    def create_volumes_pair(self,
+                            rcg_name,
+                            source_provider_id,
+                            dest_provider_id):
+        url = "/types/ReplicationPair/instances"
+
+        rcg_id = self._get_replication_cg_id_by_name(rcg_name)
+        params = {
+            "name": source_provider_id,
+            "replicationConsistencyGroupId": rcg_id,
+            "copyType": "OnlineCopy",
+            "sourceVolumeId": source_provider_id,
+            "destinationVolumeId": dest_provider_id,
+        }
+        r, response = self.execute_vxflexos_post_request(url, params, )
+        if r.status_code != http_client.OK and "errorCode" in response:
+            msg = (_("Failed to create volumes pair: %s.") %
+                   response["message"])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        replication_pair = self._query_volumes_pair(response["id"])
+        LOG.info("Created volumes pair %(vol_pair_id)s. "
+                 "Remote pair %(remote_pair_id)s.",
+                 {
+                     "vol_pair_id": replication_pair["id"],
+                     "remote_pair_id": replication_pair["remoteId"],
+                 })
+        return replication_pair["id"], replication_pair["remoteId"]
+
+    def remove_volumes_pair(self, vol_pair_id):
+        url = ("/instances/ReplicationPair::%(vol_pair_id)s/action"
+               "/removeReplicationPair")
+
+        r, response = self.execute_vxflexos_post_request(
+            url, vol_pair_id=vol_pair_id
+        )
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to delete volumes pair "
+                     "%(vol_pair_id)s: %(err)s.") %
+                   {"vol_pair_id": vol_pair_id, "err": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def _get_protection_domain_id_by_name(self, domain_name):
         url = "/types/Domain/instances/getByName::%(encoded_domain_name)s"
@@ -498,3 +637,20 @@ class RestClient(object):
         else:
             LOG.info("VxFlex OS volume %(vol_id)s was renamed to "
                      "%(new_name)s.", {"vol_id": vol_id, "new_name": new_name})
+
+    def failover_failback_replication_cg(self, rcg_name, is_failback):
+        url = ("/instances/ReplicationConsistencyGroup::%(rcg_id)s"
+               "/action/%(action)sReplicationConsistencyGroup")
+
+        action = "restore" if is_failback else "failover"
+        rcg_id = self._get_replication_cg_id_by_name(rcg_name)
+        r, response = self.execute_vxflexos_post_request(url,
+                                                         rcg_id=rcg_id,
+                                                         action=action)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to %(action)s rcg with id %(rcg_id)s: "
+                     "%(err_msg)s.") % {"action": action,
+                                        "rcg_id": rcg_id,
+                                        "err_msg": response["message"]})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
