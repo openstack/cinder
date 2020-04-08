@@ -132,6 +132,11 @@
     vars:
       zuul_additional_subunit_dirs:
         - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
+      devstack_local_conf:
+        test-config:
+          $TEMPEST_CONFIG:
+            volume-feature-enabled:
+              volume_revert: True
 
 - job:
     name: cinder-grenade-dsvm-mn-sub-bak
