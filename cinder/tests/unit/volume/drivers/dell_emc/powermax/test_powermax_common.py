@@ -1646,12 +1646,15 @@ class PowerMaxCommonTest(test.TestCase):
             model_update = self.common.manage_existing(volume, external_ref)
             self.assertEqual(ref_update, model_update)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_list',
+                       return_value=[tpd.PowerMaxData.device_id3])
     @mock.patch.object(
         rest.PowerMaxRest, 'get_masking_views_from_storage_group',
         return_value=None)
     @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
                        return_value=(False, False, None))
-    def test_check_lun_valid_for_cinder_management(self, mock_rep, mock_mv):
+    def test_check_lun_valid_for_cinder_management(
+            self, mock_rep, mock_mv, mock_list):
         external_ref = {u'source-name': u'00003'}
         vol, source_sg = self.common._check_lun_valid_for_cinder_management(
             self.data.array, self.data.device_id3,
@@ -1659,13 +1662,15 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(vol, '123')
         self.assertIsNone(source_sg)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_list',
+                       return_value=[tpd.PowerMaxData.device_id4])
     @mock.patch.object(
         rest.PowerMaxRest, 'get_masking_views_from_storage_group',
         return_value=None)
     @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
                        return_value=(False, False, None))
     def test_check_lun_valid_for_cinder_management_multiple_sg_exception(
-            self, mock_rep, mock_mv):
+            self, mock_rep, mock_mv, mock_list):
         external_ref = {u'source-name': u'00004'}
         self.assertRaises(
             exception.ManageExistingInvalidReference,
@@ -1673,6 +1678,8 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.array, self.data.device_id4,
             self.data.test_volume.id, external_ref)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_list',
+                       return_value=[tpd.PowerMaxData.device_id3])
     @mock.patch.object(rest.PowerMaxRest, 'get_volume',
                        side_effect=[None,
                                     tpd.PowerMaxData.volume_details[2],
@@ -1688,7 +1695,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
                        side_effect=[(True, False, []), (False, False, None)])
     def test_check_lun_valid_for_cinder_management_exception(
-            self, mock_rep, mock_sg, mock_mvs, mock_get_vol):
+            self, mock_rep, mock_sg, mock_mvs, mock_get_vol, mock_list):
         external_ref = {u'source-name': u'00003'}
         for x in range(0, 3):
             self.assertRaises(
@@ -1700,6 +1707,22 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common._check_lun_valid_for_cinder_management,
                           self.data.array, self.data.device_id3,
                           self.data.test_volume.id, external_ref)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_list',
+                       return_value=[tpd.PowerMaxData.device_id])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_masking_views_from_storage_group',
+        return_value=None)
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
+                       return_value=(False, False, None))
+    def test_check_lun_valid_for_cinder_management_non_FBA(
+            self, mock_rep, mock_mv, mock_list):
+        external_ref = {u'source-name': u'00004'}
+        self.assertRaises(
+            exception.ManageExistingVolumeTypeMismatch,
+            self.common._check_lun_valid_for_cinder_management,
+            self.data.array, self.data.device_id4,
+            self.data.test_volume.id, external_ref)
 
     def test_manage_existing_get_size(self):
         external_ref = {u'source-name': u'00001'}
