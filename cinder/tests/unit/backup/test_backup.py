@@ -1316,6 +1316,9 @@ class BackupTestCase(BaseBackupTest):
         with mock.patch('os.name', os_name):
             self.backup_mgr.restore_backup(self.ctxt, backup, vol2_id)
 
+        vol2.refresh()
+        old_src_backup_id = vol2.metadata["src_backup_id"]
+        self.assertEqual(backup.id, old_src_backup_id)
         vol2.status = 'restoring-backup'
         db.volume_update(self.ctxt, vol2.id, {"status": "restoring-backup"})
         vol2.obj_reset_changes()
@@ -1325,11 +1328,12 @@ class BackupTestCase(BaseBackupTest):
 
         vol2.status = 'available'
         vol2.obj_reset_changes()
-        vol = objects.Volume.get_by_id(self.ctxt, new_vol_id)
-        vol2 = objects.Volume.get_by_id(self.ctxt, vol2_id)
-        self.assertEqual('available', vol['status'])
-        backup = db.backup_get(self.ctxt, backup.id)
+        vol.refresh()
+        vol2.refresh()
+        self.assertEqual('available', vol.status)
+        backup.refresh()
         self.assertEqual(backup.id, vol.metadata["src_backup_id"])
+        self.assertNotEqual(old_src_backup_id, vol2.metadata["src_backup_id"])
         self.assertEqual(backup2.id, vol2.metadata["src_backup_id"])
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
