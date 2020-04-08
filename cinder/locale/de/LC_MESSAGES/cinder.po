@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -923,12 +923,6 @@ msgstr "Der Parameter %(param)s wurde nicht gefunden."
 #, python-format
 msgid "Could not find target %s"
 msgstr "Das Ziel %s wurde nicht gefunden."
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr ""
-"Der übergeordnete Datenträger für die Schattenkopie '%s' im Arrary wurde "
-"nicht gefunden."
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2299,9 +2293,6 @@ msgid "Group type with name %(group_type_name)s could not be found."
 msgstr ""
 "Gruppentyp mit dem Namen %(group_type_name)s konnte nicht gefunden werden."
 
-msgid "HPELeftHand url not found"
-msgstr "HPELeftHand-URL nicht gefunden"
-
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -2468,15 +2459,6 @@ msgid "Invalid Group: %(reason)s"
 msgstr "Ungültige Gruppe:%(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"Ungültige HPELeftHand-API-Version gefunden: %(found)s. Version %(minimum)s "
-"oder höher erforderlich für die Unterstützung der Funktionen Verwaltung/"
-"Aufheben von Verwaltung."
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "Ungültiges IP-Adressformat: '%s'"
 
@@ -2555,17 +2537,6 @@ msgstr ""
 "Ungültige hpe3parclient-Version gefunden (%(found)s). Eine Version ab "
 "%(minimum)s ist erforderlich. Führen Sie \"pip install --upgrade "
 "python-3parclient\" aus, um ein Upgrade für hpe3parclient durchzuführen."
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"Ungültige hpelefthandclient-Version gefunden (%(found)s). Version "
-"%(minimum)s oder höher erforderlich. Führen Sie 'pip install --upgrade "
-"python-lefthandclient' aus, um ein Upgrade für hpelefthandclient "
-"durchzuführen."
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -2742,9 +2713,6 @@ msgstr "LUN mit angegebener Referenz %s nicht gefunden."
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr ""
 "LUN-Nummer liegt außerhalb des gültigen Bereichs für Kanal-ID: %(ch_id)s."
-
-msgid "LeftHand cluster not found"
-msgstr "LeftHand-Cluster nicht gefunden"
 
 msgid "License is unavailable."
 msgstr "Die Lizenz ist nicht verfügbar."
@@ -3390,10 +3358,6 @@ msgstr ""
 "RBD-Differenzierungsoperation fehlgeschlagen - (ret=%(ret)s stderr="
 "%(stderr)s)"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "RPC Version"
 msgstr "RPC-Version"
 
@@ -3403,14 +3367,6 @@ msgstr "Referenz muss für eine nicht verwaltete Schattenkopie sein."
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr ""
 "Referenz muss für einen nicht verwalteten virtuellen Datenträger sein. "
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "Referenz muss der Name einer nicht verwalteten Schattenkopie sein."
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr ""
-"Referenz muss der Datenträgername eines nicht verwalteten virtuellen "
-"Datenträgers sein."
 
 msgid "Reference must contain source-id or source-name element."
 msgstr ""
@@ -3912,14 +3868,6 @@ msgstr ""
 "die Datenträger und nehmen Sie die Replikation an den 3PAR-Backends wieder "
 "auf. "
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr ""
-"Der Host ist nicht für die Zurücksetzung bereit. Synchronisieren Sie erneut "
-"die Datenträger und nehmen Sie die Replikation an den LeftHand-Backends "
-"wieder auf. "
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "Die Methode update_migrated_volume ist nicht implementiert."
 
@@ -3934,10 +3882,6 @@ msgstr ""
 "Die angegebene Schattenkopie '%s' ist keine Schattenkopie des angegebenen "
 "Datenträgers."
 
-#, python-format
-msgid "The remote retention count must be %s or less."
-msgstr "Der Zähler für ferne Aufbewahrung muss kleiner-gleich %s sein. "
-
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -3948,18 +3892,8 @@ msgstr ""
 "replication:sync_period ebenfalls angegeben werden, und zwar mit einem Wert "
 "zwischen 300 und 31622400 Sekunden."
 
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr ""
-"Der Synchronisierungszeitraum für die Replikation muss mindestens %s "
-"Sekunden sein."
-
 msgid "The results are invalid."
 msgstr "Die Ergebnisse sind ungültig."
-
-#, python-format
-msgid "The retention count must be %s or less."
-msgstr "Der Zähler für Aufbewahrung muss kleiner-gleich %s sein."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
@@ -4083,15 +4017,6 @@ msgid ""
 "('%s'). The volume will not be recognized as replication type."
 msgstr ""
 "Beim Konfigurieren einer Gruppe der fernen Kopie in den 3PAR-Arrays ist ein "
-"Fehler aufgetreten: ('%s'). Der Datenträger wird nicht als Replikationstyp "
-"erkannt."
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"Beim Konfigurieren eines fernen Zeitplans für die LefHand-Arrays ist ein "
 "Fehler aufgetreten: ('%s'). Der Datenträger wird nicht als Replikationstyp "
 "erkannt."
 
@@ -4501,11 +4426,6 @@ msgstr ""
 
 msgid "Unmanage volume not implemented."
 msgstr "Aufheben der Verwaltung für einen Datenträger nicht implementiert."
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr ""
-"Aufheben der Verwaltung von Schattenkopien aus Failover-Datenträgern ist "
-"nicht zulässig."
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr ""

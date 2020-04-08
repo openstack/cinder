@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -793,10 +793,6 @@ msgstr "找不到參數 %(param)s"
 #, python-format
 msgid "Could not find target %s"
 msgstr "找不到目標 %s"
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr "在陣列上，找不到 Snapshot '%s' 的母項磁區。"
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2010,9 +2006,6 @@ msgstr "Google Cloud Storage 連線失敗：%(reason)s"
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Google Cloud Storage oauth2 失敗：%(reason)s"
 
-msgid "HPELeftHand url not found"
-msgstr "找不到 HPELeftHand URL"
-
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -2137,14 +2130,6 @@ msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "無效的 ConsistencyGroup：%(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"找到的 HPELeftHand API 版本 %(found)s 無效。管理/取消管理支援需要 "
-"%(minimum)s 版或更高版本。"
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "無效的 IP 位址格式：'%s'"
 
@@ -2213,16 +2198,6 @@ msgid ""
 msgstr ""
 "找到的 hpe3parclient 版本 (%(found)s) 無效。需要 %(minimum)s 版或更高版本。請"
 "執行 \"pip install --upgrade python-3parclient\" 來升級 hpe3parclient。"
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"找到的 hpelefthandclient 版本 (%(found)s) 無效。需要 %(minimum)s 版或更高版"
-"本。請執行 'pip install --upgrade python-lefthandclient' 來升級 "
-"hpelefthandclient。"
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -2381,9 +2356,6 @@ msgstr "找不到具有給定參照 %s 的 LUN。"
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 號碼已超出通道 ID %(ch_id)s 的範圍。"
-
-msgid "LeftHand cluster not found"
-msgstr "找不到 LeftHand 叢集"
 
 msgid "License is unavailable."
 msgstr "無法使用授權。"
@@ -2921,10 +2893,6 @@ msgstr "找不到專案 %(project_id)s 的配額用量。"
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "RBD 差異 op 失敗 -（ret = %(ret)s 標準錯誤 = %(stderr)s）"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "RPC Version"
 msgstr "RPC 版本"
 
@@ -2933,12 +2901,6 @@ msgstr "參照必須是針對未受管理的 Snapshot 進行的。"
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "參照必須針對未受管理的虛擬磁區。"
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "參照必須是受管理之 Snapshot 的名稱。"
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr "參照必須是未受管理虛擬磁區的磁區名稱。"
 
 msgid "Reference must contain source-id or source-name element."
 msgstr "參照必須包含 source-id 或 source-name 元素。"
@@ -3374,12 +3336,6 @@ msgid ""
 "and resume replication on the 3PAR backends."
 msgstr "主機尚未備妥以進行失效回復。請重新同步磁區，並回復 3PAR 後端上的抄寫。"
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr ""
-"主機尚未備妥以進行失效回復。請重新同步磁區，並回復 LeftHand 後端上的抄寫。"
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "未實作方法 update_migrated_volume。"
 
@@ -3390,10 +3346,6 @@ msgstr "增量備份的母項備份必須可用。"
 msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr "所提供的 Snapshot '%s' 不是所提供之磁區的 Snapshot。"
 
-#, python-format
-msgid "The remote retention count must be %s or less."
-msgstr "遠端保留計數必須小於或等於 %s。"
-
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -3402,16 +3354,8 @@ msgstr ""
 "在磁區類型 extra_specs 中，未正確配置抄寫模式。如果 replication:mode 是定期"
 "的，則 replication:sync_period 也必須予以指定且介於 300 和 31622400 秒之間。"
 
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr "抄寫同步週期必須至少是 %s 秒。"
-
 msgid "The results are invalid."
 msgstr "結果無效。"
-
-#, python-format
-msgid "The retention count must be %s or less."
-msgstr "保留計數必須小於或等於 %s。"
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr "當磁區處於維護模式時，無法建立 Snapshot。"
@@ -3513,14 +3457,6 @@ msgid ""
 "('%s'). The volume will not be recognized as replication type."
 msgstr ""
 "在 3PAR 陣列上設定遠端複製群組時發生錯誤：('%s')。該磁區將不作為抄寫類型予以"
-"辨識。"
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"在 LeftHand 陣列上設定遠端排程時發生錯誤：('%s')。該磁區將不作為抄寫類型予以"
 "辨識。"
 
 #, python-format
@@ -3876,9 +3812,6 @@ msgstr "取消管理與連鎖刪除選項是互斥的。"
 
 msgid "Unmanage volume not implemented."
 msgstr "未實作取消管理磁區。"
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr "不容許取消管理「已失效接手」之磁區中的 Snapshot。"
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr "不容許取消管理已失效接手之磁區中的 Snapshot。"

@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -968,10 +968,6 @@ msgstr "找不到参数 %(param)s"
 #, python-format
 msgid "Could not find target %s"
 msgstr "找不到目标 %s"
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr "在阵列上找不到快照“%s”的父卷。"
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2339,9 +2335,6 @@ msgstr ""
 "组快照状态必须为“avaliable”或“error”，而且当前没有任何组可以使用该快照作为源"
 "来创建。"
 
-msgid "HPELeftHand url not found"
-msgstr "找不到 HPELeftHand URL"
-
 #, python-format
 msgid "HTTP exit code: [%(code)s]"
 msgstr "HTTP退出码:[%(code)s]"
@@ -2488,14 +2481,6 @@ msgid "Invalid GroupSnapshot: %(reason)s"
 msgstr "无效的组快照: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"发现无效 HPELeftHand API 版本 (%(found)s)。需要版本 %(minimum)s 或更高版本以"
-"获取管理/取消管理支持。"
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "IP 地址格式“%s”无效"
 
@@ -2576,16 +2561,6 @@ msgid ""
 msgstr ""
 "发现无效 hpe3parclient 版本 (%(found)s)。需要版本 %(minimum)s 或更高版本。请"
 "运行“pip install --upgrade python-3parclient”以升级 hpe3parclient。"
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"发现无效 hpelefthandclient 版本 (%(found)s)。需要版本 %(minimum)s 或更高版"
-"本。请运行“pip install --upgrade python-lefthandclient”以升级 "
-"hpelefthandclient。"
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -2769,9 +2744,6 @@ msgstr "找不到具有给定引用 %s 的 LUN。"
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 号超出了通道标识 %(ch_id)s 的范围。"
-
-msgid "LeftHand cluster not found"
-msgstr "找不到 LeftHand 集群"
 
 msgid "License is unavailable."
 msgstr "许可证不可用。"
@@ -3369,10 +3341,6 @@ msgstr "找不到项目 %(project_id)s 的配额使用量。"
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "RBD 差集操作失败 - (ret=%(ret)s stderr=%(stderr)s)"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "RPC Version"
 msgstr "RPC 版本"
 
@@ -3381,12 +3349,6 @@ msgstr "引用必须针对非受管快照。"
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "引用必须对应非受管虚拟卷。"
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "引用必须是非受管快照的名称。"
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr "引用必须是非受管虚拟卷的卷名称。"
 
 msgid "Reference must contain source-id or source-name element."
 msgstr "引用必须包含 source-id 或 source-name 元素。"
@@ -3881,11 +3843,6 @@ msgid ""
 "and resume replication on the 3PAR backends."
 msgstr "主机未准备好故障返回。请重新同步卷并在 3PAR 后端上继续进行复制。"
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr "主机未准备好故障返回。请重新同步卷并在 LeftHand 后端上继续进行复制。"
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "未实现方法 update_migrated_volume。"
 
@@ -3896,10 +3853,6 @@ msgstr "父备份必须可用于增量备份。"
 msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr "所提供快照“%s”并非所提供卷的快照。"
 
-#, python-format
-msgid "The remote retention count must be %s or less."
-msgstr "远程保留计数不得高于 %s。"
-
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -3909,16 +3862,8 @@ msgstr ""
 "periodic，那么必须同时指定 replication:sync_period 并且周期必须介于 300 秒到 "
 "31622400 秒之间。"
 
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr "同步复制周期必须至少为 %s 秒。"
-
 msgid "The results are invalid."
 msgstr "结果无效。"
-
-#, python-format
-msgid "The retention count must be %s or less."
-msgstr "保留计数不得高于 %s。"
 
 msgid "The snapshot cannot be created when the volume is in error status."
 msgstr "当卷处于错误状态时，无法创建快照。"
@@ -4027,14 +3972,6 @@ msgid ""
 "('%s'). The volume will not be recognized as replication type."
 msgstr ""
 "在 3PAR 阵列上设置远程复制组时发生了错误：（“%s”）。该卷未被识别为复制类型。"
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"在 LeftHand 阵列上设置远程调度时发生了错误：（“%s”）。该卷未被识别为复制类"
-"型。"
 
 #, python-format
 msgid "There was an error starting remote copy: %s."
@@ -4403,9 +4340,6 @@ msgstr "非管理选项与级联删除选项互斥。"
 
 msgid "Unmanage volume not implemented."
 msgstr "未实现非管理卷。"
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr "不允许取消管理来自“已故障转移”的卷的快照。"
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr "不允许取消管理来自已故障转移的卷的快照。"

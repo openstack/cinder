@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -343,10 +343,6 @@ msgid ""
 msgstr ""
 "LUNcopy 操作中にエラーが発生しました。LUNcopy 名: %(luncopyname)s。LUNcopy 状"
 "況: %(luncopystatus)s。LUNcopy 状態: %(luncopystate)s。"
-
-#, python-format
-msgid "An error occurred while attempting to modify Snapshot '%s'."
-msgstr "スナップショット '%s' を変更しようとした際にエラーが発生しました。"
 
 msgid "An unknown error occurred."
 msgstr "不明なエラーが発生しました。"
@@ -1104,12 +1100,6 @@ msgstr "パラメーター %(param)s が見つかりませんでした。"
 #, python-format
 msgid "Could not find target %s"
 msgstr "ターゲット %s が見つかりませんでした。"
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr ""
-"スナップショット '%s' の親ボリュームをアレイで見つけることができませんでし"
-"た。"
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2655,9 +2645,6 @@ msgstr ""
 "GroupSnapshot の状態は「使用可能」または「エラー」でなければなりません。また"
 "これをソースとして用いてグループを作成することは現在できません。"
 
-msgid "HPELeftHand url not found"
-msgstr "HPELeftHand url が見つかりません"
-
 #, python-format
 msgid "HTTP exit code: [%(code)s]"
 msgstr "HTTP 終了コード : [%(code)s]"
@@ -2817,14 +2804,6 @@ msgid "Invalid GroupSnapshot: %(reason)s"
 msgstr "無効なグループスナップショット: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"無効な HPELeftHand API バージョンが見つかりました: %(found)s。管理/非管理のサ"
-"ポートには、バージョン %(minimum)s 以上が必要です。"
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "無効な IP アドレスの形式: '%s'"
 
@@ -2909,16 +2888,6 @@ msgstr ""
 "無効な hpe3parclient バージョンが見つかりました (%(found)s)。バージョン "
 "%(minimum)s 以上が必要です。 \"pip install --upgrade python-3parclient\" を実"
 "行して hpe3parclient をアップグレードしてください。"
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"無効な hpelefthandclient バージョンが見つかりました (%(found)s)。バージョン "
-"%(minimum)s 以上が必要です。 'pip install --upgrade python-lefthandclient'  "
-"を実行して hpelefthandclient をアップグレードしてください。"
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -3116,9 +3085,6 @@ msgstr "指定された参照 %s を持つ LUN が見つかりません。"
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 番号がチャンネル ID: %(ch_id)s の境界を越えています。"
-
-msgid "LeftHand cluster not found"
-msgstr "LeftHand クラスターが見つかりません"
 
 msgid "License is unavailable."
 msgstr "ライセンスが使用できません。"
@@ -3828,10 +3794,6 @@ msgstr "プロジェクト %(project_id)s のクォータ使用率が見つか�
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "RBD diff 操作が失敗しました: (ret=%(ret)s stderr=%(stderr)s)"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "REST Async Error: Command not accepted."
 msgstr "REST 非同期エラー: コマンドが許可されていません。"
 
@@ -3843,12 +3805,6 @@ msgstr "参照は非管理対象のスナップショットに対するもので
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "非管理対象の仮想ボリュームに対する参照でなければなりません。"
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "参照は非管理対象のスナップショットの名前でなければなりません。"
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr "参照は非管理対象仮想ボリュームのボリューム名でなければなりません。"
 
 msgid "Reference must contain source-id or source-name element."
 msgstr ""
@@ -4442,13 +4398,6 @@ msgstr ""
 "ホストはフェイルバックを行う準備ができていません。3PAR バックエンドでボリュー"
 "ムを再同期し、レプリケーションを再開してください。"
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr ""
-"ホストはフェイルバックを行う準備ができていません。LeftHand バックエンドでボ"
-"リュームを再同期し、複製を再開してください。"
-
 #, python-format
 msgid ""
 "The imported lun is in pool %(lun_pool)s which is not managed by the host "
@@ -4469,10 +4418,6 @@ msgstr ""
 "指定されたスナップショット '%s' は指定されたボリュームのスナップショットでは"
 "ありません。"
 
-#, python-format
-msgid "The remote retention count must be %s or less."
-msgstr "リモートの保存数は %s 以下でなければなりません。"
-
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -4482,16 +4427,8 @@ msgstr ""
 "ん。replication:mode が periodic の場合、replication:sync_period must も 300 "
 "秒から 31622400 秒の間に設定しなければなりません。"
 
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr "レプリケーション同期期間は少なくとも %s 秒でなければなりません。"
-
 msgid "The results are invalid."
 msgstr "結果が無効です。"
-
-#, python-format
-msgid "The retention count must be %s or less."
-msgstr "保存数は %s 以下でなければなりません。"
 
 msgid "The snapshot cannot be created when the volume is in error status."
 msgstr ""
@@ -4630,14 +4567,6 @@ msgid ""
 "('%s'). The volume will not be recognized as replication type."
 msgstr ""
 "3PAR アレイでのリモートコピーグループのセットアップ中にエラーが発生しました: "
-"('%s')。ボリュームはレプリケーションタイプとして認識されません。"
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"LeftHand アレイのリモートスケジュールのセットアップ中にエラーが発生しました: "
 "('%s')。ボリュームはレプリケーションタイプとして認識されません。"
 
 #, python-format
@@ -5084,11 +5013,6 @@ msgstr "削除オプションの非管理とカスケーディングを同時に
 
 msgid "Unmanage volume not implemented."
 msgstr "ボリュームの非管理が実装されていません。"
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr ""
-"'failed-over'  ボリュームからのスナップショットを非管理対象にすることは許可さ"
-"れません。"
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr ""
