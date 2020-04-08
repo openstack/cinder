@@ -15,7 +15,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -895,10 +895,6 @@ msgstr "파라메터를 찾을수 없습니다: %(param)s"
 #, python-format
 msgid "Could not find target %s"
 msgstr "대상 %s을(를) 찾을 수 없음"
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr "배열에서 스냅샷 '%s'의 상위 볼륨을 찾을 수 없습니다."
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2193,9 +2189,6 @@ msgstr "그룹 유형 이름은 빈 상태로 둘 수 없습니다."
 msgid "Group type with name %(group_type_name)s could not be found."
 msgstr "%(group_type_name)s(이)라는 이름을 가진 그룹 유형을 찾을 수 없습니다."
 
-msgid "HPELeftHand url not found"
-msgstr "HPELeftHand url을 찾을 수 없음"
-
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -2347,14 +2340,6 @@ msgid "Invalid GroupSnapshot: %(reason)s"
 msgstr "유효하지 않은 그룹 스냅샷: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"올바르지 않은 HPELeftHand API 버전 발견: %(found)s. 관리/비관리 지원을 위해서"
-"는 %(minimum)s 이상이 필요합니다. "
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "올바르지 않은 IP 주소 형식: '%s'"
 
@@ -2437,16 +2422,6 @@ msgstr ""
 "올바르지 않은 hpe3parclient 버전을 발견했습니다(%(found)s). 버전 %(minimum)s "
 "이상이 필요합니다. \"pip install --upgrade python-3parclient\"를 실행하여 "
 "hpe3parclient를 업그레이드하십시오."
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"올바르지 않은 hpelefthandclient 버전을 찾았습니다(%(found)s). 버전 "
-"%(minimum)s 이상이 필요합니다. 'pip install --upgrade python-"
-"lefthandclient'를 실행하여 hpelefthandclient를 업그레이드하십시오."
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -2610,9 +2585,6 @@ msgstr "주어진 ref %s을(를) 사용하여 LUN을 찾을 수 없습니다. "
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 번호가 채널 id에 대한 경계를 벗어남: %(ch_id)s."
-
-msgid "LeftHand cluster not found"
-msgstr "LeftHand 클러스터를 찾을 수 없음"
 
 msgid "License is unavailable."
 msgstr "라이센스를 사용할 수 없습니다."
@@ -3198,10 +3170,6 @@ msgstr "%(project_id)s 프로젝트에 대한 할당 사용량을 찾을 수 없
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "RBD diff op 실패 - (ret=%(ret)s stderr=%(stderr)s)"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "RPC Version"
 msgstr "RPC 버전"
 
@@ -3210,12 +3178,6 @@ msgstr "참조는 관리되지 않은 스냅샷용이어야 합니다."
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "참조는 관리되지 않는 가상 볼륨에 대한 것이어야 합니다."
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "참조는 관리되지 않은 스냅샷의 이름이어야 합니다."
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr "참조는 관리되지 않는 가상 볼륨의 볼륨 이름이어야 합니다. "
 
 msgid "Reference must contain source-id or source-name element."
 msgstr "참조에는 source-id 또는 source-name 요소가 포함되어야 합니다. "
@@ -3683,13 +3645,6 @@ msgstr ""
 "호스트를 장애 복구할 준비가 되지 않았습니다. 볼륨을 다시 동기화하고 3PAR 백엔"
 "드에서 복제를 재개하십시오."
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr ""
-"호스트를 장애 복구할 준비가 되지 않았습니다. 볼륨을 다시 동기화하고 LeftHand "
-"백엔드에서 복제를 재개하십시오."
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "update_migrated_volume 메소드가 구현되지 않았습니다. "
 
@@ -3700,10 +3655,6 @@ msgstr "상위 백업은 증분 백업을 수행할 수 있어야 합니다. "
 msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr "제공된 스냅샷 '%s'이(가) 제공된 볼륨의 스냅샷이 아닙니다."
 
-#, python-format
-msgid "The remote retention count must be %s or less."
-msgstr "원격 보유 수는 %s 이하여야 합니다."
-
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -3713,16 +3664,8 @@ msgstr ""
 "replication:mode가 주기적인 경우 replication:sync_period도 지정해야 하며 300 "
 "- 31622400초여야 합니다."
 
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr "복제 동기화 기간은 최소 %s초여야 합니다."
-
 msgid "The results are invalid."
 msgstr "결과가 올바르지 않습니다. "
-
-#, python-format
-msgid "The retention count must be %s or less."
-msgstr "보유 수는 %s 이하여야 합니다."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr "볼륨이 유지보수 모드에 있으면 스냅샷을 작성할 수 없습니다. "
@@ -3833,14 +3776,6 @@ msgid ""
 "('%s'). The volume will not be recognized as replication type."
 msgstr ""
 "3PAR 배열에서 원격 복사 그룹을 설정하는 중 오류 발생: ('%s'). 볼륨이 복제 유"
-"형으로 인식되지 않습니다."
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"LeftHand 배열에서 원격 스케줄을 설정하는 중 오류 발생: ('%s'). 볼륨이 복제 유"
 "형으로 인식되지 않습니다."
 
 #, python-format
@@ -4219,10 +4154,6 @@ msgstr "관리 취소 및 계단식 삭제 옵션은 상호 배타적입니다."
 
 msgid "Unmanage volume not implemented."
 msgstr "관리 취소 볼륨이 구현되지 않았습니다."
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr ""
-"'장애 복구' 볼륨에서 스냅샷의 관리를 해제하는 기능은 허용되지 않습니다."
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr ""

@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -864,10 +864,6 @@ msgstr "Не удалось найти параметр %(param)s"
 #, python-format
 msgid "Could not find target %s"
 msgstr "Не удалось найти целевой объект %s"
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr "Не найден родительский том для моментальной копии '%s' в массиве."
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2153,9 +2149,6 @@ msgstr "Ошибка связи с Google Cloud Storage: %(reason)s"
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Ошибка oauth2 Google Cloud Storage: %(reason)s"
 
-msgid "HPELeftHand url not found"
-msgstr "URL HPELeftHand не найден"
-
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -2289,14 +2282,6 @@ msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Недопустимая группа согласования: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"Обнаружена недопустимая версия API HPELeftHand: %(found)s. Версия "
-"%(minimum)s или выше требуется для поддержки управления/отмены управления."
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "Недопустимый формат IP-адреса: '%s'"
 
@@ -2368,16 +2353,6 @@ msgstr ""
 "Обнаружена недопустимая версия hpe3parclient (%(found)s). Требуется версия "
 "%(minimum)s или более поздняя. Выполните команду \"pip install --upgrade "
 "python-3parclient\" для обновления hpe3parclient."
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"Обнаружена недопустимая версия hpelefthandclient (%(found)s). Требуется "
-"версия %(minimum)s или более поздняя. Выполните команду  'pip install --"
-"upgrade python-lefthandclient' для обновления hpelefthandclient."
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -2546,9 +2521,6 @@ msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr ""
 "Номер LUN в ИД канала %(ch_id)s выходит за пределы диапазона допустимых "
 "значений."
-
-msgid "LeftHand cluster not found"
-msgstr "Кластер LeftHand не найден"
 
 msgid "License is unavailable."
 msgstr "Лицензия недоступна."
@@ -3126,10 +3098,6 @@ msgstr "Использование квоты для проекта %(project_id
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "Сбой операции diff RBD - (код возврата=%(ret)s stderr=%(stderr)s)"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "RPC Version"
 msgstr "Версия RPC"
 
@@ -3138,12 +3106,6 @@ msgstr "Ссылка должна быть указана для неуправ�
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "Для неуправляемого виртуального тома должна быть ссылка."
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "Ссылка должна быть именем неуправляемой моментальной копии."
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr "Для неуправляемого виртуального тома ссылка должна быть именем тома."
 
 msgid "Reference must contain source-id or source-name element."
 msgstr "Ссылка должна содержать элемент source-id или source-name."
@@ -3613,13 +3575,6 @@ msgstr ""
 "Хост не готов к обратному переключению. Выполните повторную синхронизацию "
 "томов и возобновите репликацию в базовых системах 3PAR."
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr ""
-"Хост не готов к обратному переключению. Выполните повторную синхронизацию "
-"томов и возобновите репликацию в базовых системах LeftHand."
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "Метод update_migrated_volume не реализован."
 
@@ -3640,10 +3595,6 @@ msgstr ""
 "Режим репликации настроен неверно в параметрах extra_specs для типа тома. "
 "Если replication:mode задан как periodic, то необходимо указать replication:"
 "sync_period в пределах от 300 до 31622400 секунд."
-
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr "Минимальное значение периода репликации составляет %s секунд."
 
 msgid "The results are invalid."
 msgstr "Неверные результаты."
@@ -3757,14 +3708,6 @@ msgid ""
 msgstr ""
 "Ошибка при настройке группы удаленного копирования в массивах 3PAR ('%s'). "
 "Неизвестный тип репликации для тома."
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"Ошибка при настройке группы удаленного расписания в массивах LeftHand "
-"('%s'). Неизвестный тип репликации для тома."
 
 #, python-format
 msgid "There was an error starting remote copy: %s."
@@ -4154,11 +4097,6 @@ msgstr "Опции отмены управления и каскадного у�
 
 msgid "Unmanage volume not implemented."
 msgstr "Отмена управления томом не реализована."
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr ""
-"Отмена управления моментальными копиями томами, переключенными после сбоя, "
-"не разрешена."
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr ""

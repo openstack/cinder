@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-01 03:00+0000\n"
+"POT-Creation-Date: 2020-04-07 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -902,12 +902,6 @@ msgstr "No se ha podido encontrar el parámetro %(param)s"
 #, python-format
 msgid "Could not find target %s"
 msgstr "No se ha podido encontrar el destino %s"
-
-#, python-format
-msgid "Could not find the parent volume for Snapshot '%s' on array."
-msgstr ""
-"No se ha podido encontrar el volumen padre de la instantánea '%s' en la "
-"matriz."
 
 #, python-format
 msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
@@ -2244,9 +2238,6 @@ msgstr "Error de conexión de Google Cloud Storage: %(reason)s"
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Error de oauth2 de Google Cloud Storage: %(reason)s"
 
-msgid "HPELeftHand url not found"
-msgstr "URL de HPELeftHand no encontrado"
-
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -2389,15 +2380,6 @@ msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "ConsistencyGroup no válido: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"Se ha encontrado una versión de API de HPELeftHand no válida:%(found)s). Se "
-"necesita la versión %(minimum)s o superior para tener soporte para gestionar/"
-"dejar de gestionar."
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "Formato de dirección IP no válido: '%s'"
 
@@ -2473,16 +2455,6 @@ msgstr ""
 "Se ha encontrado una versión de hpe3parclient no válida (%(found)s). Se "
 "requiere la versión %(minimum)s o superior. Ejecute \"pip install --upgrade "
 "python-3parclient\" para actualizar hpe3parclient."
-
-#, python-format
-msgid ""
-"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required. Run 'pip install --upgrade python-lefthandclient' to "
-"upgrade the hpelefthandclient."
-msgstr ""
-"Se ha encontrado una versión no válida de hpelefthandclient (%(found)s). Se "
-"requiere la versión %(minimum)s o superior. Ejecute 'pip install --upgrade "
-"python-lefthandclient' para actualizar hpelefthandclient."
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -2660,9 +2632,6 @@ msgstr "No se ha encontrado un LUN con la referencia dada %s."
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "El número de LUN está fuera de limites en el ID de canal: %(ch_id)s."
-
-msgid "LeftHand cluster not found"
-msgstr "Clúster LeftHand no encontrado"
 
 msgid "License is unavailable."
 msgstr "La licencia no está disponible."
@@ -3292,10 +3261,6 @@ msgstr ""
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "Op. dif. RBD ha fallado - (ret=%(ret)s stderr=%(stderr)s)"
 
-#, python-format
-msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
-
 msgid "RPC Version"
 msgstr "Versión de RPC"
 
@@ -3304,14 +3269,6 @@ msgstr "La referencia debe ser para una instantánea  no gestionada."
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "La referencia debe ser para un volumen virtual no gestionado."
-
-msgid "Reference must be the name of an unmanaged snapshot."
-msgstr "La referencia debe ser el nombre de una instantánea no gestionada."
-
-msgid "Reference must be the volume name of an unmanaged virtual volume."
-msgstr ""
-"La referencia debe ser el nombre de volumen de un volumen virtual no "
-"gestionado."
 
 msgid "Reference must contain source-id or source-name element."
 msgstr "La referencia debe contener el elemento id-source o source-name."
@@ -3799,13 +3756,6 @@ msgstr ""
 "El host no está a punto para restablecerlo. Vuelva a sincronizar los "
 "volúmenes y  reanude la  replicación en los programas de fondo 3PAR."
 
-msgid ""
-"The host is not ready to be failed back. Please resynchronize the volumes "
-"and resume replication on the LeftHand backends."
-msgstr ""
-"El host no está a punto para restablecerlo. Vuelva a sincronizar los "
-"volúmenes y  reanude la  replicación en los programas de fondo LeftHand."
-
 msgid "The method update_migrated_volume is not implemented."
 msgstr "No se ha implementado el método update_migrated_volume."
 
@@ -3820,10 +3770,6 @@ msgstr ""
 "La instantánea  proporcionada '%s' no es una instantánea del volumen "
 "proporcionado."
 
-#, python-format
-msgid "The remote retention count must be %s or less."
-msgstr "El recuento de retención remota debe ser de %s o inferior."
-
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -3834,17 +3780,8 @@ msgstr ""
 "replication:mode es periodic, se debe especificar también replication:"
 "sync_period y debe ser entre 300 y 31622400 segundos."
 
-#, python-format
-msgid "The replication sync period must be at least %s seconds."
-msgstr ""
-"El periodo de sincronización de replicación debe ser al menos de %s segundos."
-
 msgid "The results are invalid."
 msgstr "Los resultados no son válidos."
-
-#, python-format
-msgid "The retention count must be %s or less."
-msgstr "El recuento de retención debe ser de %s o inferior."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
@@ -3966,14 +3903,6 @@ msgid ""
 msgstr ""
 "Se producido un error al definir el grupo de copias remotas en las matrices "
 "de 3PAR: ('%s'). El volumen no se reconocerá como un tipo de replicación."
-
-#, python-format
-msgid ""
-"There was an error setting up a remote schedule on the LeftHand arrays: "
-"('%s'). The volume will not be recognized as replication type."
-msgstr ""
-"Se producido un error al definir una planificación remota en las matrices de "
-"LeftHand : ('%s'). El volumen no se reconocerá como un tipo de replicación."
 
 #, python-format
 msgid "There was an error starting remote copy: %s."
@@ -4382,11 +4311,6 @@ msgstr ""
 
 msgid "Unmanage volume not implemented."
 msgstr "No se ha implementdo la opción de dejar de administrar un volumen."
-
-msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr ""
-"No se permite dejar de gestionar instantáneas desde volúmenes que han dado "
-"error ('failed-over')."
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr ""
