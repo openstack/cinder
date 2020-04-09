@@ -89,9 +89,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
           3.5.0 - Add support for VxFlex OS 3.5.x
           3.5.1 - Add volume replication v2.1 support for VxFlex OS 3.5.x
           3.5.2 - Add volume migration support
+          3.5.3 - Add revert volume to snapshot support
     """
 
-    VERSION = "3.5.2"
+    VERSION = "3.5.3"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_VxFlexOS_CI"
 
@@ -1501,6 +1502,33 @@ class VxFlexOSDriver(driver.VolumeDriver):
             name_id = getattr(new_volume, "_name_id", None) or new_volume.id
             location = new_volume.provider_location
         return {"_name_id": name_id, "provider_location": location}
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert VxFlex OS volume to the specified snapshot."""
+
+        LOG.info("Revert volume %(vol_id)s to snapshot %(snap_id)s.",
+                 {"vol_id": volume.id, "snap_id": snapshot.id})
+
+        client = self._get_client()
+
+        if not flex_utils.version_gte(client.query_rest_api_version(), "3.0"):
+            LOG.debug("VxFlex OS versions less than v3.0 do not "
+                      "support reverting volume to snapshot. "
+                      "Falling back to generic revert to snapshot method.")
+            raise NotImplementedError
+        elif volume.is_replicated():
+            msg = _("Reverting replicated volume is not allowed.")
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+        elif snapshot.volume_size != volume.size:
+            msg = (_("Volume %(vol_id)s size is not equal to snapshot "
+                     "%(snap_id)s size. Revert to snapshot operation is not "
+                     "allowed.") %
+                   {"vol_id": volume.id, "snap_id": snapshot.id})
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        client.overwrite_volume_content(volume, snapshot)
 
     def _query_vxflexos_volume(self, volume, existing_ref):
         type_id = volume.get("volume_type_id")
