@@ -23,7 +23,9 @@ machine is never powered on and is often referred as the shadow VM.
 """
 
 import math
+import OpenSSL
 import six
+import ssl
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -46,6 +48,7 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
+from cinder.volume.drivers.vmware import remote as remote_api
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
 
@@ -300,6 +303,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._ds_sel = None
         self._clusters = None
         self._dc_cache = {}
+        self.additional_endpoints.append([
+            remote_api.VmdkDriverRemoteService(self)
+        ])
+        self._remote_api = remote_api.VmdkDriverRemoteApi()
 
     @property
     def volumeops(self):
@@ -684,6 +691,30 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         return (host_ref, resource_pool, folder, summary)
+
+    @property
+    def service_locator_info(self):
+        """Returns information needed to build a ServiceLocator spec."""
+        # vCenter URL
+        host = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
+        url = "https://" + host
+        if port:
+            url += ":" + str(port)
+        # ssl thumbprint
+        cert = ssl.get_server_certificate((host, port or 443))
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM,
+                                               cert)
+        return {
+            'url': url,
+            'ssl_thumbprint': x509.digest("sha1"),
+            'instance_uuid':
+                self.session.vim.service_content.about.instanceUuid,
+            'credential': {
+                'username': self.configuration.vmware_host_username,
+                'password': self.configuration.vmware_host_password
+            }
+        }
 
     def _get_connection_info(self, volume, backing, connector):
         connection_info = {'driver_volume_type': 'vmdk'}
@@ -2487,3 +2518,46 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             LOG.debug("Backing does not exist for volume.", resource=volume)
         else:
             self.volumeops.revert_to_snapshot(backing, snapshot.name)
+
+    def migrate_volume(self, context, volume, host):
+        """Migrate a volume to the specified host.
+
+        If the backing is not created, the dest host will create it.
+        """
+        backing = self.volumeops.get_backing(volume.name, volume.id)
+        dest_host = host['host']
+        # If the backing is not yet created, let the destination host create it
+        # In this case, migration is not necessary
+        if not backing:
+            LOG.info("There is no backing for the volume: %(volume_name)s. "
+                     "Creating it on dest_host %(dest_host)s.",
+                     {'volume_name': volume.name, 'dest_host': dest_host})
+            self._remote_api.create_backing(context, host['host'], volume)
+            return (True, None)
+
+        service_locator = self._remote_api.get_service_locator_info(context,
+                                                                    dest_host)
+        ds_info = self._remote_api.select_ds_for_volume(context, dest_host,
+                                                        volume)
+        host_ref = vim_util.get_moref(ds_info['host'], 'HostSystem')
+        rp_ref = vim_util.get_moref(ds_info['resource_pool'], 'ResourcePool')
+        ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
+
+        self.volumeops.relocate_backing(backing, ds_ref, rp_ref, host_ref,
+                                        service=service_locator)
+        try:
+            self._remote_api.move_volume_backing_to_folder(
+                context, dest_host, volume, ds_info['folder'])
+        except Exception:
+            # At this point the backing has been migrated to the new host.
+            # If this movement to folder fails, we let the manager know the
+            # migration happened so that it will save the new host,
+            # but we update its status to 'error' so that someone can check
+            # the logs and perform a manual action.
+            LOG.exception("Failed to move the backing %(volume_id)s to folder "
+                          "%(folder)s.",
+                          {'volume_id': volume['id'],
+                           'folder': ds_info['folder']},)
+            return (True, {'migration_status': 'error'})
+
+        return (True, None)
