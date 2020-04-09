@@ -310,13 +310,17 @@ class VolumeManager(manager.CleanableManager,
             rpu.disable_warnings(rpu.exceptions.InsecurePlatformWarning)
 
         self.key_manager = key_manager.API(CONF)
+        # A driver can feed additional RPC endpoints into this list
+        driver_additional_endpoints = []
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
             host=self.host,
             cluster_name=self.cluster,
             is_vol_db_empty=vol_db_empty,
-            active_backend_id=curr_active_backend_id)
+            active_backend_id=curr_active_backend_id,
+            additional_endpoints=driver_additional_endpoints)
+        self.additional_endpoints.extend(driver_additional_endpoints)
 
         if self.cluster and not self.driver.SUPPORTS_ACTIVE_ACTIVE:
             msg = _('Active-Active configuration is not currently supported '
