@@ -23,6 +23,8 @@ from oslo_utils import units
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
+    import fake_enum as enums
+from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_exception as ex
 from cinder.tests.unit.volume.drivers.dell_emc.unity import test_client
 from cinder.volume.drivers.dell_emc.unity import adapter
@@ -105,11 +107,15 @@ class MockClient(object):
 
     @staticmethod
     def create_lun(name, size, pool, description=None, io_limit_policy=None,
-                   is_thin=None, is_compressed=None):
+                   is_thin=None, is_compressed=None, tiering_policy=None):
         lun_id = name
         if is_thin is not None and not is_thin:
             lun_id += '_thick'
-
+        if tiering_policy:
+            if tiering_policy is enums.TieringPolicyEnum.AUTOTIER:
+                lun_id += '_auto'
+            elif tiering_policy is enums.TieringPolicyEnum.LOWEST:
+                lun_id += '_low'
         return test_client.MockResource(_id=lun_id, name=name)
 
     @staticmethod
@@ -310,6 +316,10 @@ class MockOSResource(mock.Mock):
         super(MockOSResource, self).__init__(*args, **kwargs)
         if 'name' in kwargs:
             self.name = kwargs['name']
+        self.kwargs = kwargs
+
+    def __getitem__(self, key):
+        return self.kwargs[key]
 
 
 def mock_replication_device(device_conf=None, serial_number=None,
@@ -380,6 +390,12 @@ def get_volume_type_extra_specs(type_id):
     if type_id == 'thick':
         return {'provisioning:type': 'thick',
                 'thick_provisioning_support': '<is> True'}
+    if type_id == 'tier_auto':
+        return {'storagetype:tiering': 'Auto',
+                'fast_support': '<is> True'}
+    if type_id == 'tier_lowest':
+        return {'storagetype:tiering': 'LowestAvailable',
+                'fast_support': '<is> True'}
     return {}
 
 
@@ -463,6 +479,7 @@ class IdMatcher(object):
 
 @ddt.ddt
 @mock.patch.object(adapter, 'storops_ex', new=ex)
+@mock.patch.object(adapter, 'enums', new=enums)
 @mock.patch.object(adapter.volume_utils, 'is_group_a_cg_snapshot_type',
                    new=lambda x: True)
 class CommonAdapterTest(test.TestCase):
@@ -501,6 +518,22 @@ class CommonAdapterTest(test.TestCase):
                                 group=None, volume_type=volume_type)
         ret = self.adapter.create_volume(volume)
         expected = get_lun_pl('lun_3')
+        self.assertEqual(expected, ret['provider_location'])
+
+    @patch_for_unity_adapter
+    def test_create_auto_tiering_volume(self):
+        volume = MockOSResource(name='lun_3', size=5, host='unity#pool1',
+                                group=None, volume_type_id='tier_auto')
+        ret = self.adapter.create_volume(volume)
+        expected = get_lun_pl('lun_3_auto')
+        self.assertEqual(expected, ret['provider_location'])
+
+    @patch_for_unity_adapter
+    def test_create_lowest_tiering_volume(self):
+        volume = MockOSResource(name='lun_3', size=5, host='unity#pool1',
+                                group=None, volume_type_id='tier_lowest')
+        ret = self.adapter.create_volume(volume)
+        expected = get_lun_pl('lun_3_low')
         self.assertEqual(expected, ret['provider_location'])
 
     def test_create_snapshot(self):
@@ -547,6 +580,7 @@ class CommonAdapterTest(test.TestCase):
         self.assertTrue(stats['consistent_group_snapshot_enabled'])
         self.assertFalse(stats['replication_enabled'])
         self.assertEqual(0, len(stats['replication_targets']))
+        self.assertTrue(stats['fast_support'])
 
     def test_update_volume_stats(self):
         stats = self.adapter.update_volume_stats()
@@ -557,6 +591,7 @@ class CommonAdapterTest(test.TestCase):
         self.assertTrue(stats['consistent_group_snapshot_enabled'])
         self.assertFalse(stats['replication_enabled'])
         self.assertEqual(0, len(stats['replication_targets']))
+        self.assertTrue(stats['fast_support'])
         self.assertEqual(1, len(stats['pools']))
 
     def test_get_replication_stats(self):

@@ -81,9 +81,10 @@ class UnityDriver(driver.ManageableVD,
         5.0.0 - Support storage assisted volume migration
         6.0.0 - Support generic group and consistent group
         6.1.0 - Support volume replication
+        7.0.0 - Support tiering policy
     """
 
-    VERSION = '06.01.00'
+    VERSION = '07.00.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "EMC_UNITY_CI"

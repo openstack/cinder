@@ -58,7 +58,7 @@ class UnityClient(object):
 
     def create_lun(self, name, size, pool, description=None,
                    io_limit_policy=None, is_thin=None,
-                   is_compressed=None, cg_name=None):
+                   is_compressed=None, cg_name=None, tiering_policy=None):
         """Creates LUN on the Unity system.
 
         :param name: lun name
@@ -68,6 +68,7 @@ class UnityClient(object):
         :param io_limit_policy: io limit on the LUN
         :param is_thin: if False, a thick LUN will be created
         :param is_compressed: is compressed LUN enabled
+        :param tiering_policy: tiering policy for the LUN
         :param cg_name: the name of cg to join if any
         :return: UnityLun object
         """
@@ -76,7 +77,8 @@ class UnityClient(object):
                                   description=description,
                                   io_limit_policy=io_limit_policy,
                                   is_thin=is_thin,
-                                  is_compression=is_compressed)
+                                  is_compression=is_compressed,
+                                  tiering_policy=tiering_policy)
         except storops_ex.UnityLunNameInUseError:
             LOG.debug("LUN %s already exists. Return the existing one.",
                       name)
