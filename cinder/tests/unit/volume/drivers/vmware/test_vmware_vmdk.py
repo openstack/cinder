@@ -123,6 +123,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
+                                               additional_endpoints=[],
                                                db=self._db)
 
         self._context = context.get_admin_context()
@@ -3522,6 +3523,75 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_backing.assert_called_once_with(volume.name, volume.id)
         vops.revert_to_snapshot.assert_called_once_with(backing,
                                                         snapshot.name)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch('oslo_vmware.vim_util.get_moref')
+    def test_migrate_volume(self, get_moref, vops, backing=None,
+                            raises_error=False):
+        r_api = mock.Mock()
+        self._driver._remote_api = r_api
+        volume = self._create_volume_obj()
+        vops.get_backing.return_value = backing
+        host = {'host': 'fake-host', 'capabilities': {}}
+        ds_info = {'host': 'fake-ds-host', 'resource_pool': 'fake-rp',
+                   'datastore': 'fake-ds-name', 'folder': 'fake-folder'}
+        get_moref.side_effect = [
+            mock.sentinel.host_ref,
+            mock.sentinel.rp_ref,
+            mock.sentinel.ds_ref
+        ]
+        r_api.get_service_locator_info.return_value = \
+            mock.sentinel.service_locator
+        r_api.select_ds_for_volume.return_value = ds_info
+        if raises_error:
+            r_api.move_volume_backing_to_folder.side_effect = Exception
+
+        ret_val = self._driver.migrate_volume(mock.sentinel.context, volume,
+                                              host)
+
+        vops.get_backing.assert_called_once_with(volume.name, volume.id)
+
+        if not backing:
+            r_api.create_backing.assert_called_once_with(
+                mock.sentinel.context, host['host'], volume)
+            r_api.get_service_locator_info.assert_not_called()
+            r_api.select_ds_for_volume.assert_not_called()
+            vops.relocate_backing.assert_not_called()
+            r_api.move_volume_backing_to_folder.assert_not_called()
+            get_moref.assert_not_called()
+            self.assertEqual((True, None), ret_val)
+        else:
+            dest_host = host['host']
+
+            r_api.get_service_locator_info.assert_called_once_with(
+                mock.sentinel.context, dest_host)
+
+            r_api.select_ds_for_volume.assert_called_once_with(
+                mock.sentinel.context, dest_host, volume)
+
+            get_moref.assert_has_calls([
+                mock.call(ds_info['host'], 'HostSystem'),
+                mock.call(ds_info['resource_pool'], 'ResourcePool'),
+                mock.call(ds_info['datastore'], 'Datastore')])
+
+            vops.relocate_backing.assert_called_once_with(
+                backing, mock.sentinel.ds_ref, mock.sentinel.rp_ref,
+                mock.sentinel.host_ref, service=mock.sentinel.service_locator)
+
+            r_api.move_volume_backing_to_folder.assert_called_once_with(
+                mock.sentinel.context, dest_host, volume, ds_info['folder'])
+
+            if raises_error:
+                self.assertEqual((True, {'migration_status': 'error'}),
+                                 ret_val)
+            else:
+                self.assertEqual((True, None), ret_val)
+
+    def test_migrate_volume_relocate_existing_backing(self):
+        self.test_migrate_volume(backing=mock.Mock())
+
+    def test_migrate_volume_move_to_folder_error(self):
+        self.test_migrate_volume(backing=mock.Mock(), raises_error=True)
 
 
 @ddt.ddt
