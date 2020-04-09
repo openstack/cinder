@@ -363,6 +363,7 @@ class BaseVD(object):
         self.host = kwargs.get('host')
         self.cluster_name = kwargs.get('cluster_name')
         self.configuration = kwargs.get('configuration', None)
+        self.additional_endpoints = kwargs.get('additional_endpoints', [])
 
         if self.configuration:
             self.configuration.append_config_values(volume_opts)
