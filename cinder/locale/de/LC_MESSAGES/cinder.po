@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-07 10:43+0000\n"
+"POT-Creation-Date: 2020-04-09 02:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -166,6 +166,10 @@ msgstr "%s ist kein Verzeichnis."
 
 #, python-format
 msgid "%s is not installed"
+msgstr "%s ist nicht installiert."
+
+#, python-format
+msgid "%s is not installed."
 msgstr "%s ist nicht installiert."
 
 #, python-format
@@ -386,6 +390,9 @@ msgstr "Verfügbare Kategorien:"
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "Backend ist nicht vorhanden (%(backend)s)."
+
+msgid "Backend storage did not configure fiber channel target."
+msgstr "Backend-Speicher hat Fibre Channel-Ziel nicht konfiguriert. "
 
 msgid "Backing up an in-use volume must use the force flag."
 msgstr ""
@@ -1179,10 +1186,6 @@ msgstr ""
 "Der erwartete Schlüssel %(key)s wurde in %(fun)s nicht gefunden: %(raw)s."
 
 #, python-format
-msgid "Domain with name %s wasn't found."
-msgstr "Domäne mit dem Namen %s wurde nicht gefunden."
-
-#, python-format
 msgid ""
 "Downlevel GPFS Cluster Detected.  GPFS Clone feature not enabled in cluster "
 "daemon level %(cur)s - must be at least at level %(min)s."
@@ -1246,10 +1249,6 @@ msgstr "Fehler beim Herstellen der Verbindung zum ceph-Cluster."
 msgid "Error connecting via ssh: %s"
 msgstr "Fehler beim Herstellen einer Verbindung über SSH: %s"
 
-#, python-format
-msgid "Error creating volume: %s."
-msgstr "Fehler beim Erstellen des Datenträgers: %s"
-
 msgid ""
 "Error decoding your request. Either the URL or the request body contained "
 "characters that could not be decoded by Cinder."
@@ -1264,10 +1263,6 @@ msgstr "Fehler beim Löschen des Wiedergabeprofils."
 #, python-format
 msgid "Error deleting volume %(ssn)s: %(volume)s"
 msgstr "Fehler beim Löschen des Datenträgers %(ssn)s: %(volume)s"
-
-#, python-format
-msgid "Error deleting volume %(vol)s: %(err)s."
-msgstr "Fehler beim Löschen des Datenträgers %(vol)s: %(err)s."
 
 #, python-format
 msgid "Error during evaluator parsing: %(reason)s"
@@ -1292,10 +1287,6 @@ msgid "Error executing command via ssh: %s"
 msgstr "Fehler beim Ausführen eines Befehls über SSH: %s"
 
 #, python-format
-msgid "Error extending volume %(vol)s: %(err)s."
-msgstr "Fehler beim Erweitern des Datenträgers %(vol)s: %(err)s."
-
-#, python-format
 msgid "Error extending volume: %(reason)s"
 msgstr "Fehler beim Erweitern des Datenträgers: %(reason)s"
 
@@ -1304,30 +1295,14 @@ msgid "Error finding %(name)s."
 msgstr "Fehler bei der Suche nach %(name)s."
 
 #, python-format
-msgid "Error getting domain id from name %(name)s: %(id)s."
-msgstr "Fehler beim Abrufen der Domänen-ID von Name %(name)s: %(id)s."
-
-#, python-format
-msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
-msgstr "Fehler beim Abrufen der Pool-ID von Name %(pool_name)s: %(err_msg)s."
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "Fehler in Antwort von SolidFire-API: Daten=%(data)s"
-
-#, python-format
-msgid "Error managing volume: %s."
-msgstr "Fehler beim Verwalten des Datenträgers: %s"
 
 msgid "Error not a KeyError."
 msgstr "Fehler ist nicht vom Typ 'KeyError'."
 
 msgid "Error not a TypeError."
 msgstr "Fehler ist nicht vom Typ 'TypeError'."
-
-#, python-format
-msgid "Error renaming volume %(vol)s: %(err)s."
-msgstr "Fehler beim Umbenennen von Datenträger %(vol)s: %(err)s."
 
 msgid "Error retrieving volume size"
 msgstr "Fehler beim Abrufen der Datenträgergröße"
@@ -1483,19 +1458,13 @@ msgstr ""
 "FC ist das Protokoll, aber WWPNs werden von OpenStack nicht bereitgestellt."
 
 #, python-format
+msgid "Faield to unassign %(volume)s"
+msgstr "Zuordnung für %(volume)s konnte nicht aufgehoben werden."
+
+#, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr ""
 "Fehler beim Hinzufügen einer Verbindung für Fabric=%(fabric)s: Fehler:%(err)s"
-
-#, python-format
-msgid "Failed creating snapshot for group: %(response)s."
-msgstr "Fehler beim Erstellen einer Schattenkopie für Gruppe: %(response)s."
-
-#, python-format
-msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
-msgstr ""
-"Fehler beim Erstellen einer Schattenkopie für Datenträger %(volname)s: "
-"%(response)s."
 
 #, python-format
 msgid "Failed getting active zone set from fabric %s."
@@ -1582,6 +1551,21 @@ msgid "Failed to create api volume flow."
 msgstr "Der API-Ablauf für die Erstellung des Datenträgers ist fehlgeschlagen."
 
 #, python-format
+msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
+msgstr ""
+"Fehler beim Erstellen der Schattenkopie der Konsistenzgruppe (Cgsnapshot) "
+"%(id)s. Ursache: %(reason)s."
+
+#, python-format
+msgid "Failed to create consistency group %(id)s due to %(reason)s."
+msgstr ""
+"Fehler beim Erstellen der Konsistenzgruppe %(id)s. Ursache: %(reason)s."
+
+#, python-format
+msgid "Failed to create consistency group %(id)s:%(ret)s."
+msgstr "Fehler beim Erstellen der Konsistenzgruppe %(id)s:%(ret)s."
+
+#, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
 msgstr ""
 "Fehler beim Erstellen der Konsistenzgruppe: %(cgid)s. Fehler: %(excmsg)s."
@@ -1654,6 +1638,16 @@ msgstr "Fehler beim Erstellen von Thin-Pool. Fehlernachricht: %s"
 #, python-format
 msgid "Failed to create volume %s"
 msgstr "Erstellen von Datenträger %s fehlgeschlagen"
+
+#, python-format
+msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
+msgstr ""
+"Fehler beim Löschen der Schattenkopie der Konsistenzgruppe (Cgsnapshot) "
+"%(id)s. Ursache: %(reason)s."
+
+#, python-format
+msgid "Failed to delete consistency group %(id)s due to %(reason)s."
+msgstr "Fehler beim Löschen der Konsistenzgruppe %(id)s. Ursache: %(reason)s."
 
 #, python-format
 msgid ""
@@ -2068,6 +2062,32 @@ msgid "Failure staging LUN %s to tmp."
 msgstr "Fehler beim Zwischenspeichern von LUN %s in temporärem Bereich."
 
 #, python-format
+msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
+msgstr ""
+"Flexvisor konnte Datenträger %(id)s nicht hinzufügen. Ursache: %(reason)s."
+
+#, python-format
+msgid ""
+"Fexvisor failed to join the volume %(vol)s in the group %(group)s due to "
+"%(ret)s."
+msgstr ""
+"Fexvisor konnte den Datenträger %(vol)s in der Gruppe %(group)s nicht "
+"verknüpfen. Ursache: %(ret)s."
+
+#, python-format
+msgid ""
+"Fexvisor failed to remove the volume %(vol)s in the group %(group)s due to "
+"%(ret)s."
+msgstr ""
+"Fexvisor konnte den Datenträger %(vol)s in der Gruppe %(group)s nicht "
+"entfernen. Ursache: %(ret)s."
+
+#, python-format
+msgid "Fexvisor failed to remove volume %(id)s due to %(reason)s."
+msgstr ""
+"Flexvisor konnte den Datenträger %(id)s nicht entfernen. Ursache: %(reason)s."
+
+#, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "Fehler bei der Fibre Channel-SAN-Suche: %(reason)s"
 
@@ -2082,6 +2102,10 @@ msgstr "Fehler bei der Fibre Channel-Verbindungssteuerung: %(reason)s"
 #, python-format
 msgid "File %(file_path)s could not be found."
 msgstr "Datei %(file_path)s wurde nicht gefunden."
+
+#, python-format
+msgid "File already exists at %s."
+msgstr "Datei bereits vorhanden bei %s."
 
 #, python-format
 msgid "File already exists at: %s"
@@ -2112,6 +2136,198 @@ msgid ""
 msgstr ""
 "Flash-Cache-Richtlinie erfordert WSAPI-Version '%(fcache_version)s'. Version "
 "'%(version)s' ist installiert."
+
+#, python-format
+msgid "Flexvisor assign volume failed.:%(id)s:%(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht zuordnen: %(status)s."
+
+#, python-format
+msgid "Flexvisor assign volume failed:%(id)s:%(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht zuordnen: %(status)s."
+
+#, python-format
+msgid ""
+"Flexvisor could not find volume %(id)s snapshot in the group %(vgid)s "
+"snapshot %(vgsid)s."
+msgstr ""
+"Flexvisor konnte die Schattenkopie des Datenträgers %(id)s in der Gruppe "
+"%(vgid)s Schattenkopie %(vgsid)s nicht finden."
+
+#, python-format
+msgid "Flexvisor create volume failed.:%(volumeid)s:%(status)s."
+msgstr "Flexvisor konnte Datenträger %(volumeid)s nicht erstellen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed deleting volume %(id)s: %(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht löschen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to add volume %(id)s to group %(cgid)s."
+msgstr ""
+"Flexvisor konnte den Datenträger %(id)s nicht der Gruppe %(cgid)s hinzufügen."
+
+#, python-format
+msgid ""
+"Flexvisor failed to assign volume %(id)s due to unable to query status by "
+"event id."
+msgstr ""
+"Flexvisor konnte Datenträger %(id)s nicht zuordnen, da der Status nicht "
+"anhand der Ereignis-ID abgerufen werden konnte. "
+
+#, python-format
+msgid "Flexvisor failed to assign volume %(id)s: %(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht zuordnen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to assign volume %(volume)s iqn %(iqn)s."
+msgstr "Flexvisor konnte Datenträger %(volume)s IQN %(iqn)s nicht zuordnen."
+
+#, python-format
+msgid "Flexvisor failed to clone volume %(id)s: %(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht klonen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to clone volume (failed to get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Datenträger %(id)s nicht klonen (Ereignis konnte nicht "
+"abgerufen werden)."
+
+#, python-format
+msgid "Flexvisor failed to create snapshot for volume %(id)s: %(status)s."
+msgstr ""
+"Flexvisor konnte Schattenkopie für Datenträger %(id)s nicht erstellen: "
+"%(status)s."
+
+#, python-format
+msgid ""
+"Flexvisor failed to create snapshot for volume (failed to get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Schattenkopie für Datenträger %(id)s nicht erstellen "
+"(Ereignis konnte nicht abgerufen werden)."
+
+#, python-format
+msgid "Flexvisor failed to create volume %(id)s in the group %(vgid)s."
+msgstr ""
+"Flexvisor konnte Datenträger %(id)s nicht in der Gruppe %(vgid)s erstellen."
+
+#, python-format
+msgid "Flexvisor failed to create volume %(volume)s: %(status)s."
+msgstr "Flexvisor konnte Datenträger %(volume)s nicht erstellen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to create volume (get event) %s."
+msgstr "Flexvisor konnte Datenträger %s nicht erstellen (Ereignis abrufen)."
+
+#, python-format
+msgid "Flexvisor failed to create volume from snapshot %(id)s: %(status)s."
+msgstr ""
+"Flexvisor konnte Datenträger nicht aus der Schattenkopie %(id)s erstellen: "
+"%(status)s."
+
+#, python-format
+msgid "Flexvisor failed to create volume from snapshot %(id)s:%(status)s."
+msgstr ""
+"Flexvisor konnte Datenträger nicht aus Schattenkopie %(id)s erstellen: "
+"%(status)s."
+
+#, python-format
+msgid ""
+"Flexvisor failed to create volume from snapshot (failed to get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Datenträger nicht aus der Schattenkopie %(id)s erstellen "
+"(Ereignis konnte nicht abgerufen werden)."
+
+#, python-format
+msgid "Flexvisor failed to delete snapshot %(id)s: %(status)s."
+msgstr "Flexvisor konnte Schattenkopie %(id)s nicht löschen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to delete snapshot (failed to get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Schattenkopie %(id)s nicht löschen (Ereignis konnte nicht "
+"abgerufen werden)."
+
+#, python-format
+msgid "Flexvisor failed to delete volume %(id)s: %(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht löschen: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to extend volume %(id)s: %(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht erweitern: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to extend volume %(id)s:%(status)s."
+msgstr "Flexvisor konnte Datenträger %(id)s nicht erweitern: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to extend volume (failed to get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Datenträger %(id)s nicht erweitern (Ereignis konnte nicht "
+"abgerufen werden)."
+
+#, python-format
+msgid "Flexvisor failed to get pool info %(id)s: %(status)s."
+msgstr ""
+"Flexvisor konnte Poolinformationen zu %(id)s nicht abrufen: %(status)s."
+
+#, python-format
+msgid ""
+"Flexvisor failed to get snapshot id of volume %(id)s from group %(vgid)s."
+msgstr ""
+"Flexvisor konnnte die Schattenkopie-ID des Datenträgers %(id)s nicht aus der "
+"Gruppe %(vgid)s abrufen."
+
+#, python-format
+msgid "Flexvisor failed to remove volume %(id)s from group %(cgid)s."
+msgstr ""
+"Flexvisor konnte den Datenträger %(id)s nicht aus der Gruppe %(cgid)s "
+"entfernen."
+
+#, python-format
+msgid "Flexvisor failed to spawn volume from snapshot %(id)s:%(status)s."
+msgstr ""
+"Flexvisor konnte Datenträger nicht aus der Schattenkopie %(id)s generieren: "
+"%(status)s."
+
+#, python-format
+msgid ""
+"Flexvisor failed to spawn volume from snapshot (failed to get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Datenträger nicht aus der Schattenkopie %(id)s erstellen "
+"(Ereignis konnte nicht abgerufen werden)."
+
+#, python-format
+msgid "Flexvisor failed to unassign volume %(id)s: %(status)s."
+msgstr ""
+"Flexvisor konnte Zuordnung für Datenträger %(id)s nicht aufheben: %(status)s."
+
+#, python-format
+msgid "Flexvisor failed to unassign volume (get event) %(id)s."
+msgstr ""
+"Flexvisor konnte Zuordnung für Datenträger %(id)s nicht aufheben (Ereignis "
+"abrufen)."
+
+#, python-format
+msgid "Flexvisor failed to unassign volume:%(id)s:%(status)s."
+msgstr ""
+"Flexvisor konnte Zuordnung für Datenträger %(id)s nicht aufheben: %(status)s."
+
+#, python-format
+msgid "Flexvisor unable to find the source volume %(id)s info."
+msgstr ""
+"Flexvisor konnte die Informationen zum Quellendatenträger %(id)s nicht "
+"finden."
+
+#, python-format
+msgid "Flexvisor unassign volume failed:%(id)s:%(status)s."
+msgstr ""
+"Flexvisor konnte Zuordnung für Datenträger %(id)s nicht aufheben: %(status)s."
+
+#, python-format
+msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
+msgstr ""
+"Flexvisor-Datenträger %(id)s konnte nicht mit der Gruppe %(vgid)s verknüpft "
+"werden."
 
 #, python-format
 msgid "Folder %s does not exist in Nexenta Store appliance"
@@ -2474,6 +2690,14 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "Ungültiges Replikationsziel: %(reason)s"
 
 #, python-format
+msgid ""
+"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
+"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
+msgstr ""
+"Ungültige Spezifikation einer Virtuozzo-Speicherfreigabe: %r. Erforderlich: "
+"[MDS1[,MDS2],...:/]<CLUSTERNAME>[:KENNWORT]."
+
+#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "Ungültige XtremIO-Version %(cur)s, Version ab %(min)s ist erforderlich."
@@ -2495,6 +2719,18 @@ msgstr "Ungültiger Autorisierungsschlüssel: %(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "Ungültige Sicherung: %(reason)s"
+
+#, python-format
+msgid "Invalid connection initialization response of volume %(name)s"
+msgstr ""
+"Ungültige Antwort für Initialisierung der Verbindung von Datenträger %(name)s"
+
+#, python-format
+msgid ""
+"Invalid connection initialization response of volume %(name)s: %(output)s"
+msgstr ""
+"Ungültige Antwort für Initialisierung der Verbindung von Datenträger "
+"%(name)s: %(output)s"
 
 #, python-format
 msgid "Invalid content type %(content_type)s."
@@ -2582,6 +2818,10 @@ msgstr "Ungültige Metadaten: %(reason)s"
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr "Ungültige Mountpunktbasis: %s"
+
+#, python-format
+msgid "Invalid mount point base: %s."
+msgstr "Ungültige Mountpunktbasis: %s."
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
@@ -2684,6 +2924,10 @@ msgid ""
 msgstr ""
 "Ungültiger volume_type angegeben: %s (der angeforderte Typ muss von dieser "
 "Konsistenzgruppe unterstützt werden)."
+
+#, python-format
+msgid "Invalid wwpns format %(wwpns)s"
+msgstr "Ungültiges wwpns-Format %(wwpns)s"
 
 msgid "Issue encountered waiting for job."
 msgstr "Beim Warten auf die Aufgabe ist ein Problem aufgetreten. "
@@ -3083,6 +3327,9 @@ msgstr "Keine eingehängten gemeinsam genutzten NFS-Laufwerke gefunden."
 msgid "No mounted SMBFS shares found."
 msgstr "Keine eingehängten gemeinsam genutzten SMBFS-Laufwerke gefunden."
 
+msgid "No mounted Virtuozzo Storage shares found"
+msgstr "Keine eingehängten gemeinsam genutzten Virtuozzo-Laufwerke gefunden."
+
 msgid "No mounted shares found"
 msgstr "Keine eingehängten gemeinsam genutzten Laufwerke gefunden."
 
@@ -3241,6 +3488,9 @@ msgstr "Richtlinie lässt Ausführung von %(action)s nicht zu."
 
 msgid "Pool is not available in the volume host field."
 msgstr "Pool ist im Hostfeld für Datenträger nicht verfügbar."
+
+msgid "Pool is not available in the volume host fields."
+msgstr "Pool ist in den Hostfeldern für Datenträger nicht verfügbar."
 
 #, python-format
 msgid "Pool with name %(pool_name)s wasn't found in domain %(domain_id)s."
@@ -4396,6 +4646,9 @@ msgstr "Unbekannte RemoteFS-Ausnahme"
 msgid "Unknown SMBFS exception."
 msgstr "Unbekannte SMBFS-Ausnahme"
 
+msgid "Unknown Virtuozzo Storage exception"
+msgstr "Unbekannte Virtuozzo-Speicherausnahmebedingung"
+
 msgid "Unknown action"
 msgstr "Unbekannte Aktion"
 
@@ -4651,6 +4904,11 @@ msgid "Volume %s does not exist on the array."
 msgstr "Der Datenträger %s ist im Array nicht vorhanden. "
 
 #, python-format
+msgid "Volume %s does not have provider_location specified, skipping."
+msgstr ""
+"Für Datenträger %s ist provider_location nicht angegeben, wird übersprungen."
+
+#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "Der Datenträger %s ist im Array nicht vorhanden. "
 
@@ -4784,9 +5042,6 @@ msgstr ""
 "Der Datenträger muss sich in derselben Verfügbarkeitszone befinden wie der "
 "Quellendatenträger."
 
-msgid "Volume must have a volume type"
-msgstr "Datenträger muss einen Datenträgertyp haben."
-
 msgid "Volume must not be replicated."
 msgstr "Datenträger darf nicht repliziert sein. "
 
@@ -4857,6 +5112,9 @@ msgstr "Datenträgergröße muss Vielfaches von 1 GB sein."
 msgid "Volume size must multiple of 1 GB."
 msgstr "Datenträgergröße muss Vielfaches von 1 GB sein."
 
+msgid "Volume status must be 'available'."
+msgstr "Datenträgerstatus muss 'available' sein."
+
 msgid "Volume to Initiator Group mapping already exists"
 msgstr ""
 "Die Zuordnung von Datenträger zu Initiatorgruppe ist bereits vorhanden."
@@ -4918,6 +5176,17 @@ msgid ""
 msgstr ""
 "Anzahl Datenträger/Konto sowohl auf primären als auch auf sekundären "
 "SolidFire-Konten überschritten."
+
+#, python-format
+msgid ""
+"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
+msgstr ""
+"VzStorage-Konfiguration 'vzstorage_used_ratio' ist ungültig. Muss > 0 und <= "
+"1,0 sein: %s."
+
+#, python-format
+msgid "VzStorage config file at %(config)s doesn't exist."
+msgstr "VzStorage-Konfigurationsdatei ist nicht in %(config)s vorhanden."
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
