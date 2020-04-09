@@ -31,6 +31,8 @@ from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
 LOG = logging.getLogger(__name__)
 
 
+VOLUME_MIGRATION_IN_PROGRESS_ERROR = 717
+VOLUME_MIGRATION_ALREADY_ON_DESTINATION_POOL_ERROR = 718
 VOLUME_NOT_FOUND_ERROR = 79
 OLD_VOLUME_NOT_FOUND_ERROR = 78
 ILLEGAL_SYNTAX = 0
@@ -654,3 +656,33 @@ class RestClient(object):
                                         "err_msg": response["message"]})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def query_vtree(self, vtree_id, vol_id):
+        url = "/instances/VTree::%(vtree_id)s"
+
+        r, response = self.execute_vxflexos_get_request(url, vtree_id=vtree_id)
+        if r.status_code != http_client.OK:
+            msg = (_("Failed to check migration status of volume %s.")
+                   % vol_id)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(msg)
+        return response
+
+    def migrate_vtree(self, volume, params):
+        url = "/instances/Volume::%(vol_id)s/action/migrateVTree"
+
+        r, response = self.execute_vxflexos_post_request(
+            url,
+            params=params,
+            vol_id=volume.provider_id
+        )
+        if r.status_code != http_client.OK:
+            error_code = response["errorCode"]
+            if error_code not in [
+                VOLUME_MIGRATION_IN_PROGRESS_ERROR,
+                VOLUME_MIGRATION_ALREADY_ON_DESTINATION_POOL_ERROR,
+            ]:
+                msg = (_("Failed to migrate volume %s.") % volume.id)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(msg)
+        return response

@@ -92,7 +92,7 @@ class TestCreateVolume(vxflexos.TestVxFlexOSDriver):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_create_volume)
 
-    @ddt.data({'provisioning:type': 'thin'}, {'provisioning:type': 'thin'})
+    @ddt.data({'provisioning:type': 'thin'}, {'provisioning:type': 'thick'})
     def test_create_thin_thick_volume(self, extraspecs):
         self.driver._get_volumetype_extraspecs = mock.MagicMock()
         self.driver._get_volumetype_extraspecs.return_value = extraspecs

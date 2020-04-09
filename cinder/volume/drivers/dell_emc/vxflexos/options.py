@@ -38,6 +38,9 @@ VXFLEXOS_STORAGE_POOLS = "vxflexos_storage_pools"
 VXFLEXOS_SERVER_API_VERSION = "vxflexos_server_api_version"
 VXFLEXOS_MAX_OVER_SUBSCRIPTION_RATIO = "vxflexos_max_over_subscription_ratio"
 VXFLEXOS_ALLOW_NON_PADDED_VOLUMES = "vxflexos_allow_non_padded_volumes"
+VXFLEXOS_ALLOW_MIGRATION_DURING_REBUILD = (
+    "vxflexos_allow_migration_during_rebuild"
+)
 
 deprecated_opts = [
     cfg.PortOpt(SIO_REST_SERVER_PORT,
@@ -142,4 +145,7 @@ actual_opts = [
                      'not be enabled if multiple tenants will utilize '
                      'volumes from a shared Storage Pool.',
                 deprecated_name=SIO_ALLOW_NON_PADDED_VOLUMES),
+    cfg.BoolOpt(VXFLEXOS_ALLOW_MIGRATION_DURING_REBUILD,
+                default=False,
+                help='Allow volume migration during rebuild.'),
 ]

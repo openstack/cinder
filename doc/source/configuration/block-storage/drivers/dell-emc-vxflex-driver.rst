@@ -67,7 +67,7 @@ Deployment prerequisites
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
 
-* Create, delete, clone, attach, detach, manage, and unmanage volumes
+* Create, delete, clone, attach, detach, migrate, manage, and unmanage volumes
 
 * Create, delete, manage, and unmanage volume snapshots
 
@@ -454,6 +454,50 @@ failback operation using ``--backend_id default``:
 .. code-block:: console
 
    $ cinder failover-host cinder_host@vxflexos --backend_id default
+
+VxFlex OS storage-assisted volume migration
+-------------------------------------------
+
+Starting from version 3.0, VxFlex OS supports storage-assisted volume
+migration.
+
+Known limitations
+~~~~~~~~~~~~~~~~~
+
+* Migration between different backends is not supported.
+
+* For migration from Medium Granularity (MG) to Fine Granularity (FG)
+  storage pool zero padding must be enabled on the MG pool.
+
+* For migration from MG to MG pool zero padding must be either enabled
+  or disabled on both pools.
+
+In the above cases host-assisted migration will be perfomed.
+
+Migrate volume
+~~~~~~~~~~~~~~
+
+Volume migration is performed by issuing the following command:
+
+.. code-block:: console
+
+   $ cinder migrate <volume> <host>
+
+.. note:: Volume migration has a timeout of 3600 seconds (1 hour).
+          It is done to prevent from endless waiting for migration to
+          complete if something unexpected happened. If volume still is in
+          migration after timeout has expired, volume status will be changed to
+          ``maintenance`` to prevent future operations with this volume. The
+          corresponding warning will be logged.
+
+          In this situation the status of the volume should be checked on the
+          storage side. If volume migration succeeded, its status can be
+          changed manually:
+
+          .. code-block:: console
+
+             $ cinder reset-state --state available <volume>
+
 
 Using VxFlex OS Storage with a containerized overcloud
 ------------------------------------------------------
