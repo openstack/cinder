@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-07 10:43+0000\n"
+"POT-Creation-Date: 2020-04-09 02:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -146,6 +146,10 @@ msgstr "%s 不是目錄。"
 #, python-format
 msgid "%s is not installed"
 msgstr "%s 未安裝"
+
+#, python-format
+msgid "%s is not installed."
+msgstr "未安裝 %s。"
 
 #, python-format
 msgid "%s is not set"
@@ -332,6 +336,9 @@ msgstr "可用的種類："
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "後端不存在 (%(backend)s)"
+
+msgid "Backend storage did not configure fiber channel target."
+msgstr "後端儲存體未配置光纖通道目標。"
 
 msgid "Backing up an in-use volume must use the force flag."
 msgstr "備份使用中的磁區必須使用強制旗標。"
@@ -1021,10 +1028,6 @@ msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "在 %(fun)s 中找不到預期的索引鍵 %(key)s：%(raw)s。"
 
 #, python-format
-msgid "Domain with name %s wasn't found."
-msgstr "找不到名稱為 %s 的網域。"
-
-#, python-format
 msgid ""
 "Downlevel GPFS Cluster Detected.  GPFS Clone feature not enabled in cluster "
 "daemon level %(cur)s - must be at least at level %(min)s."
@@ -1080,20 +1083,12 @@ msgstr "連接至 ceph 叢集時發生錯誤。"
 msgid "Error connecting via ssh: %s"
 msgstr "透過 SSH 進行連接時發生錯誤：%s"
 
-#, python-format
-msgid "Error creating volume: %s."
-msgstr "建立磁區時發生錯誤：%s。"
-
 msgid "Error deleting replay profile."
 msgstr "刪除重播設定檔時發生錯誤。"
 
 #, python-format
 msgid "Error deleting volume %(ssn)s: %(volume)s"
 msgstr "刪除磁區 %(ssn)s 時發生錯誤：%(volume)s"
-
-#, python-format
-msgid "Error deleting volume %(vol)s: %(err)s."
-msgstr "刪除磁區 %(vol)s 時發生錯誤：%(err)s。"
 
 #, python-format
 msgid "Error during evaluator parsing: %(reason)s"
@@ -1116,10 +1111,6 @@ msgid "Error executing command via ssh: %s"
 msgstr "透過 SSH 來執行指令時發生錯誤：%s"
 
 #, python-format
-msgid "Error extending volume %(vol)s: %(err)s."
-msgstr "延伸磁區 %(vol)s 時發生錯誤：%(err)s。"
-
-#, python-format
 msgid "Error extending volume: %(reason)s"
 msgstr "延伸磁區時發生錯誤：%(reason)s"
 
@@ -1128,30 +1119,14 @@ msgid "Error finding %(name)s."
 msgstr "尋找 %(name)s 時發生錯誤。"
 
 #, python-format
-msgid "Error getting domain id from name %(name)s: %(id)s."
-msgstr "從名稱 %(name)s 取得網域 ID 時發生錯誤：%(id)s。"
-
-#, python-format
-msgid "Error getting pool id from name %(pool_name)s: %(err_msg)s."
-msgstr "從名稱 %(pool_name)s 取得儲存區 ID 時發生錯誤：%(err_msg)s。"
-
-#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "SolidFire API 回應發生錯誤：資料 = %(data)s"
-
-#, python-format
-msgid "Error managing volume: %s."
-msgstr "管理磁區時發生錯誤：%s。"
 
 msgid "Error not a KeyError."
 msgstr "此錯誤不是 KeyError。"
 
 msgid "Error not a TypeError."
 msgstr "此錯誤不是 TypeError。"
-
-#, python-format
-msgid "Error renaming volume %(vol)s: %(err)s."
-msgstr "重命名磁區 %(vol)s 時發生錯誤：%(err)s。"
 
 msgid "Error retrieving volume size"
 msgstr "擷取磁區大小時發生錯誤"
@@ -1290,16 +1265,12 @@ msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC 是通訊協定，但 OpenStack 未提供 WWPN。"
 
 #, python-format
+msgid "Faield to unassign %(volume)s"
+msgstr "無法取消指派 %(volume)s"
+
+#, python-format
 msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "無法給架構 %(fabric)s 新增連線：錯誤：%(err)s"
-
-#, python-format
-msgid "Failed creating snapshot for group: %(response)s."
-msgstr "無法為群組建立 Snapshot：%(response)s。"
-
-#, python-format
-msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
-msgstr "無法為磁區 %(volname)s 建立 Snapshot：%(response)s。"
 
 #, python-format
 msgid "Failed getting active zone set from fabric %s."
@@ -1382,6 +1353,18 @@ msgid "Failed to create api volume flow."
 msgstr "無法建立 API 磁區流程。"
 
 #, python-format
+msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
+msgstr "由於 %(reason)s，無法建立 cg Snapshot %(id)s。"
+
+#, python-format
+msgid "Failed to create consistency group %(id)s due to %(reason)s."
+msgstr "由於 %(reason)s，無法建立一致性群組 %(id)s。"
+
+#, python-format
+msgid "Failed to create consistency group %(id)s:%(ret)s."
+msgstr "無法建立一致性群組 %(id)s：%(ret)s。"
+
+#, python-format
 msgid "Failed to create consistency group: %(cgid)s. Error: %(excmsg)s."
 msgstr "無法建立一致性群組 %(cgid)s。錯誤：%(excmsg)s。"
 
@@ -1445,6 +1428,14 @@ msgstr "無法建立小型儲存區，錯誤訊息為：%s"
 #, python-format
 msgid "Failed to create volume %s"
 msgstr "無法建立磁區 %s"
+
+#, python-format
+msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
+msgstr "由於 %(reason)s，無法刪除 cg Snapshot %(id)s。"
+
+#, python-format
+msgid "Failed to delete consistency group %(id)s due to %(reason)s."
+msgstr "由於 %(reason)s，無法刪除一致性群組 %(id)s。"
 
 #, python-format
 msgid ""
@@ -1803,6 +1794,26 @@ msgid "Failure staging LUN %s to tmp."
 msgstr "將 LUN %s 暫置到 tmp 時失敗。"
 
 #, python-format
+msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
+msgstr "由於 %(reason)s，Fexvisor 無法新增磁區 %(id)s。"
+
+#, python-format
+msgid ""
+"Fexvisor failed to join the volume %(vol)s in the group %(group)s due to "
+"%(ret)s."
+msgstr "Fexvisor 無法結合群組 %(group)s 中的磁區 %(vol)s，原因：%(ret)s。"
+
+#, python-format
+msgid ""
+"Fexvisor failed to remove the volume %(vol)s in the group %(group)s due to "
+"%(ret)s."
+msgstr "Fexvisor 無法移除群組 %(group)s 中的磁區 %(vol)s，原因：%(ret)s。"
+
+#, python-format
+msgid "Fexvisor failed to remove volume %(id)s due to %(reason)s."
+msgstr "Fexvisor 無法移除磁區 %(id)s，原因：%(reason)s。"
+
+#, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "「光纖通道」SAN 查閱失敗：%(reason)s"
 
@@ -1817,6 +1828,10 @@ msgstr "「光纖通道」連線控制失敗：%(reason)s"
 #, python-format
 msgid "File %(file_path)s could not be found."
 msgstr "找不到檔案 %(file_path)s。"
+
+#, python-format
+msgid "File already exists at %s."
+msgstr "%s 處已存在檔案。"
 
 #, python-format
 msgid "File already exists at: %s"
@@ -1847,6 +1862,159 @@ msgid ""
 msgstr ""
 "「快閃記憶體快取原則」需要 WSAPI '%(fcache_version)s' 版，已安裝 "
 "'%(version)s' 版。"
+
+#, python-format
+msgid "Flexvisor assign volume failed.:%(id)s:%(status)s."
+msgstr "Flexvisor 指派磁區失敗：%(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor assign volume failed:%(id)s:%(status)s."
+msgstr "Flexvisor 指派磁區失敗：%(id)s：%(status)s。"
+
+#, python-format
+msgid ""
+"Flexvisor could not find volume %(id)s snapshot in the group %(vgid)s "
+"snapshot %(vgsid)s."
+msgstr ""
+"Flexvisor 在群組 %(vgid)s Snapshot %(vgsid)s 中找不到磁區 %(id)s Snapshot。"
+
+#, python-format
+msgid "Flexvisor create volume failed.:%(volumeid)s:%(status)s."
+msgstr "Flexvisor 建立磁區失敗：%(volumeid)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed deleting volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法刪除磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to add volume %(id)s to group %(cgid)s."
+msgstr "Flexvisor 無法將磁區 %(id)s 新增至群組 %(cgid)s。"
+
+#, python-format
+msgid ""
+"Flexvisor failed to assign volume %(id)s due to unable to query status by "
+"event id."
+msgstr "Flexvisor 無法指派磁區 %(id)s，原因是無法依事件 ID 來查詢狀態。"
+
+#, python-format
+msgid "Flexvisor failed to assign volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法指派磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to assign volume %(volume)s iqn %(iqn)s."
+msgstr "Flexvisor 無法指派磁區 %(volume)s iqn %(iqn)s。"
+
+#, python-format
+msgid "Flexvisor failed to clone volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法複製磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to clone volume (failed to get event) %(id)s."
+msgstr "Flexvisor 無法複製磁區（無法取得事件）%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to create snapshot for volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法建立磁區 %(id)s 的 Snapshot：%(status)s。"
+
+#, python-format
+msgid ""
+"Flexvisor failed to create snapshot for volume (failed to get event) %(id)s."
+msgstr "Flexvisor 無法建立下列磁區的 Snapshot（無法取得事件）：%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to create volume %(id)s in the group %(vgid)s."
+msgstr "Flexvisor 無法在群組 %(vgid)s 中建立磁區 %(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to create volume %(volume)s: %(status)s."
+msgstr "Flexvisor 無法建立磁區 %(volume)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to create volume (get event) %s."
+msgstr "Flexvisor 無法建立磁區（取得事件）%s。"
+
+#, python-format
+msgid "Flexvisor failed to create volume from snapshot %(id)s: %(status)s."
+msgstr "Flexvisor 無法從 Snapshot %(id)s 建立磁區：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to create volume from snapshot %(id)s:%(status)s."
+msgstr "Flexvisor 無法從 Snapshot %(id)s 建立磁區：%(status)s。"
+
+#, python-format
+msgid ""
+"Flexvisor failed to create volume from snapshot (failed to get event) %(id)s."
+msgstr "Flexvisor 無法從下列 Snapshot 建立磁區（無法取得事件）：%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to delete snapshot %(id)s: %(status)s."
+msgstr "Flexvisor 無法刪除 Snapshot %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to delete snapshot (failed to get event) %(id)s."
+msgstr "Flexvisor 無法刪除 Snapshot（無法取得事件）%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to delete volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法刪除磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to extend volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法延伸磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to extend volume %(id)s:%(status)s."
+msgstr "Flexvisor 無法延伸磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to extend volume (failed to get event) %(id)s."
+msgstr "Flexvisor 無法延伸磁區（無法取得事件）%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to get pool info %(id)s: %(status)s."
+msgstr "Flexvisor 無法取得儲存區資訊 %(id)s：%(status)s。"
+
+#, python-format
+msgid ""
+"Flexvisor failed to get snapshot id of volume %(id)s from group %(vgid)s."
+msgstr "Flexvisor 無法從群組 %(vgid)s 取得磁區 %(id)s 的 Snapshot ID。"
+
+#, python-format
+msgid "Flexvisor failed to remove volume %(id)s from group %(cgid)s."
+msgstr "Flexvisor 無法從群組 %(cgid)s 中移除磁區 %(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to spawn volume from snapshot %(id)s:%(status)s."
+msgstr "Flexvisor 無法從 Snapshot %(id)s 大量產生磁區：%(status)s。"
+
+#, python-format
+msgid ""
+"Flexvisor failed to spawn volume from snapshot (failed to get event) %(id)s."
+msgstr "Flexvisor 無法從下列 Snapshot 大量產生磁區（無法取得事件）：%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to unassign volume %(id)s: %(status)s."
+msgstr "Flexvisor 無法取消指派磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor failed to unassign volume (get event) %(id)s."
+msgstr "Flexvisor 無法取消指派磁區（取得事件）%(id)s。"
+
+#, python-format
+msgid "Flexvisor failed to unassign volume:%(id)s:%(status)s."
+msgstr "Flexvisor 無法取消指派磁區 %(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor unable to find the source volume %(id)s info."
+msgstr "Flexvisor 找不到來源磁區 %(id)s 資訊。"
+
+#, python-format
+msgid "Flexvisor unassign volume failed:%(id)s:%(status)s."
+msgstr "Flexvisor 取消指派磁區失敗：%(id)s：%(status)s。"
+
+#, python-format
+msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
+msgstr "Flexvisor 磁區 %(id)s 無法加入群組 %(vgid)s 中。"
 
 #, python-format
 msgid "Folder %s does not exist in Nexenta Store appliance"
@@ -2143,6 +2311,14 @@ msgid "Invalid Replication Target: %(reason)s"
 msgstr "無效的抄寫目標：%(reason)s"
 
 #, python-format
+msgid ""
+"Invalid Virtuozzo Storage share specification: %r. Must be: [MDS1[,"
+"MDS2],...:/]<CLUSTER NAME>[:PASSWORD]."
+msgstr ""
+"Virtuozzo 儲存體共用項目規格無效：%r。必須是：[MDS1[,MDS2],...:/]<CLUSTER "
+"NAME>[:PASSWORD]。"
+
+#, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "XtremIO %(cur)s 版無效，需要 %(min)s 版或更高版本"
 
@@ -2161,6 +2337,15 @@ msgstr "無效的鑑別金鑰：%(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "無效的備份：%(reason)s"
+
+#, python-format
+msgid "Invalid connection initialization response of volume %(name)s"
+msgstr "磁區 %(name)s 的連線起始設定回應無效"
+
+#, python-format
+msgid ""
+"Invalid connection initialization response of volume %(name)s: %(output)s"
+msgstr "磁區 %(name)s 的連線起始設定回應無效：%(output)s"
 
 #, python-format
 msgid "Invalid content type %(content_type)s."
@@ -2235,6 +2420,10 @@ msgstr "無效的 meta 資料：%(reason)s"
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr "無效的裝載點基本程式：%s"
+
+#, python-format
+msgid "Invalid mount point base: %s."
+msgstr "無效的裝載點基本程式：%s。"
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
@@ -2332,6 +2521,10 @@ msgid ""
 "Invalid volume_type provided: %s (requested type must be supported by this "
 "consistency group)."
 msgstr "提供的 volume_type 無效：%s（所要求的類型必須受此一致性群組支援）。"
+
+#, python-format
+msgid "Invalid wwpns format %(wwpns)s"
+msgstr "無效的 WWPN 格式 %(wwpns)s"
 
 msgid "Issue encountered waiting for job."
 msgstr "等待工作時遇到問題。"
@@ -2664,6 +2857,9 @@ msgstr "找不到已裝載的 NFS 共用"
 msgid "No mounted SMBFS shares found."
 msgstr "找不到已裝載的 SMBFS 共用項目。"
 
+msgid "No mounted Virtuozzo Storage shares found"
+msgstr "找不到已裝載的 Virtuozzo 儲存體共用項目"
+
 msgid "No mounted shares found"
 msgstr "找不到已裝載的共用項目"
 
@@ -2796,6 +2992,9 @@ msgid "Policy doesn't allow %(action)s to be performed."
 msgstr "原則不容許執行 %(action)s。"
 
 msgid "Pool is not available in the volume host field."
+msgstr "在磁區主機欄位中無法使用儲存區。"
+
+msgid "Pool is not available in the volume host fields."
 msgstr "在磁區主機欄位中無法使用儲存區。"
 
 #, python-format
@@ -3786,6 +3985,9 @@ msgstr "不明的 RemoteFS 異常狀況"
 msgid "Unknown SMBFS exception."
 msgstr "不明的 SMBFS 異常狀況。"
 
+msgid "Unknown Virtuozzo Storage exception"
+msgstr "「不明 Virtuozzo 儲存體」異常狀況"
+
 msgid "Unknown action"
 msgstr "不明動作"
 
@@ -4000,6 +4202,10 @@ msgid "Volume %s does not exist on the array."
 msgstr "磁區 %s 不在陣列上。"
 
 #, python-format
+msgid "Volume %s does not have provider_location specified, skipping."
+msgstr "沒有為磁區 %s 指定 provider_location，正在跳過。"
+
+#, python-format
 msgid "Volume %s doesn't exist on array."
 msgstr "磁區 %s 不在陣列上。"
 
@@ -4111,9 +4317,6 @@ msgstr "磁區和 Snapshot 必須位在同一個可用性區域中"
 msgid "Volume must be in the same availability zone as the source volume"
 msgstr "磁區和來源磁區必須位在同一個可用性區域中"
 
-msgid "Volume must have a volume type"
-msgstr "磁區必須具有磁區類型"
-
 msgid "Volume must not be replicated."
 msgstr "不得抄寫磁區。"
 
@@ -4179,6 +4382,9 @@ msgstr "磁區大小必須是 1 GB 的倍數。"
 msgid "Volume size must multiple of 1 GB."
 msgstr "磁區大小必須是 1 GB 的倍數。"
 
+msgid "Volume status must be 'available'."
+msgstr "磁區狀態必須為「可用」。"
+
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "磁區至起始器群組的對映已存在"
 
@@ -4229,6 +4435,16 @@ msgstr "找不到名稱為 %(volume_type_name)s 的磁區類型。"
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
 msgstr "超過了主要及次要 SolidFire 帳戶上的磁區/帳戶。"
+
+#, python-format
+msgid ""
+"VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
+msgstr ""
+"VzStorage 配置 'vzstorage_used_ratio' 無效。必須大於 0 且小於或等於 1.0：%s。"
+
+#, python-format
+msgid "VzStorage config file at %(config)s doesn't exist."
+msgstr "%(config)s 處的 VzStorage 配置檔不存在。"
 
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
