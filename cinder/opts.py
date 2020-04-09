@@ -141,6 +141,8 @@ from cinder.volume.drivers import remotefs as cinder_volume_drivers_remotefs
 from cinder.volume.drivers.san.hp import hpmsa_common as \
     cinder_volume_drivers_san_hp_hpmsacommon
 from cinder.volume.drivers.san import san as cinder_volume_drivers_san_san
+from cinder.volume.drivers.sandstone import sds_driver as \
+    cinder_volume_drivers_sandstone_sdsdriver
 from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
 from cinder.volume.drivers import storpool as cinder_volume_drivers_storpool
 from cinder.volume.drivers.stx import common as \
@@ -258,6 +260,7 @@ def list_opts():
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.
                 instorage_mcs_iscsi_opts,
+                cinder_volume_drivers_sandstone_sdsdriver.sds_opts,
                 cinder_volume_drivers_veritas_access_veritasiscsi.VA_VOL_OPTS,
                 cinder_volume_manager.volume_manager_opts,
                 cinder_wsgi_eventletserver.socket_opts,
