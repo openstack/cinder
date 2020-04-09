@@ -1016,7 +1016,8 @@ class VMwareVolumeOps(object):
         return disk_locator
 
     def _get_relocate_spec(self, datastore, resource_pool, host,
-                           disk_move_type, disk_type=None, disk_device=None):
+                           disk_move_type, disk_type=None, disk_device=None,
+                           service=None):
         """Return spec for relocating volume backing.
 
         :param datastore: Reference to the datastore
@@ -1040,11 +1041,29 @@ class VMwareVolumeOps(object):
                                                                    disk_device)
             relocate_spec.disk = [disk_locator]
 
+        if service is not None:
+            relocate_spec.service = self._get_service_locator_spec(service)
+
         LOG.debug("Spec for relocating the backing: %s.", relocate_spec)
         return relocate_spec
 
+    def _get_service_locator_spec(self, service):
+        cf = self._session.vim.client.factory
+        service_locator = cf.create("ns0:ServiceLocator")
+        service_locator.instanceUuid = service['instance_uuid']
+        service_locator.sslThumbprint = service['ssl_thumbprint']
+        service_locator.url = service['url']
+
+        credential = cf.create("ns0:ServiceLocatorNamePassword")
+        credential.password = service['credential']['password']
+        credential.username = service['credential']['username']
+        service_locator.credential = credential
+
+        return service_locator
+
     def relocate_backing(
-            self, backing, datastore, resource_pool, host, disk_type=None):
+            self, backing, datastore, resource_pool, host, disk_type=None,
+            service=None):
         """Relocates backing to the input datastore and resource pool.
 
         The implementation uses moveAllDiskBackingsAndAllowSharing disk move
@@ -1055,6 +1074,7 @@ class VMwareVolumeOps(object):
         :param resource_pool: Reference to the resource pool
         :param host: Reference to the host
         :param disk_type: destination disk type
+        :param service: destination service (for cross vCenter)
         """
         LOG.debug("Relocating backing: %(backing)s to datastore: %(ds)s "
                   "and resource pool: %(rp)s with destination disk type: "
@@ -1066,6 +1086,10 @@ class VMwareVolumeOps(object):
 
         # Relocate the volume backing
         disk_move_type = 'moveAllDiskBackingsAndAllowSharing'
+        # For migration to other vCenter service the disk_move_type needs to be
+        # moveAllDiskBackingsAndDisallowSharing
+        if service is not None:
+            disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
 
         disk_device = None
         if disk_type is not None:
@@ -1073,7 +1097,7 @@ class VMwareVolumeOps(object):
 
         relocate_spec = self._get_relocate_spec(datastore, resource_pool, host,
                                                 disk_move_type, disk_type,
-                                                disk_device)
+                                                disk_device, service=service)
 
         task = self._session.invoke_api(self._session.vim, 'RelocateVM_Task',
                                         backing, spec=relocate_spec)

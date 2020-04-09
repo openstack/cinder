@@ -24,7 +24,9 @@ machine is never powered on and is often referred as the shadow VM.
 
 import math
 import re
+import ssl
 
+import OpenSSL
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -47,6 +49,7 @@ from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
+from cinder.volume.drivers.vmware import remote as remote_api
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
@@ -69,6 +72,8 @@ EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
 
 EXTENSION_KEY = 'org.openstack.storage'
 EXTENSION_TYPE = 'volume'
+
+LOCATION_DRIVER_NAME = 'VMwareVcVmdkDriver'
 
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
@@ -321,6 +326,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._clusters = None
         self._dc_cache = {}
         self._ds_regex = None
+        self.additional_endpoints.append([
+            remote_api.VmdkDriverRemoteService(self)
+        ])
+        self._remote_api = remote_api.VmdkDriverRemoteApi()
 
     @staticmethod
     def get_driver_options():
@@ -423,6 +432,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     break
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
         data['free_capacity_gb'] = round(global_free / units.Gi)
+        location_info = '%(driver_name)s:%(vcenter)s' % {
+            'driver_name': LOCATION_DRIVER_NAME,
+            'vcenter': self.session.vim.service_content.about.instanceUuid}
+        data['location_info'] = location_info
         self._stats = data
         return data
 
@@ -750,6 +763,30 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         return (host_ref, resource_pool, folder, summary)
+
+    @property
+    def service_locator_info(self):
+        """Returns information needed to build a ServiceLocator spec."""
+        # vCenter URL
+        host = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
+        url = "https://" + host
+        if port:
+            url += ":" + str(port)
+        # ssl thumbprint
+        cert = ssl.get_server_certificate((host, port or 443))
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM,
+                                               cert)
+        return {
+            'url': url,
+            'ssl_thumbprint': x509.digest("sha1").decode("utf-8"),
+            'instance_uuid':
+                self.session.vim.service_content.about.instanceUuid,
+            'credential': {
+                'username': self.configuration.vmware_host_username,
+                'password': self.configuration.vmware_host_password
+            }
+        }
 
     def _get_connection_info(self, volume, backing, connector):
         connection_info = {'driver_volume_type': 'vmdk'}
@@ -2554,3 +2591,60 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             LOG.debug("Backing does not exist for volume.", resource=volume)
         else:
             self.volumeops.revert_to_snapshot(backing, snapshot.name)
+
+    def migrate_volume(self, context, volume, host):
+        """Migrate a volume to the specified host.
+
+        If the backing is not created, returns success.
+        """
+
+        false_ret = (False, None)
+        if volume['status'] != 'available':
+            return false_ret
+        if 'location_info' not in host['capabilities']:
+            return false_ret
+        info = host['capabilities']['location_info']
+        try:
+            (driver_name, vcenter) = info.split(':')
+        except ValueError:
+            return false_ret
+
+        if driver_name != LOCATION_DRIVER_NAME:
+            return false_ret
+
+        backing = self.volumeops.get_backing(volume.name, volume.id)
+        dest_host = host['host']
+        # If the backing is not yet created, there is no need to migrate
+        if not backing:
+            LOG.info("There is no backing for the volume: %(volume_name)s. "
+                     "No need for a migration. The volume will be assigned to"
+                     " %(dest_host)s.",
+                     {'volume_name': volume.name, 'dest_host': dest_host})
+            return (True, None)
+
+        service_locator = self._remote_api.get_service_locator_info(context,
+                                                                    dest_host)
+        ds_info = self._remote_api.select_ds_for_volume(context, dest_host,
+                                                        volume)
+        host_ref = vim_util.get_moref(ds_info['host'], 'HostSystem')
+        rp_ref = vim_util.get_moref(ds_info['resource_pool'], 'ResourcePool')
+        ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
+
+        self.volumeops.relocate_backing(backing, ds_ref, rp_ref, host_ref,
+                                        service=service_locator)
+        try:
+            self._remote_api.move_volume_backing_to_folder(
+                context, dest_host, volume, ds_info['folder'])
+        except Exception:
+            # At this point the backing has been migrated to the new host.
+            # If this movement to folder fails, we let the manager know the
+            # migration happened so that it will save the new host,
+            # but we update its status to 'error' so that someone can check
+            # the logs and perform a manual action.
+            LOG.exception("Failed to move the backing %(volume_id)s to folder "
+                          "%(folder)s.",
+                          {'volume_id': volume['id'],
+                           'folder': ds_info['folder']},)
+            return (True, {'migration_status': 'error'})
+
+        return (True, None)
