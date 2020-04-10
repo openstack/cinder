@@ -32,6 +32,7 @@ from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
 from cinder.volume.drivers.dell_emc.powermax import common
 from cinder.volume.drivers.dell_emc.powermax import fc
 from cinder.volume.drivers.dell_emc.powermax import masking
+from cinder.volume.drivers.dell_emc.powermax import metadata
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
@@ -549,6 +550,18 @@ class PowerMaxCommonTest(test.TestCase):
             mock_remove.assert_called_once_with(
                 array, volume, device_id, extra_specs, None,
                 False, async_grp=None, host_template=None)
+
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata, 'capture_detach_info')
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
+    def test_unmap_lun_multiattach_prints_metadata(self, mck_remove, mck_info):
+        volume = deepcopy(self.data.test_volume)
+        connector = deepcopy(self.data.connector)
+        volume.volume_attachment.objects = [
+            deepcopy(self.data.test_volume_attachment),
+            deepcopy(self.data.test_volume_attachment)]
+        self.common._unmap_lun(volume, connector)
+        self.assertEqual(0, mck_remove.call_count)
+        self.assertEqual(1, mck_info.call_count)
 
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
