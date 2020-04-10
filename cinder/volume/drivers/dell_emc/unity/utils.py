@@ -29,6 +29,7 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import group_types
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as zm_utils
@@ -204,6 +205,20 @@ def get_extra_spec(volume, spec_key):
     return spec_value
 
 
+def group_is_cg(group):
+    result = get_group_specs(group, 'consistent_group_snapshot_enabled')
+    return result == '<is> True'
+
+
+def get_group_specs(group, spec_key):
+    spec_value = None
+    if group.group_type_id:
+        group_specs = group_types.get_group_type_specs(group.group_type_id)
+        if spec_key in group_specs:
+            spec_value = group_specs[spec_key]
+    return spec_value
+
+
 def ignore_exception(func, *args, **kwargs):
     try:
         func(*args, **kwargs)
@@ -326,7 +341,8 @@ def append_capabilities(func):
         'thin_provisioning_support': True,
         'thick_provisioning_support': True,
         'consistent_group_snapshot_enabled': True,
-        'fast_support': True
+        'fast_support': True,
+        'consistent_group_replication_enabled': True
     }
 
     @six.wraps(func)
