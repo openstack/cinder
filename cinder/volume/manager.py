@@ -1760,6 +1760,18 @@ class VolumeManager(manager.CleanableManager,
             encrypted = bool(volume.encryption_key_id)
             conn_info['data']['encrypted'] = encrypted
 
+        # Add cacheable flag to connection_info if not set in the driver.
+        if typeid:
+            cacheable = volume_types.get_volume_type_extra_specs(
+                typeid, key='cacheable')
+            if conn_info['data'].get('cacheable') is not None:
+                driver_setting = bool(conn_info['data']['cacheable'])
+                # override a True driver_setting but respect False
+                conn_info['data']['cacheable'] = (driver_setting and
+                                                  (cacheable == '<is> True'))
+            else:
+                conn_info['data']['cacheable'] = (cacheable == '<is> True')
+
         # Add discard flag to connection_info if not set in the driver and
         # configured to be reported.
         if conn_info['data'].get('discard') is None:
@@ -2612,6 +2624,18 @@ class VolumeManager(manager.CleanableManager,
 
                 # Append volume stats with 'allocated_capacity_gb'
                 self._append_volume_stats(volume_stats)
+
+                # Append cacheable flag for iSCSI/FC/NVMe-oF and only when
+                # cacheable is not set in driver level
+                if volume_stats['storage_protocol'] in [
+                        'iSCSI', 'FC', 'NVMe-oF']:
+                    if volume_stats.get('pools'):
+                        for pool in volume_stats.get('pools'):
+                            if pool.get('cacheable') is None:
+                                pool['cacheable'] = True
+                    else:
+                        if volume_stats.get('cacheable') is None:
+                            volume_stats['cacheable'] = True
 
                 # Append filter and goodness function if needed
                 volume_stats = (

@@ -18,6 +18,7 @@ from unittest import mock
 
 from cinder import exception
 from cinder.message import message_field
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import volume as base
 from cinder.volume import manager as vol_manager
@@ -245,3 +246,44 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
         mock_detach.assert_called_once_with(
             ctxt, mock_connect.return_value, vol, mock.sentinel.properties,
             force=True, remote=mock.sentinel.remote)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs',
+                return_value={'qos_specs': None})
+    def test_parse_connection_options_cacheable(self,
+                                                mock_get_qos,
+                                                mock_get_extra_specs):
+        ctxt = mock.Mock()
+        manager = vol_manager.VolumeManager()
+        vol = fake_volume.fake_volume_obj(ctxt)
+        vol.volume_type_id = fake.VOLUME_TYPE_ID
+
+        # no 'cacheable' set by driver, should be extra spec
+        conn_info = {"data": {}}
+        mock_get_extra_specs.return_value = '<is> True'
+        manager._parse_connection_options(ctxt, vol, conn_info)
+        self.assertIn('cacheable', conn_info['data'])
+        self.assertIs(conn_info['data']['cacheable'], True)
+
+        # driver sets 'cacheable' False, should override extra spec
+        conn_info = {"data": {"cacheable": False}}
+        mock_get_extra_specs.return_value = '<is> True'
+        manager._parse_connection_options(ctxt, vol, conn_info)
+        self.assertIn('cacheable', conn_info['data'])
+        self.assertIs(conn_info['data']['cacheable'], False)
+
+        # driver sets 'cacheable' True, nothing in extra spec,
+        # extra spec should override driver
+        conn_info = {"data": {"cacheable": True}}
+        mock_get_extra_specs.return_value = None
+        manager._parse_connection_options(ctxt, vol, conn_info)
+        self.assertIn('cacheable', conn_info['data'])
+        self.assertIs(conn_info['data']['cacheable'], False)
+
+        # driver sets 'cacheable' True, extra spec has False,
+        # extra spec should override driver
+        conn_info = {"data": {"cacheable": True}}
+        mock_get_extra_specs.return_value = '<is> False'
+        manager._parse_connection_options(ctxt, vol, conn_info)
+        self.assertIn('cacheable', conn_info['data'])
+        self.assertIs(conn_info['data']['cacheable'], False)

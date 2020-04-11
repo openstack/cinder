@@ -454,3 +454,56 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(exception.ValidationError,
                           self.controller.create, req, fake.VOLUME_ID,
                           body=body)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    def test_check_cacheable(self, get_extra_specs):
+        ret_multiattach = ''
+        ret_cacheable = ''
+
+        def side_get_specs(type_id, key):
+            if key == 'multiattach':
+                return ret_multiattach
+            if key == 'cacheable':
+                return ret_cacheable
+        get_extra_specs.return_value = ''
+        get_extra_specs.side_effect = side_get_specs
+
+        specs = {'multiattach': '<is> True',
+                 'cacheable': '<is> True'}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._check_cacheable,
+                          specs, 'typeid')
+
+        ret_multiattach = '<is> True'
+        ret_cacheable = ''
+        specs = {'cacheable': '<is> True'}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._check_cacheable,
+                          specs, 'typeid')
+
+        ret_multiattach = ''
+        ret_cacheable = '<is> True'
+        specs = {'multiattach': '<is> True'}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._check_cacheable,
+                          specs, 'typeid')
+
+        ret_multiattach = '<is> False'
+        ret_cacheable = ''
+        specs = {'multiattach': '<is> True'}
+        # Should NOT has exception when calling below line
+        self.controller._check_cacheable(specs, 'typeid')
+
+        ret_multiattach = '<is> True'
+        ret_cacheable = ''
+        specs = {'multiattach': '<is> False', 'cacheable': '<is> True'}
+        # Should NOT setting both at the same time
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._check_cacheable,
+                          specs, 'typeid')
+
+        ret_multiattach = '<is> False'
+        ret_cacheable = ''
+        specs = {'multiattach': '<is> False', 'cacheable': '<is> True'}
+        # Should NOT has exception when calling below line
+        self.controller._check_cacheable(specs, 'typeid')

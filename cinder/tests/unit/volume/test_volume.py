@@ -172,6 +172,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         myfilterfunction = "myFilterFunction"
         mygoodnessfunction = "myGoodnessFunction"
         expected = {'name': 'cinder-volumes',
+                    'storage_protocol': 'iSCSI',
+                    'cacheable': True,
                     'filter_function': myfilterfunction,
                     'goodness_function': mygoodnessfunction,
                     }
@@ -181,7 +183,9 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                    'get_goodness_function') as m_get_goodness:
                 with mock.patch.object(manager.driver,
                                        'get_filter_function') as m_get_filter:
-                    m_get_stats.return_value = {'name': 'cinder-volumes'}
+                    m_get_stats.return_value = {'name': 'cinder-volumes',
+                                                'storage_protocol': 'iSCSI',
+                                                }
                     m_get_filter.return_value = myfilterfunction
                     m_get_goodness.return_value = mygoodnessfunction
                     manager._report_driver_status(context.get_admin_context())

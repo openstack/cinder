@@ -48,7 +48,8 @@ class AttachmentManagerTestCase(test.TestCase):
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get',
                        v2_fakes.fake_volume_type_get)
     @mock.patch('cinder.db.sqlalchemy.api.volume_type_qos_specs_get')
-    def test_attachment_update(self, mock_type_get):
+    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
+    def test_attachment_update(self, get_extra_specs, mock_type_get):
         """Test attachment_update."""
         volume_params = {'status': 'available'}
         connector = {
@@ -74,10 +75,12 @@ class AttachmentManagerTestCase(test.TestCase):
             expected = {
                 'encrypted': False,
                 'qos_specs': None,
+                'cacheable': False,
                 'access_mode': 'rw',
                 'driver_volume_type': 'iscsi',
                 'attachment_id': attachment_ref.id}
 
+            get_extra_specs.return_value = ''
             self.assertEqual(expected,
                              self.manager.attachment_update(
                                  self.context,
@@ -89,6 +92,21 @@ class AttachmentManagerTestCase(test.TestCase):
                                                 attachment_ref.instance_uuid,
                                                 connector['host'],
                                                 "na")
+            expected = {
+                'encrypted': False,
+                'qos_specs': None,
+                'cacheable': True,
+                'access_mode': 'rw',
+                'driver_volume_type': 'iscsi',
+                'attachment_id': attachment_ref.id}
+
+            get_extra_specs.return_value = '<is> True'
+            self.assertEqual(expected,
+                             self.manager.attachment_update(
+                                 self.context,
+                                 vref,
+                                 connector,
+                                 attachment_ref.id))
 
             new_attachment_ref = db.volume_attachment_get(self.context,
                                                           attachment_ref.id)

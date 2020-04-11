@@ -1464,6 +1464,13 @@ class BaseVD(object):
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
+        ..note::
+            Whether or not a volume is 'cacheable' for volume local cache on
+            the hypervisor is normally configured in the volume-type
+            extra-specs. Support may be disabled at the driver level, however,
+            by returning "cacheable": False in the conn_info. This will
+            override any setting in the volume-type extra-specs.
+
         :param volume: The volume to be attached
         :param connector: Dictionary containing information about what is being
                           connected to.

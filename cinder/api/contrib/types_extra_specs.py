@@ -63,6 +63,20 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=expl)
         return
 
+    def _check_cacheable(self, specs, type_id):
+        multiattach = volume_types.get_volume_type_extra_specs(
+            type_id, key='multiattach')
+        cacheable = volume_types.get_volume_type_extra_specs(
+            type_id, key='cacheable')
+        isTrue = '<is> True'
+        if (specs.get('multiattach') == isTrue and cacheable == isTrue) or (
+            specs.get('cacheable') == isTrue and multiattach ==
+            isTrue) or (specs.get('cacheable') == isTrue and
+                        specs.get('multiattach') == isTrue):
+            expl = _('cacheable cannot be set with multiattach.')
+            raise webob.exc.HTTPBadRequest(explanation=expl)
+        return
+
     @validation.schema(types_extra_specs.create)
     def create(self, req, type_id, body):
         context = req.environ['cinder.context']
@@ -75,6 +89,9 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if 'image_service:store_id' in specs:
             image_service_store_id = specs['image_service:store_id']
             image_utils.validate_stores_id(context, image_service_store_id)
+
+        # Check if multiattach be set with cacheable
+        self._check_cacheable(specs, type_id)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
@@ -103,6 +120,11 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if 'image_service:store_id' in body:
             image_service_store_id = body['image_service:store_id']
             image_utils.validate_stores_id(context, image_service_store_id)
+
+        if 'extra_specs' in body:
+            specs = body['extra_specs']
+            # Check if multiattach be set with cacheable
+            self._check_cacheable(specs, type_id)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,

@@ -152,9 +152,13 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
 
         with mock.patch.object(cinder.volume.volume_types,
                                'get_volume_type_qos_specs') as type_qos, \
+            mock.patch.object(cinder.volume.volume_types,
+                              'get_volume_type_extra_specs'
+                              ) as type_extra_specs, \
             mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                               'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
+            type_extra_specs.return_value = 'True'
             driver_init.return_value = {'data': {}}
             mock_get_target.return_value = None
             qos_specs_expected = {'key1': 'value1',
@@ -218,9 +222,13 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
 
         with mock.patch.object(cinder.volume.volume_types,
                                'get_volume_type_qos_specs') as type_qos, \
+            mock.patch.object(cinder.volume.volume_types,
+                              'get_volume_type_extra_specs'
+                              ) as type_extra_specs, \
             mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                               'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
+            type_extra_specs.return_value = 'True'
             driver_init.return_value = {'data': {}}
             mock_get_target.return_value = None
             qos_specs_expected = {'write_iops_sec': 90,
@@ -286,9 +294,13 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
 
         with mock.patch.object(cinder.volume.volume_types,
                                'get_volume_type_qos_specs') as type_qos, \
+            mock.patch.object(cinder.volume.volume_types,
+                              'get_volume_type_extra_specs'
+                              ) as type_extra_specs, \
             mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                               'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
+            type_extra_specs.return_value = 'True'
             driver_init.return_value = {'data': {}}
             mock_get_target.return_value = None
             qos_specs_expected = {'write_iops_sec': 800,
@@ -354,9 +366,13 @@ class VolumeConnectionTestCase(base.BaseVolumeTestCase):
 
         with mock.patch.object(cinder.volume.volume_types,
                                'get_volume_type_qos_specs') as type_qos, \
+            mock.patch.object(cinder.volume.volume_types,
+                              'get_volume_type_extra_specs'
+                              ) as type_extra_specs, \
             mock.patch.object(cinder.tests.fake_driver.FakeLoggingVolumeDriver,
                               'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
+            type_extra_specs.return_value = 'True'
             driver_init.return_value = {'data': {}}
             mock_get_target.return_value = None
             qos_specs_expected = {'write_iops_sec': 3000,
