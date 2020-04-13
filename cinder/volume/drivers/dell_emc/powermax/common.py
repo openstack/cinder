@@ -2020,6 +2020,7 @@ class PowerMaxCommon(object):
 
         return volume_dict, rep_update, rep_info_dict
 
+    @coordination.synchronized('emc-rdf-vol-{storagegroup_name}-{array}')
     def _create_replication_enabled_volume(
             self, array, volume, volume_name, volume_size, extra_specs,
             storagegroup_name, rep_mode):
@@ -2034,7 +2035,6 @@ class PowerMaxCommon(object):
         :param rep_mode: the replication mode
         :returns: volume_dict, rep_update, rep_info_dict --dict
         """
-        @coordination.synchronized('emc-first-rdf-vol-sg')
         def _is_first_vol_in_replicated_sg():
             vol_dict = dict()
             first_vol, rep_ex_specs, rep_info, rdfg_empty = (
@@ -3711,6 +3711,8 @@ class PowerMaxCommon(object):
                 target_backend_id = target_extra_specs.get(
                     utils.REPLICATION_DEVICE_BACKEND_ID, 'None')
                 model_update['metadata']['BackendID'] = target_backend_id
+            if was_rep_enabled and not is_rep_enabled:
+                model_update = self.remove_stale_data(model_update)
 
             self.volume_metadata.capture_retype_info(
                 volume, device_id, array, srp, target_slo,
@@ -3819,6 +3821,23 @@ class PowerMaxCommon(object):
         else:
             LOG.info("Move successful: %(success)s", {'success': success})
             return success, target_sg_name
+
+    def remove_stale_data(self, model_update):
+        """Remove stale RDF data
+
+        :param model_update: the model
+        :returns: model_update -- dict
+        """
+
+        new_metadata = model_update.get('metadata')
+
+        if isinstance(new_metadata, dict):
+            keys = ['R2-DeviceID', 'R2-ArrayID', 'R2-ArrayModel',
+                    'ReplicationMode', 'RDFG-Label', 'R1-RDFG', 'R2-RDFG',
+                    'BackendID']
+            for k in keys:
+                new_metadata.pop(k, None)
+        return model_update
 
     def _post_retype_srdf_protect_storage_group(
             self, array, local_sg_name, device_id, volume_name,

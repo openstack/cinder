@@ -476,18 +476,18 @@ class PowerMaxVolumeMetadata(object):
             None, None, None, None)
         target_array_model, backend_id = None, None
         if rep_info_dict:
-            rdf_group_no = rep_info_dict['rdf_group_no']
-            target_name = rep_info_dict['target_name']
-            remote_array = rep_info_dict['remote_array']
-            target_device_id = rep_info_dict['target_device_id']
-            rep_mode = rep_info_dict['rep_mode']
-            replication_status = rep_info_dict['replication_status']
-            rdf_group_label = rep_info_dict['rdf_group_label']
-            backend_id = rep_info_dict['backend_id']
+            rdf_group_no = rep_info_dict.get('rdf_group_no')
+            target_name = rep_info_dict.get('target_name')
+            remote_array = rep_info_dict.get('remote_array')
+            target_device_id = rep_info_dict.get('target_device_id')
+            rep_mode = rep_info_dict.get('rep_mode')
+            replication_status = rep_info_dict.get('replication_status')
+            rdf_group_label = rep_info_dict.get('rdf_group_label')
+            backend_id = rep_info_dict.get('backend_id')
 
             if utils.METROBIAS in extra_specs:
                 use_bias = extra_specs[utils.METROBIAS]
-            target_array_model = rep_info_dict['target_array_model']
+            target_array_model = rep_info_dict.get('target_array_model')
 
         default_sg = self.utils.derive_default_sg_from_extra_specs(
             extra_specs, rep_mode)
