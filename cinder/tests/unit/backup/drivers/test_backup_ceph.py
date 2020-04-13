@@ -787,7 +787,7 @@ class BackupCephTestCase(test.TestCase):
     def test_backup_rbd_from_snap(self):
         backup_name = self.service._get_backup_base_name(self.volume_id)
         vol_name = self.volume['name']
-        vol_length = self.service._get_volume_size_gb(self.volume)
+        vol_length = self.service._get_volume_size_bytes(self.volume)
 
         self.mock_rbd.RBD().list = mock.Mock()
         self.mock_rbd.RBD().list.return_value = ['mock']
@@ -830,7 +830,7 @@ class BackupCephTestCase(test.TestCase):
         base_name = self.service._get_backup_base_name(self.volume_id,
                                                        self.alt_backup)
         vol_name = self.volume['name']
-        vol_length = self.service._get_volume_size_gb(self.volume)
+        vol_length = self.service._get_volume_size_bytes(self.volume)
 
         self.mock_rbd.RBD().list = mock.Mock()
         self.mock_rbd.RBD().list.return_value = [base_name]
@@ -1385,7 +1385,7 @@ class BackupCephTestCase(test.TestCase):
         with mock.patch.object(self.service, '_backup_metadata') as \
                 mock_backup_metadata:
             mock_backup_metadata.side_effect = exception.BackupOperationError
-            with mock.patch.object(self.service, '_get_volume_size_gb'):
+            with mock.patch.object(self.service, '_get_volume_size_bytes'):
                 with mock.patch.object(self.service, '_file_is_rbd',
                                        return_value=False):
                     with mock.patch.object(self.service, '_full_backup'):
