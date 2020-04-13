@@ -225,9 +225,14 @@ class SolidFireDriver(san.SanISCSIDriver):
                    SnapshotsOnly)
           2.0.17 - Fix bug #1859653 SolidFire fails to failback when volume
                    service is restarted
+          2.1.0  - Add Cinder Active/Active support
+                    - Enable Active/Active support flag
+                    - Implement Active/Active replication support
     """
 
-    VERSION = '2.0.17'
+    VERSION = '2.1.0'
+
+    SUPPORTS_ACTIVE_ACTIVE = True
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_SolidFire_CI"
@@ -2347,7 +2352,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         self._issue_api_request('ModifyVolume', params,
                                 endpoint=tgt_cluster['endpoint'])
 
-    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+    def failover(self, context, volumes, secondary_id=None, groups=None):
         """Failover to replication target.
 
         In order to do failback, you MUST specify the original/default cluster
@@ -2484,10 +2489,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                         }
                     }
                     vol_updates['updates'].update(conn_info)
-
                     volume_updates.append(vol_updates)
-                    LOG.debug("Updates for volume: %(id)s %(updates)s",
-                              {'id': v.id, 'updates': vol_updates})
 
                 except Exception as e:
                     volume_updates.append({'volume_id': v['id'],
@@ -2500,18 +2502,37 @@ class SolidFireDriver(san.SanISCSIDriver):
                 volume_updates.append({'volume_id': v['id'],
                                        'updates': {'status': 'error', }})
 
-        self.active_cluster = remote
+        return '' if failback else remote['backend_id'], volume_updates, []
 
-        if failback:
-            active_cluster_id = ''
+    def failover_completed(self, context, active_backend_id=None):
+        """Update volume node when `failover` is completed.
+
+        Expects the following scenarios:
+            1) active_backend_id='' when failing back
+            2) active_backend_id=<secondary_backend_id> when failing over
+            3) When `failover` raises an Exception, this will be called
+                with the previous active_backend_id (Will be empty string
+                in case backend wasn't in failed-over state).
+        """
+        if not active_backend_id:
+            LOG.info("Failback completed. "
+                     "Switching active cluster back to default.")
+            self.active_cluster = self._create_cluster_reference()
             self.failed_over = False
             # Recreating cluster pairs after a successful failback
             self._set_cluster_pairs()
         else:
-            active_cluster_id = remote['backend_id']
+            LOG.info("Failover completed. "
+                     "Switching active cluster to %s.", active_backend_id)
+            self.active_cluster = self.cluster_pairs[0]
             self.failed_over = True
 
-        return active_cluster_id, volume_updates, []
+    def failover_host(self, context, volumes, secondary_id=None, groups=None):
+        """Failover to replication target in non-clustered deployment."""
+        active_cluster_id, volume_updates, group_updates = (
+            self.failover(context, volumes, secondary_id, groups))
+        self.failover_completed(context, active_cluster_id)
+        return active_cluster_id, volume_updates, group_updates
 
     def freeze_backend(self, context):
         """Freeze backend notification."""
