@@ -30,6 +30,7 @@ from cinder.objects import fields
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.dell_emc.unity import client
 from cinder.volume.drivers.dell_emc.unity import utils
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 storops = importutils.try_import('storops')
@@ -120,7 +121,8 @@ class VolumeParams(object):
     @property
     def is_thick(self):
         if self._is_thick is None:
-            provision = utils.get_extra_spec(self._volume, 'provisioning:type')
+            provision = utils.get_extra_spec(self._volume,
+                                             utils.PROVISIONING_TYPE)
             support = utils.get_extra_spec(self._volume,
                                            'thick_provisioning_support')
             self._is_thick = (provision == 'thick' and support == '<is> True')
@@ -129,10 +131,12 @@ class VolumeParams(object):
     @property
     def is_compressed(self):
         if self._is_compressed is None:
-            provision = utils.get_extra_spec(self._volume, 'provisioning:type')
+            provision = utils.get_extra_spec(self._volume,
+                                             utils.PROVISIONING_TYPE)
             compression = utils.get_extra_spec(self._volume,
                                                'compression_support')
-            if provision == 'compressed' and compression == '<is> True':
+            if (provision == utils.PROVISIONING_COMPRESSED and
+                    compression == '<is> True'):
                 self._is_compressed = True
         return self._is_compressed
 
@@ -442,6 +446,60 @@ class CommonAdapter(object):
                      {'volume_name': volume.name})
         else:
             self.client.delete_lun(lun_id)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Changes volume from one type to another."""
+        old_qos_specs = {utils.QOS_SPECS: None}
+        old_provision = None
+        new_specs = volume_types.get_volume_type_extra_specs(
+            new_type.get(utils.QOS_ID))
+        new_qos_specs = volume_types.get_volume_type_qos_specs(
+            new_type.get(utils.QOS_ID))
+        lun = self.client.get_lun(name=volume.name)
+        volume_type_id = volume.volume_type_id
+        if volume_type_id:
+            old_provision = utils.get_extra_spec(volume,
+                                                 utils.PROVISIONING_TYPE)
+            old_qos_specs = volume_types.get_volume_type_qos_specs(
+                volume_type_id)
+
+        need_migration = utils.retype_need_migration(
+            volume, old_provision,
+            new_specs.get(utils.PROVISIONING_TYPE), host)
+        need_change_compress = utils.retype_need_change_compression(
+            old_provision, new_specs.get(utils.PROVISIONING_TYPE))
+        need_change_qos = utils.retype_need_change_qos(
+            old_qos_specs, new_qos_specs)
+
+        if need_migration or need_change_compress[0] or need_change_qos:
+            if self.client.lun_has_snapshot(lun):
+                LOG.warning('Driver is not able to do retype because '
+                            'the volume %s has snapshot(s).',
+                            volume.id)
+                return False
+
+        new_qos_dict = new_qos_specs.get(utils.QOS_SPECS)
+        if need_change_qos:
+            new_io_policy = (self.client.get_io_limit_policy(new_qos_dict)
+                             if need_change_qos else None)
+            # Modify lun to change qos settings
+            if new_io_policy:
+                lun.modify(io_limit_policy=new_io_policy)
+            else:
+                # remove current qos settings
+                old_qos_dict = old_qos_specs.get(utils.QOS_SPECS)
+                old_io_policy = self.client.get_io_limit_policy(old_qos_dict)
+                old_io_policy.remove_from_storage(lun)
+
+        if need_migration:
+            LOG.debug('Driver needs to use storage-assisted migration '
+                      'to retype the volume.')
+            return self.migrate_volume(volume, host, new_specs)
+
+        if need_change_compress[0]:
+            # Modify lun to change compression
+            lun.modify(is_compression=need_change_compress[1])
+        return True
 
     def _create_host_and_attach(self, host_name, lun_or_snap):
         @utils.lock_if(self.to_lock_host, '{lock_name}')
@@ -908,18 +966,22 @@ class CommonAdapter(object):
     def restore_snapshot(self, volume, snapshot):
         return self.client.restore_snapshot(snapshot.name)
 
-    def migrate_volume(self, volume, host):
+    def migrate_volume(self, volume, host, extra_specs=None):
         """Leverage the Unity move session functionality.
 
         This method is invoked at the source backend.
+
+        :param extra_specs: Instance of ExtraSpecs. The new volume will be
+            changed to align with the new extra specs.
         """
         log_params = {
             'name': volume.name,
             'src_host': volume.host,
-            'dest_host': host['host']
+            'dest_host': host['host'],
+            'extra_specs': extra_specs,
         }
         LOG.info('Migrate Volume: %(name)s, host: %(src_host)s, destination: '
-                 '%(dest_host)s', log_params)
+                 '%(dest_host)s, extra_specs: %(extra_specs)s', log_params)
 
         src_backend = utils.get_backend_name_from_volume(volume)
         dest_backend = utils.get_backend_name_from_host(host)
@@ -930,10 +992,12 @@ class CommonAdapter(object):
             return False, None
 
         lun_id = self.get_lun_id(volume)
+        provision = None
+        if extra_specs:
+            provision = extra_specs.get(utils.PROVISIONING_TYPE)
         dest_pool_name = utils.get_pool_name_from_host(host)
         dest_pool_id = self.get_pool_id_by_name(dest_pool_name)
-
-        if self.client.migrate_lun(lun_id, dest_pool_id):
+        if self.client.migrate_lun(lun_id, dest_pool_id, provision):
             LOG.debug('Volume migrated successfully.')
             model_update = {}
             return True, model_update

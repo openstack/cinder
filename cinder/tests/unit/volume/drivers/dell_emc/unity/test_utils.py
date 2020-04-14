@@ -329,3 +329,52 @@ class UnityUtilsTest(unittest.TestCase):
         cg = test_driver.UnityDriverTest.get_cg()
         result = utils.get_group_specs(cg, 'test_key')
         self.assertIsNone(result)
+
+    @patch_volume_types
+    def test_retype_no_need_migration_when_same_host(self):
+        volume = test_adapter.MockOSResource(volume_type_id='host_1',
+                                             host='host_1')
+        new_host = {'name': 'new_name', 'host': 'host_1'}
+        ret = utils.retype_need_migration(volume, None, None, new_host)
+        self.assertFalse(ret)
+
+    @patch_volume_types
+    def test_retype_need_migration_when_diff_host(self):
+        volume = test_adapter.MockOSResource(volume_type_id='host_1',
+                                             host='host_1')
+        new_host = {'name': 'new_name', 'host': 'new_host'}
+        ret = utils.retype_need_migration(volume, None, None, new_host)
+        self.assertTrue(ret)
+
+    @patch_volume_types
+    def test_retype_no_need_migration_thin_to_compressed(self):
+        volume = test_adapter.MockOSResource(volume_type_id='host_1',
+                                             host='host_1')
+        new_host = {'name': 'new_name', 'host': 'host_1'}
+        old_provision = ''
+        new_provision = 'compressed'
+        ret = utils.retype_need_migration(volume, old_provision,
+                                          new_provision, new_host)
+        self.assertFalse(ret)
+
+    @patch_volume_types
+    def test_retype_no_need_migration_compressed_to_thin(self):
+        volume = test_adapter.MockOSResource(volume_type_id='host_1',
+                                             host='host_1')
+        new_host = {'name': 'new_name', 'host': 'host_1'}
+        old_provision = 'compressed'
+        new_provision = ''
+        ret = utils.retype_need_migration(volume, old_provision,
+                                          new_provision, new_host)
+        self.assertFalse(ret)
+
+    @patch_volume_types
+    def test_retype_need_migration_thin_to_thick(self):
+        volume = test_adapter.MockOSResource(volume_type_id='host_1',
+                                             host='host_1')
+        new_host = {'name': 'new_name', 'host': 'host_1'}
+        old_provision = ''
+        new_provision = 'thick'
+        ret = utils.retype_need_migration(volume, old_provision,
+                                          new_provision, new_host)
+        self.assertTrue(ret)

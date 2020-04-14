@@ -177,10 +177,23 @@ class UnityClient(object):
                       lun_id)
         return lun
 
-    def migrate_lun(self, lun_id, dest_pool_id):
+    def migrate_lun(self, lun_id, dest_pool_id, dest_provision=None):
+        # dest_provision possible value ('thin', 'thick', 'compressed')
         lun = self.system.get_lun(lun_id)
         dest_pool = self.system.get_pool(dest_pool_id)
-        return lun.migrate(dest_pool)
+        is_thin = True if dest_provision == 'thin' else None
+        if dest_provision == 'compressed':
+            # compressed needs work with thin
+            is_compressed = True
+            is_thin = True
+        else:
+            is_compressed = False
+        if dest_provision == 'thick':
+            # thick needs work with uncompressed
+            is_thin = False
+            is_compressed = False
+        return lun.migrate(dest_pool, is_compressed=is_compressed,
+                           is_thin=is_thin)
 
     def get_pools(self):
         """Gets all storage pools on the Unity system.
@@ -235,6 +248,10 @@ class UnityClient(object):
             LOG.warning("Snapshot %(name)s doesn't exist. Message: %(err)s",
                         {'name': name, 'err': err})
         return None
+
+    def lun_has_snapshot(self, lun):
+        snaps = lun.snapshots
+        return len(snaps) != 0
 
     @coordination.synchronized('{self.host}-{name}')
     def create_host(self, name):
