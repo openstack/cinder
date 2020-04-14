@@ -21,6 +21,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
+from cinder import ssh_utils
 from cinder import test
 from cinder.volume import configuration as conf
 
@@ -890,6 +891,7 @@ class FJFCDriverTestCase(test.TestCase):
         self.mock_object(dx_common.FJDXCommon, '_create_eternus_instance_name',
                          instancename.fake_create_eternus_instance_name)
 
+        self.mock_object(ssh_utils, 'SSHPool', mock.Mock())
         self.mock_object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus',
                          self.fake_exec_cli_with_eternus)
         # Set iscsi driver to self.driver.
@@ -1058,6 +1060,7 @@ class FJISCSIDriverTestCase(test.TestCase):
         self.mock_object(dx_common.FJDXCommon, '_get_mapdata_iscsi',
                          self.fake_get_mapdata)
 
+        self.mock_object(ssh_utils, 'SSHPool', mock.Mock())
         self.mock_object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus',
                          self.fake_exec_cli_with_eternus)
         # Set iscsi driver to self.driver.
