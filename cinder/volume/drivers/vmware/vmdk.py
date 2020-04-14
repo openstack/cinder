@@ -782,6 +782,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # create a writeable handle for the migration to work.
             if (volume['status'] == 'restoring-backup' or
                (volume['status'] == 'available' and
+                    volume['migration_status'] and
                     volume['migration_status'].startswith('target:'))):
                 connection_info['data']['import_data'] = \
                     self._get_connection_import_data(volume)
