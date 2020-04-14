@@ -43,12 +43,9 @@ REMOVED_DRVRS = [
     "drbdmanage",
     "disco",
     "hgst",
-    "fusionstorage",
-    "prophetstor",
-    "nimble",
+    "hpe_lefthand",
     "sheepdog",
-    "vzstorage",
-    "veritas_access",
+    "zfssa",
 ]
 
 
