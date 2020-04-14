@@ -834,13 +834,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
         return self._initialize_connection(volume, connector)
 
+    @utils.trace
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Checking if the connection was used to restore from a backup. In
         # that case, the VMDK connector in os-brick created a new backing
         # which will replace the initial one. Here we set the proper name
         # and backing uuid for the new backing, because os-brick doesn't do it.
-        if 'platform' in connector and 'os_type' in connector and \
-                volume['status'] == 'restoring-backup':
+        if (connector and 'platform' in connector and 'os_type' in connector
+                and volume['status'] == 'restoring-backup'):
             backing = self.volumeops.get_backing_by_uuid(volume['id'])
 
             self.volumeops.rename_backing(backing, volume['name'])
