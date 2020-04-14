@@ -19,8 +19,8 @@ import ast
 import hashlib
 import json
 from random import randint
+from xml.dom import minidom
 
-from defusedxml import minidom
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall

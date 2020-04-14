@@ -123,11 +123,11 @@ class UnityReplicationDeviceTest(unittest.TestCase):
     @ddt.unpack
     def test_init_raise(self, conf_dict):
         self.driver.configuration.replication_device = conf_dict
-        self.assertRaisesRegexp(exception.InvalidConfigurationValue,
-                                'Value .* is not valid for configuration '
-                                'option "unity-backend.replication_device"',
-                                replication.ReplicationDevice,
-                                conf_dict, self.driver)
+        self.assertRaisesRegex(exception.InvalidConfigurationValue,
+                               'Value .* is not valid for configuration '
+                               'option "unity-backend.replication_device"',
+                               replication.ReplicationDevice,
+                               conf_dict, self.driver)
 
     @ddt.data(
         {

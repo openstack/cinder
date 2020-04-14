@@ -15,7 +15,7 @@
 
 """Manage backends in the current zone."""
 
-import collections
+from collections import abc
 import random
 
 from oslo_config import cfg
@@ -67,7 +67,7 @@ CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyDict(collections.Mapping):
+class ReadOnlyDict(abc.Mapping):
     """A read-only dict."""
     def __init__(self, source=None):
         if source is not None:

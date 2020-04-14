@@ -19,7 +19,7 @@ import os
 import re
 import traceback
 
-from defusedxml import ElementTree
+from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -291,7 +291,7 @@ class MStorageVolumeCommon(object):
         try:
             with open(product, 'r') as f:
                 xml = f.read()
-                root = ElementTree.fromstring(xml)
+                root = etree.fromstring(xml)
                 vendor_name = root.findall('./VendorName')[0].text
 
                 product_dict = {}
@@ -785,7 +785,7 @@ class MStorageVolumeCommon(object):
         return hostports
 
     def configs(self, xml):
-        root = ElementTree.fromstring(xml)
+        root = etree.fromstring(xml)
         pools = self.get_pool_config(xml, root)
         lds, used_ldns = self.get_ld_config(xml, root, pools)
         iscsi_ldsets = self.get_iscsi_ldset_config(xml, root)

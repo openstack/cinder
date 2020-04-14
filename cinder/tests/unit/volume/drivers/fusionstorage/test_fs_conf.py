@@ -51,7 +51,8 @@ class FusionStorageConfTestCase(test.TestCase):
 
         config.add_section('manager_ip')
         config.set('manager_ip', 'fake_host', 'fake_ip')
-        config.write(open(self.conf.cinder_fusionstorage_conf_file, 'w'))
+        with open(self.conf.cinder_fusionstorage_conf_file, 'w') as conf_file:
+            config.write(conf_file)
 
     @mock.patch.object(fs_conf.FusionStorageConf, '_encode_authentication')
     @mock.patch.object(fs_conf.FusionStorageConf, '_pools_name')
