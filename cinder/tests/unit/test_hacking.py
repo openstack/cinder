@@ -148,9 +148,11 @@ class HackingTestCase(test.TestCase):
                LOG.{0}("Volume %s caught fire and is at %d degrees C and "
                       "climbing.", ('volume1', 500))
                """
+        # We don't assert on specific column numbers since there is a small
+        # change in calculation between <py38 and >=py38
         for method in checker.LOG_METHODS:
             self._assert_has_errors(code.format(method), checker,
-                                    expected_errors=[(4, 21, 'C310')])
+                                    expected_errors=[(4, mock.ANY, 'C310')])
 
         code = """
                import logging
@@ -158,8 +160,10 @@ class HackingTestCase(test.TestCase):
                LOG.log(logging.DEBUG, "Volume %s caught fire and is at %d"
                        " degrees C and climbing.", ('volume1', 500))
                """
+        # We don't assert on specific column numbers since there is a small
+        # change in calculation between <py38 and >=py38
         self._assert_has_errors(code, checker,
-                                expected_errors=[(4, 37, 'C310')])
+                                expected_errors=[(4, mock.ANY, 'C310')])
 
     def test_opt_type_registration_args(self):
         checker = checks.CheckOptRegistrationArgs
@@ -178,11 +182,13 @@ class HackingTestCase(test.TestCase):
                CONF.register_opts(lonely_opt)
                CONF.register_opt((an_opt, another_opt))
                """
+        # We don't assert on specific column numbers since there is a small
+        # change in calculation between <py38 and >=py38
         self._assert_has_errors(code, checker,
                                 expected_errors=[(1, 18, 'C311'),
-                                                 (2, 19, 'C311'),
-                                                 (3, 19, 'C311'),
-                                                 (4, 19, 'C311')])
+                                                 (2, mock.ANY, 'C311'),
+                                                 (3, mock.ANY, 'C311'),
+                                                 (4, mock.ANY, 'C311')])
 
         code = """
                CONF.register_opt(single_opt)
