@@ -368,7 +368,7 @@ in use.
    (in PEM format) into the /etc/pki/ca-trust/source/anchors/ directory.
    Then, run the ``sudo update-ca-trust`` command.
 
-#. For Ubuntu 16.04, place the certificate to be trusted
+#. For Ubuntu 18.04, place the certificate to be trusted
    (in PEM format) into the /usr/local/share/ca-certificates/
    directory. Rename the file, using the ``*.crt`` extension.
    Then, run the ``sudo update-ca-certificates`` command.
@@ -379,7 +379,7 @@ in use.
 
    .. code-block:: ini
 
-       cat ca_public_certificate.pem >> /usr/local/lib/python2.7/
+       cat ca_public_certificate.pem >> /usr/local/lib/python3.6/
        dist-packages/certifi/cacert.pem.
 
 
@@ -395,39 +395,42 @@ Verify the chain of trust has been established successfully.
 
    .. code-block:: console
 
-       # python
-           Python 2.7.5 (default, Oct 11 2015, 17:47:16)
-           [GCC 4.8.3 20140911 (Red Hat 4.8.3-9)] on linux2
+       # python3
+           Python 3.6.8 (default, Aug  7 2019, 17:28:10)
+           [GCC 4.8.5 20150623 (Red Hat 4.8.5-39)] on linux
            Type "help", "copyright", "credits" or "license" for
            more information.
            >>> import requests
-           >>> print requests.certs.where()
-           /etc/pki/tls/certs/ca-bundle.crt
+           >>> print(requests.certs.where())
+           /etc/pki/ca-trust/extracted/openssl/
+           ca-bundle.trust.crt
 
-#. Ubuntu 16.04:
+#. Ubuntu 18.04:
 
    .. code-block:: console
 
-       # python
-           Python 2.7.6 (default, Jun 22 2015, 17:58:13)
-           [GCC 4.8.2] on linux2
+       # python3
+           Python 3.6.9 (default, Nov  7 2019, 10:44:02)
+           [GCC 8.3.0] on linux
            Type "help", "copyright", "credits" or "license" for
            more information.
            >>> import requests
-           >>> print requests.certs.where()
+           >>> print(requests.certs.where())
            /etc/ssl/certs/ca-certificates.crt
 
 #. Python requests library with certifi:
 
    .. code-block:: console
 
-       # python
-           Python 2.7.6 (default, Jun 22 2015, 17:58:13)
-           [GCC 4.8.2] on linux2 Type "help", "copyright", "credits"
-           or "license" for more information.
+       # python3
+           Python 3.6.9 (default, Nov  7 2019, 10:44:02)
+           [GCC 8.3.0] on linux
+           Type "help", "copyright", "credits" or "license" for
+           more information.
            >>> import requests
-           >>> print requests.certs.where() /usr/local/lib/python2.7/
-           dist-packages/certifi/cacert.pem
+           >>> print(requests.certs.where())
+           /usr/local/lib/python3.6/dist-packages/
+           certifi/cacert.pem
 
 #. Run the ``openssl s_client -CAfile <location> -connect
    <host fqdn>:8452 </dev/null`` command. The following return codes
