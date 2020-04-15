@@ -77,7 +77,7 @@ class ManageVolumeFlowTestCase(test.TestCase):
         task.revert(self.ctxt, {}, flow_failures, volume)
 
         # Check that volume status is updated and saved
-        self.assertEqual(volume.status, 'error_managing')
+        self.assertEqual('error_managing', volume.status)
         volume.save.assert_called_once()
 
     def test_create_db_entry_task_with_multiattach(self):
