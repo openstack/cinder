@@ -93,7 +93,7 @@ volume_type_policies = [
             },
             {
                 'method': 'GET',
-                'path': '/types/{type_id}/encryption/{encryption_id}'
+                'path': '/types/{type_id}/encryption/{key}'
             },
             {
                 'method': 'DELETE',
@@ -113,15 +113,16 @@ volume_type_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ENCRYPTION_POLICY,
         check_str=ENCRYPTION_BASE_POLICY_RULE,
-        description="Show, list volume type encryption.",
+        description="Show a volume type's encryption type, "
+                    "show an encryption specs item.",
         operations=[
             {
                 'method': 'GET',
-                'path': '/types/{type_id}/encryption/{encryption_id}'
+                'path': '/types/{type_id}/encryption'
             },
             {
                 'method': 'GET',
-                'path': '/types/{type_id}/encryption'
+                'path': '/types/{type_id}/encryption/{key}'
             }
         ]),
     policy.DocumentedRuleDefault(
