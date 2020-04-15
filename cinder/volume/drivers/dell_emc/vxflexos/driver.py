@@ -1244,14 +1244,12 @@ class VxFlexOSDriver(driver.VolumeDriver):
                      "service": image_service,
                      "meta": image_meta,
                  })
-        # retrieve store information from extra-specs
-        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
         try:
-            image_utils.upload_volume(context,
-                                      image_service,
-                                      image_meta,
-                                      self._sio_attach_volume(volume),
-                                      store_id=store_id)
+            volume_utils.upload_volume(context,
+                                       image_service,
+                                       image_meta,
+                                       self._sio_attach_volume(volume),
+                                       volume)
         finally:
             self._sio_detach_volume(volume)
 

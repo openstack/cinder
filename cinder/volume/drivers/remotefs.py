@@ -474,13 +474,12 @@ class RemoteFSDriver(driver.BaseVD):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
-        image_utils.upload_volume(context,
-                                  image_service,
-                                  image_meta,
-                                  self.local_path(volume),
-                                  run_as_root=self._execute_as_root,
-                                  store_id=store_id)
+        volume_utils.upload_volume(context,
+                                   image_service,
+                                   image_meta,
+                                   self.local_path(volume),
+                                   volume,
+                                   run_as_root=self._execute_as_root)
 
     def _read_config_file(self, config_file):
         # Returns list of lines in file
@@ -975,15 +974,12 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             else:
                 upload_path = active_file_path
 
-            if not store_id:
-                store_id = volume.volume_type.extra_specs.get(
-                    'image_service:store_id')
-            image_utils.upload_volume(context,
-                                      image_service,
-                                      image_meta,
-                                      upload_path,
-                                      run_as_root=self._execute_as_root,
-                                      store_id=store_id)
+            volume_utils.upload_volume(context,
+                                       image_service,
+                                       image_meta,
+                                       upload_path,
+                                       volume,
+                                       run_as_root=self._execute_as_root)
 
     def get_active_image_from_info(self, volume):
         """Returns filename of the active image from the info file."""

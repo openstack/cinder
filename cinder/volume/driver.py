@@ -36,6 +36,7 @@ from cinder.volume import configuration
 from cinder.volume import driver_utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import throttling
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -902,16 +903,13 @@ class BaseVD(object):
                                                           enforce_multipath)
         attach_info, volume = self._attach_volume(context, volume, properties)
 
-        # retrieve store information from extra-specs
-        store_id = volume.volume_type.extra_specs.get('image_service:store_id')
-
         try:
-            image_utils.upload_volume(context,
-                                      image_service,
-                                      image_meta,
-                                      attach_info['device']['path'],
-                                      compress=True,
-                                      store_id=store_id)
+            volume_utils.upload_volume(context,
+                                       image_service,
+                                       image_meta,
+                                       attach_info['device']['path'],
+                                       volume,
+                                       compress=True)
         finally:
             # Since attached volume was not used for writing we can force
             # detach it

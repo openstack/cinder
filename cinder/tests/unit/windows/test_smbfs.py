@@ -788,8 +788,9 @@ class WindowsSmbFsTestCase(test.TestCase):
 
             fake_upload_volume.assert_called_once_with(
                 mock.sentinel.context, mock.sentinel.image_service,
-                fake_image_meta, upload_path, fake_img_format,
-                store_id='fake-store')
+                fake_image_meta, upload_path, volume_format=fake_img_format,
+                store_id='fake-store', base_image_ref=None, compress=True,
+                run_as_root=True)
 
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_vhd_type')
     def test_copy_image_to_volume(self, mock_get_vhd_type):

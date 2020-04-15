@@ -537,6 +537,36 @@ class TestGlanceImageService(test.TestCase):
         client.call.assert_called_once_with(
             self.context, 'update', image_id, k1='v1', remove_props=['k2'])
 
+    @mock.patch.object(glance.GlanceImageService, '_translate_from_glance')
+    @mock.patch.object(glance.GlanceImageService, 'show')
+    def test_update_base_image_ref(self, show, translate_from_glance):
+        image_id = mock.sentinel.image_id
+        client = mock.Mock(call=mock.Mock())
+        service = glance.GlanceImageService(client=client)
+        data = '*' * 256
+        show.return_value = {}
+        translate_from_glance.return_value = {}
+
+        service.update(self.context, image_id, {}, data,
+                       base_image_ref=123)
+        calls = [mock.call.call(
+            self.context, 'upload', image_id, data, base_image_ref=123),
+            mock.call.call(self.context, 'get', image_id)]
+        client.assert_has_calls(calls, any_order=True)
+
+    def test_call_with_additional_headers(self):
+        glance_wrapper = glance.GlanceClientWrapper()
+        fake_client = mock.Mock()
+        self.mock_object(glance_wrapper, 'client', fake_client)
+        glance_wrapper.call(self.context, 'upload',
+                            {},
+                            store_id='xyz',
+                            base_image_ref=123)
+        self.assertDictEqual({
+            'x-image-meta-store': 'xyz',
+            'x-openstack-base-image-ref': 123},
+            fake_client.http_client.additional_headers)
+
     def test_delete(self):
         fixture1 = self._make_fixture(name='test image 1')
         fixture2 = self._make_fixture(name='test image 2')

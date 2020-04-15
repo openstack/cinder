@@ -217,13 +217,17 @@ class GlanceClientWrapper(object):
                       glanceclient.exc.CommunicationError)
         num_attempts = 1 + CONF.glance_num_retries
         store_id = kwargs.pop('store_id', None)
+        base_image_ref = kwargs.pop('base_image_ref', None)
 
         for attempt in range(1, num_attempts + 1):
             client = self.client or self._create_onetime_client(context)
-            if store_id:
-                client.http_client.additional_headers = {
-                    'x-image-meta-store': store_id
-                }
+
+            keys = ('x-image-meta-store', 'x-openstack-base-image-ref',)
+            values = (store_id, base_image_ref,)
+
+            headers = {k: v for (k, v) in zip(keys, values) if v is not None}
+            if headers:
+                client.http_client.additional_headers = headers
 
             try:
                 controller = getattr(client,
@@ -395,7 +399,7 @@ class GlanceImageService(object):
 
     def update(self, context, image_id,
                image_meta, data=None, purge_props=True,
-               store_id=None):
+               store_id=None, base_image_ref=None):
         """Modify the given image with the new data."""
         # For v2, _translate_to_glance stores custom properties in image meta
         # directly. We need the custom properties to identify properties to
@@ -412,6 +416,8 @@ class GlanceImageService(object):
         kwargs = {}
         if store_id:
             kwargs['store_id'] = store_id
+        if base_image_ref:
+            kwargs['base_image_ref'] = base_image_ref
 
         try:
             if data:

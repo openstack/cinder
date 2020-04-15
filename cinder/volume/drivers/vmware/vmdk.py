@@ -47,6 +47,7 @@ from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import volumeops
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -1539,6 +1540,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # retrieve store information from extra-specs
         store_id = volume.volume_type.extra_specs.get('image_service:store_id')
 
+        # TODO (whoami-rajat): Remove store_id and base_image_ref
+        #  parameters when oslo.vmware calls volume_utils wrapper of
+        #  upload_volume instead of image_utils.upload_volume
         image_transfer.upload_image(context,
                                     timeout,
                                     image_service,
@@ -1552,7 +1556,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                     vmdk_size=volume['size'] * units.Gi,
                                     image_name=image_meta['name'],
                                     image_version=1,
-                                    store_id=store_id)
+                                    store_id=store_id,
+                                    base_image_ref=
+                                    volume_utils.get_base_image_ref(volume))
         LOG.info("Done copying volume %(vol)s to a new image %(img)s",
                  {'vol': volume['name'], 'img': image_meta['name']})
 

@@ -1271,7 +1271,8 @@ class QuobyteDriverTestCase(test.TestCase):
         self.assertEqual(self.TEST_MNT_POINT_BASE,
                          conn_info['mount_point_base'])
 
-    def test_copy_volume_to_image_raw_image(self):
+    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    def test_copy_volume_to_image_raw_image(self, vol_glance_metadata):
         drv = self._driver
 
         volume_type_id = db.volume_type_create(
@@ -1315,10 +1316,12 @@ class QuobyteDriverTestCase(test.TestCase):
                                                        run_as_root=False)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
-                store_id=None)
+                store_id=None, base_image_ref=None, compress=True,
+                volume_format='raw')
             self.assertTrue(mock_create_temporary_file.called)
 
-    def test_copy_volume_to_image_qcow2_image(self):
+    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    def test_copy_volume_to_image_qcow2_image(self, vol_glance_metadata):
         """Upload a qcow2 image file which has to be converted to raw first."""
         drv = self._driver
 
@@ -1367,10 +1370,12 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
-                store_id=None)
+                store_id=None, base_image_ref=None, compress=True,
+                volume_format='raw')
             self.assertTrue(mock_create_temporary_file.called)
 
-    def test_copy_volume_to_image_snapshot_exists(self):
+    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    def test_copy_volume_to_image_snapshot_exists(self, vol_glance_metadata):
         """Upload an active snapshot which has to be converted to raw first."""
         drv = self._driver
 
@@ -1421,7 +1426,8 @@ class QuobyteDriverTestCase(test.TestCase):
                 volume_path, upload_path, 'raw', run_as_root=False)
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path, run_as_root=False,
-                store_id=None)
+                store_id=None, base_image_ref=None, compress=True,
+                volume_format='raw')
             self.assertTrue(mock_create_temporary_file.called)
 
     def test_set_nas_security_options_default(self):
