@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    The Datera driver now supports API v2.2, IOPS/GB and BW/GB settings, LDAP
+    and CHAP, extended metadata attributes during volume creation and
+    attachment. Most retype operations do not detach volumes anymore. Manageable
+    Snapshots can be listed. Flash and Hybrid capacity information added.
+deprecations:
+  - |
+    The Datera driver removed v2 API support and the usage of initiator-groups
+fixes:
+  - |
+    Datera driver: fixes in retyping / QoS, Glance interoperability, fast
+    clones, IP pools, volume templates and initiators, unicode character
+    support, scalability issues
+other:
+  - |
+    The Datera driver went under a major driver revamp/restructure and a new
+    separate Datera Python-SDK requirement has been introduced
