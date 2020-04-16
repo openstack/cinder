@@ -2983,6 +2983,14 @@ class PowerMaxCommon(object):
                      'device %(device_id)s') % {'device_id': device_id})
             raise exception.ManageExistingInvalidReference(
                 existing_ref=external_ref, reason=msg)
+        # Check if volume is FBA emulation
+        fba_devices = self.rest.get_volume_list(array, "emulation=FBA")
+        if device_id not in fba_devices:
+            msg = (_("Unable to import volume %(device_id)s to cinder as it "
+                     "is not an FBA volume. Only volumes with an emulation "
+                     "type of FBA are supported.")
+                   % {'device_id': device_id})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
         volume_identifier = None
         # Check if volume is already cinder managed
         if volume_details.get('volume_identifier'):
