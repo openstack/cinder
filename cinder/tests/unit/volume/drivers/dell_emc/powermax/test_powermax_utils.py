@@ -1339,11 +1339,25 @@ class PowerMaxUtilsTest(test.TestCase):
         rep_device = self.utils.get_rep_config(backend_id, rep_configs)
         self.assertEqual(rep_configs[0], rep_device)
 
-    def test_get_rep_config_fail(self):
+    def test_get_rep_config_fail_non_legacy_backend_id_message(self):
         rep_configs = self.data.multi_rep_config_list
-        backend_id = 'invalid key'
-        self.assertRaises(exception.InvalidInput, self.utils.get_rep_config,
-                          backend_id, rep_configs)
+        backend_id = 'invalid_backend_id'
+        try:
+            self.utils.get_rep_config(backend_id, rep_configs)
+        except exception.InvalidInput as e:
+            expected_str = 'Could not find replication_device. Legacy'
+            excep_msg = str(e)
+            self.assertNotIn(expected_str, excep_msg)
+
+    def test_get_rep_config_fail_legacy_backend_id_message(self):
+        rep_configs = self.data.multi_rep_config_list
+        backend_id = utils.BACKEND_ID_LEGACY_REP
+        try:
+            self.utils.get_rep_config(backend_id, rep_configs)
+        except exception.InvalidInput as e:
+            expected_str = 'Could not find replication_device. Legacy'
+            excep_msg = str(e)
+            self.assertIn(expected_str, excep_msg)
 
     def test_get_replication_targets(self):
         rep_targets_expected = [self.data.remote_array]

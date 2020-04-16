@@ -849,12 +849,15 @@ class PowerMaxReplicationTest(test.TestCase):
         self.common.rep_config = {'mode': utils.REP_SYNC,
                                   'array': self.data.array}
         array_id = self.data.array
-        volume = self.data.test_volume
+        volume = deepcopy(self.data.test_volume)
+        volume.id = self.data.volume_id
         device_id = self.data.device_id
         srp = self.data.srp
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         volume_name = volume.name
+        updated_volume_name = self.utils.get_volume_element_name(volume.id)
+        target_storage_group = self.data.defaultstoragegroup_name
         extra_specs = deepcopy(self.data.extra_specs)
         rep_config_sync = deepcopy(self.data.rep_config_sync)
         rep_config_sync[utils.RDF_CONS_EXEMPT] = False
@@ -877,6 +880,9 @@ class PowerMaxReplicationTest(test.TestCase):
         mck_retype.assert_called_once_with(
             array_id, srp, device_id, volume, volume_name, extra_specs,
             target_slo, target_workload, target_extra_specs)
+        mck_protect.assert_called_once_with(
+            array_id, target_storage_group, device_id, updated_volume_name,
+            target_extra_specs)
         self.assertTrue(success)
 
     @mock.patch.object(

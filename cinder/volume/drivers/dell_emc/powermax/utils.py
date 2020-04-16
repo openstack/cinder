@@ -1710,13 +1710,20 @@ class PowerMaxUtils(object):
                 if rep_config[BACKEND_ID] == backend_id:
                     rep_device = rep_config
             if rep_device is None:
-                msg = _('Could not find a rep_device with a backend_id of '
-                        '%s. Please confirm that the '
-                        'replication_device_backend_id extra spec for this '
-                        'volume type matches the backend_id of the intended '
-                        'rep_device in cinder.conf') % backend_id
+                msg = (_('Could not find a replication_device with a '
+                         'backend_id of "%s" in cinder.conf. Please confirm '
+                         'that the replication_device_backend_id extra spec '
+                         'for this volume type matches the backend_id of the '
+                         'intended replication_device in '
+                         'cinder.conf.') % backend_id)
+                if BACKEND_ID_LEGACY_REP in msg:
+                    msg = (_('Could not find replication_device. Legacy '
+                             'replication_device key found, please ensure the '
+                             'backend_id for the legacy replication_device in '
+                             'cinder.conf has been changed to '
+                             '"%s".') % BACKEND_ID_LEGACY_REP)
                 LOG.error(msg)
-                raise exception.InvalidInput('Unable to get rep config.')
+                raise exception.InvalidInput(msg)
         return rep_device
 
     @staticmethod

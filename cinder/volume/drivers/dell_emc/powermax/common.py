@@ -702,6 +702,7 @@ class PowerMaxCommon(object):
         extra_specs = self._initial_setup(volume)
         rep_config = None
         rep_extra_specs = None
+        current_host_occurances = 0
         if 'qos' in extra_specs:
             del extra_specs['qos']
         if self.utils.is_replication_enabled(extra_specs):
@@ -729,11 +730,6 @@ class PowerMaxCommon(object):
                 host_list = [att.connector['host'] for att in att_list if
                              att is not None and att.connector is not None]
                 current_host_occurances = host_list.count(host_name)
-                if current_host_occurances > 1:
-                    LOG.info("Volume is attached to multiple instances on "
-                             "this host. Not removing the volume from the "
-                             "masking view.")
-                    return
         else:
             LOG.warning("Cannot get host name from connector object - "
                         "assuming force-detach.")
@@ -745,28 +741,35 @@ class PowerMaxCommon(object):
             LOG.info("Volume %s is not mapped. No volume to unmap.",
                      volume_name)
             return
-        array = extra_specs[utils.ARRAY]
-        if self.utils.does_vol_need_rdf_management_group(extra_specs):
-            mgmt_sg_name = self.utils.get_rdf_management_group_name(rep_config)
-        self._remove_members(
-            array, volume, device_info['device_id'], extra_specs, connector,
-            is_multiattach, async_grp=mgmt_sg_name,
-            host_template=self.powermax_short_host_name_template)
-        if self.utils.is_metro_device(rep_config, extra_specs):
-            # Need to remove from remote masking view
-            device_info, __ = (self.find_host_lun_id(
-                volume, host_name, extra_specs, rep_extra_specs))
-            if 'hostlunid' in device_info:
-                self._remove_members(
-                    rep_extra_specs[utils.ARRAY], volume,
-                    device_info['device_id'], rep_extra_specs, connector,
-                    is_multiattach, async_grp=mgmt_sg_name,
-                    host_template=self.powermax_short_host_name_template)
-            else:
-                # Make an attempt to clean up initiator group
-                self.masking.attempt_ig_cleanup(
-                    connector, self.protocol, rep_extra_specs[utils.ARRAY],
-                    True, host_template=self.powermax_short_host_name_template)
+        if current_host_occurances > 1:
+            LOG.info("Volume is attached to multiple instances on "
+                     "this host. Not removing the volume from the "
+                     "masking view.")
+        else:
+            array = extra_specs[utils.ARRAY]
+            if self.utils.does_vol_need_rdf_management_group(extra_specs):
+                mgmt_sg_name = self.utils.get_rdf_management_group_name(
+                    rep_config)
+            self._remove_members(
+                array, volume, device_info['device_id'], extra_specs,
+                connector, is_multiattach, async_grp=mgmt_sg_name,
+                host_template=self.powermax_short_host_name_template)
+            if self.utils.is_metro_device(rep_config, extra_specs):
+                # Need to remove from remote masking view
+                device_info, __ = (self.find_host_lun_id(
+                    volume, host_name, extra_specs, rep_extra_specs))
+                if 'hostlunid' in device_info:
+                    self._remove_members(
+                        rep_extra_specs[utils.ARRAY], volume,
+                        device_info['device_id'], rep_extra_specs, connector,
+                        is_multiattach, async_grp=mgmt_sg_name,
+                        host_template=self.powermax_short_host_name_template)
+                else:
+                    # Make an attempt to clean up initiator group
+                    self.masking.attempt_ig_cleanup(
+                        connector, self.protocol,
+                        rep_extra_specs[utils.ARRAY], True,
+                        host_template=self.powermax_short_host_name_template)
         if is_multiattach and LOG.isEnabledFor(logging.DEBUG):
             mv_list, sg_list = (
                 self._get_mvs_and_sgs_from_volume(
@@ -3682,6 +3685,7 @@ class PowerMaxCommon(object):
 
         # Volume is first volume in RDFG, SG needs to be protected
         if rep_status == 'first_vol_in_rdf_group':
+            volume_name = self.utils.get_volume_element_name(volume.id)
             rep_status, rdf_pair_info, tgt_device_id = (
                 self._post_retype_srdf_protect_storage_group(
                     array, target_sg_name, device_id, volume_name,
