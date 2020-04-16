@@ -1560,3 +1560,21 @@ class PowerMaxUtilsTest(test.TestCase):
         updated_extra_specs = self.utils.get_migration_delete_extra_specs(
             volume, extra_specs, None)
         self.assertEqual(self.data.extra_specs, updated_extra_specs)
+
+    def test_version_meet_req_true(self):
+        version = '9.1.0.14'
+        minimum_version = '9.1.0.5'
+        self.assertTrue(
+            self.utils.version_meet_req(version, minimum_version))
+
+    def test_version_meet_req_false(self):
+        version = '9.1.0.3'
+        minimum_version = '9.1.0.5'
+        self.assertFalse(
+            self.utils.version_meet_req(version, minimum_version))
+
+    def test_version_meet_req_major_true(self):
+        version = '9.2.0.1'
+        minimum_version = '9.1.0.5'
+        self.assertTrue(
+            self.utils.version_meet_req(version, minimum_version))

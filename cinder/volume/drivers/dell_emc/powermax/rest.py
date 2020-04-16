@@ -36,7 +36,7 @@ SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
 U4V_VERSION = '91'
-MIN_U4P_VERSION = '9.1.0.5'
+MIN_U4P_VERSION = '9.1.0.14'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 # HTTP constants
@@ -1040,17 +1040,18 @@ class PowerMaxRest(object):
                       'Device id = %(di)s',
                       {'en': element_name, 'vi': vol_identifier,
                        'di': device_id})
-            if vol_identifier in element_name:
-                found_device_id = device_id
-                if vol_identifier != element_name:
-                    LOG.debug("Device %(di)s is a legacy volume created using "
-                              "SMI-S.",
-                              {'di': device_id})
-            elif name_id:
-                # This may be host-assisted migration case
-                element_name = self.utils.get_volume_element_name(name_id)
-                if vol_identifier == element_name:
+            if vol_identifier:
+                if vol_identifier in element_name:
                     found_device_id = device_id
+                    if vol_identifier != element_name:
+                        LOG.debug("Device %(di)s is a legacy volume created "
+                                  "using SMI-S.",
+                                  {'di': device_id})
+                elif name_id:
+                    # This may be host-assisted migration case
+                    element_name = self.utils.get_volume_element_name(name_id)
+                    if vol_identifier == element_name:
+                        found_device_id = device_id
         return found_device_id
 
     def add_vol_to_sg(self, array, storagegroup_name, device_id, extra_specs,
@@ -3015,14 +3016,20 @@ class PowerMaxRest(object):
 
         :returns: unisphere_meets_min_req -- boolean
         """
-        running_version, __ = self.get_uni_version()
+        running_version, major_version = self.get_uni_version()
         minimum_version = MIN_U4P_VERSION
         unisphere_meets_min_req = False
 
         if running_version and (running_version[0].isalpha()):
             # remove leading letter
-            version = running_version[1:]
-            unisphere_meets_min_req = version >= minimum_version
+            if running_version.lower()[0] == 'v':
+                version = running_version[1:]
+                unisphere_meets_min_req = (
+                    self.utils.version_meet_req(version, minimum_version))
+            elif running_version.lower()[0] == 't':
+                LOG.warning("%(version)s This is not a official release of "
+                            "Unisphere.", {'version': running_version})
+                return major_version >= U4V_VERSION
 
         if unisphere_meets_min_req:
             LOG.info("Unisphere version %(running_version)s meets minimum "

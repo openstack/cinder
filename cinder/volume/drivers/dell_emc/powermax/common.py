@@ -815,8 +815,11 @@ class PowerMaxCommon(object):
                  {'volume': volume_name})
         if (self.utils.is_metro_device(rep_config, extra_specs)
                 and not is_multipath and self.protocol.lower() == 'iscsi'):
-            LOG.warning("Multipathing is not correctly enabled "
-                        "on your system.")
+            LOG.warning("Either multipathing is not correctly/currently "
+                        "enabled on your system or the volume was created "
+                        "prior to multipathing being enabled. Please refer "
+                        "to the online PowerMax Cinder driver documentation "
+                        "for this release for further details.")
             return
 
         if self.utils.is_volume_failed_over(volume):

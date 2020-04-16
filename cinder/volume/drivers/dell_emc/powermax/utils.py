@@ -1886,3 +1886,14 @@ class PowerMaxUtils(object):
         else:
             extra_specs.pop(IS_RE, None)
         return extra_specs
+
+    @staticmethod
+    def version_meet_req(version, minimum_version):
+        """Check if current version meets the minimum version allowed
+
+        :param version: unisphere version
+        :param minimum_version: minimum version allowed
+        :returns: boolean
+        """
+        from pkg_resources import parse_version
+        return parse_version(version) >= parse_version(minimum_version)
