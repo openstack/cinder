@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax Driver - Allowing for default volume type in group operations
+    where the array serial number is retrieved from the cinder.conf instead
+    of the pool_name on the extra specs.
