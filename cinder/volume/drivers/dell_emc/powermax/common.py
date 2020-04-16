@@ -440,7 +440,6 @@ class PowerMaxCommon(object):
         :returns:  model_update - dict
         """
         model_update, rep_driver_data = dict(), dict()
-        group_name, group_id = None, None
 
         volume_id = volume.id
         extra_specs = self._initial_setup(volume)
@@ -459,14 +458,10 @@ class PowerMaxCommon(object):
             rep_driver_data = rep_update['replication_driver_data']
             model_update.update(rep_update)
 
-        # Add volume to group, if required
-        if volume.group_id is not None:
-            if (volume_utils.is_group_a_cg_snapshot_type(volume.group)
-                    or volume.group.is_replicated):
-                group_id = volume.group_id
-                group_name = self._add_new_volume_to_volume_group(
-                    volume, volume_dict['device_id'], volume_name,
-                    extra_specs, rep_driver_data)
+        # Add volume to group
+        group_name = self._add_to_group(
+            volume, volume_dict['device_id'], volume_name, volume.group_id,
+            volume.group, extra_specs, rep_driver_data)
 
         # Gather Metadata
         model_update.update(
@@ -482,7 +477,7 @@ class PowerMaxCommon(object):
             extra_specs[utils.ARRAY])
 
         self.volume_metadata.capture_create_volume(
-            volume_dict['device_id'], volume, group_name, group_id,
+            volume_dict['device_id'], volume, group_name, volume.group_id,
             extra_specs, rep_info_dict, 'create',
             array_tag_list=array_tag_list)
 
@@ -490,6 +485,29 @@ class PowerMaxCommon(object):
                  {'name': volume_name, 'dict': volume_dict})
 
         return model_update
+
+    def _add_to_group(
+            self, volume, device_id, volume_name, group_id, group,
+            extra_specs, rep_driver_data=None):
+        """Add a volume to a volume group
+
+        :param volume: volume object
+        :param device_id: the device id
+        :param volume_name: volume name
+        :param group_id: the group id
+        :param group: group object
+        :param extra_specs: extra specifications
+        :param rep_driver_data: replication data (optional)
+        :returns: group_id - string
+        """
+        group_name = None
+        if group_id is not None:
+            if (volume_utils.is_group_a_cg_snapshot_type(group)
+                    or group.is_replicated):
+                group_name = self._add_new_volume_to_volume_group(
+                    volume, device_id, volume_name,
+                    extra_specs, rep_driver_data)
+        return group_name
 
     def _add_new_volume_to_volume_group(self, volume, device_id, volume_name,
                                         extra_specs, rep_driver_data=None):
@@ -563,6 +581,7 @@ class PowerMaxCommon(object):
         :returns: model_update, dict
         """
         model_update, rep_info_dict = {}, {}
+        rep_driver_data = None
         extra_specs = self._initial_setup(clone_volume)
         array = extra_specs[utils.ARRAY]
         source_device_id = self._find_device_on_array(
@@ -578,7 +597,14 @@ class PowerMaxCommon(object):
             clone_volume, source_volume, extra_specs)
         # Update model with replication session info if applicable
         if rep_update:
+            rep_driver_data = rep_update['replication_driver_data']
             model_update.update(rep_update)
+
+        # Add volume to group
+        group_name = self._add_to_group(
+            clone_volume, clone_dict['device_id'], clone_volume.name,
+            source_volume.group_id, source_volume.group, extra_specs,
+            rep_driver_data)
 
         model_update.update(
             {'provider_location': six.text_type(clone_dict)})
@@ -590,9 +616,11 @@ class PowerMaxCommon(object):
                 utils.REP_CONFIG].get(utils.BACKEND_ID, 'None')
         array_tag_list = self.get_tags_of_storage_array(
             extra_specs[utils.ARRAY])
+
         self.volume_metadata.capture_create_volume(
-            clone_dict['device_id'], clone_volume, None, None,
-            extra_specs, rep_info_dict, 'createFromVolume',
+            clone_dict['device_id'], clone_volume, group_name,
+            source_volume.group_id, extra_specs, rep_info_dict,
+            'createFromVolume',
             temporary_snapvx=clone_dict.get('snap_name'),
             source_device_id=clone_dict.get('source_device_id'),
             array_tag_list=array_tag_list)
@@ -2762,12 +2790,14 @@ class PowerMaxCommon(object):
 
         return source_device_id
 
-    def _clone_check(self, array, device_id, extra_specs):
+    def _clone_check(
+            self, array, device_id, extra_specs, force_unlink=False):
         """Perform any snapvx cleanup before creating clones or snapshots
 
         :param array: the array serial
         :param device_id: the device ID of the volume
         :param extra_specs: extra specifications
+        :param force_unlink: force unlink even if not expired
         """
         snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
             array, device_id)
@@ -2779,32 +2809,36 @@ class PowerMaxCommon(object):
                     array, src_device_id)
                 count = 0
                 if tgt_session and count < self.snapvx_unlink_limit:
-                    self._delete_valid_snapshot(array, tgt_session,
-                                                extra_specs)
+                    self._delete_valid_snapshot(
+                        array, tgt_session, extra_specs, force_unlink)
                     count += 1
                 if src_sessions:
                     src_sessions.sort(
                         key=lambda k: k['generation'], reverse=True)
                     for session in src_sessions:
                         if count < self.snapvx_unlink_limit:
-                            self._delete_valid_snapshot(array, session,
-                                                        extra_specs)
+                            self._delete_valid_snapshot(
+                                array, session, extra_specs, force_unlink)
                             count += 1
                         else:
                             break
 
             do_unlink_and_delete_snap(device_id)
 
-    def _delete_valid_snapshot(self, array, session, extra_specs):
+    def _delete_valid_snapshot(
+            self, array, session, extra_specs, force_unlink=False):
         """Delete a snapshot if valid candidate for deletion.
 
         :param array: the array serial
         :param session: the snapvx session
         :param extra_specs: extra specifications
+        :param force_unlink: force unlink even if not expired
         """
         is_legacy = 'EMC_SMI' in session['snap_name']
         is_temp = utils.CLONE_SNAPSHOT_NAME in session['snap_name']
         is_expired = session['expired']
+        if force_unlink:
+            is_expired = True
         is_valid = True if is_legacy or (is_temp and is_expired) else False
         if is_valid:
             try:
@@ -4691,6 +4725,8 @@ class PowerMaxCommon(object):
                     device_id = self._find_device_on_array(
                         vol, extra_specs)
                     if device_id in volume_device_ids:
+                        self._clone_check(
+                            array, device_id, extra_specs, force_unlink=True)
                         self.masking.remove_and_reset_members(
                             array, vol, device_id, vol.name,
                             extra_specs, False)
@@ -5045,9 +5081,16 @@ class PowerMaxCommon(object):
                 if group.is_replicated:
                     # Need force flag when manipulating RDF enabled SGs
                     interval_retries_dict[utils.FORCE_VOL_REMOVE] = True
-                self.masking.remove_volumes_from_storage_group(
-                    array, remove_device_ids,
-                    vol_grp_name, interval_retries_dict)
+                # Check if the volumes exist in the storage group
+                temp_list = deepcopy(remove_device_ids)
+                for device_id in temp_list:
+                    if not self.rest.is_volume_in_storagegroup(
+                            array, device_id, vol_grp_name):
+                        remove_device_ids.remove(device_id)
+                if remove_device_ids:
+                    self.masking.remove_volumes_from_storage_group(
+                        array, remove_device_ids,
+                        vol_grp_name, interval_retries_dict)
                 if group.is_replicated:
                     # Remove remote volumes from the remote storage group
                     self._remove_remote_vols_from_volume_group(

@@ -2141,6 +2141,25 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common.update_group,
                           self.data.test_group_1, [], [])
 
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group_remove_volumes(self, mock_cg_type, mock_type_check):
+        group = self.data.test_group_1
+        add_vols = []
+        remove_vols = [self.data.test_volume_group_member]
+        ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
+        with mock.patch.object(
+                rest.PowerMaxRest, 'is_volume_in_storagegroup',
+                return_value=False) as mock_exists:
+            model_update, __, __ = self.common.update_group(group,
+                                                            add_vols,
+                                                            remove_vols)
+            mock_exists.assert_called_once()
+
+        self.assertEqual(ref_model_update, model_update)
+
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
     def test_delete_group(self, mock_check):
         group = self.data.test_group_1
@@ -2192,6 +2211,28 @@ class PowerMaxCommonTest(test.TestCase):
             model_update, __ = self.common._delete_group(
                 group, volumes)
         self.assertEqual(ref_model_update, model_update)
+
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    @mock.patch.object(rest.PowerMaxRest, 'get_volumes_in_storage_group',
+                       return_value=[
+                           tpd.PowerMaxData.test_volume_group_member])
+    @mock.patch.object(common.PowerMaxCommon, '_get_members_of_volume_group',
+                       return_value=[tpd.PowerMaxData.device_id])
+    @mock.patch.object(common.PowerMaxCommon, '_find_device_on_array',
+                       return_value= tpd.PowerMaxData.device_id)
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'remove_volumes_from_storage_group')
+    def test_delete_group_clone_check(
+            self, mock_rem, mock_find, mock_mems, mock_vols, mock_chk1,
+            mock_chk2):
+        group = self.data.test_group_1
+        volumes = [self.data.test_volume_group_member]
+        with mock.patch.object(
+                self.common, '_clone_check') as mock_clone_chk:
+            self.common._delete_group(group, volumes)
+            mock_clone_chk.assert_called_once()
 
     @mock.patch.object(
         common.PowerMaxCommon, '_remove_vol_and_cleanup_replication')
@@ -2905,6 +2946,22 @@ class PowerMaxCommonTest(test.TestCase):
         extra_specs = self.data.extra_specs
         self.common.snapvx_unlink_limit = 3
         self.common._clone_check(array, device_id, extra_specs)
+        self.assertEqual(3, mck_del.call_count)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, '_unlink_targets_and_delete_temp_snapvx')
+    @mock.patch.object(rest.PowerMaxRest, 'find_snap_vx_sessions',
+                       return_value=(tpd.PowerMaxData.snap_src_sessions,
+                                     tpd.PowerMaxData.snap_tgt_session))
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
+                       return_value=(True, True, False))
+    def test_clone_check_force_unlink(self, mck_rep, mck_find, mck_del):
+        array = self.data.array
+        device_id = self.data.device_id
+        extra_specs = self.data.extra_specs
+        self.common.snapvx_unlink_limit = 3
+        self.common._clone_check(
+            array, device_id, extra_specs, force_unlink=True)
         self.assertEqual(3, mck_del.call_count)
 
     @mock.patch.object(common.PowerMaxCommon,
