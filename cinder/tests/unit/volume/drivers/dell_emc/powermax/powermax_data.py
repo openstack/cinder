@@ -270,6 +270,10 @@ class PowerMaxData(object):
                    'array': array,
                    'interval': 3,
                    'retries': 120}
+    extra_specs_optimized = {
+        'pool_name': u'Optimized+None+SRP_1+000197800123',
+        'slo': 'Optimized', 'workload': 'None',
+        'srp': srp, 'array': array, 'interval': 3, 'retries': 120}
 
     extra_specs_migrate = deepcopy(extra_specs)
     extra_specs_migrate[utils.PORTGROUPNAME] = port_group_name_f

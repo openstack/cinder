@@ -38,7 +38,6 @@ FC = 'fc'
 INTERVAL = 'interval'
 RETRIES = 'retries'
 VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
-VMAX_AFA_MODELS = ['VMAX250F', 'VMAX450F', 'VMAX850F', 'VMAX950F']
 MAX_SRP_LENGTH = 16
 TRUNCATE_5 = 5
 TRUNCATE_27 = 27
@@ -109,6 +108,22 @@ POWERMAX_SRP = 'powermax_srp'
 POWERMAX_SERVICE_LEVEL = 'powermax_service_level'
 POWERMAX_PORT_GROUPS = 'powermax_port_groups'
 POWERMAX_SNAPVX_UNLINK_LIMIT = 'powermax_snapvx_unlink_limit'
+
+# Array Models, Service Levels & Workloads
+VMAX_HYBRID_MODELS = ['VMAX100K', 'VMAX200K', 'VMAX400K']
+VMAX_AFA_MODELS = ['VMAX250F', 'VMAX450F', 'VMAX850F', 'VMAX950F']
+PMAX_MODELS = ['PowerMax_2000', 'PowerMax_8000']
+
+HYBRID_SLS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Optimized',
+              'None', 'NONE']
+HYBRID_WLS = ['OLTP', 'OLTP_REP', 'DSS', 'DSS_REP', 'NONE', 'None']
+AFA_H_SLS = ['Diamond', 'Optimized', 'None', 'NONE']
+AFA_P_SLS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Optimized',
+             'None', 'NONE']
+AFA_WLS = ['OLTP', 'OLTP_REP', 'DSS', 'DSS_REP', 'NONE', 'None']
+PMAX_SLS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Optimized',
+            'None', 'NONE']
+PMAX_WLS = ['NONE', 'None']
 
 
 class PowerMaxUtils(object):
