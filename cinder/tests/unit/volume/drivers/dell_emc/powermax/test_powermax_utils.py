@@ -1272,40 +1272,57 @@ class PowerMaxUtilsTest(test.TestCase):
         self.utils.validate_multiple_rep_device(self.data.multi_rep_device)
 
     def test_validate_multiple_rep_device_non_unique_backend_id(self):
-        rep_devices = self.data.multi_rep_device
+        rep_devices = deepcopy(self.data.multi_rep_device)
         rep_devices[0][utils.BACKEND_ID] = rep_devices[1][utils.BACKEND_ID]
         self.assertRaises(
             exception.InvalidConfigurationValue,
             self.utils.validate_multiple_rep_device,
-            self.data.multi_rep_device)
+            rep_devices)
 
     def test_validate_multiple_rep_device_missing_backend_id(self):
-        rep_devices = self.data.multi_rep_device
+        rep_devices = deepcopy(self.data.multi_rep_device)
         rep_devices[0].pop(utils.BACKEND_ID)
         self.assertRaises(
             exception.InvalidConfigurationValue,
             self.utils.validate_multiple_rep_device,
-            self.data.multi_rep_device)
+            rep_devices)
 
     def test_validate_multiple_rep_device_non_unique_rdf_label(self):
-        rep_devices = self.data.multi_rep_device
+        rep_devices = deepcopy(self.data.multi_rep_device)
         rep_devices[0]['rdf_group_label'] = rep_devices[1]['rdf_group_label']
         self.assertRaises(
             exception.InvalidConfigurationValue,
             self.utils.validate_multiple_rep_device,
-            self.data.multi_rep_device)
+            rep_devices)
 
     def test_validate_multiple_rep_device_non_unique_rdf_modes(self):
-        rep_devices = [self.data.rep_dev_1, self.data.rep_dev_2]
+        rep_devices = [self.data.rep_dev_1, deepcopy(self.data.rep_dev_2)]
         rep_devices[1]['mode'] = rep_devices[0]['mode']
         self.assertRaises(
             exception.InvalidConfigurationValue,
             self.utils.validate_multiple_rep_device,
             rep_devices)
 
+    def test_validate_multiple_rep_device_defaulting_rdf_modes(self):
+        rep_devices = [
+            deepcopy(self.data.rep_dev_1), deepcopy(self.data.rep_dev_2)]
+        rep_devices[0]['mode'] = ''
+        rep_devices[1]['mode'] = 'testing'
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            rep_devices)
+
     def test_validate_multiple_rep_device_multiple_targets(self):
-        rep_devices = [self.data.rep_dev_1, self.data.rep_dev_2]
+        rep_devices = [self.data.rep_dev_1, deepcopy(self.data.rep_dev_2)]
         rep_devices[1]['target_device_id'] = 1234
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            rep_devices)
+
+    def test_validate_multiple_rep_device_length(self):
+        rep_devices = [1, 2, 3, 4]
         self.assertRaises(
             exception.InvalidConfigurationValue,
             self.utils.validate_multiple_rep_device,

@@ -1094,6 +1094,15 @@ class PowerMaxUtils(object):
         backend_ids = set()
         rep_modes = set()
         target_arrays = set()
+
+        repdev_count = len(rep_devices)
+        if repdev_count > 3:
+            msg = (_('Up to three replication_devices are currently '
+                     'supported, one for each replication mode. '
+                     '%d replication_devices found in cinder.conf.')
+                   % repdev_count)
+            raise exception.InvalidConfigurationValue(msg)
+
         for rep_device in rep_devices:
             backend_id = rep_device.get(BACKEND_ID)
             if backend_id:
@@ -1119,7 +1128,13 @@ class PowerMaxUtils(object):
                 raise exception.InvalidConfigurationValue(msg)
             rdf_group_labels.add(rdf_group_label)
 
-            rep_mode = rep_device.get('mode', REP_SYNC)
+            rep_mode = rep_device.get('mode', '')
+            if rep_mode.lower() in ['async', 'asynchronous']:
+                rep_mode = REP_ASYNC
+            elif rep_mode.lower() == 'metro':
+                rep_mode = REP_METRO
+            else:
+                rep_mode = REP_SYNC
             if rep_mode in rep_modes:
                 msg = (_('RDF Modes must be unique across all '
                          'replication_device. Found multiple instances of %s '
