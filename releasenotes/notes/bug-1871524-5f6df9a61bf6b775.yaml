@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix volume migration fails in the same ceph RBD pool. `Bug 1871524
+    <https://bugs.launchpad.net/cinder/+bug/1871524>`__.
