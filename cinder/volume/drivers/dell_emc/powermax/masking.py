@@ -1749,7 +1749,7 @@ class PowerMaxMasking(object):
         split_pool = extra_specs['pool_name'].split('+')
         src_slo = split_pool[0]
         src_wl = split_pool[1] if len(split_pool) == 4 else 'NONE'
-        slo_wl_combo = self.utils.truncate_string(src_slo + src_wl, 10)
+        slo_wl_combo = self.utils.truncate_string(src_slo + src_wl.upper(), 10)
         for sg in sg_list.get('storageGroupId', []):
             if slo_wl_combo in sg:
                 fast_source_sg_name = sg
