@@ -2308,7 +2308,7 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(3.00, total_provision)
 
     def test_migrate_volume_bad_volume_status(self):
-        self.volume_a.status = 'in-use'
+        self.volume_a.status = 'backingup'
         ret = self.driver.migrate_volume(context, self.volume_a, None)
         self.assertEqual((False, None), ret)
 
@@ -2370,12 +2370,44 @@ class RBDTestCase(test.TestCase):
 
     @mock.patch('os_brick.initiator.linuxrbd.rbd')
     @mock.patch('os_brick.initiator.linuxrbd.RBDClient')
-    @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
-    def test_migrate_volume(self, mock_proxy, mock_client, mock_rbd):
+    def test_migrate_volume_same_pool(self, mock_client, mock_rbd):
         host = {
             'capabilities': {
                 'storage_protocol': 'ceph',
                 'location_info': 'nondefault:None:abc:None:rbd'}}
+
+        mock_client().__enter__().client.get_fsid.return_value = 'abc'
+
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = 'abc'
+            ret = self.driver.migrate_volume(context, self.volume_a, host)
+            self.assertEqual((True, None), ret)
+
+    @mock.patch('os_brick.initiator.linuxrbd.rbd')
+    @mock.patch('os_brick.initiator.linuxrbd.RBDClient')
+    def test_migrate_volume_insue_different_pool(self, mock_client, mock_rbd):
+        self.volume_a.status = 'in-use'
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph',
+                'location_info': 'nondefault:None:abc:None:rbd2'}}
+
+        mock_client().__enter__().client.get_fsid.return_value = 'abc'
+
+        with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
+            mock_get_fsid.return_value = 'abc'
+            ret = self.driver.migrate_volume(context, self.volume_a, host)
+            self.assertEqual((False, None), ret)
+
+    @mock.patch('os_brick.initiator.linuxrbd.rbd')
+    @mock.patch('os_brick.initiator.linuxrbd.RBDClient')
+    @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
+    def test_migrate_volume_different_pool(self, mock_proxy, mock_client,
+                                           mock_rbcd):
+        host = {
+            'capabilities': {
+                'storage_protocol': 'ceph',
+                'location_info': 'nondefault:None:abc:None:rbd2'}}
 
         mock_client().__enter__().client.get_fsid.return_value = 'abc'
 
