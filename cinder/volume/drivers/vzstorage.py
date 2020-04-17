@@ -33,6 +33,7 @@ from cinder import interface
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -684,11 +685,11 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         if volume_format == DISK_FORMAT_PLOOP:
             with PloopDevice(self.local_path(volume),
                              execute=self._execute) as dev:
-                image_utils.upload_volume(context,
-                                          image_service,
-                                          image_meta,
-                                          dev,
-                                          volume_format='raw')
+                volume_utils.upload_volume(context,
+                                           image_service,
+                                           image_meta,
+                                           dev,
+                                           volume)
         else:
             super(VZStorageDriver, self)._copy_volume_to_image(context, volume,
                                                                image_service,

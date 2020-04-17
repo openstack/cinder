@@ -682,6 +682,8 @@ def _validate_file_format(image_data, expected_format):
 def upload_volume(context, image_service, image_meta, volume_path,
                   volume_format='raw', run_as_root=True, compress=True,
                   store_id=None, base_image_ref=None):
+    # NOTE: You probably want to use volume_utils.upload_volume(),
+    # not this function.
     image_id = image_meta['id']
     if image_meta.get('container_format') != 'compressed':
         if (image_meta['disk_format'] == volume_format):
