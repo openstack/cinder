@@ -243,8 +243,9 @@ class API(base.Base):
         # incremental backup.
         latest_backup = None
         if incremental:
-            backups = objects.BackupList.get_all_by_volume(context.elevated(),
-                                                           volume_id)
+            backups = objects.BackupList.get_all_by_volume(
+                context, volume_id, volume['project_id'],
+                filters={'project_id': context.project_id})
             if backups.objects:
                 # NOTE(xyang): The 'data_timestamp' field records the time
                 # when the data on the volume was first saved. If it is

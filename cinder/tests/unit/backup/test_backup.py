@@ -124,7 +124,8 @@ class BaseBackupTest(test.TestCase):
                                 previous_status='available',
                                 size=1,
                                 host='testhost',
-                                encryption_key_id=None):
+                                encryption_key_id=None,
+                                project_id=None):
         """Create a volume entry in the DB.
 
         Return the entry ID
@@ -133,7 +134,7 @@ class BaseBackupTest(test.TestCase):
         vol['size'] = size
         vol['host'] = host
         vol['user_id'] = fake.USER_ID
-        vol['project_id'] = fake.PROJECT_ID
+        vol['project_id'] = project_id or fake.PROJECT_ID
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
@@ -2058,19 +2059,14 @@ class BackupAPITestCase(BaseBackupTest):
             self.ctxt, backups=1, backup_gigabytes=1)
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
 
-    @mock.patch('cinder.db.backup_get_all_by_volume')
-    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
-    @mock.patch.object(api.API, '_get_available_backup_service_host',
-                       return_value='fake_host')
+    @mock.patch('cinder.objects.BackupList.get_all_by_volume')
     @mock.patch.object(quota.QUOTAS, 'rollback')
     @mock.patch.object(quota.QUOTAS, 'reserve')
     def test_create_backup_failed_with_empty_backup_objects(
-            self, mock_reserve, mock_rollback, mock_get_service,
-            mock_create, mock_get_backups):
-        mock_get_backups.return_value = [v2_fakes.fake_backup('fake-1')]
-        backups = objects.BackupList.get_all_by_volume(self.ctxt,
-                                                       fake.VOLUME_ID)
+            self, mock_reserve, mock_rollback, mock_get_backups):
+        backups = mock.Mock()
         backups.objects = []
+        mock_get_backups.return_value = backups
         is_incremental = True
         self.ctxt.user_id = 'fake_user'
         self.ctxt.project_id = 'fake_project'
@@ -2078,7 +2074,8 @@ class BackupAPITestCase(BaseBackupTest):
 
         volume_id = self._create_volume_db_entry(status='available',
                                                  host='testhost#rbd',
-                                                 size=1)
+                                                 size=1,
+                                                 project_id="vol_proj_id")
         self.assertRaises(exception.InvalidBackup,
                           self.api.create,
                           self.ctxt,
@@ -2086,6 +2083,9 @@ class BackupAPITestCase(BaseBackupTest):
                           volume_id, None,
                           incremental=is_incremental)
         mock_rollback.assert_called_with(self.ctxt, "fake_reservation")
+        mock_get_backups.assert_called_once_with(
+            self.ctxt, volume_id, 'vol_proj_id',
+            filters={'project_id': 'fake_project'})
 
     @mock.patch('cinder.db.backup_get_all_by_volume',
                 return_value=[v2_fakes.fake_backup('fake-1')])

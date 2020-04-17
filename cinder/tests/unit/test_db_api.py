@@ -2879,15 +2879,21 @@ class DBAPIBackupTestCase(BaseTest):
                                               {'fake_key': 'fake'})
         self._assertEqualListsOfObjects([], byproj)
 
-    def test_backup_get_all_by_volume(self):
-        byvol = db.backup_get_all_by_volume(self.ctxt,
-                                            self.created[1]['volume_id'])
+    @mock.patch.object(sqlalchemy_api, 'authorize_project_context')
+    def test_backup_get_all_by_volume(self, mock_authorize):
+        byvol = db.backup_get_all_by_volume(
+            self.ctxt, self.created[1]['volume_id'], 'fake_proj')
         self._assertEqualObjects(self.created[1], byvol[0])
 
         byvol = db.backup_get_all_by_volume(self.ctxt,
                                             self.created[1]['volume_id'],
+                                            'fake_proj',
                                             {'fake_key': 'fake'})
         self._assertEqualListsOfObjects([], byvol)
+        mock_authorize.assert_has_calls([
+            mock.call(self.ctxt, 'fake_proj'),
+            mock.call(self.ctxt, 'fake_proj')
+        ])
 
     def test_backup_update_nonexistent(self):
         self.assertRaises(exception.BackupNotFound,
