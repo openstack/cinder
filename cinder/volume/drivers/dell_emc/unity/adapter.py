@@ -1114,11 +1114,11 @@ class CommonAdapter(object):
             return cg
 
         group_update = {}
+        group_id = group.id
         if not volumes:
             LOG.warning('There is no Volume in group: %s, cannot enable '
-                        'group replication')
+                        'group replication', group_id)
             return group_update, []
-        group_id = group.id
         # check whether the group was created as cg in unity
         group_is_cg = utils.group_is_cg(group)
         if not group_is_cg:
@@ -1165,12 +1165,12 @@ class CommonAdapter(object):
     def disable_replication(self, context, group, volumes):
         """Disable the group replication."""
         group_update = {}
+        group_id = group.id
         if not volumes:
             # Return if empty group
             LOG.warning('There is no Volume in group: %s, cannot disable '
-                        'group replication')
+                        'group replication', group_id)
             return group_update, []
-        group_id = group.id
         group_is_cg = utils.group_is_cg(group)
         if not group_is_cg:
             msg = (_('Cannot disable replication on generic group '

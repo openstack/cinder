@@ -69,7 +69,7 @@ class RestCommon(object):
             result = func(call_url, **kwargs)
         except Exception as err:
             LOG.error('Bad response from server: %(url)s. '
-                      'Error: %(err)s'), {'url': url, 'err': err}
+                      'Error: %(err)s', {'url': url, 'err': err})
             return {"error": {
                 "code": constants.CONNECT_ERROR,
                 "description": "Connect to server error."}}
