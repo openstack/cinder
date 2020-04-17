@@ -1,0 +1,73 @@
+---
+issues:
+  - |
+    For the convenience of operators, the `unsupported driver removal policy
+    <https://docs.openstack.org/cinder/ussuri/drivers-all-about.html#driver-removal>`_
+    was changed during the Ussuri development cycle to allow unsupported
+    drivers to remain in the Cinder source code repository at the discretion
+    of the Cinder team (basically, this means the vendor has not explicitly
+    declared the driver EOL or the vendor has expressed interest in getting
+    the third-party CI system working again).  Be aware, however, that
+    such drivers are subject to immediate removal if they begin failing
+    the general Cinder gating tests.
+
+    The following drivers were classified as unsupported in the Train
+    release and continue as unspported in this release:
+
+    - IBM FlashSystem drivers: FC and iSCSI
+    - ProphetStor drivers: FC and iSCSI
+    - Veritas ACCESS iSCSI driver
+    - Virtuozzo Storage driver
+
+    For completeness, here is the list of drivers first marked unsupported
+    in the Ussuri release.  See the "Deprecation Notes" section of this
+    document for details.
+
+    - Brocade Fibre Channel Zone Manager driver
+    - MacroSAN drivers: FC and iSCSI
+    - Veritas Clustered NFS driver
+
+    In order to use an unsupported driver, ``enable_unsupported_driver`` must
+    be set to ``True`` in the driver's section in the cinder.conf file.  If
+    you are the consumer of such a driver, we encourage you to contact the
+    vendor to make them aware of your concerns.
+  - |
+    A key aspect of *supported* drivers is that there is a fully functioning
+    third-party CI system that reports on all proposed changes to the cinder
+    code.  However, the fact that there are 'unsupported' drivers at all
+    indicates that third-party CI systems are unfortunately not always
+    fully functioning.  You may consult the report at the following link
+    to learn the extent to which a particular driver's CI system is reporting
+    on the development branch of cinder:
+
+    http://cinderstats.ivehearditbothways.com/cireport.txt
+upgrade:
+  - |
+    The following drivers were classified as unsupported in the Train
+    release and continue as unspported in this release.  See the "Known
+    Issues" section of this document for details.
+
+    - IBM FlashSystem drivers: FC and iSCSI
+    - ProphetStor drivers: FC and iSCSI
+    - Veritas ACCESS iSCSI driver
+    - Virtuozzo Storage driver
+
+    In order to use an unsupported driver, ``enable_unsupported_driver`` must
+    be set to ``True`` in the driver's section in the cinder.conf file.  If
+    you are the consumer of such a driver, we encourage you to contact the
+    vendor to make them aware of your concerns.
+deprecations:
+  - |
+    The following drivers were deprecated in the Train release but have not
+    yet been removed.  They continue as unsupported and deprecated in this
+    release.  See the "Known Issues" section of this document for details.
+
+    - IBM FlashSystem drivers: FC and iSCSI
+    - ProphetStor drivers: FC and iSCSI
+    - Veritas ACCESS iSCSI driver
+    - Virtuozzo Storage driver
+
+    In order to use an unsupported driver, ``enable_unsupported_driver`` must
+    be set to ``True`` in the driver's section in the cinder.conf file.  If
+    you are the consumer of such a driver, we encourage you to contact the
+    vendor to make them aware of your concerns.
