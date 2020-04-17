@@ -20,7 +20,7 @@ from cinder.policies import base
 
 MANAGE_POLICY = "volume_extension:types_manage"
 ENCRYPTION_POLICY = "volume_extension:volume_type_encryption"
-BASE_POLICY_RULE = 'rule:%s' % ENCRYPTION_POLICY
+ENCRYPTION_BASE_POLICY_RULE = 'rule:%s' % ENCRYPTION_POLICY
 CREATE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:create"
 GET_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:get"
 UPDATE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:update"
@@ -72,9 +72,12 @@ volume_type_policies = [
     policy.DocumentedRuleDefault(
         name=ENCRYPTION_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="List, show, create, update and delete volume "
-                    "type encryption. This is deprecated in the Stein "
-                    "release and will be removed in the future.",
+        description="Base policy for all volume type encryption type "
+                    "operations.  This can be used to set the policies "
+                    "for a volume type's encryption type create, show, "
+                    "update, and delete actions in one place, or any of "
+                    "those may be set individually using the following "
+                    "policy targets for finer grained control.",
         operations=[
             {
                 'method': 'POST',
@@ -99,7 +102,7 @@ volume_type_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=CREATE_ENCRYPTION_POLICY,
-        check_str=BASE_POLICY_RULE,
+        check_str=ENCRYPTION_BASE_POLICY_RULE,
         description="Create volume type encryption.",
         operations=[
             {
@@ -109,7 +112,7 @@ volume_type_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=GET_ENCRYPTION_POLICY,
-        check_str=BASE_POLICY_RULE,
+        check_str=ENCRYPTION_BASE_POLICY_RULE,
         description="Show, list volume type encryption.",
         operations=[
             {
@@ -123,7 +126,7 @@ volume_type_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=UPDATE_ENCRYPTION_POLICY,
-        check_str=BASE_POLICY_RULE,
+        check_str=ENCRYPTION_BASE_POLICY_RULE,
         description="Update volume type encryption.",
         operations=[
             {
@@ -133,7 +136,7 @@ volume_type_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=DELETE_ENCRYPTION_POLICY,
-        check_str=BASE_POLICY_RULE,
+        check_str=ENCRYPTION_BASE_POLICY_RULE,
         description="Delete volume type encryption.",
         operations=[
             {

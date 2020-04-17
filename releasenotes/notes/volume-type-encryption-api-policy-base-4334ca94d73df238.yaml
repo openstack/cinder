@@ -1,0 +1,21 @@
+---
+upgrade:
+  - |
+    The ``volume_extension:volume_type_encryption`` policy, which was
+    deprecated in Stein, has been un-deprecated for the convenience of
+    operators who would like to set the policies for the create, get,
+    update, and delete operations for a volume type's encryption type
+    in one place.  The default value for this policy target has not
+    changed.
+
+    As a reminder, the finer-grained policies are:
+
+    - ``volume_extension:volume_type_encryption:create``
+    - ``volume_extension:volume_type_encryption:get``
+    - ``volume_extension:volume_type_encryption:update``
+    - ``volume_extension:volume_type_encryption:delete``
+
+    The default values for these policies have also not changed.  See
+    the `sample Cinder policy file
+    <https://docs.openstack.org/cinder/ussuri/configuration/block-storage/samples/policy.yaml.html>`_
+    for more information.
