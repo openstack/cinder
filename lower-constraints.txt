@@ -63,7 +63,7 @@ netaddr==0.7.19
 netifaces==0.10.6
 networkx==1.11
 oauth2client==1.5.0
-openstackdocstheme==1.20.0
+openstackdocstheme==2.0.0
 os-api-ref==1.4.0
 os-brick==2.2.0
 os-client-config==1.29.0
@@ -134,7 +134,7 @@ rtslib-fb==2.1.65
 six==1.10.0
 smmap2==2.0.3
 snowballstemmer==1.2.1
-Sphinx==1.6.5
+Sphinx==2.0.0
 sphinx-feature-classification==0.1.0
 sphinxcontrib-websupport==1.0.1
 sqlalchemy-migrate==0.11.0
