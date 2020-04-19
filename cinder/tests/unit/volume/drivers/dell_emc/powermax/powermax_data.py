@@ -380,6 +380,10 @@ class PowerMaxData(object):
                    'array': array,
                    'interval': 3,
                    'retries': 120}
+    extra_specs_optimized = {
+        'pool_name': u'Optimized+None+SRP_1+000197800123',
+        'slo': 'Optimized', 'workload': 'None',
+        'srp': srp, 'array': array, 'interval': 3, 'retries': 120}
 
     vol_type_extra_specs_tags = {
         'storagetype:storagegrouptags': u'good, comma,  separated,list'}

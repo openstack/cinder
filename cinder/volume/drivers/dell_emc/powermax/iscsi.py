@@ -126,6 +126,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
                 (bp powermax-user-defined-hostname-portgroup)
               - Switch to Unisphere REST API public replication endpoints
               - Support for multiple replication devices
+              - Pools bug fix allowing 'None' variants (bug #1873253)
     """
 
     VERSION = "4.2.0"

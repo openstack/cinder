@@ -372,58 +372,72 @@ class PowerMaxCommon(object):
         :raises: VolumeBackendAPIException:
         """
         try:
-            array = array_info['SerialNumber']
-            if self.failover:
-                array = self.active_backend_id
-
-            slo_settings = self.rest.get_slo_list(
-                array, self.next_gen, self.array_model)
-            slo_list = [x for x in slo_settings
-                        if x.lower() not in ['none', 'optimized']]
-            workload_settings = self.rest.get_workload_settings(
-                array, self.next_gen)
-            workload_settings.append('None')
-            slo_workload_set = set(
-                ['%(slo)s:%(workload)s' % {'slo': slo,
-                                           'workload': workload}
-                 for slo in slo_list for workload in workload_settings])
-            slo_workload_set.add('None:None')
+            upgraded_afa = False
+            if self.array_model in utils.VMAX_HYBRID_MODELS:
+                sls = deepcopy(utils.HYBRID_SLS)
+                wls = deepcopy(utils.HYBRID_WLS)
+            elif self.array_model in utils.VMAX_AFA_MODELS:
+                wls = deepcopy(utils.AFA_WLS)
+                if not self.next_gen:
+                    sls = deepcopy(utils.AFA_H_SLS)
+                else:
+                    sls = deepcopy(utils.AFA_P_SLS)
+                    upgraded_afa = True
+            elif self.array_model in utils.PMAX_MODELS:
+                sls, wls = deepcopy(utils.PMAX_SLS), deepcopy(utils.PMAX_WLS)
+            else:
+                raise exception.VolumeBackendAPIException(
+                    message="Unable to determine array model.")
 
             if self.next_gen:
-                LOG.warning("Workloads have been deprecated for arrays "
-                            "running PowerMax OS uCode level 5978 or higher. "
-                            "Any supplied workloads will be treated as None "
-                            "values. It is highly recommended to create a new "
-                            "volume type without a workload specified.")
-                for slo in slo_list:
-                    slo_workload_set.add(slo)
-                slo_workload_set.add('None')
-                slo_workload_set.add('Optimized')
-                slo_workload_set.add('Optimized:None')
-                # If array is 5978 or greater and a VMAX AFA add legacy SL/WL
-                # combinations
-                if any(self.array_model in x for x in
-                       utils.VMAX_AFA_MODELS):
-                    slo_workload_set.add('Diamond:OLTP')
-                    slo_workload_set.add('Diamond:OLTP_REP')
-                    slo_workload_set.add('Diamond:DSS')
-                    slo_workload_set.add('Diamond:DSS_REP')
-                    slo_workload_set.add('Diamond:None')
+                LOG.warning(
+                    "Workloads have been deprecated for arrays running "
+                    "PowerMax OS uCode level 5978 or higher. Any supplied "
+                    "workloads will be treated as None values. It is "
+                    "recommended to create a new volume type without a "
+                    "workload specified.")
 
-            if not any(self.array_model in x for x in
-                       utils.VMAX_AFA_MODELS):
-                slo_workload_set.add('Optimized:None')
+            # Add service levels:
+            pools = sls
+            # Array Specific SL/WL Combos
+            pools += (
+                ['{}:{}'.format(x, y) for x in sls for y in wls
+                 if x.lower() not in ['optimized', 'none']])
+            # Add Optimized & None combinations
+            pools += (
+                ['{}:{}'.format(x, y) for x in ['Optimized', 'NONE', 'None']
+                 for y in ['NONE', 'None']])
 
-            finalarrayinfolist = []
-            for sloWorkload in slo_workload_set:
-                temparray_info = array_info.copy()
+            if upgraded_afa:
+                # Cleanup is required here for service levels that were not
+                # present in AFA HyperMax but added for AFA PowerMax, we
+                # do not need these SL/WL combinations for backwards
+                # compatibility but we do for Diamond SL
+                afa_pool = list()
+                for p in pools:
+                    try:
+                        pl = p.split(':')
+                        if (pl[0] not in [
+                            'Platinum', 'Gold', 'Silver', 'Bronze']) or (
+                                pl[1] not in [
+                                    'OLTP', 'OLTP_REP', 'DSS', 'DSS_REP']):
+                            afa_pool.append(p)
+                    except IndexError:
+                        # Pool has no workload present
+                        afa_pool.append(p)
+                pools = afa_pool
+
+            # Build array pool of SL/WL combinations
+            array_pool = list()
+            for pool in pools:
+                _array_info = array_info.copy()
                 try:
-                    slo, workload = sloWorkload.split(':')
-                    temparray_info['SLO'] = slo
-                    temparray_info['Workload'] = workload
+                    slo, workload = pool.split(':')
+                    _array_info['SLO'] = slo
+                    _array_info['Workload'] = workload
                 except ValueError:
-                    temparray_info['SLO'] = sloWorkload
-                finalarrayinfolist.append(temparray_info)
+                    _array_info['SLO'] = pool
+                array_pool.append(_array_info)
         except Exception as e:
             exception_message = (_(
                 "Unable to get the SLO/Workload combinations from the array. "
@@ -431,7 +445,7 @@ class PowerMaxCommon(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
-        return finalarrayinfolist
+        return array_pool
 
     def create_volume(self, volume):
         """Creates a EMC(PowerMax/VMAX) volume from a storage group.
@@ -1602,8 +1616,8 @@ class PowerMaxCommon(object):
                         other_maskedvols.append(devicedict)
                 if len(other_maskedvols) > 0:
                     LOG.debug("Volume is masked to a different host "
-                              "than %(host)s - multiattach case.",
-                              {'host': host})
+                              "than %(host)s - Live Migration or Multi-Attach "
+                              "use case.", {'host': host})
                     is_multiattach = True
 
         else:
