@@ -223,11 +223,9 @@ class PowerMaxUtilsTest(test.TestCase):
             extra_specs)
         self.assertTrue(do_disable_compression)
         # Compression disabled by no SL/WL combination
-        extra_specs2 = deepcopy(self.data.extra_specs)
-        extra_specs2[utils.SLO] = None
-        do_disable_compression2 = self.utils.is_compression_disabled(
-            extra_specs2)
-        self.assertTrue(do_disable_compression2)
+        extra_specs = deepcopy(self.data.vol_type_extra_specs_none_pool)
+        self.assertTrue(self.utils.is_compression_disabled(
+            extra_specs))
 
     def test_is_compression_disabled_false(self):
         # Path 1: no compression extra spec set
@@ -243,19 +241,19 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertFalse(do_disable_compression2)
 
     def test_change_compression_type_true(self):
-        source_compr_disabled_true = 'true'
+        source_compr_disabled = True
         new_type_compr_disabled = {
-            'extra_specs': {utils.DISABLECOMPRESSION: 'no'}}
+            'extra_specs': {utils.DISABLECOMPRESSION: 'false'}}
         ans = self.utils.change_compression_type(
-            source_compr_disabled_true, new_type_compr_disabled)
+            source_compr_disabled, new_type_compr_disabled)
         self.assertTrue(ans)
 
     def test_change_compression_type_false(self):
-        source_compr_disabled_true = True
+        source_compr_disabled = True
         new_type_compr_disabled = {
             'extra_specs': {utils.DISABLECOMPRESSION: 'true'}}
         ans = self.utils.change_compression_type(
-            source_compr_disabled_true, new_type_compr_disabled)
+            source_compr_disabled, new_type_compr_disabled)
         self.assertFalse(ans)
 
     def test_is_replication_enabled(self):
@@ -1592,3 +1590,34 @@ class PowerMaxUtilsTest(test.TestCase):
         minimum_version = '9.1.0.5'
         self.assertTrue(
             self.utils.version_meet_req(version, minimum_version))
+
+    def test_parse_specs_from_pool_name_workload_included(self):
+        pool_name = self.data.vol_type_extra_specs.get('pool_name')
+        array_id, srp, service_level, workload = (
+            self.utils.parse_specs_from_pool_name(pool_name))
+        pool_details = pool_name.split('+')
+        self.assertEqual(array_id, pool_details[3])
+        self.assertEqual(srp, pool_details[2])
+        self.assertEqual(workload, pool_details[1])
+        self.assertEqual(service_level, pool_details[0])
+
+    def test_parse_specs_from_pool_name_workload_not_included(self):
+        pool_name = (
+            self.data.vol_type_extra_specs_next_gen_pool.get('pool_name'))
+        array_id, srp, service_level, workload = (
+            self.utils.parse_specs_from_pool_name(pool_name))
+
+        pool_details = pool_name.split('+')
+        self.assertEqual(array_id, pool_details[2])
+        self.assertEqual(srp, pool_details[1])
+        self.assertEqual(service_level, pool_details[0])
+        self.assertEqual(workload, str())
+
+    def test_parse_specs_from_pool_name_invalid_pool(self):
+        pool_name = 'This+Is+An+Invalid+Pool'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.parse_specs_from_pool_name, pool_name)
+
+    def test_parse_specs_from_pool_name_no_pool(self):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.utils.parse_specs_from_pool_name, '')

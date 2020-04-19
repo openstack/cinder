@@ -429,18 +429,28 @@ class PowerMaxUtils(object):
                 message=exception_message)
         return array, device_id.upper()
 
-    @staticmethod
-    def is_compression_disabled(extra_specs):
+    def is_compression_disabled(self, extra_specs):
         """Check is compression is to be disabled.
 
         :param extra_specs: extra specifications
         :returns: boolean
         """
-        do_disable_compression = False
-        if (DISABLECOMPRESSION in extra_specs and strutils.bool_from_string(
-                extra_specs[DISABLECOMPRESSION])) or not extra_specs.get(SLO):
-            do_disable_compression = True
-        return do_disable_compression
+        compression_disabled = False
+
+        if extra_specs.get(DISABLECOMPRESSION, False):
+            if strutils.bool_from_string(extra_specs.get(DISABLECOMPRESSION)):
+                compression_disabled = True
+        else:
+            if extra_specs.get(SLO):
+                service_level = extra_specs.get(SLO)
+            else:
+                __, __, service_level, __ = self.parse_specs_from_pool_name(
+                    extra_specs.get('pool_name'))
+
+            if not service_level:
+                compression_disabled = True
+
+        return compression_disabled
 
     def change_compression_type(self, is_source_compr_disabled, new_type):
         """Check if volume type have different compression types
@@ -1919,3 +1929,37 @@ class PowerMaxUtils(object):
         """
         from pkg_resources import parse_version
         return parse_version(version) >= parse_version(minimum_version)
+
+    @staticmethod
+    def parse_specs_from_pool_name(pool_name):
+        """Parse basic volume type specs from pool_name.
+
+        :param pool_name: the pool name -- str
+        :returns: array_id, srp, service_level, workload -- str, str, str, str
+        """
+        array_id, srp, service_level, workload = str(), str(), str(), str()
+        pool_details = pool_name.split('+')
+        if len(pool_details) == 4:
+            array_id = pool_details[3]
+            srp = pool_details[2]
+            service_level = pool_details[0]
+            if not pool_details[1].lower() == 'none':
+                workload = pool_details[1]
+        elif len(pool_details) == 3:
+            service_level = pool_details[0]
+            srp = pool_details[1]
+            array_id = pool_details[2]
+        else:
+            if not pool_name:
+                msg = (_('No pool_name specified in volume-type.'))
+            else:
+                msg = (_("There has been a problem parsing the pool "
+                         "information from pool_name '%(pool)s'." % {
+                             'pool': pool_name}))
+
+            raise exception.VolumeBackendAPIException(msg)
+
+        if service_level.lower() == 'none':
+            service_level = str()
+
+        return array_id, srp, service_level, workload
