@@ -207,7 +207,12 @@ def check_qemu_img_version(minimum_version):
 def _convert_image(prefix, source, dest, out_format,
                    out_subformat=None, src_format=None,
                    run_as_root=True, cipher_spec=None, passphrase_file=None):
-    """Convert image to other format."""
+    """Convert image to other format.
+
+    NOTE: If the qemu-img convert command fails and this function raises an
+    exception, a non-empty dest file may be left in the filesystem.
+    It is the responsibility of the caller to decide what to do with this file.
+    """
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
     # This is needed to ensure that all data hit the device before
