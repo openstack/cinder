@@ -1,0 +1,3 @@
+---
+features:
+  - Added SandStone driver that allows cinder to manage volumes in ISCSI environment.
