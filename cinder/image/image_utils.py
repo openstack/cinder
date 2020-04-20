@@ -229,6 +229,10 @@ def _convert_image(prefix, source, dest, out_format,
                    passphrase_file=None, compress=False):
     """Convert image to other format.
 
+    NOTE: If the qemu-img convert command fails and this function raises an
+    exception, a non-empty dest file may be left in the filesystem.
+    It is the responsibility of the caller to decide what to do with this file.
+
     :param prefix: command prefix, i.e. cgexec for throttling
     :param source: source filename
     :param dest: destination filename
