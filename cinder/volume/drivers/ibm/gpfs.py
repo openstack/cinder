@@ -166,9 +166,6 @@ class GPFSDriver(driver.CloneableImageVD,
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_GPFS_CI"
 
-    # TODO(jsbryant) Remove driver in the 'U' release if CI is not fixed.
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
         super(GPFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(gpfs_opts)
