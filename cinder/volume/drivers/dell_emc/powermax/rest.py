@@ -2273,12 +2273,36 @@ class PowerMaxRest(object):
 
         return rdf_group.get('states', list()) if rdf_group else dict()
 
+    def get_storage_group_rdf_groups(self, array, storage_group):
+        """Get a list of rdf group numbers used by a storage group.
+
+        :param array: the array serial number -- str
+        :param storage_group: the storage group name to check -- str
+        :return: RDFGs associated with the storage group -- dict
+        """
+        resource = ('storagegroup/%(storage_group)s/rdf_group' % {
+            'storage_group': storage_group})
+        storage_group_details = self.get_resource(array, REPLICATION, resource)
+        return storage_group_details['rdfgs']
+
     def get_rdf_group_list(self, array):
         """Get rdf group list from array.
 
         :param array: the array serial number
         """
         return self.get_resource(array, REPLICATION, 'rdf_group')
+
+    def get_rdf_group_volume_list(self, array, rdf_group_no):
+        """Get a list of all volumes in an RDFG.
+
+        :param array: the array serial number -- str
+        :param rdf_group_no: the RDF group number -- str
+        :return: RDFG volume list -- list
+        """
+        resource = ('rdf_group/%(rdf_group)s/volume' % {
+            'rdf_group': rdf_group_no})
+        rdf_group_volumes = self.get_resource(array, REPLICATION, resource)
+        return rdf_group_volumes['name']
 
     def get_rdf_group_volume(self, array, src_device_id):
         """Get the RDF details for a volume.

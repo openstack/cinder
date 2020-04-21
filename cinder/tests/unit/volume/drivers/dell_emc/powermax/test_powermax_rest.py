@@ -1816,6 +1816,20 @@ class PowerMaxRestTest(test.TestCase):
             self.data.array, 'replication', ref_get_resource)
         self.assertEqual(states, [utils.RDF_SUSPENDED_STATE])
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_resource',
+                       return_value={'rdfgs': [100, 200]})
+    def test_get_storage_group_rdf_groups(self, mck_get):
+        rdf_groups = self.rest.get_storage_group_rdf_groups(
+            self.data.array, self.data.storagegroup_name_f)
+        self.assertEqual([100, 200], rdf_groups)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_resource',
+                       return_value={"name": ["00038", "00039"]})
+    def test_get_rdf_group_volume_list(self, mck_get):
+        volumes_list = self.rest.get_rdf_group_volume_list(
+            self.data.array, self.data.rdf_group_no_1)
+        self.assertEqual(["00038", "00039"], volumes_list)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_resource')
     def test_get_rdf_pair_volume(self, mck_get):
         rdf_grp_no = self.data.rdf_group_no_1

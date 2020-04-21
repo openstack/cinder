@@ -1972,6 +1972,9 @@ class PowerMaxCommon(object):
             return volume_name
 
         array = extra_specs[utils.ARRAY]
+        if self.utils.is_replication_enabled(extra_specs):
+            self._validate_rdfg_status(array, extra_specs)
+
         # Check if the volume being deleted is a
         # source or target for copy session
         self._sync_check(array, device_id, extra_specs,
@@ -2034,6 +2037,9 @@ class PowerMaxCommon(object):
 
         if self.utils.is_replication_enabled(extra_specs):
             is_re, rep_mode = True, extra_specs['rep_mode']
+
+        if is_re:
+            self._validate_rdfg_status(array, extra_specs)
 
         storagegroup_name = self.masking.get_or_create_default_storage_group(
             array, extra_specs[utils.SRP], extra_specs[utils.SLO],
@@ -3710,6 +3716,11 @@ class PowerMaxCommon(object):
                 utils.REPLICATION_DEVICE_BACKEND_ID,
                 utils.BACKEND_ID_LEGACY_REP)
             backend_ids_differ = curr_backend_id != tgt_backend_id
+
+        if was_rep_enabled:
+            self._validate_rdfg_status(array, extra_specs)
+        if is_rep_enabled:
+            self._validate_rdfg_status(array, target_extra_specs)
 
         # Scenario 1: Rep -> Non-Rep
         # Scenario 2: Cleanup for Rep -> Diff Rep type
@@ -6088,3 +6099,170 @@ class PowerMaxCommon(object):
                     array, volume, device_id, volume_name, extra_specs, False)
             self._delete_from_srp(
                 array, device_id, volume_name, extra_specs)
+
+    def _validate_rdfg_status(self, array, extra_specs):
+        """Validate RDF group states before and after various operations
+
+        :param array: array serial number -- str
+        :param extra_specs: volume extra specs -- dict
+        """
+        rep_extra_specs = self._get_replication_extra_specs(
+            extra_specs, extra_specs[utils.REP_CONFIG])
+        rep_mode = extra_specs['rep_mode']
+        rdf_group_no = rep_extra_specs['rdf_group_no']
+
+        # Get default storage group for volume
+        disable_compression = self.utils.is_compression_disabled(extra_specs)
+        storage_group_name = self.utils.get_default_storage_group_name(
+            extra_specs['srp'], extra_specs['slo'], extra_specs['workload'],
+            disable_compression, True, extra_specs['rep_mode'])
+
+        # Check for storage group. Will be unavailable for first vol create
+        storage_group_details = self.rest.get_storage_group(
+            array, storage_group_name)
+        storage_group_available = storage_group_details is not None
+
+        if storage_group_available:
+            is_rep = self._validate_storage_group_is_replication_enabled(
+                array, storage_group_name)
+            is_exclusive = self._validate_rdf_group_storage_group_exclusivity(
+                array, storage_group_name)
+            is_valid_states = self._validate_storage_group_rdf_states(
+                array, storage_group_name, rdf_group_no, rep_mode)
+            if not (is_rep and is_exclusive and is_valid_states):
+                msg = (_('RDF validation for storage group %s failed. Please '
+                         'see logged error messages for specific details.'
+                         ) % storage_group_name)
+                raise exception.VolumeBackendAPIException(msg)
+
+        # Perform checks against Async or Metro management storage groups
+        if rep_mode is not utils.REP_SYNC:
+            management_sg_name = self.utils.get_rdf_management_group_name(
+                extra_specs['rep_config'])
+            management_sg_details = self.rest.get_storage_group(
+                array, management_sg_name)
+            management_sg_available = management_sg_details is not None
+
+            if management_sg_available:
+                is_rep = self._validate_storage_group_is_replication_enabled(
+                    array, management_sg_name)
+                is_excl = self._validate_rdf_group_storage_group_exclusivity(
+                    array, management_sg_name)
+                is_valid_states = self._validate_storage_group_rdf_states(
+                    array, management_sg_name, rdf_group_no, rep_mode)
+                is_cons = self._validate_management_group_volume_consistency(
+                    array, management_sg_name, rdf_group_no)
+                if not (is_rep and is_excl and is_valid_states and is_cons):
+                    msg = (_(
+                        'RDF validation for storage group %s failed. Please '
+                        'see logged error messages for specific details.')
+                        % management_sg_name)
+                    raise exception.VolumeBackendAPIException(msg)
+
+    def _validate_storage_group_is_replication_enabled(
+            self, array, storage_group_name):
+        """Validate that a storage groups is marked as RDF enabled
+
+        :param array: array serial number -- str
+        :param storage_group_name: name of the storage group -- str
+        :returns: consistency validation checks passed -- boolean
+        """
+        is_valid = True
+        sg_details = self.rest.get_storage_group_rep(array, storage_group_name)
+        sg_rdf_enabled = sg_details.get('rdf', False)
+        if not sg_rdf_enabled:
+            LOG.error('Storage group %s is expected to be RDF enabled but '
+                      'is not. Please check that all volumes in this storage '
+                      'group are RDF enabled and part of the same RDFG.',
+                      storage_group_name)
+            is_valid = False
+        return is_valid
+
+    def _validate_storage_group_rdf_states(
+            self, array, storage_group_name, rdf_group_no, rep_mode):
+        """Validate that the RDF states found for storage groups are valid.
+
+        :param array: array serial number -- str
+        :param storage_group_name: name of the storage group -- str
+        :param rep_mode: replication mode being used -- str
+        :returns: consistency validation checks passed -- boolean
+        """
+        is_valid = True
+        sg_rdf_states = self.rest.get_storage_group_rdf_group_state(
+            array, storage_group_name, rdf_group_no)
+        # Verify Async & Metro modes only have a single state
+        if rep_mode is not utils.REP_SYNC:
+            if len(sg_rdf_states) > 1:
+                sg_states_str = (', '.join(sg_rdf_states))
+                LOG.error('More than one RDFG state found for storage group '
+                          '%s. We expect a single state for all volumes when '
+                          'using %s replication mode. Found %s states.',
+                          storage_group_name, rep_mode, sg_states_str)
+                is_valid = False
+
+        # Determine which list of valid states to use
+        if rep_mode is utils.REP_SYNC:
+            valid_states = utils.RDF_VALID_STATES_SYNC
+        elif rep_mode is utils.REP_ASYNC:
+            valid_states = utils.RDF_VALID_STATES_ASYNC
+        else:
+            valid_states = utils.RDF_VALID_STATES_METRO
+
+        # Validate storage group states
+        for state in sg_rdf_states:
+            if state.lower() not in valid_states:
+                valid_states_str = (', '.join(valid_states))
+                LOG.error('Invalid RDF state found for storage group %s. '
+                          'Found state %s. Valid states are %s.',
+                          storage_group_name, state, valid_states_str)
+                is_valid = False
+        return is_valid
+
+    def _validate_rdf_group_storage_group_exclusivity(
+            self, array, storage_group_name):
+        """Validate that a storage group only has one RDF group.
+
+        :param array: array serial number -- str
+        :param storage_group_name: name of storage group -- str
+        :returns: consistency validation checks passed -- boolean
+        """
+        is_valid = True
+        sg_rdf_groups = self.rest.get_storage_group_rdf_groups(
+            array, storage_group_name)
+        if len(sg_rdf_groups) > 1:
+            rdf_groups_str = ', '.join(sg_rdf_groups)
+            LOG.error('Detected more than one RDF group associated with '
+                      'storage group %s. Only one RDFG should be associated '
+                      'with a storage group. Found RDF groups %s',
+                      storage_group_name, rdf_groups_str)
+            is_valid = False
+        return is_valid
+
+    def _validate_management_group_volume_consistency(
+            self, array, management_sg_name, rdf_group_number):
+        """Validate volume consistency between management SG and RDF group
+
+        :param array: array serial number -- str
+        :param management_sg_name: name of storage group -- str
+        :param rdf_group_number: rdf group number to check -- str
+        :returns: consistency validation checks passed -- boolean
+        """
+        is_valid = True
+        rdfg_volumes = self.rest.get_rdf_group_volume_list(
+            array, rdf_group_number)
+        sg_volumes = self.rest.get_volumes_in_storage_group(
+            array, management_sg_name)
+        missing_volumes = list()
+        for rdfg_volume in rdfg_volumes:
+            if rdfg_volume not in sg_volumes:
+                missing_volumes.append(rdfg_volume)
+        if missing_volumes:
+            missing_volumes_str = ', '.join(missing_volumes)
+            LOG.error(
+                'Inconsistency found between management group %s and RDF '
+                'group %s. The following volumes are not in the management '
+                'storage group %s. All Asynchronous and Metro volumes must '
+                'be managed together.',
+                management_sg_name, rdf_group_number, missing_volumes_str)
+            is_valid = False
+        return is_valid

@@ -706,6 +706,7 @@ class PowerMaxReplicationTest(test.TestCase):
             self.data.test_clone_volume, self.data.test_volume)
         self.assertEqual(ref_model_update, model_update)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(
         common.PowerMaxCommon, '_add_volume_to_rdf_management_group')
     @mock.patch.object(
@@ -727,12 +728,13 @@ class PowerMaxReplicationTest(test.TestCase):
         return_value=(True, True))
     def test_create_volume_rep_enabled(
             self, mck_slo, mck_prep, mck_get, mck_create, mck_protect, mck_set,
-            mck_add):
+            mck_add, mck_valid):
         volume = self.data.test_volume
         volume_name = self.data.volume_id
         volume_size = 1
         extra_specs = deepcopy(self.data.rep_extra_specs)
         extra_specs['mode'] = utils.REP_ASYNC
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
         volume_dict, rep_update, rep_info_dict = self.common._create_volume(
             volume, volume_name, volume_size, extra_specs)
         self.assertEqual(self.data.provider_location, volume_dict)
@@ -789,6 +791,7 @@ class PowerMaxReplicationTest(test.TestCase):
             mock_rm.assert_called_once_with(
                 array, volume, device_id, volume_name, ref_extra_specs, False)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(
         common.PowerMaxCommon, 'get_volume_metadata', return_value='')
     @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
@@ -800,7 +803,7 @@ class PowerMaxReplicationTest(test.TestCase):
         return_value=({'mgmt_sg_name': tpd.PowerMaxData.rdf_managed_async_grp,
                        'rdf_group_no': tpd.PowerMaxData.rdf_group_no_1}, True))
     def test_migrate_volume_success_rep_to_no_rep(
-            self, mck_break, mck_retype, mck_resume, mck_get):
+            self, mck_break, mck_retype, mck_resume, mck_get, mck_valid):
         array_id = self.data.array
         volume = self.data.test_volume
         device_id = self.data.device_id
@@ -828,6 +831,7 @@ class PowerMaxReplicationTest(test.TestCase):
             target_slo, target_workload, target_extra_specs)
         self.assertTrue(success)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(common.PowerMaxCommon, '_sync_check')
     @mock.patch.object(
         common.PowerMaxCommon, 'get_volume_metadata', return_value='')
@@ -845,7 +849,8 @@ class PowerMaxReplicationTest(test.TestCase):
                        'remote_array': tpd.PowerMaxData.remote_array},
                       tpd.PowerMaxData.rep_extra_specs, False))
     def test_migrate_volume_success_no_rep_to_rep(
-            self, mck_configure, mck_retype, mck_protect, mck_get, mck_check):
+            self, mck_configure, mck_retype, mck_protect, mck_get, mck_check,
+            mck_valid):
         self.common.rep_config = {'mode': utils.REP_SYNC,
                                   'array': self.data.array}
         array_id = self.data.array
@@ -885,6 +890,7 @@ class PowerMaxReplicationTest(test.TestCase):
             target_extra_specs)
         self.assertTrue(success)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(
         common.PowerMaxCommon, 'get_volume_metadata', return_value='')
     @mock.patch.object(
@@ -893,7 +899,7 @@ class PowerMaxReplicationTest(test.TestCase):
         common.PowerMaxCommon, '_retype_volume',
         return_value=(True, tpd.PowerMaxData.defaultstoragegroup_name))
     def test_migrate_volume_success_rep_to_rep(self, mck_retype, mck_remote,
-                                               mck_get):
+                                               mck_get, mck_valid):
         self.common.rep_config = {'mode': utils.REP_SYNC,
                                   'array': self.data.array}
         array_id = self.data.array
@@ -1304,3 +1310,244 @@ class PowerMaxReplicationTest(test.TestCase):
 
         self.assertEqual(extra_specs[utils.REP_CONFIG], rep_extra_specs)
         self.assertTrue(resume_rdf)
+
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'verify_slo_workload',
+        return_value=(True, True))
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name',
+                       return_value=tpd.PowerMaxData.rdf_managed_async_grp)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_management_group_volume_consistency',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_rdf_states',
+                       side_effect=[True, True])
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_rdf_group_storage_group_exclusivity',
+                       side_effect=[True, True])
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_is_replication_enabled',
+                       side_effect=[True, True])
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=tpd.PowerMaxData.sg_details[0])
+    def test_validate_rdfg_status_success(
+            self, mck_get, mck_is_rep, mck_is_excl, mck_states, mck_cons,
+            mck_mgrp_name, mck_slo):
+        array = self.data.array
+        extra_specs = deepcopy(self.data.rep_extra_specs6)
+        extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        management_sg_name = self.data.rdf_managed_async_grp
+        rdfg = self.data.rdf_group_no_2
+        mode = utils.REP_ASYNC
+
+        self.common._validate_rdfg_status(array, extra_specs)
+
+        self.assertEqual(2, mck_get.call_count)
+        self.assertEqual(2, mck_is_rep.call_count)
+        self.assertEqual(2, mck_is_excl.call_count)
+        self.assertEqual(2, mck_states.call_count)
+        self.assertEqual(1, mck_cons.call_count)
+        self.assertEqual(1, mck_mgrp_name.call_count)
+        mck_is_rep.assert_called_with(array, management_sg_name)
+        mck_is_excl.assert_called_with(array, management_sg_name)
+        mck_states.assert_called_with(array, management_sg_name, rdfg, mode)
+        mck_cons.assert_called_with(array, management_sg_name, rdfg)
+
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'verify_slo_workload',
+        return_value=(True, True))
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_rdf_states',
+                       return_value=False)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_rdf_group_storage_group_exclusivity',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_is_replication_enabled',
+                       return_value=True)
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=tpd.PowerMaxData.sg_details[0])
+    def test_validate_rdfg_status_failure_default_sg(
+            self, mck_get, mck_is_rep, mck_is_excl, mck_states, mck_slo):
+        array = self.data.array
+        extra_specs = deepcopy(self.data.rep_extra_specs6)
+        extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        rdfg = self.data.rdf_group_no_2
+        mode = utils.REP_ASYNC
+        disable_compression = self.utils.is_compression_disabled(extra_specs)
+        storage_group = self.utils.get_default_storage_group_name(
+            extra_specs['srp'], extra_specs['slo'], extra_specs['workload'],
+            disable_compression, True, extra_specs['rep_mode'])
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._validate_rdfg_status,
+                          array, extra_specs)
+
+        self.assertEqual(1, mck_get.call_count)
+        self.assertEqual(1, mck_is_rep.call_count)
+        self.assertEqual(1, mck_is_excl.call_count)
+        self.assertEqual(1, mck_states.call_count)
+        mck_is_rep.assert_called_with(array, storage_group)
+        mck_is_excl.assert_called_with(array, storage_group)
+        mck_states.assert_called_with(array, storage_group, rdfg, mode)
+
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'verify_slo_workload',
+        return_value=(True, True))
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name',
+                       return_value=tpd.PowerMaxData.rdf_managed_async_grp)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_management_group_volume_consistency',
+                       return_value=False)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_rdf_states',
+                       side_effect=[True, True])
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_rdf_group_storage_group_exclusivity',
+                       side_effect=[True, True])
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_is_replication_enabled',
+                       side_effect=[True, True])
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=tpd.PowerMaxData.sg_details[0])
+    def test_validate_rdfg_status_failure_management_sg(
+            self, mck_get, mck_is_rep, mck_is_excl, mck_states, mck_cons,
+            mck_mgrp_name, mck_slo):
+        array = self.data.array
+        extra_specs = deepcopy(self.data.rep_extra_specs6)
+        extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        management_sg_name = self.data.rdf_managed_async_grp
+        rdfg = self.data.rdf_group_no_2
+        mode = utils.REP_ASYNC
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._validate_rdfg_status,
+                          array, extra_specs)
+
+        self.assertEqual(2, mck_get.call_count)
+        self.assertEqual(2, mck_is_rep.call_count)
+        self.assertEqual(2, mck_is_excl.call_count)
+        self.assertEqual(2, mck_states.call_count)
+        self.assertEqual(1, mck_cons.call_count)
+        self.assertEqual(1, mck_mgrp_name.call_count)
+        mck_is_rep.assert_called_with(array, management_sg_name)
+        mck_is_excl.assert_called_with(array, management_sg_name)
+        mck_states.assert_called_with(array, management_sg_name, rdfg, mode)
+        mck_cons.assert_called_with(array, management_sg_name, rdfg)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rep',
+                       return_value={'rdf': True})
+    def test_validate_storage_group_is_replication_enabled_success(
+            self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        is_valid = self.common._validate_storage_group_is_replication_enabled(
+            array, storage_group)
+        self.assertTrue(is_valid)
+        mck_get.assert_called_once_with(array, storage_group)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rep',
+                       return_value={'rdf': False})
+    def test_validate_storage_group_is_replication_enabled_failure(
+            self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        is_valid = self.common._validate_storage_group_is_replication_enabled(
+            array, storage_group)
+        self.assertFalse(is_valid)
+        mck_get.assert_called_once_with(array, storage_group)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+                       return_value=[utils.RDF_SYNC_STATE])
+    def test_validate_storage_group_rdf_states_success(self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        rdf_group_no = self.data.rdf_group_no_1
+        rep_mode = utils.REP_SYNC
+        is_valid = self.common._validate_storage_group_rdf_states(
+            array, storage_group, rdf_group_no, rep_mode)
+        self.assertTrue(is_valid)
+        mck_get.assert_called_once_with(array, storage_group, rdf_group_no)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+                       return_value=[utils.RDF_SYNC_STATE, utils.RDF_ACTIVE])
+    def test_validate_storage_group_rdf_states_multi_async_state_failure(
+            self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        rdf_group_no = self.data.rdf_group_no_1
+        rep_mode = utils.REP_ASYNC
+        is_valid = self.common._validate_storage_group_rdf_states(
+            array, storage_group, rdf_group_no, rep_mode)
+        self.assertFalse(is_valid)
+        mck_get.assert_called_once_with(array, storage_group, rdf_group_no)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+                       return_value=['invalid_state'])
+    def test_validate_storage_group_rdf_states_invalid_state_failure(
+            self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        rdf_group_no = self.data.rdf_group_no_1
+        rep_mode = utils.REP_ASYNC
+        is_valid = self.common._validate_storage_group_rdf_states(
+            array, storage_group, rdf_group_no, rep_mode)
+        self.assertFalse(is_valid)
+        mck_get.assert_called_once_with(array, storage_group, rdf_group_no)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_groups',
+                       return_value=[tpd.PowerMaxData.rdf_group_no_1])
+    def test_validate_rdf_group_storage_group_exclusivity_success(
+            self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        is_valid = self.common._validate_rdf_group_storage_group_exclusivity(
+            array, storage_group)
+        self.assertTrue(is_valid)
+        mck_get.assert_called_once_with(array, storage_group)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_groups',
+                       return_value=[tpd.PowerMaxData.rdf_group_no_1,
+                                     tpd.PowerMaxData.rdf_group_no_2])
+    def test_validate_rdf_group_storage_group_exclusivity_failure(
+            self, mck_get):
+        array = self.data.array
+        storage_group = self.data.storagegroup_name_f
+        is_valid = self.common._validate_rdf_group_storage_group_exclusivity(
+            array, storage_group)
+        self.assertFalse(is_valid)
+        mck_get.assert_called_once_with(array, storage_group)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volumes_in_storage_group',
+                       return_value=[tpd.PowerMaxData.device_id])
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group_volume_list',
+                       return_value=[tpd.PowerMaxData.device_id])
+    def test_validate_management_group_volume_consistency_success(
+            self, mck_rdf, mck_sg):
+        array = self.data.array
+        storage_group = self.data.rdf_managed_async_grp
+        rdf_group = self.data.rdf_group_no_1
+        is_valid = self.common._validate_management_group_volume_consistency(
+            array, storage_group, rdf_group)
+        self.assertTrue(is_valid)
+        mck_rdf.assert_called_once_with(array, rdf_group)
+        mck_sg.assert_called_once_with(array, storage_group)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volumes_in_storage_group',
+                       return_value=[tpd.PowerMaxData.device_id])
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group_volume_list',
+                       return_value=[tpd.PowerMaxData.device_id,
+                                     tpd.PowerMaxData.device_id2])
+    def test_validate_management_group_volume_consistency_failure(
+            self, mck_rdf, mck_sg):
+        array = self.data.array
+        storage_group = self.data.rdf_managed_async_grp
+        rdf_group = self.data.rdf_group_no_1
+        is_valid = self.common._validate_management_group_volume_consistency(
+            array, storage_group, rdf_group)
+        self.assertFalse(is_valid)
+        mck_rdf.assert_called_once_with(array, rdf_group)
+        mck_sg.assert_called_once_with(array, storage_group)
