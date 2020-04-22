@@ -19,6 +19,7 @@ from datetime import timedelta
 from unittest import mock
 
 import ddt
+from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
@@ -32,6 +33,8 @@ from cinder.scheduler import host_manager
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.objects import test_service
+
+CONF = cfg.CONF
 
 
 class FakeFilterClass1(filters.BaseBackendFilter):
@@ -1456,6 +1459,48 @@ class BackendStateTestCase(test.TestCase):
                          fake_backend.pools['_pool0'].free_capacity_gb)
         self.assertEqual(0,
                          fake_backend.pools['_pool0'].provisioned_capacity_gb)
+
+    def test_filter_goodness_default_capabilities(self):
+        self.addCleanup(CONF.clear_override, 'filter_function')
+        self.addCleanup(CONF.clear_override, 'goodness_function')
+        CONF.set_override('filter_function', '2')
+        CONF.set_override('goodness_function', '4')
+
+        capability = {
+            'filter_function': CONF.filter_function,
+            'goodness_function': CONF.goodness_function,
+            'timestamp': None,
+            'pools': [{'pool_name': 'fake_pool'}]
+        }
+        fake_backend = host_manager.BackendState('host1', None)
+
+        fake_backend.update_from_volume_capability(capability)
+        pool_cap = fake_backend.pools['fake_pool']
+
+        self.assertEqual('2', pool_cap.filter_function)
+        self.assertEqual('4', pool_cap.goodness_function)
+
+    def test_append_backend_info_custom_capabilities(self):
+        pool_cap = {
+            'pool_name': 'pool1',
+            'total_capacity_gb': 30.01,
+            'free_capacity_gb': 28.01,
+            'allocated_capacity_gb': 2.0,
+            'provisioned_capacity_gb': 2.0,
+            'max_over_subscription_ratio': '1.0',
+            'thin_provisioning_support': False,
+            'thick_provisioning_support': True,
+            'reserved_percentage': 5
+        }
+
+        volume_capability = {'filter_function': 5,
+                             'goodness_function': 10}
+        fake_backend = host_manager.BackendState(
+            'host1', None, capabilities=volume_capability)
+        fake_backend._append_backend_info(pool_cap)
+
+        self.assertEqual(5, pool_cap['filter_function'])
+        self.assertEqual(10, pool_cap['goodness_function'])
 
 
 class PoolStateTestCase(test.TestCase):
