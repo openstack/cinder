@@ -1825,8 +1825,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         if volume.status not in ('available', 'retyping', 'maintenance',
                                  'in-use'):
-            LOG.debug('Only available or in-use volumes can be migrated using'
-                      'backend assisted migration. Falling back to generic'
+            LOG.debug('Only available or in-use volumes can be migrated using '
+                      'backend assisted migration. Falling back to generic '
                       'migration.')
             return refuse_to_migrate
 
@@ -1867,12 +1867,12 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 return refuse_to_migrate
 
             if rbd_pool == self.configuration.rbd_pool:
-                LOG.debug('Migration in the same pool, just need to update'
-                          'volume’s host value to destination host.')
+                LOG.debug('Migration in the same pool, just need to update '
+                          "volume's host value to destination host.")
                 return (True, None)
 
             if volume.status == 'in-use':
-                LOG.debug('Migration in-use volume between different pools.'
+                LOG.debug('Migration in-use volume between different pools. '
                           'Falling back to generic migration.')
                 return refuse_to_migrate
 

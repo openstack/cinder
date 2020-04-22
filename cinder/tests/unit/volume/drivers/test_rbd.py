@@ -2311,7 +2311,7 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(3.00, total_provision)
 
     def test_migrate_volume_bad_volume_status(self):
-        self.volume_a.status = 'backuping'
+        self.volume_a.status = 'backingup'
         ret = self.driver.migrate_volume(context, self.volume_a, None)
         self.assertEqual((False, None), ret)
 
