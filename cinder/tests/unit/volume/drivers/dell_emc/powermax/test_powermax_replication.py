@@ -737,6 +737,7 @@ class PowerMaxReplicationTest(test.TestCase):
         extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
         volume_dict, rep_update, rep_info_dict = self.common._create_volume(
             volume, volume_name, volume_size, extra_specs)
+        mck_valid.assert_not_called()
         self.assertEqual(self.data.provider_location, volume_dict)
         self.assertEqual(self.data.replication_update, rep_update)
         self.assertIsNone(rep_info_dict)
@@ -890,50 +891,63 @@ class PowerMaxReplicationTest(test.TestCase):
             target_extra_specs)
         self.assertTrue(success)
 
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
+                       return_value='')
+    @mock.patch.object(common.PowerMaxCommon, 'update_metadata',
+                       return_value=tpd.PowerMaxData.replication_model)
+    @mock.patch.object(provision.PowerMaxProvision, 'verify_slo_workload',
+                       return_value=(True, True))
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(common.PowerMaxCommon, '_retype_volume',
+                       return_value=(True, 'storage_group'))
+    @mock.patch.object(common.PowerMaxCommon, 'configure_volume_replication',
+                       return_value=('status', 'data',
+                                     tpd.PowerMaxData.rep_info_dict,
+                                     tpd.PowerMaxData.rep_extra_specs_mgmt,
+                                     True))
+    @mock.patch.object(common.PowerMaxCommon, '_sync_check')
+    @mock.patch.object(common.PowerMaxCommon, 'break_rdf_device_pair_session',
+                       return_value=(tpd.PowerMaxData.rep_extra_specs_mgmt,
+                                     True))
     @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
-    @mock.patch.object(
-        common.PowerMaxCommon, 'get_volume_metadata', return_value='')
-    @mock.patch.object(
-        common.PowerMaxCommon, '_retype_remote_volume', return_value=True)
-    @mock.patch.object(
-        common.PowerMaxCommon, '_retype_volume',
-        return_value=(True, tpd.PowerMaxData.defaultstoragegroup_name))
-    def test_migrate_volume_success_rep_to_rep(self, mck_retype, mck_remote,
-                                               mck_get, mck_valid):
-        self.common.rep_config = {'mode': utils.REP_SYNC,
-                                  'array': self.data.array}
-        array_id = self.data.array
+    def test_migrate_volume_success_rep_to_rep(
+            self, mck_valid, mck_break, mck_sync, mck_rep, mck_retype,
+            mck_resume, mck_slo, mck_upd_meta, mck_get_meta):
+        array = self.data.array
         volume = self.data.test_volume
         device_id = self.data.device_id
         srp = self.data.srp
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         volume_name = volume.name
-        rep_config_sync = deepcopy(self.data.rep_config_sync)
-        rep_config_sync[utils.RDF_CONS_EXEMPT] = False
         extra_specs = deepcopy(self.data.rep_extra_specs)
-        extra_specs[utils.SLO] = self.data.slo_diamond
-        new_type = {'extra_specs': self.data.rep_extra_specs}
-
-        target_extra_specs = deepcopy(new_type['extra_specs'])
-        target_extra_specs.update({
-            utils.SRP: srp, utils.ARRAY: array_id, utils.SLO: target_slo,
-            utils.WORKLOAD: target_workload,
-            utils.INTERVAL: extra_specs[utils.INTERVAL],
-            utils.RETRIES: extra_specs[utils.RETRIES],
-            utils.DISABLECOMPRESSION: False, utils.REP_MODE: utils.REP_SYNC,
-            utils.REP_CONFIG: rep_config_sync})
-
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+        extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = (
+            self.data.rep_config_sync[utils.BACKEND_ID])
+        target_extra_specs = deepcopy(self.data.rep_extra_specs)
+        target_extra_specs['rep_extra_specs'] = utils.REP_ASYNC
+        target_extra_specs['rdf_group_no'] = self.data.rdf_group_name_2
+        target_extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        target_extra_specs[utils.REPLICATION_DEVICE_BACKEND_ID] = (
+            self.data.rep_config_async[utils.BACKEND_ID])
+        new_type = {'extra_specs': target_extra_specs}
         success, model_update = self.common._migrate_volume(
-            array_id, volume, device_id, srp, target_slo, target_workload,
+            array, volume, device_id, srp, target_slo, target_workload,
             volume_name, new_type, extra_specs)
-        mck_retype.assert_called_once_with(
-            array_id, srp, device_id, volume, volume_name, extra_specs,
-            target_slo, target_workload, target_extra_specs)
-        mck_remote.assert_called_once_with(
-            array_id, volume, device_id, volume_name, utils.REP_SYNC,
-            True, target_extra_specs)
+        self.assertEqual(2, mck_valid.call_count)
+        mck_valid.assert_called_with(array, target_extra_specs)
+        mck_break.assert_called_once_with(
+            array, device_id, volume_name, extra_specs)
+        mck_sync.assert_called_once_with(array, device_id, extra_specs)
+        mck_rep.assert_called_once_with(
+            array, volume, device_id, target_extra_specs)
+        mck_retype.assert_called_once()
+        self.assertEqual(2, mck_resume.call_count)
+        mck_resume.assert_called_with(
+            array, self.data.rep_extra_specs_mgmt['mgmt_sg_name'],
+            extra_specs['rdf_group_no'], self.data.rep_extra_specs_mgmt)
         self.assertTrue(success)
+        self.assertEqual(self.data.replication_model, model_update)
 
     @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     @mock.patch.object(provision.PowerMaxProvision, 'get_or_create_group')

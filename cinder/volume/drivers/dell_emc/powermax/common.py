@@ -2038,9 +2038,6 @@ class PowerMaxCommon(object):
         if self.utils.is_replication_enabled(extra_specs):
             is_re, rep_mode = True, extra_specs['rep_mode']
 
-        if is_re:
-            self._validate_rdfg_status(array, extra_specs)
-
         storagegroup_name = self.masking.get_or_create_default_storage_group(
             array, extra_specs[utils.SRP], extra_specs[utils.SLO],
             extra_specs[utils.WORKLOAD], extra_specs,
@@ -2121,6 +2118,7 @@ class PowerMaxCommon(object):
             _is_first_vol_in_replicated_sg())
 
         if not is_first_volume:
+            self._validate_rdfg_status(array, extra_specs)
             __, rep_extra_specs, rep_info_dict, __ = (
                 self.prepare_replication_details(extra_specs))
             volume_info_dict = self.provision.create_volume_from_sg(
@@ -3678,8 +3676,10 @@ class PowerMaxCommon(object):
         :returns: bool
         """
         model_update, success = None, False
-        rep_info_dict, rep_extra_specs, rep_mode, rep_status, resume_rdf = (
-            None, None, None, False, False)
+        rep_info_dict, rep_extra_specs, rep_mode, rep_status = (
+            None, None, None, False)
+        resume_target_sg, resume_original_sg = False, False
+        resume_original_sg_dict = dict()
 
         target_extra_specs = new_type['extra_specs']
         target_extra_specs.update({
@@ -3725,19 +3725,26 @@ class PowerMaxCommon(object):
         # Scenario 1: Rep -> Non-Rep
         # Scenario 2: Cleanup for Rep -> Diff Rep type
         if (was_rep_enabled and not is_rep_enabled) or backend_ids_differ:
-            rep_extra_specs, resume_rdf = (
+            rep_extra_specs, resume_original_sg = (
                 self.break_rdf_device_pair_session(
                     array, device_id, volume_name, extra_specs))
             model_update = {
                 'replication_status': REPLICATION_DISABLED,
                 'replication_driver_data': None}
 
+            if resume_original_sg:
+                resume_original_sg_dict = {
+                    utils.ARRAY: array,
+                    utils.SG_NAME: rep_extra_specs['mgmt_sg_name'],
+                    utils.RDF_GROUP_NO: rep_extra_specs['rdf_group_no'],
+                    utils.EXTRA_SPECS: rep_extra_specs}
+
         # Scenario 1: Non-Rep -> Rep
         # Scenario 2: Rep -> Diff Rep type
         if (not was_rep_enabled and is_rep_enabled) or backend_ids_differ:
             self._sync_check(array, device_id, extra_specs)
             (rep_status, rep_driver_data, rep_info_dict,
-             rep_extra_specs, resume_rdf) = (
+             rep_extra_specs, resume_target_sg) = (
                 self.configure_volume_replication(
                     array, volume, device_id, target_extra_specs))
             model_update = {
@@ -3770,10 +3777,16 @@ class PowerMaxCommon(object):
                 array, volume, device_id, volume_name,
                 rep_mode, is_rep_enabled, target_extra_specs)
 
-        if resume_rdf:
+        if resume_target_sg:
             self.rest.srdf_resume_replication(
                 array, rep_extra_specs['mgmt_sg_name'],
                 rep_extra_specs['rdf_group_no'], rep_extra_specs)
+        if resume_original_sg and resume_original_sg_dict:
+            self.rest.srdf_resume_replication(
+                resume_original_sg_dict[utils.ARRAY],
+                resume_original_sg_dict[utils.SG_NAME],
+                resume_original_sg_dict[utils.RDF_GROUP_NO],
+                resume_original_sg_dict[utils.EXTRA_SPECS])
 
         if success:
             model_update = self.update_metadata(
