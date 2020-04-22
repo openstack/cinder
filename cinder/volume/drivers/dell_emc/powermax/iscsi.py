@@ -130,9 +130,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.2.1 - Concurrent live migrations failure (bug #1875478)
         4.2.2 - U4P failover lock not released on exception (#1875640)
         4.2.3 - Live migrate remove rep vol from sg (bug #1875432)
+        4.2.4 - Rep validation & retype suspension fix (bug #1875433)
     """
 
-    VERSION = "4.2.3"
+    VERSION = "4.2.4"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
