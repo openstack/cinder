@@ -5,9 +5,9 @@ Datera drivers
 Datera iSCSI driver
 -------------------
 
-The Datera Elastic Data Fabric (EDF) is a scale-out storage software that
+The Datera Data Services Platform (DSP) is a scale-out storage software that
 turns standard, commodity hardware into a RESTful API-driven, intent-based
-policy controlled storage fabric for large-scale clouds. The Datera EDF
+policy controlled storage fabric for large-scale clouds. The Datera DSP
 integrates seamlessly with the Block Storage service. It provides storage
 through the iSCSI block protocol framework over the iSCSI block protocol.
 Datera supports all of the Block Storage services.
@@ -18,13 +18,9 @@ System requirements, prerequisites, and recommendations
 Prerequisites
 ~~~~~~~~~~~~~
 
-* Must be running compatible versions of OpenStack and Datera EDF.
-  Please visit `here <https://github.com/datera/cinder-driver>`_ to determine
-  the correct version.
+* All nodes must have access to Datera DSP through the iSCSI block protocol.
 
-* All nodes must have access to Datera EDF through the iSCSI block protocol.
-
-* All nodes accessing the Datera EDF must have the following packages
+* All nodes accessing the Datera DSP must have the following packages
   installed:
 
   * Linux I/O (LIO)
@@ -56,27 +52,31 @@ Modify the ``/etc/cinder/cinder.conf`` file for Block Storage service.
 
    default_volume_type = datera
 
-* Create a new section for the Datera back-end definition. The ``san_ip`` can
+* Create a new section for the Datera back-end definition. The ``VIP`` can
   be either the Datera Management Network VIP or one of the Datera iSCSI
-  Access Network VIPs depending on the network segregation requirements:
+  Access Network VIPs depending on the network segregation requirements. For
+  a complete list of parameters that can be configured, please see the
+  section `Volume Driver Cinder.conf Options <https://github.com/Datera/cinder-driver/blob/master/README.rst#volume-driver-cinderconf-options>`_
 
 .. code-block:: ini
 
-   volume_driver = cinder.volume.drivers.datera.DateraDriver
-   san_ip = <IP_ADDR>            # The OOB Management IP of the cluster
-   san_login = admin             # Your cluster admin login
-   san_password = password       # Your cluster admin password
-   san_is_local = true
-   datera_num_replicas = 3       # Number of replicas to use for volume
+  [datera]
+  volume_driver = cinder.volume.drivers.datera.datera_iscsi.DateraDriver
+  san_ip = <VIP>
+  san_login = admin
+  san_password = password
+  datera_tenant_id =
+  volume_backend_name = datera
+  datera_volume_type_defaults=replica_count:3
 
 Enable the Datera volume driver
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* Verify the OpenStack control node can reach the Datera ``san_ip``:
+* Verify the OpenStack control node can reach the Datera ``VIP``:
 
 .. code-block:: bash
 
-   $ ping -c 4 <san_IP>
+   $ ping -c 4 <VIP>
 
 * Start the Block Storage service on all nodes running the ``cinder-volume``
   services:
@@ -85,31 +85,27 @@ Enable the Datera volume driver
 
    $ service cinder-volume restart
 
-QoS support for the Datera drivers includes the ability to set the
-following capabilities in QoS Specs
+Configuring one (or more) Datera specific volume types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **read_iops_max** -- must be positive integer
+There are extra volume type parameters that can be used to define Datera volume
+types with specific QoS policies (R/W IOPS, R/W bandwidth) and/or placement
+policies (replica count, type of media, IP pool to use, etc.)
 
-* **write_iops_max** -- must be positive integer
-
-* **total_iops_max** -- must be positive integer
-
-* **read_bandwidth_max** -- in KB per second, must be positive integer
-
-* **write_bandwidth_max** -- in KB per second, must be positive integer
-
-* **total_bandwidth_max** -- in KB per second, must be positive integer
+For a full list of supported options please see the `Volume-Type ExtraSpecs
+<https://github.com/Datera/cinder-driver/blob/master/README.rst#volume-type-extraspecs>`_
+section in the driver documentation.  See more examples in the `Usage
+<https://github.com/Datera/cinder-driver/blob/master/README.rst#usage>`_
+section.
 
 .. code-block:: bash
 
-   # Create qos spec
-   $ openstack volume qos create --property total_iops_max=1000 total_bandwidth_max=2000 DateraBronze
+   # Create 2 replica volume type
+   $ openstack volume type create datera_2way --property volume_backend_name=datera --property DF:replica_count=2
 
-   # Associate qos-spec with volume type
-   $ openstack volume qos associate DateraBronze VOLUME_TYPE
+   # Create volume type with limited write IOPS
+   $ openstack volume type create datera_iops --property volume_backend_name=datera --property DF:write_iops_max=5000
 
-   # Add additional qos values or update existing ones
-   $ openstack volume qos set --property read_bandwidth_max=500 DateraBronze
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -133,39 +129,8 @@ Supported operations
 Configuring multipathing
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-The following configuration is for 3.X Linux kernels, some parameters in
-different Linux distributions may be different. Make the following changes
-in the ``multipath.conf`` file:
-
-.. code-block:: text
-
-    defaults {
-    checker_timer 5
-    }
-    devices {
-        device {
-            vendor "DATERA"
-            product "IBLOCK"
-            getuid_callout "/lib/udev/scsi_id --whitelisted --
-            replace-whitespace --page=0x80 --device=/dev/%n"
-            path_grouping_policy group_by_prio
-            path_checker tur
-            prio alua
-            path_selector "queue-length 0"
-            hardware_handler "1 alua"
-            failback 5
-        }
-    }
-    blacklist {
-        device {
-            vendor ".*"
-            product ".*"
-        }
-    }
-    blacklist_exceptions {
-        device {
-            vendor "DATERA.*"
-            product "IBLOCK.*"
-        }
-    }
-
+Enabling multipathing is strongly reccomended for reliability and availability
+reasons.  Please refer to the following `file
+<https://github.com/Datera/datera-csi/blob/master/assets/multipath.conf>`_ for
+an example of configuring multipathing in Linux 3.x kernels.  Some parameters
+in different Linux distributions may be different.
