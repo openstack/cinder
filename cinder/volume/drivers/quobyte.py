@@ -35,7 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.1.11'
+VERSION = '1.1.12'
 
 LOG = logging.getLogger(__name__)
 
@@ -114,6 +114,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.9 - Support for Qemu >= 2.10.0
         1.1.10 - Adds overlay based volumes for snapshot merge caching
         1.1.11 - NAS secure ownership & permissions are now False by default
+        1.1.12 - Ensure the currently configured volume url is always used
 
     """
 
@@ -243,6 +244,13 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
                   "this cached volume exist.",
                   {"cvol": os.path.join(cache_path, cache_file_name)})
         fileutils.delete_if_exists(os.path.join(cache_path, cache_file_name))
+
+    def _strip_qb_protocol(self, url):
+        # Strip quobyte:// from the URL
+        protocol = self.driver_volume_type + "://"
+        if url.startswith(protocol):
+            return url[len(protocol):]
+        return url
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -572,12 +580,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         """
         self.shares = {}
 
-        url = self.configuration.quobyte_volume_url
-
-        # Strip quobyte:// from the URL
-        protocol = self.driver_volume_type + "://"
-        if url.startswith(protocol):
-            url = url[len(protocol):]
+        url = self._strip_qb_protocol(self.configuration.quobyte_volume_url)
 
         self.shares[url] = None  # None = No extra mount options.
 
@@ -589,7 +592,10 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         :param quobyte_volume: string
         """
         mount_path = self._get_mount_point_for_share(quobyte_volume)
-        self._mount_quobyte(quobyte_volume, mount_path, ensure=True)
+        # NOTE(kaisers): Always use the currently configured volume url
+        self._mount_quobyte(
+            self._strip_qb_protocol(self.configuration.quobyte_volume_url),
+            mount_path, ensure=True)
 
     @utils.synchronized('quobyte_ensure', external=False)
     def _ensure_shares_mounted(self):

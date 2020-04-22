@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes a bug that could cause mount failures with the Quobyte driver if
+    the quobyte_volume_url setting was changed in a running system.

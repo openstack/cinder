@@ -555,7 +555,7 @@ class QuobyteDriverTestCase(test.TestCase):
             mock_get_mount_point.assert_called_once_with(
                 self.TEST_QUOBYTE_VOLUME)
             mock_mount.assert_called_once_with(
-                self.TEST_QUOBYTE_VOLUME,
+                self.TEST_QUOBYTE_VOLUME_WITHOUT_PROTOCOL,
                 mock_get_mount_point.return_value,
                 ensure=True)
 
