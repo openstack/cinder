@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    IBM GPFS drivers had been previously marked unsupported. Testing
+    requirements have been addressed and they are now fully supported again.
+    IBM GPFS drivers allow cinder to manage volumes.
