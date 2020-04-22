@@ -329,6 +329,16 @@ image_opts = [
                      'section or in [backend_defaults] section as a common '
                      'configuration for all backends.'),
 ]
+fqdn_opts = [
+    cfg.BoolOpt('unique_fqdn_network',
+                default=True,
+                help="Whether or not our private network has unique FQDN on "
+                     "each initiator or not. For example networks with QA "
+                     "systems usually have multiple servers/VMs with the same "
+                     "FQDN. When true this will create host entries on 3PAR "
+                     "using the FQDN, when false it will use the reversed "
+                     "IQN/WWNN."),
+]
 
 
 CONF = cfg.CONF
@@ -343,6 +353,7 @@ CONF.register_opts(nvmet_opts)
 CONF.register_opts(scst_opts)
 CONF.register_opts(backup_opts)
 CONF.register_opts(image_opts)
+CONF.register_opts(fqdn_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.import_opt('backup_use_same_host', 'cinder.backup.api')
 
 
@@ -404,6 +415,7 @@ class BaseVD(object):
             self.configuration.append_config_values(scst_opts)
             self.configuration.append_config_values(backup_opts)
             self.configuration.append_config_values(image_opts)
+            self.configuration.append_config_values(fqdn_opts)
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
 
             # NOTE(geguileo): Don't allow to start if we are enabling

@@ -288,6 +288,7 @@ def list_opts():
                 cinder_volume_driver.nvmet_opts,
                 cinder_volume_driver.scst_opts,
                 cinder_volume_driver.image_opts,
+                cinder_volume_driver.fqdn_opts,
                 cinder_volume_drivers_dell_emc_powermax_common.powermax_opts,
                 cinder_volume_drivers_dell_emc_sc_storagecentercommon.
                 common_opts,
