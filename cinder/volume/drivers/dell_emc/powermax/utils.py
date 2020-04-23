@@ -559,28 +559,28 @@ class PowerMaxUtils(object):
         """
         arrays = set()
         # Check if it is a generic volume group instance
+        intervals_retries_dict = {INTERVAL: interval, RETRIES: retries}
         if isinstance(group, Group):
             for volume_type in group.volume_types:
                 extra_specs = self.update_extra_specs(volume_type.extra_specs)
-                arrays.add(extra_specs[ARRAY])
+                try:
+                    arrays.add(extra_specs[ARRAY])
+                except KeyError:
+                    return None, intervals_retries_dict
         else:
             msg = (_("Unable to get volume type ids."))
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(message=msg)
 
-        if len(arrays) != 1:
-            if not arrays:
-                msg = (_("Failed to get an array associated with "
-                         "volume group: %(groupid)s.")
-                       % {'groupid': group.id})
-            else:
-                msg = (_("There are multiple arrays "
-                         "associated with volume group: %(groupid)s.")
-                       % {'groupid': group.id})
+        if len(arrays) > 1:
+            msg = (_("There are multiple arrays "
+                     "associated with volume group: %(groupid)s.")
+                   % {'groupid': group.id})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(message=msg)
         array = arrays.pop()
-        intervals_retries_dict = {INTERVAL: interval, RETRIES: retries}
+        LOG.debug("Serial number %s retrieved from the volume type extra "
+                  "specs.", array)
         return array, intervals_retries_dict
 
     def update_volume_group_name(self, group):

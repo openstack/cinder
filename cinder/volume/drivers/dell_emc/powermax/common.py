@@ -4263,8 +4263,7 @@ class PowerMaxCommon(object):
         vol_grp_name = self.utils.update_volume_group_name(group)
 
         try:
-            array, interval_retries_dict = self.utils.get_volume_group_utils(
-                group, self.interval, self.retries)
+            array, interval_retries_dict = self._get_volume_group_info(group)
             self.provision.create_volume_group(
                 array, vol_grp_name, interval_retries_dict)
             if group.is_replicated:
@@ -4313,8 +4312,7 @@ class PowerMaxCommon(object):
         :returns: model_update, volumes_model_update
         """
         volumes_model_update = []
-        array, interval_retries_dict = self.utils.get_volume_group_utils(
-            group, self.interval, self.retries)
+        array, interval_retries_dict = self._get_volume_group_info(group)
         vol_grp_name = None
 
         volume_group = self._find_volume_group(
@@ -4521,8 +4519,8 @@ class PowerMaxCommon(object):
         :param source_group: the group object
         :param snap_name: the name of the snapshot
         """
-        array, interval_retries_dict = self.utils.get_volume_group_utils(
-            source_group, self.interval, self.retries)
+        array, interval_retries_dict = self._get_volume_group_info(
+            source_group)
         vol_grp_name = None
         volume_group = (
             self._find_volume_group(array, source_group))
@@ -4574,8 +4572,8 @@ class PowerMaxCommon(object):
         vol_grp_name = None
         try:
             # Get the array serial
-            array, extra_specs = self.utils.get_volume_group_utils(
-                source_group, self.interval, self.retries)
+            array, extra_specs = self._get_volume_group_info(
+                source_group)
             # Get the volume group dict for getting the group name
             volume_group = (self._find_volume_group(array, source_group))
             if volume_group and volume_group.get('name'):
@@ -4664,8 +4662,7 @@ class PowerMaxCommon(object):
                 and not group.is_replicated):
             raise NotImplementedError()
 
-        array, interval_retries_dict = self.utils.get_volume_group_utils(
-            group, self.interval, self.retries)
+        array, interval_retries_dict = self._get_volume_group_info(group)
         model_update = {'status': fields.GroupStatus.AVAILABLE}
         add_vols = [vol for vol in add_volumes] if add_volumes else []
         add_device_ids = self._get_volume_device_ids(add_vols, array)
@@ -4793,8 +4790,7 @@ class PowerMaxCommon(object):
 
         tgt_name = self.utils.update_volume_group_name(group)
         rollback_dict = {}
-        array, interval_retries_dict = self.utils.get_volume_group_utils(
-            group, self.interval, self.retries)
+        array, interval_retries_dict = self._get_volume_group_info(group)
         source_sg = self._find_volume_group(array, actual_source_grp)
         if source_sg is not None:
             src_grp_name = (source_sg['name']
@@ -5282,6 +5278,27 @@ class PowerMaxCommon(object):
             if return_value is None:
                 return_value = self.configuration.safe_get(second_key)
         return return_value
+
+    def _get_volume_group_info(self, group):
+        """Get the volume group array, retries and intervals
+
+        :param group: the group object
+        :returns: array -- str
+                  interval_retries_dict -- dict
+        """
+        array, interval_retries_dict = self.utils.get_volume_group_utils(
+            group, self.interval, self.retries)
+        if not array:
+            array = self._get_configuration_value(
+                utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
+            if not array:
+                exception_message = _(
+                    "Cannot get the array serial_number")
+
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    message=exception_message)
+        return array, interval_retries_dict
 
     def _get_unlink_configuration_value(self, first_key, second_key):
         """Get the configuration value of snapvx_unlink_limit
