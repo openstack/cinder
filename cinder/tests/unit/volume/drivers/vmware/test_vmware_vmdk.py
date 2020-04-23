@@ -118,7 +118,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vmware_datastore_regex=None,
             reserved_percentage=0,
             vmware_profile_check_on_attach=True,
-                        vmware_storage_profile=[self.STORAGE_PROFILE],
+            vmware_storage_profile=[self.STORAGE_PROFILE],
         )
 
         self._db = mock.Mock()
@@ -168,9 +168,15 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_storage_profile.assert_called_once_with(volume)
         get_profile_id_by_name.assert_called_once_with(session, 'gold')
 
+    @mock.patch.object(VMDK_DRIVER, 'session')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
-    def test_get_volume_stats(self, _get_datastore_summaries, vops):
+    def test_get_volume_stats(self, _get_datastore_summaries, vops,
+                            session):
+        retr_result_mock = mock.Mock(spec=['objects'])
+        retr_result_mock.objects = []
+        session.vim.RetrievePropertiesEx.return_value = retr_result_mock
+        session.vim.service_content.instanceUuid = 'fake-service'
         FREE_GB = 7
         TOTAL_GB = 11
 
@@ -203,6 +209,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual(TOTAL_GB, stats['total_capacity_gb'])
         self.assertEqual(FREE_GB, stats['free_capacity_gb'])
         self.assertFalse(stats['shared_targets'])
+        self.assertEqual(vmdk.LOCATION_DRIVER_NAME + ":fake-service",
+                         stats['location_info'])
 
     def test_test_volume_stats_disabled(self):
         RESERVED_PERCENTAGE = 0
@@ -3527,12 +3535,19 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch('oslo_vmware.vim_util.get_moref')
     def test_migrate_volume(self, get_moref, vops, backing=None,
-                            raises_error=False):
+                            raises_error=False, capabilities=None):
         r_api = mock.Mock()
         self._driver._remote_api = r_api
         volume = self._create_volume_obj()
         vops.get_backing.return_value = backing
-        host = {'host': 'fake-host', 'capabilities': {}}
+        if capabilities is None:
+            capabilities = {
+                'location_info': vmdk.LOCATION_DRIVER_NAME + ":foo_vcenter"
+            }
+        host = {
+            'host': 'fake-host',
+            'capabilities': capabilities
+        }
         ds_info = {'host': 'fake-ds-host', 'resource_pool': 'fake-rp',
                    'datastore': 'fake-ds-name', 'folder': 'fake-folder'}
         get_moref.side_effect = [
@@ -3549,20 +3564,26 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         ret_val = self._driver.migrate_volume(mock.sentinel.context, volume,
                                               host)
 
-        vops.get_backing.assert_called_once_with(volume.name, volume.id)
+        dest_host = host['host']
 
-        if not backing:
-            r_api.create_backing.assert_called_once_with(
-                mock.sentinel.context, host['host'], volume)
+        def _assertions_migration_not_called():
             r_api.get_service_locator_info.assert_not_called()
             r_api.select_ds_for_volume.assert_not_called()
             vops.relocate_backing.assert_not_called()
             r_api.move_volume_backing_to_folder.assert_not_called()
             get_moref.assert_not_called()
-            self.assertEqual((True, None), ret_val)
-        else:
-            dest_host = host['host']
 
+        def _assertions_for_no_backing():
+            vops.get_backing.assert_called_once_with(volume.name, volume.id)
+            _assertions_migration_not_called()
+            self.assertEqual((True, None), ret_val)
+
+        def _assertions_migration_not_performed():
+            _assertions_migration_not_called()
+            self.assertEqual((False, None), ret_val)
+
+        def _assertions_for_migration():
+            vops.get_backing.assert_called_once_with(volume.name, volume.id)
             r_api.get_service_locator_info.assert_called_once_with(
                 mock.sentinel.context, dest_host)
 
@@ -3587,11 +3608,30 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             else:
                 self.assertEqual((True, None), ret_val)
 
+            if capabilities and 'location_info' in capabilities:
+                if vmdk.LOCATION_DRIVER_NAME in capabilities['location_info']:
+                    if backing:
+                        _assertions_for_migration()
+                    else:
+                        _assertions_for_no_backing()
+                else:
+                    _assertions_migration_not_performed()
+            else:
+                _assertions_migration_not_performed()
+
     def test_migrate_volume_relocate_existing_backing(self):
         self.test_migrate_volume(backing=mock.Mock())
 
     def test_migrate_volume_move_to_folder_error(self):
         self.test_migrate_volume(backing=mock.Mock(), raises_error=True)
+
+    def test_migrate_volume_missing_location_info(self):
+        self.test_migrate_volume(backing=mock.Mock(), capabilities={})
+
+    def test_migrate_volume_invalid_location_info(self):
+        self.test_migrate_volume(backing=mock.Mock(), capabilities={
+            'location_info': 'invalid-location-info'
+        })
 
 
 @ddt.ddt
