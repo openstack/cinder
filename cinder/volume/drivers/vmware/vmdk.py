@@ -71,6 +71,8 @@ EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
 EXTENSION_KEY = 'org.openstack.storage'
 EXTENSION_TYPE = 'volume'
 
+LOCATION_DRIVER_NAME = 'VMwareVcVmdkDriver'
+
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                help='IP address for connecting to VMware vCenter server.'),
@@ -449,6 +451,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         result.token)
                 else:
                     break
+        location_info = '%(driver_name)s:%(vcenter)s' % {
+            'driver_name': LOCATION_DRIVER_NAME,
+            'vcenter': self.session.vim.service_content.about.instanceUuid}
+
+        data['location_info'] = location_info
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
         data['free_capacity_gb'] = round(global_free / units.Gi)
         return data
@@ -2522,17 +2529,31 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     def migrate_volume(self, context, volume, host):
         """Migrate a volume to the specified host.
 
-        If the backing is not created, the dest host will create it.
+        If the backing is not created, returns success.
         """
+
+        false_ret = (False, None)
+        if volume['status'] != 'available':
+            return false_ret
+        if 'location_info' not in host['capabilities']:
+            return false_ret
+        info = host['capabilities']['location_info']
+        try:
+            (driver_name, vcenter) = info.split(':')
+        except ValueError:
+            return false_ret
+
+        if driver_name != LOCATION_DRIVER_NAME:
+            return false_ret
+
         backing = self.volumeops.get_backing(volume.name, volume.id)
         dest_host = host['host']
-        # If the backing is not yet created, let the destination host create it
-        # In this case, migration is not necessary
+        # If the backing is not yet created, there is no need to migrate
         if not backing:
             LOG.info("There is no backing for the volume: %(volume_name)s. "
-                     "Creating it on dest_host %(dest_host)s.",
+                     "No need for a migration. The volume will be assigned to"
+                     " %(dest_host)s.",
                      {'volume_name': volume.name, 'dest_host': dest_host})
-            self._remote_api.create_backing(context, host['host'], volume)
             return (True, None)
 
         service_locator = self._remote_api.get_service_locator_info(context,
