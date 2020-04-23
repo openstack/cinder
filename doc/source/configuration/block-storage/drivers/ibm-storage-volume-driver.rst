@@ -15,19 +15,13 @@ After the driver is configured on the OpenStack Cinder nodes, storage volumes
 can be allocated by the Cinder nodes to the Nova nodes. Virtual machines on
 the Nova nodes can then utilize these storage resources.
 
-.. note::
-
-    Unless stated otherwise, all references to XIV storage
-    system in this guide relate all members of the Spectrum Accelerate
-    Family (SAF): XIV, Spectrum Accelerate, FlashSystem A9000/A9000R.
-
 Concept diagram
 ---------------
 This figure illustrates how an IBM storage system is connected
 to the OpenStack cloud environment and provides storage resources when the
 IBM Storage Driver for OpenStack is configured on the OpenStack Cinder nodes.
 The OpenStack cloud is connected to the IBM storage system over Fibre
-Channel or iSCSI (DS8000 systems support only Fibre Channel connections).
+Channel.
 Remote cloud users can issue requests for storage resources from the
 OpenStack cloud. These requests are transparently handled by the IBM Storage
 Driver, which communicates with the IBM storage system and controls the
@@ -36,16 +30,6 @@ Nova nodes in the OpenStack cloud.
 
 .. figure:: ../../figures/ibm-storage-nova-concept.png
 
-Preparation
-~~~~~~~~~~~
-
-If you intend to manage a Spectrum Accelerate Family product,
-you need to install a Python client for executing CLI commands
-on all Cinder nodes. The IBM Python XCLI Client allows full
-management and monitoring of the relevant storage systems.
-
-The client package and its documentation are available at `GitHub
-<https://github.com/IBM/pyxcli>`_.
 
 Compatibility and requirements
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,16 +49,6 @@ systems, as detailed in the following table.
 |                 | API patch          |                    |
 +-----------------+--------------------+--------------------+
 | IBM DS8880      | 8.1 or later       | Fibre Channel (FC) |
-+-----------------+--------------------+--------------------+
-| IBM XIV         | 11.1.x, 11.2.x,    | Fibre Channel (FC) |
-| Storage System  | 11.3.x, 11.4.x,    | iSCSI              |
-|                 | 11.5.x, 11.6.x     |                    |
-+-----------------+--------------------+--------------------+
-| IBM Spectrum    | 11.5.x             | iSCSI              |
-| Accelerate      |                    |                    |
-+-----------------+--------------------+--------------------+
-| IBM FlashSystem | 12.0.x, 12.1.x,    | Fibre Channel (FC) |
-| A9000/A9000R    | 12.2.x             | iSCSI              |
 +-----------------+--------------------+--------------------+
 
 
@@ -167,13 +141,6 @@ OpenStack Cinder and Nova-compute nodes.
 | sysfsutils utility     | All OpenStack Cinder nodes on FC |
 |                        | network                          |
 +------------------------+----------------------------------+
-| iscsi-initiator-utils  | All OpenStack Cinder and Nova    |
-| utility (RHEL and      | compute nodes on iSCSI network   |
-| CentOS) or open-iscsi  |                                  |
-| utility (Ubuntu)       |                                  |
-+------------------------+----------------------------------+
-| IBM Python XCLI client | All OpenStack Cinder nodes       |
-+------------------------+----------------------------------+
 
 Configuration
 ~~~~~~~~~~~~~
@@ -221,51 +188,7 @@ Replication parameters
 | _cg             | consistency groups           |               |
 +-----------------+------------------------------+---------------+
 
-Configuration Description for SAF
----------------------------------
 
-+-----------------+------------------------------+---------------+
-| Parameter       | Description                  | Applicable to |
-+=================+==============================+===============+
-| management_ips  | IP addresses of the          | SAF           |
-|                 | management interfaces of a   |               |
-|                 | storage system               |               |
-+-----------------+------------------------------+---------------+
-| san_password    | Storage system password      | SAF           |
-|                 | (base64-encoded)             |               |
-+-----------------+------------------------------+---------------+
-| san_login       | Storage system user name     | SAF           |
-+-----------------+------------------------------+---------------+
-| volume_driver   | Driver to use for volume     | SAF           |
-|                 | creation                     |               |
-+-----------------+------------------------------+---------------+
-| proxy           | Proxy for IBM storage driver | SAF           |
-|                 | location within Cinder       |               |
-|                 |                              |               |
-|                 | SAF: cinder.volume.drivers.  |               |
-|                 | ibm.ibm_storage.xiv_proxy.   |               |
-|                 | XIVProxy                     |               |
-|                 |                              |               |
-|                 | DS8000: cinder.volume.       |               |
-|                 | drivers.ibm.ibm_storage.     |               |
-|                 | xiv_proxy.XIVProxy           |               |
-+-----------------+------------------------------+---------------+
-| san_ip          | Storage system IP address or | SAF           |
-|                 | hostname                     |               |
-+-----------------+------------------------------+---------------+
-| connection_type | Network connection type      | SAF           |
-|                 |                              |               |
-|                 | Values: fibre_channel, iscsi |               |
-+-----------------+------------------------------+---------------+
-| san_clustername | Storage pool name            | SAF           |
-+-----------------+------------------------------+---------------+
-| chap            | iSCSI CHAP authentication    | SAF           |
-|                 | usage                        |               |
-|                 |                              |               |
-|                 | Values: disabled, enabled    |               |
-+-----------------+------------------------------+---------------+
-| system_id       | Storage system ID            | SAF           |
-+-----------------+------------------------------+---------------+
 
 Security
 ~~~~~~~~
@@ -273,35 +196,7 @@ Security
 The following information provides an overview of security for the
 IBM Storage Driver for OpenStack.
 
-Avoiding man-in-the-middle attacks
-----------------------------------
-
-When using a Spectrum Accelerate Family product, you can prevent
-man-in-the-middle (MITM) attacks by following these rules:
-
-* Upgrade to IBM XIV storage system version 11.3 or later.
-
-* If working in a secure mode, do not work insecurely against another
-  storage system in the same environment.
-
-* Validate the storage certificate. If you are using an XIV-provided
-  certificate, use the CA file that was provided with your storage
-  system (``XIV-CA.pem``). The certificate files should be copied
-  to one of the following directories:
-
-  * ``/etc/ssl/certs``
-  * ``/etc/ssl/certs/xiv``
-  * ``/etc/pki``
-  * ``/etc/pki/xiv``
-
-If you are using your own certificates, copy them to the same
-directories with the prefix ``XIV`` and in the ``.pem`` format.
-For example: XIV-my_cert.pem.
-
-* In order to prevent the CVE-2014-3566 MITM attack, follow these `directions
-  <https://www.ibm.com/support/knowledgecenter/en/HSG_NOVA_141/UG/nova_ig_ch4_mitm_attacks.html?cp=HW213_7.4.0>`_.
-
-Configuring Cinder nodes for trusted communication (DS8000 Family)
+Configuring Cinder nodes for trusted communication
 ------------------------------------------------------------------
 The IBM Storage Driver for OpenStack communicates with DS8000
 over HTTPS, using self-signed certificate or certificate signed
@@ -470,114 +365,12 @@ save the file, and then restart the cinder-volume service.
 Check the log files on a periodic basis to ensure that the IBM
 Storage Driver is functioning properly. To check the log file on a
 Cinder node, go to the /var/log/cinder folder and open the
-activity log file named cinder-volume.log or volume.log. The IBM
-Storage Driver writes to this log file using the [IBM DS8K STORAGE]
-or [IBM XIV STORAGE] prefix (depending on the relevant storage system)
-for each event that it records in the file.
+activity log file named cinder-volume.log or volume.log.
 
 Best practices
 ~~~~~~~~~~~~~~
 
 This section contains the general guidance and best practices.
-
-Working with multi-tenancy (Spectrum Accelerate Family)
--------------------------------------------------------
-The XIV storage systems, running microcode version 11.5 or later,
-Spectrum Accelerate and FlashSystem A9000/A9000R can employ
-multi-tenancy.
-
-In order to use multi-tenancy with the IBM Storage Driver for
-OpenStack:
-
-* For each storage system, verify that all predefined storage pools
-  are in the same domain or, that all are not in a domain.
-
-* Use either storage administrator or domain administrator user's
-  credentials, as long as the credentials grant a full access to the
-  relevant pool.
-* If the user is a domain administrator, the storage system domain
-  access policy can be CLOSED (``domain_policy: access=CLOSED``).
-  Otherwise, verify that the storage system domain access policy is
-  OPEN (``domain_policy: access=OPEN``).
-* If the user is not a domain administrator, the host management policy
-  of the storage system domain can be BASIC (``domain_policy:
-  host_management=BASIC``). Otherwise, verify that the storage
-  system domain host management policy is EXTENDED
-  (``domain_policy: host_management=EXTENDED``).
-
-Working with IBM Real-time Compression™ (Spectrum Accelerate Family)
---------------------------------------------------------------------
-XIV storage systems running microcode version 11.6 or later,
-Spectrum Accelerate and FlashSystem A9000/A9000R can employ IBM
-Real-time Compression™.
-
-Follow these guidelines when working with compressed storage
-resources using the IBM Storage Driver for OpenStack:
-
-* Compression mode cannot be changed for storage volumes, using
-  the IBM Storage Driver for OpenStack. The volumes are created
-  according to the default compression mode of the pool. For example,
-  any volume created in a compressed pool will be compressed as well.
-
-* The minimum size for a compressed storage volume is 87 GB.
-
-Working with QoS (Spectrum Accelerate Family)
----------------------------------------------
-The IBM Storage Driver for OpenStack provides QoS per volume for
-IBM FlashSystem A9000/A9000R storage systems, running microcode
-version of 12.0 or later. With QoS classes, the user can control
-the maximum bandwidth and I/O operations for each volume.
-For detailed instructions on QoS configuration, refer to the
-user documentation of the relevant storage system on IBM
-`Knowledge Center
-<https://www.ibm.com/support/knowledgecenter>`_.
-
-QoS class types:
-
-* Shared (default). Limits the combined rates of all of the volumes
-  in the same QoS class. The maximum rate is the sum of the
-  combined rate for each volume. For example, two volumes under
-  a QoS class of maximum 100 Gbps are allocated a combined
-  maximum bandwidth rate of 100 Gbps.
-
-* Independent. Sets the maximum rate separately for each volume
-  in the QoS class. For example, for two volumes under a QoS
-  class of maximum 100 Gbps, each volume is limited to a rate
-  of 100 Gbps. Thus, the combined maximum bandwidth rate is up
-  to 200 Gbps.
-
-To define a QoS class:
-
-#. Create the QoS class:
-
-   .. code-block:: console
-
-       cinder qos-create <class_name> <class_specs: bw=#, iops=#>
-
-#. Create a type:
-
-   .. code-block:: console
-
-       cinder type-create type_<qos_class_name>
-
-#. Associate the QoS class with the type:
-
-   .. code-block:: console
-
-       cinder qos-associate <qos uuid> <type uuid>
-
-#. Announce that the type is supporting QoS:
-
-   .. code-block:: console
-
-       cinder type-key <type_name or UUID> set QoS_support=True
-
-#. Create a volume:
-
-   .. code-block:: console
-
-       cinder create 1 --volume-type <type_name>
-
 
 Configuring volume replication (DS8000 Family)
 ----------------------------------------------
