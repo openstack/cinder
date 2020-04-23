@@ -1,0 +1,13 @@
+prelude: |
+    Welcome to the Ussuri release of the OpenStack Block Storage service
+    (cinder).  The cinder team would like to bring the following points
+    to your attention.  Details may be found below.
+
+    * With this release, the Block Storage API version 3 has reached
+      microversion **3.60**.
+
+    * Python 2 is no longer supported.  The minimum version of Python
+      that may be used with this release is **Python 3.6**.
+
+    * The unsupported driver removal policy has been revised.  See the
+      "Known Issues" section of this document for more information.
