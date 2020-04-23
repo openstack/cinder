@@ -685,6 +685,15 @@ class VMAXCommonData(object):
 
     headroom = {"headroom": [{"headroomCapacity": 20348.29}]}
 
+    volume_details_legacy = {'cap_gb': 2,
+                             'num_of_storage_groups': 1,
+                             'volumeId': device_id,
+                             'volume_identifier': test_volume.id,
+                             'wwn': volume_wwn,
+                             'snapvx_target': 'false',
+                             'snapvx_source': 'false',
+                             'storageGroupId': []}
+
 
 class FakeLookupService(object):
     def get_device_mapping_from_network(self, initiator_wwns, target_wwns):
@@ -2952,6 +2961,26 @@ class VMAXRestTest(test.TestCase):
                                return_value=self.data.powermax_model_details):
             self.assertEqual(self.rest.get_vmax_model(self.data.array),
                              reference)
+
+    def test_check_volume_device_id_legacy_case(self):
+        element_name = self.utils.get_volume_element_name(
+            self.data.test_volume.id)
+        with mock.patch.object(self.rest, 'get_volume',
+                               return_value=self.data.volume_details_legacy):
+            found_dev_id = self.rest.check_volume_device_id(
+                self.data.array, self.data.device_id, element_name)
+        self.assertEqual(self.data.device_id, found_dev_id)
+
+    def test_check_volume_device_id_legacy_case_no_match(self):
+        element_name = self.utils.get_volume_element_name(
+            self.data.test_volume.id)
+        volume_details_no_match = deepcopy(self.data.volume_details_legacy)
+        volume_details_no_match['volume_identifier'] = 'no_match'
+        with mock.patch.object(self.rest, 'get_volume',
+                               return_value=volume_details_no_match):
+            found_dev_id = self.rest.check_volume_device_id(
+                self.data.array, self.data.device_id, element_name)
+        self.assertIsNone(found_dev_id)
 
 
 class VMAXProvisionTest(test.TestCase):
