@@ -1,7 +1,8 @@
 ---
 upgrade:
   - |
-    IBM Storwize drivers had been previously marked unsupported. Testing
-    requirements have been addressed and they are now fully supported again.
-    IBM Storwize drivers allow cinder to manage volumes both in iSCSI and
-    FC environment.
+    IBM Spectrum Virtualize Family (previously known as Storwize) drivers
+    had been previously marked unsupported. Testing requirements have been
+    addressed and they are now fully supported again. IBM Spectrum Virtualize
+    Family drivers allow Cinder to manage volumes both in iSCSI and FC
+    environments.

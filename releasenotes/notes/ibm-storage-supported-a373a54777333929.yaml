@@ -1,6 +1,6 @@
 ---
 upgrade:
   - |
-    IBM DS8k drivers had been previously marked unsupported. Testing
+    IBM DS8000 drivers had been previously marked unsupported. Testing
     requirements have been addressed and they are now fully supported again.
-    IBM DS8k drivers allow cinder to manage volumes in FC environment.
+    IBM DS8000 drivers allow Cinder to manage volumes in FC environment.
