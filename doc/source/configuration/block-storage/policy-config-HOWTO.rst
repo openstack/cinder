@@ -19,7 +19,7 @@ Policy configuration HowTo
 
 You can use Cinder policies to control how your users and administrators
 interact with the Block Storage Service.  In this HowTo, we'll discuss the user
-model Cinder employs and how it can be modfied by adjusting policies.
+model Cinder employs and how it can be modified by adjusting policies.
 
 * Like most OpenStack services, Cinder uses the OpenStack ``oslo.policy``
   library as a base for its policy-related code.  For a discussion of "rules"

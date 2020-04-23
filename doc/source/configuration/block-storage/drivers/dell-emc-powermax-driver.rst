@@ -1615,7 +1615,7 @@ restarted for changes to take effect.
 
   ``u4p_failover_target`` key value pairs will need to be on the same
   line (separated by commas) in cinder.conf. They are displayed on
-  separated lines above for readiblity.
+  separated lines above for readability.
 
 .. note::
 
@@ -1744,7 +1744,7 @@ Configure the source and target arrays
 
       ``replication_device`` key value pairs will need to be on the same
       line (separated by commas) in cinder.conf. They are displayed on
-      separated lines above for readiblity.
+      separated lines above for readability.
 
    * ``target_device_id`` is a unique PowerMax array serial number of the
      target array. For full failover functionality, the source and target

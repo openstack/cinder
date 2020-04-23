@@ -362,7 +362,7 @@ on several external factors below:
    nova side currently.
 
 Administrator can disable this ability by updating the
-``volume:extend_attached_volume`` policy rule.  Extend of a resered
+``volume:extend_attached_volume`` policy rule.  Extend of a reserved
 Volume is NOT allowed.
 
 3.43 (Maximum in Pike)

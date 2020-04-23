@@ -74,7 +74,7 @@ Configuring the array
        of an array user account with ``manage`` privileges.
      * ``driver_use_ssl`` should be set to ``true`` to enable use of the
        HTTPS protocol.
-     * ``hpmsa_iscsi_ips`` specfies the iSCSI IP addresses for the array
+     * ``hpmsa_iscsi_ips`` specifies the iSCSI IP addresses for the array
        if using the iSCSI transport protocol.
 
    In the examples below, two back ends are defined, one for pool A and one for
