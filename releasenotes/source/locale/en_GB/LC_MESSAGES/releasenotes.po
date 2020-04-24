@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-18 00:34+0000\n"
+"POT-Creation-Date: 2020-04-24 04:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -107,9 +107,6 @@ msgstr "12.0.1"
 msgid "12.0.10"
 msgstr "12.0.10"
 
-msgid "12.0.10-8"
-msgstr "12.0.10-8"
-
 msgid "12.0.2"
 msgstr "12.0.2"
 
@@ -188,14 +185,8 @@ msgstr "15.0.1"
 msgid "15.1.0"
 msgstr "15.1.0"
 
-msgid "15.1.0-3"
-msgstr "15.1.0-3"
-
 msgid "16.0.0.0b1"
 msgstr "16.0.0.0b1"
-
-msgid "16.0.0.0b1-111"
-msgstr "16.0.0.0b1-111"
 
 msgid ""
 "3PAR driver creates FC VLUN of match-set type instead of host sees. With "
@@ -3689,15 +3680,6 @@ msgstr "Huawei Cinder Driver Support Dorado V6 Storage.(iSCSI, FC)"
 
 msgid "IBM DS8K driver has added multiattach support."
 msgstr "IBM DS8K driver has added multiattach support."
-
-msgid ""
-"IBM DS8k drivers had been previously marked unsupported. Testing "
-"requirements have been addressed and they are now fully supported again. IBM "
-"DS8k drivers allow cinder to manage volumes in FC environment."
-msgstr ""
-"IBM DS8k drivers had been previously marked unsupported. Testing "
-"requirements have been addressed and they are now fully supported again. IBM "
-"DS8k drivers allow cinder to manage volumes in FC environment."
 
 msgid ""
 "IBM Storwize drivers had been previously marked unsupported. Testing "
