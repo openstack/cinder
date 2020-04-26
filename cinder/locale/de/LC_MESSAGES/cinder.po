@@ -10,15 +10,16 @@
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 # Robert Simai <robert.simai@suse.com>, 2016. #zanata
 # Andreas Jaeger <jaegerandi@gmail.com>, 2019. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2020. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-04-09 02:29+0000\n"
+"POT-Creation-Date: 2020-04-24 15:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2019-10-03 07:02+0000\n"
+"PO-Revision-Date: 2020-04-25 07:47+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -780,6 +781,14 @@ msgstr ""
 
 msgid "Cluster"
 msgstr "Cluster"
+
+#, python-format
+msgid "Cluster %(id)s could not be found."
+msgstr "Cluster %(id)s konnte nicht gefunden werden."
+
+#, python-format
+msgid "Cluster %(name)s already exists."
+msgstr "Cluster %(name)s existiert bereits."
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
