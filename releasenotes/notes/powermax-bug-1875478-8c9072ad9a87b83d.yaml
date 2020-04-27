@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    PowerMax Driver - Concurrent live migrations can sometimes fail when one
+    thread deletes a storage group that another thread may need.

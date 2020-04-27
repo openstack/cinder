@@ -869,7 +869,7 @@ class PowerMaxMaskingTest(test.TestCase):
                    self.data.masking_view_name_f]
         with mock.patch.object(
                 rest.PowerMaxRest, 'get_masking_views_by_initiator_group',
-                side_effect=[mv_list, mv_list, [], []]):
+                side_effect=[mv_list, []]):
             self.mask._last_volume_delete_initiator_group(
                 self.data.array, self.data.initiatorgroup_name_i,
                 self.data.connector['host'])
@@ -1192,3 +1192,41 @@ class PowerMaxMaskingTest(test.TestCase):
                 self.data.array, self.data.parent_sg_f))
         self.assertEqual('host-with-dash', host_label)
         self.assertEqual('portgroup-with-dashes', port_group_label)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'is_child_sg_in_parent_sg', return_value=False)
+    @mock.patch.object(
+        rest.PowerMaxRest, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        side_effect=[None, tpd.PowerMaxData.sg_details[1],
+                     tpd.PowerMaxData.sg_details[2]])
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'create_storage_group')
+    def test_check_child_storage_group_exists_false(
+            self, mock_create, mock_get, mock_add, mock_check):
+        self.mask._check_child_storage_group_exists(
+            self.data.device_id, self.data.array,
+            self.data.storagegroup_name_i, self.data.extra_specs,
+            self.data.parent_sg_i)
+        mock_create.assert_called_once()
+        mock_add.assert_called_once()
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'is_child_sg_in_parent_sg', return_value=True)
+    @mock.patch.object(
+        rest.PowerMaxRest, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        side_effect=[tpd.PowerMaxData.sg_details[1],
+                     tpd.PowerMaxData.sg_details[3]])
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'create_storage_group')
+    def test_check_child_storage_group_exists_true(
+            self, mock_create, mock_get, mock_add, mock_check):
+        self.mask._check_child_storage_group_exists(
+            self.data.device_id, self.data.array,
+            self.data.storagegroup_name_i, self.data.extra_specs,
+            self.data.parent_sg_i)
+        mock_create.assert_not_called
+        mock_add.assert_not_called()
