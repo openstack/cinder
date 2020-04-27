@@ -78,9 +78,6 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     CI_WIKI_NAME = 'MacroSAN Volume CI'
 
-    # TODO(jsbryant) Remove driver in 'V' release if CI is not fixed.
-    SUPPORTED = False
-
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
         super(MacroSANBaseDriver, self).__init__(*args, **kwargs)
