@@ -27,9 +27,9 @@ import requests
 
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.volume import configuration
 from cinder.volume.drivers.inspur.as13000 import as13000_driver
 from cinder.volume import volume_utils

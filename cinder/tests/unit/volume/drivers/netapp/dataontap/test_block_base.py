@@ -32,8 +32,8 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base

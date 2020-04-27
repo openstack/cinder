@@ -21,7 +21,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import db
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta import iscsi
 from cinder.volume.drivers.nexenta import jsonrpc

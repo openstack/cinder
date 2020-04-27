@@ -20,9 +20,9 @@ from unittest import mock
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 class BackupRPCAPITestCase(test.RPCAPITestCase):

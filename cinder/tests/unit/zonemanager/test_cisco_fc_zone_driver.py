@@ -23,7 +23,7 @@ from oslo_config import cfg
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager.drivers.cisco import cisco_fc_zone_driver as driver
 

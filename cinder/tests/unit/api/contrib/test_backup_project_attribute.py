@@ -21,10 +21,10 @@ from cinder.api.v3 import router as router_v3
 from cinder.backup import api as backup_api
 from cinder import context
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 def fake_backup_get(*args, **kwargs):

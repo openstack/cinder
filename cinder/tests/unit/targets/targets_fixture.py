@@ -19,7 +19,7 @@ from unittest import mock
 from oslo_utils import fileutils
 from oslo_utils import timeutils
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 
 

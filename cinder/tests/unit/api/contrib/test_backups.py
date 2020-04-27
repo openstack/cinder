@@ -37,9 +37,9 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 # needed for stubs to work
 import cinder.volume

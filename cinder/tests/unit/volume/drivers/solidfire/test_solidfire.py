@@ -29,12 +29,12 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import solidfire

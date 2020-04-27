@@ -20,7 +20,7 @@ from unittest import mock
 from six.moves import UserDict
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.macrosan import devop_client

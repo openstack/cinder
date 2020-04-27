@@ -29,8 +29,8 @@ import webob.exc
 import cinder
 from cinder.api import api_utils
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import volume_utils
 

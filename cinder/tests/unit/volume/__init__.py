@@ -26,9 +26,9 @@ from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder.image import image_utils
 from cinder import objects
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf

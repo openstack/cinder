@@ -22,8 +22,8 @@ from unittest import mock
 from cinder.common import constants
 from cinder import context
 from cinder.scheduler import weights
-from cinder import test
 from cinder.tests.unit.scheduler import fakes
+from cinder.tests.unit import test
 from cinder.volume import volume_utils
 
 

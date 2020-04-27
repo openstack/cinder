@@ -25,7 +25,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import exception
 from cinder.keymgr import conf_key_mgr
-from cinder import test
+from cinder.tests.unit import test
 
 CONF = cfg.CONF
 CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='key_manager')

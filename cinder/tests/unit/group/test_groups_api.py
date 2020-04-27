@@ -27,9 +27,9 @@ from cinder import objects
 from cinder.objects import fields
 from cinder.policies import group_snapshots as g_snap_policies
 from cinder import quota
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 
 

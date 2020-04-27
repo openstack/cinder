@@ -17,7 +17,7 @@ from unittest import mock
 
 import ddt
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.performance \
     import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api

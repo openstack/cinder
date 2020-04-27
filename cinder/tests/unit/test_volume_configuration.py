@@ -17,7 +17,7 @@
 
 from oslo_config import cfg
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration
 
 

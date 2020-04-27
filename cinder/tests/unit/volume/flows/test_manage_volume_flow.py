@@ -19,9 +19,9 @@ from taskflow.types import failure as ft
 
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.flows import fake_volume_api
 from cinder.volume.flows.api import manage_existing
 from cinder.volume.flows import common as flow_common

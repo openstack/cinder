@@ -27,8 +27,8 @@ from cinder.api.openstack import wsgi
 from cinder.api.v3 import router
 from cinder.api import versions
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import test
 
 
 CONF = cfg.CONF

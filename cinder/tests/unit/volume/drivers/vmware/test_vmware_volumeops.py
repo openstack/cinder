@@ -22,7 +22,7 @@ from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware import vim_util
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import volumeops
 

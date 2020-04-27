@@ -22,7 +22,7 @@ from oslo_utils import importutils
 
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
 from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 from cinder.volume import configuration as conf

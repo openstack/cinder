@@ -19,9 +19,9 @@ import six
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import resource_filters as v3_filters
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 @ddt.ddt

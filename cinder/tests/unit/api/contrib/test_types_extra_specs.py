@@ -25,9 +25,9 @@ import webob
 from cinder.api.contrib import types_extra_specs
 from cinder import exception
 from cinder.image import glance as image_store
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 import cinder.wsgi
 
 CONF = cfg.CONF

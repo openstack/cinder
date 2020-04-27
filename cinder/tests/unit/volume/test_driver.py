@@ -31,11 +31,11 @@ from cinder.image import image_utils
 from cinder import objects
 from cinder.objects import fields
 import cinder.policy
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder import utils
 import cinder.volume

@@ -24,7 +24,7 @@ from cinder.api.openstack import api_version_request as api_version
 from cinder.api import validation
 from cinder.api.validation import parameter_types
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeRequest(object):

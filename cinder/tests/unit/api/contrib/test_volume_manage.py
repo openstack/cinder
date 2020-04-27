@@ -29,10 +29,10 @@ from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 
 CONF = cfg.CONF
 

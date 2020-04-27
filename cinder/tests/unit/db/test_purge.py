@@ -27,7 +27,7 @@ from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 
 
 class PurgeDeletedTest(test.TestCase):

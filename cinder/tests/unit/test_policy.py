@@ -21,7 +21,7 @@ from oslo_policy import policy as oslo_policy
 from cinder import context
 from cinder import exception
 from cinder import policy
-from cinder import test
+from cinder.tests.unit import test
 from cinder import utils
 
 CONF = cfg.CONF

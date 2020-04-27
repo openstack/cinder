@@ -25,11 +25,11 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import rpcapi as volume_rpcapi
 

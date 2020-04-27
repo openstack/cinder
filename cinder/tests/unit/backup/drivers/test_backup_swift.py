@@ -36,10 +36,10 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.backup import fake_swift_client
 from cinder.tests.unit.backup import fake_swift_client2
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 CONF = cfg.CONF

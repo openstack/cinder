@@ -21,10 +21,10 @@ import webob
 from cinder import context
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder import volume
 
 

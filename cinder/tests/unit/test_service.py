@@ -33,7 +33,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import rpc
 from cinder import service
-from cinder import test
+from cinder.tests.unit import test
 
 
 test_service_opts = [

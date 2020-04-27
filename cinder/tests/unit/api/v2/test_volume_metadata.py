@@ -27,11 +27,11 @@ from cinder.api.v2 import volumes
 from cinder import db
 from cinder import exception
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder import volume
 from cinder.volume import api as volume_api
 

@@ -24,12 +24,12 @@ from oslo_utils import units
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_type
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.volume import volume_utils
 
 

@@ -17,7 +17,7 @@ from oslo_utils import timeutils
 from cinder import context
 from cinder import exception
 from cinder.objects import base as obj_base
-from cinder import test
+from cinder.tests.unit import test
 
 
 class BaseObjectsTestCase(test.TestCase):

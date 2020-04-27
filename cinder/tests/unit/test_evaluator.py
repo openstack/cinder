@@ -15,7 +15,7 @@
 
 from cinder import exception
 from cinder.scheduler.evaluator import evaluator
-from cinder import test
+from cinder.tests.unit import test
 
 
 class EvaluatorTestCase(test.TestCase):

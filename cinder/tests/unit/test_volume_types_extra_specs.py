@@ -18,7 +18,7 @@ Unit Tests for volume types extra specs code
 
 from cinder import context
 from cinder import db
-from cinder import test
+from cinder.tests.unit import test
 
 
 class VolumeTypeExtraSpecsTestCase(test.TestCase):

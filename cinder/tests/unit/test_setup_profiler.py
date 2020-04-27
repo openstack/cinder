@@ -17,7 +17,7 @@ from unittest import mock
 
 from cinder.common import constants
 from cinder import service
-from cinder import test
+from cinder.tests.unit import test
 
 
 class SetupProfilerTestCase(test.TestCase):

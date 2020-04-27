@@ -19,7 +19,7 @@ from unittest import mock
 
 import requests
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.sandstone import test_utils
 from cinder.volume.drivers.sandstone import sds_client
 

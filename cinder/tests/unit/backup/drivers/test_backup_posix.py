@@ -22,8 +22,8 @@ from six.moves import builtins
 from cinder.backup.drivers import posix
 from cinder import context
 from cinder import objects
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 FAKE_FILE_SIZE = 52428800

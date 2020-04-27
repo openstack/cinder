@@ -17,7 +17,7 @@ from oslo_versionedobjects import fixture
 from cinder import db
 from cinder import objects
 from cinder.objects import base
-from cinder import test
+from cinder.tests.unit import test
 
 
 # NOTE: The hashes in this list should only be changed if they come with a

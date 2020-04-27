@@ -22,7 +22,7 @@ import ddt
 
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes as\
     fake_utils

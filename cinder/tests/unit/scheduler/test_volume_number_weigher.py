@@ -22,9 +22,9 @@ from cinder.common import constants
 from cinder import context
 from cinder.db.sqlalchemy import api
 from cinder.scheduler import weights
-from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.scheduler import fakes
+from cinder.tests.unit import test
 from cinder.volume import volume_utils
 
 

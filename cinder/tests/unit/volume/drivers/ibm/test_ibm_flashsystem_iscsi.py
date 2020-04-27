@@ -23,7 +23,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.ibm \
     import test_ibm_flashsystem as fscommon
 from cinder import utils

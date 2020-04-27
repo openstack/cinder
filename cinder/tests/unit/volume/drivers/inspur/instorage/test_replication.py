@@ -25,8 +25,8 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
 from cinder.tests.unit.volume.drivers.inspur.instorage import fakes
 from cinder import utils

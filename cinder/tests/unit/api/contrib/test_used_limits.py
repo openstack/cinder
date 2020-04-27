@@ -21,9 +21,9 @@ from cinder.api.contrib import used_limits
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 class FakeRequest(object):

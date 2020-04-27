@@ -30,10 +30,10 @@ from cinder.objects import fields
 from cinder.policies import base as base_policy
 from cinder.policies import volume_metadata as metadata_policy
 from cinder import policy
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder import volume
 
 

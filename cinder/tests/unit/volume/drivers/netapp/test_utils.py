@@ -27,7 +27,7 @@ from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as zapi_fakes)
 import cinder.tests.unit.volume.drivers.netapp.fakes as fake

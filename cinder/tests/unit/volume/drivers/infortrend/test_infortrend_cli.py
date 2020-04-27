@@ -15,7 +15,7 @@
 
 from unittest import mock
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 
 

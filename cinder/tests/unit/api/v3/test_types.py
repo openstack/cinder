@@ -14,9 +14,9 @@ from cinder.api import microversions as mv
 from cinder.api.v2 import types
 from cinder import context
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 class VolumeTypesApiTest(test.TestCase):

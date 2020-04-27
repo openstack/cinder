@@ -27,10 +27,10 @@ from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields as c_fields
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_objects
 from cinder.tests.unit import objects as test_objects
+from cinder.tests.unit import test
 
 
 class TestCinderObjectVersionHistory(test_objects.BaseObjectsTestCase):

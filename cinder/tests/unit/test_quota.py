@@ -35,9 +35,9 @@ from cinder.objects import fields
 from cinder import quota
 from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 import cinder.tests.unit.image.fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder import volume
 

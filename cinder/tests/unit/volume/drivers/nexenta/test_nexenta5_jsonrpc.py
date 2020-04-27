@@ -24,7 +24,7 @@ import uuid
 import requests
 import six
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 

@@ -25,8 +25,8 @@ from oslo_utils import uuidutils
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.hpe \
     import fake_hpe_3par_client as hpe3parclient
 from cinder.volume import configuration as cvol_cfg

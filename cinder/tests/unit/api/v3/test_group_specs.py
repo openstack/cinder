@@ -23,9 +23,9 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import rpc
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 fake_group_specs = {
     'key1': 'value1',

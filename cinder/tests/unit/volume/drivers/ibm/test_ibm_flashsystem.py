@@ -27,7 +27,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import flashsystem_fc

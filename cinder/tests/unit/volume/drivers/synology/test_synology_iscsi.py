@@ -18,8 +18,8 @@
 from unittest import mock
 
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.synology import synology_common as common
 from cinder.volume.drivers.synology import synology_iscsi

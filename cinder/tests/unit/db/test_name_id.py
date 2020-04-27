@@ -18,8 +18,8 @@ from oslo_config import cfg
 
 from cinder import context
 from cinder import db
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
 
 

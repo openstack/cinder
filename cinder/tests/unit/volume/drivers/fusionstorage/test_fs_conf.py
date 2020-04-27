@@ -20,7 +20,7 @@ from unittest import mock
 import ddt
 from six.moves import configparser
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume.drivers.fusionstorage import fs_conf
 
 

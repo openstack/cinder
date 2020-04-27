@@ -28,9 +28,9 @@ from cinder import objects
 from cinder.policies import attachments as attachments_policies
 from cinder.policies import base as base_policy
 from cinder import policy
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_utils

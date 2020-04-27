@@ -26,10 +26,10 @@ from cinder.api.v3 import router as router_v3
 from cinder.common import constants
 from cinder import context
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.api.contrib import test_volume_manage as test_contrib
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 CONF = cfg.CONF

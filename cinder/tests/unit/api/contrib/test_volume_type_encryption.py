@@ -19,9 +19,9 @@ import webob
 
 from cinder import context
 from cinder import db
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 def return_volume_type_encryption(context, volume_type_id):

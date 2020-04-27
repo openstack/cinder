@@ -34,12 +34,12 @@ from cinder import objects
 from cinder.objects import base as obj_base
 from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi

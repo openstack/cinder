@@ -25,7 +25,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.image import image_utils
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes as \
     fake_ssc

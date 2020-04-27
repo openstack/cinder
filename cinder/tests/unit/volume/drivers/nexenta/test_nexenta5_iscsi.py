@@ -20,7 +20,6 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import db
-from cinder import test
 from cinder.tests.unit.consistencygroup.fake_cgsnapshot import (
     fake_cgsnapshot_obj as fake_cgsnapshot)
 from cinder.tests.unit.consistencygroup.fake_consistencygroup import (
@@ -28,6 +27,7 @@ from cinder.tests.unit.consistencygroup.fake_consistencygroup import (
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.fake_snapshot import fake_snapshot_obj as fake_snapshot
 from cinder.tests.unit.fake_volume import fake_volume_obj as fake_volume
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.ns5 import iscsi
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc

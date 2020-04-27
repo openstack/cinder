@@ -21,7 +21,7 @@ import ddt
 from oslo_utils import units
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.unity \
     import fake_enum as enums
 from cinder.tests.unit.volume.drivers.dell_emc.unity \

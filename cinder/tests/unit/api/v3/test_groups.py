@@ -29,10 +29,10 @@ from cinder import exception
 import cinder.group
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
 

@@ -22,9 +22,9 @@ from cinder import context
 from cinder import exception
 from cinder.message import api as message_api
 from cinder.message import message_field
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v3 import fakes as v3_fakes
+from cinder.tests.unit import test
 
 
 NS = '{http://docs.openstack.org/api/openstack-block-storage/3.0/content}'

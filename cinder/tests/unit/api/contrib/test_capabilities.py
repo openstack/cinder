@@ -20,9 +20,9 @@ import oslo_messaging
 from cinder.api.contrib import capabilities
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 def rpcapi_get_capabilities(self, context, host, discover):

@@ -18,7 +18,7 @@ from unittest import mock
 import ddt
 
 from cinder import context
-from cinder import test
+from cinder.tests.unit import test
 
 
 @ddt.ddt

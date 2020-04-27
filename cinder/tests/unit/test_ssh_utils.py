@@ -17,7 +17,7 @@ import paramiko
 
 from cinder import exception
 from cinder import ssh_utils
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeSock(object):

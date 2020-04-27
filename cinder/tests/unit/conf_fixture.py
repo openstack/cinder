@@ -41,7 +41,7 @@ def set_defaults(conf):
     conf.set_default('transport_url', 'fake:/')
     conf.set_default('connection', 'sqlite://', group='database')
     conf.set_default('sqlite_synchronous', False, group='database')
-    conf.set_default('policy_file', 'cinder.tests.unit/policy.json',
+    conf.set_default('policy_file', '/this/path/does/not/exist',
                      group='oslo_policy')
     conf.set_default('backup_driver',
                      'cinder.tests.unit.backup.fake_service.FakeBackupService')

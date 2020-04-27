@@ -23,9 +23,9 @@ from cinder import context
 from cinder import exception
 from cinder.message import api as message_api
 from cinder.message import message_field
-from cinder import test
 from cinder.tests.unit.api import fakes
 import cinder.tests.unit.fake_constants as fake_constants
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 
 CONF = cfg.CONF

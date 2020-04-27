@@ -23,7 +23,7 @@ from unittest import mock
 from oslo_concurrency import processutils
 from six.moves import range
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.zonemanager.drivers.cisco \
     import cisco_fc_zone_client_cli as cli
 from cinder.zonemanager.drivers.cisco import exception as c_exception

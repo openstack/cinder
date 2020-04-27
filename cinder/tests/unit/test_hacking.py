@@ -18,8 +18,8 @@ from unittest import mock
 import ddt
 import pycodestyle
 
-from cinder import test
 from cinder.tests.hacking import checks
+from cinder.tests.unit import test
 
 
 @ddt.ddt

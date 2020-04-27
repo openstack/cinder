@@ -29,10 +29,10 @@ import six
 
 from cinder import context
 from cinder import exception as cinder_exceptions
-from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions

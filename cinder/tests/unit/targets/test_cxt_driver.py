@@ -18,8 +18,8 @@ import sys
 from unittest import mock
 
 from cinder import context
-from cinder import test
 from cinder.tests.unit.targets import targets_fixture as tf
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume.targets import cxt
 

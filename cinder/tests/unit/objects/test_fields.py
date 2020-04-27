@@ -13,7 +13,7 @@
 #    under the License.
 
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeFieldType(fields.FieldType):

@@ -18,7 +18,7 @@ import ddt
 
 from cinder.scheduler import base_weight
 from cinder.scheduler.weights.stochastic import StochasticHostWeightHandler
-from cinder import test
+from cinder.tests.unit import test
 
 
 @ddt.ddt

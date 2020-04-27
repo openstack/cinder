@@ -19,7 +19,7 @@ import six
 
 from cinder.api.openstack import api_version_request
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 
 
 @ddt.ddt

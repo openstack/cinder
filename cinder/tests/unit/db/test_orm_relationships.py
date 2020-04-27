@@ -18,7 +18,7 @@ from sqlalchemy_utils import functions as saf
 
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
-from cinder import test
+from cinder.tests.unit import test
 
 
 class VolumeRelationshipsTestCase(test.TestCase):

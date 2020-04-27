@@ -23,7 +23,7 @@ import requests
 
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 import cinder.volume.drivers.stx.client
 import cinder.volume.drivers.stx.common
 import cinder.volume.drivers.stx.exception as stx_exception

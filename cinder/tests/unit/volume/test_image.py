@@ -788,7 +788,8 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
                           force=True)
 
 
-class CopyVolumeToImagePrivateFunctionsTestCase(cinder.test.TestCase):
+class CopyVolumeToImagePrivateFunctionsTestCase(
+        cinder.tests.unit.test.TestCase):
 
     @mock.patch('cinder.volume.api.API.get_volume_image_metadata',
                 return_value={'some_key': 'some_value',

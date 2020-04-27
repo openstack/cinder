@@ -22,9 +22,9 @@ import six
 
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
     powermax_data as tpd)
 from cinder.tests.unit.volume.drivers.dell_emc.powermax import (

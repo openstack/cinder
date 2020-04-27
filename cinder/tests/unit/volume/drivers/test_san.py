@@ -15,7 +15,7 @@
 
 from unittest import mock
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
 

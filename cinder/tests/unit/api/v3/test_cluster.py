@@ -26,8 +26,8 @@ from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import clusters
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_cluster
+from cinder.tests.unit import test
 
 
 CLUSTERS = [

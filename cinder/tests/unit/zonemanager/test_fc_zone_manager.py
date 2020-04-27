@@ -22,7 +22,7 @@
 from unittest import mock
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager.drivers import fc_zone_driver
 from cinder.zonemanager import fc_zone_manager

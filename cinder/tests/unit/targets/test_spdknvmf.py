@@ -14,7 +14,7 @@ import copy
 import json
 from unittest import mock
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.targets import spdknvmf as spdknvmf_driver
 

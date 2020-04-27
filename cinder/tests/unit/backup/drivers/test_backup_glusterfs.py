@@ -21,7 +21,7 @@ from os_brick.remotefs import remotefs as remotefs_brick
 from cinder.backup.drivers import glusterfs
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder import utils
 
 FAKE_BACKUP_MOUNT_POINT_BASE = '/fake/mount-point-base'

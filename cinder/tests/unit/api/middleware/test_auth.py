@@ -17,7 +17,7 @@ from six.moves import http_client
 import webob
 
 import cinder.api.middleware.auth
-from cinder import test
+from cinder.tests.unit import test
 
 
 class TestCinderKeystoneContextMiddleware(test.TestCase):

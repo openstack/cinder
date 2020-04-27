@@ -22,10 +22,10 @@ from six.moves import http_client
 import cinder
 from cinder.api.openstack import wsgi
 from cinder import context
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 UUID = fakes.FAKE_UUID

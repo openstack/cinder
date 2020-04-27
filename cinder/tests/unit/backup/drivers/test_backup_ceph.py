@@ -38,8 +38,8 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 import cinder.volume.drivers.rbd as rbd_driver
 
 # This is used to collect raised exceptions so that tests may check what was

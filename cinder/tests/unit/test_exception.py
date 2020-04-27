@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import sys
 from unittest import mock
 
 import fixtures
@@ -23,7 +24,27 @@ from six.moves import http_client
 import webob.util
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
+
+
+class CinderExceptionReraiseFormatError(object):
+    real_log_exception = exception.CinderException._log_exception
+
+    @classmethod
+    def patch(cls):
+        exception.CinderException._log_exception = cls._wrap_log_exception
+
+    @staticmethod
+    def _wrap_log_exception(self):
+        exc_info = sys.exc_info()
+        CinderExceptionReraiseFormatError.real_log_exception(self)
+        six.reraise(*exc_info)
+
+
+# NOTE(melwitt) This needs to be done at import time in order to also catch
+# CinderException format errors that are in mock decorators. In these cases,
+# the errors will be raised during test listing, before tests actually run.
+CinderExceptionReraiseFormatError.patch()
 
 
 class CinderExceptionTestCase(test.TestCase):
@@ -49,7 +70,7 @@ class CinderExceptionTestCase(test.TestCase):
         # NOTE(dprince): disable format errors for this test
         self.useFixture(fixtures.MonkeyPatch(
             'cinder.exception.CinderException._log_exception',
-            test.CinderExceptionReraiseFormatError.real_log_exception))
+            CinderExceptionReraiseFormatError.real_log_exception))
 
         class FakeCinderException(exception.CinderException):
             message = "default message: %(misspelled_code)s"

@@ -24,8 +24,8 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.backup import fake_service
+from cinder.tests.unit import test
 
 _backup_db_fields = ['id', 'user_id', 'project_id',
                      'volume_id', 'host', 'availability_zone',

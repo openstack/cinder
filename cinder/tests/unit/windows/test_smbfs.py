@@ -24,9 +24,9 @@ from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.windows import smbfs

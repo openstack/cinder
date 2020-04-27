@@ -25,7 +25,7 @@ import webob
 import webob.exc
 
 from cinder.api import common
-from cinder import test
+from cinder.tests.unit import test
 
 
 NS = "{http://docs.openstack.org/compute/api/v1.1}"

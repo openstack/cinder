@@ -27,7 +27,7 @@ import six
 
 from cinder import exception
 from cinder import ssh_utils
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake

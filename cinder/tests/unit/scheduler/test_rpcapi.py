@@ -23,11 +23,11 @@ import ddt
 from cinder import exception
 from cinder import objects
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 
 
 @ddt.ddt

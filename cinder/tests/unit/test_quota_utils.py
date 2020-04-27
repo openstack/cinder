@@ -22,7 +22,7 @@ from oslo_config import fixture as config_fixture
 from cinder import context
 from cinder import exception
 from cinder import quota_utils
-from cinder import test
+from cinder.tests.unit import test
 
 
 CONF = cfg.CONF

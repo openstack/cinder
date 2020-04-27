@@ -17,7 +17,7 @@
 """Unit tests for fc san lookup service."""
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager import fc_san_lookup_service as san_service
 

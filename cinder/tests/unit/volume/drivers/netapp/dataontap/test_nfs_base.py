@@ -28,9 +28,9 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api

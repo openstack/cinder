@@ -20,8 +20,8 @@ from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 
 

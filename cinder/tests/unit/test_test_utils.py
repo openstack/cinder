@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 
 

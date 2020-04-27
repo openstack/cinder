@@ -13,7 +13,7 @@
 #    under the License.
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 import cinder.volume.drivers.netapp.common as na_common
 import cinder.volume.drivers.netapp.dataontap.fc_cmode as fc_cmode

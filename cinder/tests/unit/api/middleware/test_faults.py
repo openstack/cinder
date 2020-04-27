@@ -19,7 +19,7 @@ import webob.dec
 
 from cinder.api.middleware import fault
 from cinder.api.openstack import wsgi
-from cinder import test
+from cinder.tests.unit import test
 
 
 class TestFaults(test.TestCase):

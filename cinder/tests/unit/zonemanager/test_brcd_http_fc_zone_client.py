@@ -22,7 +22,7 @@ from unittest.mock import patch
 from oslo_utils import encodeutils
 import six
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.zonemanager.drivers.brocade import (brcd_http_fc_zone_client
                                                 as client)
 from cinder.zonemanager.drivers.brocade import exception as b_exception

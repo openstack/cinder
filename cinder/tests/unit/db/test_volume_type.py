@@ -17,8 +17,8 @@
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.volume import volume_types
 

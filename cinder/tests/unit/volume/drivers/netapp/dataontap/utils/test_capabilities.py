@@ -21,7 +21,7 @@ import ddt
 import six
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
 import cinder.tests.unit.volume.drivers.netapp.dataontap.utils.fakes as fake

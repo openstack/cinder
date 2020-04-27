@@ -23,7 +23,7 @@ from oslo_config import cfg
 from cinder.compute import nova
 from cinder import context
 from cinder.message import message_field
-from cinder import test
+from cinder.tests.unit import test
 
 CONF = cfg.CONF
 

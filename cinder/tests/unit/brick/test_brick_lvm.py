@@ -20,7 +20,7 @@ from oslo_concurrency import processutils
 
 from cinder.brick.local_dev import lvm as brick
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 
 

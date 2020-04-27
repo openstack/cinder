@@ -25,9 +25,9 @@ from cinder import db
 from cinder import exception
 from cinder.scheduler import filters
 from cinder.scheduler.filters import extra_specs_ops
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 
 

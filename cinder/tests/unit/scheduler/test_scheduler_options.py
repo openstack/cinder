@@ -22,7 +22,7 @@ from oslo_serialization import jsonutils
 import six
 
 from cinder.scheduler import scheduler_options
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeSchedulerOptions(scheduler_options.SchedulerOptions):

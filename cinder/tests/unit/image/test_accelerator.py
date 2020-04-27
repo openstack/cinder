@@ -15,7 +15,7 @@
 from unittest import mock
 
 from cinder.image import accelerator
-from cinder import test
+from cinder.tests.unit import test
 
 
 class fakeEngine(object):

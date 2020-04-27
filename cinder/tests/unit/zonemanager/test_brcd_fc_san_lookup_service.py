@@ -21,7 +21,7 @@ from unittest import mock
 from oslo_config import cfg
 from oslo_utils import importutils
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 import cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
     as brcd_lookup

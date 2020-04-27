@@ -22,9 +22,9 @@ from cinder.api.v2 import types as types_api_v2
 from cinder import context
 from cinder import db
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 def generate_type(type_id, is_public):

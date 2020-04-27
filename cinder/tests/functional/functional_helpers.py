@@ -25,9 +25,9 @@ import fixtures
 from oslo_config import cfg
 
 from cinder import service
-from cinder import test  # For the flags
 from cinder.tests.functional.api import client
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test  # For the flags
 
 CONF = cfg.CONF
 VOLUME = 'VOLUME'

@@ -27,13 +27,13 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.message import message_field
-from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.tests.unit.volume.flows import fake_volume_api
 from cinder.volume.flows.api import create_volume

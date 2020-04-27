@@ -18,7 +18,7 @@ try:
 except ImportError:
     from collections import Callable
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap import fc_cmode
 from cinder.volume.drivers.netapp.dataontap import iscsi_cmode

@@ -26,7 +26,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.ibm.ibm_storage as storage

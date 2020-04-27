@@ -18,7 +18,7 @@ import ddt
 from oslo_config import cfg
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import utils

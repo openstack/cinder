@@ -18,7 +18,7 @@ import ddt
 
 from cinder.objects import base
 from cinder import rpc
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeAPI(rpc.RPCAPI):

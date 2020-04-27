@@ -19,8 +19,8 @@ from oslo_concurrency import processutils as putils
 
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.targets import targets_fixture as tf
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume.targets import tgt
 from cinder.volume import volume_utils

@@ -17,7 +17,7 @@
 
 from unittest import mock
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import throttling
 

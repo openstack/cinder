@@ -22,7 +22,7 @@ import six
 
 from cinder import exception
 from cinder import ssh_utils
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 
 with mock.patch.dict('sys.modules', pywbem=mock.Mock()):

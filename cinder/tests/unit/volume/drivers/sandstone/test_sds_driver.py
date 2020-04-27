@@ -21,7 +21,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder import objects
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as config
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.sandstone import sds_client

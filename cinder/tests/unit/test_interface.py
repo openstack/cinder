@@ -16,7 +16,7 @@
 from unittest import mock
 
 from cinder.interface import util
-from cinder import test
+from cinder.tests.unit import test
 
 
 class GetDriversTestCase(test.TestCase):

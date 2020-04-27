@@ -20,10 +20,10 @@ import eventlet
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.volume.drivers.dell_emc.sc import storagecenter_api
 from cinder.volume.drivers.dell_emc.sc import storagecenter_iscsi
 from cinder.volume import volume_types

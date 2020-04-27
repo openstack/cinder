@@ -16,7 +16,7 @@
 from unittest import mock
 
 from cinder.scheduler import base_filter
-from cinder import test
+from cinder.tests.unit import test
 
 
 class TestBaseFilter(test.TestCase):

@@ -20,7 +20,7 @@ import tooz.coordination
 import tooz.locking
 
 from cinder import coordination
-from cinder import test
+from cinder.tests.unit import test
 
 if hasattr(inspect, 'getfullargspec'):
     getargspec = inspect.getfullargspec

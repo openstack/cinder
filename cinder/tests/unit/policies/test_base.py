@@ -19,10 +19,10 @@ import webob
 from cinder.api import microversions as mv
 from cinder import context as cinder_context
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import test
 
 
 class CinderPolicyTests(test.TestCase):

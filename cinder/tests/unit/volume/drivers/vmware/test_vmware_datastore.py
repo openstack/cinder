@@ -20,7 +20,7 @@ from unittest import mock
 
 from oslo_utils import units
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume.drivers.vmware import datastore as ds_sel
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 

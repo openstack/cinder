@@ -25,9 +25,9 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
-from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.volume.drivers import vzstorage
 
 

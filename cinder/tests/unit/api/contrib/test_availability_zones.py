@@ -19,7 +19,7 @@ from oslo_utils import timeutils
 
 import cinder.api.contrib.availability_zones
 import cinder.context
-import cinder.test
+from cinder.tests.unit import test
 import cinder.volume.api
 
 
@@ -39,7 +39,7 @@ class FakeRequest(object):
     GET = {}
 
 
-class ControllerTestCase(cinder.test.TestCase):
+class ControllerTestCase(test.TestCase):
 
     def setUp(self):
         super(ControllerTestCase, self).setUp()

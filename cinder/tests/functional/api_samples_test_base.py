@@ -17,8 +17,8 @@ import re
 from oslo_serialization import jsonutils
 import six
 
-from cinder import test
 from cinder.tests.functional import functional_helpers
+from cinder.tests.unit import test
 
 PROJECT_ID = "6f70656e737461636b20342065766572"
 

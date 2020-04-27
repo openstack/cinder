@@ -26,8 +26,8 @@ from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_constants as fakes
+from cinder.tests.unit import test
 import cinder.volume.manager as volume_manager
 
 

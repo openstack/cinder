@@ -20,9 +20,9 @@ import ddt
 from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import limits
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 LIMITS_FILTER = mv.LIMITS_ADMIN_FILTER
 PRE_LIMITS_FILTER = mv.get_prior_version(LIMITS_FILTER)

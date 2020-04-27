@@ -17,7 +17,7 @@ import copy
 import requests
 import six
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.dell_emc.vxflexos import driver

@@ -45,11 +45,11 @@ from cinder import context
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_cluster
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder import version
 from cinder.volume import rpcapi

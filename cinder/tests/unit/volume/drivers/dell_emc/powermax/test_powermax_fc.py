@@ -15,7 +15,7 @@
 
 from unittest import mock
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
     powermax_data as tpd)
 from cinder.tests.unit.volume.drivers.dell_emc.powermax import (

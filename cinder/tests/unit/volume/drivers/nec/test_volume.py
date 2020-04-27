@@ -22,9 +22,9 @@ import ddt
 from cinder import context
 from cinder import exception
 from cinder.objects import volume_attachment
-from cinder import test
 from cinder.tests.unit import fake_constants as constants
 from cinder.tests.unit.fake_volume import fake_volume_obj
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common

@@ -16,8 +16,8 @@ Tests For Goodness Weigher.
 """
 
 from cinder.scheduler.weights import goodness
-from cinder import test
 from cinder.tests.unit.scheduler import fakes
+from cinder.tests.unit import test
 
 
 class GoodnessWeigherTestCase(test.TestCase):

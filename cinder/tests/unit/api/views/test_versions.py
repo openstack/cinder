@@ -18,7 +18,7 @@ import copy
 import ddt
 
 from cinder.api.views import versions
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeRequest(object):

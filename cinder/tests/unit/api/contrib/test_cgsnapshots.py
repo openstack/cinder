@@ -26,9 +26,9 @@ from cinder import db
 from cinder import exception
 from cinder.group import api as groupAPI
 from cinder import objects
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 import cinder.volume
 

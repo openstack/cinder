@@ -12,7 +12,7 @@
 from oslo_config import cfg
 
 from cinder.message import defined_messages
-from cinder import test
+from cinder.tests.unit import test
 
 CONF = cfg.CONF
 

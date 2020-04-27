@@ -17,7 +17,7 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
 from cinder.volume import configuration
 from cinder.volume import driver

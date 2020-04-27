@@ -22,7 +22,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm.ibm_storage import ibm_storage
 from cinder.volume import volume_types

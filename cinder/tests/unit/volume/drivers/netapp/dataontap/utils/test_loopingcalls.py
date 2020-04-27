@@ -16,7 +16,7 @@ from unittest import mock
 
 from oslo_service import loopingcall
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 
 

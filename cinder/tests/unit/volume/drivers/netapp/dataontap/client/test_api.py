@@ -28,7 +28,7 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as zapi_fakes)
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api

@@ -23,7 +23,6 @@ inline callbacks.
 import copy
 import logging
 import os
-import sys
 from unittest import mock
 import uuid
 
@@ -47,7 +46,6 @@ from cinder import context
 from cinder import coordination
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
-from cinder import exception
 from cinder import i18n
 from cinder.objects import base as objects_base
 from cinder import rpc
@@ -66,26 +64,6 @@ SESSION_CONFIGURED = False
 
 class TestingException(Exception):
     pass
-
-
-class CinderExceptionReraiseFormatError(object):
-    real_log_exception = exception.CinderException._log_exception
-
-    @classmethod
-    def patch(cls):
-        exception.CinderException._log_exception = cls._wrap_log_exception
-
-    @staticmethod
-    def _wrap_log_exception(self):
-        exc_info = sys.exc_info()
-        CinderExceptionReraiseFormatError.real_log_exception(self)
-        six.reraise(*exc_info)
-
-
-# NOTE(melwitt) This needs to be done at import time in order to also catch
-# CinderException format errors that are in mock decorators. In these cases,
-# the errors will be raised during test listing, before tests actually run.
-CinderExceptionReraiseFormatError.patch()
 
 
 class Database(fixtures.Fixture):
@@ -121,8 +99,15 @@ class Database(fixtures.Fixture):
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
-    POLICY_PATH = 'cinder/tests/unit/policy.json'
-    RESOURCE_FILTER_PATH = 'etc/cinder/resource_filters.json'
+    SOURCE_TREE_ROOT = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            '../../../'))
+    POLICY_PATH = os.path.join(SOURCE_TREE_ROOT,
+                               'cinder/tests/unit/policy.json')
+    RESOURCE_FILTER_FILENAME = 'etc/cinder/resource_filters.json'
+    RESOURCE_FILTER_PATH = os.path.join(SOURCE_TREE_ROOT,
+                                        RESOURCE_FILTER_FILENAME)
     MOCK_WORKER = True
     MOCK_TOOZ = True
 
@@ -144,14 +129,7 @@ class TestCase(testtools.TestCase):
 
     def _reset_filter_file(self):
         self.override_config('resource_query_filters_file',
-                             os.path.join(
-                                 os.path.abspath(
-                                     os.path.join(
-                                         os.path.dirname(__file__),
-                                         '..',
-                                     )
-                                 ),
-                                 self.RESOURCE_FILTER_PATH))
+                             self.RESOURCE_FILTER_PATH)
         api_common._FILTERS_COLLECTION = None
 
     def setUp(self):
@@ -280,22 +258,12 @@ class TestCase(testtools.TestCase):
         self.override_config('policy_file',
                              os.path.join(
                                  os.path.abspath(
-                                     os.path.join(
-                                         os.path.dirname(__file__),
-                                         '..',
-                                     )
+                                     os.path.dirname(__file__)
                                  ),
                                  self.POLICY_PATH),
                              group='oslo_policy')
         self.override_config('resource_query_filters_file',
-                             os.path.join(
-                                 os.path.abspath(
-                                     os.path.join(
-                                         os.path.dirname(__file__),
-                                         '..',
-                                     )
-                                 ),
-                                 self.RESOURCE_FILTER_PATH))
+                             self.RESOURCE_FILTER_PATH)
         self._disable_osprofiler()
 
         # NOTE(geguileo): This is required because common get_by_id method in

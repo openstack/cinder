@@ -22,11 +22,11 @@ import webob
 from cinder import context
 from cinder.objects import fields
 from cinder.policies import snapshots as snap_policy
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 
 
 UUID1 = fake.SNAPSHOT_ID

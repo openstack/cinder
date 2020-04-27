@@ -22,9 +22,9 @@ from cinder import objects
 from cinder.policies import attachments as attachment_policy
 from cinder.policies import base as base_policy
 from cinder import policy
-from cinder import test
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf

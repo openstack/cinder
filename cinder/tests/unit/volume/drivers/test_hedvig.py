@@ -18,9 +18,9 @@ from unittest import mock
 
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.hedvig import hedvig_cinder as hdvg
 from cinder.volume import qos_specs

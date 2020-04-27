@@ -22,9 +22,9 @@ from six.moves import http_client
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.prophetstor import dpl_iscsi as DPLDRIVER

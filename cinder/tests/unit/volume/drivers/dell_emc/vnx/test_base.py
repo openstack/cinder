@@ -13,7 +13,7 @@
 """Common VNC test needs."""
 
 from cinder import context
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.dell_emc.vnx import common
 

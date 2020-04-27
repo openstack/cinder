@@ -16,7 +16,7 @@
 import six
 
 from cinder.api.openstack import versioned_method
-from cinder import test
+from cinder.tests.unit import test
 
 
 class VersionedMethodTestCase(test.TestCase):

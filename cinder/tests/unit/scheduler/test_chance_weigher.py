@@ -19,7 +19,7 @@ from unittest import mock
 
 from cinder.scheduler import host_manager
 from cinder.scheduler.weights import chance
-from cinder import test
+from cinder.tests.unit import test
 
 
 class ChanceWeigherTestCase(test.TestCase):

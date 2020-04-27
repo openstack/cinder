@@ -26,7 +26,7 @@ import webob
 from cinder.api.v2 import limits
 from cinder.api import views
 import cinder.context
-from cinder import test
+from cinder.tests.unit import test
 
 
 TEST_LIMITS = [

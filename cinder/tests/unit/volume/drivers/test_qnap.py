@@ -28,7 +28,7 @@ import six
 from six.moves import urllib
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import qnap

@@ -22,8 +22,8 @@ from six.moves import http_client
 from cinder import context
 from cinder import exception
 from cinder.objects import volume as obj_volume
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.volume.drivers import nimble
 from cinder.volume import volume_types
 

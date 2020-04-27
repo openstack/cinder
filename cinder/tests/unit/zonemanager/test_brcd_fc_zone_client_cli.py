@@ -21,7 +21,7 @@ from unittest import mock
 from oslo_concurrency import processutils
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.zonemanager.drivers.brocade import (brcd_fc_zone_client_cli
                                                 as client_cli)
 from cinder.zonemanager.drivers.brocade import exception as b_exception

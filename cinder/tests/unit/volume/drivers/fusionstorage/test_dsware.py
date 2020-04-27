@@ -20,7 +20,7 @@ import ddt
 
 from cinder import exception
 from cinder import objects
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as config
 from cinder.volume.drivers.fusionstorage import dsware
 from cinder.volume.drivers.fusionstorage import fs_client

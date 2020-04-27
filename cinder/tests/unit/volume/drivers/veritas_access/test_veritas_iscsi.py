@@ -25,7 +25,7 @@ import requests
 
 from cinder import context
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.veritas_access import veritas_iscsi
 

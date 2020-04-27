@@ -20,7 +20,7 @@ Tests for cinder.api.urlmap.py
 from unittest import mock
 
 from cinder.api import urlmap
-from cinder import test
+from cinder.tests.unit import test
 
 
 class TestParseFunctions(test.TestCase):

@@ -17,7 +17,7 @@ import platform
 from unittest import mock
 
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
     powermax_data as tpd)
 from cinder import version as openstack_version

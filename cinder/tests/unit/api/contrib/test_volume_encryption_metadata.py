@@ -21,9 +21,9 @@ from cinder.api.contrib import volume_encryption_metadata
 from cinder import context
 from cinder import db
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 def return_volume_type_encryption_metadata(context, volume_type_id):

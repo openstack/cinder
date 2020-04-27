@@ -26,8 +26,8 @@ from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder import utils
 from cinder.volume import configuration as conf

@@ -19,7 +19,7 @@ import string
 
 import ddt
 
-from cinder import test
+from cinder.tests.unit import test
 from cinder.zonemanager.drivers import driver_utils
 
 TEST_CHAR_SET = string.ascii_letters + string.digits

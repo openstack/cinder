@@ -22,8 +22,8 @@ from cinder import context as ctxt
 from cinder.db.sqlalchemy import models
 from cinder.image import cache as image_cache
 from cinder import objects
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 @ddt.ddt

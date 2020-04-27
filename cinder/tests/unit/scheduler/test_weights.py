@@ -18,7 +18,7 @@ Tests For Scheduler weights.
 """
 
 from cinder.scheduler import base_weight
-from cinder import test
+from cinder.tests.unit import test
 
 
 class TestWeightHandler(test.TestCase):

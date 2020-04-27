@@ -35,11 +35,11 @@ import cinder.image.glance
 from cinder.image import image_utils
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.keymgr import fake as fake_keymgr
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf

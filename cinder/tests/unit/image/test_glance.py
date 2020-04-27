@@ -29,8 +29,8 @@ from cinder import context
 from cinder import exception
 from cinder.image import glance
 from cinder import service_auth
-from cinder import test
 from cinder.tests.unit.glance import stubs as glance_stubs
+from cinder.tests.unit import test
 
 
 CONF = cfg.CONF

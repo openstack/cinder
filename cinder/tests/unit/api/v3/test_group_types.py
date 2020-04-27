@@ -28,9 +28,9 @@ from cinder.api.v3 import group_types as v3_group_types
 from cinder.api.v3.views import group_types as views_types
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.volume import group_types
 
 IN_USE_GROUP_TYPE = fake.GROUP_TYPE3_ID

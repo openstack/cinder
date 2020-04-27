@@ -23,7 +23,7 @@ from oslo_config import cfg
 import oslo_messaging as messaging
 
 from cinder import rpc
-from cinder import test
+from cinder.tests.unit import test
 
 
 class IsolationTestCase(test.TestCase):

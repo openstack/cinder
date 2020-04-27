@@ -23,12 +23,12 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.objects import volume_attachment
-from cinder import test
 from cinder.tests.unit.consistencygroup import fake_consistencygroup as fake_cg
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit.fake_volume import fake_volume_obj
 from cinder.tests.unit.fake_volume import fake_volume_type_obj
+from cinder.tests.unit import test
 from cinder.volume.drivers.dell_emc import xtremio
 
 typ2id = {'volumes': 'vol-id',

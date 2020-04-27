@@ -22,7 +22,7 @@ from unittest import mock
 from oslo_utils import units
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder import version
 from cinder.volume import configuration
 from cinder.volume.drivers import infinidat

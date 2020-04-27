@@ -30,11 +30,11 @@ from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import common

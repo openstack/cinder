@@ -24,9 +24,9 @@ from cinder.api import microversions as mv
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 
 
 def schedule_rpcapi_get_pools(self, context, filters=None):

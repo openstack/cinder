@@ -20,9 +20,9 @@ from cinder import db
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
-from cinder import test
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import configuration as conf
 

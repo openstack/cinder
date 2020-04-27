@@ -30,11 +30,11 @@ from cinder.message import message_field
 from cinder import objects
 from cinder.scheduler import driver
 from cinder.scheduler import manager
-from cinder import test
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.scheduler import fakes as fake_scheduler
+from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 
 CONF = cfg.CONF

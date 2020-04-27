@@ -21,8 +21,8 @@
 
 from unittest import mock
 
-from cinder import test
 from cinder.tests import fake_driver
+from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.zonemanager.drivers.brocade import brcd_fc_zone_driver

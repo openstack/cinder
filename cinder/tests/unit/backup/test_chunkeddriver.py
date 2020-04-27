@@ -25,7 +25,7 @@ from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
-from cinder import test
+from cinder.tests.unit import test
 
 
 CONF = cfg.CONF

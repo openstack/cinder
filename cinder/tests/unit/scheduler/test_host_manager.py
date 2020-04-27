@@ -30,9 +30,9 @@ from cinder import exception
 from cinder import objects
 from cinder.scheduler import filters
 from cinder.scheduler import host_manager
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.objects import test_service
+from cinder.tests.unit import test
 
 CONF = cfg.CONF
 

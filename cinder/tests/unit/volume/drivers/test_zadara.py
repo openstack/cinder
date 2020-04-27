@@ -22,7 +22,7 @@ import requests
 from six.moves.urllib import parse
 
 from cinder import exception
-from cinder import test
+from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import zadara
 

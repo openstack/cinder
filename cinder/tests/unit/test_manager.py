@@ -19,7 +19,7 @@ import six
 
 from cinder import manager
 from cinder import objects
-from cinder import test
+from cinder.tests.unit import test
 
 
 class FakeManager(manager.CleanableManager):

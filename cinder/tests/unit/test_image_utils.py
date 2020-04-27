@@ -24,8 +24,8 @@ from six.moves import builtins
 
 from cinder import exception
 from cinder.image import image_utils
-from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.volume import throttling
 
 

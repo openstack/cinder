@@ -25,9 +25,9 @@ from cinder.api.v2.views import types as views_types
 from cinder import context
 from cinder import exception
 from cinder.policies import volume_type as type_policy
-from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import test
 from cinder.volume import volume_types
 
 
