@@ -2085,7 +2085,14 @@ class SolidFireDriver(san.SanISCSIDriver):
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
 
-        sf_vol = self._get_sf_volume(volume['id'], params)
+        # In a retype of an attached volume scenario, the volume id will be
+        # as a target on 'migration_status', otherwise it'd be None.
+        migration_status = volume.get('migration_status')
+        if migration_status and 'target' in migration_status:
+            __, vol_id = migration_status.split(':')
+        else:
+            vol_id = volume['id']
+        sf_vol = self._get_sf_volume(vol_id, params)
         if sf_vol is None:
             LOG.error("Volume ID %s was not found on "
                       "the SolidFire Cluster while attempting "
