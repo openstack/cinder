@@ -122,9 +122,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Switch to Unisphere REST API public replication endpoints
               - Support for multiple replication devices
               - Pools bug fix allowing 'None' variants (bug #1873253)
+        4.2.1 - Concurrent live migrations failure (bug #1875478)
     """
 
-    VERSION = "4.2.0"
+    VERSION = "4.2.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

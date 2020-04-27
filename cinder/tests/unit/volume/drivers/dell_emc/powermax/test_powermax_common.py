@@ -3281,7 +3281,7 @@ class PowerMaxCommonTest(test.TestCase):
             False, True, target_extra_specs['rep_mode'])
         mck_move_vol.assert_called_once_with(
             array, device_id, self.data.volume_details[0]['storageGroupId'][0],
-            group_name, extra_specs, force=True)
+            group_name, extra_specs, force=True, parent_sg=None)
         mck_return_vol.assert_called_once_with(
             array, volume, device_id, volume_name, extra_specs)
         mck_is_vol.assert_called_once_with(array, device_id, group_name)
