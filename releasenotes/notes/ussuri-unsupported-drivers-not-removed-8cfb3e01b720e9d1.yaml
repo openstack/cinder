@@ -24,7 +24,6 @@ issues:
     document for details.
 
     - Brocade Fibre Channel Zone Manager driver
-    - MacroSAN drivers: FC and iSCSI
     - Veritas Clustered NFS driver
 
     In order to use an unsupported driver, ``enable_unsupported_driver`` must
