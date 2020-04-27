@@ -999,6 +999,11 @@ port_speed!N/A
     def _cmd_rmvdisk(self, **kwargs):
         force = True if 'force' in kwargs else False
 
+        if 'force' not in kwargs and 'force_unmap' in kwargs:
+            force_unmap = True
+        else:
+            force_unmap = False
+
         if 'obj' not in kwargs:
             return self._errors['CMMVC5701E']
         vol_name = kwargs['obj'].strip('\'\"')
@@ -1006,7 +1011,7 @@ port_speed!N/A
         if vol_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
 
-        if not force:
+        if not force and not force_unmap:
             for mapping in self._mappings_list.values():
                 if mapping['vol'] == vol_name:
                     return self._errors['CMMVC5840E']
@@ -4958,7 +4963,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'mirror_pool': None,
                'volume_topology': None,
                'peer_pool': None,
-               'cycle_period_seconds': 300,
+               'cycle_period_seconds': 300
                }
         return opt
 
@@ -8075,6 +8080,56 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.ctxt,
                           vol1, snap1)
 
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'delete_vdisk')
+    def test_storwize_svc_delete_volume_with_lower_code(self, delete_vdisk):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 6, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+            volume = self._generate_vol_info()
+            snap = self._generate_snap_info(volume.id)
+            self.driver.create_volume(volume)
+            self.driver.create_snapshot(snap)
+            self.driver.delete_snapshot(snap)
+            snap_call = [mock.call(snap.name, force_delete=False,
+                                   force_unmap=False)]
+            delete_vdisk.assert_has_calls(snap_call)
+            self.driver.delete_volume(volume)
+            vol_call = [mock.call(volume.name, force_delete=False,
+                                  force_unmap=False)]
+            delete_vdisk.assert_has_calls(vol_call)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'delete_vdisk')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_type')
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_delete_replication_grp')
+    def test_storwize_delete_group_with_lower_code(
+            self, _del_rep_grp, is_grp_a_cg_rep_type,
+            is_grp_a_cg_snapshot_type, delete_vdisk):
+        is_grp_a_cg_snapshot_type.return_valume = True
+        is_grp_a_cg_rep_type.return_value = False
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_ids=[type_ref['id']])
+
+        vol1 = self._create_volume(volume_type_id=type_ref['id'],
+                                   group_id=group.id)
+        vol2 = self._create_volume(volume_type_id=type_ref['id'],
+                                   group_id=group.id)
+        volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), group.id)
+        self.driver.delete_group(self.ctxt, group, volumes)
+        calls = [mock.call(vol1.name, force_unmap=False, force_delete=True),
+                 mock.call(vol2.name, force_unmap=False, force_delete=True)]
+
+        delete_vdisk.assert_has_calls(calls, any_order=True)
+
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
@@ -9456,6 +9511,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                   delete_relationship,
                                   delete_vdisk):
         # Set replication target.
+
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
@@ -9467,8 +9523,9 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         delete_relationship.assert_called_once_with(fake_name)
         master_change_fake_name = (
             storwize_const.REPLICA_CHG_VOL_PREFIX + fake_name)
-        calls = [mock.call(master_change_fake_name, False),
-                 mock.call(fake_name, False)]
+        calls = [mock.call(master_change_fake_name, force_delete=False,
+                           force_unmap=True),
+                 mock.call(fake_name, force_delete=False, force_unmap=True)]
         delete_vdisk.assert_has_calls(calls, any_order=True)
         self.assertEqual(2, delete_vdisk.call_count)
 
