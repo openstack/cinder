@@ -507,6 +507,9 @@ class VMAXCommon(object):
                  {'volume': volume_name})
         if connector is not None:
             host = self.utils.get_host_short_name(connector['host'])
+            LOG.debug("The host in the detach operation is "
+                      "%(host)s.",
+                      {'host': host})
         else:
             LOG.warning("Cannot get host name from connector object - "
                         "assuming force-detach.")
@@ -514,6 +517,12 @@ class VMAXCommon(object):
 
         device_info, is_live_migration, source_storage_group_list = (
             self.find_host_lun_id(volume, host, extra_specs))
+        if is_live_migration:
+            LOG.debug("Live migration is true. The device info is "
+                      "%(device_info)s. The source storage group list is "
+                      "%(sgl)s.",
+                      {'device_info': device_info,
+                       'sgl': source_storage_group_list})
         if 'hostlunid' not in device_info:
             LOG.info("Volume %s is not mapped. No volume to unmap.",
                      volume_name)
@@ -523,6 +532,7 @@ class VMAXCommon(object):
                      volume_name)
             return
         source_nf_sg = None
+        target_nf_sg = None
         array = extra_specs[utils.ARRAY]
         if self.utils.does_vol_need_rdf_management_group(extra_specs):
             async_grp = self.utils.get_async_rdf_managed_grp_name(
@@ -530,13 +540,37 @@ class VMAXCommon(object):
         if len(source_storage_group_list) > 1:
             for storage_group in source_storage_group_list:
                 if 'NONFAST' in storage_group:
-                    source_nf_sg = storage_group
-                    break
+                    if host and host.lower() in storage_group.lower():
+                        source_nf_sg = storage_group
+                        LOG.debug("The source NONFAST storage group is "
+                                  "%(source_nf_sg)s. Attempting a cleanup of "
+                                  "source host in Live Migration process.",
+                                  {'source_nf_sg': source_nf_sg})
+                        break
+                    else:
+                        target_nf_sg = storage_group
+
         if source_nf_sg:
             # Remove volume from non fast storage group
             self.masking.remove_volume_from_sg(
                 array, device_info['device_id'], volume_name, source_nf_sg,
                 extra_specs)
+            LOG.debug("Removed %(dev_id)s from source NONFAST storage "
+                      "group %(sg)s in the live migration process.",
+                      {'dev_id': device_info['device_id'],
+                       'sg': source_nf_sg}),
+        elif target_nf_sg:
+            for storage_group in source_storage_group_list:
+                if storage_group.lower == target_nf_sg:
+                    LOG.debug("The target NONFAST storage group is "
+                              "%(target_nf_sg)s. The volume will remain "
+                              "here until the next Live Migration.",
+                              {'target_nf_sg': target_nf_sg})
+                elif storage_group.lower != target_nf_sg:
+                    if host and host.lower() in storage_group.lower():
+                        self.masking.remove_volume_from_sg(
+                            array, device_info['device_id'], volume_name,
+                            storage_group, extra_specs)
         else:
             self._remove_members(array, volume, device_info['device_id'],
                                  extra_specs, connector, async_grp=async_grp)
@@ -1088,7 +1122,9 @@ class VMAXCommon(object):
         :param rep_extra_specs: rep extra specs, passed in if metro device
         :returns: dict -- the data dict
         """
+        masked_vol_list = list()
         maskedvols = {}
+        hoststr = None
         is_live_migration = False
         volume_name = volume.name
         device_id = self._find_device_on_array(volume, extra_specs)
@@ -1097,6 +1133,8 @@ class VMAXCommon(object):
                 extra_specs[utils.ARRAY], volume, device_id)[0]
             extra_specs = rep_extra_specs
         host_name = self.utils.get_host_short_name(host) if host else None
+        if host_name:
+            hoststr = ("-%(host)s-" % {'host': host_name})
         if device_id:
             array = extra_specs[utils.ARRAY]
             source_storage_group_list = (
@@ -1113,7 +1151,28 @@ class VMAXCommon(object):
                                   'maskingview': maskingview,
                                   'array': array,
                                   'device_id': device_id}
-                    maskedvols = devicedict
+                    masked_vol_list.append(devicedict)
+            if len(masked_vol_list) == 1:
+                maskedvols = masked_vol_list[0]
+                LOG.debug("Device id %(device_id)s is masked to "
+                          "one masking view %(mvl)s.",
+                          {'device_id': device_id,
+                           'mvl': maskedvols})
+            elif len(masked_vol_list) > 1:
+                LOG.debug("Device id %(device_id)s is masked to more "
+                          "than one masking view %(mvl)s.",
+                          {'device_id': device_id,
+                           'mvl': masked_vol_list})
+                for masked_vol in masked_vol_list:
+                    if hoststr and hoststr.lower() in (
+                            masked_vol['maskingview'].lower()):
+                        LOG.debug("Device id %(device_id)s is masked "
+                                  "to %(mv)s. Match found for host %(host)s.",
+                                  {'device_id': device_id,
+                                   'mv': masked_vol['maskingview'],
+                                   'host': host_name})
+                        maskedvols = masked_vol
+
             if not maskedvols:
                 LOG.debug(
                     "Host lun id not found for volume: %(volume_name)s "
@@ -1123,9 +1182,7 @@ class VMAXCommon(object):
             else:
                 LOG.debug("Device info: %(maskedvols)s.",
                           {'maskedvols': maskedvols})
-                if host:
-                    hoststr = ("-%(host)s-" % {'host': host_name})
-
+                if hoststr:
                     if (hoststr.lower()
                             not in maskedvols['maskingview'].lower()):
                         LOG.debug("Volume is masked but not to host %(host)s "
@@ -1135,6 +1192,11 @@ class VMAXCommon(object):
                     else:
                         for storage_group in source_storage_group_list:
                             if 'NONFAST' in storage_group:
+                                LOG.debug("Setting live migration as "
+                                          "device id %(device_id)s is part "
+                                          "of storage group %(sg)s.",
+                                          {'device_id': device_id,
+                                           'sg': storage_group})
                                 is_live_migration = True
                                 break
         else:
@@ -1171,7 +1233,7 @@ class VMAXCommon(object):
         :param storage_group_list: the storage group list to use
         :returns: masking view list
         """
-        LOG.debug("Getting masking views from volume")
+        LOG.debug("Getting masking views from volume.")
         maskingview_list = []
         host_compare = False
         if not storage_group_list:
