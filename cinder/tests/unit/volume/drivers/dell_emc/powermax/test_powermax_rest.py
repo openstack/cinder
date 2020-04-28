@@ -86,6 +86,19 @@ class PowerMaxRestTest(test.TestCase):
                 self.rest.request('/fake_uri', 'GET')
                 mock_fail.assert_called_once()
 
+    @mock.patch.object(time, 'sleep')
+    def test_rest_request_failover_escape(self, mck_sleep):
+        self.rest.u4p_failover_lock = True
+        response = tpfo.FakeResponse(200, 'Success')
+        with mock.patch.object(self.rest, '_handle_u4p_failover')as mock_fail:
+            with mock.patch.object(self.rest.session, 'request',
+                                   side_effect=[requests.ConnectionError,
+                                                response]):
+                self.rest.u4p_failover_enabled = True
+                self.rest.request('/fake_uri', 'GET')
+                mock_fail.assert_called_once()
+        self.rest.u4p_failover_lock = False
+
     def test_wait_for_job_complete(self):
         rc, job, status, task = self.rest.wait_for_job_complete(
             {'status': 'created', 'jobId': '12345'}, self.data.extra_specs)
