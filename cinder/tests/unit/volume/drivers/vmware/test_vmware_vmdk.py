@@ -139,7 +139,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         retr_result_mock = mock.Mock(spec=['objects'])
         retr_result_mock.objects = []
         session.vim.RetrievePropertiesEx.return_value = retr_result_mock
-        session.vim.service_content.instanceUuid = 'fake-service'
+        session.vim.service_content.about.instanceUuid = 'fake-service'
         stats = self._driver.get_volume_stats()
 
         self.assertEqual('VMware', stats['vendor_name'])
