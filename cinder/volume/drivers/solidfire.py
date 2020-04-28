@@ -647,7 +647,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             kwargs.get('password', backend_conf.san_password))
         endpoint['port'] = (
             kwargs.get(('port'), backend_conf.sf_api_port))
-        endpoint['url'] = 'https://%s:%s' % (endpoint['mvip'],
+        sanitized_mvip = volume_utils.sanitize_host(endpoint['mvip'])
+        endpoint['url'] = 'https://%s:%s' % (sanitized_mvip,
                                              endpoint['port'])
         endpoint['svip'] = kwargs.get('svip', backend_conf.sf_svip)
         if not endpoint.get('mvip', None) and kwargs.get('backend_id', None):

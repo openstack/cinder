@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    SolidFire driver now supports IPv6 for management IP.
