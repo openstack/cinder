@@ -39,6 +39,7 @@ U4V_VERSION = '91'
 MIN_U4P_VERSION = '9.1.0.14'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
+u4p_failover_max_wait = 120
 # HTTP constants
 GET = 'GET'
 POST = 'POST'
@@ -199,11 +200,17 @@ class PowerMaxRest(object):
         :raises: VolumeBackendAPIException, Timeout, ConnectionError,
                  HTTPError, SSLError
         """
-        while self.u4p_failover_lock and not retry:
+        waiting_time = 0
+        while self.u4p_failover_lock and not retry and (
+                waiting_time < u4p_failover_max_wait):
             LOG.warning("Unisphere failover lock in process, holding request "
                         "until lock is released when Unisphere connection "
                         "re-established.")
-            time.sleep(10)
+            sleeptime = 10
+            time.sleep(sleeptime)
+            waiting_time += sleeptime
+            if waiting_time >= u4p_failover_max_wait:
+                self.u4p_failover_lock = False
 
         url, message, status_code, response = None, None, None, None
         if not self.session:
@@ -240,6 +247,8 @@ class PowerMaxRest(object):
                           "received is: %(status_code)s", {
                               'status_code': status_code})
                 message = None
+                if retry:
+                    self.u4p_failover_lock = False
 
             LOG.debug("%(method)s request to %(url)s has returned with "
                       "a status code of: %(status_code)s.", {
@@ -247,6 +256,8 @@ class PowerMaxRest(object):
                           'status_code': status_code})
 
         except r_exc.SSLError as e:
+            if retry:
+                self.u4p_failover_lock = False
             msg = _("The connection to %(base_uri)s has encountered an "
                     "SSL error. Please check your SSL config or supplied "
                     "SSL cert in Cinder configuration. SSL Exception "
@@ -279,6 +290,8 @@ class PowerMaxRest(object):
                                       'exc_msg': e})
 
         except Exception as e:
+            if retry:
+                self.u4p_failover_lock = False
             msg = _("The %(method)s request to URL %(url)s failed with "
                     "exception %(e)s")
             LOG.error(msg, {'method': method, 'url': url,
