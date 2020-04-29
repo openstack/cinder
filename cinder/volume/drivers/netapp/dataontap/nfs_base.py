@@ -740,7 +740,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         try:
             if conn:
                 host = conn.split(':')[0]
-                ip = utils.resolve_hostname(host)
+                ip = volume_utils.resolve_hostname(host)
                 share_candidates = []
                 for sh in self._mounted_shares:
                     sh_exp = sh.split(':')[-1]
