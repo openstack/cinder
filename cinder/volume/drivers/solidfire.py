@@ -28,7 +28,6 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
-from requests.packages.urllib3 import exceptions
 import six
 
 from cinder import context
@@ -601,7 +600,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         payload = {'method': method, 'params': params}
         url = '%s/json-rpc/%s/' % (endpoint['url'], version)
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", exceptions.InsecureRequestWarning)
+            warnings.simplefilter(
+                "ignore",
+                requests.packages.urllib3.exceptions.InsecureRequestWarning)
             req = requests.post(url,
                                 data=json.dumps(payload),
                                 auth=(endpoint['login'], endpoint['passwd']),
@@ -2498,13 +2499,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                     vol_updates['updates'].update(conn_info)
                     volume_updates.append(vol_updates)
 
-                except Exception as e:
+                except Exception:
                     volume_updates.append({'volume_id': v['id'],
                                            'updates': {'status': 'error', }})
-                    LOG.error("Error trying to failover volume %s", v.id)
-                    msg = e.message if hasattr(e, 'message') else e
-                    LOG.exception(msg)
-
+                    LOG.exception("Error trying to failover volume %s.",
+                                  v['id'])
             else:
                 volume_updates.append({'volume_id': v['id'],
                                        'updates': {'status': 'error', }})
