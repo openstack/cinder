@@ -354,9 +354,17 @@ def get_cluster_host(req, params, cluster_version=None):
 
 def _initialize_filters():
     global _FILTERS_COLLECTION
-    if not _FILTERS_COLLECTION:
-        with open(CONF.resource_query_filters_file, 'r') as filters_file:
-            _FILTERS_COLLECTION = json.load(filters_file)
+    if _FILTERS_COLLECTION:
+        return
+
+    if not os.path.exists(CONF.resource_query_filters_file):
+        LOG.error(
+            "resource query filters file does not exist: %s",
+            CONF.resource_query_filters_file)
+        return
+
+    with open(CONF.resource_query_filters_file, 'r') as filters_file:
+        _FILTERS_COLLECTION = json.load(filters_file)
 
 
 def get_enabled_resource_filters(resource=None):
