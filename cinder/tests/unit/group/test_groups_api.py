@@ -274,6 +274,8 @@ class GroupAPITestCase(test.TestCase):
                           self.group_api._validate_add_volumes, self.ctxt,
                           [], ['123456789'], grp)
 
+    @ddt.data(['test_host@fakedrv#fakepool', 'test_host@fakedrv#fakepool'],
+              ['test_host@fakedrv#fakepool', 'test_host2@fakedrv#fakepool'])
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')
     @mock.patch('cinder.group.api.API._cast_create_group')
@@ -281,7 +283,7 @@ class GroupAPITestCase(test.TestCase):
     @mock.patch('cinder.objects.Group')
     @mock.patch('cinder.db.group_type_get')
     @mock.patch('cinder.db.volume_types_get_by_name_or_id')
-    def test_update(self, mock_volume_types_get,
+    def test_update(self, hosts, mock_volume_types_get,
                     mock_group_type_get, mock_group,
                     mock_update_quota, mock_cast_create_group,
                     mock_volume_get_all, mock_rpc_update_group):
@@ -307,26 +309,32 @@ class GroupAPITestCase(test.TestCase):
         self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
 
         ret_group.volume_types = [vol_type]
-        ret_group.host = "test_host@fakedrv#fakepool"
+        ret_group.host = hosts[0]
+        # set resource_backend directly because ret_group
+        # is instance of MagicMock
+        ret_group.resource_backend = 'fake-cluster'
         ret_group.status = fields.GroupStatus.AVAILABLE
+
         ret_group.id = fake.GROUP_ID
 
         vol1 = utils.create_volume(
-            self.ctxt, host=ret_group.host,
-            availability_zone=ret_group.availability_zone,
-            volume_type_id=fake.VOLUME_TYPE_ID)
-
-        vol2 = utils.create_volume(
-            self.ctxt, host=ret_group.host,
+            self.ctxt, host=hosts[1],
             availability_zone=ret_group.availability_zone,
             volume_type_id=fake.VOLUME_TYPE_ID,
-            group_id=fake.GROUP_ID)
+            cluster_name='fake-cluster')
+
+        vol2 = utils.create_volume(
+            self.ctxt, host=hosts[1],
+            availability_zone=ret_group.availability_zone,
+            volume_type_id=fake.VOLUME_TYPE_ID,
+            group_id=fake.GROUP_ID,
+            cluster_name='fake-cluster')
         vol2_dict = {
             'id': vol2.id,
             'group_id': fake.GROUP_ID,
             'volume_type_id': fake.VOLUME_TYPE_ID,
             'availability_zone': ret_group.availability_zone,
-            'host': ret_group.host,
+            'host': hosts[1],
             'status': 'available',
         }
         mock_volume_get_all.return_value = [vol2_dict]

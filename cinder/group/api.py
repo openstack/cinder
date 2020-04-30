@@ -723,7 +723,7 @@ class API(base.Base):
 
         for add_vol in add_volumes_list:
             try:
-                add_vol_ref = self.db.volume_get(context, add_vol)
+                add_vol_ref = objects.Volume.get_by_id(context, add_vol)
             except exception.VolumeNotFound:
                 msg = (_("Cannot add volume %(volume_id)s to "
                          "group %(group_id)s because volume cannot be "
@@ -731,7 +731,7 @@ class API(base.Base):
                        {'volume_id': add_vol,
                         'group_id': group.id})
                 raise exception.InvalidVolume(reason=msg)
-            orig_group = add_vol_ref.get('group_id', None)
+            orig_group = add_vol_ref.group_id
             if orig_group:
                 # If volume to be added is already in the group to be updated,
                 # it should have been removed from the add_volumes_list in the
@@ -740,7 +740,7 @@ class API(base.Base):
                 msg = (_("Cannot add volume %(volume_id)s to group "
                          "%(group_id)s because it is already in "
                          "group %(orig_group)s.") %
-                       {'volume_id': add_vol_ref['id'],
+                       {'volume_id': add_vol_ref.id,
                         'group_id': group.id,
                         'orig_group': orig_group})
                 raise exception.InvalidVolume(reason=msg)
@@ -749,15 +749,15 @@ class API(base.Base):
                     msg = (_("Cannot add volume %(volume_id)s to group "
                              "%(group_id)s as they belong to different "
                              "projects.") %
-                           {'volume_id': add_vol_ref['id'],
+                           {'volume_id': add_vol_ref.id,
                             'group_id': group.id})
                     raise exception.InvalidVolume(reason=msg)
-                add_vol_type_id = add_vol_ref.get('volume_type_id', None)
+                add_vol_type_id = add_vol_ref.volume_type_id
                 if not add_vol_type_id:
                     msg = (_("Cannot add volume %(volume_id)s to group "
                              "%(group_id)s because it has no volume "
                              "type.") %
-                           {'volume_id': add_vol_ref['id'],
+                           {'volume_id': add_vol_ref.id,
                             'group_id': group.id})
                     raise exception.InvalidVolume(reason=msg)
                 vol_type_ids = [v_type.id for v_type in group.volume_types]
@@ -766,27 +766,29 @@ class API(base.Base):
                              "%(group_id)s because volume type "
                              "%(volume_type)s is not supported by the "
                              "group.") %
-                           {'volume_id': add_vol_ref['id'],
+                           {'volume_id': add_vol_ref.id,
                             'group_id': group.id,
                             'volume_type': add_vol_type_id})
                     raise exception.InvalidVolume(reason=msg)
-                if (add_vol_ref['status'] not in
+                if (add_vol_ref.status not in
                         VALID_ADD_VOL_TO_GROUP_STATUS):
                     msg = (_("Cannot add volume %(volume_id)s to group "
                              "%(group_id)s because volume is in an "
                              "invalid state: %(status)s. Valid states are: "
                              "%(valid)s.") %
-                           {'volume_id': add_vol_ref['id'],
+                           {'volume_id': add_vol_ref.id,
                             'group_id': group.id,
-                            'status': add_vol_ref['status'],
+                            'status': add_vol_ref.status,
                             'valid': VALID_ADD_VOL_TO_GROUP_STATUS})
                     raise exception.InvalidVolume(reason=msg)
 
-                # group.host and add_vol_ref['host'] are in this format:
-                # 'host@backend#pool'. Extract host (host@backend) before
-                # doing comparison.
-                vol_host = volume_utils.extract_host(add_vol_ref['host'])
-                group_host = volume_utils.extract_host(group.host)
+                # group.resource_backend and add_vol_ref.resource_backend are
+                # in this format like 'host@backend#pool' in a non-HA
+                # deployment and will contain cluster_name in
+                # A/A HA deployment.
+                vol_host = volume_utils.extract_host(
+                    add_vol_ref.resource_backend)
+                group_host = volume_utils.extract_host(group.resource_backend)
                 if group_host != vol_host:
                     raise exception.InvalidVolume(
                         reason=_("Volume is not local to this node."))
@@ -794,12 +796,12 @@ class API(base.Base):
                 # Volume exists. It will be added to CG.
                 if add_volumes_new:
                     add_volumes_new += ","
-                add_volumes_new += add_vol_ref['id']
+                add_volumes_new += add_vol_ref.id
 
             else:
                 msg = (_("Cannot add volume %(volume_id)s to group "
                          "%(group_id)s because volume does not exist.") %
-                       {'volume_id': add_vol_ref['id'],
+                       {'volume_id': add_vol_ref.id,
                         'group_id': group.id})
                 raise exception.InvalidVolume(reason=msg)
 
