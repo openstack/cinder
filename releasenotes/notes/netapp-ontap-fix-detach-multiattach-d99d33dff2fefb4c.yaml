@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp ONTAP: Fixes `bug 1839384
+    <https://bugs.launchpad.net/cinder/+bug/1839384>`__ Detaching any instance
+    from multiattached volume terminates connection. Now the connection is
+    terminated only if there're no other instances using the same initiator.

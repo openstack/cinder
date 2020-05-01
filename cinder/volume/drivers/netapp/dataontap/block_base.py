@@ -888,12 +888,30 @@ class NetAppBlockStorageLibrary(object):
             targets = target_details_list
         return targets
 
+    def _is_multiattached(self, volume, connector):
+        """Returns whether the volume is multiattached.
+
+        Returns True if the volume is attached to multiple instances using the
+        same initiator as the given one.
+        Returns False otherwise.
+        """
+        if not volume.multiattach or not volume.volume_attachment:
+            return False
+
+        same_connector = (True for at in volume.volume_attachment
+                          if at.connector and
+                          at.connector['initiator'] == connector['initiator'])
+        next(same_connector, False)
+        return next(same_connector, False)
+
     def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
 
         Unmask the LUN on the storage system so the given initiator can no
         longer access it.
         """
+        if connector and self._is_multiattached(volume, connector):
+            return
 
         name = volume['name']
         if connector is None:
