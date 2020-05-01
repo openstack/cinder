@@ -36,7 +36,7 @@ of ``lvmdriver-1`` up to 100 MiB/s:
 .. note::
 
     This feature requires libcgroup to set up blkio cgroup for disk I/O
-    bandwidth limit. The libcgroup is provided by the cgroup-bin package
+    bandwidth limit. The libcgroup is provided by the cgroup-tools package
     in Debian and Ubuntu, or by the libcgroup-tools package in Fedora,
     Red Hat Enterprise Linux, CentOS, openSUSE, and SUSE Linux Enterprise.
 
