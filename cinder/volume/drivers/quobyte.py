@@ -115,7 +115,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
         1.1.10 - Adds overlay based volumes for snapshot merge caching
         1.1.11 - NAS secure ownership & permissions are now False by default
         1.1.12 - Ensure the currently configured volume url is always used
-        1.1.13 - Enable snapshot based backups with Quobyte
+        1.1.13 - Allow creating volumes from snapshots in state 'backing-up'
 
     """
 
