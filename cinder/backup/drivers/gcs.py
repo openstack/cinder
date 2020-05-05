@@ -43,13 +43,13 @@ try:
 except ImportError:
     client = None
 
-import googleapiclient
 from googleapiclient import discovery
 from googleapiclient import errors
 from googleapiclient import http
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
+import pkg_resources
 import six
 
 from cinder.backup import chunkeddriver
@@ -174,8 +174,9 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
         # If we have google client that support google-auth library
         # (v1.6.0 or higher) and all required libraries are installed use
         # google-auth for the credentials
-        if (version.LooseVersion(googleapiclient.__version__) >=
-                version.LooseVersion('1.6.0') and service_account):
+        dist = pkg_resources.get_distribution('google-api-python-client')
+        if (version.LooseVersion(dist.version) >= version.LooseVersion('1.6.0')
+                and service_account):
             creds = service_account.Credentials.from_service_account_file(
                 backup_credential)
             OAUTH_EXCEPTIONS = (gexceptions.RefreshError,
