@@ -199,7 +199,8 @@ class SchedulerDependentManager(ThreadPoolManager):
     def _publish_service_capabilities(self, context):
         """Pass data back to the scheduler at a periodic interval."""
         if self.last_capabilities:
-            LOG.debug('Notifying Schedulers of capabilities ...')
+            LOG.debug('Notifying Schedulers of capabilities for %(host)s...',
+                      {'host': self.host})
             self.scheduler_rpcapi.update_service_capabilities(
                 context,
                 self.service_name,
