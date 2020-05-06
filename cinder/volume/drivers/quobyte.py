@@ -540,6 +540,12 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
 
     @utils.synchronized('quobyte', external=False)
     def extend_volume(self, volume, size_gb):
+        if self._is_volume_attached(volume):
+            # NOTE(kaisers): no attached extensions until #1870367 is fixed
+            msg = (_("Cannot extend volume %s while it is attached.")
+                   % volume['id'])
+            raise exception.ExtendVolumeError(msg)
+
         volume_path = self.local_path(volume)
 
         info = self._qemu_img_info(volume_path, volume.name)

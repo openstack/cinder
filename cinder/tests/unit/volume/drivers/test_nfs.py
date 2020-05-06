@@ -997,6 +997,28 @@ class NfsDriverTestCase(test.TestCase):
                         resize.assert_called_once_with(path, newSize,
                                                        run_as_root=True)
 
+    def test_extend_volume_attached_fail(self):
+        """Extend a volume by 1."""
+        self._set_driver()
+        drv = self._driver
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            id='80ee16b6-75d2-4d54-9539-ffc1b4b0fb10',
+            size=1,
+            provider_location='nfs_share')
+        path = 'path'
+        newSize = volume['size'] + 1
+
+        with mock.patch.object(drv, 'local_path', return_value=path):
+            with mock.patch.object(drv, '_is_share_eligible',
+                                   return_value=True):
+                with mock.patch.object(drv, '_is_file_size_equal',
+                                       return_value=True):
+                    with mock.patch.object(drv, '_is_volume_attached',
+                                           return_value=True):
+                        self.assertRaises(exception.ExtendVolumeError,
+                                          drv.extend_volume, volume, newSize)
+
     def test_extend_volume_failure(self):
         """Error during extend operation."""
         self._set_driver()

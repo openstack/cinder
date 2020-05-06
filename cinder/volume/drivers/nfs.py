@@ -363,6 +363,12 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
+        if self._is_volume_attached(volume):
+            # NOTE(kaisers): no attached extensions until #1870367 is fixed
+            msg = (_("Cannot extend volume %s while it is attached.")
+                   % volume['id'])
+            raise exception.ExtendVolumeError(msg)
+
         LOG.info('Extending volume %s.', volume.id)
         extend_by = int(new_size) - volume.size
         if not self._is_share_eligible(volume.provider_location,
