@@ -927,7 +927,10 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._ensure_share_mounted.assert_not_called()
         drv._execute.assert_not_called()
 
-    def test_extend_volume(self):
+    @ddt.data(True, False)
+    @mock.patch.object(remotefs.RemoteFSSnapDriverDistributed,
+                       "_is_volume_attached")
+    def test_extend_volume(self, is_attached, mock_remote_attached):
         drv = self._driver
 
         volume = self._simple_volume()
@@ -948,12 +951,19 @@ class QuobyteDriverTestCase(test.TestCase):
         image_utils.qemu_img_info = mock.Mock(return_value=img_info)
         image_utils.resize_image = mock.Mock()
 
-        drv.extend_volume(volume, 3)
+        mock_remote_attached.return_value = is_attached
 
-        image_utils.qemu_img_info.assert_called_once_with(volume_path,
-                                                          force_share=True,
-                                                          run_as_root=False)
-        image_utils.resize_image.assert_called_once_with(volume_path, 3)
+        if is_attached:
+            self.assertRaises(exception.ExtendVolumeError, drv.extend_volume,
+                              volume, 3)
+        else:
+            drv.extend_volume(volume, 3)
+
+            image_utils.qemu_img_info.assert_called_once_with(volume_path,
+                                                              force_share=True,
+                                                              run_as_root=False
+                                                              )
+            image_utils.resize_image.assert_called_once_with(volume_path, 3)
 
     def test_copy_volume_from_snapshot(self):
         drv = self._driver
