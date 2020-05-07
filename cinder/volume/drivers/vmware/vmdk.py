@@ -344,7 +344,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 raise exception.InvalidInput(reason=reason)
 
     def check_for_setup_error(self):
-        pass
+        # make sure if the storage profile is set that it exists.
+        for storage_profile in self.configuration.vmware_storage_profile:
+            if self._storage_policy_enabled and storage_profile:
+                profile_id = self._get_storage_profile_by_name(storage_profile)
+                if not profile_id:
+                    reason = (_("Failed to find storage profile '%s'")
+                              % storage_profile)
+                    raise exception.InvalidInput(reason=reason)
+
 
     def _update_volume_stats(self):
         if self.configuration.safe_get('vmware_enable_volume_stats'):
@@ -604,13 +612,16 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return VMwareVcVmdkDriver._get_extra_spec_disk_type(
             volume['volume_type_id'])
 
+    def _get_storage_profile_by_name(self, storage_profile):
+        profile = pbm.get_profile_id_by_name(self.session, storage_profile)
+        if profile:
+            return profile.uniqueId
+
     def _get_storage_profile_id(self, volume):
         storage_profile = self._get_storage_profile(volume)
         profile_id = None
         if self._storage_policy_enabled and storage_profile:
-            profile = pbm.get_profile_id_by_name(self.session, storage_profile)
-            if profile:
-                profile_id = profile.uniqueId
+            profile_id = self._get_storage_profile_by_name(storage_profile)
         return profile_id
 
     def _get_extra_config(self, volume):
