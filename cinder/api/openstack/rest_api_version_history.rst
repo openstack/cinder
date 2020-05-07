@@ -463,7 +463,8 @@ detail APIs.
 ---------------------------------
 Support volume transfer pagination.
 
-3.60
-----
-Add 'created_at' and 'updated_at' to support users can list/detail volumes by
-specifying the time comparison operators along with created_at or updated_at.
+3.60 (Maximum in Ussuri)
+------------------------
+Users may apply time comparison filters to the volume summary list and volume
+detail list requests by using the ``created_at`` or ``updated_at`` fields.
+Time must be expressed in ISO 8601 format.
