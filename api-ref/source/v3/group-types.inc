@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Group types
-===========
+Group types (group_types)
+=========================
 
 To create a generic volume group, you must specify a group type.
 

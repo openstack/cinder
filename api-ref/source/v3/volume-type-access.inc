@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Volume type access (volumes)
-============================
+Volume type access (types, action) (types, os-volume-type-access)
+=================================================================
 
 Private volume type access to project.
 

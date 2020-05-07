@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Volume transfer (3.55 or later)
-===============================
+Volume transfers (volume-transfers) (3.55 or later)
+===================================================
 
 Transfers a volume from one user to another user.
 This is the new transfer APIs with microversion 3.55.

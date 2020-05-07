@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Group replication
-=================
+Group replication (groups, action)
+==================================
 
 Lists targets, enables, disables, and fails over group replication.
 

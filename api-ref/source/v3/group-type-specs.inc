@@ -1,7 +1,7 @@
 .. -*- rst -*-
 
-Group type specs
-================
+Group type specs (group_types, group_specs)
+===========================================
 
 Create or update group specs for a group type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
