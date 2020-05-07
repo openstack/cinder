@@ -332,7 +332,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 raise exception.InvalidInput(reason=reason)
 
     def check_for_setup_error(self):
-        pass
+        # make sure if the storage profile is set that it exists.
+        for storage_profile in self.configuration.vmware_storage_profile:
+            if self._storage_policy_enabled and storage_profile:
+                profile_id = self._get_storage_profile_by_name(storage_profile)
+                if not profile_id:
+                    reason = (_("Failed to find storage profile '%s'")
+                              % storage_profile)
+                    raise exception.InvalidInput(reason=reason)
+
 
     def get_volume_stats(self, refresh=False):
         """Obtain status of the volume service.
@@ -391,6 +399,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         client_factory,
                         datastore_ref,
                         []))
+
+            if not datastores:
+                LOG.warning("No Datastores found for storage profile(s) "
+                            "''%s'",
+                            ', '.join(
+                                self.configuration.safe_get(
+                                    'vmware_storage_profile')))
+
         else:
             # Build a catch-all object spec that would reach all datastores
             object_specs.append(
@@ -398,29 +414,35 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     client_factory,
                     self.session.vim.service_content.rootFolder,
                     [vim_util.build_recursive_traversal_spec(client_factory)]))
-        prop_spec = vim_util.build_property_spec(
-            client_factory, 'Datastore', ['summary'])
-        filter_spec = vim_util.build_property_filter_spec(
-            client_factory, prop_spec, object_specs)
-        options = client_factory.create('ns0:RetrieveOptions')
-        options.maxObjects = self.configuration.vmware_max_objects_retrieval
-        result = self.session.vim.RetrievePropertiesEx(
-            self.session.vim.service_content.propertyCollector,
-            specSet=[filter_spec],
-            options=options)
+
         global_capacity = 0
         global_free = 0
-        while True:
-            for ds in result.objects:
-                summary = ds.propSet[0].val
-                global_capacity += summary.capacity
-                global_free += summary.freeSpace
-            if getattr(result, 'token', None):
-                result = self.session.vim.ContinueRetrievePropertiesEx(
-                    self.session.vim.service_content.propertyCollector,
-                    result.token)
-            else:
-                break
+        # If there are no datastores, then object specs are empty
+        # we can't query vcenter with empty object specs, or we'll
+        # get errors.
+        if object_specs:
+            prop_spec = vim_util.build_property_spec(
+                client_factory, 'Datastore', ['summary'])
+            filter_spec = vim_util.build_property_filter_spec(
+                client_factory, prop_spec, object_specs)
+            options = client_factory.create('ns0:RetrieveOptions')
+            max_objects = self.configuration.vmware_max_objects_retrieval
+            options.maxObjects = max_objects
+            result = self.session.vim.RetrievePropertiesEx(
+                self.session.vim.service_content.propertyCollector,
+                specSet=[filter_spec],
+                options=options)
+            while True:
+                for ds in result.objects:
+                    summary = ds.propSet[0].val
+                    global_capacity += summary.capacity
+                    global_free += summary.freeSpace
+                if getattr(result, 'token', None):
+                    result = self.session.vim.ContinueRetrievePropertiesEx(
+                        self.session.vim.service_content.propertyCollector,
+                        result.token)
+                else:
+                    break
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
         data['free_capacity_gb'] = round(global_free / units.Gi)
         return data
@@ -528,13 +550,16 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return VMwareVcVmdkDriver._get_extra_spec_disk_type(
             volume['volume_type_id'])
 
+    def _get_storage_profile_by_name(self, storage_profile):
+        profile = pbm.get_profile_id_by_name(self.session, storage_profile)
+        if profile:
+            return profile.uniqueId
+
     def _get_storage_profile_id(self, volume):
         storage_profile = self._get_storage_profile(volume)
         profile_id = None
         if self._storage_policy_enabled and storage_profile:
-            profile = pbm.get_profile_id_by_name(self.session, storage_profile)
-            if profile:
-                profile_id = profile.uniqueId
+            profile_id = self._get_storage_profile_by_name(storage_profile)
         return profile_id
 
     def _get_extra_config(self, volume):

@@ -74,6 +74,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     IMAGE_ID = 'eb87f4b0-d625-47f8-bb45-71c43b486d3a'
     IMAGE_NAME = 'image-1'
     ADAPTER_TYPE = volumeops.VirtualDiskAdapterType.BUS_LOGIC
+    STORAGE_PROFILE = 'gold'
 
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
@@ -98,6 +99,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._config.vmware_adapter_type = self.ADAPTER_TYPE
         self._config.vmware_snapshot_format = self.SNAPSHOT_FORMAT
         self._config.vmware_lazy_create = True
+        self._config.vmware_storage_profile = [self.STORAGE_PROFILE]
         self._config.reserved_percentage = 0
         self._config.vmware_profile_check_on_attach = True
 
@@ -106,6 +108,47 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                db=self._db)
 
         self._context = context.get_admin_context()
+
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_check_for_setup_error(self, get_profile_id_by_name, session):
+        profile_id = mock.sentinel.profile_id
+        get_profile_id_by_name.return_value = mock.Mock(uniqueId=profile_id)
+        self._driver._storage_policy_enabled = True
+
+        # set config
+        self._driver.check_for_setup_error()
+        get_profile_id_by_name.assert_called_once_with(session,
+                                                       self.STORAGE_PROFILE)
+
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_check_for_setup_error_fail(self, get_profile_id_by_name, session):
+        get_profile_id_by_name.return_value = None
+        self._driver._storage_policy_enabled = True
+
+        # set config
+        self.assertRaises(cinder_exceptions.InvalidInput,
+                          self._driver.check_for_setup_error)
+        get_profile_id_by_name.assert_called_once_with(session,
+                                                       self.STORAGE_PROFILE)
+
+
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_storage_profile_id(
+            self, get_profile_id_by_name, session, get_storage_profile):
+        get_storage_profile.return_value = 'gold'
+        profile_id = mock.sentinel.profile_id
+        get_profile_id_by_name.return_value = mock.Mock(uniqueId=profile_id)
+
+        self._driver._storage_policy_enabled = True
+        volume = self._create_volume_dict()
+        self.assertEqual(profile_id,
+                         self._driver._get_storage_profile_id(volume))
+        get_storage_profile.assert_called_once_with(volume)
+        get_profile_id_by_name.assert_called_once_with(session, 'gold')
+
 
     @mock.patch.object(VMDK_DRIVER, 'session')
     def test_get_volume_stats(self, session):
