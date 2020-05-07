@@ -182,7 +182,7 @@ class Service(service.Service):
                          'will %(opt_no)sbe moved to the new cluster',
                          {'cluster_svc': service_ref.cluster_name,
                           'cluster_cfg': cluster,
-                          'opt_no': '' if self.added_to_cluster else 'NO '})
+                          'opt_no': '' if self.added_to_cluster else 'NOT '})
 
             if self.added_to_cluster:
                 # We pass copy service's disable status in the cluster if we
