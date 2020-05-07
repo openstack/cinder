@@ -91,6 +91,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     IMAGE_ID = 'eb87f4b0-d625-47f8-bb45-71c43b486d3a'
     IMAGE_NAME = 'image-1'
     ADAPTER_TYPE = volumeops.VirtualDiskAdapterType.BUS_LOGIC
+    STORAGE_PROFILE = 'gold'
 
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
@@ -118,12 +119,37 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vmware_datastore_regex=None,
             reserved_percentage=0,
             vmware_profile_check_on_attach=True,
+                        vmware_storage_profile=[self.STORAGE_PROFILE],
         )
 
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
 
         self._context = context.get_admin_context()
         self.updated_at = timeutils.utcnow()
+
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_check_for_setup_error(self, get_profile_id_by_name, session):
+        profile_id = mock.sentinel.profile_id
+        get_profile_id_by_name.return_value = mock.Mock(uniqueId=profile_id)
+        self._driver._storage_policy_enabled = True
+
+        # set config
+        self._driver.check_for_setup_error()
+        get_profile_id_by_name.assert_called_once_with(session,
+                                                       self.STORAGE_PROFILE)
+
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_check_for_setup_error_fail(self, get_profile_id_by_name, session):
+        get_profile_id_by_name.return_value = None
+        self._driver._storage_policy_enabled = True
+
+        # set config
+        self.assertRaises(cinder_exceptions.InvalidInput,
+                          self._driver.check_for_setup_error)
+        get_profile_id_by_name.assert_called_once_with(session,
+                                                       self.STORAGE_PROFILE)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
