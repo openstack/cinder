@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1875570 <https://bugs.launchpad.net/cinder/+bug/1875570>`_:
+    Fixed issue with NFS backend where the image-volume cache was
+    never used to create a volume, even when the cache was enabled.
