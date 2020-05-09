@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    The oslo.middleware /healthcheck is now activated by default in the Cinder
+    api-paste.ini. Operators can use it to configure HAproxy or the monitoring
+    of Cinder APIs. Edit the ``api-paste.ini`` file and remove any healthcheck
+    entries to disable this functionality.
