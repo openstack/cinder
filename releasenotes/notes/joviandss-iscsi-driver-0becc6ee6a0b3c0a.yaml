@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added support for Open-E JovianDSS data storage.
+    Driver supports Open-E disaster recovery feature and cascade volume
+    deletion in addition to support minimum required functions.
