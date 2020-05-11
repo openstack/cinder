@@ -28,6 +28,7 @@ import ddt
 from eventlet import tpool
 from oslo_config import cfg
 from swiftclient import client as swift
+import zstd
 
 from cinder.backup import chunkeddriver
 from cinder.backup.drivers import swift as swift_dr
@@ -329,6 +330,15 @@ class BackupSwiftTestCase(test.TestCase):
         volume_id = '5cea0535-b6fb-4531-9a38-000000bea094'
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self._write_effective_compression_file(self.size_volume_file)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        service.backup(backup, self.volume_file)
+
+    def test_backup_zstd(self):
+        volume_id = '471910a0-a197-4259-9c50-0fc3d6a07dbc'
+        self._create_backup_db_entry(volume_id=volume_id)
+        self.flags(backup_compression_algorithm='zstd')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self._write_effective_compression_file(self.size_volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
@@ -838,6 +848,9 @@ class BackupSwiftTestCase(test.TestCase):
         self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('bz2')
         self.assertEqual(bz2, compressor)
+        self.assertIsInstance(compressor, tpool.Proxy)
+        compressor = service._get_compressor('zstd')
+        self.assertEqual(zstd, compressor)
         self.assertIsInstance(compressor, tpool.Proxy)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 

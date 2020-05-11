@@ -31,6 +31,7 @@ from os_brick import exception as brick_exception
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
 import six
+import zstd
 
 from cinder.backup.drivers import nfs
 from cinder import context
@@ -282,6 +283,15 @@ class BackupNFSTestCase(test.TestCase):
         volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
+        service = nfs.NFSBackupDriver(self.ctxt)
+        self._write_effective_compression_file(self.size_volume_file)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        service.backup(backup, self.volume_file)
+
+    def test_backup_zstd(self):
+        volume_id = fake.VOLUME_ID
+        self._create_backup_db_entry(volume_id=volume_id)
+        self.flags(backup_compression_algorithm='zstd')
         service = nfs.NFSBackupDriver(self.ctxt)
         self._write_effective_compression_file(self.size_volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
@@ -745,6 +755,32 @@ class BackupNFSTestCase(test.TestCase):
         self.assertNotEqual(threading.current_thread(),
                             self.thread_dict['thread'])
 
+    def test_restore_zstd(self):
+        self.thread_original_method = zstd.decompress
+        self.mock_object(zstd, 'decompress', side_effect=self._store_thread)
+        volume_id = fake.VOLUME_ID
+
+        self._create_backup_db_entry(volume_id=volume_id)
+        self.flags(backup_compression_algorithm='zstd')
+        file_size = 1024 * 3
+        self.flags(backup_file_size=file_size)
+        self.flags(backup_sha_block_size_bytes=1024)
+        service = nfs.NFSBackupDriver(self.ctxt)
+        self._write_effective_compression_file(file_size)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+        backup.status = objects.fields.BackupStatus.RESTORING
+        backup.save()
+        service.backup(backup, self.volume_file)
+
+        with tempfile.NamedTemporaryFile() as restored_file:
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
+            service.restore(backup, volume_id, restored_file)
+            self.assertTrue(filecmp.cmp(self.volume_file.name,
+                            restored_file.name))
+
+        self.assertNotEqual(threading.current_thread(),
+                            self.thread_dict['thread'])
+
     def test_restore_abort_delta(self):
         volume_id = fake.VOLUME_ID
         count = set()
@@ -876,6 +912,9 @@ class BackupNFSTestCase(test.TestCase):
         self.assertIsInstance(compressor, tpool.Proxy)
         compressor = service._get_compressor('bz2')
         self.assertEqual(compressor, bz2)
+        self.assertIsInstance(compressor, tpool.Proxy)
+        compressor = service._get_compressor('zstd')
+        self.assertEqual(zstd, compressor)
         self.assertIsInstance(compressor, tpool.Proxy)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
