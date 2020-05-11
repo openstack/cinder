@@ -1173,6 +1173,41 @@ class PowerMaxReplicationTest(test.TestCase):
         mck_resume.assert_called_once_with(
             array, rdf_mgmt_grp, rdf_group_no, rep_extra_specs)
 
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'srdf_remove_device_pair_from_storage_group',
+        side_effect=exception.CinderException)
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_groups_from_volume',
+        return_value=[tpd.PowerMaxData.storagegroup_name_f])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_rdf_pair_volume',
+        return_value=tpd.PowerMaxData.rdf_group_vol_details)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs)
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_rdf_details',
+        return_value=(tpd.PowerMaxData.rdf_group_no_1,
+                      tpd.PowerMaxData.remote_array))
+    def test_cleanup_rdf_device_pair_attempt_resume_on_exception(
+            self, mck_rdf, mck_rep, mck_pair, mck_sg, mck_rem, mck_resume):
+        array = self.data.array
+        rdf_group_no = self.data.rdf_group_no_1
+        device_id = self.data.device_id
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs[utils.REP_MODE] = utils.REP_SYNC
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+        rep_extra_specs = self.common._get_replication_extra_specs(
+            extra_specs, extra_specs[utils.REP_CONFIG])
+        self.assertRaises(
+            exception.CinderException,
+            self.common.cleanup_rdf_device_pair, array, rdf_group_no,
+            device_id, extra_specs)
+        mck_resume.assert_called_once_with(
+            array, self.data.storagegroup_name_f, rdf_group_no,
+            rep_extra_specs, False)
+
     @mock.patch.object(
         rest.PowerMaxRest, 'get_num_vols_in_sg', return_value=1)
     @mock.patch.object(
