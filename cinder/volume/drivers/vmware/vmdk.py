@@ -341,7 +341,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                               % storage_profile)
                     raise exception.InvalidInput(reason=reason)
 
-
     def get_volume_stats(self, refresh=False):
         """Obtain status of the volume service.
 
