@@ -18,7 +18,7 @@ import ddt
 
 from cinder.interface import fczm_driver
 from cinder.interface import util
-from cinder import test
+from cinder.tests.unit import test
 
 FCZM_DRIVERS = util.get_fczm_drivers()
 
