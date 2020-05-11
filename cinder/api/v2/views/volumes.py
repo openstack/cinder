@@ -91,7 +91,11 @@ class ViewBuilder(common.ViewBuilder):
                 'multiattach': volume.get('multiattach'),
             }
         }
-        if request.environ['cinder.context'].is_admin:
+        ctxt = request.environ['cinder.context']
+        if not ctxt.is_admin:
+            if volume_ref.get('attachments'):
+                volume_ref['volume']['attachments']['host_name'] = None
+        if ctxt.is_admin:
             volume_ref['volume']['migration_status'] = (
                 volume.get('migration_status'))
 
@@ -100,7 +104,6 @@ class ViewBuilder(common.ViewBuilder):
         group_id = volume.get('group_id')
         if group_id is not None:
             # Not found exception will be handled at the wsgi level
-            ctxt = request.environ['cinder.context']
             grp = group_api.API().get(ctxt, group_id)
             cgsnap_type = group_types.get_default_cgsnapshot_type()
             if grp.group_type_id == cgsnap_type['id']:
