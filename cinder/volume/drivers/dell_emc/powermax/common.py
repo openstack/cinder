@@ -1996,12 +1996,11 @@ class PowerMaxCommon(object):
     def _create_volume(self, volume, volume_name, volume_size, extra_specs):
         """Create a volume.
 
-        :param volume_name: the volume
+        :param volume: the volume
         :param volume_name: the volume name
         :param volume_size: the volume size
         :param extra_specs: extra specifications
         :returns: volume_dict, rep_update, rep_info_dict --dict
-        :raises: VolumeBackendAPIException:
         """
         # Set Create Volume options
         is_re, rep_mode, storagegroup_name = False, None, None
@@ -2044,33 +2043,64 @@ class PowerMaxCommon(object):
             extra_specs[utils.WORKLOAD], extra_specs,
             do_disable_compression, is_re, rep_mode)
 
+        if not is_re:
+            volume_dict = self._create_non_replicated_volume(
+                array, volume, volume_name, storagegroup_name,
+                volume_size, extra_specs)
+        else:
+            volume_dict, rep_update, rep_info_dict = (
+                self._create_replication_enabled_volume(
+                    array, volume, volume_name, volume_size, extra_specs,
+                    storagegroup_name, rep_mode))
+
+        # Compare volume ID against identifier on array. Update if needed.
+        # This can occur in cases where multiple edits are occurring at once.
+        found_device_id = self.rest.find_volume_device_id(array, volume_name)
+        returning_device_id = volume_dict['device_id']
+        if found_device_id != returning_device_id:
+            volume_dict['device_id'] = found_device_id
+
+        return volume_dict, rep_update, rep_info_dict
+
+    @coordination.synchronized("emc-nonrdf-vol-{storagegroup_name}-{array}")
+    def _create_non_replicated_volume(
+            self, array, volume, volume_name, storagegroup_name, volume_size,
+            extra_specs):
+        """Create a volume without replication enabled
+
+        :param array: the primary array -- string
+        :param volume: the volume -- dict
+        :param volume_name: the volume name -- string
+        :param storagegroup_name: the storage group name -- string
+        :param volume_size: the volume size -- string
+        :param extra_specs: extra specifications -- dict
+        :return: volume_dict -- dict
+        :raises: VolumeBackendAPIException:
+        """
         existing_devices = self.rest.get_volumes_in_storage_group(
             array, storagegroup_name)
-
         try:
-            if not is_re:
-                volume_dict = self.provision.create_volume_from_sg(
-                    array, volume_name, storagegroup_name,
-                    volume_size, extra_specs, rep_info=None)
-            else:
-                volume_dict, rep_update, rep_info_dict = (
-                    self._create_replication_enabled_volume(
-                        array, volume, volume_name, volume_size, extra_specs,
-                        storagegroup_name, rep_mode))
-        except Exception:
-            if storagegroup_name:
+            volume_dict = self.provision.create_volume_from_sg(
+                array, volume_name, storagegroup_name,
+                volume_size, extra_specs, rep_info=None)
+            return volume_dict
+        except Exception as e:
+            try:
+                # Attempt cleanup of storage group post exception.
                 updated_devices = set(self.rest.get_volumes_in_storage_group(
                     array, storagegroup_name))
                 devices_to_delete = [device for device in updated_devices
                                      if device not in existing_devices]
                 if devices_to_delete:
-                    self._cleanup_volume_create_post_failure(
+                    self._cleanup_non_rdf_volume_create_post_failure(
                         volume, volume_name, extra_specs, devices_to_delete)
                 elif not existing_devices:
                     self.rest.delete_storage_group(array, storagegroup_name)
-            raise
-
-        return volume_dict, rep_update, rep_info_dict
+            finally:
+                # Pass actual exception that was raised now that cleanup
+                # attempt is finished. Mainly VolumeBackendAPIException raised
+                # from error status codes returned from the various REST jobs.
+                raise e
 
     @coordination.synchronized('emc-rdf-vol-{storagegroup_name}-{array}')
     def _create_replication_enabled_volume(
@@ -2086,6 +2116,7 @@ class PowerMaxCommon(object):
         :param storagegroup_name: the storage group name
         :param rep_mode: the replication mode
         :returns: volume_dict, rep_update, rep_info_dict --dict
+        :raises: VolumeBackendAPIException:
         """
         def _is_first_vol_in_replicated_sg():
             vol_dict = dict()
@@ -2115,35 +2146,55 @@ class PowerMaxCommon(object):
 
             return first_vol, rep_ex_specs, vol_dict
 
-        is_first_volume, rep_extra_specs, volume_info_dict = (
-            _is_first_vol_in_replicated_sg())
+        existing_devices = self.rest.get_volumes_in_storage_group(
+            array, storagegroup_name)
+        try:
+            is_first_volume, rep_extra_specs, volume_info_dict = (
+                _is_first_vol_in_replicated_sg())
 
-        if not is_first_volume:
-            self._validate_rdfg_status(array, extra_specs)
-            __, rep_extra_specs, rep_info_dict, __ = (
-                self.prepare_replication_details(extra_specs))
-            volume_info_dict = self.provision.create_volume_from_sg(
-                array, volume_name, storagegroup_name,
-                volume_size, extra_specs, rep_info_dict)
+            if not is_first_volume:
+                self._validate_rdfg_status(array, extra_specs)
+                __, rep_extra_specs, rep_info_dict, __ = (
+                    self.prepare_replication_details(extra_specs))
+                volume_info_dict = self.provision.create_volume_from_sg(
+                    array, volume_name, storagegroup_name,
+                    volume_size, extra_specs, rep_info_dict)
 
-        rep_vol_dict = deepcopy(volume_info_dict)
-        rep_vol_dict.update({'device_uuid': volume_name,
-                             'storage_group': storagegroup_name,
-                             'size': volume_size})
+            rep_vol_dict = deepcopy(volume_info_dict)
+            rep_vol_dict.update({'device_uuid': volume_name,
+                                 'storage_group': storagegroup_name,
+                                 'size': volume_size})
 
-        remote_device_id = self.get_and_set_remote_device_uuid(
-            extra_specs, rep_extra_specs, rep_vol_dict)
-        rep_vol_dict.update({'remote_device_id': remote_device_id})
-        rep_update, rep_info_dict = self.gather_replication_updates(
-            extra_specs, rep_extra_specs, rep_vol_dict)
+            remote_device_id = self.get_and_set_remote_device_uuid(
+                extra_specs, rep_extra_specs, rep_vol_dict)
+            rep_vol_dict.update({'remote_device_id': remote_device_id})
+            rep_update, rep_info_dict = self.gather_replication_updates(
+                extra_specs, rep_extra_specs, rep_vol_dict)
 
-        if rep_mode in [utils.REP_ASYNC, utils.REP_METRO]:
-            self._add_volume_to_rdf_management_group(
-                array, volume_info_dict['device_id'], volume_name,
-                rep_extra_specs['array'], remote_device_id,
-                extra_specs)
+            if rep_mode in [utils.REP_ASYNC, utils.REP_METRO]:
+                self._add_volume_to_rdf_management_group(
+                    array, volume_info_dict['device_id'], volume_name,
+                    rep_extra_specs['array'], remote_device_id,
+                    extra_specs)
 
-        return volume_info_dict, rep_update, rep_info_dict
+            return volume_info_dict, rep_update, rep_info_dict
+        except Exception as e:
+            try:
+                # Attempt cleanup of rdfg & storage group post exception
+                updated_devices = set(self.rest.get_volumes_in_storage_group(
+                    array, storagegroup_name))
+                devices_to_delete = [device for device in updated_devices
+                                     if device not in existing_devices]
+                if devices_to_delete:
+                    self._cleanup_rdf_volume_create_post_failure(
+                        volume, volume_name, extra_specs, devices_to_delete)
+                elif not existing_devices:
+                    self.rest.delete_storage_group(array, storagegroup_name)
+            finally:
+                # Pass actual exception that was raised now that cleanup
+                # attempt is finished. Mainly VolumeBackendAPIException raised
+                # from error status codes returned from the various REST jobs.
+                raise e
 
     def _set_vmax_extra_specs(self, extra_specs, pool_record):
         """Set the PowerMax/VMAX extra specs.
@@ -2386,49 +2437,66 @@ class PowerMaxCommon(object):
 
             self.rest.srdf_suspend_replication(
                 array, rdf_mgmt_sg, rdf_group_no, rep_extra_specs)
+        try:
+            # 3. Check vol doesnt live in any SGs outside OpenStack managed SGs
+            if rdf_mgmt_sg and rdf_mgmt_sg in vol_sg_list:
+                vol_sg_list.remove(rdf_mgmt_sg)
+            if len(vol_sg_list) > 1:
+                exception_message = (_(
+                    "There is more than one storage group associated with "
+                    "device %(dev)s not including RDF management groups. "
+                    "Please check device is not member of non-OpenStack "
+                    "managed storage groups") % {'dev': device_id})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(exception_message)
+            else:
+                vol_src_sg = vol_sg_list[0]
 
-        # 3. Check vol does not live in any SGs outside OpenStack managed SGs
-        if rdf_mgmt_sg and rdf_mgmt_sg in vol_sg_list:
-            vol_sg_list.remove(rdf_mgmt_sg)
-        if len(vol_sg_list) > 1:
-            exception_message = (_(
-                "There is more than one storage group associated with device "
-                "%(dev)s not including RDF management groups. Please check "
-                "device is not member of non-OpenStack managed storage "
-                "groups") % {'dev': device_id})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(exception_message)
-        else:
-            vol_src_sg = vol_sg_list[0]
-
-        # 4. Remove device from SG and delete RDFG device pair
-        self.rest.srdf_remove_device_pair_from_storage_group(
-            array, vol_src_sg, rep_extra_specs['array'], device_id,
-            rep_extra_specs)
-
-        # 5. Remove the volume from any additional SGs
-        if rdf_mgmt_sg:
-            self.rest.remove_vol_from_sg(
-                array, rdf_mgmt_sg, device_id, extra_specs)
-            self.rest.remove_vol_from_sg(
-                remote_array, rdf_mgmt_sg, remote_device_id, rep_extra_specs)
-
-        # 6. Delete the r2 volume
-        self.rest.delete_volume(remote_array, remote_device_id)
-
-        # 7. Delete the SGs if there are no volumes remaining
-        self._cleanup_rdf_storage_groups_post_r2_delete(
-            array, remote_array, vol_src_sg, rdf_mgmt_sg, rdf_mgmt_cleanup)
-
-        # 8. Resume replication if RDFG still contains volumes
-        if resume_replication:
-            self.rest.srdf_resume_replication(
-                array, rdf_mgmt_sg, rep_extra_specs['rdf_group_no'],
+            # 4. Remove device from SG and delete RDFG device pair
+            self.rest.srdf_remove_device_pair_from_storage_group(
+                array, vol_src_sg, rep_extra_specs['array'], device_id,
                 rep_extra_specs)
 
-        LOG.info('Remote device %(dev)s deleted from RDF Group %(grp)s',
-                 {'dev': remote_device_id,
-                  'grp': rep_extra_specs['rdf_group_label']})
+            # 5. Remove the volume from any additional SGs
+            if rdf_mgmt_sg:
+                self.rest.remove_vol_from_sg(
+                    array, rdf_mgmt_sg, device_id, extra_specs)
+                self.rest.remove_vol_from_sg(
+                    remote_array, rdf_mgmt_sg, remote_device_id,
+                    rep_extra_specs)
+
+            # 6. Delete the r2 volume
+            self.rest.delete_volume(remote_array, remote_device_id)
+
+            # 7. Delete the SGs if there are no volumes remaining
+            self._cleanup_rdf_storage_groups_post_r2_delete(
+                array, remote_array, vol_src_sg, rdf_mgmt_sg, rdf_mgmt_cleanup)
+
+            # 8. Resume replication if RDFG still contains volumes
+            if resume_replication:
+                self.rest.srdf_resume_replication(
+                    array, rdf_mgmt_sg, rep_extra_specs['rdf_group_no'],
+                    rep_extra_specs)
+
+            LOG.info('Remote device %(dev)s deleted from RDF Group %(grp)s',
+                     {'dev': remote_device_id,
+                      'grp': rep_extra_specs['rdf_group_label']})
+        except Exception as e:
+            # Attempt to resume SRDF groups after exception to avoid leaving
+            # them in a suspended state.
+            try:
+                if rdf_mgmt_sg:
+                    self.rest.srdf_resume_replication(
+                        array, rdf_mgmt_sg, rdf_group_no, rep_extra_specs,
+                        False)
+                elif len(vol_sg_list) == 1:
+                    self.rest.srdf_resume_replication(
+                        array, vol_sg_list[0], rdf_group_no, rep_extra_specs,
+                        False)
+            except Exception:
+                LOG.debug('Could not resume SRDF group after exception '
+                          'during cleanup_rdf_device_pair.')
+            raise e
 
     def _cleanup_rdf_storage_groups_post_r2_delete(
             self, array, remote_array, sg_name, rdf_mgmt_sg, rdf_mgmt_cleanup):
@@ -6092,9 +6160,9 @@ class PowerMaxCommon(object):
 
         return replication_update, rep_info_dict
 
-    def _cleanup_volume_create_post_failure(
+    def _cleanup_non_rdf_volume_create_post_failure(
             self, volume, volume_name, extra_specs, device_ids):
-        """Delete lingering volumes that exist in an SG post exception.
+        """Delete lingering volumes that exist in an non-RDF SG post exception.
 
         :param volume: Cinder volume -- Volume
         :param volume_name: Volume name -- str
@@ -6103,17 +6171,52 @@ class PowerMaxCommon(object):
         """
         array = extra_specs[utils.ARRAY]
         for device_id in device_ids:
-            __, __, rdf_group = self.rest.is_vol_in_rep_session(
+            self.masking.remove_and_reset_members(
+                array, volume, device_id, volume_name, extra_specs, False)
+            self._delete_from_srp(
+                array, device_id, volume_name, extra_specs)
+
+    def _cleanup_rdf_volume_create_post_failure(
+            self, volume, volume_name, extra_specs, device_ids):
+        """Delete lingering volumes that exist in an RDF SG post exception.
+
+        :param volume: Cinder volume -- Volume
+        :param volume_name: Volume name -- str
+        :param extra_specs: Volume extra specs -- dict
+        :param device_ids: Devices ids to be deleted -- list
+        """
+        __, rep_extra_specs, __, __ = self.prepare_replication_details(
+            extra_specs)
+        array = extra_specs[utils.ARRAY]
+        srp = extra_specs['srp']
+        slo = extra_specs['slo']
+        workload = extra_specs['workload']
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+        rep_mode = extra_specs['rep_mode']
+        rdf_group = rep_extra_specs['rdf_group_no']
+        rep_config = extra_specs[utils.REP_CONFIG]
+
+        if rep_mode is utils.REP_SYNC:
+            storagegroup_name = self.utils.get_default_storage_group_name(
+                srp, slo, workload, do_disable_compression, True, rep_mode)
+        else:
+            storagegroup_name = self.utils.get_rdf_management_group_name(
+                rep_config)
+
+        self.rest.srdf_resume_replication(
+            array, storagegroup_name, rdf_group, rep_extra_specs)
+        for device_id in device_ids:
+            __, __, vol_is_rdf = self.rest.is_vol_in_rep_session(
                 array, device_id)
-            if rdf_group:
-                rdf_group_no = rdf_group[0][utils.RDF_GROUP_NO]
-                self.cleanup_rdf_device_pair(array, rdf_group_no, device_id,
+            if vol_is_rdf:
+                self.cleanup_rdf_device_pair(array, rdf_group, device_id,
                                              extra_specs)
             else:
                 self.masking.remove_and_reset_members(
                     array, volume, device_id, volume_name, extra_specs, False)
-            self._delete_from_srp(
-                array, device_id, volume_name, extra_specs)
+                self._delete_from_srp(
+                    array, device_id, volume_name, extra_specs)
 
     def _validate_rdfg_status(self, array, extra_specs):
         """Validate RDF group states before and after various operations

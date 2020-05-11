@@ -1199,6 +1199,26 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(ref_response,
                          (volume_dict, rep_update, rep_info_dict))
 
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id2)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_create_non_replicated_volume',
+        return_value=deepcopy(tpd.PowerMaxData.provider_location))
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume',
+                       return_value=tpd.PowerMaxData.volume_details[0])
+    def test_create_volume_update_returning_device_id(
+            self, mck_get, mck_create, mck_find):
+        volume = self.data.test_volume
+        volume_name = '1'
+        volume_size = self.data.test_volume.size
+        extra_specs = self.data.extra_specs
+        ref_response = (self.data.provider_location2, dict(), dict())
+        volume_dict, rep_update, rep_info_dict = (
+            self.common._create_volume(
+                volume, volume_name, volume_size, extra_specs))
+        self.assertEqual(ref_response,
+                         (volume_dict, rep_update, rep_info_dict))
+
     def test_create_volume_success_next_gen(self):
         volume = self.data.test_volume
         volume_name = '1'
@@ -1223,7 +1243,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(provision.PowerMaxProvision, 'create_volume_from_sg',
                        side_effect=exception.VolumeBackendAPIException(''))
     @mock.patch.object(common.PowerMaxCommon,
-                       '_cleanup_volume_create_post_failure')
+                       '_cleanup_non_rdf_volume_create_post_failure')
     @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
     def test_create_volume_failed(self, mck_del, mck_cleanup, mck_create):
         volume = self.data.test_volume
@@ -1251,41 +1271,111 @@ class PowerMaxCommonTest(test.TestCase):
                               extra_specs)
             mck_del.assert_called_once()
 
-    @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
     @mock.patch.object(common.PowerMaxCommon, 'cleanup_rdf_device_pair')
     @mock.patch.object(
         rest.PowerMaxRest, 'is_vol_in_rep_session', return_value=('', '', [
             {utils.RDF_GROUP_NO: tpd.PowerMaxData.rdf_group_no_1}]))
-    def test_cleanup_volume_create_post_failure_rdf_enabled(
-            self, mck_in, mck_clean, mck_del):
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_default_storage_group_name',
+                       return_value=tpd.PowerMaxData.storagegroup_name_f)
+    @mock.patch.object(common.PowerMaxCommon, 'prepare_replication_details',
+                       return_value=('', tpd.PowerMaxData.rep_extra_specs,
+                                     '', '',))
+    def test_cleanup_rdf_volume_create_post_failure_sync(
+            self, mck_prep, mck_sg, mck_resume, mck_sess, mck_clean):
         array = self.data.array
         volume = self.data.test_volume
         volume_name = self.data.test_volume.name
         extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
         extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+        extra_specs['rep_mode'] = utils.REP_SYNC
         devices = [self.data.device_id]
-        self.common._cleanup_volume_create_post_failure(
+        self.common._cleanup_rdf_volume_create_post_failure(
             volume, volume_name, extra_specs, devices)
-        mck_in.assert_called_once_with(array, self.data.device_id)
+        mck_prep.assert_called_once_with(extra_specs)
+        mck_sg.assert_called_once_with(
+            extra_specs['srp'], extra_specs['slo'], extra_specs['workload'],
+            False, True, extra_specs['rep_mode'])
+        mck_resume.assert_called_once_with(
+            array, self.data.storagegroup_name_f, self.data.rdf_group_no_1,
+            self.data.rep_extra_specs)
+        mck_sess.assert_called_once_with(array, self.data.device_id)
         mck_clean.assert_called_once_with(
             array, self.data.rdf_group_no_1, self.data.device_id, extra_specs)
-        mck_del.assert_called_once_with(
-            array, self.data.device_id, volume_name, extra_specs)
+
+    @mock.patch.object(common.PowerMaxCommon, 'cleanup_rdf_device_pair')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'is_vol_in_rep_session', return_value=('', '', [
+            {utils.RDF_GROUP_NO: tpd.PowerMaxData.rdf_group_no_1}]))
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name',
+                       return_value=tpd.PowerMaxData.storagegroup_name_f)
+    @mock.patch.object(common.PowerMaxCommon, 'prepare_replication_details',
+                       return_value=('', tpd.PowerMaxData.rep_extra_specs,
+                                     '', '',))
+    def test_cleanup_rdf_volume_create_post_failure_non_sync(
+            self, mck_prep, mck_mgmt, mck_resume, mck_sess, mck_clean):
+        array = self.data.array
+        volume = self.data.test_volume
+        volume_name = self.data.test_volume.name
+        extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        extra_specs['rep_mode'] = utils.REP_ASYNC
+        devices = [self.data.device_id]
+        self.common._cleanup_rdf_volume_create_post_failure(
+            volume, volume_name, extra_specs, devices)
+        mck_prep.assert_called_once_with(extra_specs)
+        mck_mgmt.assert_called_once_with(extra_specs[utils.REP_CONFIG])
+        mck_resume.assert_called_once_with(
+            array, self.data.storagegroup_name_f, self.data.rdf_group_no_1,
+            self.data.rep_extra_specs)
+        mck_sess.assert_called_once_with(array, self.data.device_id)
+        mck_clean.assert_called_once_with(
+            array, self.data.rdf_group_no_1, self.data.device_id, extra_specs)
 
     @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
     @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
-    @mock.patch.object(
-        rest.PowerMaxRest, 'is_vol_in_rep_session', return_value=('', '', ''))
-    def test_cleanup_volume_create_post_failure_rdf_disabled(
-            self, mck_in, mck_remove, mck_del):
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
+                       return_value=('', '', False))
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name',
+                       return_value=tpd.PowerMaxData.storagegroup_name_f)
+    @mock.patch.object(common.PowerMaxCommon, 'prepare_replication_details',
+                       return_value=('', tpd.PowerMaxData.rep_extra_specs,
+                                     '', '',))
+    def test_cleanup_rdf_volume_create_post_failure_pre_rdf_establish(
+            self, mck_prep, mck_mgmt, mck_resume, mck_sess, mck_rem, mck_del):
+        array = self.data.array
+        volume = self.data.test_volume
+        volume_name = self.data.test_volume.name
+        extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
+        extra_specs['rep_mode'] = utils.REP_ASYNC
+        devices = [self.data.device_id]
+        self.common._cleanup_rdf_volume_create_post_failure(
+            volume, volume_name, extra_specs, devices)
+        mck_prep.assert_called_once_with(extra_specs)
+        mck_mgmt.assert_called_once_with(extra_specs[utils.REP_CONFIG])
+        mck_resume.assert_called_once_with(
+            array, self.data.storagegroup_name_f, self.data.rdf_group_no_1,
+            self.data.rep_extra_specs)
+        mck_sess.assert_called_once_with(array, self.data.device_id)
+        mck_rem.assert_called_once_with(array, volume, self.data.device_id,
+                                        volume_name, extra_specs, False)
+        mck_del.assert_called_once_with(array, self.data.device_id,
+                                        volume_name, extra_specs)
+
+    @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
+    def test_cleanup_non_rdf_volume_create_post_failure(
+            self, mck_remove, mck_del):
         array = self.data.array
         volume = self.data.test_volume
         volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
         devices = [self.data.device_id]
-        self.common._cleanup_volume_create_post_failure(
+        self.common._cleanup_non_rdf_volume_create_post_failure(
             volume, volume_name, extra_specs, devices)
-        mck_in.assert_called_once_with(array, self.data.device_id)
         mck_remove.assert_called_once_with(
             array, volume, self.data.device_id, volume_name, extra_specs,
             False)
