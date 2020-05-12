@@ -2046,15 +2046,16 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         if (results['uniqueBlocksUsedSpace'] == 0 or
                 results['uniqueBlocks'] == 0 or
-                results['zeroBlocks'] == 0):
+                results['zeroBlocks'] == 0 or
+                results['nonZeroBlocks'] == 0):
             data['compression_percent'] = 100
-            data['deduplicaton_percent'] = 100
+            data['deduplication_percent'] = 100
             data['thin_provision_percent'] = 100
         else:
             data['compression_percent'] = (
                 (float(results['uniqueBlocks'] * 4096) /
                  results['uniqueBlocksUsedSpace']) * 100)
-            data['deduplicaton_percent'] = (
+            data['deduplication_percent'] = (
                 float(results['nonZeroBlocks'] /
                       results['uniqueBlocks']) * 100)
             data['thin_provision_percent'] = (
