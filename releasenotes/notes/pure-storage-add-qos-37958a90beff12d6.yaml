@@ -1,0 +1,4 @@
+---
+features:
+  - Added support for QoS in the Pure Storage drivers.
+    QoS support is available from Purity//FA 5.3.0

@@ -35,6 +35,7 @@ try:
 except ImportError:
     purestorage = None
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
@@ -44,6 +45,8 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
@@ -128,7 +131,8 @@ EXTRA_SPECS_REPL_TYPE = "replication_type"
 MAX_VOL_LENGTH = 63
 MAX_SNAP_LENGTH = 96
 UNMANAGED_SUFFIX = '-unmanaged'
-SYNC_REPLICATION_REQUIRED_API_VERSIONS = ['1.13', '1.14']
+QOS_REQUIRED_API_VERSION = ['1.17']
+SYNC_REPLICATION_REQUIRED_API_VERSIONS = ['1.13', '1.14', '1.17']
 ASYNC_REPLICATION_REQUIRED_API_VERSIONS = [
     '1.3', '1.4', '1.5'] + SYNC_REPLICATION_REQUIRED_API_VERSIONS
 MANAGE_SNAP_REQUIRED_API_VERSIONS = [
@@ -187,10 +191,11 @@ def pure_driver_debug_trace(f):
 class PureBaseVolumeDriver(san.SanDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4', '1.5', '1.13', '1.14']
+    SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4', '1.5',
+                                   '1.13', '1.14', '1.17']
 
     SUPPORTS_ACTIVE_ACTIVE = True
-
+    PURE_QOS_KEYS = ['maxIOPS', 'maxBWS']
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Pure_Storage_CI"
 
@@ -315,6 +320,48 @@ class PureBaseVolumeDriver(san.SanDriver):
                         self._uniform_active_cluster_target_arrays.append(
                             target_array)
 
+    @pure_driver_debug_trace
+    def set_qos(self, array, vol_name, qos):
+        LOG.debug('QoS: %(qos)s', {'qos': qos})
+        if qos['maxIOPS'] == '0' and qos['maxBWS'] == 0:
+            array.set_volume(vol_name,
+                             iops_limit='',
+                             bandwidth_limit='')
+        elif qos['maxIOPS'] == 0:
+            array.set_volume(vol_name,
+                             iops_limit='',
+                             bandwidth_limit=qos['maxBWS'])
+        elif qos['maxBWS'] == 0:
+            array.set_volume(vol_name,
+                             iops_limit=qos['maxIOPS'],
+                             bandwidth_limit='')
+        else:
+            array.set_volume(vol_name,
+                             iops_limit=qos['maxIOPS'],
+                             bandwidth_limit=qos['maxBWS'])
+        return
+
+    @pure_driver_debug_trace
+    def create_with_qos(self, array, vol_name, vol_size, qos):
+        LOG.debug('QoS: %(qos)s', {'qos': qos})
+        if qos['maxIOPS'] == 0 and qos['maxBWS'] == 0:
+            array.create_volume(vol_name, vol_size,
+                                iops_limit='',
+                                bandwidth_limit='')
+        elif qos['maxIOPS'] == 0:
+            array.create_volume(vol_name, vol_size,
+                                iops_limit='',
+                                bandwidth_limit=qos['maxBWS'])
+        elif qos['maxBWS'] == 0:
+            array.create_volume(vol_name, vol_size,
+                                iops_limit=qos['maxIOPS'],
+                                bandwidth_limit='')
+        else:
+            array.create_volume(vol_name, vol_size,
+                                iops_limit=qos['maxIOPS'],
+                                bandwidth_limit=qos['maxBWS'])
+        return
+
     def do_setup(self, context):
         """Performs driver initialization steps that could raise exceptions."""
         if purestorage is None:
@@ -433,16 +480,27 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def create_volume(self, volume):
         """Creates a volume."""
+        qos = None
         vol_name = self._generate_purity_vol_name(volume)
         vol_size = volume["size"] * units.Gi
+        ctxt = context.get_admin_context()
+        type_id = volume.get('volume_type_id')
         current_array = self._get_current_array()
-        current_array.create_volume(vol_name, vol_size)
+        if type_id is not None:
+            volume_type = volume_types.get_volume_type(ctxt, type_id)
+            if (current_array.get_rest_version() in QOS_REQUIRED_API_VERSION):
+                qos = self._get_qos_settings(volume_type)
+        if qos is not None:
+            self.create_with_qos(current_array, vol_name, vol_size, qos)
+        else:
+            current_array.create_volume(vol_name, vol_size)
 
         return self._setup_volume(current_array, volume, vol_name)
 
     @pure_driver_debug_trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
+        qos = None
         vol_name = self._generate_purity_vol_name(volume)
         if snapshot['group_snapshot'] or snapshot['cgsnapshot']:
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
@@ -450,12 +508,25 @@ class PureBaseVolumeDriver(san.SanDriver):
             snap_name = self._get_snap_name(snapshot)
 
         current_array = self._get_current_array()
+        ctxt = context.get_admin_context()
+        type_id = volume.get('volume_type_id')
+        if type_id is not None:
+            volume_type = volume_types.get_volume_type(ctxt, type_id)
+            if (current_array.get_rest_version() in QOS_REQUIRED_API_VERSION):
+                qos = self._get_qos_settings(volume_type)
 
         current_array.copy_volume(snap_name, vol_name)
         self._extend_if_needed(current_array,
                                vol_name,
                                snapshot["volume_size"],
                                volume["size"])
+        if qos is not None:
+            self.set_qos(current_array, vol_name, qos)
+        else:
+            current_array.set_volume(vol_name,
+                                     iops_limit='',
+                                     bandwidth_limit='')
+
         return self._setup_volume(current_array, volume, vol_name)
 
     def _setup_volume(self, array, volume, purity_vol_name):
@@ -773,7 +844,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         data['consistencygroup_support'] = True
         data['thin_provisioning_support'] = True
         data['multiattach'] = True
-        data['QoS_support'] = False
+        data['QoS_support'] = True
 
         # Add capacity info for scheduler
         data['total_capacity_gb'] = total_capacity
@@ -1224,6 +1295,17 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._rename_volume_object(ref_vol_name,
                                    new_vol_name,
                                    raise_not_exist=True)
+        # Check if the volume_type has QoS settings and if so
+        # apply them to the newly managed volume
+        qos = None
+        if (current_array.get_rest_version() in QOS_REQUIRED_API_VERSION):
+            qos = self._get_qos_settings(volume.volume_type)
+            if qos is not None:
+                self.set_qos(current_array, new_vol_name, qos)
+            else:
+                current_array.set_volume(new_vol_name,
+                                         iops_limit='',
+                                         bandwidth_limit='')
         volume.provider_id = new_vol_name
         async_enabled = self._enable_async_replication_if_needed(current_array,
                                                                  volume)
@@ -1559,6 +1641,47 @@ class PureBaseVolumeDriver(san.SanDriver):
                 return REPLICATION_TYPE_ASYNC
         return None
 
+    def _get_qos_settings(self, volume_type):
+        """Get extra_specs and qos_specs of a volume_type.
+
+        This fetches the keys from the volume type. Anything set
+        from qos_specs will override keys set from extra_specs
+        """
+
+        # Deal with volume with no type
+        qos = {}
+        qos_specs_id = volume_type.get('qos_specs_id')
+        specs = volume_type.get('extra_specs')
+        # We prefer QoS specs associations to override
+        # any existing extra-specs settings
+        if qos_specs_id is not None:
+            ctxt = context.get_admin_context()
+            kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+        else:
+            kvs = specs
+
+        for key, value in kvs.items():
+            if key in self.PURE_QOS_KEYS:
+                qos[key] = value
+        if qos == {}:
+            return None
+        else:
+            # Chack set vslues are within limits
+            iops_qos = int(qos.get('maxIOPS', 0))
+            bw_qos = int(qos.get('maxBWS', 0)) * 1048576
+            if iops_qos != 0 and not (100 <= iops_qos <= 100000000):
+                msg = _('maxIOPS QoS error. Must be more than '
+                        '100 and less than 100000000')
+                raise exception.InvalidQoSSpecs(message=msg)
+            if bw_qos != 0 and not (1048576 <= bw_qos <= 549755813888):
+                msg = _('maxBWS QoS error. Must be between '
+                        '1 and 524288')
+                raise exception.InvalidQoSSpecs(message=msg)
+
+            qos['maxIOPS'] = iops_qos
+            qos['maxBWS'] = bw_qos
+        return qos
+
     def _generate_purity_vol_name(self, volume):
         """Return the name of the volume Purity will use.
 
@@ -1710,6 +1833,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         replicated for async, or part of a pod for sync replication.
         """
 
+        qos = None
         # TODO(patrickeast): Can remove this once new_type is a VolumeType OVO
         new_type = volume_type.VolumeType.get_by_name_or_id(context,
                                                             new_type['id'])
@@ -1765,6 +1889,21 @@ class PureBaseVolumeDriver(san.SanDriver):
             # We can't move a volume in or out of a pod, indicate to the
             #  manager that it should do a migration for this retype
             return False, None
+
+        # If we are moving to a volume type with QoS settings then
+        # make sure the volume gets the correct new QoS settings.
+        # This could mean removing existing QoS settings.
+        current_array = self._get_current_array()
+        if (current_array.get_rest_version() in QOS_REQUIRED_API_VERSION):
+            qos = self._get_qos_settings(new_type)
+            vol_name = self._generate_purity_vol_name(volume)
+            if qos is not None:
+                self.set_qos(current_array, vol_name, qos)
+            else:
+                current_array.set_volume(vol_name,
+                                         iops_limit='',
+                                         bandwidth_limit='')
+
         return True, model_update
 
     @pure_driver_debug_trace
