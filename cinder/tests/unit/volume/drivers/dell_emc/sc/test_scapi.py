@@ -1194,6 +1194,70 @@ class DellSCSanAPITestCase(test.TestCase):
           u'bidirectionalChapSecret': u'',
           u'keepAliveTimeout': u'SECONDS_30'}]
 
+    ISCSI_FLT_DOMAINS_MULTI_PORTALS_IPV6 = \
+        [{u'headerDigestEnabled': False,
+          u'classOfServicePriority': 0,
+          u'wellKnownIpAddress': u'0:0:0:0:0:ffff:c0a8:15',
+          u'scSerialNumber': 64702,
+          u'iscsiName':
+          u'iqn.2002-03.com.compellent:5000d31000fcbe42',
+          u'portNumber': 3260,
+          u'subnetMask': u'255.255.255.0',
+          u'gateway': u'192.168.0.1',
+          u'objectType': u'ScIscsiFaultDomain',
+          u'chapEnabled': False,
+          u'instanceId': u'64702.6.5.3',
+          u'childStatus': u'Up',
+          u'defaultTimeToRetain': u'SECONDS_20',
+          u'dataDigestEnabled': False,
+          u'instanceName': u'iSCSI 10G 2',
+          u'statusMessage': u'',
+          u'status': u'Up',
+          u'transportType': u'Iscsi',
+          u'vlanId': 0,
+          u'windowSize': u'131072.0 Bytes',
+          u'defaultTimeToWait': u'SECONDS_2',
+          u'scsiCommandTimeout': u'MINUTES_1',
+          u'deleteAllowed': False,
+          u'name': u'iSCSI 10G 2',
+          u'immediateDataWriteEnabled': False,
+          u'scName': u'Storage Center 64702',
+          u'notes': u'',
+          u'mtu': u'MTU_1500',
+          u'bidirectionalChapSecret': u'',
+          u'keepAliveTimeout': u'SECONDS_30'},
+         {u'headerDigestEnabled': False,
+          u'classOfServicePriority': 0,
+          u'wellKnownIpAddress': u'0:0:0:0:0:ffff:c0a8:19',
+          u'scSerialNumber': 64702,
+          u'iscsiName':
+          u'iqn.2002-03.com.compellent:5000d31000fcbe42',
+          u'portNumber': 3260,
+          u'subnetMask': u'255.255.255.0',
+          u'gateway': u'192.168.0.1',
+          u'objectType': u'ScIscsiFaultDomain',
+          u'chapEnabled': False,
+          u'instanceId': u'64702.6.5.3',
+          u'childStatus': u'Up',
+          u'defaultTimeToRetain': u'SECONDS_20',
+          u'dataDigestEnabled': False,
+          u'instanceName': u'iSCSI 10G 2',
+          u'statusMessage': u'',
+          u'status': u'Up',
+          u'transportType': u'Iscsi',
+          u'vlanId': 0,
+          u'windowSize': u'131072.0 Bytes',
+          u'defaultTimeToWait': u'SECONDS_2',
+          u'scsiCommandTimeout': u'MINUTES_1',
+          u'deleteAllowed': False,
+          u'name': u'iSCSI 10G 2',
+          u'immediateDataWriteEnabled': False,
+          u'scName': u'Storage Center 64702',
+          u'notes': u'',
+          u'mtu': u'MTU_1500',
+          u'bidirectionalChapSecret': u'',
+          u'keepAliveTimeout': u'SECONDS_30'}]
+
     ISCSI_FLT_DOMAIN = {u'headerDigestEnabled': False,
                         u'classOfServicePriority': 0,
                         u'wellKnownIpAddress': u'192.168.0.21',
@@ -3921,6 +3985,208 @@ class DellSCSanAPITestCase(test.TestCase):
                     'target_luns': [1, 1],
                     'target_portal': u'192.168.0.25:3260',
                     'target_portals': [u'192.168.0.25:3260',
+                                       u'192.168.0.21:3260']}
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_controller_port')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_domains',
+                       return_value=ISCSI_FLT_DOMAINS_MULTI_PORTALS)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
+    def test_find_iscsi_properties_excluded(self,
+                                            mock_is_virtualport_mode,
+                                            mock_find_mappings,
+                                            mock_find_domains,
+                                            mock_find_ctrl_port,
+                                            mock_find_active_controller,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        # Test case where ips are blacklisted using excluded_domain_ips
+        mock_find_ctrl_port.side_effect = [
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'},
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe44'}]
+        scserver = {'instanceId': '64702.30'}
+        self.scapi.excluded_domain_ips = ['192.168.0.21']
+        self.scapi.included_domain_ips = []
+        res = self.scapi.find_iscsi_properties(self.VOLUME, scserver)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domains.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        expected = {'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                    'target_iqns':
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                    'target_lun': 1,
+                    'target_luns': [1, 1],
+                    'target_portal': u'192.168.0.25:3260',
+                    'target_portals': [u'192.168.0.25:3260',
+                                       u'192.168.0.25:3260']}
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_controller_port')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_domains',
+                       return_value=ISCSI_FLT_DOMAINS_MULTI_PORTALS)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
+    def test_find_iscsi_properties_included(self,
+                                            mock_is_virtualport_mode,
+                                            mock_find_mappings,
+                                            mock_find_domains,
+                                            mock_find_ctrl_port,
+                                            mock_find_active_controller,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        # Test case where of included_domain_ips aka whitelisting
+        mock_find_ctrl_port.side_effect = [
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'},
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe44'}]
+        scserver = {'instanceId': '64702.30'}
+        self.scapi.excluded_domain_ips = []
+        self.scapi.included_domain_ips = ['192.168.0.25']
+        res = self.scapi.find_iscsi_properties(self.VOLUME, scserver)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domains.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        expected = {'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                    'target_iqns':
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                    'target_lun': 1,
+                    'target_luns': [1, 1],
+                    'target_portal': u'192.168.0.25:3260',
+                    'target_portals': [u'192.168.0.25:3260',
+                                       u'192.168.0.25:3260']}
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_controller_port')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_domains',
+                       return_value=ISCSI_FLT_DOMAINS_MULTI_PORTALS_IPV6)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
+    def test_find_iscsi_properties_included1(self,
+                                             mock_is_virtualport_mode,
+                                             mock_find_mappings,
+                                             mock_find_domains,
+                                             mock_find_ctrl_port,
+                                             mock_find_active_controller,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        # Test case included_domain_ips aka whitelisting
+        # For ipv6 addresses
+        mock_find_ctrl_port.side_effect = [
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'},
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe44'}]
+        scserver = {'instanceId': '64702.30'}
+        self.scapi.excluded_domain_ips = []
+        self.scapi.included_domain_ips = ['0:0:0:0:0:ffff:c0a8:19']
+        res = self.scapi.find_iscsi_properties(self.VOLUME, scserver)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domains.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        expected = {'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                    'target_iqns':
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                    'target_lun': 1,
+                    'target_luns': [1, 1],
+                    'target_portal': u'0:0:0:0:0:ffff:c0a8:19:3260',
+                    'target_portals': [u'0:0:0:0:0:ffff:c0a8:19:3260',
+                                       u'0:0:0:0:0:ffff:c0a8:19:3260']}
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_controller_port')
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_domains',
+                       return_value=ISCSI_FLT_DOMAINS_MULTI_PORTALS)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(storagecenter_api.SCApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
+    def test_find_iscsi_properties_include2(self,
+                                            mock_is_virtualport_mode,
+                                            mock_find_mappings,
+                                            mock_find_domains,
+                                            mock_find_ctrl_port,
+                                            mock_find_active_controller,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        # Test case where included_domain_ips(whitelisting) takes precendence
+        # over excluded_domain_ips ( blacklisting)
+        mock_find_ctrl_port.side_effect = [
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe43'},
+            {'iscsiName': 'iqn.2002-03.com.compellent:5000d31000fcbe44'}]
+        scserver = {'instanceId': '64702.30'}
+        self.scapi.excluded_domain_ips = ['192.168.0.21']
+        self.scapi.included_domain_ips = ['192.168.0.25', '192.168.0.21']
+        res = self.scapi.find_iscsi_properties(self.VOLUME, scserver)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_domains.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        expected = {'target_discovered': False,
+                    'target_iqn':
+                        u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                    'target_iqns':
+                        [u'iqn.2002-03.com.compellent:5000d31000fcbe44',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                         u'iqn.2002-03.com.compellent:5000d31000fcbe44'],
+                    'target_lun': 1,
+                    'target_luns': [1, 1, 1, 1],
+                    'target_portal': u'192.168.0.25:3260',
+                    'target_portals': [u'192.168.0.25:3260',
+                                       u'192.168.0.21:3260',
+                                       u'192.168.0.25:3260',
                                        u'192.168.0.21:3260']}
         self.assertEqual(expected, res, 'Wrong Target Info')
 

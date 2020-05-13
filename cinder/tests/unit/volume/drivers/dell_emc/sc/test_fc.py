@@ -146,6 +146,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         self.configuration.dell_sc_api_port = 3033
         self.configuration.excluded_domain_ip = None
         self.configuration.excluded_domain_ips = []
+        self.configuration.included_domain_ips = []
         self._context = context.get_admin_context()
 
         self.driver = storagecenter_fc.SCFCDriver(

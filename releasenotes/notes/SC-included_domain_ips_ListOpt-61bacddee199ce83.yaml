@@ -1,0 +1,6 @@
+---
+features:
+  - Added an ``included_domain_ips`` option to the Dell EMC SC driver. This
+    option takes a comma separated list of target IP addresses listed under
+    the fault domains to whitelisted. This option only applies to the ISCSI
+    driver.
