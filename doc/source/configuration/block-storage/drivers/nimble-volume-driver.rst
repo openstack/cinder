@@ -34,7 +34,9 @@ Supported operations
 * Manage and unmanage a volume
 * Enable encryption and default performance policy for a volume-type
   extra-specs
-* Force backup of an in-use volume.
+* Force backup of an in-use volume
+* Retype a volume
+* Create a Thinly Provisioned Volume
 
 Nimble Storage driver configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,6 +54,7 @@ within the ``[default]`` section as follows.
    san_password = NIMBLE_PASSWORD
    use_multipath_for_image_xfer = True
    volume_driver = NIMBLE_VOLUME_DRIVER
+   san_thin_provision = True
 
 In case of multiple back-end configuration, for example, configuration
 which supports multiple Nimble Storage arrays or a single Nimble Storage
