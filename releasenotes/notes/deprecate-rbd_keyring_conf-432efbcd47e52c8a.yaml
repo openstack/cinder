@@ -1,0 +1,9 @@
+---
+security:
+  - |
+    Due to `OSSN-0085
+    <https://wiki.openstack.org/wiki/OSSN/OSSN-0085>`_:
+    Cinder configuration option can leak secret key from Ceph backend,
+    deployers using the ``rbd_keyring_conf`` option are advised to stop
+    using it immediately.  The option has been deprecated for removal
+    as of Ussuri and will be removed in the Victoria development cycle.

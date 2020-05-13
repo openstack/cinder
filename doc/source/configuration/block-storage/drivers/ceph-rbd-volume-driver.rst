@@ -87,6 +87,15 @@ Driver options
 The following table contains the configuration options supported by the
 Ceph RADOS Block Device driver.
 
+.. warning::
+   Due to security concerns, it is recommended deployers do not use the
+   ``rbd_keyring_conf`` option. This configuration option has been deprecated
+   and will be removed in the Victoria release.
+
+   For more information, see `OSSN-0085 Cinder configuration option can leak
+   secret key from Ceph backend.
+   <https://opendev.org/openstack/security-doc/src/branch/master/security-notes/OSSN-0085>`_
+
 .. config-table::
    :config-target: Ceph storage
 
