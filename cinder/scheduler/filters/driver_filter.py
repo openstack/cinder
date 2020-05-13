@@ -114,7 +114,7 @@ class DriverFilter(filters.BaseBackendFilter):
 
         qos_specs = filter_properties.get('qos_specs', {})
 
-        volume_type = filter_properties.get('volume_type', {})
+        volume_type = filter_properties.get('volume_type', {}) or {}
         extra_specs = volume_type.get('extra_specs', {})
 
         request_spec = filter_properties.get('request_spec', {})
