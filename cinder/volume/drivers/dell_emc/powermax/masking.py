@@ -133,7 +133,8 @@ class PowerMaxMasking(object):
 
     def _move_vol_from_default_sg(
             self, serial_number, device_id, volume_name,
-            default_sg_name, dest_storagegroup, extra_specs):
+            default_sg_name, dest_storagegroup, extra_specs,
+            parent_sg_name=None):
         """Get the default storage group and move the volume.
 
         :param serial_number: the array serial number
@@ -142,6 +143,7 @@ class PowerMaxMasking(object):
         :param default_sg_name: the name of the default sg
         :param dest_storagegroup: the destination storage group
         :param extra_specs: the extra specifications
+        :param parent_sg_name: optional parent storage group name
         :returns: msg
         """
         msg = None
@@ -151,7 +153,8 @@ class PowerMaxMasking(object):
             try:
                 self.move_volume_between_storage_groups(
                     serial_number, device_id, default_sg_name,
-                    dest_storagegroup, extra_specs)
+                    dest_storagegroup, extra_specs,
+                    parent_sg=parent_sg_name)
             except Exception as e:
                 msg = ("Exception while moving volume from the default "
                        "storage group to %(sg)s. Exception received was "
@@ -270,7 +273,8 @@ class PowerMaxMasking(object):
         error_message = self._move_vol_from_default_sg(
             serial_number, masking_view_dict[utils.DEVICE_ID],
             masking_view_dict[utils.VOL_NAME], default_sg_name,
-            storagegroup_name, extra_specs)
+            storagegroup_name, extra_specs,
+            parent_sg_name=parent_sg_name)
         if error_message:
             return error_message
 
@@ -517,7 +521,8 @@ class PowerMaxMasking(object):
                 msg = self._move_vol_from_default_sg(
                     serial_number, masking_view_dict[utils.DEVICE_ID],
                     masking_view_dict[utils.VOL_NAME], default_sg_name,
-                    child_sg_name, masking_view_dict[utils.EXTRA_SPECS])
+                    child_sg_name, masking_view_dict[utils.EXTRA_SPECS],
+                    parent_sg_name=sg_from_mv)
             if not msg and not check_child:
                 msg = self._check_add_child_sg_to_parent_sg(
                     serial_number, child_sg_name, sg_from_mv,
@@ -531,7 +536,8 @@ class PowerMaxMasking(object):
         "emc-sg-{target_storagegroup_name}-{serial_number}")
     def move_volume_between_storage_groups(
             self, serial_number, device_id, source_storagegroup_name,
-            target_storagegroup_name, extra_specs, force=False):
+            target_storagegroup_name, extra_specs, force=False,
+            parent_sg=None):
         """Move a volume between storage groups.
 
         :param serial_number: the array serial number
@@ -540,7 +546,11 @@ class PowerMaxMasking(object):
         :param target_storagegroup_name: the target sg
         :param extra_specs: the extra specifications
         :param force: optional Force flag required for replicated vols
+        :param parent_sg: optional Parent storage group
         """
+        self._check_child_storage_group_exists(
+            device_id, serial_number, target_storagegroup_name,
+            extra_specs, parent_sg)
         num_vol_in_sg = self.rest.get_num_vols_in_sg(
             serial_number, source_storagegroup_name)
         LOG.debug("There are %(num_vol)d volumes in the "
@@ -735,7 +745,7 @@ class PowerMaxMasking(object):
         temp_device_id_list = list_device_id
 
         @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
-        def do_add_volume_to_sg(sg_name, serial_number):
+        def do_add_volumes_to_sg(sg_name, serial_number):
             # Check if another process has added any volume to the
             # sg while this process was waiting for the lock
             volume_list = self.rest.get_volumes_in_storage_group(
@@ -750,7 +760,7 @@ class PowerMaxMasking(object):
                     temp_device_id_list.remove(volume)
             self.rest.add_vol_to_sg(serial_number, storagegroup_name,
                                     temp_device_id_list, extra_specs)
-        do_add_volume_to_sg(storagegroup_name, serial_number)
+        do_add_volumes_to_sg(storagegroup_name, serial_number)
 
         LOG.debug("Add volumes to storagegroup took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
@@ -1135,10 +1145,20 @@ class PowerMaxMasking(object):
                 short_host_name = self.utils.get_host_name_label(
                     connector.get('host'),
                     host_template) if connector.get('host') else None
+                # Legacy code
+                legacy_short_host_name = self.utils.get_host_short_name(
+                    connector.get('host')) if connector.get('host') else None
                 move = reset
             if short_host_name:
                 for sg_name in storagegroup_names:
                     if short_host_name in sg_name:
+                        self.remove_volume_from_sg(
+                            serial_number, device_id, volume_name, sg_name,
+                            extra_specs, connector, move,
+                            host_template=host_template)
+                        break
+                    elif legacy_short_host_name and (
+                            legacy_short_host_name in sg_name):
                         self.remove_volume_from_sg(
                             serial_number, device_id, volume_name, sg_name,
                             extra_specs, connector, move,
@@ -1707,6 +1727,7 @@ class PowerMaxMasking(object):
             return is_deleted
 
         if host is not None:
+            is_deleted = False
             host_label = (self.utils.get_host_name_label(
                 host, host_template) if host else None)
             default_ig_name = self.utils.get_possible_initiator_name(
@@ -1715,15 +1736,16 @@ class PowerMaxMasking(object):
             if initiatorgroup_name == default_ig_name:
                 is_deleted = _do_delete_initiator_group(
                     serial_number, initiatorgroup_name)
-                if not is_deleted:
-                    host_label = (self.utils.get_host_short_name(
-                        host) if host else None)
-                    default_ig_name = self.utils.get_possible_initiator_name(
-                        host_label, self.protocol)
-                    if initiatorgroup_name == default_ig_name:
-                        _do_delete_initiator_group(
-                            serial_number, initiatorgroup_name)
             else:
+                # Legacy cleanup
+                legacy_short_host = (self.utils.get_host_short_name(
+                    host) if host else None)
+                default_ig_name = self.utils.get_possible_initiator_name(
+                    legacy_short_host, self.protocol)
+                if initiatorgroup_name == default_ig_name:
+                    is_deleted = _do_delete_initiator_group(
+                        serial_number, initiatorgroup_name)
+            if not is_deleted:
                 LOG.warning("Initiator group %(ig_name)s was "
                             "not created by the PowerMax driver so will "
                             "not be deleted by the PowerMax driver.",
@@ -1778,7 +1800,7 @@ class PowerMaxMasking(object):
                 serial_number, no_slo_sg_name, parent_sg_name, extra_specs)
             self.move_volume_between_storage_groups(
                 serial_number, device_id, fast_source_sg_name,
-                no_slo_sg_name, extra_specs)
+                no_slo_sg_name, extra_specs, parent_sg=parent_sg_name)
             # Clean up the fast managed group, if required
             self._clean_up_child_storage_group(
                 serial_number, fast_source_sg_name,
@@ -1886,7 +1908,8 @@ class PowerMaxMasking(object):
             # Add or move volume to fast sg
             self._move_vol_from_default_sg(
                 serial_number, device_id, device_id,
-                no_slo_sg_name, fast_sg_name, extra_specs)
+                no_slo_sg_name, fast_sg_name, extra_specs,
+                parent_sg_name=parent_sg_name)
         else:
             LOG.debug("Volume already a member of the FAST managed storage "
                       "group.")
@@ -1937,3 +1960,31 @@ class PowerMaxMasking(object):
 
         self._check_ig_rollback(
             serial_number, initiator_group_name, connector, force)
+
+    def _check_child_storage_group_exists(
+            self, device_id, serial_number, child_sg_name, extra_specs,
+            parent_sg_name):
+        """Check if the storage group exists.
+
+        If the storage group does not exist create it and add it to the
+        parent
+
+        :param device_id: device id
+        :param serial_number: extra the array serial number
+        :param child_sg_name: child storage group
+        :param extra_specs: extra specifications
+        :param parent_sg_name: parent storage group
+
+        """
+        disable_compr = self.utils.is_compression_disabled(extra_specs)
+        mv_dict = {utils.DISABLECOMPRESSION: disable_compr,
+                   utils.VOL_NAME: device_id}
+        # Get or create the storage group
+        self._get_or_create_storage_group(
+            serial_number, mv_dict, child_sg_name, extra_specs)
+        if parent_sg_name:
+            if not self.rest.is_child_sg_in_parent_sg(
+                    serial_number, child_sg_name, parent_sg_name):
+                self.rest.add_child_sg_to_parent_sg(
+                    serial_number, child_sg_name, parent_sg_name,
+                    extra_specs)
