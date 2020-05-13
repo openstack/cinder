@@ -2423,7 +2423,7 @@ class VolumeManager(manager.CleanableManager,
         # In the new flow we simplified this and we don't need it, instead of
         # doing a bunch of swapping we just do attachment-create/delete on the
         # nova side, and then here we just do the ID swaps that are necessary
-        # to maintain the old beahvior
+        # to maintain the old behavior
 
         # Restore the attachments for old flow use-case
         if orig_volume_status == 'in-use' and volume.status in ['available',
