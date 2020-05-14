@@ -39,7 +39,7 @@ gitdb2==2.0.3
 GitPython==2.1.8
 google-api-python-client==1.4.2
 greenlet==0.4.10
-hacking==2.0.0
+hacking==3.0.1
 httplib2==0.9.1
 idna==2.6
 imagesize==1.0.0
