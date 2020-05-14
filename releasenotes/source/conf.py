@@ -52,10 +52,11 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-repository_name = 'openstack/cinder'
-bug_project = 'cinder'
-bug_tag = 'doc'
+openstackdocs_repo_name = 'openstack/cinder'
+openstackdocs_bug_project = 'cinder'
+openstackdocs_bug_tag = 'doc'
 project = u'Cinder Release Notes'
+openstackdocs_auto_name = False
 copyright = u'2015, Cinder Developers'
 
 # Release notes are version independent, no need to set version and release
@@ -92,7 +93,7 @@ exclude_patterns = []
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'native'
 
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
