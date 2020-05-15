@@ -2534,16 +2534,27 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         false_ret = (False, None)
         if volume['status'] != 'available':
+            LOG.debug('Only available volumes can be migrated using backend '
+                      'assisted migration. Falling back to generic migration.')
             return false_ret
         if 'location_info' not in host['capabilities']:
+            LOG.debug('Host capabilities are missing location_info. Falling '
+                      'back to generic migration.')
             return false_ret
         info = host['capabilities']['location_info']
         try:
             (driver_name, vcenter) = info.split(':')
         except ValueError:
+            LOG.debug('location_info is malformed. The format must be '
+                      'driver_name:vcenter_service_uuid but got "%s". '
+                      'Falling back to generic migration.' % info)
             return false_ret
 
         if driver_name != LOCATION_DRIVER_NAME:
+            LOG.debug("Expected %(expected)s driver name but got %(got)s. "
+                      "Falling back to generic migration." % {
+                        'expected': LOCATION_DRIVER_NAME,
+                        'got': driver_name})
             return false_ret
 
         backing = self.volumeops.get_backing(volume.name, volume.id)
