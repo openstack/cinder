@@ -138,7 +138,8 @@ class PowerMaxData(object):
                          'is_multipath': True,
                          'array': array,
                          'controller': {'host': '10.00.00.00'},
-                         'hostlunid': 3}
+                         'hostlunid': 3,
+                         'device_id': device_id}
     iscsi_device_info_metro = deepcopy(iscsi_device_info)
     iscsi_device_info_metro['metro_ip_and_iqn'] = [{'ip': ip2, 'iqn': iqn2}]
     iscsi_device_info_metro['metro_hostlunid'] = 2

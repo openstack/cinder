@@ -106,6 +106,7 @@ class PowerMaxReplicationTest(test.TestCase):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         extra_specs[utils.IS_RE] = True
+        extra_specs[utils.FORCE_VOL_REMOVE] = True
         rep_config = self.data.rep_config_sync
         rep_config[utils.RDF_CONS_EXEMPT] = False
         extra_specs[utils.REP_CONFIG] = rep_config
