@@ -95,7 +95,8 @@ rm: CommandFilter, rm, root
 # cinder/volume/drivers/netapp/dataontap/nfs_base.py:
 netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdepth, \d+, -name, img-cache.*, -amin, \+\d+
 
-# cinder/volume/drivers/glusterfs.py
+# cinder/backup/drivers/nfs.py
+# cinder/backup/drivers/glusterfs.py
 chgrp: CommandFilter, chgrp, root
 
 # cinder/brick/initiator/connector.py:
