@@ -18,7 +18,7 @@ import ddt
 
 from cinder.interface import backup_driver
 from cinder.interface import util
-from cinder import test
+from cinder.tests.unit import test
 
 BACKUP_DRIVERS = util.get_backup_drivers()
 

@@ -18,7 +18,7 @@ import ddt
 
 from cinder.interface import util
 from cinder.interface import volume_driver
-from cinder import test
+from cinder.tests.unit import test
 
 VOLUME_DRIVERS = util.get_volume_drivers()
 
