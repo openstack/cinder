@@ -3393,7 +3393,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 self.assertEqual((True, None), ret_val)
 
             if capabilities and 'location_info' in capabilities:
-                if vmdk.LOCATION_DRIVER_NAME in capabilities['location_info']:
+                if capabilities['location_info'].startswith(
+                        '%s:' % vmdk.LOCATION_DRIVER_NAME):
                     if backing:
                         _assertions_for_migration()
                     else:
