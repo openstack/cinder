@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix HPE 3PAR driver issue where volumes that were live migrated to it would
+    end up being inaccessible.  We would no longer be able to use the volume
+    for any operation, such as attach, detach, delete, snapshot, etc.
+    (bug 1697422)
