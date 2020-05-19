@@ -2804,30 +2804,70 @@ class HPE3PARCommon(object):
 
         """
         LOG.debug("Update volume name for %(id)s", {'id': new_volume['id']})
-        name_id = None
-        provider_location = None
+        new_volume_renamed = False
         if original_volume_status == 'available':
             # volume isn't attached and can be updated
             original_name = self._get_3par_vol_name(volume['id'])
-            temp_name = self._get_3par_vol_name(volume['id'], temp_vol=True)
             current_name = self._get_3par_vol_name(new_volume['id'])
+            temp_name = self._get_3par_vol_name(volume['id'], temp_vol=True)
+
+            # In case the original volume is on the same backend, try
+            # renaming it to a temporary name.
+            original_volume_renamed = False
+            try:
+                volumeTempMods = {'newName': temp_name}
+                self.client.modifyVolume(original_name, volumeTempMods)
+                original_volume_renamed = True
+            except hpeexceptions.HTTPNotFound:
+                pass
+            except Exception as e:
+                LOG.error("Changing the original volume name from %(orig)s to "
+                          "%(temp)s failed because %(reason)s",
+                          {'orig': original_name, 'temp': temp_name,
+                           'reason': e})
+                raise
+
+            # change the current volume name to the original
             try:
                 volumeMods = {'newName': original_name}
-                volumeTempMods = {'newName': temp_name}
-                volumeCurrentMods = {'newName': current_name}
-                # swap volume name in backend
-                self.client.modifyVolume(original_name, volumeTempMods)
                 self.client.modifyVolume(current_name, volumeMods)
-                self.client.modifyVolume(temp_name, volumeCurrentMods)
-                LOG.info("Volume name changed from %(tmp)s to %(orig)s",
-                         {'tmp': current_name, 'orig': original_name})
+                new_volume_renamed = True
+                LOG.info("Current volume changed from %(cur)s to %(orig)s",
+                         {'cur': current_name, 'orig': original_name})
             except Exception as e:
-                LOG.error("Changing the volume name from %(tmp)s to "
+                LOG.error("Changing the migrating volume name from %(cur)s to "
                           "%(orig)s failed because %(reason)s",
-                          {'tmp': current_name, 'orig': original_name,
+                          {'cur': current_name, 'orig': original_name,
                            'reason': e})
-                name_id = new_volume['_name_id'] or new_volume['id']
-                provider_location = new_volume['provider_location']
+                if original_volume_renamed:
+                    LOG.error("To restore the original volume, it must be "
+                              "manually renamed from %(temp)s to %(orig)s",
+                              {'temp': temp_name, 'orig': original_name})
+                raise
+
+            # If it was renamed, rename the original volume again to the
+            # migrated volume's name (effectively swapping the names). If
+            # this operation fails, the newly migrated volume is OK but the
+            # original volume (with the temp name) may need to be manually
+            # cleaned up on the backend.
+            if original_volume_renamed:
+                try:
+                    volumeCurrentMods = {'newName': current_name}
+                    self.client.modifyVolume(temp_name, volumeCurrentMods)
+                except Exception as e:
+                    LOG.error("Changing the original volume name from "
+                              "%(tmp)s to %(cur)s failed because %(reason)s",
+                              {'tmp': temp_name, 'cur': current_name,
+                               'reason': e})
+                    # Don't fail the migration, but help the user fix the
+                    # source volume stuck in error_deleting.
+                    LOG.error("To delete the original volume, it must be "
+                              "manually renamed from %(temp)s to %(orig)s",
+                              {'temp': temp_name, 'orig': current_name})
+
+        if new_volume_renamed:
+            name_id = None
+            provider_location = None
         else:
             # the backend can't change the name.
             name_id = new_volume['_name_id'] or new_volume['id']
