@@ -10,6 +10,7 @@ cinder/manager.py
 cinder/scheduler/manager.py
 cinder/utils.py
 cinder/volume/__init__.py
+cinder/volume/api.py
 cinder/volume/flows/api/create_volume.py
 cinder/volume/flows/manager/create_volume.py
 cinder/volume/manager.py
