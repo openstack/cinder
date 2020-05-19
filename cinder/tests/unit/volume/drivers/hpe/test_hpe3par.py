@@ -111,6 +111,8 @@ class HPE3PARBaseDriver(test.TestCase):
     SNAPSHOT_ID = '2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
     SNAPSHOT_NAME = 'snapshot-2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
     VOLUME_3PAR_NAME = 'osv-0DM4qZEVSKON-DXN-NwVpw'
+    VOLUME_OBJ_3PAR_NAME = VOLUME_3PAR_NAME
+    VOLUME_NAME_ID_3PAR_NAME = 'osv-L4I73ONuTci9Fd4ceij-MQ'
     SNAPSHOT_3PAR_NAME = 'oss-L4I73ONuTci9Fd4ceij-MQ'
     RCG_3PAR_NAME = 'rcg-0DM4qZEVSKON-DXN-N'
     RCG_3PAR_GROUP_NAME = 'rcg-YET.38iJR1KQDyA50k'
@@ -163,6 +165,18 @@ class HPE3PARBaseDriver(test.TestCase):
               'host': FAKE_CINDER_HOST,
               'volume_type': None,
               'volume_type_id': None}
+
+    volume_obj = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                             **volume)
+
+    volume_name_id = fake_volume.fake_volume_obj(
+        context.get_admin_context(),
+        id=VOLUME_ID,
+        _name_id='2f823bdc-e36e-4dc8-bd15-de1c7a28ff31',
+        size=2,
+        host=FAKE_CINDER_HOST,
+        volume_type=None,
+        volume_type_id=None)
 
     volume_src_cg = {'name': SRC_CG_VOLUME_NAME,
                      'id': SRC_CG_VOLUME_ID,
@@ -263,6 +277,14 @@ class HPE3PARBaseDriver(test.TestCase):
                   'volume_type': None,
                   'volume_type_id': 'hos'}
 
+    snapshot_volume = {'name': VOLUME_NAME,
+                       'id': VOLUME_ID_SNAP,
+                       'display_name': 'Foo Volume',
+                       'size': 2,
+                       'host': FAKE_CINDER_HOST,
+                       'volume_type': None,
+                       'volume_type_id': None}
+
     snapshot = {'name': SNAPSHOT_NAME,
                 'id': SNAPSHOT_ID,
                 'user_id': USER_ID,
@@ -274,7 +296,15 @@ class HPE3PARBaseDriver(test.TestCase):
                 'volume_size': 2,
                 'display_name': 'fakesnap',
                 'display_description': FAKE_DESC,
-                'volume': volume}
+                'volume': snapshot_volume}
+
+    snapshot_name_id = {'id': SNAPSHOT_ID,
+                        'volume_id': volume_name_id.id,
+                        'volume_size': 2,
+                        'volume': volume_name_id,
+                        'display_name': 'display-name',
+                        'display_description': 'description',
+                        'volume_name': 'name'}
 
     wwn = ["123456789012345", "123456789054321"]
 
@@ -654,21 +684,19 @@ class HPE3PARBaseDriver(test.TestCase):
     standard_logout = [
         mock.call.logout()]
 
-    class fake_volume_object(object):
-        def __init__(self, vol_id='d03338a9-9115-48a3-8dfc-35cdfcdc15a7'):
-            self.id = vol_id
-            self.name = 'volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7'
-            self.display_name = 'Foo Volume'
-            self.size = 2
-            self.host = 'fakehost@foo#OpenStackCPG'
-            self.volume_type = None
-            self.volume_type_id = None
-            self.volume = {'volume_type_id': self.volume_type_id,
-                           'host': self.host, 'id': self.id, 'volume_type':
-                           self.volume_type}
-
-        def get(self, parm):
-            return self.volume[parm]
+    @staticmethod
+    def fake_volume_object(vol_id='d03338a9-9115-48a3-8dfc-35cdfcdc15a7',
+                           **kwargs):
+        values = dict(id=vol_id,
+                      name='volume-%s' % vol_id,
+                      display_name='Foo Volume',
+                      size=2,
+                      host='fakehost@foo#OpenStackCPG',
+                      volume_type=None,
+                      volume_type_id=None)
+        values.update(kwargs)
+        return fake_volume.fake_volume_obj(context.get_admin_context(),
+                                           **values)
 
     class fake_group_object(object):
         def __init__(self, grp_id='6044fedf-c889-4752-900f-2039d247a5df'):
@@ -2236,16 +2264,18 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 mock.call.getTask(1)]
             mock_client.assert_has_calls(expected)
 
-    def test_delete_volume(self):
+    @ddt.data('volume', 'volume_name_id')
+    def test_delete_volume(self, volume_attr):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver.delete_volume(self.volume)
+            self.driver.delete_volume(getattr(self, volume_attr))
 
-            expected = [mock.call.deleteVolume(self.VOLUME_3PAR_NAME)]
+            name_3par = getattr(self, volume_attr.upper() + '_3PAR_NAME')
+            expected = [mock.call.deleteVolume(name_3par)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -2429,7 +2459,10 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 self.standard_login +
                 expected)
 
-    def test_create_cloned_volume(self):
+    @ddt.data('volume_obj', 'volume_name_id')
+    def test_create_cloned_volume(self, volume_attr):
+        src_vref = getattr(self, volume_attr)
+        vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
@@ -2449,14 +2482,9 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                       'size': 2,
                       'host': volume_utils.append_host(self.FAKE_HOST,
                                                        HPE3PAR_CPG2),
-                      'source_volid': HPE3PARBaseDriver.VOLUME_ID}
-            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
-                        'name': HPE3PARBaseDriver.VOLUME_NAME,
-                        'size': 2, 'status': 'available'}
+                      'source_volid': src_vref.id}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
-            common = hpecommon.HPE3PARCommon(None)
-            vol_name = common._get_3par_vol_name(src_vref['id'])
             # snapshot name is random
             snap_name = mock.ANY
             optional = mock.ANY
@@ -3066,61 +3094,109 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                                     temp_rename_side_effect,
                                     rename_side_effect):
         mock_client = self.setup_driver()
-        fake_old_volume = {'id': self.VOLUME_ID}
+        mock_client.modifyVolume.side_effect = [temp_rename_side_effect,
+                                                rename_side_effect,
+                                                None]
+        fake_old_volume = self.fake_volume_object(self.VOLUME_ID)
         provider_location = 'foo'
-        fake_new_volume = {'id': self.CLONE_ID,
-                           '_name_id': self.CLONE_ID,
-                           'provider_location': provider_location}
+        fake_new_volume = self.fake_volume_object(
+            self.CLONE_ID, _name_id=self.CLONE_ID,
+            provider_location=provider_location)
         original_volume_status = 'available'
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            mock_client.modifyVolume.side_effect = [
-                temp_rename_side_effect,
-                rename_side_effect,
-                None
-            ]
-            actual_update = self.driver.update_migrated_volume(
-                context.get_admin_context(), fake_old_volume,
-                fake_new_volume, original_volume_status)
 
-            if rename_side_effect is None:
-                expected_update = {'_name_id': None,
-                                   'provider_location': None}
-            else:
-                expected_update = {'_name_id': fake_new_volume['_name_id'],
-                                   'provider_location': provider_location}
-            self.assertEqual(expected_update, actual_update)
+        _3common = hpecommon.HPE3PARCommon
+        self.mock_object(_3common, '_create_client', return_value=mock_client)
+        mock_get_comment = self.mock_object(_3common, '_get_updated_comment',
+                                            side_effect=[mock.sentinel.comm1,
+                                                         mock.sentinel.comm2])
 
-            # Initial temp rename always takes place
-            expected = [
+        actual_update = self.driver.update_migrated_volume(
+            context.get_admin_context(), fake_old_volume,
+            fake_new_volume, original_volume_status)
+
+        if rename_side_effect is None:
+            expected_update = {'_name_id': None,
+                               'provider_location': None}
+        else:
+            expected_update = {'_name_id': fake_new_volume['_name_id'],
+                               'provider_location': provider_location}
+        self.assertEqual(expected_update, actual_update)
+
+        # Initial temp rename always takes place
+        expected = [
+            mock.call.modifyVolume(
+                'osv-0DM4qZEVSKON-DXN-NwVpw',
+                {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'})
+        ]
+        comment_expected = []
+
+        # Primary rename will occur unless the temp rename fails
+        if temp_rename_side_effect != hpeexceptions.HTTPConflict:
+            expected += [
                 mock.call.modifyVolume(
-                    'osv-0DM4qZEVSKON-DXN-NwVpw',
-                    {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'}),
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw',
+                     'comment': mock.sentinel.comm1})
             ]
+            comment_expected.append(mock.call('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                              volume_id=self.VOLUME_ID,
+                                              _name_id=None))
 
-            # Primary rename will occur unless the temp rename fails
-            if temp_rename_side_effect != hpeexceptions.HTTPConflict:
-                expected += [
-                    mock.call.modifyVolume(
-                        'osv-0DM4qZEVSKON-AAAAAAAAA',
-                        {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw'}),
-                ]
+        # Final temp rename will occur if both of the previous renames
+        # succeed.
+        if (temp_rename_side_effect is None and
+                rename_side_effect is None):
+            expected += [
+                mock.call.modifyVolume(
+                    'tsv-0DM4qZEVSKON-DXN-NwVpw',
+                    {'newName': u'osv-0DM4qZEVSKON-AAAAAAAAA',
+                     'comment': mock.sentinel.comm2})
+            ]
+            comment_expected.append(mock.call('osv-0DM4qZEVSKON-DXN-NwVpw',
+                                              volume_id=self.CLONE_ID,
+                                              _name_id=None))
 
-            # Final temp rename will occur if both of the previous renames
-            # succeed.
-            if (temp_rename_side_effect is None and
-                    rename_side_effect is None):
-                expected += [
-                    mock.call.modifyVolume(
-                        'tsv-0DM4qZEVSKON-DXN-NwVpw',
-                        {'newName': u'osv-0DM4qZEVSKON-AAAAAAAAA'})
-                ]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
 
-            mock_client.assert_has_calls(
-                self.standard_login +
-                expected +
-                self.standard_logout)
+        mock_get_comment.assert_has_calls(comment_expected)
+
+    def test_update_migrated_volume_with_name_id(self):
+        """We don't use temp rename mechanism when source uses _name_id."""
+        mock_client = self.setup_driver()
+        fake_old_volume = self.fake_volume_object(
+            self.VOLUME_ID, _name_id=self.SRC_CG_VOLUME_ID)
+        fake_new_volume = self.fake_volume_object(self.CLONE_ID)
+
+        _3common = hpecommon.HPE3PARCommon
+        self.mock_object(_3common, '_create_client', return_value=mock_client)
+        mock_get_comment = self.mock_object(_3common, '_get_updated_comment',
+                                            side_effect=[mock.sentinel.comm])
+
+        actual_update = self.driver.update_migrated_volume(
+            context.get_admin_context(), fake_old_volume,
+            fake_new_volume, 'available')
+        expected_update = {'_name_id': None,
+                           'provider_location': None}
+        self.assertEqual(expected_update, actual_update)
+
+        # # After successfully swapping names we have updated the comments
+        mock_get_comment.assert_called_once_with('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                                 volume_id=self.VOLUME_ID,
+                                                 _name_id=None),
+
+        expected = [
+            mock.call.modifyVolume('osv-0DM4qZEVSKON-AAAAAAAAA',
+                                   {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw',
+                                    'comment': mock.sentinel.comm}),
+        ]
+
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
 
     @ddt.data({'temp_rename_side_effect': hpeexceptions.HTTPConflict,
                'rename_side_effect': None},
@@ -3139,83 +3215,111 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                            '_name_id': self.CLONE_ID,
                            'provider_location': provider_location}
         original_volume_status = 'available'
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            mock_client.modifyVolume.side_effect = [
-                temp_rename_side_effect,
-                rename_side_effect,
-                None
-            ]
-            self.assertRaises(hpeexceptions.HTTPConflict,
-                              self.driver.update_migrated_volume,
-                              context.get_admin_context(),
-                              fake_old_volume,
-                              fake_new_volume,
-                              original_volume_status)
+        _3common = hpecommon.HPE3PARCommon
+        self.mock_object(_3common, '_create_client', return_value=mock_client)
+        mock_get_comment = self.mock_object(_3common, '_get_updated_comment',
+                                            side_effect=[mock.sentinel.comm])
+        mock_update_comment = self.mock_object(_3common, '_update_comment')
+        mock_client.modifyVolume.side_effect = [
+            temp_rename_side_effect,
+            rename_side_effect,
+            None
+        ]
+        actual_update = self.driver.update_migrated_volume(
+            context.get_admin_context(), fake_old_volume, fake_new_volume,
+            original_volume_status)
+        expected_update = {'_name_id': self.CLONE_ID,
+                           'provider_location': provider_location}
+        self.assertEqual(expected_update, actual_update)
 
-            # Initial temp rename always takes place
-            expected = [
+        # Initial temp rename always takes place
+        expected = [
+            mock.call.modifyVolume(
+                'osv-0DM4qZEVSKON-DXN-NwVpw',
+                {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'}),
+        ]
+
+        # Primary rename will occur unless the temp rename fails
+        if temp_rename_side_effect != hpeexceptions.HTTPConflict:
+            expected += [
                 mock.call.modifyVolume(
-                    'osv-0DM4qZEVSKON-DXN-NwVpw',
-                    {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'}),
+                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw',
+                     'comment': mock.sentinel.comm}),
             ]
+            mock_get_comment.assert_called_once_with(
+                'osv-0DM4qZEVSKON-AAAAAAAAA',
+                volume_id=self.VOLUME_ID,
+                _name_id=None)
+        else:
+            mock_get_comment.assert_not_called()
 
-            # Primary rename will occur unless the temp rename fails
-            if temp_rename_side_effect != hpeexceptions.HTTPConflict:
-                expected += [
-                    mock.call.modifyVolume(
-                        'osv-0DM4qZEVSKON-AAAAAAAAA',
-                        {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw'}),
-                ]
+        mock_update_comment.assert_called_once_with(
+            'osv-0DM4qZEVSKON-AAAAAAAAA',
+            volume_id=self.VOLUME_ID,
+            _name_id=self.CLONE_ID)
 
-            mock_client.assert_has_calls(
-                self.standard_login +
-                expected +
-                self.standard_logout)
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected +
+            self.standard_logout)
 
     def test_update_migrated_volume_attached(self):
         mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {
+            'comment': '{"volume_id": %s, "_name_id": ""}' % self.CLONE_ID}
+        # Simulate old volume had already been live migrated
         fake_old_volume = {'id': self.VOLUME_ID}
         provider_location = 'foo'
+
         fake_new_volume = {'id': self.CLONE_ID,
-                           '_name_id': self.CLONE_ID,
+                           '_name_id': '',
                            'provider_location': provider_location}
         original_volume_status = 'in-use'
 
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            actual_update = self.driver.update_migrated_volume(
-                context.get_admin_context(), fake_old_volume,
-                fake_new_volume, original_volume_status)
+        _3common = hpecommon.HPE3PARCommon
+        self.mock_object(_3common, '_create_client', return_value=mock_client)
+        mock_update = self.mock_object(_3common, '_update_comment')
+        actual_update = self.driver.update_migrated_volume(
+            context.get_admin_context(), fake_old_volume,
+            fake_new_volume, original_volume_status)
 
-            expected_update = {'_name_id': fake_new_volume['_name_id'],
-                               'provider_location': provider_location}
-            self.assertEqual(expected_update, actual_update)
+        expected_update = {'_name_id': fake_new_volume['id'],
+                           'provider_location': provider_location}
+        self.assertEqual(expected_update, actual_update)
 
-    def test_create_snapshot(self):
+        vol_name = _3common._get_3par_vol_name(fake_new_volume)
+        mock_update.assert_called_once_with(vol_name,
+                                            volume_id=fake_old_volume['id'],
+                                            _name_id=fake_new_volume['id'])
+
+    @ddt.data(('snapshot', 'osv-dh-F5VGRTseuujPjbeRBVg'),
+              ('snapshot_name_id', HPE3PARBaseDriver.VOLUME_NAME_ID_3PAR_NAME))
+    @ddt.unpack
+    def test_create_snapshot(self, snapshot_attr, vol_name):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
+        snapshot = getattr(self, snapshot_attr)
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver.create_snapshot(self.snapshot)
+            self.driver.create_snapshot(snapshot)
 
-            comment = Comment({
-                "volume_id": "761fc5e5-5191-4ec7-aeba-33e36de44156",
-                "display_name": "fakesnap",
-                "description": "test description name",
-                "volume_name":
-                "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
-            })
+            comment = {
+                "volume_id": snapshot['volume_id'],
+                "display_name": snapshot['display_name'],
+                "description": snapshot['display_description'],
+                "volume_name": snapshot['volume_name'],
+            }
+            if snapshot['volume'].get('_name_id'):
+                comment["_name_id"] = snapshot['volume']['_name_id']
             expected = [
                 mock.call.createSnapshot(
                     'oss-L4I73ONuTci9Fd4ceij-MQ',
-                    'osv-dh-F5VGRTseuujPjbeRBVg',
+                    vol_name,
                     {
-                        'comment': comment,
+                        'comment': Comment(comment),
                         'readOnly': True})]
 
             mock_client.assert_has_calls(
@@ -3223,17 +3327,13 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 expected +
                 self.standard_logout)
 
-    def test_revert_to_snapshot(self):
+    @ddt.data(('snapshot', 'osv-dh-F5VGRTseuujPjbeRBVg'),
+              ('snapshot_name_id', HPE3PARBaseDriver.VOLUME_NAME_ID_3PAR_NAME))
+    @ddt.unpack
+    def test_revert_to_snapshot(self, snapshot_attr, vol_name):
+        snapshot = getattr(self, snapshot_attr)
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
-        volume = {'name': self.VOLUME_NAME,
-                  'id': self.VOLUME_ID_SNAP,
-                  'display_name': 'Foo Volume',
-                  'size': 2,
-                  'host': self.FAKE_CINDER_HOST,
-                  'volume_type': None,
-                  'volume_type_id': None}
-
         mock_client = self.setup_driver()
         mock_client.isOnlinePhysicalCopy.return_value = False
         mock_client.promoteVirtualCopy.return_value = {'taskid': 1}
@@ -3242,10 +3342,11 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.driver.revert_to_snapshot(self.ctxt, volume, self.snapshot)
+            self.driver.revert_to_snapshot(self.ctxt, snapshot['volume'],
+                                           snapshot)
 
             expected = [
-                mock.call.isOnlinePhysicalCopy('osv-dh-F5VGRTseuujPjbeRBVg'),
+                mock.call.isOnlinePhysicalCopy(vol_name),
                 mock.call.promoteVirtualCopy('oss-L4I73ONuTci9Fd4ceij-MQ',
                                              optional={}),
                 mock.call.getTask(1)
@@ -6056,7 +6157,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         vol_ss_enable.return_value = True
         mock_client = self.setup_driver()
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.fake_volume_object()
         type_info = {'cpg': 'OpenStackCPG',
                      'tpvv': True,
                      'tdvv': False,
@@ -6065,7 +6165,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         typ_info.return_value = type_info
         source_volume = self.volume_src_cg
-        volume.volume['source_volid'] = source_volume['id']
+        volume = self.fake_volume_object(source_volid=source_volume['id'])
         common = hpecommon.HPE3PARCommon(None)
         vol_name = common._get_3par_vol_name(volume.id)
         mock_client.getVolume.return_value = {'copyOf': vol_name}
@@ -6162,7 +6262,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         task_id = 1
         mock_client.copyVolume.return_value = {'taskid': task_id}
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
-        volume = self.fake_volume_object()
         type_info = {'cpg': 'OpenStackCPG',
                      'tpvv': True,
                      'tdvv': False,
@@ -6171,7 +6270,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
         typ_info.return_value = type_info
         source_volume = self.volume_src_cg
-        volume.volume['source_volid'] = source_volume['id']
+        volume = self.fake_volume_object(source_volid=source_volume['id'])
         common = hpecommon.HPE3PARCommon(None)
         vol_name = common._get_3par_vol_name(volume.id)
         mock_client.getVolume.return_value = {'copyOf': vol_name}
@@ -6882,6 +6981,7 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                     self.assertIn(new_key, properties)
 
 
+@ddt.ddt
 class TestHPE3PARFCDriver(HPE3PARBaseDriver):
 
     properties = {
@@ -6921,7 +7021,10 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         mock_client.reset_mock()
         return mock_client
 
-    def test_initialize_connection(self):
+    @ddt.data('volume', 'volume_name_id')
+    def test_initialize_connection(self, volume_attr):
+        volume = getattr(self, volume_attr)
+        vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
@@ -6955,16 +7058,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         mock_client.getHostVLUNs.side_effect = [
             hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
-              'volumeName': self.VOLUME_3PAR_NAME,
+              'volumeName': vol_name,
               'remoteName': self.wwn[1],
               'lun': 90, 'type': 0}],
             [{'active': True,
-              'volumeName': self.VOLUME_3PAR_NAME,
+              'volumeName': vol_name,
               'remoteName': self.wwn[0],
               'lun': 90, 'type': 0}]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
-                    {'volume_name': self.VOLUME_3PAR_NAME,
+                    {'volume_name': vol_name,
                      'lun_id': 90,
                      'host': self.FAKE_HOST,
                      'nsp': 'something'})
@@ -6984,11 +7087,11 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
-                self.volume,
+                volume,
                 self.connector_multipath_enabled)
 
             expected = [
-                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getVolume(vol_name),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(wwns=['123456789012345',
@@ -6997,7 +7100,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 mock.call.getPorts(),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
                 mock.call.createVLUN(
-                    self.VOLUME_3PAR_NAME,
+                    vol_name,
                     auto=True,
                     hostname=self.FAKE_HOST,
                     lun=None),
@@ -7350,13 +7453,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
                 self.standard_logout)
             self.assertDictEqual(expected_properties, result)
 
-    def test_terminate_connection(self):
+    @ddt.data('volume', 'volume_name_id')
+    def test_terminate_connection(self, volume_attr):
+        volume = getattr(self, volume_attr)
+        vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
 
         effects = [
-            [{'active': False, 'volumeName': self.VOLUME_3PAR_NAME,
+            [{'active': False, 'volumeName': vol_name,
               'lun': None, 'type': 0}],
             hpeexceptions.HTTPNotFound,
             hpeexceptions.HTTPNotFound]
@@ -7373,7 +7479,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             mock.call.queryHost(wwns=['123456789012345', '123456789054321']),
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.deleteVLUN(
-                self.VOLUME_3PAR_NAME,
+                vol_name,
                 None,
                 hostname=self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
@@ -7384,7 +7490,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            conn_info = self.driver.terminate_connection(self.volume,
+            conn_info = self.driver.terminate_connection(volume,
                                                          self.connector)
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -7404,7 +7510,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             mock_client.deleteHost = mock.Mock(
                 side_effect=[delete_with_vlun, delete_with_hostset])
 
-            conn_info = self.driver.terminate_connection(self.volume,
+            conn_info = self.driver.terminate_connection(volume,
                                                          self.connector)
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -7413,7 +7519,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
             mock_client.reset_mock()
             mock_client.getHostVLUNs.side_effect = effects
 
-            conn_info = self.driver.terminate_connection(self.volume,
+            conn_info = self.driver.terminate_connection(volume,
                                                          self.connector)
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -8345,6 +8451,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver):
         self.migrate_volume_attached()
 
 
+@ddt.ddt
 class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
 
     TARGET_IQN = 'iqn.2000-05.com.3pardata:21810002ac00383d'
@@ -8399,7 +8506,10 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
 
         return mock_client
 
-    def test_initialize_connection(self):
+    @ddt.data('volume', 'volume_name_id')
+    def test_initialize_connection(self, volume_attr):
+        volume = getattr(self, volume_attr)
+        vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
@@ -8416,15 +8526,15 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
 
         mock_client.getHostVLUNs.side_effect = [
             [{'hostname': self.FAKE_HOST,
-              'volumeName': self.VOLUME_3PAR_NAME,
+              'volumeName': vol_name,
               'lun': self.TARGET_LUN,
               'portPos': {'node': 8, 'slot': 1, 'cardPort': 1}}],
             [{'active': True,
-              'volumeName': self.VOLUME_3PAR_NAME,
+              'volumeName': vol_name,
               'lun': self.TARGET_LUN, 'type': 0}]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
-                    {'volume_name': self.VOLUME_3PAR_NAME,
+                    {'volume_name': vol_name,
                      'lun_id': self.TARGET_LUN,
                      'host': self.FAKE_HOST,
                      'nsp': 'something'})
@@ -8434,11 +8544,11 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
-                self.volume,
+                volume,
                 self.connector)
 
             expected = [
-                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getVolume(vol_name),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
@@ -10299,13 +10409,16 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
     def test_migrate_volume_attached(self):
         self.migrate_volume_attached()
 
-    def test_terminate_connection(self):
+    @ddt.data('volume', 'volume_name_id')
+    def test_terminate_connection(self, volume_attr):
+        volume = getattr(self, volume_attr)
+        vol_name = getattr(self, volume_attr.upper() + '_3PAR_NAME')
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getHostVLUNs.return_value = [
             {'active': False,
-             'volumeName': self.VOLUME_3PAR_NAME,
+             'volumeName': vol_name,
              'lun': None, 'type': 0}]
 
         mock_client.queryHost.return_value = {
@@ -10318,7 +10431,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.terminate_connection(
-                self.volume,
+                volume,
                 self.connector,
                 force=True)
 
@@ -10326,7 +10439,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                 mock.call.queryHost(iqns=[self.connector['initiator']]),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
                 mock.call.deleteVLUN(
-                    self.VOLUME_3PAR_NAME,
+                    vol_name,
                     None,
                     hostname=self.FAKE_HOST),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
@@ -10334,10 +10447,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
                     'fakehost',
                     {'pathOperation': 2,
                      'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
-                mock.call.removeVolumeMetaData(
-                    self.VOLUME_3PAR_NAME, CHAP_USER_KEY),
-                mock.call.removeVolumeMetaData(
-                    self.VOLUME_3PAR_NAME, CHAP_PASS_KEY)]
+                mock.call.removeVolumeMetaData(vol_name, CHAP_USER_KEY),
+                mock.call.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
