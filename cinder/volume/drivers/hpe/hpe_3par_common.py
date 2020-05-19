@@ -55,6 +55,7 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
+from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
@@ -574,7 +575,7 @@ class HPE3PARCommon(object):
         return None
 
     def extend_volume(self, volume, new_size):
-        volume_name = self._get_3par_vol_name(volume['id'])
+        volume_name = self._get_3par_vol_name(volume)
         old_size = volume['size']
         growth_size = int(new_size) - old_size
         LOG.debug("Extending Volume %(vol)s from %(old)s to %(new)s, "
@@ -689,8 +690,11 @@ class HPE3PARCommon(object):
                 for snapshot in snapshots:
                     # Getting vol_name from snapshot, in case of group created
                     # from group snapshot.
-                    vol_name = (
-                        self._get_3par_vol_name(snapshot.get('volume_id')))
+                    # Don't use the "volume_id" from the snapshot directly in
+                    # case the volume has been migrated and uses a different ID
+                    # in the backend.  This may trigger OVO lazy loading.  Use
+                    # dict compatibility to avoid changing all the unit tests.
+                    vol_name = self._get_3par_vol_name(snapshot['volume'])
                     if src_vol_name == vol_name:
                         vol_name = (
                             self._get_3par_vol_name(snapshot.get('id')))
@@ -709,7 +713,7 @@ class HPE3PARCommon(object):
             vol_name = self._get_3par_vol_name(src_vol_name)
             snap_name = snap_vol_dict.get(vol_name)
 
-            volume_name = self._get_3par_vol_name(volume.get('id'))
+            volume_name = self._get_3par_vol_name(volume)
             type_info = self.get_volume_settings_from_type(volume)
             cpg = type_info['cpg']
             snapcpg = type_info['snap_cpg']
@@ -828,7 +832,7 @@ class HPE3PARCommon(object):
         # TODO(kushal) : we will use volume as object when we re-write
         # the design for unit tests to use objects instead of dicts.
         for volume in add_volumes:
-            volume_name = self._get_3par_vol_name(volume.get('id'))
+            volume_name = self._get_3par_vol_name(volume)
             vol_snap_enable = self.is_volume_group_snap_type(
                 volume.get('volume_type'))
             try:
@@ -862,7 +866,7 @@ class HPE3PARCommon(object):
                 raise exception.InvalidInput(reason=msg)
 
         for volume in remove_volumes:
-            volume_name = self._get_3par_vol_name(volume.get('id'))
+            volume_name = self._get_3par_vol_name(volume)
 
             if group.is_replicated:
                 # Remove a volume from remote copy group
@@ -997,12 +1001,15 @@ class HPE3PARCommon(object):
             display_name = None
 
         # Generate the new volume information based on the new ID.
-        new_vol_name = self._get_3par_vol_name(volume['id'])
+        new_vol_name = self._get_3par_vol_name(volume)
+        # No need to worry about "_name_id" because this is a newly created
+        # volume that cannot have been migrated.
         name = 'volume-' + volume['id']
 
         new_comment['volume_id'] = volume['id']
         new_comment['name'] = name
         new_comment['type'] = 'OpenStack'
+        self._add_name_id_to_comment(new_comment, volume)
 
         volume_type = None
         if volume['volume_type_id']:
@@ -1093,7 +1100,7 @@ class HPE3PARCommon(object):
             raise exception.InvalidInput(reason=err)
 
         # Make sure the snapshot is being associated with the correct volume.
-        parent_vol_name = self._get_3par_vol_name(volume['id'])
+        parent_vol_name = self._get_3par_vol_name(volume)
         if parent_vol_name != snap['copyOf']:
             err = (_("The provided snapshot '%s' is not a snapshot of "
                      "the provided volume.") % target_snap_name)
@@ -1119,6 +1126,7 @@ class HPE3PARCommon(object):
         new_snap_name = self._get_3par_snap_name(snapshot['id'])
         new_comment['volume_id'] = volume['id']
         new_comment['volume_name'] = 'volume-' + volume['id']
+        self._add_name_id_to_comment(new_comment, volume)
         if snapshot.get('display_description', None):
             new_comment['description'] = snapshot['display_description']
         else:
@@ -1198,7 +1206,10 @@ class HPE3PARCommon(object):
         """Removes the specified volume from Cinder management."""
         # Rename the volume's name to unm-* format so that it can be
         # easily found later.
-        vol_name = self._get_3par_vol_name(volume['id'])
+        vol_name = self._get_3par_vol_name(volume)
+        # Rename using the user visible ID ignoring the internal "_name_id"
+        # that may have been generated during a retype.  This makes it easier
+        # to locate volumes in the backend.
         new_vol_name = self._get_3par_unm_name(volume['id'])
         self.client.modifyVolume(vol_name, {'newName': new_vol_name})
 
@@ -1260,7 +1271,7 @@ class HPE3PARCommon(object):
     def _extend_volume(self, volume, volume_name, growth_size_mib,
                        _convert_to_base=False):
         model_update = None
-        rcg_name = self._get_3par_rcg_name(volume['id'])
+        rcg_name = self._get_3par_rcg_name(volume)
         is_volume_replicated = self._volume_of_replicated_type(
             volume, hpe_tiramisu_check=True)
         volume_part_of_group = (
@@ -1308,7 +1319,8 @@ class HPE3PARCommon(object):
                               {'vol': volume_name, 'ex': ex})
         return model_update
 
-    def _get_3par_vol_name(self, volume_id, temp_vol=False):
+    @classmethod
+    def _get_3par_vol_name(cls, volume_id, temp_vol=False):
         """Get converted 3PAR volume name.
 
         Converts the openstack volume id from
@@ -1322,8 +1334,16 @@ class HPE3PARCommon(object):
 
         We strip the padding '=' and replace + with .
         and / with -
+
+        volume_id is a polymorphic parameter and can be either a string or a
+        volume (OVO or dict representation).
         """
-        volume_name = self._encode_name(volume_id)
+        # Accept OVOs (what we should only receive), dict (so we don't have to
+        # change all our unit tests), and ORM (because we some methods still
+        # pass it, such as terminate_connection).
+        if isinstance(volume_id, (objects.Volume, objects.Volume.model, dict)):
+            volume_id = volume_id.get('_name_id') or volume_id['id']
+        volume_name = cls._encode_name(volume_id)
         if temp_vol:
             # is this a temporary volume
             # this is done during migration
@@ -1355,16 +1375,17 @@ class HPE3PARCommon(object):
         return "unm-%s" % unm_name
 
     # v2 replication conversion
-    def _get_3par_rcg_name(self, volume_id):
-        rcg_name = self._encode_name(volume_id)
+    def _get_3par_rcg_name(self, volume):
+        rcg_name = self._encode_name(volume.get('_name_id') or volume['id'])
         rcg = "rcg-%s" % rcg_name
         return rcg[:22]
 
-    def _get_3par_remote_rcg_name(self, volume_id, provider_location):
-        return self._get_3par_rcg_name(volume_id) + ".r" + (
+    def _get_3par_remote_rcg_name(self, volume, provider_location):
+        return self._get_3par_rcg_name(volume) + ".r" + (
             six.text_type(provider_location))
 
-    def _encode_name(self, name):
+    @staticmethod
+    def _encode_name(name):
         uuid_str = name.replace("-", "")
         vol_uuid = uuid.UUID('urn:uuid:%s' % uuid_str)
         vol_encoded = base64.encode_as_text(vol_uuid.bytes)
@@ -1741,7 +1762,7 @@ class HPE3PARCommon(object):
 
         In order to export a volume on a 3PAR box, we have to create a VLUN.
         """
-        volume_name = self._get_3par_vol_name(volume['id'])
+        volume_name = self._get_3par_vol_name(volume)
         vlun_info = self._create_3par_vlun(volume_name, host['name'], nsp,
                                            lun_id=lun_id,
                                            remote_client=remote_client)
@@ -1752,7 +1773,7 @@ class HPE3PARCommon(object):
                               remote_client)
 
     def _delete_vlun(self, client_obj, volume, hostname, wwn=None, iqn=None):
-        volume_name = self._get_3par_vol_name(volume['id'])
+        volume_name = self._get_3par_vol_name(volume)
         if hostname:
             vluns = client_obj.getHostVLUNs(hostname)
         else:
@@ -2048,7 +2069,7 @@ class HPE3PARCommon(object):
                 raise exception.CinderException(ex)
 
     def get_cpg(self, volume, allowSnap=False):
-        volume_name = self._get_3par_vol_name(volume['id'])
+        volume_name = self._get_3par_vol_name(volume)
         vol = self.client.getVolume(volume_name)
         # Search for 'userCPG' in the get volume REST API,
         # if found return userCPG , else search for snapCPG attribute
@@ -2245,12 +2266,14 @@ class HPE3PARCommon(object):
                   '%(host)s)',
                   {'disp_name': volume['display_name'],
                    'vol_name': volume['name'],
-                   'id': self._get_3par_vol_name(volume['id']),
+                   'id': self._get_3par_vol_name(volume),
                    'host': volume['host']})
         try:
             comments = {'volume_id': volume['id'],
                         'name': volume['name'],
                         'type': 'OpenStack'}
+            self._add_name_id_to_comment(comments, volume)
+
             # This flag denotes group level replication on
             # hpe 3par.
             hpe_tiramisu = False
@@ -2300,7 +2323,7 @@ class HPE3PARCommon(object):
                 extras['tdvv'] = tdvv
 
             capacity = self._capacity_from_size(volume['size'])
-            volume_name = self._get_3par_vol_name(volume['id'])
+            volume_name = self._get_3par_vol_name(volume)
 
             if compression is not None:
                 extras['compression'] = compression
@@ -2432,7 +2455,7 @@ class HPE3PARCommon(object):
         This is used by cloning a volume so that we can then
         issue extend volume against the original volume.
         """
-        vol_name = self._get_3par_vol_name(volume['id'])
+        vol_name = self._get_3par_vol_name(volume)
         # create a brand new uuid for the temp snap
         snap_uuid = uuid.uuid4().hex
 
@@ -2441,6 +2464,7 @@ class HPE3PARCommon(object):
 
         extra = {'volume_name': volume['name'],
                  'volume_id': volume['id']}
+        self._add_name_id_to_comment(extra, volume)
 
         optional = {'comment': json.dumps(extra)}
 
@@ -2455,8 +2479,8 @@ class HPE3PARCommon(object):
 
     def create_cloned_volume(self, volume, src_vref):
         try:
-            vol_name = self._get_3par_vol_name(volume['id'])
-            src_vol_name = self._get_3par_vol_name(src_vref['id'])
+            vol_name = self._get_3par_vol_name(volume)
+            src_vol_name = self._get_3par_vol_name(src_vref)
             back_up_process = False
             vol_chap_enabled = False
             hpe_tiramisu = False
@@ -2589,7 +2613,7 @@ class HPE3PARCommon(object):
             return
 
         try:
-            volume_name = self._get_3par_vol_name(volume['id'])
+            volume_name = self._get_3par_vol_name(volume)
             # Try and delete the volume, it might fail here because
             # the volume is part of a volume set which will have the
             # volume set name in the error.
@@ -2687,10 +2711,11 @@ class HPE3PARCommon(object):
         try:
             if not snap_name:
                 snap_name = self._get_3par_snap_name(snapshot['id'])
-            volume_name = self._get_3par_vol_name(volume['id'])
+            volume_name = self._get_3par_vol_name(volume)
 
             extra = {'volume_id': volume['id'],
                      'snapshot_id': snapshot['id']}
+            self._add_name_id_to_comment(extra, volume)
 
             type_id = volume.get('volume_type_id', None)
 
@@ -2785,12 +2810,15 @@ class HPE3PARCommon(object):
 
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
-            vol_name = self._get_3par_vol_name(snapshot['volume_id'])
+            # Don't use the "volume_id" from the snapshot directly in case the
+            # volume has been migrated and uses a different ID in the backend.
+            # This may trigger OVO lazy loading.  Use dict compatibility to
+            # avoid changing all the unit tests.
+            vol_name = self._get_3par_vol_name(snapshot['volume'])
 
-            extra = {'volume_name': snapshot['volume_name']}
-            vol_id = snapshot.get('volume_id', None)
-            if vol_id:
-                extra['volume_id'] = vol_id
+            extra = {'volume_name': snapshot['volume_name'],
+                     'volume_id': snapshot.get('volume_id')}
+            self._add_name_id_to_comment(extra, snapshot['volume'])
 
             try:
                 extra['display_name'] = snapshot['display_name']
@@ -2857,6 +2885,93 @@ class HPE3PARCommon(object):
                   dbg_ret)
         return ret
 
+    def _rename_migrated(self, volume, dest_volume):
+        """Rename the destination volume after a migration.
+
+        Returns whether the destination volume has the name matching the source
+        volume or not.
+
+        That way we know whether we need to set the _name_id or not.
+        """
+        def log_error(vol_type, error, src, dest, rename_name=None,
+                      original_name=None):
+            LOG.error("Changing the %(vol_type)s volume name from %(src)s to "
+                      "%(dest)s failed because %(reason)s",
+                      {'vol_type': vol_type, 'src': src, 'dest': dest,
+                       'reason': error})
+            if rename_name:
+                original_name = original_name or dest
+                # Don't fail the migration, but help the user fix the
+                # source volume stuck in error_deleting.
+                LOG.error("Migration will fail to delete the original volume. "
+                          "It must be manually renamed from %(rename_name)s to"
+                          "  %(original_name)s in the backend, and then we "
+                          "have to tell cinder to delete volume %(vol_id)s",
+                          {'rename_name': rename_name,
+                           'original_name': original_name,
+                           'vol_id': dest_volume['id']})
+
+        original_volume_renamed = False
+        # We don't need to rename the source volume if it uses a _name_id,
+        # since the id we want to use to rename the new volume is available.
+        if volume['id'] == (volume.get('_name_id') or volume['id']):
+            original_name = self._get_3par_vol_name(volume)
+            temp_name = self._get_3par_vol_name(volume, temp_vol=True)
+
+            # In case the original volume is on the same backend, try
+            # renaming it to a temporary name.
+            try:
+                volumeTempMods = {'newName': temp_name}
+                self.client.modifyVolume(original_name, volumeTempMods)
+                original_volume_renamed = True
+            except hpeexceptions.HTTPNotFound:
+                pass
+            except Exception as e:
+                log_error('original', e, original_name, temp_name)
+                return False
+
+        # Change the destination volume name to the source's ID name
+        current_name = self._get_3par_vol_name(dest_volume)
+        volume_id_name = self._get_3par_vol_name(volume['id'])
+        try:
+            # After this call the volume manager will call
+            # finish_volume_migration and swap the fields, so we want to
+            # have the right info on the comments if we succeed in renaming
+            # the volumes in the backend.
+            new_comment = self._get_updated_comment(current_name,
+                                                    volume_id=volume['id'],
+                                                    _name_id=None)
+            volumeMods = {'newName': volume_id_name, 'comment': new_comment}
+            self.client.modifyVolume(current_name, volumeMods)
+            LOG.info("Current volume changed from %(cur)s to %(orig)s",
+                     {'cur': current_name, 'orig': volume_id_name})
+        except Exception as e:
+            if original_volume_renamed:
+                _name = temp_name
+            else:
+                _name = original_name = None
+            log_error('migrating', e, current_name, volume_id_name, _name,
+                      original_name)
+            return False
+
+        # If it was renamed, rename the original volume again to the
+        # migrated volume's name (effectively swapping the names). If
+        # this operation fails, the newly migrated volume is OK but the
+        # original volume (with the temp name) may need to be manually
+        # cleaned up on the backend.
+        if original_volume_renamed:
+            try:
+                old_comment = self._get_updated_comment(
+                    original_name,
+                    volume_id=dest_volume['id'],
+                    _name_id=volume.get('_name_id'))
+                volumeCurrentMods = {'newName': current_name,
+                                     'comment': old_comment}
+                self.client.modifyVolume(temp_name, volumeCurrentMods)
+            except Exception as e:
+                log_error('original', e, temp_name, current_name, temp_name)
+        return True
+
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Rename the new (temp) volume to it's original name.
@@ -2867,76 +2982,47 @@ class HPE3PARCommon(object):
 
         """
         LOG.debug("Update volume name for %(id)s", {'id': new_volume['id']})
-        new_volume_renamed = False
+
+        # For available volumes we'll try renaming the destination volume to
+        # match the id of the source volume.
         if original_volume_status == 'available':
-            # volume isn't attached and can be updated
-            original_name = self._get_3par_vol_name(volume['id'])
-            current_name = self._get_3par_vol_name(new_volume['id'])
-            temp_name = self._get_3par_vol_name(volume['id'], temp_vol=True)
-
-            # In case the original volume is on the same backend, try
-            # renaming it to a temporary name.
-            original_volume_renamed = False
-            try:
-                volumeTempMods = {'newName': temp_name}
-                self.client.modifyVolume(original_name, volumeTempMods)
-                original_volume_renamed = True
-            except hpeexceptions.HTTPNotFound:
-                pass
-            except Exception as e:
-                LOG.error("Changing the original volume name from %(orig)s to "
-                          "%(temp)s failed because %(reason)s",
-                          {'orig': original_name, 'temp': temp_name,
-                           'reason': e})
-                raise
-
-            # change the current volume name to the original
-            try:
-                volumeMods = {'newName': original_name}
-                self.client.modifyVolume(current_name, volumeMods)
-                new_volume_renamed = True
-                LOG.info("Current volume changed from %(cur)s to %(orig)s",
-                         {'cur': current_name, 'orig': original_name})
-            except Exception as e:
-                LOG.error("Changing the migrating volume name from %(cur)s to "
-                          "%(orig)s failed because %(reason)s",
-                          {'cur': current_name, 'orig': original_name,
-                           'reason': e})
-                if original_volume_renamed:
-                    LOG.error("To restore the original volume, it must be "
-                              "manually renamed from %(temp)s to %(orig)s",
-                              {'temp': temp_name, 'orig': original_name})
-                raise
-
-            # If it was renamed, rename the original volume again to the
-            # migrated volume's name (effectively swapping the names). If
-            # this operation fails, the newly migrated volume is OK but the
-            # original volume (with the temp name) may need to be manually
-            # cleaned up on the backend.
-            if original_volume_renamed:
-                try:
-                    volumeCurrentMods = {'newName': current_name}
-                    self.client.modifyVolume(temp_name, volumeCurrentMods)
-                except Exception as e:
-                    LOG.error("Changing the original volume name from "
-                              "%(tmp)s to %(cur)s failed because %(reason)s",
-                              {'tmp': temp_name, 'cur': current_name,
-                               'reason': e})
-                    # Don't fail the migration, but help the user fix the
-                    # source volume stuck in error_deleting.
-                    LOG.error("To delete the original volume, it must be "
-                              "manually renamed from %(temp)s to %(orig)s",
-                              {'temp': temp_name, 'orig': current_name})
+            new_volume_renamed = self._rename_migrated(volume, new_volume)
+        else:
+            new_volume_renamed = False
 
         if new_volume_renamed:
             name_id = None
+            # NOTE: I think this will break with replicated volumes.
             provider_location = None
+
         else:
             # the backend can't change the name.
             name_id = new_volume['_name_id'] or new_volume['id']
             provider_location = new_volume['provider_location']
+            # Update the comment in the backend to reflect the _name_id
+            current_name = self._get_3par_vol_name(new_volume)
+            self._update_comment(current_name, volume_id=volume['id'],
+                                 _name_id=name_id)
 
         return {'_name_id': name_id, 'provider_location': provider_location}
+
+    @staticmethod
+    def _add_name_id_to_comment(comment, volume):
+        name_id = volume.get('_name_id')
+        if name_id:
+            comment['_name_id'] = name_id
+
+    def _get_updated_comment(self, vol_name, **values):
+        vol = self.client.getVolume(vol_name)
+        comment = json.loads(vol['comment']) if vol['comment'] else {}
+        comment.update(values)
+
+    def _update_comment(self, vol_name, **values):
+        """Update key-value pairs on the comment of a volume in the backend."""
+        if not values:
+            return
+        comment = self._get_updated_comment(vol_name, **values)
+        self.client.modifyVolume(vol_name, {'comment': json.dumps(comment)})
 
     def _wait_for_task_completion(self, task_id):
         """This waits for a 3PAR background task complete or fail.
@@ -2970,7 +3056,7 @@ class HPE3PARCommon(object):
 
             # Change the name such that it is unique since 3PAR
             # names must be unique across all CPGs
-            volume_name = self._get_3par_vol_name(volume['id'])
+            volume_name = self._get_3par_vol_name(volume)
             temp_vol_name = volume_name.replace("osv-", "omv-")
 
             compression = self.get_compression_policy(
@@ -3088,6 +3174,8 @@ class HPE3PARCommon(object):
 
                         v2['id'] = self._get_3par_vol_comment_value(
                             v2['comment'], 'volume_id')
+                        v2['_name_id'] = self._get_3par_vol_comment_value(
+                            v2['comment'], '_name_id')
 
                         v2['host'] = '#' + v1['userCPG']
 
@@ -3399,8 +3487,7 @@ class HPE3PARCommon(object):
                      dictionary of its reported capabilities.  Host validation
                      is just skipped if host is None.
         """
-        volume_id = volume['id']
-        volume_name = self._get_3par_vol_name(volume_id)
+        volume_name = self._get_3par_vol_name(volume)
         new_type_name = None
         new_type_id = None
         if new_type:
@@ -3501,7 +3588,7 @@ class HPE3PARCommon(object):
                                             old_volume_settings, host)
 
     def remove_temporary_snapshots(self, volume):
-        vol_name = self._get_3par_vol_name(volume['id'])
+        vol_name = self._get_3par_vol_name(volume)
         snapshots_list = self.client.getVolumeSnapshots(vol_name)
         tmp_snapshots_list = [snap
                               for snap in snapshots_list
@@ -3527,9 +3614,9 @@ class HPE3PARCommon(object):
         :param volume: A dictionary describing the volume to revert
         :param snapshot: A dictionary describing the latest snapshot
         """
-        volume_name = self._get_3par_vol_name(volume['id'])
+        volume_name = self._get_3par_vol_name(volume)
         snapshot_name = self._get_3par_snap_name(snapshot['id'])
-        rcg_name = self._get_3par_rcg_name(volume['id'])
+        rcg_name = self._get_3par_rcg_name(volume)
         volume_part_of_group = (
             self._volume_of_hpe_tiramisu_type_and_part_of_group(volume))
         if volume_part_of_group:
@@ -3593,7 +3680,7 @@ class HPE3PARCommon(object):
         """
         existing_vlun = None
         try:
-            vol_name = self._get_3par_vol_name(volume['id'])
+            vol_name = self._get_3par_vol_name(volume)
             if remote_client:
                 host_vluns = remote_client.getHostVLUNs(host['name'])
             else:
@@ -3615,7 +3702,7 @@ class HPE3PARCommon(object):
     def find_existing_vluns(self, volume, host, remote_client=None):
         existing_vluns = []
         try:
-            vol_name = self._get_3par_vol_name(volume['id'])
+            vol_name = self._get_3par_vol_name(volume)
             if remote_client:
                 host_vluns = remote_client.getHostVLUNs(host['name'])
             else:
@@ -3709,7 +3796,7 @@ class HPE3PARCommon(object):
                         # Try and stop remote-copy on main array. We eat the
                         # exception here because when an array goes down, the
                         # groups will stop automatically.
-                        rcg_name = self._get_3par_rcg_name(volume['id'])
+                        rcg_name = self._get_3par_rcg_name(volume)
                         self.client.stopRemoteCopy(rcg_name)
                     except Exception:
                         pass
@@ -3717,7 +3804,7 @@ class HPE3PARCommon(object):
                     try:
                         # Failover to secondary array.
                         remote_rcg_name = self._get_3par_remote_rcg_name(
-                            volume['id'], volume['provider_location'])
+                            volume, volume['provider_location'])
                         cl = self._create_replication_client(failover_target)
                         cl.recoverRemoteCopyGroupFromDisaster(
                             remote_rcg_name, self.RC_ACTION_CHANGE_TO_PRIMARY)
@@ -3790,9 +3877,8 @@ class HPE3PARCommon(object):
                 if self._volume_of_replicated_type(volume,
                                                    hpe_tiramisu_check=True):
                     location = volume.get('provider_location')
-                    remote_rcg_name = self._get_3par_remote_rcg_name(
-                        volume['id'],
-                        location)
+                    remote_rcg_name = self._get_3par_remote_rcg_name(volume,
+                                                                     location)
                     rcg = self.client.getRemoteCopyGroup(remote_rcg_name)
                     if not self._are_targets_in_their_natural_direction(rcg):
                         return False
@@ -3980,7 +4066,7 @@ class HPE3PARCommon(object):
         return replicated_type
 
     def _is_volume_in_remote_copy_group(self, volume):
-        rcg_name = self._get_3par_rcg_name(volume['id'])
+        rcg_name = self._get_3par_rcg_name(volume)
         try:
             self.client.getRemoteCopyGroup(rcg_name)
             return True
@@ -4101,7 +4187,7 @@ class HPE3PARCommon(object):
         reverse order, including the original volume.
         """
 
-        rcg_name = self._get_3par_rcg_name(volume['id'])
+        rcg_name = self._get_3par_rcg_name(volume)
         # If the volume is already in a remote copy group, return True
         # after starting remote copy. If remote copy is already started,
         # issuing this command again will be fine.
@@ -4140,7 +4226,7 @@ class HPE3PARCommon(object):
 
             vol_settings = self.get_volume_settings_from_type(volume)
             local_cpg = vol_settings['cpg']
-            vol_name = self._get_3par_vol_name(volume['id'])
+            vol_name = self._get_3par_vol_name(volume)
 
             # Create remote copy group on main array.
             rcg_targets = []
@@ -4262,8 +4348,8 @@ class HPE3PARCommon(object):
         -Delete volume from main array
         """
         if not rcg_name:
-            rcg_name = self._get_3par_rcg_name(volume['id'])
-        vol_name = self._get_3par_vol_name(volume['id'])
+            rcg_name = self._get_3par_rcg_name(volume)
+        vol_name = self._get_3par_vol_name(volume)
 
         # Stop remote copy.
         try:
@@ -4299,7 +4385,7 @@ class HPE3PARCommon(object):
 
     def _delete_replicated_failed_over_volume(self, volume):
         location = volume.get('provider_location')
-        rcg_name = self._get_3par_remote_rcg_name(volume['id'], location)
+        rcg_name = self._get_3par_remote_rcg_name(volume, location)
         targets = self.client.getRemoteCopyGroup(rcg_name)['targets']
         # When failed over, we want to temporarily disable config mirroring
         # in order to be allowed to delete the volume and remote copy group
@@ -4326,7 +4412,7 @@ class HPE3PARCommon(object):
     def _delete_vvset(self, volume):
 
         # volume is part of a volume set.
-        volume_name = self._get_3par_vol_name(volume['id'])
+        volume_name = self._get_3par_vol_name(volume)
         vvset_name = self.client.findVolumeSet(volume_name)
         LOG.debug("Returned vvset_name = %s", vvset_name)
         if vvset_name is not None:
@@ -4480,7 +4566,7 @@ class HPE3PARCommon(object):
 
     def _remove_vol_from_remote_copy_group(self, group, volume):
         rcg_name = self._get_3par_rcg_name_of_group(group.id)
-        vol_name = self._get_3par_vol_name(volume.get('id'))
+        vol_name = self._get_3par_vol_name(volume)
 
         try:
             # Delete volume from remote copy group on secondary array.
@@ -4588,7 +4674,7 @@ class HPE3PARCommon(object):
     def _add_vol_to_remote(self, volume, rcg_name):
         # Add a volume to remote copy group.
         rcg_targets = []
-        vol_name = self._get_3par_vol_name(volume.get('id'))
+        vol_name = self._get_3par_vol_name(volume)
         replication_mode_num = self._get_replication_mode_from_volume(volume)
         for target in self._replication_targets:
             if target['replication_mode'] == replication_mode_num:
@@ -4627,7 +4713,7 @@ class HPE3PARCommon(object):
             pass
 
         for volume in volumes:
-            vol_name = self._get_3par_vol_name(volume.get('id'))
+            vol_name = self._get_3par_vol_name(volume)
             # Delete volume from remote copy group on secondary array.
             try:
                 self.client.removeVolumeFromRemoteCopyGroup(
