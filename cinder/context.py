@@ -122,7 +122,7 @@ class RequestContext(context.RequestContext):
         # We need to have RequestContext attributes defined
         # when policy.check_is_admin invokes request logging
         # to make it loggable.
-        if self.is_admin is None:
+        if self.is_admin is None:  # type: ignore
             self.is_admin = policy.check_is_admin(self)
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')

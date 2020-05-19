@@ -19,6 +19,7 @@
 
 """Built-in volume type properties."""
 
+import typing as ty
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -331,7 +332,9 @@ def get_volume_type_qos_specs(volume_type_id):
     return res
 
 
-def volume_types_diff(context, vol_type_id1, vol_type_id2):
+def volume_types_diff(context: context.RequestContext,
+                      vol_type_id1,
+                      vol_type_id2) -> ty.Tuple[dict, bool]:
     """Returns a 'diff' of two volume types and whether they are equal.
 
     Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
@@ -371,7 +374,8 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
                 encryption.pop(param, None)
         return encryption
 
-    def _dict_diff(dict1, dict2):
+    def _dict_diff(dict1: ty.Optional[dict],
+                   dict2: ty.Optional[dict]) -> ty.Tuple[dict, bool]:
         res = {}
         equal = True
         if dict1 is None:

@@ -23,6 +23,7 @@ import shutil
 import sys
 import textwrap
 import time
+import typing as ty
 import urllib
 
 import glanceclient.exc
@@ -32,6 +33,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder import service_auth
@@ -651,7 +653,8 @@ def _translate_plain_exception(exc_value):
     return exc_value
 
 
-def get_remote_image_service(context, image_href):
+def get_remote_image_service(context: context.RequestContext,
+                             image_href) -> ty.Tuple[GlanceImageService, str]:
     """Create an image_service and parse the id from the given image_href.
 
     The image_href param can be an href of the form
