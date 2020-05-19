@@ -1083,19 +1083,6 @@ class VolumeUtilsTestCase(test.TestCase):
             else:
                 self.assertEqual(float(max_over_subscription_ratio), mosr)
 
-    def test_make_initiator_target_all2all_map(self):
-        initiator_wwpns = ['ff00000000000000', 'ff00000000000001']
-        target_wwpns = ['bb00000000000000', 'bb00000000000001']
-
-        expected = {
-            'ff00000000000000': ['bb00000000000000', 'bb00000000000001'],
-            'ff00000000000001': ['bb00000000000000', 'bb00000000000001']
-        }
-
-        ret = volume_utils.make_initiator_target_all2all_map(initiator_wwpns,
-                                                             target_wwpns)
-        self.assertEqual(ret, expected)
-
     def test_check_image_metadata(self):
         image_meta = {'id': 1, 'min_disk': 3, 'status': 'active',
                       'size': 1 * units.Gi}
