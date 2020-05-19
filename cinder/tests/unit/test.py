@@ -243,7 +243,6 @@ class TestCase(testtools.TestCase):
 
         self.addCleanup(CONF.reset)
         self.addCleanup(self._common_cleanup)
-        self.injected = []
         self._services = []
 
         fake_notifier.mock_notifier(self)
@@ -316,13 +315,6 @@ class TestCase(testtools.TestCase):
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
-
-        # Stop any timers
-        for x in self.injected:
-            try:
-                x.stop()
-            except AssertionError:
-                pass
 
         # Kill any services
         for x in self._services:
