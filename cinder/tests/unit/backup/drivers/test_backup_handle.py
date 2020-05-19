@@ -33,6 +33,7 @@ class BackupRestoreHandleV1TestCase(test.TestCase):
             'length': 50,
             'container': 'obj_container',
             'name': 'obj_name',
+            'backup_id': 'backup-1',
             'extra_metadata': {'foo': 'bar'},
             'compression': None
         }
@@ -169,16 +170,31 @@ class BackupRestoreHandleV1TestCase(test.TestCase):
         handle._clear_reader(self._segment)
         obj_readers_mock.__getitem__.assert_not_called()
         obj_reader.close.assert_not_called()
-        obj_readers_mock.pop.assert_not_called()
 
         handle._idx = 1
         handle._clear_reader(self._segment)
         obj_readers_mock.__getitem__.assert_not_called()
         obj_reader.close.assert_not_called()
-        obj_readers_mock.pop.assert_not_called()
 
         handle._idx = 2
         handle._clear_reader(self._segment)
         obj_readers_mock.__getitem__.assert_called_once_with(self._obj['name'])
         obj_reader.close.assert_called_once_with()
-        obj_readers_mock.pop.assert_called_once_with(self._obj['name'])
+
+    @mock.patch.object(BACKUP_RESTORE_HANDLE, '_read_segment')
+    def test_finish_restore(self, read_segment):
+        segment_bytes = b'foo'
+        read_segment.return_value = segment_bytes
+        file_handle = mock.Mock()
+        file_handle.fileno.side_effect = IOError
+        handle = chunkeddriver.BackupRestoreHandleV1(self._driver,
+                                                     self._volume_id,
+                                                     file_handle)
+        handle._segments = [self._segment]
+
+        handle.finish_restore()
+
+        read_segment.assert_called_once_with(self._segment)
+        file_handle.write.assert_called_once_with(segment_bytes)
+        file_handle.fileno.assert_called_once_with()
+        self.assertEqual(handle._idx, 0)

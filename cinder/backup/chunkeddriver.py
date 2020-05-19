@@ -790,7 +790,7 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
                           'object_name': segment.obj['name'],
                           'volume_id': self._volume_id,
                       })
-
+            self._idx += 1
             # write the segment bytes to the file
             self._volume_file.write(self._read_segment(segment))
 
@@ -863,9 +863,9 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
         for _segment in self._segments[self._idx + 1:]:
             if obj_name == _segment.obj['name']:
                 return
-
         self._object_readers[obj_name].close()
-        self._object_readers.pop(obj_name)
+        del self._object_readers[obj_name]
+        LOG.debug("Cleared reader for object %s", segment.obj['name'])
 
     def add_object(self, metadata_object):
         """Merges a backup chunk over the self._segments list.
