@@ -18,6 +18,7 @@ import ast
 import copy
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 from oslo_utils import units
 from oslo_utils import uuidutils
@@ -818,6 +819,7 @@ class HPE3PARBaseDriver(test.TestCase):
                              result)
 
 
+@ddt.ddt
 class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
     def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
@@ -3165,7 +3167,14 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         expected = []
         mock_client.assert_has_calls(expected)
 
-    def test_update_migrated_volume(self):
+    @ddt.data({'temp_rename_side_effect': None,
+               'rename_side_effect': None},
+              {'temp_rename_side_effect': hpeexceptions.HTTPNotFound,
+               'rename_side_effect': None})
+    @ddt.unpack
+    def test_update_migrated_volume(self,
+                                    temp_rename_side_effect,
+                                    rename_side_effect):
         mock_client = self.setup_driver()
         fake_old_volume = {'id': self.VOLUME_ID}
         provider_location = 'foo'
@@ -3176,25 +3185,99 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
+            mock_client.modifyVolume.side_effect = [
+                temp_rename_side_effect,
+                rename_side_effect,
+                None
+            ]
             actual_update = self.driver.update_migrated_volume(
                 context.get_admin_context(), fake_old_volume,
                 fake_new_volume, original_volume_status)
 
-            expected_update = {'_name_id': None,
-                               'provider_location': None}
+            if rename_side_effect is None:
+                expected_update = {'_name_id': None,
+                                   'provider_location': None}
+            else:
+                expected_update = {'_name_id': fake_new_volume['_name_id'],
+                                   'provider_location': provider_location}
             self.assertEqual(expected_update, actual_update)
 
+            # Initial temp rename always takes place
             expected = [
                 mock.call.modifyVolume(
                     'osv-0DM4qZEVSKON-DXN-NwVpw',
                     {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'}),
-                mock.call.modifyVolume(
-                    'osv-0DM4qZEVSKON-AAAAAAAAA',
-                    {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw'}),
-                mock.call.modifyVolume(
-                    'tsv-0DM4qZEVSKON-DXN-NwVpw',
-                    {'newName': u'osv-0DM4qZEVSKON-AAAAAAAAA'})
             ]
+
+            # Primary rename will occur unless the temp rename fails
+            if temp_rename_side_effect != hpeexceptions.HTTPConflict:
+                expected += [
+                    mock.call.modifyVolume(
+                        'osv-0DM4qZEVSKON-AAAAAAAAA',
+                        {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw'}),
+                ]
+
+            # Final temp rename will occur if both of the previous renames
+            # succeed.
+            if (temp_rename_side_effect is None and
+                    rename_side_effect is None):
+                expected += [
+                    mock.call.modifyVolume(
+                        'tsv-0DM4qZEVSKON-DXN-NwVpw',
+                        {'newName': u'osv-0DM4qZEVSKON-AAAAAAAAA'})
+                ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @ddt.data({'temp_rename_side_effect': hpeexceptions.HTTPConflict,
+               'rename_side_effect': None},
+              {'temp_rename_side_effect': None,
+               'rename_side_effect': hpeexceptions.HTTPConflict},
+              {'temp_rename_side_effect': hpeexceptions.HTTPNotFound,
+               'rename_side_effect': hpeexceptions.HTTPConflict})
+    @ddt.unpack
+    def test_update_migrated_volume_failed(self,
+                                           temp_rename_side_effect,
+                                           rename_side_effect):
+        mock_client = self.setup_driver()
+        fake_old_volume = {'id': self.VOLUME_ID}
+        provider_location = 'foo'
+        fake_new_volume = {'id': self.CLONE_ID,
+                           '_name_id': self.CLONE_ID,
+                           'provider_location': provider_location}
+        original_volume_status = 'available'
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.modifyVolume.side_effect = [
+                temp_rename_side_effect,
+                rename_side_effect,
+                None
+            ]
+            self.assertRaises(hpeexceptions.HTTPConflict,
+                              self.driver.update_migrated_volume,
+                              context.get_admin_context(),
+                              fake_old_volume,
+                              fake_new_volume,
+                              original_volume_status)
+
+            # Initial temp rename always takes place
+            expected = [
+                mock.call.modifyVolume(
+                    'osv-0DM4qZEVSKON-DXN-NwVpw',
+                    {'newName': u'tsv-0DM4qZEVSKON-DXN-NwVpw'}),
+            ]
+
+            # Primary rename will occur unless the temp rename fails
+            if temp_rename_side_effect != hpeexceptions.HTTPConflict:
+                expected += [
+                    mock.call.modifyVolume(
+                        'osv-0DM4qZEVSKON-AAAAAAAAA',
+                        {'newName': u'osv-0DM4qZEVSKON-DXN-NwVpw'}),
+                ]
 
             mock_client.assert_has_calls(
                 self.standard_login +
