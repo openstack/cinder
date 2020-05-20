@@ -52,7 +52,6 @@ from sqlalchemy.sql import func
 from sqlalchemy.sql import sqltypes
 
 from cinder.api import common
-from cinder.common import constants
 from cinder.common import sqlalchemyutils
 from cinder import db
 from cinder.db.sqlalchemy import models
@@ -528,7 +527,7 @@ def service_get_all(context, backend_match_level=None, **filters):
 
 @require_admin_context
 def service_get_by_uuid(context, service_uuid):
-    query = model_query(context, models.Service).fitler_by(uuid=service_uuid)
+    query = model_query(context, models.Service).filter_by(uuid=service_uuid)
     result = query.first()
     if not result:
         raise exception.ServiceNotFound(service_id=service_uuid)
@@ -561,115 +560,6 @@ def service_update(context, service_id, values):
     result = query.update(values)
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
-
-
-@enginefacade.writer
-def service_uuids_online_data_migration(context, max_count):
-    from cinder.objects import service
-
-    updated = 0
-    total = model_query(context, models.Service).filter_by(uuid=None).count()
-    db_services = model_query(context, models.Service).filter_by(
-        uuid=None).limit(max_count).all()
-    for db_service in db_services:
-        # The conversion in the Service object code
-        # will generate a UUID and save it for us.
-        service_obj = service.Service._from_db_object(
-            context, service.Service(), db_service)
-        if 'uuid' in service_obj:
-            updated += 1
-    return total, updated
-
-
-@require_admin_context
-def backup_service_online_migration(context, max_count):
-    name_rules = {'cinder.backup.drivers.swift':
-                  'cinder.backup.drivers.swift.SwiftBackupDriver',
-                  'cinder.backup.drivers.ceph':
-                  'cinder.backup.drivers.ceph.CephBackupDriver',
-                  'cinder.backup.drivers.glusterfs':
-                  'cinder.backup.drivers.glusterfs.GlusterfsBackupDriver',
-                  'cinder.backup.drivers.google':
-                  'cinder.backup.drivers.google.GoogleBackupDriver',
-                  'cinder.backup.drivers.nfs':
-                  'cinder.backup.drivers.nfs.NFSBackupDriver',
-                  'cinder.backup.drivers.tsm':
-                  'cinder.backup.drivers.tsm.TSMBackupDriver',
-                  'cinder.backup.drivers.posix':
-                  'cinder.backup.drivers.posix.PosixBackupDriver'}
-    total = 0
-    updated = 0
-    session = get_session()
-    with session.begin():
-        total = model_query(
-            context, models.Backup, session=session).filter(
-            models.Backup.service.in_(name_rules.keys())).count()
-        backups = (model_query(
-            context, models.Backup, session=session).filter(
-            models.Backup.service.in_(
-                name_rules.keys())).limit(max_count)).all()
-        if len(backups):
-            for backup in backups:
-                updated += 1
-                backup.service = name_rules[backup.service]
-
-    return total, updated
-
-
-@enginefacade.writer
-def volume_service_uuids_online_data_migration(context, max_count):
-    """Update volume service_uuid columns."""
-
-    updated = 0
-    query = model_query(context,
-                        models.Volume).filter_by(service_uuid=None).\
-        filter(models.Volume.host.isnot(None))
-    total = query.count()
-    vol_refs = query.limit(max_count).all()
-
-    service_refs = model_query(context, models.Service).filter_by(
-        topic=constants.VOLUME_TOPIC).limit(max_count).all()
-
-    # build a map to access the service uuid by host
-    svc_map = {}
-    for svc in service_refs:
-        svc_map[svc.host] = svc.uuid
-
-    # update our volumes appropriately
-    for v in vol_refs:
-        host = v.host.split('#')
-        v['service_uuid'] = svc_map[host[0]]
-        # re-use the session we already have associated with the
-        # volumes here (from the query above)
-        session = query.session
-        with session.begin():
-            v.save(session)
-        updated += 1
-    return total, updated
-
-
-@enginefacade.writer
-def attachment_specs_online_data_migration(context, max_count):
-    from cinder.objects import volume_attachment
-    # First figure out how many attachments have specs which need to be
-    # migrated, grouped by the attachment.id from the specs table.
-    session = get_session()
-    total = session.query(models.AttachmentSpecs.attachment_id).filter_by(
-        deleted=False).group_by(models.AttachmentSpecs.attachment_id).count()
-    # Now get the limited distinct set of attachment_ids to start migrating.
-    result = session.query(
-        models.AttachmentSpecs.attachment_id).filter_by(
-        deleted=False).group_by(models.AttachmentSpecs.attachment_id).limit(
-        max_count).all()
-    migrated = 0
-    # result is a list of tuples where the first item is the attachment_id
-    for attachment_id in result:
-        attachment_id = attachment_id[0]
-        # Loading the volume attachment object will migrate it's related
-        # attachment specs and delete those attachment specs.
-        volume_attachment.VolumeAttachment.get_by_id(context, attachment_id)
-        migrated += 1
-    return total, migrated
 
 
 ###################
@@ -2106,6 +1996,11 @@ def attachment_destroy(context, attachment_id):
                     'updated_at': literal_column('updated_at')})
     del updated_values['updated_at']
     return updated_values
+
+
+def attachment_specs_exist(context):
+    query = model_query(context, models.AttachmentSpecs, read_deleted='no')
+    return bool(query.first())
 
 
 def _attachment_specs_query(context, attachment_id, session=None):

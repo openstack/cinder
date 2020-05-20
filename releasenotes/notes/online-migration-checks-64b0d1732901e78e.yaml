@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Two new checks are added to the ``cinder-status upgrade check`` CLI to
+    ensure that online data migrations from Queens onward have been completed.

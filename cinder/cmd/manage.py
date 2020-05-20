@@ -120,30 +120,6 @@ def _get_non_shared_target_hosts(ctxt):
     return hosts, numvols_needing_update
 
 
-def shared_targets_online_data_migration(ctxt, max_count):
-    """Update existing volumes shared_targets flag based on capabilities."""
-    non_shared_hosts = []
-    completed = 0
-
-    non_shared_hosts, total_vols_to_update = _get_non_shared_target_hosts(ctxt)
-    for host in non_shared_hosts:
-        # We use the api call here instead of going direct to
-        # db query to take advantage of parsing out the host
-        # correctly
-        vrefs = db_api.volume_get_all_by_host(
-            ctxt, host,
-            filters={'shared_targets': True})
-        if len(vrefs) > max_count:
-            del vrefs[-(len(vrefs) - max_count):]
-        max_count -= len(vrefs)
-        for v in vrefs:
-            db.volume_update(
-                ctxt, v['id'],
-                {'shared_targets': 0})
-            completed += 1
-    return total_vols_to_update, completed
-
-
 # Decorators for actions
 def args(*args, **kwargs):
     def _decorator(func):
@@ -266,17 +242,13 @@ class DbCommands(object):
     # NOTE: Online migrations cannot depend on having Cinder services running.
     # Migrations can be called during Fast-Forward Upgrades without having any
     # Cinder services up.
-    online_migrations = (
-        # Added in Queens
-        db.service_uuids_online_data_migration,
-        # Added in Queens
-        db.backup_service_online_migration,
-        # Added in Queens
-        db.volume_service_uuids_online_data_migration,
-        # Added in Queens
-        shared_targets_online_data_migration,
-        # Added in Queens
-        db.attachment_specs_online_data_migration
+    # NOTE; Online migrations must be removed at the beginning of the next
+    # release to the one they've been introduced.  A comment with the release
+    # a migration is introduced and the one where it must be removed must
+    # preceed any element of the "online_migrations" tuple, like this:
+    #    # Added in Queens remove in Rocky
+    #    db.service_uuids_online_data_migration,
+    online_migrations = tuple(
     )
 
     def __init__(self):

@@ -14,14 +14,21 @@
 
 import ddt
 import mock
+import uuid
 
 from oslo_config import cfg
 from oslo_upgradecheck import upgradecheck as uc
 import testtools
 
+import cinder.backup.manager  # noqa
 from cinder.cmd import status
-
+from cinder import context
+from cinder import db
+from cinder.db.sqlalchemy import api as sqla_api
+from cinder import exception
+from cinder import test
 import cinder.volume.manager as volume_manager
+
 
 CONF = cfg.CONF
 
@@ -29,6 +36,18 @@ CONF = cfg.CONF
 @ddt.ddt
 class TestCinderStatus(testtools.TestCase):
     """Test cases for the cinder-status upgrade check command."""
+
+    def _setup_database(self):
+        CONF.set_default('connection', 'sqlite://', 'database')
+        CONF.set_default('sqlite_synchronous', False, 'database')
+
+        if not test._DB_CACHE:
+            test._DB_CACHE = test.Database(
+                sqla_api, test.migration,
+                sql_connection=CONF.database.connection)
+        self.useFixture(test._DB_CACHE)
+        sqla_api._GET_METHODS = {}
+        self.addCleanup(CONF.reset)
 
     def setUp(self):
         super(TestCinderStatus, self).setUp()
@@ -46,6 +65,9 @@ class TestCinderStatus(testtools.TestCase):
         self.addCleanup(patcher.stop)
         self.find_file = patcher.start()
         self.find_file.return_value = '/etc/cinder/'
+
+        self._setup_database()
+        self.context = context.get_admin_context()
 
     def _set_config(self, key, value, group=None):
         CONF.set_override(key, value, group=group)
@@ -176,3 +198,58 @@ class TestCinderStatus(testtools.TestCase):
         self._set_config('enabled_backends', None)
         result = self.checks._check_removed_drivers()
         self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    @staticmethod
+    def uuid():
+        return str(uuid.uuid4())
+
+    def _create_service(self, **values):
+        values.setdefault('uuid', self.uuid())
+        db.service_create(self.context, values)
+
+    def _create_volume(self, **values):
+        values.setdefault('id', self.uuid())
+        values.setdefault('service_uuid', self.uuid())
+        try:
+            db.volume_create(self.context, values)
+        # Support setting deleted on creation
+        except exception.VolumeNotFound:
+            if values.get('deleted') is not True:
+                raise
+
+    def test__check_service_uuid_ok(self):
+        self._create_service()
+        self._create_service()
+        self._create_volume()
+        # Confirm that we ignored deleted entries
+        self._create_volume(service_uuid=None, deleted=True)
+        result = self.checks._check_service_uuid()
+        self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    def test__check_service_uuid_fail_service(self):
+        self._create_service()
+        self._create_service(uuid=None)
+        self._create_volume()
+        result = self.checks._check_service_uuid()
+        self.assertEqual(uc.Code.FAILURE, result.code)
+
+    def test__check_service_uuid_fail_volume(self):
+        self._create_service()
+        self._create_volume(service_uuid=None)
+        result = self.checks._check_service_uuid()
+        self.assertEqual(uc.Code.FAILURE, result.code)
+
+    def test__check_attachment_specs_ok(self):
+        attach_uuid = self.uuid()
+        # Confirm that we ignore deleted attachment specs
+        db.attachment_specs_update_or_create(self.context, attach_uuid,
+                                             {'k': 'v'})
+        db.attachment_specs_delete(self.context, attach_uuid, 'k')
+        result = self.checks._check_attachment_specs()
+        self.assertEqual(uc.Code.SUCCESS, result.code)
+
+    def test__check_attachment_specs_fail(self):
+        db.attachment_specs_update_or_create(self.context, self.uuid(),
+                                             {'k': 'v', 'k2': 'v2'})
+        result = self.checks._check_attachment_specs()
+        self.assertEqual(uc.Code.FAILURE, result.code)

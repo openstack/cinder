@@ -97,18 +97,6 @@ def dispose_engine():
 ###################
 
 
-def service_uuids_online_data_migration(context, max_count):
-    return IMPL.service_uuids_online_data_migration(context, max_count)
-
-
-def backup_service_online_migration(context, max_count):
-    return IMPL.backup_service_online_migration(context, max_count)
-
-
-def volume_service_uuids_online_data_migration(context, max_count):
-    return IMPL.volume_service_uuids_online_data_migration(context, max_count)
-
-
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)
@@ -1827,6 +1815,11 @@ class Condition(object):
 ###################
 
 
+def attachment_specs_exist(context):
+    """Check if there are attachment specs left."""
+    return IMPL.attachment_specs_exist(context)
+
+
 def attachment_specs_get(context, attachment_id):
     """DEPRECATED: Get all specs for an attachment."""
     return IMPL.attachment_specs_get(context, attachment_id)
@@ -1849,9 +1842,6 @@ def attachment_specs_update_or_create(context,
                                                   attachment_id,
                                                   specs)
 
-
-def attachment_specs_online_data_migration(context, max_count):
-    return IMPL.attachment_specs_online_data_migration(context, max_count)
 
 ###################
 
