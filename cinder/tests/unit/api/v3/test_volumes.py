@@ -47,7 +47,6 @@ from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
 from cinder.volume import api as vol_get
-from cinder.volume import volume_types
 
 DEFAULT_AZ = "zone1:host1"
 
@@ -347,9 +346,6 @@ class VolumeApiTest(test.TestCase):
             self.controller.volume_api, context,
             vol['size'], v2_fakes.DEFAULT_VOL_NAME,
             v2_fakes.DEFAULT_VOL_DESCRIPTION,
-            volume_type=objects.VolumeType.get_by_name_or_id(
-                context,
-                volume_types.get_default_volume_type()['id']),
             **kwargs)
 
     def test_volumes_summary_in_unsupport_version(self):
@@ -680,9 +676,6 @@ class VolumeApiTest(test.TestCase):
             self.controller.volume_api, context,
             vol['size'], v2_fakes.DEFAULT_VOL_NAME,
             v2_fakes.DEFAULT_VOL_DESCRIPTION,
-            volume_type=objects.VolumeType.get_by_name_or_id(
-                context,
-                volume_types.get_default_volume_type()['id']),
             **kwargs)
 
     @ddt.data(mv.VOLUME_CREATE_FROM_BACKUP,
@@ -723,9 +716,6 @@ class VolumeApiTest(test.TestCase):
             vol['size'],
             v2_fakes.DEFAULT_VOL_NAME,
             v2_fakes.DEFAULT_VOL_DESCRIPTION,
-            volume_type=objects.VolumeType.get_by_name_or_id(
-                context,
-                volume_types.get_default_volume_type()['id']),
             **kwargs)
 
     def test_volume_creation_with_scheduler_hints(self):

@@ -31,6 +31,7 @@ from cinder.tests.unit import fake_constants as fake
 
 CONF = cfg.CONF
 VOLUME = 'VOLUME'
+SNAPSHOT = 'SNAPSHOT'
 GROUP = 'GROUP'
 GROUP_SNAPSHOT = 'GROUP_SNAPSHOT'
 
@@ -163,6 +164,8 @@ class _FunctionalTestBase(test.TestCase):
             try:
                 if res_type == VOLUME:
                     found_res = self.api.get_volume(res_id)
+                elif res_type == SNAPSHOT:
+                    found_res = self.api.get_snapshot(res_id)
                 elif res_type == GROUP:
                     found_res = self.api.get_group(res_id)
                 elif res_type == GROUP_SNAPSHOT:
@@ -192,6 +195,13 @@ class _FunctionalTestBase(test.TestCase):
                            status_field='status'):
         return self._poll_resource_while(volume_id, continue_states,
                                          VOLUME, expected_end_status,
+                                         max_retries, status_field)
+
+    def _poll_snapshot_while(self, snapshot_id, continue_states,
+                             expected_end_status=None, max_retries=5,
+                             status_field='status'):
+        return self._poll_resource_while(snapshot_id, continue_states,
+                                         SNAPSHOT, expected_end_status,
                                          max_retries, status_field)
 
     def _poll_group_while(self, group_id, continue_states,

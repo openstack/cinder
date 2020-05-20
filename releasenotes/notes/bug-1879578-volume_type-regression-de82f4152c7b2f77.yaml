@@ -1,0 +1,33 @@
+---
+fixes:
+  - |
+    `Bug #1879578 <https://bugs.launchpad.net/cinder/+bug/1879578>`_:
+    A regression in the Train release caused Cinder to assign the default
+    volume type too aggressively when a volume type was not specified in
+    a volume-create request.  As a result, some alternative methods of
+    specifying the volume type were ignored and the default type (either
+    configured by the operator or the system default) would be assigned.
+
+    This release restores the intended behavior, which is described as
+    follows:
+
+    If a ``volume_type`` is not specified when a volume is created, Cinder
+    tries to infer the volume type from other information in the
+    volume-create request:
+
+    * if a ``source_volid`` is supplied in the request, the volume type
+      is inferred from the source volume's volume type
+    * if a ``snapshot_id`` is supplied in the request, the volume type
+      is inferred from the volume type associated with the snapshot
+    * if an ``imageRef`` is supplied in the request, and the image has
+      a ``cinder_img_volume_type`` image property, the volume type is
+      inferred from the value of that image property
+
+    Otherwise, the volume type is the default volume type configured by
+    the operator, and if no volume type is so configured, the volume type
+    is the system default volume type, namely, ``__DEFAULT__``.
+
+    When a volume type is specified explicitly in a volume-create call, Cinder
+    will use the specified type.  If the specified type cannot be assigned due
+    to a conflict with other parameters in the volume-create call, however, the
+    call will result in a 400 (Bad Request) response.

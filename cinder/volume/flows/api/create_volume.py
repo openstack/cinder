@@ -10,8 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
-
 from oslo_config import cfg
 from oslo_log import log as logging
 import six
@@ -351,33 +349,37 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         return encryption_key_id
 
-    def _get_volume_type(self, context, volume_type,
+    @staticmethod
+    def _get_volume_type(context, volume_type,
                          source_volume, snapshot, image_volume_type_id):
+        """Returns a volume_type object or raises.  Never returns None."""
         if volume_type:
             return volume_type
-        identifier = collections.defaultdict(str)
-        try:
-            if source_volume:
-                identifier = {'source': 'volume',
-                              'id': source_volume['volume_type_id']}
-            elif snapshot:
-                identifier = {'source': 'snapshot',
-                              'id': snapshot['volume_type_id']}
-            elif image_volume_type_id:
-                identifier = {'source': 'image',
-                              'id': image_volume_type_id}
-            elif CONF.default_volume_type:
-                identifier = {'source': 'default volume type config',
-                              'id': CONF.default_volume_type}
-            if identifier:
+
+        identifier = None
+        if source_volume:
+            identifier = {'source': 'volume',
+                          'id': source_volume['volume_type_id']}
+        elif snapshot:
+            identifier = {'source': 'snapshot',
+                          'id': snapshot['volume_type_id']}
+        elif image_volume_type_id:
+            identifier = {'source': 'image',
+                          'id': image_volume_type_id}
+        if identifier:
+            try:
                 return objects.VolumeType.get_by_name_or_id(
                     context, identifier['id'])
-        except (exception.VolumeTypeNotFound,
-                exception.VolumeTypeNotFoundByName,
-                exception.InvalidVolumeType):
-            LOG.exception("Failed to find volume type from "
-                          "source %(source)s, identifier %(id)s", identifier)
-        return None
+            except (exception.VolumeTypeNotFound,
+                    exception.VolumeTypeNotFoundByName,
+                    exception.InvalidVolumeType):
+                LOG.exception("Failed to find volume type from "
+                              "source %(source)s, identifier %(id)s",
+                              identifier)
+                raise
+
+        # otherwise, use the default volume type
+        return volume_types.get_default_volume_type()
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,

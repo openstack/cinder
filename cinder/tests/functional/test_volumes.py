@@ -17,6 +17,7 @@ from oslo_utils import uuidutils
 
 from cinder.tests.functional import functional_helpers
 from cinder.volume import configuration
+from cinder.volume import volume_types
 
 
 class VolumesTest(functional_helpers._FunctionalTestBase):
@@ -76,6 +77,146 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
 
         # Should be gone
         self.assertIsNone(found_volume)
+
+    def test_create_no_volume_type(self):
+        """Verify volume_type is not None (should be system default type.)"""
+
+        # un-configure operator default volume type
+        self.flags(default_volume_type=None)
+
+        # Create volume
+        created_volume = self.api.post_volume({'volume': {'size': 1}})
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
+        created_volume_id = created_volume['id']
+
+        # Wait (briefly) for creation. Delay is due to the 'message queue'
+        found_volume = self._poll_volume_while(created_volume_id, ['creating'])
+        self.assertEqual('available', found_volume['status'])
+
+        # It should have the system default volume_type
+        self.assertEqual(volume_types.DEFAULT_VOLUME_TYPE,
+                         found_volume['volume_type'])
+
+        # Delete the volume
+        self.api.delete_volume(created_volume_id)
+        found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
+        self.assertIsNone(found_volume)
+
+    def test_create_volume_specified_type(self):
+        """Verify volume_type is not default."""
+
+        my_vol_type_name = 'my_specified_type'
+        my_vol_type_id = self.api.create_type(my_vol_type_name)['id']
+
+        # Create volume
+        created_volume = self.api.post_volume(
+            {'volume': {'size': 1,
+                        'volume_type': my_vol_type_id}})
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
+        created_volume_id = created_volume['id']
+
+        # Wait (briefly) for creation. Delay is due to the 'message queue'
+        found_volume = self._poll_volume_while(created_volume_id, ['creating'])
+        self.assertEqual('available', found_volume['status'])
+
+        # It should have the specified volume_type
+        self.assertEqual(my_vol_type_name, found_volume['volume_type'])
+
+        # Delete the volume and test type
+        self.api.delete_volume(created_volume_id)
+        found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
+        self.assertIsNone(found_volume)
+        self.api.delete_type(my_vol_type_id)
+
+    def test_create_volume_from_source_vol_inherits_voltype(self):
+        src_vol_type_name = 'source_vol_type'
+        src_vol_type_id = self.api.create_type(src_vol_type_name)['id']
+
+        # Create source volume
+        src_volume = self.api.post_volume(
+            {'volume': {'size': 1,
+                        'volume_type': src_vol_type_id}})
+        self.assertTrue(uuidutils.is_uuid_like(src_volume['id']))
+        src_volume_id = src_volume['id']
+
+        # Wait (briefly) for creation. Delay is due to the 'message queue'
+        src_volume = self._poll_volume_while(src_volume_id, ['creating'])
+        self.assertEqual('available', src_volume['status'])
+
+        # Create a new volume using src_volume, do not specify a volume_type
+        new_volume = self.api.post_volume(
+            {'volume': {'size': 1,
+                        'source_volid': src_volume_id}})
+        new_volume_id = new_volume['id']
+
+        # Wait for creation ...
+        new_volume = self._poll_volume_while(new_volume_id, ['creating'])
+        self.assertEqual('available', new_volume['status'])
+
+        # It should have the same type as the source volume
+        self.assertEqual(src_vol_type_name, new_volume['volume_type'])
+
+        # Delete the volumes and test type
+        self.api.delete_volume(src_volume_id)
+        found_volume = self._poll_volume_while(src_volume_id, ['deleting'])
+        self.assertIsNone(found_volume)
+        self.api.delete_volume(new_volume_id)
+        found_volume = self._poll_volume_while(new_volume_id, ['deleting'])
+        self.assertIsNone(found_volume)
+        self.api.delete_type(src_vol_type_id)
+
+    def test_create_volume_from_snapshot_inherits_voltype(self):
+        src_vol_type_name = 'a_very_new_vol_type'
+        src_vol_type_id = self.api.create_type(src_vol_type_name)['id']
+
+        # Create source volume
+        src_volume = self.api.post_volume(
+            {'volume': {'size': 1,
+                        'volume_type': src_vol_type_id}})
+        src_volume_id = src_volume['id']
+
+        # Wait (briefly) for creation. Delay is due to the 'message queue'
+        src_volume = self._poll_volume_while(src_volume_id, ['creating'])
+        self.assertEqual('available', src_volume['status'])
+
+        # Create a snapshot of src_volume
+        snapshot = self.api.post_snapshot(
+            {'snapshot': {'volume_id': src_volume_id,
+                          'name': 'test_snapshot'}})
+        self.assertEqual(src_volume_id, snapshot['volume_id'])
+        snapshot_id = snapshot['id']
+
+        # make sure the snapshot is ready
+        snapshot = self._poll_snapshot_while(snapshot_id, ['creating'])
+        self.assertEqual('available', snapshot['status'])
+
+        # create a new volume from the snapshot, do not specify a volume_type
+        new_volume = self.api.post_volume(
+            {'volume': {'size': 1,
+                        'snapshot_id': snapshot_id}})
+        new_volume_id = new_volume['id']
+
+        # Wait for creation ...
+        new_volume = self._poll_volume_while(new_volume_id, ['creating'])
+        self.assertEqual('available', new_volume['status'])
+
+        # Finally, here's the whole point of this test:
+        self.assertEqual(src_vol_type_name, new_volume['volume_type'])
+
+        # Delete the snapshot, volumes, and test type
+        self.api.delete_snapshot(snapshot_id)
+        snapshot = self._poll_snapshot_while(snapshot_id, ['deleting'])
+        self.assertIsNone(snapshot)
+
+        self.api.delete_volume(src_volume_id)
+        src_volume = self._poll_volume_while(src_volume_id, ['deleting'])
+        self.assertIsNone(src_volume)
+
+        self.api.delete_volume(new_volume_id)
+        new_volume = self._poll_volume_while(new_volume_id, ['deleting'])
+        self.assertIsNone(new_volume)
+
+        self.api.delete_type(src_vol_type_id)
 
     def test_create_volume_with_metadata(self):
         """Creates a volume with metadata."""
