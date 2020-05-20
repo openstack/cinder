@@ -17,12 +17,10 @@
 import errno
 import os
 from unittest import mock
-import uuid
 
 import ddt
 from oslo_utils import imageutils
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import exception
@@ -395,7 +393,6 @@ class NfsDriverTestCase(test.TestCase):
     TEST_SHARES_CONFIG_FILE = '/etc/cinder/test-shares.conf'
     TEST_NFS_EXPORT_SPACES = 'nfs-host3:/export this'
     TEST_MNT_POINT_SPACES = '/ 0 0 0 /foo'
-    VOLUME_UUID = '69ad4ff6-b892-4215-aaaa-aaaaaaaaaaaa'
 
     def setUp(self):
         super(NfsDriverTestCase, self).setUp()
@@ -1236,7 +1233,7 @@ class NfsDriverTestCase(test.TestCase):
         # Volume source of the snapshot we are trying to clone from. We need it
         # to have a different id than the default provided.
         src_volume = self._simple_volume(size=10)
-        src_volume.id = six.text_type(uuid.uuid4())
+        src_volume.id = fake.VOLUME_ID
         src_volume_dir = os.path.join(self.TEST_MNT_POINT_BASE,
                                       drv._get_hash_str(
                                           src_volume.provider_location))

@@ -20,7 +20,6 @@ import os
 import tempfile
 import threading
 from unittest import mock
-import uuid
 
 import ddt
 from os_brick.initiator import linuxrbd
@@ -116,8 +115,8 @@ class BackupCephTestCase(test.TestCase):
         return db.volume_create(self.ctxt, vol)['id']
 
     def _create_backup_db_entry(self, backupid, volid, size,
-                                userid=str(uuid.uuid4()),
-                                projectid=str(uuid.uuid4())):
+                                userid=fake.USER_ID,
+                                projectid=fake.PROJECT_ID):
         backup = {'id': backupid, 'size': size, 'volume_id': volid,
                   'user_id': userid, 'project_id': projectid}
         return db.backup_create(self.ctxt, backup)['id']
@@ -170,12 +169,12 @@ class BackupCephTestCase(test.TestCase):
 
         # Create volume.
         self.volume_size = 1
-        self.volume_id = str(uuid.uuid4())
+        self.volume_id = fake.VOLUME_ID
         self._create_volume_db_entry(self.volume_id, self.volume_size)
         self.volume = db.volume_get(self.ctxt, self.volume_id)
 
         # Create backup of volume.
-        self.backup_id = str(uuid.uuid4())
+        self.backup_id = fake.BACKUP_ID
         self._create_backup_db_entry(self.backup_id, self.volume_id,
                                      self.volume_size)
         self.backup = objects.Backup.get_by_id(self.ctxt, self.backup_id)
@@ -198,7 +197,7 @@ class BackupCephTestCase(test.TestCase):
         self.alt_backup.parent.service_metadata = '{"base": "%s"}' % base_name
 
         # Create alternate volume.
-        self.alt_volume_id = str(uuid.uuid4())
+        self.alt_volume_id = fake.VOLUME2_ID
         self._create_volume_db_entry(self.alt_volume_id, self.volume_size)
         self.alt_volume = db.volume_get(self.ctxt, self.alt_volume_id)
 
@@ -284,11 +283,11 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_get_backup_snap_name(self):
-        snap_name = 'backup.%s.snap.3824923.1412' % (uuid.uuid4())
+        snap_name = 'backup.%s.snap.3824923.1412' % (fake.VOLUME3_ID)
 
         def get_backup_snaps(inst, *args):
-            return [{'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4()),
-                     'backup_id': str(uuid.uuid4())},
+            return [{'name': 'backup.%s.snap.6423868.2342' % (fake.UUID1),
+                     'backup_id': fake.BACKUP2_ID},
                     {'name': snap_name,
                      'backup_id': self.backup_id}]
 
@@ -311,11 +310,11 @@ class BackupCephTestCase(test.TestCase):
     def test_get_backup_snaps(self):
         image = self.mock_rbd.Image.return_value
         image.list_snaps.return_value = [
-            {'name': 'backup.%s.snap.6423868.2342' % (uuid.uuid4())},
-            {'name': 'backup.%s.wambam.6423868.2342' % (uuid.uuid4())},
-            {'name': 'backup.%s.snap.1321319.3235' % (uuid.uuid4())},
-            {'name': 'bbbackup.%s.snap.1321319.3235' % (uuid.uuid4())},
-            {'name': 'backup.%s.snap.3824923.1412' % (uuid.uuid4())}]
+            {'name': 'backup.%s.snap.6423868.2342' % (fake.UUID1)},
+            {'name': 'backup.%s.wambam.6423868.2342' % (fake.UUID2)},
+            {'name': 'backup.%s.snap.1321319.3235' % (fake.UUID3)},
+            {'name': 'bbbackup.%s.snap.1321319.3235' % (fake.UUID4)},
+            {'name': 'backup.%s.snap.3824923.1412' % (fake.UUID5)}]
         snaps = self.service.get_backup_snaps(image)
         self.assertEqual(3, len(snaps))
 
@@ -860,9 +859,9 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_backup_vol_length_0(self):
-        volume_id = fake.VOLUME_ID
+        volume_id = fake.VOLUME4_ID
         self._create_volume_db_entry(volume_id, 0)
-        backup_id = fake.BACKUP_ID
+        backup_id = fake.BACKUP4_ID
         self._create_backup_db_entry(backup_id, volume_id, 1)
         backup = objects.Backup.get_by_id(self.ctxt, backup_id)
 
@@ -872,7 +871,7 @@ class BackupCephTestCase(test.TestCase):
     @common_mocks
     def test_backup_with_container_name(self):
         volume_size = self.volume_size * units.Gi
-        backup_id = fake.BACKUP_ID
+        backup_id = fake.BACKUP4_ID
         self._create_backup_db_entry(backup_id, self.volume_id, 1)
         backup = objects.Backup.get_by_id(self.ctxt, backup_id)
         backup.container = "test"
@@ -1003,7 +1002,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_delete_backup_snapshot(self):
-        snap_name = 'backup.%s.snap.3824923.1412' % (uuid.uuid4())
+        snap_name = 'backup.%s.snap.3824923.1412' % fake.UUID1
         base_name = self.service._get_backup_base_name(self.volume_id)
         self.mock_rbd.RBD.remove_snap = mock.Mock()
         thread_dict = {}
@@ -1470,7 +1469,7 @@ class VolumeMetadataBackupTestCase(test.TestCase):
         global RAISED_EXCEPTIONS
         RAISED_EXCEPTIONS = []
         super(VolumeMetadataBackupTestCase, self).setUp()
-        self.backup_id = str(uuid.uuid4())
+        self.backup_id = fake.BACKUP_ID
         self.mb = ceph.VolumeMetadataBackup(mock.Mock(), self.backup_id)
 
     @common_meta_backup_mocks

@@ -15,7 +15,6 @@
 """ Tests for the backup service base driver. """
 
 from unittest import mock
-import uuid
 
 from oslo_serialization import jsonutils
 
@@ -25,6 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit.backup import fake_service
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 
 _backup_db_fields = ['id', 'user_id', 'project_id',
@@ -43,8 +43,8 @@ class BackupBaseDriverTestCase(test.TestCase):
         return db.volume_create(self.ctxt, vol)['id']
 
     def _create_backup_db_entry(self, backupid, volid, size,
-                                userid=str(uuid.uuid4()),
-                                projectid=str(uuid.uuid4())):
+                                userid=fake.USER_ID,
+                                projectid=fake.PROJECT_ID):
         backup = {'id': backupid, 'size': size, 'volume_id': volid,
                   'user_id': userid, 'project_id': projectid}
         return db.backup_create(self.ctxt, backup)['id']
@@ -53,8 +53,8 @@ class BackupBaseDriverTestCase(test.TestCase):
         super(BackupBaseDriverTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
-        self.volume_id = str(uuid.uuid4())
-        self.backup_id = str(uuid.uuid4())
+        self.volume_id = fake.VOLUME_ID
+        self.backup_id = fake.BACKUP_ID
 
         self._create_backup_db_entry(self.backup_id, self.volume_id, 1)
         self._create_volume_db_entry(self.volume_id, 1)
@@ -97,8 +97,8 @@ class BackupMetadataAPITestCase(test.TestCase):
     def setUp(self):
         super(BackupMetadataAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
-        self.volume_id = str(uuid.uuid4())
-        self.backup_id = str(uuid.uuid4())
+        self.volume_id = fake.VOLUME2_ID
+        self.backup_id = fake.BACKUP2_ID
         self.volume_display_name = 'vol-1'
         self.volume_display_description = 'test vol'
         self._create_volume_db_entry(self.volume_id, 1,
@@ -179,7 +179,7 @@ class BackupMetadataAPITestCase(test.TestCase):
                           self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META: {}}
 
         # Emulate restore to new volume
-        volume_id = str(uuid.uuid4())
+        volume_id = fake.VOLUME3_ID
         vol_name = 'restore_backup_%s' % (self.backup_id)
         self._create_volume_db_entry(volume_id, 1, vol_name, 'fake volume')
 
@@ -284,7 +284,7 @@ class BackupMetadataAPITestCase(test.TestCase):
 
     def _create_encrypted_volume_db_entry(self, id, type_id, encrypted):
         if encrypted:
-            key_id = str(uuid.uuid4())
+            key_id = fake.ENCRYPTION_KEY_ID
             vol = {'id': id, 'size': 1, 'status': 'available',
                    'volume_type_id': type_id, 'encryption_key_id': key_id}
         else:
@@ -297,12 +297,12 @@ class BackupMetadataAPITestCase(test.TestCase):
         container = {}
 
         # Create an encrypted volume
-        enc_vol1_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+        enc_vol1_id = self._create_encrypted_volume_db_entry(fake.VOLUME4_ID,
                                                              'enc_vol_type',
                                                              True)
 
         # Create a second encrypted volume, of a different volume type
-        enc_vol2_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+        enc_vol2_id = self._create_encrypted_volume_db_entry(fake.VOLUME5_ID,
                                                              'enc_vol_type2',
                                                              True)
 
@@ -318,12 +318,12 @@ class BackupMetadataAPITestCase(test.TestCase):
         container = {}
 
         # Create an unencrypted volume
-        vol1_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+        vol1_id = self._create_encrypted_volume_db_entry(fake.VOLUME6_ID,
                                                          'vol_type1',
                                                          False)
 
         # Create a second unencrypted volume, of a different volume type
-        vol2_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+        vol2_id = self._create_encrypted_volume_db_entry(fake.VOLUME7_ID,
                                                          'vol_type2',
                                                          False)
 
@@ -341,12 +341,12 @@ class BackupMetadataAPITestCase(test.TestCase):
         container = {}
 
         # Create an encrypted volume
-        enc_vol1_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+        enc_vol1_id = self._create_encrypted_volume_db_entry(fake.VOLUME8_ID,
                                                              'enc_vol_type',
                                                              True)
 
         # Create an encrypted volume of the same type
-        enc_vol2_id = self._create_encrypted_volume_db_entry(str(uuid.uuid4()),
+        enc_vol2_id = self._create_encrypted_volume_db_entry(fake.VOLUME9_ID,
                                                              'enc_vol_type',
                                                              True)
 

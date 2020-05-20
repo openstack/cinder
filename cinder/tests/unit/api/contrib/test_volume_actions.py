@@ -14,13 +14,11 @@
 
 import datetime
 from unittest import mock
-import uuid
 
 import ddt
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
-import six
 from six.moves import http_client
 import webob
 
@@ -58,7 +56,6 @@ class VolumeActionsTest(test.TestCase):
         super(VolumeActionsTest, self).setUp()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                               is_admin=False)
-        self.UUID = six.text_type(uuid.uuid4())
         self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
         for _meth in self._methods:
@@ -93,7 +90,7 @@ class VolumeActionsTest(test.TestCase):
         app = fakes.wsgi_app(fake_auth_context=self.context)
         for _action in self._actions:
             req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                      (fake.PROJECT_ID, self.UUID))
+                                      (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = 'POST'
             req.body = jsonutils.dump_as_bytes({_action: None})
             req.content_type = 'application/json'
@@ -257,7 +254,7 @@ class VolumeActionsTest(test.TestCase):
         with mock.patch.object(volume_api.API, 'attach',
                                side_effect=volume_remote_error):
             id = fake.VOLUME_ID
-            vol = {"instance_uuid": self.UUID,
+            vol = {"instance_uuid": fake.INSTANCE_ID,
                    "mountpoint": "/dev/vdc",
                    "mode": "rw"}
             body = {"os-attach": vol}
@@ -276,7 +273,7 @@ class VolumeActionsTest(test.TestCase):
         with mock.patch.object(volume_api.API, 'attach',
                                side_effect=volume_remote_error):
             id = fake.VOLUME_ID
-            vol = {"instance_uuid": self.UUID,
+            vol = {"instance_uuid": fake.INSTANCE_ID,
                    "mountpoint": "/dev/vdc",
                    "mode": "rw"}
             body = {"os-attach": vol}
@@ -318,7 +315,7 @@ class VolumeActionsTest(test.TestCase):
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
             id = fake.VOLUME_ID
-            vol = {"attachment_id": self.UUID}
+            vol = {"attachment_id": fake.ATTACHMENT_ID}
             body = {"os-detach": vol}
             req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
                                           (fake.PROJECT_ID, id))
@@ -335,7 +332,7 @@ class VolumeActionsTest(test.TestCase):
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
             id = fake.VOLUME_ID
-            vol = {"attachment_id": self.UUID}
+            vol = {"attachment_id": fake.ATTACHMENT_ID}
             body = {"os-detach": vol}
             req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
                                           (fake.PROJECT_ID, id))

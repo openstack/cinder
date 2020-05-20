@@ -132,8 +132,8 @@ class BaseBackupTest(test.TestCase):
         vol = {}
         vol['size'] = size
         vol['host'] = host
-        vol['user_id'] = str(uuid.uuid4())
-        vol['project_id'] = str(uuid.uuid4())
+        vol['user_id'] = fake.USER_ID
+        vol['project_id'] = fake.PROJECT_ID
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
@@ -158,8 +158,8 @@ class BaseBackupTest(test.TestCase):
         """
         kwargs = {}
         kwargs['size'] = size
-        kwargs['user_id'] = str(uuid.uuid4())
-        kwargs['project_id'] = str(uuid.uuid4())
+        kwargs['user_id'] = fake.USER_ID
+        kwargs['project_id'] = fake.PROJECT_ID
         kwargs['status'] = status
         kwargs['display_name'] = display_name
         kwargs['display_description'] = display_description
@@ -203,7 +203,7 @@ class BaseBackupTest(test.TestCase):
         """
         kwargs = {}
         kwargs['volume_id'] = volume_id
-        kwargs['user_id'] = str(uuid.uuid4())
+        kwargs['user_id'] = fake.USER_ID
         kwargs['project_id'] = project_id
         kwargs['status'] = status
         if backup_id:
@@ -392,9 +392,9 @@ class BackupTestCase(BaseBackupTest):
     def test_cleanup_incomplete_backup_operations_with_exceptions(self):
         """Test cleanup resilience in the face of exceptions."""
 
-        fake_backup_list = [{'id': str(uuid.uuid4())},
-                            {'id': str(uuid.uuid4())},
-                            {'id': str(uuid.uuid4())}]
+        fake_backup_list = [{'id': fake.BACKUP_ID},
+                            {'id': fake.BACKUP2_ID},
+                            {'id': fake.BACKUP3_ID}]
         mock_backup_get_by_host = self.mock_object(
             objects.BackupList, 'get_all_by_host')
         mock_backup_get_by_host.return_value = fake_backup_list
@@ -522,18 +522,18 @@ class BackupTestCase(BaseBackupTest):
 
         fake_attachments = [
             {
-                'id': str(uuid.uuid4()),
+                'id': fake.ATTACHMENT_ID,
                 'attached_host': 'testhost',
                 'instance_uuid': None,
             },
             {
-                'id': str(uuid.uuid4()),
+                'id': fake.ATTACHMENT2_ID,
                 'attached_host': 'testhost',
                 'instance_uuid': None,
             }
         ]
         fake_volume = {
-            'id': str(uuid.uuid4()),
+            'id': fake.VOLUME3_ID,
             'volume_attachment': fake_attachments
         }
 
@@ -567,7 +567,7 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(
             status=fields.BackupStatus.ERROR,
             volume_id=vol1_id,
-            temp_snapshot_id=str(uuid.uuid4()))
+            temp_snapshot_id=fake.SNAPSHOT_ID)
 
         self.assertIsNone(
             self.backup_mgr._cleanup_temp_volumes_snapshots_for_one_backup(
@@ -588,7 +588,7 @@ class BackupTestCase(BaseBackupTest):
         db.volume_update(self.ctxt, vol1_id, {'status': 'backing-up'})
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
                                               volume_id=vol1_id,
-                                              temp_volume_id=str(uuid.uuid4()))
+                                              temp_volume_id=fake.VOLUME4_ID)
 
         self.assertIsNone(
             self.backup_mgr._cleanup_temp_volumes_snapshots_for_one_backup(
@@ -1610,7 +1610,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(2, notify.call_count)
 
     def test_list_backup(self):
-        project_id = str(uuid.uuid4())
+        project_id = fake.PROJECT_ID
         backups = db.backup_get_all_by_project(self.ctxt, project_id)
         self.assertEqual(0, len(backups))
 
@@ -1626,7 +1626,7 @@ class BackupTestCase(BaseBackupTest):
         Test deleted backups don't show up in backup_get_all_by_project.
         Unless context.read_deleted is 'yes'.
         """
-        project_id = str(uuid.uuid4())
+        project_id = fake.PROJECT2_ID
         backups = db.backup_get_all_by_project(self.ctxt, project_id)
         self.assertEqual(0, len(backups))
 
@@ -1716,7 +1716,7 @@ class BackupTestCase(BaseBackupTest):
         driver does not support verify.
         """
         vol_size = 1
-        backup_id = uuid.uuid4()
+        backup_id = fake.BACKUP4_ID
         export = self._create_exported_record_entry(vol_size=vol_size,
                                                     exported_id=backup_id)
         imported_record = self._create_export_record_db_entry(
@@ -1940,8 +1940,8 @@ class BackupAPITestCase(BaseBackupTest):
 
         # Will try to backup from a different context
         new_context = copy.copy(self.ctxt)
-        new_context.user_id = uuid.uuid4()
-        new_context.project_id = uuid.uuid4()
+        new_context.user_id = fake.USER3_ID
+        new_context.project_id = fake.USER3_ID
 
         # The opposite side of this test case is a "NotImplementedError:
         # Cannot load 'id' in the base class" being raised.
