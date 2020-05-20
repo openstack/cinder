@@ -218,6 +218,15 @@ class TestOpenStackClient(object):
     def put_volume(self, volume_id, volume):
         return self.api_put('/volumes/%s' % volume_id, volume)['volume']
 
+    def get_snapshot(self, snapshot_id):
+        return self.api_get('/snapshots/%s' % snapshot_id)['snapshot']
+
+    def post_snapshot(self, snapshot):
+        return self.api_post('/snapshots', snapshot)['snapshot']
+
+    def delete_snapshot(self, snapshot_id):
+        return self.api_delete('/snapshots/%s' % snapshot_id)
+
     def quota_set(self, project_id, quota_update):
         return self.api_put(
             'os-quota-sets/%s' % project_id,

@@ -846,20 +846,13 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'backup_id': None}
         self.assertEqual(expected_result, result)
 
-    @mock.patch('cinder.db.volume_type_get_by_name')
-    @mock.patch('cinder.volume.volume_types.is_encrypted')
-    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
-    @mock.patch('cinder.volume.volume_types.get_default_volume_type')
     @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
     def test_extract_image_volume_type_from_image_invalid_type(
             self,
-            fake_get_type,
-            fake_get_def_vol_type,
-            fake_get_qos,
-            fake_is_encrypted,
-            fake_db_get_vol_type):
-
-        image_volume_type = 'invalid'
+            fake_get_type):
+        # Expected behavior: if the cinder_img_volume_type image property
+        # specifies an invalid type, it should raise an exception
+        image_volume_type = 'an_invalid_type'
         fake_image_service = fake_image.FakeImageService()
         image_id = 7
         image_meta = {}
@@ -875,13 +868,14 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_image_service,
             {'nova'})
 
-        fake_is_encrypted.return_value = False
-        fake_get_def_vol_type.return_value = {'name': 'fake_vol_type'}
-        fake_get_type.return_value = {'name': 'fake_vol_type'}
-        fake_db_get_vol_type.side_effect = (
-            exception.VolumeTypeNotFoundByName(volume_type_name='invalid'))
-        fake_get_qos.return_value = {'qos_specs': None}
-        result = task.execute(self.ctxt,
+        def raise_with_id(stuff, id):
+            raise exception.VolumeTypeNotFoundByName(volume_type_name=id)
+
+        fake_get_type.side_effect = raise_with_id
+
+        e = self.assertRaises(exception.VolumeTypeNotFoundByName,
+                              task.execute,
+                              self.ctxt,
                               size=1,
                               snapshot=None,
                               image_id=image_id,
@@ -895,39 +889,26 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               group=None,
                               group_snapshot=None,
                               backup=None)
-        expected_result = {'size': 1,
-                           'snapshot_id': None,
-                           'source_volid': None,
-                           'availability_zones': ['nova'],
-                           'volume_type': {'name': 'fake_vol_type'},
-                           'volume_type_id': None,
-                           'encryption_key_id': None,
-                           'qos_specs': None,
-                           'consistencygroup_id': None,
-                           'cgsnapshot_id': None,
-                           'group_id': None,
-                           'multiattach': False,
-                           'refresh_az': False,
-                           'replication_status': 'disabled',
-                           'backup_id': None}
-        self.assertEqual(expected_result, result)
+        self.assertIn(image_volume_type, str(e))
 
-    @mock.patch('cinder.db.volume_type_get_by_name')
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
     @mock.patch('cinder.objects.volume_type.VolumeType.get_by_name_or_id')
+    @mock.patch('cinder.volume.volume_types.get_default_volume_type')
     @ddt.data((8, None), (9, {'cinder_img_volume_type': None}))
     @ddt.unpack
     def test_extract_image_volume_type_from_image_properties_error(
             self,
             image_id,
             fake_img_properties,
-            fake_get_type,
+            fake_get_default_vol_type,
+            fake_get_by_name_or_id,
             fake_get_qos,
-            fake_is_encrypted,
-            fake_db_get_vol_type):
-
-        self.flags(default_volume_type='fake_volume_type')
+            fake_is_encrypted):
+        # Expected behavior: if the image has no properties
+        # or the cinder_img_volume_type is present but has no
+        # value, the default volume type should be used
+        self.flags(default_volume_type='fake_default_volume_type')
         fake_image_service = fake_image.FakeImageService()
         image_meta = {}
         image_meta['id'] = image_id
@@ -942,8 +923,19 @@ class CreateVolumeFlowTestCase(test.TestCase):
             {'nova'})
 
         fake_is_encrypted.return_value = False
-        fake_get_type.return_value = None
         fake_get_qos.return_value = {'qos_specs': None}
+
+        fake_volume_type = {'name': 'fake_default_volume_type',
+                            'id': fakes.VOLUME_TYPE_ID}
+        fake_get_default_vol_type.return_value = fake_volume_type
+
+        # yeah, I don't like this either, but until someone figures
+        # out why we re-get the volume_type object in the execute
+        # function, we have to do this.  At least I will check later
+        # and make sure we called it with the correct vol_type_id, so
+        # I'm not completely cheating
+        fake_get_by_name_or_id.return_value = fake_volume_type
+
         result = task.execute(self.ctxt,
                               size=1,
                               snapshot=None,
@@ -958,12 +950,17 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               group=None,
                               group_snapshot=None,
                               backup=None)
+
+        fake_get_default_vol_type.assert_called_once()
+        fake_get_by_name_or_id.assert_called_once_with(
+            self.ctxt, fakes.VOLUME_TYPE_ID)
+
         expected_result = {'size': 1,
                            'snapshot_id': None,
                            'source_volid': None,
                            'availability_zones': ['nova'],
-                           'volume_type': None,
-                           'volume_type_id': None,
+                           'volume_type': fake_volume_type,
+                           'volume_type_id': fakes.VOLUME_TYPE_ID,
                            'encryption_key_id': None,
                            'qos_specs': None,
                            'consistencygroup_id': None,
@@ -975,46 +972,43 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'backup_id': None}
         self.assertEqual(expected_result, result)
 
-    @mock.patch('cinder.db.volume_type_get_by_name')
-    @mock.patch('cinder.volume.volume_types.is_encrypted')
-    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
-    def test_extract_image_volume_type_from_image_invalid_input(
-            self,
-            fake_get_qos,
-            fake_is_encrypted,
-            fake_db_get_vol_type):
+    glance_nonactive_statuses = ('queued', 'saving', 'deleted', 'deactivated',
+                                 'uploading', 'importing', 'not_a_vaild_state',
+                                 'error')
 
+    @ddt.data(*glance_nonactive_statuses)
+    def test_extract_image_volume_type_from_image_invalid_input(
+            self, status):
+        # Expected behavior: an image must be in 'active' status
+        # or we should not create an image from it
         fake_image_service = fake_image.FakeImageService()
-        image_id = 10
-        image_meta = {}
-        image_meta['id'] = image_id
-        image_meta['status'] = 'inactive'
-        fake_image_service.create(self.ctxt, image_meta)
+        image_meta = {'status': status}
+        image_id = fake_image_service.create(self.ctxt, image_meta)['id']
         fake_key_manager = mock_key_manager.MockKeyManager()
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
             {'nova'})
 
-        fake_is_encrypted.return_value = False
-        fake_get_qos.return_value = {'qos_specs': None}
-
-        self.assertRaises(exception.InvalidInput,
-                          task.execute,
-                          self.ctxt,
-                          size=1,
-                          snapshot=None,
-                          image_id=image_id,
-                          source_volume=None,
-                          availability_zone='nova',
-                          volume_type=None,
-                          metadata=None,
-                          key_manager=fake_key_manager,
-                          consistencygroup=None,
-                          cgsnapshot=None,
-                          group=None,
-                          group_snapshot=None,
-                          backup=None)
+        e = self.assertRaises(exception.InvalidInput,
+                              task.execute,
+                              self.ctxt,
+                              size=1,
+                              snapshot=None,
+                              image_id=image_id,
+                              source_volume=None,
+                              availability_zone='nova',
+                              volume_type=None,
+                              metadata=None,
+                              key_manager=fake_key_manager,
+                              consistencygroup=None,
+                              cgsnapshot=None,
+                              group=None,
+                              group_snapshot=None,
+                              backup=None)
+        self.assertIn("Invalid input received", str(e))
+        self.assertIn("Image {} is not active".format(image_id), str(e))
+        fake_image_service.delete(self.ctxt, image_id)
 
 
 @ddt.ddt
