@@ -1,0 +1,27 @@
+---
+upgrade:
+  - |
+    Due to the fix for `Bug #1740950
+    <https://bugs.launchpad.net/cinder/+bug/1740950>`_, the
+    ``host_name`` field in any object in the ``attachments``
+    array of the volume detail response is populated only when
+    the call is made in an administrative context.  Otherwise,
+    its value is the JSON ``null`` value.  This is consistent with
+    prior API behavior, as it has always been possible for the
+    value of that field to be ``null``.
+security:
+  - |
+    It was possible under certain circumstances for the host name
+    of an instance to be leaked in the volume detail response.  This
+    has been fixed in the current release.  The ``host_name`` field
+    in any object in the ``attachments`` array of the volume
+    detail response is populated only when the call is made in an
+    administrative context.  Otherwise, its value is the JSON ``null``
+    value.
+fixes:
+  - |
+    `Bug #1740950 <https://bugs.launchpad.net/cinder/+bug/1740950>`_:
+    the ``host_name`` field in any object in the ``attachments`` array
+    of the volume detail response is populated only when the call is
+    made in an administrative context.  Otherwise, its value is the
+    JSON ``null`` value.
