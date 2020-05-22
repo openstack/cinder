@@ -23,7 +23,7 @@ import base64
 import hashlib
 import time
 
-from defusedxml import ElementTree as ET
+from lxml import etree as ET
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging

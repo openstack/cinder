@@ -19,8 +19,8 @@ from unittest import mock
 from ddt import data
 from ddt import ddt
 from ddt import unpack
-from defusedxml import cElementTree as ET
 import eventlet
+from lxml import etree as ET
 from oslo_config import cfg
 from oslo_utils import units
 import requests

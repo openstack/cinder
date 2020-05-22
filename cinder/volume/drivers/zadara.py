@@ -17,7 +17,7 @@
 This driver requires VPSA with API version 15.07 or higher.
 """
 
-from defusedxml import lxml
+from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -287,7 +287,7 @@ class ZadaraVPSAConnection(object):
             raise exception.BadHTTPResponseStatus(status=response.status_code)
 
         data = response.content
-        xml_tree = lxml.fromstring(data)
+        xml_tree = etree.fromstring(data)
         status = xml_tree.findtext('status')
         if status == '5':
             # Invalid Credentials

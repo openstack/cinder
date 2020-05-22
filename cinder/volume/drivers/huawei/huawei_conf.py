@@ -23,7 +23,7 @@ import base64
 import os
 import re
 
-from defusedxml import ElementTree as ET
+from lxml import etree as ET
 from oslo_log import log as logging
 import six
 
