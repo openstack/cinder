@@ -89,7 +89,7 @@ instorage_mcs_opts = [
                default=50,
                min=1, max=100,
                help='Specifies the InStorage LocalCopy copy rate to be used '
-               'when creating a full volume copy. The default is rate '
+               'when creating a full volume copy. The default rate '
                'is 50, and the valid rates are 1-100.'),
     cfg.StrOpt('instorage_mcs_vol_iogrp',
                default='0',
