@@ -24,7 +24,6 @@ from xml.etree import ElementTree
 
 import ddt
 import requests
-import retrying
 
 from cinder import context
 from cinder import exception
@@ -2368,7 +2367,7 @@ class HuaweiTestBase(test.TestCase):
 
     @ddt.data('1', '', '0')
     def test_copy_volume(self, input_speed):
-        self.driver.configuration.lun_copy_wait_interval = 0
+        self.driver.configuration.lun_copy_wait_interval = 1
         self.volume.metadata = {'copyspeed': input_speed}
 
         mocker = self.mock_object(
@@ -4121,7 +4120,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
 
         with mock.patch.object(rest_client.RestClient, 'get_lun_info',
                                return_value=offline_status):
-            self.assertRaises(retrying.RetryError,
+            self.assertRaises(exception.VolumeDriverException,
                               replica.wait_volume_online,
                               self.driver.client,
                               lun_info)
@@ -4136,7 +4135,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                          return_value={'SECRESACCESS': access_ro})
 
         common_driver.wait_second_access(pair_id, access_ro)
-        self.assertRaises(retrying.RetryError,
+        self.assertRaises(exception.VolumeDriverException,
                           common_driver.wait_second_access, pair_id, access_rw)
 
     def test_wait_replica_ready(self):

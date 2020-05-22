@@ -144,6 +144,10 @@ class TestCase(testtools.TestCase):
         self.patch('cinder.rpc.get_notifier',
                    side_effect=self._get_joined_notifier)
 
+        # Protect against any case where someone doesn't directly patch a retry
+        # decorated call.
+        self.patch('cinder.utils._time_sleep')
+
         if self.MOCK_WORKER:
             # Mock worker creation for all tests that don't care about it
             clean_path = 'cinder.objects.cleanable.CinderCleanableObject.%s'

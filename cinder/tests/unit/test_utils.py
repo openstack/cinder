@@ -23,7 +23,6 @@ from unittest import mock
 import ddt
 from oslo_utils import timeutils
 import six
-from six.moves import range
 import webob.exc
 
 import cinder
@@ -939,7 +938,7 @@ class TestRetryDecorator(test.TestCase):
     def test_no_retry_required(self):
         self.counter = 0
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
+        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval=2,
                          retries=3,
@@ -956,7 +955,7 @@ class TestRetryDecorator(test.TestCase):
     def test_no_retry_required_random(self):
         self.counter = 0
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
+        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval=2,
                          retries=3,
@@ -977,7 +976,7 @@ class TestRetryDecorator(test.TestCase):
         backoff_rate = 2
         retries = 3
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
+        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval,
                          retries,
@@ -993,7 +992,7 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual('success', ret)
             self.assertEqual(2, self.counter)
             self.assertEqual(1, mock_sleep.call_count)
-            mock_sleep.assert_called_with(interval * backoff_rate)
+            mock_sleep.assert_called_with(interval)
 
     def test_retries_once_random(self):
         self.counter = 0
@@ -1001,7 +1000,7 @@ class TestRetryDecorator(test.TestCase):
         backoff_rate = 2
         retries = 3
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
+        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval,
                          retries,
@@ -1026,7 +1025,7 @@ class TestRetryDecorator(test.TestCase):
         interval = 2
         backoff_rate = 4
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
+        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval,
                          retries,
@@ -1040,17 +1039,17 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual(retries, self.counter)
 
             expected_sleep_arg = []
-
             for i in range(retries):
                 if i > 0:
-                    interval *= backoff_rate
+                    interval *= (backoff_rate ** (i - 1))
                     expected_sleep_arg.append(float(interval))
 
-            mock_sleep.assert_has_calls(map(mock.call, expected_sleep_arg))
+            mock_sleep.assert_has_calls(
+                list(map(mock.call, expected_sleep_arg)))
 
     def test_wrong_exception_no_retry(self):
 
-        with mock.patch.object(time, 'sleep') as mock_sleep:
+        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException)
             def raise_unexpected_error():
                 raise WrongException("wrong exception")

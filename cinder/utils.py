@@ -17,7 +17,6 @@
 
 """Utilities and helper functions."""
 
-
 import abc
 from collections import OrderedDict
 import contextlib
@@ -29,7 +28,6 @@ import math
 import operator
 import os
 import pyclbr
-import random
 import re
 import shutil
 import stat
@@ -50,12 +48,30 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import retrying
 import six
 
 from cinder import exception
 from cinder.i18n import _
 
+# The following section is needed to be able to mock out the sleep calls that
+# happen in the tenacity retry handling. We save off the real time.sleep for
+# later and so it can be mocked in unit tests for the sleep call that tenacity
+# makes. But we don't want all time.sleep calls to be modified, so after
+# loading the tenacity module, we restore things back to normal. End result is
+# only the tenacity sleep calls go through the method that we can mock,
+# everything else works as normal.
+_time_sleep = time.sleep
+
+
+def _sleep(duration):
+    """Helper class to make it easier to mock retry sleeping."""
+    _time_sleep(duration)
+
+
+time.sleep = _sleep
+import tenacity  # noqa
+time.sleep = _time_sleep
+# End of time
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -658,41 +674,27 @@ class ComparableMixin(object):
 def retry(exceptions, interval=1, retries=3, backoff_rate=2,
           wait_random=False):
 
-    def _retry_on_exception(e):
-        return isinstance(e, exceptions)
-
-    def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
-        exp = backoff_rate ** previous_attempt_number
-        wait_for = interval * exp
-
-        if wait_random:
-            random.seed()
-            wait_val = random.randrange(interval * 1000.0, wait_for * 1000.0)
-        else:
-            wait_val = wait_for * 1000.0
-
-        LOG.debug("Sleeping for %s seconds", (wait_val / 1000.0))
-
-        return wait_val
-
-    def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
-        delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0
-        LOG.debug("Failed attempt %s", previous_attempt_number)
-        LOG.debug("Have been at this for %s seconds",
-                  delay_since_first_attempt)
-        return previous_attempt_number == retries
-
     if retries < 1:
         raise ValueError('Retries must be greater than or '
                          'equal to 1 (received: %s). ' % retries)
+
+    if wait_random:
+        wait = tenacity.wait_random_exponential(multiplier=interval)
+    else:
+        wait = tenacity.wait_exponential(
+            multiplier=interval, min=0, exp_base=backoff_rate)
 
     def _decorator(f):
 
         @six.wraps(f)
         def _wrapper(*args, **kwargs):
-            r = retrying.Retrying(retry_on_exception=_retry_on_exception,
-                                  wait_func=_backoff_sleep,
-                                  stop_func=_print_stop)
+            r = tenacity.Retrying(
+                before_sleep=tenacity.before_sleep_log(LOG, logging.DEBUG),
+                after=tenacity.after_log(LOG, logging.DEBUG),
+                stop=tenacity.stop_after_attempt(retries),
+                reraise=True,
+                retry=tenacity.retry_if_exception_type(exceptions),
+                wait=wait)
             return r.call(f, *args, **kwargs)
 
         return _wrapper

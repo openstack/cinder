@@ -145,7 +145,7 @@ stevedore==1.31.0
 tabulate==0.8.5
 taskflow==3.2.0
 Tempita==0.5.2
-tenacity==4.9.0
+tenacity==6.0.0
 testrepository==0.0.20
 testtools==2.2.0
 tooz==1.58.0

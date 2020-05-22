@@ -91,14 +91,7 @@ def common_mocks(f):
     The point of doing these mocks here is so that we don't accidentally set
     mocks that can't/don't get unset.
     """
-    def _FakeRetrying(wait_func=None,
-                      original_retrying = driver.utils.retrying.Retrying,
-                      *args, **kwargs):
-        return original_retrying(wait_func=lambda *a, **k: 0,
-                                 *args, **kwargs)
-
     def _common_inner_inner1(inst, *args, **kwargs):
-        @mock.patch('retrying.Retrying', _FakeRetrying)
         @mock.patch.object(driver.RBDDriver, '_get_usage_info')
         @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
         @mock.patch('cinder.volume.drivers.rbd.RADOSClient')

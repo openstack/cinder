@@ -2385,13 +2385,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
                 expected +
                 self.standard_logout)
 
-    def _FakeRetrying(wait_func=None,
-                      original_retrying=hpecommon.utils.retrying.Retrying,
-                      *args, **kwargs):
-        return original_retrying(wait_func=lambda *a, **k: 0,
-                                 *args, **kwargs)
-
-    @mock.patch('retrying.Retrying', _FakeRetrying)
     def test_delete_volume_online_active_done(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
