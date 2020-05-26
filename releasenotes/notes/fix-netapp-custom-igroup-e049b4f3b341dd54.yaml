@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix NetApp iSCSI and FC driver issues with custom initiator groups.
+    (bug 1697490).
