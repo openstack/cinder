@@ -46,7 +46,7 @@ iso8601==0.1.12
 Jinja2==2.10
 jsonpatch==1.21
 jsonpointer==2.0
-jsonschema==2.6.0
+jsonschema==3.2.0
 keystoneauth1==3.14.0
 keystonemiddleware==4.21.0
 kombu==4.1.0
