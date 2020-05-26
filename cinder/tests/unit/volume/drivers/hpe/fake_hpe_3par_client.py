@@ -22,7 +22,7 @@ from cinder.tests.unit.volume.drivers.hpe \
     import fake_hpe_client_exceptions as hpeexceptions
 
 hpe3par = mock.Mock()
-hpe3par.version = "4.2.0"
+hpe3par.version = "4.2.10"
 hpe3par.exceptions = hpeexceptions
 
 sys.modules['hpe3parclient'] = hpe3par
