@@ -2072,8 +2072,9 @@ class VolumeManager(manager.CleanableManager,
         else:
             conn = self.initialize_connection(ctxt, volume, properties)
 
-        attach_info = self._connect_device(conn)
+        attach_info = None
         try:
+            attach_info = self._connect_device(conn)
             if attach_encryptor and (
                     volume_types.is_encrypted(ctxt,
                                               volume.volume_type_id)):
@@ -2088,22 +2089,24 @@ class VolumeManager(manager.CleanableManager,
                 LOG.error("Failed to attach volume encryptor"
                           " %(vol)s.", {'vol': volume['id']})
                 self._detach_volume(ctxt, attach_info, volume, properties,
-                                    force=True)
+                                    force=True, remote=remote)
         return attach_info
 
     def _detach_volume(self, ctxt, attach_info, volume, properties,
                        force=False, remote=False,
                        attach_encryptor=False):
-        connector = attach_info['connector']
-        if attach_encryptor and (
-                volume_types.is_encrypted(ctxt,
-                                          volume.volume_type_id)):
-            encryption = self.db.volume_encryption_metadata_get(
-                ctxt.elevated(), volume.id)
-            if encryption:
-                utils.brick_detach_volume_encryptor(attach_info, encryption)
-        connector.disconnect_volume(attach_info['conn']['data'],
-                                    attach_info['device'], force=force)
+        if attach_info:
+            connector = attach_info['connector']
+            if attach_encryptor and (
+                    volume_types.is_encrypted(ctxt,
+                                              volume.volume_type_id)):
+                encryption = self.db.volume_encryption_metadata_get(
+                    ctxt.elevated(), volume.id)
+                if encryption:
+                    utils.brick_detach_volume_encryptor(attach_info,
+                                                        encryption)
+            connector.disconnect_volume(attach_info['conn']['data'],
+                                        attach_info['device'], force=force)
 
         if remote:
             rpcapi = volume_rpcapi.VolumeAPI()
