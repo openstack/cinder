@@ -3751,6 +3751,51 @@ class VMAXCommonTest(test.TestCase):
             self.common._remove_members.assert_called_once_with(
                 array, volume, device_id, extra_specs, None, async_grp=None)
 
+    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+                       return_value=({'maskingview': u'OS-HostX-F-OS_PG-MV',
+                                      'array': '000123456789',
+                                      'hostlunid': 1,
+                                      'device_id': u'00001'}, True,
+                                     ['OS-HostX-F-OS_PG-NONFAST',
+                                      'OS-HostY-SRP_1-OptimdNONE-OS_PG']))
+    def test_unmap_lun_live_migration(self, mock_dev):
+        array = self.data.array
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        connector = self.data.connector
+        with mock.patch.object(self.masking, 'remove_volume_from_sg'):
+            with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
+                                   return_value=extra_specs):
+                self.common._unmap_lun(volume, connector)
+                self.masking.remove_volume_from_sg.assert_called_once_with(
+                    array, device_id, volume.name, 'OS-HostX-F-OS_PG-NONFAST',
+                    extra_specs)
+
+    @mock.patch.object(common.VMAXCommon, 'find_host_lun_id',
+                       return_value=({'maskingview': u'OS-HostY-F-OS_PG-MV',
+                                      'array': '000123456789',
+                                      'hostlunid': 1,
+                                      'device_id': u'00001'}, True,
+                                     ['OS-HostY-F-OS_PG-NONFAST',
+                                      'OS-HostX-SRP_1-OptimdNONE-OS_PG']))
+    def test_unmap_lun_live_migration_clean_up_failed_case(self, mock_dev):
+        array = self.data.array
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        extra_specs = deepcopy(self.data.extra_specs_intervals_set)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        connector = self.data.connector
+        with mock.patch.object(self.masking, 'remove_volume_from_sg'):
+            with mock.patch.object(self.utils, 'get_volumetype_extra_specs',
+                                   return_value=extra_specs):
+                self.common._unmap_lun(volume, connector)
+                self.masking.remove_volume_from_sg.assert_called_once_with(
+                    array, device_id, volume.name,
+                    'OS-HostX-SRP_1-OptimdNONE-OS_PG',
+                    extra_specs)
+
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
         connector = self.data.connector
@@ -4035,6 +4080,27 @@ class VMAXCommonTest(test.TestCase):
         maskedvols, __, __ = self.common.find_host_lun_id(
             volume, None, extra_specs)
         self.assertEqual(ref_masked, maskedvols)
+
+    @mock.patch.object(rest.VMAXRest, 'get_storage_groups_from_volume',
+                       return_value=['OS-HostY-F-OS_PG-NONFAST',
+                                     'OS-HostX-SRP_1-OptimdNONE-OS_PG'])
+    @mock.patch.object(common.VMAXCommon, '_get_masking_views_from_volume',
+                       return_value=['OS-HostX-F-OS-fibre-PG-MV',
+                                     'OS-HostY-F-OS-fibre-PG-MV'])
+    def test_find_host_lun_id_live_migration(self, mock_mvs, mock_sgs):
+        volume = self.data.test_volume
+        extra_specs = self.data.extra_specs
+        host = 'HostX'
+        host_lun = (self.data.maskingview[0]['maskingViewConnection'][0]
+                    ['host_lun_address'])
+        ref_masked = {'hostlunid': int(host_lun, 16),
+                      'maskingview': self.data.masking_view_name_f,
+                      'array': self.data.array,
+                      'device_id': self.data.device_id}
+        maskedvols, is_live_migration, __ = self.common.find_host_lun_id(
+            volume, host, extra_specs)
+        self.assertEqual(ref_masked, maskedvols)
+        self.assertTrue(is_live_migration)
 
     def test_register_config_file_from_config_group_exists(self):
         config_group_name = 'CommonTests'

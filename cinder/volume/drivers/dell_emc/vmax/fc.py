@@ -102,9 +102,10 @@ class VMAXFCDriver(san.SanDriver, driver.FibreChannelDriver):
                 (bugs #1783855 #1783867)
               - Fix for HyperMax OS Upgrade Bug (bug #1790141)
         3.1.2 - Legacy volume not found fix (#1867163)
+        3.1.3 - FC Live Migration failure (bug #1874829)
     """
 
-    VERSION = "3.1.2"
+    VERSION = "3.1.3"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

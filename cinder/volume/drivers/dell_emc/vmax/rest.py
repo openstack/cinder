@@ -752,7 +752,7 @@ class VMAXRest(object):
         if vol_details:
             vol_identifier = vol_details.get('volume_identifier', None)
             LOG.debug('Element name = %(en)s, Vol identifier = %(vi)s, '
-                      'Device id = %(di)s, vol details = %(vd)s',
+                      'Device id = %(di)s.',
                       {'en': element_name, 'vi': vol_identifier,
                        'di': device_id})
             if vol_identifier:

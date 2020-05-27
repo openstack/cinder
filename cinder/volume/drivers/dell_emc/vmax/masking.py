@@ -1611,9 +1611,15 @@ class VMAXMasking(object):
             self.add_child_sg_to_parent_sg(
                 device_info_dict['array'], source_nf_sg, source_parent_sg,
                 extra_specs, default_version=False)
-        self.move_volume_between_storage_groups(
-            device_info_dict['array'], device_info_dict['device_id'],
-            source_sg, source_nf_sg, extra_specs)
+        if source_sg.lower() != source_nf_sg.lower():
+            self.move_volume_between_storage_groups(
+                device_info_dict['array'], device_info_dict['device_id'],
+                source_sg, source_nf_sg, extra_specs)
+        else:
+            LOG.debug("The source sg %(source_sg)s is the same "
+                      "as the source NONFAST storage group. No move operation "
+                      "necessary.",
+                      {'source_sg': source_sg})
 
     def post_live_migration(self, device_info_dict, extra_specs):
         """Run after every live migration operation.
