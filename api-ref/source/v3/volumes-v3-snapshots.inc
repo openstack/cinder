@@ -199,7 +199,6 @@ Response Parameters
    - description: description_snap_req
    - created_at: created_at
    - name: name
-   - user_id: user_id_min
    - volume_id: volume_id_snap
    - metadata: metadata
    - id: id_snap
