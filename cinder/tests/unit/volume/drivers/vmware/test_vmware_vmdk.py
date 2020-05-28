@@ -1909,17 +1909,14 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 mock_session.pbm_wsdl_loc_set.assert_called_once_with(pbm_wsdl)
             self.assertEqual(enable_pbm, self._driver._storage_policy_enabled)
             register_extension.assert_called_once()
-            vops_cls.assert_called_once_with(
-                session,
-                self._driver.configuration.vmware_max_objects_retrieval,
-                vmdk.EXTENSION_KEY,
-                vmdk.EXTENSION_TYPE)
-            self.assertEqual(vops_cls.return_value, self._driver._volumeops)
+            cfg = self._driver.configuration
             ds_sel_cls.assert_called_once_with(
                 vops,
                 session,
                 self._driver.configuration.vmware_max_objects_retrieval,
-                ds_regex=ds_regex)
+                ds_regex=ds_regex,
+                random_ds=cfg.vmware_select_random_best_datastore,
+                random_ds_range=cfg.vmware_random_datastore_range)
             self.assertEqual(ds_sel_cls.return_value, self._driver._ds_sel)
             vops.get_cluster_refs.assert_called_once_with(
                 self._driver.configuration.vmware_cluster_name)
