@@ -23,5 +23,5 @@ oslo.versionedobjects[fixtures]>=1.31.2 # Apache-2.0
 # so we need to pin it here to a known working version
 bandit==1.6.0 # Apache-2.0
 doc8>=0.6.0 # Apache-2.0
-reno>=2.5.0 # Apache-2.0
+reno>=3.1.0 # Apache-2.0
 Pygments>=2.2.0 # BSD license
