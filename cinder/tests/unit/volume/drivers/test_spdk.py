@@ -510,6 +510,7 @@ class SpdkDriverTestCase(test.TestCase):
         self.configuration.target_protocol = "nvmet_rdma"
         self.configuration.spdk_rpc_ip = "127.0.0.1"
         self.configuration.spdk_rpc_port = 8000
+        self.configuration.spdk_rpc_protocol = "https"
         mock_safe_get = mock.Mock()
         mock_safe_get.return_value = 'spdk-nvmeof'
         self.configuration.safe_get = mock_safe_get

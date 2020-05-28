@@ -198,8 +198,9 @@ class SPDKDriver(driver.VolumeDriver):
     def do_setup(self, context):
         try:
             payload = {'method': 'bdev_get_bdevs', 'jsonrpc': '2.0', 'id': 1}
-            self.url = ('http://%(ip)s:%(port)s/' %
-                        {'ip': self.configuration.spdk_rpc_ip,
+            self.url = ('%(protocol)s://%(ip)s:%(port)s/' %
+                        {'protocol': self.configuration.spdk_rpc_protocol,
+                         'ip': self.configuration.spdk_rpc_ip,
                          'port': self.configuration.spdk_rpc_port})
             requests.post(self.url,
                           data=json.dumps(payload),

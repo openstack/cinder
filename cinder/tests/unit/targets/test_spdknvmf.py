@@ -14,6 +14,8 @@ import copy
 import json
 from unittest import mock
 
+import requests
+
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.targets import spdknvmf as spdknvmf_driver
@@ -355,9 +357,38 @@ class SpdkNvmfDriverTestCase(test.TestCase):
         self.configuration.target_protocol = "nvmet_rdma"
         self.configuration.spdk_rpc_ip = "127.0.0.1"
         self.configuration.spdk_rpc_port = 8000
+        self.configuration.spdk_rpc_protocol = "https"
+        self.configuration.spdk_rpc_username = "user"
+        self.configuration.spdk_rpc_password = "password"
+        self.configuration.driver_ssl_cert_verify = False
         self.driver = spdknvmf_driver.SpdkNvmf(configuration=
                                                self.configuration)
         self.jsonrpcclient = JSONRPCClient()
+
+    def get_item(self):
+        return {'result': 'test_result'}
+
+    def test__rpc_parameters(self):
+        url = ('%(protocol)s://%(ip)s:%(port)s/' %
+               {'protocol': self.configuration.spdk_rpc_protocol,
+                'ip': self.configuration.spdk_rpc_ip,
+                'port': self.configuration.spdk_rpc_port})
+        auth = (self.configuration.spdk_rpc_username,
+                self.configuration.spdk_rpc_password)
+        verify = self.configuration.driver_ssl_cert_verify
+
+        requests.post = mock.MagicMock()
+        setattr(requests.post.service.__getitem__,
+                'side_effect',
+                self.get_item)
+
+        self.driver._rpc_call("bdev_get_bdevs")
+
+        requests.post.assert_called_once_with(url,
+                                              auth=auth,
+                                              data=mock.ANY,
+                                              timeout=mock.ANY,
+                                              verify=verify)
 
     def test__get_spdk_volume_name(self):
         with mock.patch.object(self.driver, "_rpc_call",

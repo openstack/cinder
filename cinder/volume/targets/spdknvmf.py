@@ -34,6 +34,10 @@ spdk_opts = [
     cfg.StrOpt('spdk_rpc_password',
                help='The NVMe target remote configuration password.',
                secret=True),
+    cfg.StrOpt('spdk_rpc_protocol',
+               choices=['http', 'https'],
+               default='http',
+               help='Protocol to be used with SPDK RPC proxy'),
     cfg.IntOpt('spdk_max_queue_depth',
                default=64,
                min=1, max=128,
@@ -52,8 +56,9 @@ class SpdkNvmf(nvmeof.NVMeOF):
         super(SpdkNvmf, self).__init__(*args, **kwargs)
 
         self.configuration.append_config_values(spdk_opts)
-        self.url = ('http://%(ip)s:%(port)s/' %
-                    {'ip': self.configuration.spdk_rpc_ip,
+        self.url = ('%(protocol)s://%(ip)s:%(port)s/' %
+                    {'protocol': self.configuration.spdk_rpc_protocol,
+                     'ip': self.configuration.spdk_rpc_ip,
                      'port': self.configuration.spdk_rpc_port})
 
         # SPDK NVMe-oF Target application requires one time creation
