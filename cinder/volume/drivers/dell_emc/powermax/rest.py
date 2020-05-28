@@ -284,10 +284,10 @@ class PowerMaxRest(object):
                         "experienced a %(error)s error. Please check your "
                         "Unisphere server connection/availability. "
                         "Exception message: %(exc_msg)s")
-                raise exc_class(msg, {'method': method,
-                                      'base': self.base_uri,
-                                      'error': e.__class__.__name__,
-                                      'exc_msg': e})
+                raise exc_class(msg % {'method': method,
+                                       'base': self.base_uri,
+                                       'error': e.__class__.__name__,
+                                       'exc_msg': e})
 
         except Exception as e:
             if retry:
