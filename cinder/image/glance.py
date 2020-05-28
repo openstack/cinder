@@ -216,6 +216,7 @@ class GlanceClientWrapper(object):
                       glanceclient.exc.InvalidEndpoint,
                       glanceclient.exc.CommunicationError)
         num_attempts = 1 + CONF.glance_num_retries
+        glance_controller = kwargs.pop('controller', 'images')
         store_id = kwargs.pop('store_id', None)
         base_image_ref = kwargs.pop('base_image_ref', None)
 
@@ -230,8 +231,7 @@ class GlanceClientWrapper(object):
                 client.http_client.additional_headers = headers
 
             try:
-                controller = getattr(client,
-                                     kwargs.pop('controller', 'images'))
+                controller = getattr(client, glance_controller)
                 return getattr(controller, method)(*args, **kwargs)
             except retry_excs as e:
                 netloc = self.netloc
