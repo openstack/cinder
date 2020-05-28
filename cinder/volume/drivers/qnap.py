@@ -1049,7 +1049,7 @@ class QnapISCSIDriver(san.SanISCSIDriver):
                 selected_lun = (ET.fromstring(ret['data']).find('LUNInfo')
                                 .find('row'))
 
-        lun_status = self.enum('createing', 'unmapped', 'mapped')
+        lun_status = self.enum('creating', 'unmapped', 'mapped')
 
         LOG.debug('LUNStatus: %s', selected_lun.find('LUNStatus').text)
         LOG.debug('lun_status.mapped: %s', six.text_type(lun_status.mapped))
