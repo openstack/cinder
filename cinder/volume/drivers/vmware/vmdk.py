@@ -2547,14 +2547,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         except ValueError:
             LOG.debug('location_info is malformed. The format must be '
                       'driver_name:vcenter_service_uuid but got "%s". '
-                      'Falling back to generic migration.' % info)
+                      'Falling back to generic migration.', info)
             return false_ret
 
         if driver_name != LOCATION_DRIVER_NAME:
             LOG.debug("Expected %(expected)s driver name but got %(got)s. "
-                      "Falling back to generic migration." % {
-                        'expected': LOCATION_DRIVER_NAME,
-                        'got': driver_name})
+                      "Falling back to generic migration.", {
+                          'expected': LOCATION_DRIVER_NAME,
+                          'got': driver_name})
             return false_ret
 
         backing = self.volumeops.get_backing(volume.name, volume.id)
