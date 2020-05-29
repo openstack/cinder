@@ -103,16 +103,7 @@ class ISCSITarget(driver.Target):
         try:
             lun = int(results[2])
         except (IndexError, ValueError):
-            # NOTE(jdg): The following is carried over from the existing
-            # code.  The trick here is that different targets use different
-            # default lun numbers, the base driver with tgtadm uses 1
-            # others like LIO use 0.
-            if (self.configuration.volume_driver ==
-                    'cinder.volume.drivers.lvm.ThinLVMVolumeDriver' and
-                    self.configuration.target_helper == 'tgtadm'):
-                lun = 1
-            else:
-                lun = 0
+            lun = 0
 
         if nr_portals > 1 or multipath:
             properties['target_portals'] = portals

@@ -2659,9 +2659,7 @@ class ISCSIDriver(VolumeDriver):
         try:
             lun = int(results[2])
         except (IndexError, ValueError):
-            if (self.configuration.volume_driver ==
-                    'cinder.volume.drivers.lvm.ThinLVMVolumeDriver' and
-                    self.configuration.target_helper == 'tgtadm'):
+            if self.configuration.target_helper == 'tgtadm':
                 lun = 1
             else:
                 lun = 0
