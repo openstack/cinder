@@ -70,8 +70,6 @@ class RestClient(object):
             "serverIP": self.rest_ip,
             "serverPort": self.rest_port,
             "serverUsername": self.rest_username,
-            "serverPassword": self.rest_password,
-            "serverToken": self.rest_token,
             "iopsLimit": None,
             "bandwidthLimit": None,
         }

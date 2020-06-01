@@ -62,7 +62,7 @@ netifaces==0.10.7
 networkx==1.11
 oauth2client==1.5.0
 os-api-ref==1.4.0
-os-brick==2.2.0
+os-brick==3.1.0
 os-client-config==1.29.0
 os-win==3.0.0
 oslo.cache==1.29.0

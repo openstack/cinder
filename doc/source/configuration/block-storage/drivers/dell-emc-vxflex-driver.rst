@@ -220,6 +220,35 @@ parameters as follows:
    san_password = SIO_PASSWD
    san_thin_provision = false
 
+Connector configuration
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Before using attach/detach volume operations VxFlex OS connector must be
+properly configured. On each node where VxFlex OS SDC is installed do the
+following:
+
+#. Create ``/opt/emc/scaleio/openstack/connector.conf`` if it does not
+   exist.
+
+   .. code-block:: console
+
+     $ mkdir -p /opt/emc/scaleio/openstack
+     $ touch /opt/emc/scaleio/openstack/connector.conf
+
+#. For each VxFlex OS section in the ``cinder.conf`` create the same section in
+   the ``/opt/emc/scaleio/openstack/connector.conf`` and populate it with
+   passwords. Example:
+
+   .. code-block:: ini
+
+      [vxflexos]
+      san_password = SIO_PASSWD
+      replicating_san_password = REPLICATION_SYSTEM_SIO_PASSWD # if applicable
+
+      [vxflexos-new]
+      san_password = SIO2_PASSWD
+      replicating_san_password = REPLICATION_SYSTEM_SIO2_PASSWD # if applicable
+
 .. _cg_configuration_options_emc:
 
 Configuration options
@@ -504,6 +533,22 @@ Volume migration is performed by issuing the following command:
 Using VxFlex OS Storage with a containerized overcloud
 ------------------------------------------------------
 
-When using a containerized overcloud, such as one deployed via TripleO or
-Red Hat OpenStack version 13 and above, install the Storage Data Client
-(SDC) on all nodes after deploying the overcloud.
+#. Create a file with below contents:
+
+   .. code-block:: yaml
+
+      parameter_defaults:
+        NovaComputeOptVolumes:
+          - /opt/emc/scaleio:/opt/emc/scaleio
+        CinderVolumeOptVolumes:
+          - /opt/emc/scaleio:/opt/emc/scaleio
+        GlanceApiOptVolumes:
+          - /opt/emc/scaleio:/opt/emc/scaleio
+
+
+   Name it whatever you like, e.g. ``vxflexos_volumes.yml``.
+
+#. Use ``-e`` to include this customization file to deploy command.
+
+#. Install the Storage Data Client (SDC) on all nodes after deploying
+   the overcloud.
