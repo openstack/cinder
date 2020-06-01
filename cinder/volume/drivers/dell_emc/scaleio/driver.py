@@ -150,9 +150,10 @@ class ScaleIODriver(driver.VolumeDriver):
         2.0.2: Added consistency group support to generic volume groups
         2.0.3: Added cache for storage pool and protection domains info
         2.0.4: Added compatibility with os_brick>1.15.3
+        2.0.4.1: Fix for Bug #1823200. See OSSN-0086 for details.
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.4.1"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DELL_EMC_ScaleIO_CI"
 
@@ -226,8 +227,7 @@ class ScaleIODriver(driver.VolumeDriver):
             'serverIP': self.server_ip,
             'serverPort': self.server_port,
             'serverUsername': self.server_username,
-            'serverPassword': self.server_password,
-            'serverToken': self.server_token,
+            'config_group': self.configuration.config_group,
             'iopsLimit': None,
             'bandwidthLimit': None,
         }

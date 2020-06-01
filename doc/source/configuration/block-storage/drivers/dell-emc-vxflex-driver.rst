@@ -211,6 +211,33 @@ parameters as follows:
    san_password = SIO_PASSWD
    san_thin_provision = false
 
+Connector configuration
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Before using attach/detach volume operations VxFlex OS connector must be
+properly configured. On each node where VxFlex OS SDC is installed do the
+following:
+
+#. Create ``/opt/emc/scaleio/openstack/connector.conf`` if it does not
+   exist.
+
+   .. code-block:: console
+
+     $ mkdir -p /opt/emc/scaleio/openstack
+     $ touch /opt/emc/scaleio/openstack/connector.conf
+
+#. For each VxFlex OS section in the ``cinder.conf`` create the same section in
+   the ``/opt/emc/scaleio/openstack/connector.conf`` and populate it with
+   passwords. Example:
+
+   .. code-block:: ini
+
+      [vxflexos]
+      san_password = SIO_PASSWD
+
+      [vxflexos-new]
+      san_password = SIO2_PASSWD
+
 .. _cg_configuration_options_emc:
 
 Configuration options
