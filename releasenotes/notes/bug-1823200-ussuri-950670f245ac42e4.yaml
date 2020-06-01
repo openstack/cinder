@@ -1,0 +1,25 @@
+---
+upgrade:
+  - |
+    The fix for `Bug #1823200
+    <https://bugs.launchpad.net/cinder/+bug/1823200>`_ requires
+    ``os-brick`` >= 3.0.2 but < 3.1.0.
+security:
+  - |
+    Dell EMC VxFlex OS driver: This release contains a fix for
+    `Bug #1823200 <https://bugs.launchpad.net/cinder/+bug/1823200>`_.
+    See `OSSN-0086 <https://wiki.openstack.org/wiki/OSSN/OSSN-0086>`_
+    for details.
+fixes:
+  - |
+    `Bug #1823200 <https://bugs.launchpad.net/cinder/+bug/1823200>`_:
+    This release contains an updated Dell EMC VxFlex OS driver.  It must
+    be used with ``os-brick`` >= 3.0.2 but < 3.1.0.
+    and requires that a new configuration file be deployed on compute
+    nodes, cinder nodes, and anywhere you would perform a volume attachment
+    in your deployment.
+    See the `Dell EMC VxFlex OS (ScaleIO) Storage driver
+    <https://docs.openstack.org/cinder/ussuri/configuration/block-storage/drivers/dell-emc-vxflex-driver.html>`_
+    documentation for details about the configuration file, and see
+    `OSSN-0086 <https://wiki.openstack.org/wiki/OSSN/OSSN-0086>`_ for
+    more information about the security vulnerability.

@@ -90,9 +90,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
           3.5.1 - Add volume replication v2.1 support for VxFlex OS 3.5.x
           3.5.2 - Add volume migration support
           3.5.3 - Add revert volume to snapshot support
+          3.5.4 - Fix for Bug #1823200. See OSSN-0086 for details.
     """
 
-    VERSION = "3.5.3"
+    VERSION = "3.5.4"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_VxFlexOS_CI"
 
@@ -853,6 +854,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
         volume_name = flex_utils.id_to_base64(vol_or_snap.id)
         connection_properties["scaleIO_volname"] = volume_name
         connection_properties["scaleIO_volume_id"] = vol_or_snap.provider_id
+        connection_properties["config_group"] = self.configuration.config_group
+        connection_properties["failed_over"] = self._is_failed_over
 
         if vol_size is not None:
             extra_specs = self._get_volumetype_extraspecs(vol_or_snap)
@@ -1200,6 +1203,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
             volume.id
         )
         connection_properties["scaleIO_volume_id"] = volume.provider_id
+        connection_properties["config_group"] = self.configuration.config_group
+        connection_properties["failed_over"] = self._is_failed_over
         device_info = self.connector.connect_volume(connection_properties)
         return device_info["path"]
 
@@ -1212,6 +1217,9 @@ class VxFlexOSDriver(driver.VolumeDriver):
             volume.id
         )
         connection_properties["scaleIO_volume_id"] = volume.provider_id
+        connection_properties["config_group"] = self.configuration.config_group
+        connection_properties["failed_over"] = self._is_failed_over
+
         self.connector.disconnect_volume(connection_properties, volume)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
