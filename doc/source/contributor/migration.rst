@@ -45,6 +45,13 @@ regardless if they are located on the same c-vol node or not.
 Scenario 2: Migration between two back-ends with different volume types,
 regardless if the back-ends are located on the same c-vol node or not.
 
+.. note::
+   Retyping an unencrypted volume to the same size encrypted volume will
+   most likely fail. Even though the volume is the same size as the source
+   volume, the encrypted volume needs to store additional encryption
+   information overhead. This results in the new volume not being large
+   enough to hold all data.
+   Please do not try this in older releases.
 
 How to do volume migration via CLI
 ----------------------------------
