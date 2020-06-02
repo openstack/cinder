@@ -15,8 +15,6 @@
 
 """StorPool block device driver"""
 
-from __future__ import absolute_import
-
 import platform
 
 from oslo_config import cfg
