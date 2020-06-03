@@ -708,6 +708,7 @@ class PowerMaxCommonTest(test.TestCase):
         mck_extend.assert_called_once_with(
             array, device_id, new_size, ref_extra_specs, None)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_array_ode_capabilities_check',
                        return_value=[True] * 4)
@@ -717,7 +718,8 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(common.PowerMaxCommon, '_initial_setup',
                        return_value=tpd.PowerMaxData.ex_specs_rep_config)
     def test_extend_vol_rep_success_next_gen(
-            self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_extend):
+            self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_extend,
+            mck_validate):
         self.common.next_gen = True
         volume = self.data.test_volume
         array = self.data.array
@@ -731,7 +733,9 @@ class PowerMaxCommonTest(test.TestCase):
             array, device_id, new_size, ref_extra_specs, '1')
         mck_ode.assert_called_once_with(
             array, ref_extra_specs[utils.REP_CONFIG], True)
+        mck_validate.assert_called_once_with(array, ref_extra_specs)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_extend_legacy_replicated_vol')
     @mock.patch.object(common.PowerMaxCommon, '_array_ode_capabilities_check',
@@ -743,7 +747,7 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=tpd.PowerMaxData.ex_specs_rep_config)
     def test_extend_vol_rep_success_next_gen_legacy_r2(
             self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_leg_extend,
-            mck_extend):
+            mck_extend, mck_validate):
         self.common.next_gen = True
         self.common.rep_config = self.data.rep_config
         volume = self.data.test_volume
@@ -760,7 +764,9 @@ class PowerMaxCommonTest(test.TestCase):
         mck_ode.assert_called_once_with(
             array, ref_extra_specs[utils.REP_CONFIG], True)
         mck_extend.assert_not_called()
+        mck_validate.assert_called_once_with(array, ref_extra_specs)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_extend_legacy_replicated_vol')
     @mock.patch.object(common.PowerMaxCommon, '_array_ode_capabilities_check',
@@ -772,7 +778,7 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=tpd.PowerMaxData.ex_specs_rep_config)
     def test_extend_vol_rep_success_legacy(
             self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_leg_extend,
-            mck_extend):
+            mck_extend, mck_validate):
         self.common.rep_config = self.data.rep_config
         self.common.next_gen = False
         volume = self.data.test_volume
@@ -789,7 +795,9 @@ class PowerMaxCommonTest(test.TestCase):
         mck_ode.assert_called_once_with(
             array, ref_extra_specs[utils.REP_CONFIG], True)
         mck_extend.assert_not_called()
+        mck_validate.assert_called_once_with(array, ref_extra_specs)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(common.PowerMaxCommon, '_array_ode_capabilities_check',
                        return_value=[False, False, False, False])
     @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
@@ -799,7 +807,7 @@ class PowerMaxCommonTest(test.TestCase):
         common.PowerMaxCommon, '_initial_setup',
         return_value=tpd.PowerMaxData.ex_specs_rep_config_no_extend)
     def test_extend_vol_rep_success_legacy_allow_extend_false(
-            self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode):
+            self, mck_setup, mck_val_chk, mck_get_rdf, mck_ode, mck_validate):
         self.common.rep_config = self.data.rep_config
         self.common.next_gen = False
         volume = self.data.test_volume

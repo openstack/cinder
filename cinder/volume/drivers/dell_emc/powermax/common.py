@@ -1091,6 +1091,7 @@ class PowerMaxCommon(object):
         if rep_enabled:
             rep_config = ex_specs[utils.REP_CONFIG]
             rdf_grp_no, __ = self.get_rdf_details(array, rep_config)
+            self._validate_rdfg_status(array, ex_specs)
             r1_ode, r1_ode_metro, r2_ode, r2_ode_metro = (
                 self._array_ode_capabilities_check(array, rep_config, True))
 
@@ -6161,6 +6162,26 @@ class PowerMaxCommon(object):
                         % management_sg_name)
                     raise exception.VolumeBackendAPIException(msg)
 
+        # Perform check to make sure we have the same number of devices
+        remote_array = rep_extra_specs[utils.ARRAY]
+        rdf_group = self.rest.get_rdf_group(
+            array, rdf_group_no)
+        remote_rdf_group_no = rdf_group.get('remoteRdfgNumber')
+        remote_rdf_group = self.rest.get_rdf_group(
+            remote_array, remote_rdf_group_no)
+        local_rdfg_device_count = rdf_group.get('numDevices')
+        remote_rdfg_device_count = remote_rdf_group.get('numDevices')
+        if local_rdfg_device_count != remote_rdfg_device_count:
+            msg = (_(
+                'RDF validation failed. Different device counts found for '
+                'local and remote RDFGs. Local RDFG %s has %s devices. Remote '
+                'RDFG %s has %s devices. The same number of devices is '
+                'expected. Check RDFGs for broken RDF pairs and cleanup or '
+                'recreate the pairs as needed.') % (
+                rdf_group_no, local_rdfg_device_count, remote_rdf_group_no,
+                remote_rdfg_device_count))
+            raise exception.VolumeDriverException(msg)
+
     def _validate_storage_group_is_replication_enabled(
             self, array, storage_group_name):
         """Validate that a storage groups is marked as RDF enabled
@@ -6264,7 +6285,8 @@ class PowerMaxCommon(object):
                 'Inconsistency found between management group %s and RDF '
                 'group %s. The following volumes are not in the management '
                 'storage group %s. All Asynchronous and Metro volumes must '
-                'be managed together.',
+                'be managed together in their respective management storage '
+                'groups.',
                 management_sg_name, rdf_group_number, missing_volumes_str)
             is_valid = False
         return is_valid

@@ -1312,6 +1312,8 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertEqual(extra_specs[utils.REP_CONFIG], rep_extra_specs)
         self.assertTrue(resume_rdf)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
+                       return_value=tpd.PowerMaxData.rdf_group_details)
     @mock.patch.object(
         provision.PowerMaxProvision, 'verify_slo_workload',
         return_value=(True, True))
@@ -1333,7 +1335,7 @@ class PowerMaxReplicationTest(test.TestCase):
                        return_value=tpd.PowerMaxData.sg_details[0])
     def test_validate_rdfg_status_success(
             self, mck_get, mck_is_rep, mck_is_excl, mck_states, mck_cons,
-            mck_mgrp_name, mck_slo):
+            mck_mgrp_name, mck_slo, mck_rdf):
         array = self.data.array
         extra_specs = deepcopy(self.data.rep_extra_specs6)
         extra_specs[utils.REP_MODE] = utils.REP_ASYNC
@@ -1350,6 +1352,7 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertEqual(2, mck_states.call_count)
         self.assertEqual(1, mck_cons.call_count)
         self.assertEqual(1, mck_mgrp_name.call_count)
+        self.assertEqual(3, mck_rdf.call_count)
         mck_is_rep.assert_called_with(array, management_sg_name)
         mck_is_excl.assert_called_with(array, management_sg_name)
         mck_states.assert_called_with(array, management_sg_name, rdfg, mode)
@@ -1434,6 +1437,56 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertEqual(2, mck_states.call_count)
         self.assertEqual(1, mck_cons.call_count)
         self.assertEqual(1, mck_mgrp_name.call_count)
+        mck_is_rep.assert_called_with(array, management_sg_name)
+        mck_is_excl.assert_called_with(array, management_sg_name)
+        mck_states.assert_called_with(array, management_sg_name, rdfg, mode)
+        mck_cons.assert_called_with(array, management_sg_name, rdfg)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
+                       side_effect=(tpd.PowerMaxData.rdf_group_details,
+                                    tpd.PowerMaxData.rdf_group_details,
+                                    {'numDevices': '1000'}))
+    @mock.patch.object(
+        provision.PowerMaxProvision, 'verify_slo_workload',
+        return_value=(True, True))
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name',
+                       return_value=tpd.PowerMaxData.rdf_managed_async_grp)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_management_group_volume_consistency',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_rdf_states',
+                       side_effect=[True, True])
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_rdf_group_storage_group_exclusivity',
+                       side_effect=[True, True])
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_validate_storage_group_is_replication_enabled',
+                       side_effect=[True, True])
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group',
+                       return_value=tpd.PowerMaxData.sg_details[0])
+    def test_validate_rdfg_status_failure_device_counts(
+            self, mck_get, mck_is_rep, mck_is_excl, mck_states, mck_cons,
+            mck_mgrp_name, mck_slo, mck_rdf):
+        array = self.data.array
+        extra_specs = deepcopy(self.data.rep_extra_specs6)
+        extra_specs[utils.REP_MODE] = utils.REP_ASYNC
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        management_sg_name = self.data.rdf_managed_async_grp
+        rdfg = self.data.rdf_group_no_2
+        mode = utils.REP_ASYNC
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.common._validate_rdfg_status,
+                          array, extra_specs)
+
+        self.assertEqual(2, mck_get.call_count)
+        self.assertEqual(2, mck_is_rep.call_count)
+        self.assertEqual(2, mck_is_excl.call_count)
+        self.assertEqual(2, mck_states.call_count)
+        self.assertEqual(1, mck_cons.call_count)
+        self.assertEqual(1, mck_mgrp_name.call_count)
+        self.assertEqual(3, mck_rdf.call_count)
         mck_is_rep.assert_called_with(array, management_sg_name)
         mck_is_excl.assert_called_with(array, management_sg_name)
         mck_states.assert_called_with(array, management_sg_name, rdfg, mode)
