@@ -1,6 +1,9 @@
 cinder/context.py
 cinder/i18n.py
+cinder/exception.py
 cinder/manager.py
+cinder/utils.py
 cinder/volume/__init__.py
 cinder/volume/manager.py
 cinder/volume/volume_types.py
+cinder/volume/volume_utils.py

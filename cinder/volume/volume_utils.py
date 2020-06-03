@@ -30,6 +30,9 @@ import socket
 import tempfile
 import time
 import types
+import typing
+from typing import Any, BinaryIO, Callable, Dict, IO  # noqa: H301
+from typing import List, Optional, Tuple, Union  # noqa: H301
 import uuid
 
 from castellan.common.credentials import keystone_password
@@ -69,7 +72,7 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
-GB = units.Gi
+GB: int = units.Gi
 # These attributes we will attempt to save for the volume if they exist
 # in the source image metadata.
 IMAGE_ATTRIBUTES = (
@@ -85,11 +88,13 @@ TRACE_API = False
 TRACE_METHOD = False
 
 
-def null_safe_str(s):
+def null_safe_str(s: Optional[str]) -> str:
     return str(s) if s else ''
 
 
-def _usage_from_volume(context, volume_ref, **kw):
+def _usage_from_volume(context: context.RequestContext,
+                       volume_ref: 'objects.Volume',
+                       **kw) -> dict:
     now = timeutils.utcnow()
     launched_at = volume_ref['launched_at'] or now
     created_at = volume_ref['created_at'] or now
@@ -131,7 +136,7 @@ def _usage_from_volume(context, volume_ref, **kw):
     return usage_info
 
 
-def _usage_from_backup(backup, **kw):
+def _usage_from_backup(backup: 'objects.Backup', **kw) -> dict:
     num_dependent_backups = backup.num_dependent_backups
     usage_info = dict(tenant_id=backup.project_id,
                       user_id=backup.user_id,
@@ -156,8 +161,11 @@ def _usage_from_backup(backup, **kw):
 
 
 @utils.if_notifications_enabled
-def notify_about_volume_usage(context, volume, event_suffix,
-                              extra_usage_info=None, host=None):
+def notify_about_volume_usage(context: context.RequestContext,
+                              volume: 'objects.Volume',
+                              event_suffix: str,
+                              extra_usage_info: dict = None,
+                              host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -171,9 +179,11 @@ def notify_about_volume_usage(context, volume, event_suffix,
 
 
 @utils.if_notifications_enabled
-def notify_about_backup_usage(context, backup, event_suffix,
-                              extra_usage_info=None,
-                              host=None):
+def notify_about_backup_usage(context: context.RequestContext,
+                              backup: 'objects.Backup',
+                              event_suffix: str,
+                              extra_usage_info: dict = None,
+                              host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -186,7 +196,9 @@ def notify_about_backup_usage(context, backup, event_suffix,
                                           usage_info)
 
 
-def _usage_from_snapshot(snapshot, context, **extra_usage_info):
+def _usage_from_snapshot(snapshot: 'objects.Snapshot',
+                         context: context.RequestContext,
+                         **extra_usage_info) -> dict:
     # (niedbalski) a snapshot might be related to a deleted
     # volume, if that's the case, the volume information is still
     # required for filling the usage_info, so we enforce to read
@@ -212,8 +224,11 @@ def _usage_from_snapshot(snapshot, context, **extra_usage_info):
 
 
 @utils.if_notifications_enabled
-def notify_about_snapshot_usage(context, snapshot, event_suffix,
-                                extra_usage_info=None, host=None):
+def notify_about_snapshot_usage(context: context.RequestContext,
+                                snapshot: 'objects.Snapshot',
+                                event_suffix: str,
+                                extra_usage_info: dict = None,
+                                host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -227,7 +242,8 @@ def notify_about_snapshot_usage(context, snapshot, event_suffix,
                                             usage_info)
 
 
-def _usage_from_capacity(capacity, **extra_usage_info):
+def _usage_from_capacity(capacity: Dict[str, Any],
+                         **extra_usage_info) -> Dict[str, Any]:
 
     capacity_info = {
         'name_to_id': capacity['name_to_id'],
@@ -244,8 +260,11 @@ def _usage_from_capacity(capacity, **extra_usage_info):
 
 
 @utils.if_notifications_enabled
-def notify_about_capacity_usage(context, capacity, suffix,
-                                extra_usage_info=None, host=None):
+def notify_about_capacity_usage(context: context.RequestContext,
+                                capacity: dict,
+                                suffix: str,
+                                extra_usage_info: dict = None,
+                                host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -260,8 +279,11 @@ def notify_about_capacity_usage(context, capacity, suffix,
 
 
 @utils.if_notifications_enabled
-def notify_about_replication_usage(context, volume, suffix,
-                                   extra_usage_info=None, host=None):
+def notify_about_replication_usage(context: context.RequestContext,
+                                   volume: 'objects.Volume',
+                                   suffix: str,
+                                   extra_usage_info: dict = None,
+                                   host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -277,8 +299,11 @@ def notify_about_replication_usage(context, volume, suffix,
 
 
 @utils.if_notifications_enabled
-def notify_about_replication_error(context, volume, suffix,
-                                   extra_error_info=None, host=None):
+def notify_about_replication_error(context: context.RequestContext,
+                                   volume: 'objects.Volume',
+                                   suffix: str,
+                                   extra_error_info: dict = None,
+                                   host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -293,7 +318,7 @@ def notify_about_replication_error(context, volume, suffix,
                                                 usage_info)
 
 
-def _usage_from_consistencygroup(group_ref, **kw):
+def _usage_from_consistencygroup(group_ref: 'objects.Group', **kw) -> dict:
     usage_info = dict(tenant_id=group_ref.project_id,
                       user_id=group_ref.user_id,
                       availability_zone=group_ref.availability_zone,
@@ -307,8 +332,11 @@ def _usage_from_consistencygroup(group_ref, **kw):
 
 
 @utils.if_notifications_enabled
-def notify_about_consistencygroup_usage(context, group, event_suffix,
-                                        extra_usage_info=None, host=None):
+def notify_about_consistencygroup_usage(context: context.RequestContext,
+                                        group: 'objects.Group',
+                                        event_suffix: str,
+                                        extra_usage_info: dict = None,
+                                        host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -324,7 +352,7 @@ def notify_about_consistencygroup_usage(context, group, event_suffix,
         usage_info)
 
 
-def _usage_from_group(group_ref, **kw):
+def _usage_from_group(group_ref: 'objects.Group', **kw) -> dict:
     usage_info = dict(tenant_id=group_ref.project_id,
                       user_id=group_ref.user_id,
                       availability_zone=group_ref.availability_zone,
@@ -339,8 +367,11 @@ def _usage_from_group(group_ref, **kw):
 
 
 @utils.if_notifications_enabled
-def notify_about_group_usage(context, group, event_suffix,
-                             extra_usage_info=None, host=None):
+def notify_about_group_usage(context: context.RequestContext,
+                             group: 'objects.Group',
+                             event_suffix: str,
+                             extra_usage_info: dict = None,
+                             host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -356,7 +387,7 @@ def notify_about_group_usage(context, group, event_suffix,
         usage_info)
 
 
-def _usage_from_cgsnapshot(cgsnapshot, **kw):
+def _usage_from_cgsnapshot(cgsnapshot: 'objects.CGSnapshot', **kw) -> dict:
     usage_info = dict(
         tenant_id=cgsnapshot.project_id,
         user_id=cgsnapshot.user_id,
@@ -370,7 +401,8 @@ def _usage_from_cgsnapshot(cgsnapshot, **kw):
     return usage_info
 
 
-def _usage_from_group_snapshot(group_snapshot, **kw):
+def _usage_from_group_snapshot(group_snapshot: 'objects.GroupSnapshot',
+                               **kw) -> dict:
     usage_info = dict(
         tenant_id=group_snapshot.project_id,
         user_id=group_snapshot.user_id,
@@ -386,8 +418,11 @@ def _usage_from_group_snapshot(group_snapshot, **kw):
 
 
 @utils.if_notifications_enabled
-def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
-                                  extra_usage_info=None, host=None):
+def notify_about_cgsnapshot_usage(context: context.RequestContext,
+                                  cgsnapshot: 'objects.CGSnapshot',
+                                  event_suffix: str,
+                                  extra_usage_info: dict = None,
+                                  host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -404,8 +439,11 @@ def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
 
 
 @utils.if_notifications_enabled
-def notify_about_group_snapshot_usage(context, group_snapshot, event_suffix,
-                                      extra_usage_info=None, host=None):
+def notify_about_group_snapshot_usage(context: context.RequestContext,
+                                      group_snapshot: 'objects.GroupSnapshot',
+                                      event_suffix: str,
+                                      extra_usage_info=None,
+                                      host: str = None) -> None:
     if not host:
         host = CONF.host
 
@@ -421,13 +459,14 @@ def notify_about_group_snapshot_usage(context, group_snapshot, event_suffix,
         usage_info)
 
 
-def _check_blocksize(blocksize):
+def _check_blocksize(blocksize: Union[str, int]) -> Union[str, int]:
 
     # Check if volume_dd_blocksize is valid
     try:
         # Rule out zero-sized/negative/float dd blocksize which
         # cannot be caught by strutils
-        if blocksize.startswith(('-', '0')) or '.' in blocksize:
+        if (blocksize.startswith(('-', '0')) or  # type: ignore
+                '.' in blocksize):  # type: ignore
             raise ValueError
         strutils.string_to_bytes('%sB' % blocksize)
     except ValueError:
@@ -442,7 +481,8 @@ def _check_blocksize(blocksize):
     return blocksize
 
 
-def check_for_odirect_support(src, dest, flag='oflag=direct'):
+def check_for_odirect_support(src: str, dest: str,
+                              flag: str = 'oflag=direct') -> bool:
 
     # Check whether O_DIRECT is supported
     try:
@@ -459,9 +499,12 @@ def check_for_odirect_support(src, dest, flag='oflag=direct'):
         return False
 
 
-def _copy_volume_with_path(prefix, srcstr, deststr, size_in_m, blocksize,
-                           sync=False, execute=utils.execute, ionice=None,
-                           sparse=False):
+def _copy_volume_with_path(prefix, srcstr: str, deststr: str,
+                           size_in_m: int, blocksize: Union[str, int],
+                           sync: bool = False,
+                           execute: Callable = utils.execute,
+                           ionice=None,
+                           sparse: bool = False) -> None:
     cmd = prefix[:]
 
     if ionice:
@@ -514,16 +557,18 @@ def _copy_volume_with_path(prefix, srcstr, deststr, size_in_m, blocksize,
              {'size_in_m': size_in_m, 'mbps': mbps})
 
 
-def _open_volume_with_path(path, mode):
+def _open_volume_with_path(path: str, mode: str) -> IO[Any]:
     try:
         with utils.temporary_chown(path):
             handle = open(path, mode)
             return handle
     except Exception:
         LOG.error("Failed to open volume from %(path)s.", {'path': path})
+        raise
 
 
-def _transfer_data(src, dest, length, chunk_size):
+def _transfer_data(src: IO, dest: IO,
+                   length: int, chunk_size: int) -> None:
     """Transfer data between files (Python IO objects)."""
 
     chunks = int(math.ceil(length / chunk_size))
@@ -554,14 +599,20 @@ def _transfer_data(src, dest, length, chunk_size):
     tpool.execute(dest.flush)
 
 
-def _copy_volume_with_file(src, dest, size_in_m):
+def _copy_volume_with_file(src: Union[str, IO],
+                           dest: Union[str, IO],
+                           size_in_m: int) -> None:
     src_handle = src
     if isinstance(src, str):
         src_handle = _open_volume_with_path(src, 'rb')
 
+    src_handle = typing.cast(IO, src_handle)
+
     dest_handle = dest
     if isinstance(dest, str):
         dest_handle = _open_volume_with_path(dest, 'wb')
+
+    dest_handle = typing.cast(IO, dest_handle)
 
     if not src_handle:
         raise exception.DeviceUnavailable(
@@ -588,9 +639,12 @@ def _copy_volume_with_file(src, dest, size_in_m):
              {'size_in_m': size_in_m, 'mbps': mbps})
 
 
-def copy_volume(src, dest, size_in_m, blocksize, sync=False,
+def copy_volume(src: Union[str, BinaryIO],
+                dest: Union[str, BinaryIO],
+                size_in_m: int,
+                blocksize: Union[str, int], sync=False,
                 execute=utils.execute, ionice=None, throttle=None,
-                sparse=False):
+                sparse=False) -> None:
     """Copy data from the source volume to the destination volume.
 
     The parameters 'src' and 'dest' are both typically of type str, which
@@ -617,9 +671,12 @@ def copy_volume(src, dest, size_in_m, blocksize, sync=False,
         _copy_volume_with_file(src, dest, size_in_m)
 
 
-def clear_volume(volume_size, volume_path, volume_clear=None,
-                 volume_clear_size=None, volume_clear_ionice=None,
-                 throttle=None):
+def clear_volume(volume_size: int,
+                 volume_path: str,
+                 volume_clear: str = None,
+                 volume_clear_size: int = None,
+                 volume_clear_ionice: str = None,
+                 throttle=None) -> None:
     """Unprovision old volumes to prevent data leaking between users."""
     if volume_clear is None:
         volume_clear = CONF.volume_clear
@@ -649,24 +706,25 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
             value=volume_clear)
 
 
-def supports_thin_provisioning():
+def supports_thin_provisioning() -> bool:
     return brick_lvm.LVM.supports_thin_provisioning(
         utils.get_root_helper())
 
 
-def get_all_physical_volumes(vg_name=None):
+def get_all_physical_volumes(vg_name=None) -> list:
     return brick_lvm.LVM.get_all_physical_volumes(
         utils.get_root_helper(),
         vg_name)
 
 
-def get_all_volume_groups(vg_name=None):
+def get_all_volume_groups(vg_name=None) -> list:
     return brick_lvm.LVM.get_all_volume_groups(
         utils.get_root_helper(),
         vg_name)
 
 
-def extract_availability_zones_from_volume_type(volume_type):
+def extract_availability_zones_from_volume_type(volume_type) \
+        -> Optional[list]:
     if not volume_type:
         return None
     extra_specs = volume_type.get('extra_specs', {})
@@ -683,7 +741,9 @@ DEFAULT_PASSWORD_SYMBOLS = ('23456789',  # Removed: 0,1
                             'abcdefghijkmnopqrstuvwxyz')  # Removed: l
 
 
-def generate_password(length=16, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
+def generate_password(
+        length: int = 16,
+        symbolgroups: Tuple[str, ...] = DEFAULT_PASSWORD_SYMBOLS) -> str:
     """Generate a random password from the supplied symbol groups.
 
     At least one symbol from each group will be included. Unpredictable
@@ -720,7 +780,9 @@ def generate_password(length=16, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
     return ''.join(password)
 
 
-def generate_username(length=20, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
+def generate_username(
+        length: int = 20,
+        symbolgroups: Tuple[str, ...] = DEFAULT_PASSWORD_SYMBOLS) -> str:
     # Use the same implementation as the password generation.
     return generate_password(length, symbolgroups)
 
@@ -728,7 +790,9 @@ def generate_username(length=20, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
 DEFAULT_POOL_NAME = '_pool0'
 
 
-def extract_host(host, level='backend', default_pool_name=False):
+def extract_host(host: Optional[str],
+                 level: str = 'backend',
+                 default_pool_name: bool = False) -> Optional[str]:
     """Extract Host, Backend or Pool information from host string.
 
     :param host: String for host, which could include host@backend#pool info
@@ -778,8 +842,11 @@ def extract_host(host, level='backend', default_pool_name=False):
         else:
             return None
 
+    return None  # not hit
 
-def append_host(host, pool):
+
+def append_host(host: Optional[str],
+                pool: Optional[str]) -> Optional[str]:
     """Encode pool into host info."""
     if not host or not pool:
         return host
@@ -788,7 +855,7 @@ def append_host(host, pool):
     return new_host
 
 
-def matching_backend_name(src_volume_type, volume_type):
+def matching_backend_name(src_volume_type, volume_type) -> bool:
     if src_volume_type.get('volume_backend_name') and \
             volume_type.get('volume_backend_name'):
         return src_volume_type.get('volume_backend_name') == \
@@ -797,14 +864,14 @@ def matching_backend_name(src_volume_type, volume_type):
         return False
 
 
-def hosts_are_equivalent(host_1, host_2):
+def hosts_are_equivalent(host_1: str, host_2: str) -> bool:
     # In case host_1 or host_2 are None
     if not (host_1 and host_2):
         return host_1 == host_2
     return extract_host(host_1) == extract_host(host_2)
 
 
-def read_proc_mounts():
+def read_proc_mounts() -> List[str]:
     """Read the /proc/mounts file.
 
     It's a dummy function but it eases the writing of unit tests as mocking
@@ -814,19 +881,20 @@ def read_proc_mounts():
         return mounts.readlines()
 
 
-def extract_id_from_volume_name(vol_name):
-    regex = re.compile(
+def extract_id_from_volume_name(vol_name: str) -> Optional[str]:
+    regex: typing.Pattern = re.compile(
         CONF.volume_name_template.replace('%s', r'(?P<uuid>.+)'))
     match = regex.match(vol_name)
     return match.group('uuid') if match else None
 
 
-def check_already_managed_volume(vol_id):
+def check_already_managed_volume(vol_id: Optional[str]):
     """Check cinder db for already managed volume.
 
     :param vol_id: volume id parameter
     :returns: bool -- return True, if db entry with specified
                       volume id exists, otherwise return False
+    :raises: ValueError if vol_id is not a valid uuid string
     """
     try:
         return (vol_id and isinstance(vol_id, str) and
@@ -836,7 +904,7 @@ def check_already_managed_volume(vol_id):
         return False
 
 
-def extract_id_from_snapshot_name(snap_name):
+def extract_id_from_snapshot_name(snap_name: str) -> Optional[str]:
     """Return a snapshot's ID from its name on the backend."""
     regex = re.compile(
         CONF.snapshot_name_template.replace('%s', r'(?P<uuid>.+)'))
@@ -844,8 +912,12 @@ def extract_id_from_snapshot_name(snap_name):
     return match.group('uuid') if match else None
 
 
-def paginate_entries_list(entries, marker, limit, offset, sort_keys,
-                          sort_dirs):
+def paginate_entries_list(entries: List[Dict],
+                          marker: Optional[Union[dict, str]],
+                          limit: int,
+                          offset: Optional[int],
+                          sort_keys: List[str],
+                          sort_dirs: List[str]) -> list:
     """Paginate a list of entries.
 
     :param entries: list of dictionaries
@@ -859,7 +931,8 @@ def paginate_entries_list(entries, marker, limit, offset, sort_keys,
     comparers = [(operator.itemgetter(key.strip()), multiplier)
                  for (key, multiplier) in zip(sort_keys, sort_dirs)]
 
-    def comparer(left, right):
+    def comparer(left, right) -> int:
+        fn: Callable
         for fn, d in comparers:
             left_val = fn(left)
             right_val = fn(right)
@@ -900,7 +973,7 @@ def paginate_entries_list(entries, marker, limit, offset, sort_keys,
     return sorted_entries[start_index + offset:range_end + offset]
 
 
-def convert_config_string_to_dict(config_string):
+def convert_config_string_to_dict(config_string: str) -> dict:
     """Convert config file replication string to a dict.
 
     The only supported form is as follows:
@@ -924,12 +997,16 @@ def convert_config_string_to_dict(config_string):
     return resultant_dict
 
 
-def create_encryption_key(context, key_manager, volume_type_id):
+def create_encryption_key(context: context.RequestContext,
+                          key_manager,
+                          volume_type_id: str) -> Optional[str]:
     encryption_key_id = None
     if volume_types.is_encrypted(context, volume_type_id):
-        volume_type_encryption = (
+        volume_type_encryption: db.sqlalchemy.models.Encryption = (
             volume_types.get_volume_type_encryption(context,
                                                     volume_type_id))
+        if volume_type_encryption is None:
+            raise exception.Invalid(message="Volume type error")
         cipher = volume_type_encryption.cipher
         length = volume_type_encryption.key_size
         algorithm = cipher.split('-')[0] if cipher else None
@@ -945,10 +1022,13 @@ def create_encryption_key(context, key_manager, volume_type_id):
             LOG.exception("Key manager error")
             raise exception.Invalid(message="Key manager error")
 
+    typing.cast(str, encryption_key_id)
     return encryption_key_id
 
 
-def delete_encryption_key(context, key_manager, encryption_key_id):
+def delete_encryption_key(context: context.RequestContext,
+                          key_manager,
+                          encryption_key_id: str) -> None:
     try:
         key_manager.delete(context, encryption_key_id)
     except castellan_exception.ManagedObjectNotFoundError:
@@ -972,7 +1052,9 @@ def delete_encryption_key(context, key_manager, encryption_key_id):
             pass
 
 
-def clone_encryption_key(context, key_manager, encryption_key_id):
+def clone_encryption_key(context: context.RequestContext,
+                         key_manager,
+                         encryption_key_id: str) -> str:
     clone_key_id = None
     if encryption_key_id is not None:
         clone_key_id = key_manager.store(
@@ -981,19 +1063,19 @@ def clone_encryption_key(context, key_manager, encryption_key_id):
     return clone_key_id
 
 
-def is_boolean_str(str):
+def is_boolean_str(str: Optional[str]) -> bool:
     spec = (str or '').split()
     return (len(spec) == 2 and
             spec[0] == '<is>' and strutils.bool_from_string(spec[1]))
 
 
-def is_replicated_spec(extra_specs):
-    return (extra_specs and
+def is_replicated_spec(extra_specs: dict) -> bool:
+    return (bool(extra_specs) and
             is_boolean_str(extra_specs.get('replication_enabled')))
 
 
-def is_multiattach_spec(extra_specs):
-    return (extra_specs and
+def is_multiattach_spec(extra_specs: dict) -> bool:
+    return (bool(extra_specs) and
             is_boolean_str(extra_specs.get('multiattach')))
 
 
@@ -1003,7 +1085,7 @@ def group_get_by_id(group_id):
     return group
 
 
-def is_group_a_cg_snapshot_type(group_or_snap):
+def is_group_a_cg_snapshot_type(group_or_snap) -> bool:
     LOG.debug("Checking if %s is a consistent snapshot group",
               group_or_snap)
     if group_or_snap["group_type_id"] is not None:
@@ -1015,7 +1097,7 @@ def is_group_a_cg_snapshot_type(group_or_snap):
     return False
 
 
-def is_group_a_type(group, key):
+def is_group_a_type(group: 'objects.Group', key: str) -> bool:
     if group.group_type_id is not None:
         spec = group_types.get_group_type_specs(
             group.group_type_id, key=key
@@ -1024,7 +1106,9 @@ def is_group_a_type(group, key):
     return False
 
 
-def get_max_over_subscription_ratio(str_value, supports_auto=False):
+def get_max_over_subscription_ratio(
+        str_value: Union[str, float],
+        supports_auto: bool = False) -> Union[str, float]:
     """Get the max_over_subscription_ratio from a string
 
     As some drivers need to do some calculations with the value and we are now
@@ -1044,6 +1128,7 @@ def get_max_over_subscription_ratio(str_value, supports_auto=False):
         raise exception.VolumeDriverException(message=msg)
 
     if str_value == 'auto':
+        str_value = typing.cast(str, str_value)
         return str_value
 
     mosr = float(str_value)
@@ -1055,7 +1140,8 @@ def get_max_over_subscription_ratio(str_value, supports_auto=False):
     return mosr
 
 
-def check_image_metadata(image_meta, vol_size):
+def check_image_metadata(image_meta: Dict[str, Union[str, int]],
+                         vol_size: int) -> None:
     """Validates the image metadata."""
     # Check whether image is active
     if image_meta['status'] != 'active':
@@ -1074,6 +1160,7 @@ def check_image_metadata(image_meta, vol_size):
 
     # Check image min_disk requirement is met for the particular volume
     min_disk = image_meta.get('min_disk', 0)
+    min_disk = typing.cast(int, min_disk)
     if vol_size < min_disk:
         msg = _('Volume size %(volume_size)sGB cannot be smaller'
                 ' than the image minDisk size %(min_disk)sGB.')
@@ -1081,7 +1168,7 @@ def check_image_metadata(image_meta, vol_size):
         raise exception.InvalidInput(reason=msg)
 
 
-def enable_bootable_flag(volume):
+def enable_bootable_flag(volume: 'objects.Volume') -> None:
     try:
         LOG.debug('Marking volume %s as bootable.', volume.id)
         volume.bootable = True
@@ -1092,7 +1179,8 @@ def enable_bootable_flag(volume):
         raise exception.MetadataUpdateFailure(reason=ex)
 
 
-def get_volume_image_metadata(image_id, image_meta):
+def get_volume_image_metadata(image_id: str,
+                              image_meta: Dict[str, Any]) -> dict:
 
     # Save some base attributes into the volume metadata
     base_metadata = {
@@ -1114,6 +1202,7 @@ def get_volume_image_metadata(image_id, image_meta):
     # Save all the image metadata properties into the volume metadata
     property_metadata = {}
     image_properties = image_meta.get('properties', {})
+    image_properties = typing.cast(dict, image_properties)
     for (key, value) in image_properties.items():
         if value is not None:
             property_metadata[key] = value
@@ -1123,8 +1212,12 @@ def get_volume_image_metadata(image_id, image_meta):
     return volume_metadata
 
 
-def copy_image_to_volume(driver, context, volume, image_meta, image_location,
-                         image_service):
+def copy_image_to_volume(driver,
+                         context: context.RequestContext,
+                         volume: 'objects.Volume',
+                         image_meta: dict,
+                         image_location: str,
+                         image_service) -> None:
     """Downloads Glance image to the specified volume."""
     image_id = image_meta['id']
     LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
@@ -1173,7 +1266,7 @@ def copy_image_to_volume(driver, context, volume, image_meta, image_location,
                'image_location': image_location})
 
 
-def image_conversion_dir():
+def image_conversion_dir() -> str:
     tmpdir = (CONF.image_conversion_dir or
               tempfile.gettempdir())
 
@@ -1184,7 +1277,9 @@ def image_conversion_dir():
     return tmpdir
 
 
-def check_encryption_provider(db, volume, context):
+def check_encryption_provider(db,
+                              volume: 'objects.Volume',
+                              context: context.RequestContext) -> dict:
     """Check that this is a LUKS encryption provider.
 
     :returns: encryption dict
@@ -1212,14 +1307,14 @@ def check_encryption_provider(db, volume, context):
     return encryption
 
 
-def sanitize_host(host):
+def sanitize_host(host: str) -> str:
     """Ensure IPv6 addresses are enclosed in [] for iSCSI portals."""
     if netutils.is_valid_ipv6(host):
         return '[%s]' % host
     return host
 
 
-def sanitize_hostname(hostname):
+def sanitize_hostname(hostname) -> str:
     """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
     hostname = hostname.encode('latin-1', 'ignore')
     hostname = hostname.decode('latin-1')
@@ -1232,7 +1327,7 @@ def sanitize_hostname(hostname):
     return hostname
 
 
-def resolve_hostname(hostname):
+def resolve_hostname(hostname: str) -> str:
     """Resolves host name to IP address.
 
     Resolves a host name (my.data.point.com) to an IP address (10.12.143.11).
@@ -1248,7 +1343,9 @@ def resolve_hostname(hostname):
     return ip
 
 
-def update_backup_error(backup, err, status=fields.BackupStatus.ERROR):
+def update_backup_error(backup,
+                        err: str,
+                        status=fields.BackupStatus.ERROR) -> None:
     backup.status = status
     backup.fail_reason = err
     backup.save()
@@ -1256,7 +1353,7 @@ def update_backup_error(backup, err, status=fields.BackupStatus.ERROR):
 
 # TODO (whoami-rajat): Remove this method when oslo.vmware calls volume_utils
 #  wrapper of upload_volume instead of image_utils.upload_volume
-def get_base_image_ref(volume):
+def get_base_image_ref(volume: 'objects.Volume'):
     # This method fetches the image_id from volume glance metadata and pass
     # it to the driver calling it during upload volume to image operation
     base_image_ref = None
@@ -1265,9 +1362,12 @@ def get_base_image_ref(volume):
     return base_image_ref
 
 
-def upload_volume(context, image_service, image_meta, volume_path,
-                  volume, volume_format='raw', run_as_root=True,
-                  compress=True):
+def upload_volume(context: context.RequestContext,
+                  image_service, image_meta, volume_path,
+                  volume: 'objects.Volume',
+                  volume_format: str = 'raw',
+                  run_as_root: bool = True,
+                  compress: bool = True) -> None:
     # retrieve store information from extra-specs
     store_id = volume.volume_type.extra_specs.get('image_service:store_id')
 
@@ -1305,7 +1405,8 @@ def get_backend_configuration(backend_name, backend_opts=None):
     return config
 
 
-def brick_get_connector_properties(multipath=False, enforce_multipath=False):
+def brick_get_connector_properties(multipath: bool = False,
+                                   enforce_multipath: bool = False):
     """Wrapper to automatically set root_helper in brick calls.
 
     :param multipath: A boolean indicating whether the connector can
@@ -1323,9 +1424,10 @@ def brick_get_connector_properties(multipath=False, enforce_multipath=False):
                                               enforce_multipath)
 
 
-def brick_get_connector(protocol, driver=None,
-                        use_multipath=False,
-                        device_scan_attempts=3,
+def brick_get_connector(protocol: str,
+                        driver=None,
+                        use_multipath: bool = False,
+                        device_scan_attempts: int = 3,
                         *args, **kwargs):
     """Wrapper to get a brick connector object.
 
@@ -1342,7 +1444,7 @@ def brick_get_connector(protocol, driver=None,
                                                 *args, **kwargs)
 
 
-def brick_get_encryptor(connection_info, *args, **kwargs):
+def brick_get_encryptor(connection_info: dict, *args, **kwargs):
     """Wrapper to get a brick encryptor object."""
 
     root_helper = utils.get_root_helper()
@@ -1353,7 +1455,9 @@ def brick_get_encryptor(connection_info, *args, **kwargs):
                                            *args, **kwargs)
 
 
-def brick_attach_volume_encryptor(context, attach_info, encryption):
+def brick_attach_volume_encryptor(context: context.RequestContext,
+                                  attach_info: dict,
+                                  encryption: dict) -> None:
     """Attach encryption layer."""
     connection_info = attach_info['conn']
     connection_info['data']['device_path'] = attach_info['device']['path']
@@ -1362,7 +1466,7 @@ def brick_attach_volume_encryptor(context, attach_info, encryption):
     encryptor.attach_volume(context, **encryption)
 
 
-def brick_detach_volume_encryptor(attach_info, encryption):
+def brick_detach_volume_encryptor(attach_info: dict, encryption: dict) -> None:
     """Detach encryption layer."""
     connection_info = attach_info['conn']
     connection_info['data']['device_path'] = attach_info['device']['path']
