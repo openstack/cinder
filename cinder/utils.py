@@ -49,29 +49,10 @@ from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 import six
+import tenacity
 
 from cinder import exception
 from cinder.i18n import _
-
-# The following section is needed to be able to mock out the sleep calls that
-# happen in the tenacity retry handling. We save off the real time.sleep for
-# later and so it can be mocked in unit tests for the sleep call that tenacity
-# makes. But we don't want all time.sleep calls to be modified, so after
-# loading the tenacity module, we restore things back to normal. End result is
-# only the tenacity sleep calls go through the method that we can mock,
-# everything else works as normal.
-_time_sleep = time.sleep
-
-
-def _sleep(duration):
-    """Helper class to make it easier to mock retry sleeping."""
-    _time_sleep(duration)
-
-
-time.sleep = _sleep
-import tenacity  # noqa
-time.sleep = _time_sleep
-# End of time
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -689,6 +670,7 @@ def retry(exceptions, interval=1, retries=3, backoff_rate=2,
         @six.wraps(f)
         def _wrapper(*args, **kwargs):
             r = tenacity.Retrying(
+                sleep=tenacity.nap.sleep,
                 before_sleep=tenacity.before_sleep_log(LOG, logging.DEBUG),
                 after=tenacity.after_log(LOG, logging.DEBUG),
                 stop=tenacity.stop_after_attempt(retries),

@@ -146,7 +146,7 @@ class TestCase(testtools.TestCase):
 
         # Protect against any case where someone doesn't directly patch a retry
         # decorated call.
-        self.patch('cinder.utils._time_sleep')
+        self.patch('tenacity.nap.sleep')
 
         if self.MOCK_WORKER:
             # Mock worker creation for all tests that don't care about it

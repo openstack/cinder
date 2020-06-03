@@ -938,7 +938,7 @@ class TestRetryDecorator(test.TestCase):
     def test_no_retry_required(self):
         self.counter = 0
 
-        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval=2,
                          retries=3,
@@ -955,7 +955,7 @@ class TestRetryDecorator(test.TestCase):
     def test_no_retry_required_random(self):
         self.counter = 0
 
-        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval=2,
                          retries=3,
@@ -976,7 +976,7 @@ class TestRetryDecorator(test.TestCase):
         backoff_rate = 2
         retries = 3
 
-        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval,
                          retries,
@@ -1000,7 +1000,7 @@ class TestRetryDecorator(test.TestCase):
         backoff_rate = 2
         retries = 3
 
-        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval,
                          retries,
@@ -1025,7 +1025,7 @@ class TestRetryDecorator(test.TestCase):
         interval = 2
         backoff_rate = 4
 
-        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException,
                          interval,
                          retries,
@@ -1049,7 +1049,7 @@ class TestRetryDecorator(test.TestCase):
 
     def test_wrong_exception_no_retry(self):
 
-        with mock.patch('cinder.utils._time_sleep') as mock_sleep:
+        with mock.patch('tenacity.nap.sleep') as mock_sleep:
             @utils.retry(exception.VolumeBackendAPIException)
             def raise_unexpected_error():
                 raise WrongException("wrong exception")
