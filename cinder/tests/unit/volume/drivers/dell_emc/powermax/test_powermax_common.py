@@ -729,6 +729,8 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.extend_volume(volume, new_size)
         mck_extend.assert_called_once_with(
             array, device_id, new_size, ref_extra_specs, '1')
+        mck_ode.assert_called_once_with(
+            array, ref_extra_specs[utils.REP_CONFIG], True)
 
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_extend_legacy_replicated_vol')
@@ -755,6 +757,8 @@ class PowerMaxCommonTest(test.TestCase):
         mck_leg_extend.assert_called_once_with(
             array, volume, device_id, volume.name, new_size,
             ref_extra_specs, '1')
+        mck_ode.assert_called_once_with(
+            array, ref_extra_specs[utils.REP_CONFIG], True)
         mck_extend.assert_not_called()
 
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
@@ -782,6 +786,8 @@ class PowerMaxCommonTest(test.TestCase):
         mck_leg_extend.assert_called_once_with(
             array, volume, device_id, volume.name, new_size,
             ref_extra_specs, '1')
+        mck_ode.assert_called_once_with(
+            array, ref_extra_specs[utils.REP_CONFIG], True)
         mck_extend.assert_not_called()
 
     @mock.patch.object(common.PowerMaxCommon, '_array_ode_capabilities_check',
