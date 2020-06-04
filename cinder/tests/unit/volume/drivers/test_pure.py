@@ -532,8 +532,7 @@ class PureDriverTestCase(test.TestCase):
         self.purestorage_module.VERSION = '1.4.0'
         self.purestorage_module.PureHTTPError = FakePureStorageHTTPError
 
-    @staticmethod
-    def fake_get_array(*args, **kwargs):
+    def fake_get_array(self, *args, **kwargs):
         if 'action' in kwargs and kwargs['action'] == 'monitor':
             return PERF_INFO_RAW
 
@@ -626,6 +625,22 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         group = fake_group.fake_group_obj(mock.MagicMock())
         group_name = "consisgroup-%s-cinder" % group.id
         return group, group_name
+
+    def new_fake_group_snap(self, group=None):
+        if group:
+            group_name = "consisgroup-%s-cinder" % group.id
+        else:
+            group, group_name = self.new_fake_group()
+        group_snap = fake_group_snapshot.fake_group_snapshot_obj(
+            mock.MagicMock())
+
+        group_snap_name = "%s.cgsnapshot-%s-cinder" % (group_name,
+                                                       group_snap.id)
+
+        group_snap.group = group
+        group_snap.group_id = group.id
+
+        return group_snap, group_snap_name
 
 
 @ddt.ddt
@@ -914,6 +929,37 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertTrue(result.endswith("-cinder"))
         self.assertEqual(49, len(result))
         self.assertIsNotNone(pure.GENERATED_NAME.match(result))
+
+    def test_revert_to_snapshot(self):
+        vol, vol_name = self.new_fake_vol(set_provider_id=True)
+        snap, snap_name = self.new_fake_snap(vol)
+
+        context = mock.MagicMock()
+        self.driver.revert_to_snapshot(context, vol, snap)
+
+        self.array.copy_volume.assert_called_with(snap_name, vol_name,
+                                                  overwrite=True)
+        self.assert_error_propagates([self.array.copy_volume],
+                                     self.driver.revert_to_snapshot,
+                                     context, vol, snap)
+
+    def test_revert_to_snapshot_group(self):
+        vol, vol_name = self.new_fake_vol(set_provider_id=True)
+        group, group_name = self.new_fake_group()
+        group_snap, group_snap_name = self.new_fake_group_snap(group)
+        snap, snap_name = self.new_fake_snap(vol, group_snap)
+
+        copy_vol_name = "%s.%s" % (group_snap_name, vol_name)
+
+        context = mock.MagicMock()
+        self.driver.revert_to_snapshot(context, vol, snap)
+
+        self.array.copy_volume.assert_called_with(copy_vol_name, vol_name,
+                                                  overwrite=True)
+
+        self.assert_error_propagates([self.array.copy_volume],
+                                     self.driver.revert_to_snapshot,
+                                     context, vol, snap)
 
     @mock.patch(BASE_DRIVER_OBJ + "._add_to_group_if_needed")
     @mock.patch(BASE_DRIVER_OBJ + "._get_replication_type_from_vol_type")

@@ -404,6 +404,28 @@ class PureBaseVolumeDriver(san.SanDriver):
         return vol_updates, None
 
     @pure_driver_debug_trace
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Is called to perform revert volume from snapshot.
+
+        :param context: Our working context.
+        :param volume: the volume to be reverted.
+        :param snapshot: the snapshot data revert to volume.
+        :return None
+        """
+        vol_name = self._generate_purity_vol_name(volume)
+        if snapshot['group_snapshot'] or snapshot['cgsnapshot']:
+            snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
+        else:
+            snap_name = self._get_snap_name(snapshot)
+
+        LOG.debug("Reverting from snapshot %(snap)s to volume "
+                  "%(vol)s", {'vol': vol_name, 'snap': snap_name})
+
+        current_array = self._get_current_array()
+
+        current_array.copy_volume(snap_name, vol_name, overwrite=True)
+
+    @pure_driver_debug_trace
     def create_volume(self, volume):
         """Creates a volume."""
         vol_name = self._generate_purity_vol_name(volume)
@@ -421,11 +443,6 @@ class PureBaseVolumeDriver(san.SanDriver):
             snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
-
-        if not snap_name:
-            msg = _('Unable to determine snapshot name in Purity for snapshot '
-                    '%(id)s.') % {'id': snapshot['id']}
-            raise PureDriverException(reason=msg)
 
         current_array = self._get_current_array()
 
@@ -2344,7 +2361,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "10.0.iscsi"
+    VERSION = "11.0.iscsi"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -2591,7 +2608,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     supports the Cinder Fibre Channel Zone Manager.
     """
 
-    VERSION = "10.0.fc"
+    VERSION = "11.0.fc"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
