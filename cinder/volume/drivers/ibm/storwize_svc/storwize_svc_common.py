@@ -5074,7 +5074,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                        {'resp_len': len(resp),
                         'mirror_pool': opts['mirror_pool']})
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
-            if (opts['mirror_pool']and opts['mirror_pool'] !=
+            if (opts['mirror_pool'] and opts['mirror_pool'] !=
                     copies['secondary']['mdisk_grp_name']):
                 msg = (_("Failed to manage existing volume due to mirror pool "
                          "mismatch. The secondary pool of the volume to be "

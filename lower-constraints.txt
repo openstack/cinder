@@ -97,7 +97,7 @@ psycopg2==2.7
 pyasn1-modules==0.2.1
 pyasn1==0.4.2
 pycadf==2.7.0
-pycodestyle==2.5.0
+pycodestyle==2.6.0
 pycparser==2.19
 pyflakes==0.8.1
 Pygments==2.2.0

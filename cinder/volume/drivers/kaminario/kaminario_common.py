@@ -520,10 +520,10 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def _is_user_snap_sync_finished(self):
         # waiting for user snapshot to be synced
         while len(self.snap_updates) > 0:
-            for l in self.snap_updates:
-                sess = l.get('tgt_ssn')
-                gno = l.get('gno')
-                stime = l.get('stime')
+            for update in self.snap_updates:
+                sess = update.get('tgt_ssn')
+                gno = update.get('gno')
+                stime = update.get('stime')
                 sess.refresh()
                 if (sess.generation_number == gno and
                    sess.current_snapshot_progress == 100
@@ -535,7 +535,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                         self.snap_updates.append({'tgt_ssn': sess,
                                                   'gno': gen_no,
                                                   'stime': time.time()})
-                    self.snap_updates.remove(l)
+                    self.snap_updates.remove(update)
                 eventlet.sleep(1)
 
     @utils.trace

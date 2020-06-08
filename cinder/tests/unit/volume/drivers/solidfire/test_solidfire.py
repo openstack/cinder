@@ -1852,7 +1852,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         def _fake_issue_api_req(method, params, version=0):
             if 'ListActiveVolumes' in method:
                 return {'result': {'volumes': sf_vols}}
-            if 'ListSnapshots'in method:
+            if 'ListSnapshots' in method:
                 return {'result': {'snapshots': sf_snaps}}
 
         with mock.patch.object(sfv, '_issue_api_request',
