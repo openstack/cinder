@@ -52,7 +52,12 @@
 
 import collections
 import collections.abc as collections_abc
+import errno
+import glob
+import itertools
 import logging as python_logging
+import os
+import re
 import sys
 import time
 
@@ -830,6 +835,112 @@ class ConsistencyGroupCommands(object):
             gr.save()
 
 
+class UtilCommands(object):
+    """Generic utils."""
+
+    @staticmethod
+    def _get_resources_locks():
+        """Get all vol/snap/backup file lock paths."""
+        backup_locks_prefix = 'cinder-cleanup_incomplete_backups_'
+        oslo_dir = os.path.abspath(cfg.CONF.oslo_concurrency.lock_path)
+        filenames = glob.glob(os.path.join(oslo_dir, 'cinder-*'))
+
+        backend_url = cfg.CONF.coordination.backend_url
+        if backend_url.startswith('file://'):
+            tooz_dir = os.path.abspath(backend_url[7:])
+            if tooz_dir != oslo_dir:
+                filenames += glob.glob(os.path.join(tooz_dir, 'cinder-*'))
+
+        volumes = collections.defaultdict(list)
+        snapshots = collections.defaultdict(list)
+        backups = collections.defaultdict(list)
+        matcher = re.compile('.*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'
+                             '[0-9a-f]{4}-[0-9a-f]{12}).*?', re.IGNORECASE)
+        for filename in filenames:
+            basename = os.path.basename(filename)
+            match = matcher.match(basename)
+            if match:
+                dest = snapshots if 'snapshot' in basename else volumes
+                res_id = match.group(1)
+                dest[res_id].append(filename)
+            elif basename.startswith(backup_locks_prefix):
+                pgrp = basename[34:]
+                backups[pgrp].append(filename)
+
+        return volumes, snapshots, backups
+
+    def _exclude_running_backups(self, backups):
+        """Remove backup entries from the dict for running backup services."""
+        for backup_pgrp in list(backups.keys()):
+            # The PGRP is the same as the PID of the parent process, so we know
+            # the lock could be in use if the process is running and it's the
+            # cinder-backup command (the PID could have been reused).
+            cmdline_file = os.path.join('/proc', backup_pgrp, 'cmdline')
+            try:
+                with open(cmdline_file, 'r') as f:
+                    if 'cinder-backup' in f.read():
+                        del backups[backup_pgrp]
+            except FileNotFoundError:
+                continue
+            except Exception:
+                # Unexpected error, leaving the lock file just in case
+                del backups[backup_pgrp]
+
+    @args('--services-offline', dest='online',
+          action='store_false', default=True,
+          help='All locks can be deleted as Cinder services are not running.')
+    def clean_locks(self, online):
+        """Clean file locks for vols, snaps, and backups on the current host.
+
+        Should be run on any host where we are running a Cinder service (API,
+        Scheduler, Volume, Backup) and can be run with the Cinder services
+        running or stopped.
+
+        If the services are running it will check existing resources in the
+        Cinder database in order to know which resources are still available
+        (it's not safe to remove their file locks) and will only remove the
+        file locks for the resources that are no longer present.  Deleting
+        locks while the services are offline is faster as there's no need to
+        check the database.
+
+        For backups, the way to know if we can remove the startup lock is by
+        checking if the PGRP in the file name is currently running
+        cinder-backup.
+
+        Default assumes that services are online, must pass
+        ``--services-offline`` to specify that they are offline.
+
+        Doesn't clean DLM locks (except when using file locks), as those don't
+        leave lock leftovers.
+        """
+        self.ctxt = context.get_admin_context()
+        # Find volume and snapshots ids, and backups PGRP based on the existing
+        # file locks
+        volumes, snapshots, backups = self._get_resources_locks()
+
+        # If services are online we cannot delete locks for existing resources
+        if online:
+            # We don't want to delete file locks for existing resources
+            volumes = {vol_id: files for vol_id, files in volumes.items()
+                       if not objects.Volume.exists(vol_id)}
+            snapshots = {snap_id: files for snap_id, files in snapshots.items()
+                         if not objects.Snapshot.exists(snap_id)}
+            self._exclude_running_backups(backups)
+
+        # Now clean
+        for filenames in itertools.chain(volumes.values(),
+                                         snapshots.values(),
+                                         backups.values()):
+            for filename in filenames:
+                try:
+                    os.remove(filename)
+                except Exception as exc:
+                    if not (isinstance(exc, OSError) and
+                            exc.errno == errno.ENOENT):
+                        print('Failed to cleanup lock %(name)s: %(exc)s',
+                              {'name': filename, 'exc': exc})
+
+
 CATEGORIES = {
     'backup': BackupCommands,
     'config': ConfigCommands,
@@ -841,6 +952,7 @@ CATEGORIES = {
     'service': ServiceCommands,
     'version': VersionCommands,
     'volume': VolumeCommands,
+    'util': UtilCommands,
 }
 
 

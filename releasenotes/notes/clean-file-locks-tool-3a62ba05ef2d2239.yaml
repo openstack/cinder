@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    `Bug #1432387 <https://bugs.launchpad.net/cinder/+bug/1432387>`_: Add a
+    command to cinder-manage to clean up file locks existing in hosts where
+    there is a Cinder service running (API, Scheduler, Volume, Backup).
+    Command works with the Cinder services running, useful to be called as a
+    cron job, as well as stopped, to be called on host startup.  Command
+    invocation ``cinder-manage util clean_locks`` with optional parameter
+    ``--services-offline``.
