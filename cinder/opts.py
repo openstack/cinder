@@ -265,6 +265,7 @@ def list_opts():
                 [cinder_volume_api.volume_host_opt],
                 [cinder_volume_api.volume_same_az_opt],
                 [cinder_volume_api.az_cache_time_opt],
+                [cinder_volume_api.migrate_on_attach_opt],
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
                 cinder_volume_driver.nvmet_opts,

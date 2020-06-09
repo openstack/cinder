@@ -172,11 +172,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
     def test_get_volume_stats(self, _get_datastore_summaries, vops,
-                            session):
+                              session):
         retr_result_mock = mock.Mock(spec=['objects'])
         retr_result_mock.objects = []
         session.vim.RetrievePropertiesEx.return_value = retr_result_mock
-        session.vim.service_content.instanceUuid = 'fake-service'
+        session.vim.service_content.about.instanceUuid = 'fake-service'
         FREE_GB = 7
         TOTAL_GB = 11
 

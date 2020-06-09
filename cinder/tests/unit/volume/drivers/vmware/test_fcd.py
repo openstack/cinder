@@ -84,9 +84,11 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self.assertTrue(self._driver._use_fcd_snapshot)
         self.assertTrue(self._driver._storage_policy_enabled)
 
+    @mock.patch.object(VMDK_DRIVER, 'session')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_datastore_summaries')
-    def test_get_volume_stats(self, _get_datastore_summaries, vops):
+    def test_get_volume_stats(self, _get_datastore_summaries, vops,
+                              session):
         FREE_GB = 7
         TOTAL_GB = 11
 

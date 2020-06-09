@@ -54,6 +54,7 @@ from cinder.policies import volume_metadata as vol_meta_policy
 from cinder.policies import volumes as vol_policy
 from cinder import quota
 from cinder import quota_utils
+from cinder.scheduler import host_manager
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows.api import create_volume
@@ -82,13 +83,20 @@ az_cache_time_opt = cfg.IntOpt('az_cache_duration',
                                help='Cache volume availability zones in '
                                     'memory for the provided duration in '
                                     'seconds')
+migrate_on_attach_opt = cfg.BoolOpt('allow_migration_on_attach',
+                                    default=False,
+                                    help="A host might recognise a connector "
+                                         "as valid but it can't use it to "
+                                         "initialize a connection. This will "
+                                         "allow to migrate the volume to a "
+                                         "valid host prior to attachment.")
 
 CONF = cfg.CONF
 CONF.register_opt(allow_force_upload_opt)
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
-
+CONF.register_opt(migrate_on_attach_opt)
 CONF.import_opt('glance_core_properties', 'cinder.image.glance')
 
 LOG = logging.getLogger(__name__)
@@ -797,6 +805,32 @@ class API(base.Base):
                  resource=volume)
         return detach_results
 
+    def _migrate_by_connector(self, ctxt, volume, connector):
+        volume_type = {}
+        if volume.volume_type_id:
+            volume_type = volume_types.get_volume_type(
+                ctxt.elevated(), volume.volume_type_id)
+        request_spec = {
+            'volume_properties': volume,
+            'volume_type': volume_type,
+            'volume_id': volume.id}
+        try:
+            dest = self.scheduler_rpcapi.find_backend_for_connector(
+                ctxt, connector, request_spec)
+        except exception.NoValidBackend:
+            LOG.error("The connector was rejected by the backend. Could not "
+                      "find another backend compatible with the connector %s.",
+                      connector)
+            return None
+        backend = host_manager.BackendState(host=dest['host'],
+                                            cluster_name=dest['cluster_name'],
+                                            capabilities=dest['capabilities'])
+        LOG.debug("Invoking migrate_volume to host=%(host).", dest['host'])
+        self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
+                                          force_host_copy=False,
+                                          wait_for_completion=True)
+        volume.refresh()
+
     def initialize_connection(self, context, volume, connector):
         context.authorize(vol_action_policy.INITIALIZE_POLICY,
                           target_obj=volume)
@@ -807,9 +841,25 @@ class API(base.Base):
             msg = _("The volume connection cannot be initialized in "
                     "maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
-        init_results = self.volume_rpcapi.initialize_connection(context,
-                                                                volume,
-                                                                connector)
+
+        def _migrate_and_initialize_connection():
+            self._migrate_by_connector(context, volume, connector)
+            return self.volume_rpcapi.initialize_connection(context, volume,
+                                                            connector)
+        init_results = None
+        try:
+            init_results = self.volume_rpcapi.initialize_connection(context,
+                                                                    volume,
+                                                                    connector)
+        except exception.ConnectorRejected:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if CONF.allow_migration_on_attach:
+                    LOG.info("The connector was rejected by the volume "
+                             "backend while initializing the connection. "
+                             "Attempting to migrate it.")
+                    init_results = _migrate_and_initialize_connection()
+                    exc_context.reraise = False
+
         LOG.info("Initialize volume connection completed successfully.",
                  resource=volume)
         return init_results
@@ -2256,12 +2306,26 @@ class API(base.Base):
                         '%(vol)s') % {'vol': volume_ref.id}
 
                 raise exception.InvalidVolume(reason=msg)
-
-        connection_info = (
-            self.volume_rpcapi.attachment_update(ctxt,
-                                                 volume_ref,
-                                                 connector,
-                                                 attachment_ref.id))
+        connection_info = None
+        try:
+            connection_info = (
+                self.volume_rpcapi.attachment_update(ctxt,
+                                                     volume_ref,
+                                                     connector,
+                                                     attachment_ref.id))
+        except exception.ConnectorRejected:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if CONF.allow_migration_on_attach:
+                    LOG.info("The connector was rejected by the volume "
+                             "backend while updating the attachments. "
+                             "Trying to migrate it.")
+                    exc_context.reraise = False
+                    self._migrate_by_connector(ctxt, volume_ref, connector)
+                    connection_info =\
+                        self.volume_rpcapi.attachment_update(ctxt,
+                                                             volume_ref,
+                                                             connector,
+                                                             attachment_ref.id)
         attachment_ref.connection_info = connection_info
         attachment_ref.save()
         return attachment_ref

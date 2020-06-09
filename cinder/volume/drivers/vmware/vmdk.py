@@ -389,6 +389,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             self._stats = data
         return self._stats
 
+    def _get_connection_capabilities(self):
+        return ['vmware_service_instance_uuid:%s' %
+                self.session.vim.service_content.about.instanceUuid]
+
     def _get_volume_stats(self):
         """Fetch the stats about the backend.
 
@@ -409,7 +413,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 'shared_targets': False,
                 'thin_provisioning_support': True,
                 'thick_provisioning_support': True,
-                'max_over_subscription_ratio': max_over_subscription_ratio}
+                'max_over_subscription_ratio': max_over_subscription_ratio,
+                'connection_capabilities': self._get_connection_capabilities()}
         ds_summaries = self._get_datastore_summaries()
         available_hosts = self._get_hosts(self._clusters)
         global_capacity = 0
@@ -905,7 +910,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param connector: Connector information
         :return: Return connection information
         """
+        # Check that connection_capabilities match
+        # This ensures the connector is bound to the same vCenter service
+        if 'connection_capabilities' in connector:
+            missing = set(self._get_connection_capabilities()) -\
+                set(connector['connection_capabilities'])
+            if missing:
+                raise exception.ConnectorRejected(
+                    reason="Connector is missing %s" % ', '.join(missing))
+
         backing = self.volumeops.get_backing(volume.name, volume.id)
+
         if 'instance' in connector:
             # The instance exists
             instance = vim_util.get_moref(connector['instance'],
