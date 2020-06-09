@@ -3159,6 +3159,59 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertListEqual([], eventlet.tpool._threads)
         eventlet.tpool._nthreads = 20
 
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_initialize_connection_with_rejected_connector(
+            self, fake_get_volume_type):
+        ini_ret = {'ip': '1.2.3.4'}
+        connector = {'ip': '0.0.0.0'}
+        volume_type = 'fake-volume-type'
+        volume = tests_utils.create_volume(self.context)
+        host_obj = {'host': 'fake-host',
+                    'cluster_name': 'fake-cluster',
+                    'capabilities': {}}
+
+        self.override_config('allow_migration_on_attach', True)
+        fake_get_volume_type.return_value = volume_type
+
+        volume_api = cinder.volume.api.API()
+        scheduler_rpcapi = mock.Mock()
+        volume_api.scheduler_rpcapi = scheduler_rpcapi
+        volume_api.scheduler_rpcapi.find_backend_for_connector.return_value =\
+            host_obj
+
+        volume_rpcapi = mock.Mock()
+        volume_api.volume_rpcapi = volume_rpcapi
+
+        call_times = {volume.id: -1}
+
+        def _initialize_connection_side_effect(context, volume, connector):
+            call_times[volume.id] += 1
+            if call_times[volume.id] == 0:
+                # First time it rejects the connector
+                raise exception.ConnectorRejected(reason=None)
+            if call_times[volume.id] == 1:
+                # Second time (after migration) it returns the connection data
+                return ini_ret
+
+        volume_rpcapi.initialize_connection.side_effect =\
+            _initialize_connection_side_effect
+
+        conn_result =\
+            volume_api.initialize_connection(self.context, volume, connector)
+
+        self.assertEqual(conn_result, ini_ret)
+        volume_rpcapi.initialize_connection.assert_has_calls([
+            mock.call(self.context, volume, connector),
+            mock.call(self.context, volume, connector)
+        ])
+        volume_rpcapi.migrate_volume.assert_called_once_with(
+            self.context, volume, mock.ANY, force_host_copy=False,
+            wait_for_completion=True)
+        backend = volume_rpcapi.migrate_volume.call_args[0][2]
+        self.assertEqual(backend.host, host_obj['host'])
+        self.assertEqual(backend.cluster_name, host_obj['cluster_name'])
+        self.assertEqual(backend.capabilities, host_obj['capabilities'])
+
 
 class VolumeTestCaseLocks(base.BaseVolumeTestCase):
     MOCK_TOOZ = False

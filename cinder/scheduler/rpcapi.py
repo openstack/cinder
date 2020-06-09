@@ -245,3 +245,8 @@ class SchedulerAPI(rpc.RPCAPI):
     def get_log_levels(self, context, service, log_request):
         cctxt = self._get_cctxt(server=service.host, version='3.7')
         return cctxt.call(context, 'get_log_levels', log_request=log_request)
+
+    def find_backend_for_connector(self, context, connector, request_spec):
+        cctxt = self._get_cctxt()
+        return cctxt.call(context, 'find_backend_for_connector',
+                          connector=connector, request_spec=request_spec)

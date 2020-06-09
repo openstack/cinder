@@ -132,6 +132,9 @@ class VolumeDriverCore(base.CinderInterface):
         * sparse_copy_volume (Boolean)
             Whether copies performed by the volume manager for operations such
             as migration should attempt to preserve sparseness.
+        * connection_capabilities (list)
+            A list of capabilities that need to match the connector's
+            capabilities when a connection is being initialized.
 
         The returned dict may also contain a list, "pools", which has a similar
         dict for each pool being used with the backend.

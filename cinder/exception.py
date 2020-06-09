@@ -614,6 +614,10 @@ class NoValidBackend(CinderException):
     message = _("No valid backend was found. %(reason)s")
 
 
+class InvalidConnectionCapabilities(CinderException):
+    message = _("Invalid connection capabilities. %(reason)s")
+
+
 class NoMoreTargets(CinderException):
     """No more available targets."""
     pass
@@ -713,6 +717,10 @@ class FailedCmdWithDump(VolumeDriverException):
 
 class InvalidConnectorException(VolumeDriverException):
     message = _("Connector doesn't have required information: %(missing)s")
+
+
+class ConnectorRejected(VolumeDriverException):
+    message = _("Connector can't be used with this driver anymore. %(reason)s")
 
 
 class GlanceMetadataExists(Invalid):
