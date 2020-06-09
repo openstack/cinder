@@ -150,6 +150,9 @@ class VolumeDriverCore(base.CinderInterface):
         * online_extend_support (Boolean)
             Whether the backend supports in-use volume extend or not. Defaults
             to True.
+        * connection_capabilities (list)
+            A list of capabilities that need to match the connector's
+            capabilities when a connection is being initialized.
 
         The returned dict may also contain a list, "pools", which has a similar
         dict for each pool being used with the backend.

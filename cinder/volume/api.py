@@ -60,6 +60,7 @@ from cinder.policies import volume_metadata as vol_meta_policy
 from cinder.policies import volumes as vol_policy
 from cinder import quota
 from cinder import quota_utils
+from cinder.scheduler import host_manager
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows.api import create_volume
@@ -94,7 +95,6 @@ CONF.register_opt(allow_force_upload_opt)
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
-
 CONF.import_opt('glance_core_properties', 'cinder.image.glance')
 
 LOG = logging.getLogger(__name__)
@@ -877,6 +877,35 @@ class API(base.Base):
                  resource=volume)
         return detach_results
 
+    def migrate_volume_by_connector(self, ctxt, volume, connector):
+        if not connector:
+            raise exception.InvalidInput("Must provide a valid Connector")
+
+        volume_type = {}
+        if volume.volume_type_id:
+            volume_type = volume_types.get_volume_type(
+                ctxt.elevated(), volume.volume_type_id)
+        request_spec = {
+            'volume_properties': volume,
+            'volume_type': volume_type,
+            'volume_id': volume.id}
+        try:
+            dest = self.scheduler_rpcapi.find_backend_for_connector(
+                ctxt, connector, request_spec)
+        except exception.NoValidBackend:
+            LOG.error("The connector was rejected by the backend. Could not "
+                      "find another backend compatible with the connector %s.",
+                      connector)
+            return None
+        backend = host_manager.BackendState(host=dest['host'],
+                                            cluster_name=dest['cluster_name'],
+                                            capabilities=dest['capabilities'])
+        LOG.debug("Invoking migrate_volume to host=%(host).", dest['host'])
+        self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
+                                          force_host_copy=False,
+                                          wait_for_completion=False)
+        volume.refresh()
+
     def initialize_connection(self,
                               context: context.RequestContext,
                               volume: objects.Volume,
@@ -890,9 +919,11 @@ class API(base.Base):
             msg = _("The volume connection cannot be initialized in "
                     "maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
+
         init_results = self.volume_rpcapi.initialize_connection(context,
                                                                 volume,
                                                                 connector)
+
         LOG.info("Initialize volume connection completed successfully.",
                  resource=volume)
         return init_results
@@ -2530,7 +2561,6 @@ class API(base.Base):
                         '%(vol)s') % {'vol': volume_ref.id}
 
                 raise exception.InvalidVolume(reason=msg)
-
         connection_info = (
             self.volume_rpcapi.attachment_update(ctxt,
                                                  volume_ref,

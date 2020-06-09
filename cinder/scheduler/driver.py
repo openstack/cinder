@@ -150,6 +150,10 @@ class Scheduler(object):
         raise NotImplementedError(_(
             "Must implement schedule_create_group"))
 
+    def find_backend_for_connector(self, context, connector, request_spec):
+        raise NotImplementedError(_("Must implement"
+                                    "find_backend_for_connector"))
+
     def get_pools(self, context, filters):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_(

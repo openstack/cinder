@@ -121,6 +121,43 @@ class FilterScheduler(driver.Scheduler):
                                          filter_properties,
                                          allow_reschedule=True)
 
+    def find_backend_for_connector(self, context, connector, request_spec):
+        key = 'connection_capabilities'
+        if key not in connector:
+            raise exception.InvalidConnectionCapabilities(
+                reason=_("The connector doesn't contain a %s field.") % key)
+
+        weighed_backends = self._get_weighted_candidates(context, request_spec)
+        if not weighed_backends:
+            raise exception.NoValidBackend(reason=_("No weighed backends "
+                                                    "available"))
+        connector_capabilities = set(connector[key])
+
+        def _backend_matches_connector(bck):
+            if key not in bck.obj.capabilities:
+                LOG.debug("Backend %(backend) doesn't contain %(key)s.",
+                          {'backend': bck.obj.host, 'key': key})
+                return False
+            backend_capabilities = set(bck.obj.capabilities.get(key))
+            if connector_capabilities & backend_capabilities ==\
+                    connector_capabilities:
+                return True
+            LOG.debug("Requested %(key)s %(req)s not found in "
+                      "%(host)s backend's %(key)s %(given)s.",
+                      {'key': key, 'req': connector_capabilities,
+                       'host': bck.obj.host, 'given': backend_capabilities})
+            return False
+
+        weighed_backends = [b for b in weighed_backends if
+                            _backend_matches_connector(b)]
+
+        if not weighed_backends:
+            raise exception.NoValidBackend(
+                reason=_("No backend matched the given connector."))
+
+        top_backend = self._choose_top_backend(weighed_backends, request_spec)
+        return top_backend.obj
+
     def backend_passes_filters(self,
                                context: context.RequestContext,
                                backend: str,

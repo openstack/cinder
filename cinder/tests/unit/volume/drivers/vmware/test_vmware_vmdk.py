@@ -160,7 +160,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         retr_result_mock = mock.Mock(spec=['objects'])
         retr_result_mock.objects = []
         session.vim.RetrievePropertiesEx.return_value = retr_result_mock
-        session.vim.service_content.instanceUuid = 'fake-service'
+        session.vim.service_content.about.instanceUuid = 'fake-service'
         FREE_GB = 7
         TOTAL_GB = 11
 
@@ -222,6 +222,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                             attachment=None,
                             project_id=PROJECT_ID):
         return {'id': vol_id,
+                'name_id': vol_id,
                 'display_name': display_name,
                 'name': 'volume-%s' % vol_id,
                 'volume_type_id': volume_type_id,
@@ -279,11 +280,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_delete_volume_without_backing(self, vops):
         vops.get_backing.return_value = None
+        vops.get_backing_by_uuid.return_value = None
 
-        volume = self._create_volume_dict()
+        volume = self._create_volume_obj()
         self._driver.delete_volume(volume)
 
         vops.get_backing.assert_called_once_with(volume['name'], volume['id'])
+        vops.get_backing_by_uuid.assert_called_once_with(volume['name_id'])
         self.assertFalse(vops.delete_backing.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2197,6 +2200,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def test_initialize_connection_with_no_instance_and_backing(self):
         self._test_initialize_connection(instance_exists=False)
 
+    def test_initialize_connection_connector_rejected(self):
+        connector = {'ip': '0.0.0.0',
+                     "connection_capabilities": {}}
+        volume = self._create_volume_obj()
+
+        self._driver._vcenter_instance_uuid_cache = "11234"
+
+        self.assertRaises(cinder_exceptions.ConnectorRejected,
+                          self._driver.initialize_connection,
+                          volume, connector)
+
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_terminate_connection(self, vops):
         volume = self._create_volume_obj(status='restoring-backup')
@@ -3600,16 +3614,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             else:
                 self.assertEqual((True, None), ret_val)
 
-            if capabilities and 'location_info' in capabilities:
-                if vmdk.LOCATION_DRIVER_NAME in capabilities['location_info']:
-                    if backing:
-                        _assertions_for_migration()
-                    else:
-                        _assertions_for_no_backing()
+        if capabilities and 'location_info' in capabilities:
+            if capabilities['location_info'].startswith(
+                    '%s:' % vmdk.LOCATION_DRIVER_NAME):
+                if backing:
+                    _assertions_for_migration()
                 else:
-                    _assertions_migration_not_performed()
+                    _assertions_for_no_backing()
             else:
                 _assertions_migration_not_performed()
+        else:
+            _assertions_migration_not_performed()
 
     def test_migrate_volume_relocate_existing_backing(self):
         self.test_migrate_volume(backing=mock.Mock())
@@ -3624,6 +3639,32 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.test_migrate_volume(backing=mock.Mock(), capabilities={
             'location_info': 'invalid-location-info'
         })
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_update_migrated_volume(self, vops):
+        volume = self._create_volume_obj()
+        new_volume = self._create_volume_obj(vol_id='new-id')
+        backing = mock.Mock()
+        vops.get_backing.return_value = backing
+        ret_val = self._driver.update_migrated_volume(self._context, volume,
+                                                      new_volume, 'old-status')
+        vops.rename_backing.assert_called_once_with(backing, volume['name'])
+        vops.update_backing_uuid.assert_called_once_with(backing, volume['id'])
+        vops.update_backing_disk_uuid.assert_called_once_with(backing,
+                                                              volume['id'])
+        self.assertIsNone(ret_val)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_update_migrated_volume_without_backing(self, vops):
+        volume = self._create_volume_obj()
+        new_volume = self._create_volume_obj(vol_id='new-id')
+        vops.get_backing.return_value = None
+        ret_val = self._driver.update_migrated_volume(self._context, volume,
+                                                      new_volume, 'old-status')
+        vops.rename_backing.assert_not_called()
+        vops.update_backing_uuid.assert_not_called()
+        vops.update_backing_disk_uuid.assert_not_called()
+        self.assertIsNone(ret_val)
 
 
 @ddt.ddt
