@@ -21,7 +21,7 @@ tracebacks.
 
    Create commands are listed in the ``cinder-api`` log.
 
-These entries in the ``cinder.openstack.common.log`` file can be used to
+These entries in the ``cinder.conf`` file can be used to
 assist in troubleshooting your Block Storage configuration.
 
 .. code-block:: console
