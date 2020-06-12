@@ -632,18 +632,17 @@ class SchedulerManagerTestCase(test.TestCase):
     def test_find_backend_for_connector(self, _mock_find_backend_for_conector):
         connector = mock.Mock()
         request_spec = mock.Mock()
-        backend_obj = mock.Mock(host='fake-host',
+        backend_ret = mock.Mock(host='fake-host',
                                 cluster_name='fake-cluster', capabilities=[])
-        backend_ret = mock.Mock(obj=backend_obj)
         _mock_find_backend_for_conector.return_value = backend_ret
         ret = self.manager.find_backend_for_connector(self.context,
                                                       connector, request_spec)
         _mock_find_backend_for_conector.assert_called_once_with(
             self.context, connector, request_spec)
         self.assertEqual(ret, {
-            'host': backend_ret.obj.host,
-            'cluster_name': backend_ret.obj.cluster_name,
-            'capabilities': backend_ret.obj.capabilities
+            'host': backend_ret.host,
+            'cluster_name': backend_ret.cluster_name,
+            'capabilities': backend_ret.capabilities
         })
 
 
