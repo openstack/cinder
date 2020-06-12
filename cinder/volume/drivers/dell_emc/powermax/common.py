@@ -1092,7 +1092,7 @@ class PowerMaxCommon(object):
             rep_config = ex_specs[utils.REP_CONFIG]
             rdf_grp_no, __ = self.get_rdf_details(array, rep_config)
             r1_ode, r1_ode_metro, r2_ode, r2_ode_metro = (
-                self._array_ode_capabilities_check(array, True))
+                self._array_ode_capabilities_check(array, rep_config, True))
 
             if self.next_gen:
                 if self.utils.is_metro_device(rep_config, ex_specs):
