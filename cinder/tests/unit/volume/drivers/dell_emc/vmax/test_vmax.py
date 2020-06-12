@@ -30,6 +30,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder.objects import group
 from cinder.objects import group_snapshot
+from cinder.objects import volume_attachment
 from cinder.objects import volume_type
 from cinder import test
 from cinder.tests.unit import fake_group
@@ -40,6 +41,7 @@ from cinder.volume.drivers.dell_emc.vmax import common
 from cinder.volume.drivers.dell_emc.vmax import fc
 from cinder.volume.drivers.dell_emc.vmax import iscsi
 from cinder.volume.drivers.dell_emc.vmax import masking
+from cinder.volume.drivers.dell_emc.vmax import migrate
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
@@ -247,6 +249,10 @@ class VMAXCommonData(object):
         provider_location=six.text_type(snap_location),
         host=fake_host, volume=test_volume_snap_manage,
         display_name='my_snap')
+
+    test_volume_attachment = volume_attachment.VolumeAttachment(
+        id='2b06255d-f5f0-4520-a953-b029196add6b', volume_id=test_volume.id,
+        connector=connector)
 
     location_info = {'location_info': '000197800123#SRP_1#Diamond#DSS',
                      'storage_protocol': 'FC'}
@@ -693,6 +699,17 @@ class VMAXCommonData(object):
                              'snapvx_target': 'false',
                              'snapvx_source': 'false',
                              'storageGroupId': []}
+
+    staging_sg = 'STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-SG'
+    staging_mv1 = 'STG-myhostA-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-MV'
+    staging_mv2 = 'STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-MV'
+    staging_mvs = [staging_mv1, staging_mv2]
+    legacy_mv1 = 'OS-myhostA-No_SLO-e14f48b8-MV'
+    legacy_mv2 = 'OS-myhostB-No_SLO-e14f48b8-MV'
+    legacy_shared_sg = 'OS-myhostA-No_SLO-SG'
+    legacy_mvs = [legacy_mv1, legacy_mv2]
+    legacy_not_shared_mv = 'OS-myhostA-SRP_1-Diamond-NONE-MV'
+    legacy_not_shared_sg = 'OS-myhostA-SRP_1-Diamond-NONE-SG'
 
 
 class FakeLookupService(object):
@@ -7900,3 +7917,486 @@ class VMAXCommonReplicationTest(test.TestCase):
             self.async_driver.common.failover_host(volumes, None, [])
         mock_fv.assert_not_called()
         mock_fg.assert_called_once()
+
+
+class VMAXMigrateTest(test.TestCase):
+    def setUp(self):
+        self.data = VMAXCommonData()
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        super(VMAXMigrateTest, self).setUp()
+        configuration = FakeConfiguration(
+            None, 'MaskingTests', 1, 1, san_ip='1.1.1.1',
+            san_login='smc', vmax_array=self.data.array, vmax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            vmax_port_groups=[self.data.port_group_name_f])
+        rest.VMAXRest._establish_rest_session = mock.Mock(
+            return_value=FakeRequestsSession())
+        driver = iscsi.VMAXISCSIDriver(configuration=configuration)
+        self.driver = driver
+        self.common = self.driver.common
+        self.migrate = self.common.migrate
+
+    def test_get_masking_view_component_dict_shared_format_1(self):
+        """Test for get_masking_view_component_dict, legacy case 1."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-No_SLO-8970da0c-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('No_SLO', component_dict['no_slo'])
+        self.assertEqual('-8970da0c', component_dict['uuid'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_shared_format_2(self):
+        """Test for get_masking_view_component_dict, legacy case 2."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-No_SLO-F-8970da0c-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('-F', component_dict['protocol'])
+        self.assertEqual('No_SLO', component_dict['no_slo'])
+        self.assertEqual('-8970da0c', component_dict['uuid'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_shared_format_3(self):
+        """Test for get_masking_view_component_dict, legacy case 3."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Silver-NONE-74346a64-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('Silver', component_dict['slo'])
+        self.assertEqual('NONE', component_dict['workload'])
+        self.assertEqual('-74346a64', component_dict['uuid'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_shared_format_4(self):
+        """Test for get_masking_view_component_dict, legacy case 4."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Bronze-DSS-I-1b454e9f-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('Bronze', component_dict['slo'])
+        self.assertEqual('DSS', component_dict['workload'])
+        self.assertEqual('-I', component_dict['protocol'])
+        self.assertEqual('-1b454e9f', component_dict['uuid'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_non_shared_format_5(self):
+        """Test for get_masking_view_component_dict, legacy case 5."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-No_SLO-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('No_SLO', component_dict['no_slo'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_non_shared_format_6(self):
+        """Test for get_masking_view_component_dict, legacy case 6."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-No_SLO-F-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('No_SLO', component_dict['no_slo'])
+        self.assertEqual('-F', component_dict['protocol'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_non_shared_format_7(self):
+        """Test for get_masking_view_component_dict, legacy case 7."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Diamond-OLTP-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('Diamond', component_dict['slo'])
+        self.assertEqual('OLTP', component_dict['workload'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_non_shared_format_8(self):
+        """Test for get_masking_view_component_dict, legacy case 8."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Gold-NONE-F-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('Gold', component_dict['slo'])
+        self.assertEqual('NONE', component_dict['workload'])
+        self.assertEqual('-F', component_dict['protocol'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_host_with_dashes_no_slo(
+            self):
+        """Test for get_masking_view_component_dict, dashes in host."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-host-with-dashes-No_SLO-I-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('host-with-dashes', component_dict['host'])
+        self.assertEqual('No_SLO', component_dict['no_slo'])
+        self.assertEqual('-I', component_dict['protocol'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_host_with_dashes_slo(self):
+        """Test for get_masking_view_component_dict, dashes and slo."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-host-with-dashes-SRP_1-Diamond-NONE-I-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('host-with-dashes', component_dict['host'])
+        self.assertEqual('SRP_1', component_dict['srp'])
+        self.assertEqual('Diamond', component_dict['slo'])
+        self.assertEqual('NONE', component_dict['workload'])
+        self.assertEqual('-I', component_dict['protocol'])
+        self.assertEqual('MV', component_dict['postfix'])
+
+    def test_get_masking_view_component_dict_replication_enabled(self):
+        """Test for get_masking_view_component_dict, replication enabled."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Diamond-OLTP-I-RE-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('-I', component_dict['protocol'])
+        self.assertEqual('Diamond', component_dict['slo'])
+        self.assertEqual('OLTP', component_dict['workload'])
+        self.assertEqual('-RE', component_dict['RE'])
+
+    def test_get_masking_view_component_dict_compression_disabled(self):
+        """Test for get_masking_view_component_dict, compression disabled."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Bronze-DSS_REP-I-CD-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('-I', component_dict['protocol'])
+        self.assertEqual('Bronze', component_dict['slo'])
+        self.assertEqual('DSS_REP', component_dict['workload'])
+        self.assertEqual('-CD', component_dict['CD'])
+
+    def test_get_masking_view_component_dict_CD_RE(self):
+        """Test for get_masking_view_component_dict, CD and RE."""
+        component_dict = self.migrate.get_masking_view_component_dict(
+            'OS-myhost-SRP_1-Platinum-OLTP_REP-I-CD-RE-MV', 'SRP_1')
+        self.assertEqual('OS', component_dict['prefix'])
+        self.assertEqual('myhost', component_dict['host'])
+        self.assertEqual('-I', component_dict['protocol'])
+        self.assertEqual('Platinum', component_dict['slo'])
+        self.assertEqual('OLTP_REP', component_dict['workload'])
+        self.assertEqual('-CD', component_dict['CD'])
+        self.assertEqual('-RE', component_dict['RE'])
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_perform_migration',
+                       return_value=True)
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       return_value=(VMAXCommonData.legacy_mvs,
+                                     [VMAXCommonData.legacy_shared_sg]))
+    @mock.patch.object(migrate.VMAXMigrate,
+                       'get_volume_host_list',
+                       return_value=['myhostB'])
+    def test_do_migrate_if_candidate(
+            self, mock_mvs, mock_os_host, mock_migrate):
+        self.assertTrue(self.migrate.do_migrate_if_candidate(
+            self.data.array, self.data.srp, self.data.device_id,
+            self.data.test_volume, self.data.connector))
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       return_value=([VMAXCommonData.legacy_not_shared_mv],
+                                     [VMAXCommonData.legacy_not_shared_sg]))
+    def test_do_migrate_if_candidate_not_shared(
+            self, mock_mvs):
+        self.assertFalse(self.migrate.do_migrate_if_candidate(
+            self.data.array, self.data.srp, self.data.device_id,
+            self.data.test_volume, self.data.connector))
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       return_value=(VMAXCommonData.legacy_mvs,
+                                     [VMAXCommonData.legacy_shared_sg,
+                                      'non_fast_sg']))
+    def test_do_migrate_if_candidate_in_multiple_sgs(
+            self, mock_mvs):
+        self.assertFalse(self.migrate.do_migrate_if_candidate(
+            self.data.array, self.data.srp, self.data.device_id,
+            self.data.test_volume, self.data.connector))
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_perform_migration',
+                       return_value=True)
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       return_value=(VMAXCommonData.legacy_mvs,
+                                     [VMAXCommonData.legacy_shared_sg]))
+    @mock.patch.object(migrate.VMAXMigrate,
+                       'get_volume_host_list',
+                       return_value=['myhostA', 'myhostB'])
+    def test_dp_migrate_if_candidate_multiple_os_hosts(
+            self, mock_mvs, mock_os_host, mock_migrate):
+        self.assertFalse(self.migrate.do_migrate_if_candidate(
+            self.data.array, self.data.srp, self.data.device_id,
+            self.data.test_volume, self.data.connector))
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_delete_staging_masking_views')
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       side_effect=[(VMAXCommonData.staging_mvs,
+                                     [VMAXCommonData.staging_sg]),
+                                    ([VMAXCommonData.staging_mv2],
+                                     [VMAXCommonData.staging_sg])])
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_masking_views',
+                       return_value=VMAXCommonData.staging_mvs)
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_storage_group_with_vol',
+                       return_value=VMAXCommonData.staging_sg)
+    def test_perform_migration(self, mock_sg, mock_mvs, mock_new, mock_del):
+        """Test to perform migration"""
+        source_sg_name = 'OS-myhost-SRP_1-Diamond-OLTP-F-SG'
+        mv_details_list = list()
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostA-SRP_1-Diamond-OLTP-F-1b454e9f-MV', 'SRP_1'))
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostB-SRP_1-Diamond-OLTP-F-8970da0c-MV', 'SRP_1'))
+        self.assertTrue(self.migrate._perform_migration(
+            self.data.array, self.data.device_id, mv_details_list,
+            source_sg_name, 'myhostB'))
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_storage_group_with_vol',
+                       return_value=None)
+    def test_perform_migration_storage_group_fail(self, mock_sg):
+        """Test to perform migration"""
+        source_sg_name = 'OS-myhost-SRP_1-Diamond-OLTP-F-SG'
+        mv_details_list = list()
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostA-SRP_1-Diamond-OLTP-F-1b454e9f-MV', 'SRP_1'))
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostB-SRP_1-Diamond-OLTP-F-8970da0c-MV', 'SRP_1'))
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.migrate._perform_migration, self.data.array,
+            self.data.device_id, mv_details_list,
+            source_sg_name, 'myhostB')
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                'MIGRATE - Unable to create staging storage group.'):
+            self.migrate._perform_migration(
+                self.data.array, self.data.device_id, mv_details_list,
+                source_sg_name, 'myhostB')
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_masking_views',
+                       return_value=[])
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_storage_group_with_vol',
+                       return_value=VMAXCommonData.staging_sg)
+    def test_perform_migration_masking_views_fail(self, mock_sg, mock_mvs):
+        """Test to perform migration"""
+        source_sg_name = 'OS-myhost-SRP_1-Diamond-OLTP-F-SG'
+        mv_details_list = list()
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostA-SRP_1-Diamond-OLTP-F-1b454e9f-MV', 'SRP_1'))
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostB-SRP_1-Diamond-OLTP-F-8970da0c-MV', 'SRP_1'))
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                'MIGRATE - Unable to create staging masking views.'):
+            self.migrate._perform_migration(
+                self.data.array, self.data.device_id, mv_details_list,
+                source_sg_name, 'myhostB')
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       return_value=(VMAXCommonData.staging_mvs,
+                                     [VMAXCommonData.staging_sg,
+                                      VMAXCommonData.staging_sg]))
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_masking_views',
+                       return_value=VMAXCommonData.staging_mvs)
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_storage_group_with_vol',
+                       return_value=VMAXCommonData.staging_sg)
+    def test_perform_migration_sg_list_len_fail(
+            self, mock_sg, mock_mvs, mock_new):
+        """Test to perform migration"""
+        source_sg_name = 'OS-myhost-SRP_1-Diamond-OLTP-F-SG'
+        mv_details_list = list()
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostA-SRP_1-Diamond-OLTP-F-1b454e9f-MV', 'SRP_1'))
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostB-SRP_1-Diamond-OLTP-F-8970da0c-MV', 'SRP_1'))
+
+        exception_message = (
+            r"MIGRATE - The current storage group list has 2 "
+            r"members. The list is "
+            r"\[\'STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-SG\', "
+            r"\'STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-SG\'\]. "
+            r"Will not proceed with cleanup. Please contact customer "
+            r"representative.")
+
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                exception_message):
+            self.migrate._perform_migration(
+                self.data.array, self.data.device_id, mv_details_list,
+                source_sg_name, 'myhostB')
+
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_get_mvs_and_sgs_from_volume',
+                       return_value=(VMAXCommonData.staging_mvs,
+                                     ['not_staging_sg']))
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_masking_views',
+                       return_value=VMAXCommonData.staging_mvs)
+    @mock.patch.object(migrate.VMAXMigrate,
+                       '_create_stg_storage_group_with_vol',
+                       return_value=VMAXCommonData.staging_sg)
+    def test_perform_migration_stg_sg_mismatch_fail(
+            self, mock_sg, mock_mvs, mock_new):
+        """Test to perform migration"""
+        source_sg_name = 'OS-myhost-SRP_1-Diamond-OLTP-F-SG'
+        mv_details_list = list()
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostA-SRP_1-Diamond-OLTP-F-1b454e9f-MV', 'SRP_1'))
+        mv_details_list.append(self.migrate.get_masking_view_component_dict(
+            'OS-myhostB-SRP_1-Diamond-OLTP-F-8970da0c-MV', 'SRP_1'))
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                'MIGRATE - The current storage group not_staging_sg does not '
+                'match STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-SG. '
+                'Will not proceed with cleanup. Please contact customer '
+                'representative.'):
+            self.migrate._perform_migration(
+                self.data.array, self.data.device_id, mv_details_list,
+                source_sg_name, 'myhostB')
+
+    @mock.patch.object(rest.VMAXRest, 'delete_masking_view')
+    def test_delete_staging_masking_views(self, mock_del):
+        self.assertTrue(self.migrate._delete_staging_masking_views(
+            self.data.array, self.data.staging_mvs, 'myhostB'))
+        mock_del.assert_called_once()
+
+    @mock.patch.object(rest.VMAXRest, 'delete_masking_view')
+    def test_delete_staging_masking_views_no_host_match(self, mock_del):
+        self.assertFalse(self.migrate._delete_staging_masking_views(
+            self.data.array, self.data.staging_mvs, 'myhostC'))
+        mock_del.assert_not_called()
+
+    @mock.patch.object(rest.VMAXRest, 'create_masking_view')
+    @mock.patch.object(rest.VMAXRest, 'get_masking_view',
+                       return_value=VMAXCommonData.maskingview[0])
+    def test_create_stg_masking_views(self, mock_get, mock_create):
+        mv_detail_list = list()
+        for masking_view in self.data.legacy_mvs:
+            masking_view_dict = self.migrate.get_masking_view_component_dict(
+                masking_view, 'SRP_1')
+            if masking_view_dict:
+                mv_detail_list.append(masking_view_dict)
+        self.assertIsNotNone(self.migrate._create_stg_masking_views(
+            self.data.array, mv_detail_list, self.data.staging_sg,
+            self.data.extra_specs))
+        self.assertEqual(2, mock_create.call_count)
+
+    @mock.patch.object(rest.VMAXRest, 'create_masking_view')
+    @mock.patch.object(rest.VMAXRest, 'get_masking_view',
+                       side_effect=[VMAXCommonData.maskingview[0], None])
+    def test_create_stg_masking_views_mv_not_created(
+            self, mock_get, mock_create):
+        mv_detail_list = list()
+        for masking_view in self.data.legacy_mvs:
+            masking_view_dict = self.migrate.get_masking_view_component_dict(
+                masking_view, 'SRP_1')
+            if masking_view_dict:
+                mv_detail_list.append(masking_view_dict)
+        self.assertIsNone(self.migrate._create_stg_masking_views(
+            self.data.array, mv_detail_list, self.data.staging_sg,
+            self.data.extra_specs))
+
+    @mock.patch.object(provision.VMAXProvision, 'create_volume_from_sg')
+    @mock.patch.object(provision.VMAXProvision, 'create_storage_group',
+                       return_value=VMAXCommonData.staging_mvs[0])
+    def test_create_stg_storage_group_with_vol(self, mock_mv, mock_create):
+        self.migrate._create_stg_storage_group_with_vol(
+            self.data.array, 'myhostB', self.data.extra_specs)
+        mock_create.assert_called_once()
+
+    @mock.patch.object(provision.VMAXProvision, 'create_volume_from_sg')
+    @mock.patch.object(provision.VMAXProvision, 'create_storage_group',
+                       return_value=None)
+    def test_create_stg_storage_group_with_vol_None(
+            self, mock_mv, mock_create):
+        self.assertIsNone(self.migrate._create_stg_storage_group_with_vol(
+            self.data.array, 'myhostB', self.data.extra_specs))
+
+    @mock.patch.object(rest.VMAXRest,
+                       'get_masking_views_from_storage_group',
+                       return_value=VMAXCommonData.legacy_mvs)
+    @mock.patch.object(rest.VMAXRest, 'get_storage_groups_from_volume',
+                       return_value=[VMAXCommonData.legacy_shared_sg])
+    def test_get_mvs_and_sgs_from_volume(self, mock_sgs, mock_mvs):
+        mv_list, sg_list = self.migrate._get_mvs_and_sgs_from_volume(
+            self.data.array, self.data.device_id)
+        mock_mvs.assert_called_once()
+        self.assertEqual([self.data.legacy_shared_sg], sg_list)
+        self.assertEqual(self.data.legacy_mvs, mv_list)
+
+    @mock.patch.object(rest.VMAXRest,
+                       'get_masking_views_from_storage_group')
+    @mock.patch.object(rest.VMAXRest, 'get_storage_groups_from_volume',
+                       return_value=list())
+    def test_get_mvs_and_sgs_from_volume_empty_sg_list(
+            self, mock_sgs, mock_mvs):
+        mv_list, sg_list = self.migrate._get_mvs_and_sgs_from_volume(
+            self.data.array, self.data.device_id)
+        mock_mvs.assert_not_called()
+        self.assertTrue(len(sg_list) == 0)
+        self.assertTrue(len(mv_list) == 0)
+
+    def test_get_volume_host_list(self):
+        volume1 = deepcopy(self.data.test_volume)
+        volume1.volume_attachment.objects = [self.data.test_volume_attachment]
+        os_host_list = self.migrate.get_volume_host_list(
+            volume1, self.data.connector)
+        self.assertEqual('HostX', os_host_list[0])
+
+    def test_get_volume_host_list_no_attachments(self):
+        _volume_attachment = deepcopy(self.data.test_volume_attachment)
+        _volume_attachment.update({'connector': None})
+        volume1 = deepcopy(self.data.test_volume)
+        volume1.volume_attachment.objects = [_volume_attachment]
+        os_host_list = self.migrate.get_volume_host_list(
+            volume1, self.data.connector)
+        self.assertTrue(len(os_host_list) == 0)
+
+    @mock.patch.object(rest.VMAXRest,
+                       'delete_masking_view')
+    @mock.patch.object(rest.VMAXRest,
+                       'get_masking_views_from_storage_group',
+                       return_value=[VMAXCommonData.staging_mv1])
+    @mock.patch.object(rest.VMAXRest,
+                       'get_volumes_in_storage_group',
+                       return_value=[VMAXCommonData.volume_id])
+    def test_cleanup_staging_objects(self, mock_vols, mock_mvs, mock_del_mv):
+        self.migrate.cleanup_staging_objects(
+            self.data.array, [self.data.staging_sg], self.data.extra_specs)
+        mock_del_mv.assert_called_once_with(
+            self.data.array, self.data.staging_mv1)
+
+    @mock.patch.object(rest.VMAXRest,
+                       'delete_masking_view')
+    def test_cleanup_staging_objects_not_staging(self, mock_del_mv):
+        self.migrate.cleanup_staging_objects(
+            self.data.array, [self.data.storagegroup_name_f],
+            self.data.extra_specs)
+        mock_del_mv.assert_not_called()
+
+    @mock.patch.object(rest.VMAXRest,
+                       'get_masking_views_from_storage_group')
+    @mock.patch.object(rest.VMAXRest,
+                       'get_volumes_in_storage_group',
+                       return_value=[VMAXCommonData.device_id,
+                                     VMAXCommonData.device_id2], )
+    def test_cleanup_staging_objects_multiple_vols(self, mock_vols, mock_mvs):
+        self.migrate.cleanup_staging_objects(
+            self.data.array, [self.data.storagegroup_name_f],
+            self.data.extra_specs)
+        mock_mvs.assert_not_called()

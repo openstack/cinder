@@ -30,6 +30,7 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.vmax import masking
+from cinder.volume.drivers.dell_emc.vmax import migrate
 from cinder.volume.drivers.dell_emc.vmax import provision
 from cinder.volume.drivers.dell_emc.vmax import rest
 from cinder.volume.drivers.dell_emc.vmax import utils
@@ -116,6 +117,8 @@ class VMAXCommon(object):
         self.masking = masking.VMAXMasking(prtcl, self.rest)
         self.provision = provision.VMAXProvision(self.rest)
         self.version = version
+        self.migrate = migrate.VMAXMigrate(prtcl, self.rest)
+
         # replication
         self.replication_enabled = False
         self.extend_replicated_vol = False
@@ -533,6 +536,7 @@ class VMAXCommon(object):
             return
         source_nf_sg = None
         target_nf_sg = None
+        legacy_cleanup = False
         array = extra_specs[utils.ARRAY]
         if self.utils.does_vol_need_rdf_management_group(extra_specs):
             async_grp = self.utils.get_async_rdf_managed_grp_name(
@@ -549,7 +553,15 @@ class VMAXCommon(object):
                         break
                     else:
                         target_nf_sg = storage_group
-
+                elif is_live_migration and 'STG-' in storage_group:
+                    legacy_cleanup = True
+                    self.masking.remove_volume_from_sg(
+                        array, device_info['device_id'], volume_name,
+                        storage_group, extra_specs)
+                    LOG.debug("Removed %(dev_id)s from source STG storage "
+                              "group %(sg)s in the live migration process.",
+                              {'dev_id': device_info['device_id'],
+                               'sg': storage_group})
         if source_nf_sg:
             # Remove volume from non fast storage group
             self.masking.remove_volume_from_sg(
@@ -558,7 +570,7 @@ class VMAXCommon(object):
             LOG.debug("Removed %(dev_id)s from source NONFAST storage "
                       "group %(sg)s in the live migration process.",
                       {'dev_id': device_info['device_id'],
-                       'sg': source_nf_sg}),
+                       'sg': source_nf_sg})
         elif target_nf_sg:
             for storage_group in source_storage_group_list:
                 if storage_group.lower == target_nf_sg:
@@ -571,6 +583,9 @@ class VMAXCommon(object):
                         self.masking.remove_volume_from_sg(
                             array, device_info['device_id'], volume_name,
                             storage_group, extra_specs)
+        elif legacy_cleanup:
+            self.migrate.cleanup_staging_objects(
+                array, source_storage_group_list, extra_specs)
         else:
             self._remove_members(array, volume, device_info['device_id'],
                                  extra_specs, connector, async_grp=async_grp)
@@ -634,7 +649,8 @@ class VMAXCommon(object):
         if self.utils.is_volume_failed_over(volume):
             extra_specs = rep_extra_specs
         device_info_dict, is_live_migration, source_storage_group_list = (
-            self.find_host_lun_id(volume, connector['host'], extra_specs))
+            self.find_host_lun_id(volume, connector.get('host'), extra_specs,
+                                  connector=connector))
         masking_view_dict = self._populate_masking_dict(
             volume, connector, extra_specs)
 
@@ -1113,13 +1129,14 @@ class VMAXCommon(object):
         return founddevice_id
 
     def find_host_lun_id(self, volume, host, extra_specs,
-                         rep_extra_specs=None):
+                         rep_extra_specs=None, connector=None):
         """Given the volume dict find the host lun id for a volume.
 
         :param volume: the volume dict
         :param host: host from connector (can be None on a force-detach)
         :param extra_specs: the extra specs
         :param rep_extra_specs: rep extra specs, passed in if metro device
+        :param connector: connector object can be none.
         :returns: dict -- the data dict
         """
         masked_vol_list = list()
@@ -1128,7 +1145,15 @@ class VMAXCommon(object):
         is_live_migration = False
         volume_name = volume.name
         device_id = self._find_device_on_array(volume, extra_specs)
-        if rep_extra_specs is not None:
+        if connector:
+            if self.migrate.do_migrate_if_candidate(
+                    extra_specs[utils.ARRAY], extra_specs[utils.SRP],
+                    device_id, volume, connector):
+                LOG.debug("MIGRATE - Successfully migrated from device "
+                          "%(dev)s from legacy shared storage groups, "
+                          "pre Pike release.",
+                          {'dev': device_id})
+        if rep_extra_specs:
             device_id = self.get_remote_target_device(
                 extra_specs[utils.ARRAY], volume, device_id)[0]
             extra_specs = rep_extra_specs
@@ -1199,6 +1224,10 @@ class VMAXCommon(object):
                                            'sg': storage_group})
                                 is_live_migration = True
                                 break
+                            elif 'STG-' in storage_group:
+                                staging_host = 'stg' + hoststr.lower()
+                                if staging_host in storage_group.lower():
+                                    is_live_migration = True
         else:
             exception_message = (_("Cannot retrieve volume %(vol)s "
                                    "from the array.") % {'vol': volume_name})

@@ -528,6 +528,16 @@ class VMAXRest(object):
             array, SLOPROVISIONING, 'storagegroup',
             resource_name=storage_group_name)
 
+    def get_storage_group_list(self, array, params=None):
+        """Given a name, return storage group details.
+
+        :param array: the array serial number
+        :param params: dict of optional filters
+        :returns: storage group dict or None
+        """
+        return self.get_resource(
+            array, SLOPROVISIONING, 'storagegroup', params=params)
+
     def get_num_vols_in_sg(self, array, storage_group_name):
         """Get the number of volumes in a storage group.
 

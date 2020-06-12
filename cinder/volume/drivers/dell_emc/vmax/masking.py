@@ -1601,6 +1601,16 @@ class VMAXMasking(object):
         :param device_info_dict: the data dict
         :param extra_specs: extra specifications
         """
+        sg_list = self.rest.get_storage_group_list(
+            device_info_dict['array'], params={
+                'child': 'true', 'volumeId': device_info_dict['device_id']})
+        # You need to put in something here for legacy
+        if not sg_list.get('storageGroupId'):
+            storage_group_list = self.rest.get_storage_groups_from_volume(
+                device_info_dict['array'], device_info_dict['device_id'])
+            if storage_group_list and len(storage_group_list) == 1:
+                if 'STG-' in storage_group_list[0]:
+                    return
         if is_source_nf_sg is False:
             storage_group = self.rest.get_storage_group(
                 device_info_dict['array'], source_nf_sg)
@@ -1630,13 +1640,14 @@ class VMAXMasking(object):
         array = device_info_dict['array']
         source_sg = device_info_dict['source_sg']
         # Delete fast storage group
-        num_vol_in_sg = self.rest.get_num_vols_in_sg(
-            array, source_sg)
-        if num_vol_in_sg == 0:
-            self.rest.remove_child_sg_from_parent_sg(
-                array, source_sg, device_info_dict['source_parent_sg'],
-                extra_specs)
-            self.rest.delete_storage_group(array, source_sg)
+        if source_sg:
+            num_vol_in_sg = self.rest.get_num_vols_in_sg(
+                array, source_sg)
+            if num_vol_in_sg == 0:
+                self.rest.remove_child_sg_from_parent_sg(
+                    array, source_sg, device_info_dict['source_parent_sg'],
+                    extra_specs)
+                self.rest.delete_storage_group(array, source_sg)
 
     def failed_live_migration(self, device_info_dict,
                               source_storage_group_list, extra_specs):
