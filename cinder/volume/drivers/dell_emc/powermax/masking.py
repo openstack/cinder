@@ -1063,6 +1063,7 @@ class PowerMaxMasking(object):
         :param reset: flag to indicate if reset is required -- bool
         :param async_grp: the async rep group
         """
+
         move = False
         short_host_name = None
         storagegroup_names = (self.rest.get_storage_groups_from_volume(
@@ -1659,6 +1660,14 @@ class PowerMaxMasking(object):
         sg_list = self.rest.get_storage_group_list(
             serial_number, params={
                 'child': 'true', 'volumeId': device_id})
+        # You need to put in something here for legacy
+        if not sg_list.get('storageGroupId'):
+            storage_group_list = self.rest.get_storage_groups_from_volume(
+                serial_number, device_id)
+            if storage_group_list and len(storage_group_list) == 1:
+                if 'STG-' in storage_group_list[0]:
+                    return mv_dict
+
         split_pool = extra_specs['pool_name'].split('+')
         src_slo = split_pool[0]
         src_wl = split_pool[1] if len(split_pool) == 4 else 'NONE'

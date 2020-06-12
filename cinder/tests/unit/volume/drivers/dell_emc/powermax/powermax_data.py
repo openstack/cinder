@@ -1218,3 +1218,14 @@ class PowerMaxData(object):
 
     volume_metadata = {
         'DeviceID': device_id, 'ArrayID': array, 'ArrayModel': array_model}
+
+    staging_sg = 'STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-SG'
+    staging_mv1 = 'STG-myhostA-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-MV'
+    staging_mv2 = 'STG-myhostB-4732de9b-98a4-4b6d-ae4b-3cafb3d34220-MV'
+    staging_mvs = [staging_mv1, staging_mv2]
+    legacy_mv1 = 'OS-myhostA-No_SLO-e14f48b8-MV'
+    legacy_mv2 = 'OS-myhostB-No_SLO-e14f48b8-MV'
+    legacy_shared_sg = 'OS-myhostA-No_SLO-SG'
+    legacy_mvs = [legacy_mv1, legacy_mv2]
+    legacy_not_shared_mv = 'OS-myhostA-SRP_1-Diamond-NONE-MV'
+    legacy_not_shared_sg = 'OS-myhostA-SRP_1-Diamond-NONE-SG'

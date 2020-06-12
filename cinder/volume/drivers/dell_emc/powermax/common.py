@@ -34,6 +34,7 @@ from cinder.utils import retry
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.powermax import masking
 from cinder.volume.drivers.dell_emc.powermax import metadata as volume_metadata
+from cinder.volume.drivers.dell_emc.powermax import migrate
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
@@ -167,6 +168,7 @@ class PowerMaxCommon(object):
         self.provision = provision.PowerMaxProvision(self.rest)
         self.volume_metadata = volume_metadata.PowerMaxVolumeMetadata(
             self.rest, version, LOG.isEnabledFor(logging.DEBUG))
+        self.migrate = migrate.PowerMaxMigrate(prtcl, self.rest)
 
         # Configuration/Attributes
         self.protocol = prtcl
@@ -687,12 +689,17 @@ class PowerMaxCommon(object):
         volume_name = volume.name
         LOG.debug("Detaching volume %s.", volume_name)
         reset = False if is_multiattach else True
+        if is_multiattach:
+            storage_group_names = self.rest.get_storage_groups_from_volume(
+                array, device_id)
         self.masking.remove_and_reset_members(
             array, volume, device_id, volume_name,
             extra_specs, reset, connector, async_grp=async_grp)
         if is_multiattach:
             self.masking.return_volume_to_fast_managed_group(
                 array, device_id, extra_specs)
+            self.migrate.cleanup_staging_objects(
+                array, storage_group_names, extra_specs)
 
     def _unmap_lun(self, volume, connector):
         """Unmaps a volume from the host.
@@ -816,7 +823,8 @@ class PowerMaxCommon(object):
         if self.utils.is_volume_failed_over(volume):
             extra_specs = rep_extra_specs
         device_info_dict, is_multiattach = (
-            self.find_host_lun_id(volume, connector['host'], extra_specs))
+            self.find_host_lun_id(volume, connector.get('host'), extra_specs,
+                                  connector=connector))
         masking_view_dict = self._populate_masking_dict(
             volume, connector, extra_specs)
         masking_view_dict[utils.IS_MULTIATTACH] = is_multiattach
@@ -1444,20 +1452,29 @@ class PowerMaxCommon(object):
         return founddevice_id
 
     def find_host_lun_id(self, volume, host, extra_specs,
-                         rep_extra_specs=None):
+                         rep_extra_specs=None, connector=None):
         """Given the volume dict find the host lun id for a volume.
 
         :param volume: the volume dict
         :param host: host from connector (can be None on a force-detach)
         :param extra_specs: the extra specs
         :param rep_extra_specs: rep extra specs, passed in if metro device
+        :param connector: connector object can be none.
         :returns: dict -- the data dict
         """
         maskedvols = {}
         is_multiattach = False
         volume_name = volume.name
         device_id = self._find_device_on_array(volume, extra_specs)
-        if rep_extra_specs is not None:
+        if connector:
+            if self.migrate.do_migrate_if_candidate(
+                    extra_specs[utils.ARRAY], extra_specs[utils.SRP],
+                    device_id, volume, connector):
+                LOG.debug("MIGRATE - Successfully migrated from device "
+                          "%(dev)s from legacy shared storage groups, "
+                          "pre Pike release.",
+                          {'dev': device_id})
+        if rep_extra_specs:
             device_id = self.get_remote_target_device(
                 extra_specs[utils.ARRAY], volume, device_id)[0]
             extra_specs = rep_extra_specs

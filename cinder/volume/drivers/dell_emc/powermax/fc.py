@@ -122,9 +122,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         4.1.4 - Legacy volume not found fix (#1867163)
         4.1.5 - Allowing for default volume type in group (#1866871)
         4.1.6 - Pools bug fix allowing 'None' variants (bug #1873253)
+        4.1.7 - Fix to enable legacy volumes to live migrate (#1867163)
     """
 
-    VERSION = "4.1.6"
+    VERSION = "4.1.7"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
