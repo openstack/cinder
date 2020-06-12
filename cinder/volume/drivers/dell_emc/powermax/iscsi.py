@@ -132,6 +132,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.3.0 - Changing from 91 to 92 REST endpoints
               - Support for Port Group and Port load balancing
                 (bp powermax-port-load-balance)
+              - Fix to enable legacy volumes to live migrate (#1867163)
     """
 
     VERSION = "4.3.0"
