@@ -133,9 +133,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.2.4 - Rep validation & retype suspension fix (bug #1875433)
         4.2.5 - Create vol suspend fix & DeviceID check (bug #1877976)
         4.2.6 - Volume migrate exception handling (bug #1886662, #1874187)
+        4.2.7 - Fix to enable legacy volumes to live migrate (#1867163)
     """
 
-    VERSION = "4.2.6"
+    VERSION = "4.2.7"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
