@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    This PowerMax driver moves the legacy shared volume from the masking
+    view structure in Ocata and prior releases (when SMI-S was supported) to
+    staging masking view(s) in Pike and later releases (U4P REST).
+    In Ocata, the live migration process shared the storage group,
+    containing the volume, among the different compute nodes. In Pike,
+    we changed the masking view structure to facilitate a cleaner live
+    migration process where only the intended volume is migrated without
+    exposing other volumes in the storage group. The staging storage group
+    and masking views facilitate a seamless live migration operation in
+    upgraded releases.
