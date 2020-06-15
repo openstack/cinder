@@ -2033,8 +2033,8 @@ class API(base.Base):
 
         # To translate any true/false equivalent to True/False
         # which is only acceptable format in database queries.
-
-        for key, val in filters.items():
+        temp_dict = filters.copy()
+        for key, val in temp_dict.items():
             try:
                 if key in booleans:
                     filters[key] = self._check_boolean_filter_value(
@@ -2047,6 +2047,11 @@ class API(base.Base):
                     # the filter becomes different from the user input.
                     continue
                 else:
+                    # this is required as ast.literal_eval(<int>/<float>)
+                    # raises exception. Eg: ast.literal_eval(5) generates
+                    # ValueError: malformed node or string: 5
+                    if not isinstance(val, str):
+                        val = str(val)
                     filters[key] = ast.literal_eval(val)
             except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', val)
