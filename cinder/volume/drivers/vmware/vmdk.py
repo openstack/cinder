@@ -325,7 +325,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._clusters = None
         self._dc_cache = {}
         self._ds_regex = None
-        self.additional_endpoints.append([
+        self.additional_endpoints.extend([
             remote_api.VmdkDriverRemoteService(self)
         ])
         self._remote_api = remote_api.VmdkDriverRemoteApi()
@@ -568,6 +568,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param volume: Volume object
         """
         backing = self.volumeops.get_backing(volume['name'], volume['id'])
+        if not backing:
+            # If a volume has just been migrated, the manager assigned the
+            # temporary ID in the `volume` parameter, but instead it has set
+            # the correct ID to _name_id, which we need to perform deletion.
+            backing = self.volumeops.get_backing_by_uuid(volume.name_id)
         if not backing:
             LOG.info("Backing not available, no operation "
                      "to be performed.")
@@ -833,10 +838,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             #
             # If we are migrating to this volume, we need to
             # create a writeable handle for the migration to work.
-            if (volume['status'] == 'restoring-backup' or
-               (volume['status'] == 'available' and
-                    volume['migration_status'] and
-                    volume['migration_status'].startswith('target:'))):
+            if self._is_volume_subject_to_import_vapp(volume):
                 connection_info['data']['import_data'] = \
                     self._get_connection_import_data(volume)
 
@@ -849,6 +851,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                    'connector': connector})
 
         return connection_info
+
+    def _is_volume_subject_to_import_vapp(self, volume):
+        return (volume['status'] == 'restoring-backup' or
+                (volume['status'] == 'available' and
+                 volume['migration_status'] and
+                 volume['migration_status'].startswith('target:')))
 
     def _get_connection_import_data(self, volume):
         (host, rp, folder, summary) = self._select_ds_for_volume(
@@ -980,7 +988,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # which will replace the initial one. Here we set the proper name
         # and backing uuid for the new backing, because os-brick doesn't do it.
         if (connector and 'platform' in connector and 'os_type' in connector
-                and volume['status'] == 'restoring-backup'):
+                and self._is_volume_subject_to_import_vapp(volume)):
             backing = self.volumeops.get_backing_by_uuid(volume['id'])
 
             self.volumeops.rename_backing(backing, volume['name'])
@@ -2602,7 +2610,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
 
         false_ret = (False, None)
-        if volume['status'] != 'available':
+        allowed_statuses = ['available', 'reserved']
+        if volume['status'] not in allowed_statuses:
+            LOG.debug('Only %s volumes can be migrated using backend '
+                      'assisted migration. Falling back to generic migration.',
+                      " or ".join(allowed_statuses))
             return false_ret
         if 'location_info' not in host['capabilities']:
             return false_ret
@@ -2651,3 +2663,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             return (True, {'migration_status': 'error'})
 
         return (True, None)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        backing = self.volumeops.get_backing(new_volume['name'],
+                                             new_volume['id'])
+        if not backing:
+            LOG.warning("Backing was not found after migration.")
+            return None
+
+        self.volumeops.rename_backing(backing, volume['name'])
+        self.volumeops.update_backing_uuid(backing, volume['id'])
+        self.volumeops.update_backing_disk_uuid(backing, volume['id'])
+
+        return None
