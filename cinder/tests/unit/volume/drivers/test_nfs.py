@@ -1452,7 +1452,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         super(NfsDriverDoSetupTestCase, self).setUp()
         self.context = mock.Mock()
         self.create_configuration()
-        self.override_config('compute_api_class', 'mock.Mock')
+        self.override_config('compute_api_class', 'unittest.mock.Mock')
 
     def create_configuration(self):
         config = conf.Configuration(None)
