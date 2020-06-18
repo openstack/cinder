@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    This release updates the os-brick library used by Cinder to version
+    2.10.4 to correct a problem with the fix for `Bug #1823200
+    <https://bugs.launchpad.net/cinder/+bug/1823200>`_ in the previous
+    os-brick release.
+
+    See the `os-brick 2.10.4 release notes
+    <https://docs.openstack.org/releasenotes/os-brick/train.html#relnotes-2-10-4-stable-train>`_
+    for more information.
+fixes:
+  - |
+    `Bug #1875959 <https://bugs.launchpad.net/cinder/+bug/1875959>`_:
+    Fixed issue where NetApp ONTAP NFS driver would fail to flexclone
+    a Glance image.
