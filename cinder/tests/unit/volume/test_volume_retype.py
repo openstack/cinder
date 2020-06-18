@@ -48,6 +48,10 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
                             {},
                             description="fake_type")
         volume_types.create(self.context,
+                            "fake_vol_type2",
+                            {},
+                            description="fake_type2")
+        volume_types.create(self.context,
                             "multiattach-type",
                             {'multiattach': "<is> True"},
                             description="test-multiattach")
@@ -58,6 +62,9 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
         self.default_vol_type = objects.VolumeType.get_by_name_or_id(
             self.context,
             'fake_vol_type')
+        self.fake_vol_type2 = objects.VolumeType.get_by_name_or_id(
+            self.context,
+            'fake_vol_type2')
         self.multiattach_type = objects.VolumeType.get_by_name_or_id(
             self.context,
             'multiattach-type')
@@ -70,8 +77,46 @@ class VolumeRetypeTestCase(base.BaseVolumeTestCase):
             return self.multiattach_type
         elif identifier == 'multiattach-type2':
             return self.multiattach_type2
+        elif identifier == 'fake_vol_type2':
+            return self.fake_vol_type2
         else:
             return self.default_vol_type
+
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.retype')
+    @mock.patch('cinder.context.RequestContext.authorize')
+    @mock.patch.object(volume_types, 'get_by_name_or_id')
+    def test_retype_has_az(self, _mock_get_types, mock_authorize, mock_rpc):
+        """Verify retype has az in request spec."""
+        _mock_get_types.side_effect = self.fake_get_vtype
+
+        vol = tests_utils.create_volume(
+            self.context,
+            volume_type_id=self.default_vol_type.id,
+            status='available',
+            availability_zone='nova')
+
+        self.volume_api.retype(self.user_context,
+                               vol,
+                               'fake_vol_type2')
+
+        mock_authorize.assert_called_once_with(
+            vol_action_policies.RETYPE_POLICY, target_obj=mock.ANY)
+
+        fake_spec = {
+            'volume_properties': mock.ANY,
+            'volume_id': mock.ANY,
+            'volume_type': mock.ANY,
+            'migration_policy': mock.ANY,
+            'quota_reservations': mock.ANY,
+            'old_reservations': mock.ANY,
+            'availability_zones': ['nova'],
+        }
+
+        mock_rpc.assert_called_once_with(
+            self.user_context, mock.ANY,
+            request_spec=fake_spec,
+            filter_properties=mock.ANY
+        )
 
     @mock.patch('cinder.context.RequestContext.authorize')
     def test_non_multi_to_multi_retype(self, mock_authorize):

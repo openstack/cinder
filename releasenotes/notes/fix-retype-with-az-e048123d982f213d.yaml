@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed a problem with volume retype not honoring the existing volume's
+    Availability Zone if one isn't specified.

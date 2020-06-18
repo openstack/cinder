@@ -1747,6 +1747,8 @@ class API(base.Base):
             new_type)
         if type_azs is not None:
             request_spec['availability_zones'] = type_azs
+        else:
+            request_spec['availability_zones'] = [volume.availability_zone]
 
         self.scheduler_rpcapi.retype(context, volume,
                                      request_spec=request_spec,
