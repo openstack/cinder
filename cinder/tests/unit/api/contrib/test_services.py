@@ -824,6 +824,33 @@ class ServicesTest(test.TestCase):
                           self.controller._get_log, req, self.context,
                           body=body)
 
+    @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
+    def test_get_log_w_server_filter(self, get_log_mock):
+        server_filter = 'controller-0'
+
+        body = {'host': CONF.host, 'server': server_filter}
+        req = FakeRequest(version=mv.LOG_LEVEL)
+
+        log_levels = self.controller._get_log(req, mock.sentinel.context, body)
+
+        self.assertEqual(get_log_mock.return_value, log_levels)
+        get_log_mock.assert_called_once_with(req, mock.sentinel.context, body)
+        self.assertNotEqual(log_levels['binary'], constants.API_BINARY)
+        self.assertIsNot(log_levels, constants.API_BINARY)
+
+    @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
+    def test_get_log_w_server_equals_to_host(self, get_log_mock):
+        server_filter = 'server-0'
+
+        body = {'host': CONF.host, 'server': server_filter}
+        req = FakeRequest(version=mv.LOG_LEVEL)
+
+        log_levels = self.controller._get_log(req, mock.sentinel.context, body)
+
+        self.assertEqual(get_log_mock.return_value, log_levels)
+        self.assertNotEqual(log_levels['binary'], constants.API_BINARY)
+        self.assertIsNot(log_levels, constants.API_BINARY)
+
     @ddt.data(None, '', '*')
     @mock.patch('cinder.objects.ServiceList.get_all')
     def test__log_params_binaries_service_all(self, binary, service_list_mock):
