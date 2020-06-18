@@ -50,8 +50,6 @@
 
 """CLI interface for cinder management."""
 
-from __future__ import print_function
-
 try:
     import collections.abc as collections
 except ImportError:
