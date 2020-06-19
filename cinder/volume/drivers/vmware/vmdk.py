@@ -301,7 +301,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     #         get_volume_stats()
     # 3.4.4.99.0 - Added reporting of thin_provisioning_support,
     #          max_over_subscription_ratio.
-    VERSION = '3.4.2.99.0'
+    # 3.4.2.99.1 - VMware implementation of volume migration
+    # 3.4.2.99.2 - Added soft sharding volume migration, fixed a small issue
+    #          in check_for_setup_error where storage_profile not set.
+    VERSION = '3.4.2.99.2'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -354,13 +357,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
     def check_for_setup_error(self):
         # make sure if the storage profile is set that it exists.
-        for storage_profile in self.configuration.vmware_storage_profile:
-            if self._storage_policy_enabled and storage_profile:
-                profile_id = self._get_storage_profile_by_name(storage_profile)
-                if not profile_id:
-                    reason = (_("Failed to find storage profile '%s'")
-                              % storage_profile)
-                    raise exception.InvalidInput(reason=reason)
+        if self.configuration.vmware_storage_profile:
+            for storage_profile in self.configuration.vmware_storage_profile:
+                if self._storage_policy_enabled and storage_profile:
+                    profile_id = self._get_storage_profile_by_name(
+                        storage_profile)
+                    if not profile_id:
+                        reason = (_("Failed to find storage profile '%s'")
+                                  % storage_profile)
+                        raise exception.InvalidInput(reason=reason)
 
 
     def _update_volume_stats(self):
