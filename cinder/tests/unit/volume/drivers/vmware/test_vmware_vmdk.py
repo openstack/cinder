@@ -141,6 +141,16 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                        self.STORAGE_PROFILE)
 
     @mock.patch.object(VMDK_DRIVER, 'session')
+    def test_check_for_setup_error_no_profile(self, session):
+        self._driver._storage_policy_enabled = True
+
+        self._config.vmware_storage_profile = None
+        self._driver.check_for_setup_error()
+
+        self._config.vmware_storage_profile = []
+        self._driver.check_for_setup_error()
+
+    @mock.patch.object(VMDK_DRIVER, 'session')
     @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
     def test_check_for_setup_error_fail(self, get_profile_id_by_name, session):
         get_profile_id_by_name.return_value = None
