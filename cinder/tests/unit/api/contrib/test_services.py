@@ -824,32 +824,34 @@ class ServicesTest(test.TestCase):
                           self.controller._get_log, req, self.context,
                           body=body)
 
-    @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
-    def test_get_log_w_server_filter(self, get_log_mock):
+    def test_get_log_w_server_filter_same_host(self):
         server_filter = 'controller-0'
-
-        body = {'host': CONF.host, 'server': server_filter}
+        CONF.set_override('host', server_filter)
+        body = {'binary': constants.API_BINARY, 'server': server_filter}
         req = FakeRequest(version=mv.LOG_LEVEL)
 
-        log_levels = self.controller._get_log(req, mock.sentinel.context, body)
+        log_levels = self.controller._get_log(
+            req=req, context=mock.sentinel.context, body=body)
+        log_levels = log_levels['log_levels']
 
-        self.assertEqual(get_log_mock.return_value, log_levels)
-        get_log_mock.assert_called_once_with(req, mock.sentinel.context, body)
-        self.assertNotEqual(log_levels['binary'], constants.API_BINARY)
-        self.assertIsNot(log_levels, constants.API_BINARY)
+        self.assertEqual(1, len(log_levels))
+        self.assertEqual('controller-0', log_levels[0]['host'])
+        self.assertEqual('cinder-api', log_levels[0]['binary'])
+        # since there are a lot of log levels, we just check if the key-value
+        # exists for levels
+        self.assertIsNotNone(log_levels[0]['levels'])
 
-    @mock.patch('cinder.api.contrib.services.ServiceController._get_log')
-    def test_get_log_w_server_equals_to_host(self, get_log_mock):
-        server_filter = 'server-0'
-
-        body = {'host': CONF.host, 'server': server_filter}
+    def test_get_log_w_server_filter_different_host(self):
+        server_filter = 'controller-0'
+        CONF.set_override('host', 'controller-different-host')
+        body = {'binary': constants.API_BINARY, 'server': server_filter}
         req = FakeRequest(version=mv.LOG_LEVEL)
 
-        log_levels = self.controller._get_log(req, mock.sentinel.context, body)
+        log_levels = self.controller._get_log(
+            req=req, context=mock.sentinel.context, body=body)
+        log_levels = log_levels['log_levels']
 
-        self.assertEqual(get_log_mock.return_value, log_levels)
-        self.assertNotEqual(log_levels['binary'], constants.API_BINARY)
-        self.assertIsNot(log_levels, constants.API_BINARY)
+        self.assertEqual(0, len(log_levels))
 
     @ddt.data(None, '', '*')
     @mock.patch('cinder.objects.ServiceList.get_all')
