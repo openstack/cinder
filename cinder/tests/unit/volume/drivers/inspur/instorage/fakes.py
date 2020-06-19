@@ -2168,7 +2168,7 @@ port_speed!N/A
         if peer_sys not in self._partnership_list:
             return self._errors['CMMVC5753E']
 
-        partner_state = ('fully_configured' if 'start'in kwargs
+        partner_state = ('fully_configured' if 'start' in kwargs
                          else 'fully_configured_stopped')
         self._partnership_list[peer_sys]['partnership'] = partner_state
         return('', '')

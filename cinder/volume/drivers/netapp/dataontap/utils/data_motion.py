@@ -555,7 +555,7 @@ class DataMotionMixin(object):
         given replication target.
         """
         filtered_mirrors = [x for x in mirrors
-                            if x.get('destination-volume')in flexvols]
+                            if x.get('destination-volume') in flexvols]
         sorted_mirrors = sorted(filtered_mirrors,
                                 key=lambda x: int(x.get('lag-time')),
                                 reverse=True)

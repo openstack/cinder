@@ -545,7 +545,7 @@ class Client(object):
                 self.vnx.remove_hba(initiator_uid)
 
     def update_consistencygroup(self, cg, lun_ids_to_add, lun_ids_to_remove):
-        lun_ids_in_cg = (set([l.lun_id for l in cg.lun_list]) if cg.lun_list
+        lun_ids_in_cg = (set([lu.lun_id for lu in cg.lun_list]) if cg.lun_list
                          else set())
 
         # lun_ids_to_add and lun_ids_to_remove never overlap.

@@ -1333,7 +1333,7 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _retrieve_qos_setting(self, volume, extended_size=0):
         qos = {}
         if (self.configuration.sf_allow_tenant_qos and
-                volume.get('volume_metadata')is not None):
+                volume.get('volume_metadata') is not None):
             qos = self._set_qos_presets(volume)
 
         ctxt = context.get_admin_context()

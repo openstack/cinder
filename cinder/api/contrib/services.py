@@ -216,7 +216,7 @@ class ServiceController(wsgi.Controller):
                                                                   log_req)
             result.append({'host': service.host,
                            'binary': service.binary,
-                           'levels': {l.prefix: l.level for l in levels}})
+                           'levels': {le.prefix: le.level for le in levels}})
 
         return {'log_levels': result}
 
