@@ -36,6 +36,8 @@ Supported operations
 
 * Create, list, and delete consistency group snapshots.
 
+* Revert a volume to a snapshot.
+
 * Manage and unmanage a volume.
 
 * Manage and unmanage a snapshot.
