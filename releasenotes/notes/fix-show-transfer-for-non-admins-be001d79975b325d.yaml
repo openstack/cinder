@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1884268 <https://bugs.launchpad.net/cinder/+bug/1884268>`_:
+    Fixed issue where non-admin users could not show a volume transfer by name.
