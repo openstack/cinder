@@ -3819,6 +3819,7 @@ class PowerMaxCommon(object):
         """
 
         is_re, rep_mode, mgmt_sg_name = False, None, None
+        parent_sg = None
         if self.utils.is_replication_enabled(target_extra_specs):
             is_re, rep_mode = True, target_extra_specs['rep_mode']
             mgmt_sg_name = self.utils.get_rdf_management_group_name(
@@ -3876,7 +3877,7 @@ class PowerMaxCommon(object):
         # Move the volume from the source to target storage group
         self.masking.move_volume_between_storage_groups(
             array, device_id, source_sg_name, target_sg_name, extra_specs,
-            force=True)
+            force=True, parent_sg=parent_sg)
 
         # Check if volume should be member of GVG
         self.masking.return_volume_to_volume_group(
