@@ -48,7 +48,7 @@
               - ^tox.ini$
         - cinder-tempest-plugin-lvm-lio-barbican:
             irrelevant-files: *functional-irrelevant-files
-        - cinder-grenade-dsvm-mn-sub-volbak:
+        - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-tempest-lvm-multibackend:
             voting: false
@@ -60,19 +60,19 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - grenade-py3:
+        - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
-        - cinder-grenade-dsvm-mn-sub-volbak:
+        - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
             irrelevant-files: *gate-irrelevant-files
         - tempest-integrated-storage:
             irrelevant-files: *gate-irrelevant-files
-        - grenade-py3:
+        - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
@@ -82,9 +82,9 @@
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-dsvm-mn-sub-volschbak:
+        - cinder-grenade-mn-sub-volschbak:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-grenade-dsvm-mn-sub-bak:
+        - cinder-grenade-mn-sub-bak:
             irrelevant-files: *gate-irrelevant-files
         - devstack-plugin-ceph-tempest-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -139,55 +139,78 @@
               volume_revert: True
 
 - job:
-    name: cinder-grenade-dsvm-mn-sub-bak
-    parent: legacy-dsvm-base-multinode
-    # Old name: legacy-grenade-dsvm-cinder-mn-sub-bak
-    # This is py3 version for ussuri onwards rest all branch needs to be py2
-    # version which is present in openstack-zuul-jobs.
-    # We need to take care of this branch variant and python version while
-    # migrating these jobs to zuulv3.
-    branches: ^(?!(driverfixes|stable/(ocata|pike|queens|rocky|stein|train))).*$
-    run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-bak/run.yaml
-    post-run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-bak/post.yaml
-    timeout: 10800
+    name: cinder-grenade-mn-sub-bak
+    parent: grenade-multinode
+    description: |
+      Cinder grenade multinode job where cinder-backup only runs
+      on the subnode.
+      It tests the new c-api, c-sch, c-vol (on the controller node)
+      with the old c-bak (on the subnode).
+      Former names for this job were:
+        * cinder-grenade-dsvm-mn-sub-bak
+        * legacy-grenade-dsvm-cinder-mn-sub-bak
     required-projects:
-      - openstack/grenade
-      - openstack/devstack-gate
-      - openstack/cinder
+      - opendev.org/openstack/grenade
+      - opendev.org/openstack/cinder
+    vars:
+      devstack_services:
+        c-bak: false
+        c-vol: true
+    group-vars:
+      subnode:
+        devstack_services:
+          c-bak: true
+          c-vol: false
 
 - job:
-    name: cinder-grenade-dsvm-mn-sub-volbak
-    parent: legacy-dsvm-base-multinode
-    # Old name: legacy-grenade-dsvm-cinder-mn-sub-volbak
-    # This is py3 version for ussuri onwards rest all branch needs to be py2
-    # version which is present in openstack-zuul-jobs.
-    # We need to take care of this branch variant and python version while
-    # migrating these jobs to zuulv3.
-    branches: ^(?!(driverfixes|stable/(ocata|pike|queens|rocky|stein|train))).*$
-    run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volbak/run.yaml
-    post-run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volbak/post.yaml
-    timeout: 10800
+    name: cinder-grenade-mn-sub-volbak
+    parent: grenade-multinode
+    description: |
+      Cinder grenade multinode job where cinder-backup and cinder-volume
+      only run on the subnode.
+      It tests the new c-api, c-sch (on the controller node)
+      with the old c-bak, c-vol (on the subnode).
+      Former names for this job were:
+        * cinder-grenade-dsvm-mn-sub-volbak
+        * legacy-grenade-dsvm-cinder-mn-sub-volbak
     required-projects:
-      - openstack/grenade
-      - openstack/devstack-gate
-      - openstack/cinder
+      - opendev.org/openstack/grenade
+      - opendev.org/openstack/cinder
+    vars:
+      devstack_services:
+        c-bak: false
+        c-vol: false
+    group-vars:
+      subnode:
+        devstack_services:
+          c-bak: true
+          c-vol: true
 
 - job:
-    name: cinder-grenade-dsvm-mn-sub-volschbak
-    parent: legacy-dsvm-base-multinode
-    # Old name: legacy-grenade-dsvm-cinder-mn-sub-volschbak
-    # This is py3 version for ussuri onwards rest all branch needs to be py2
-    # version which is present in openstack-zuul-jobs.
-    # We need to take care of this branch variant and python version while
-    # migrating these jobs to zuulv3.
-    branches: ^(?!(driverfixes|stable/(ocata|pike|queens|rocky|stein|train))).*$
-    run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volschbak/run.yaml
-    post-run: playbooks/legacy/grenade-dsvm-cinder-mn-sub-volschbak/post.yaml
-    timeout: 10800
+    name: cinder-grenade-mn-sub-volschbak
+    parent: grenade-multinode
+    description: |
+      Cinder grenade multinode job where cinder-backup, cinder-volume
+      and cinder-scheduler only run on the subnode.
+      It tests the new c-api (on the controller node)
+      with the old c-bak, c-sch, c-vol (on the subnode).
+      Former names for this job were:
+        * cinder-grenade-dsvm-mn-sub-volschbak
+        * legacy-grenade-dsvm-cinder-mn-sub-volschbak
     required-projects:
-      - openstack/grenade
-      - openstack/devstack-gate
-      - openstack/cinder
+      - opendev.org/openstack/grenade
+      - opendev.org/openstack/cinder
+    vars:
+      devstack_services:
+        c-bak: false
+        c-sch: false
+        c-vol: false
+    group-vars:
+      subnode:
+        devstack_services:
+          c-bak: true
+          c-sch: true
+          c-vol: true
 
 - job:
     name: cinder-tempest-lvm-multibackend
