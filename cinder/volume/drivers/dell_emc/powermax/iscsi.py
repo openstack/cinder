@@ -128,9 +128,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Support for multiple replication devices
               - Pools bug fix allowing 'None' variants (bug #1873253)
         4.2.1 - Concurrent live migrations failure (bug #1875478)
+        4.2.2 - U4P failover lock not released on exception (#1875640)
     """
 
-    VERSION = "4.2.1"
+    VERSION = "4.2.2"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
