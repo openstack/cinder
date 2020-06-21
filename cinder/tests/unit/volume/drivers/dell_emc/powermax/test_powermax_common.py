@@ -543,6 +543,32 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(0, mck_remove.call_count)
         self.assertEqual(1, mck_info.call_count)
 
+    @mock.patch.object(provision.PowerMaxProvision, 'verify_slo_workload')
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
+                       return_value=(tpd.PowerMaxData.iscsi_device_info,
+                                     False))
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    def test_unmap_lun_replication_force_flag(
+            self, mck_setup, mck_rep, mck_find, mck_rem, mck_slo):
+        volume = deepcopy(self.data.test_volume)
+        connector = deepcopy(self.data.connector)
+        device_info = self.data.provider_location['device_id']
+        volume.volume_attachment.objects = [
+            deepcopy(self.data.test_volume_attachment)]
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        array = extra_specs[utils.ARRAY]
+        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        self.common._unmap_lun(volume, connector)
+        mck_rem.assert_called_once_with(array, volume, device_info,
+                                        extra_specs, connector, False,
+                                        async_grp=None, host_template=None)
+
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
         connector = self.data.connector

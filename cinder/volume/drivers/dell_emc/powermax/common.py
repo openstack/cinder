@@ -751,6 +751,7 @@ class PowerMaxCommon(object):
             backend_id = self._get_replicated_volume_backend_id(volume)
             rep_config = self.utils.get_rep_config(
                 backend_id, self.rep_configs)
+            extra_specs[utils.FORCE_VOL_REMOVE] = True
             rep_extra_specs = self._get_replication_extra_specs(
                 extra_specs, rep_config)
             if self.utils.is_volume_failed_over(volume):
