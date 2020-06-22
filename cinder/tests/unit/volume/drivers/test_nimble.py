@@ -1153,6 +1153,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'driver_volume_type': 'iscsi',
             'data': {
                 'target_discovered': False,
+                'discard': True,
                 'volume_id': 12,
                 'target_iqn': '13',
                 'target_lun': 0,
@@ -1186,6 +1187,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'driver_volume_type': 'iscsi',
             'data': {
                 'target_discovered': False,
+                'discard': True,
                 'volume_id': 12,
                 'target_iqns': ['group_target_name', 'group_target_name'],
                 'target_luns': [0, 0],
@@ -1211,6 +1213,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'driver_volume_type': 'iscsi',
             'data': {
                 'target_discovered': False,
+                'discard': True,
                 'volume_id': 12,
                 'target_iqn': '13',
                 'target_lun': 0,
@@ -1264,6 +1267,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'data': {
                 'target_lun': 13,
                 'target_discovered': True,
+                'discard': True,
                 'target_wwn': ["1111111111111101"],
                 'initiator_target_map': {'1000000000000000':
                                          ['1111111111111101']}}}
@@ -1291,6 +1295,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'driver_volume_type': 'iscsi',
             'data': {
                 'target_discovered': False,
+                'discard': True,
                 'target_lun': 0,
                 'volume_id': 12,
                 'target_iqn': '13',
@@ -1325,6 +1330,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'data': {
                 'target_lun': 13,
                 'target_discovered': True,
+                'discard': True,
                 'target_wwn': ["1111111111111101"],
                 'initiator_target_map': {'1000000000000000':
                                          ['1111111111111101']}}}

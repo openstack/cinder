@@ -761,8 +761,7 @@ class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
                  {'grp': initiator_group_name, 'iname': initiator_name})
         self.APIExecutor.add_acl(volume, initiator_group_name)
         properties = {"driver_volume_type": "iscsi",
-                      "data": {"target_discovered": False},
-                      }
+                      "data": {"target_discovered": False, "discard": True}}
         properties['data']['volume_id'] = volume['id']  # used by xen currently
         (iscsi_portal, iqn) = volume['provider_location'].split()
         if self._get_gst_for_group() is not None:
@@ -975,6 +974,7 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {'target_lun': lun,
                          'target_discovered': True,
+                         'discard': True,
                          'target_wwn': target_wwns,
                          'initiator_target_map': init_targ_map}}
 
