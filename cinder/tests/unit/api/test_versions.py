@@ -1,4 +1,5 @@
 # Copyright 2015 Clinton Knight
+# Copyright 2022 Red Hat Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 from http import HTTPStatus
+import inspect
 import re
 
 import ddt
@@ -444,15 +446,48 @@ class VersionsControllerTestCase(test.TestCase):
 
 
 class MicroversionsTest(test.TestCase):
-    def test_latest_microversions_present(self):
+    VERSION_NAME_RE = r'^[A-Z][A-Z0-9_]+$'
+
+    def test_max_microversion_present(self):
         # This test ensures that a developer adds a microversions.py
         # entry for a new api_version_request._MAX_API_VERSION microversion.
 
         a = vars(microversions)
-        versions_present = list(v for v in a if re.match(r'[A-Z]+[A-Z_]*', v))
+        versions_present = list(v for v in a if re.match(self.VERSION_NAME_RE,
+                                                         v))
 
         max_mv = api_version_request._MAX_API_VERSION
         count = len(list(v for v in versions_present if
                     getattr(microversions, v) == max_mv))
         self.assertEqual(
             1, count, max_mv + ' should be present once in microversions.py')
+
+    def test_microversion_consistency(self):
+        # This test ensures that the microversions defined are
+        # sequential and not duplicated.
+
+        MAJOR_VERSION = '3'
+        self.assertEqual(microversions.BASE_VERSION, MAJOR_VERSION + '.0')
+
+        VERSION_VALUE_RE = r'^[' + MAJOR_VERSION + r']\.[0-9]+$'
+
+        members = inspect.getmembers(microversions)
+        members = [m for m in members if re.match(self.VERSION_NAME_RE, m[0])
+                   and re.match(VERSION_VALUE_RE, m[1])]
+        max_microversion = max(members,
+                               key=lambda item: int(item[1].split('.')[1]))
+
+        # Ensure that the list of versions is the expected length based on
+        # the highest microversion present.  (max + 1)
+        max_revision = int(max_microversion[1].split('.')[1])
+        num_versions = max_revision + 1
+        self.assertEqual(len(members), num_versions)
+
+        ver_dict = {}
+        for m in members:
+            ver_dict[m[1]] = m[0]
+        self.assertEqual(len(ver_dict), num_versions)
+
+        for v in range(0, max_revision):
+            # Ensure no microversions are skipped
+            self.assertIn(MAJOR_VERSION + '.' + str(v), ver_dict)
