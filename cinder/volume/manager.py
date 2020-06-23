@@ -791,7 +791,7 @@ class VolumeManager(manager.CleanableManager,
             if res_backend != backend:
                 msg = (_('Invalid %(resource)s: %(resource)s %(id)s is not '
                          'local to %(backend)s.') %
-                       {'resource': resource.obj_name, 'id': resource.id,
+                       {'resource': resource.obj_name(), 'id': resource.id,
                         'backend': backend})
                 raise exception.Invalid(msg)
 
