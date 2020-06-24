@@ -1,0 +1,5 @@
+{
+    "default_type": {
+        "volume_type": "lvm_backend"
+    }
+}

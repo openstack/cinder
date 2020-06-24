@@ -513,6 +513,18 @@ class GroupTypeSpecs(BASE, CinderBase):
     )
 
 
+class DefaultVolumeTypes(BASE, CinderBase):
+    """Represent projects associated volume_types."""
+    __tablename__ = "default_volume_types"
+    volume_type_id = Column(String, ForeignKey('volume_types.id'),
+                            nullable=False, index=True)
+    project_id = Column(String(255), unique=True, primary_key=True)
+    volume_type = relationship(
+        VolumeType,
+        foreign_keys=volume_type_id,
+        primaryjoin='DefaultVolumeTypes.volume_type_id == VolumeType.id')
+
+
 class QualityOfServiceSpecs(BASE, CinderBase):
     """Represents QoS specs as key/value pairs.
 

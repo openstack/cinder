@@ -16,6 +16,7 @@ Block Storage API V3 (CURRENT)
 .. To create a volume, I might need a volume type, so list those next.
 .. include:: volumes-v3-types.inc
 .. include:: volume-type-access.inc
+.. include:: default-types.inc
 
 .. Now my primary focus is on volumes and what I can do with them.
 .. include:: volumes-v3-volumes.inc

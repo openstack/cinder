@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added support for project specific default volume types.
+    Microversion 3.62 of the Block Storage API introduces new
+    calls to set, get, and unset a default volume type for a
+    specific project.
+    Project specific defaults have higher priority than
+    the default_volume_type option in cinder.conf

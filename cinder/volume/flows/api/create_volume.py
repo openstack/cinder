@@ -379,7 +379,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 raise
 
         # otherwise, use the default volume type
-        return volume_types.get_default_volume_type()
+        return volume_types.get_default_volume_type(context)
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,

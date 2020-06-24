@@ -27,6 +27,7 @@ from cinder.api.v3 import attachments
 from cinder.api.v3 import backups
 from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
+from cinder.api.v3 import default_types
 from cinder.api.v3 import group_snapshots
 from cinder.api.v3 import group_specs
 from cinder.api.v3 import group_types
@@ -199,3 +200,24 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         controller=self.resources['volume_transfers'],
                         collection={'detail': 'GET'},
                         member={'accept': 'POST'})
+
+        self.resources['default_types'] = default_types.create_resource()
+        mapper.connect("default-types", "/default-types/{id}",
+                       controller=self.resources['default_types'],
+                       action='create_update',
+                       conditions={"method": ['PUT']})
+
+        mapper.connect("default-types", "/default-types",
+                       controller=self.resources['default_types'],
+                       action='index',
+                       conditions={"method": ['GET']})
+
+        mapper.connect("default-types", "/default-types/{id}",
+                       controller=self.resources['default_types'],
+                       action='detail',
+                       conditions={"method": ['GET']})
+
+        mapper.connect("default-types", "/default-types/{id}",
+                       controller=self.resources['default_types'],
+                       action='delete',
+                       conditions={"method": ['DELETE']})

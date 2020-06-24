@@ -56,6 +56,10 @@ class OpenStackApiException400(OpenStackApiException):
     message = _("400 Bad Request")
 
 
+class OpenStackApiException403(OpenStackApiException):
+    message = _("403 Forbidden")
+
+
 class OpenStackApiException500(OpenStackApiException):
     message = _("500 Internal Server Error")
 
@@ -129,11 +133,15 @@ class TestOpenStackClient(object):
         self._authenticate(True)
 
     def api_request(self, relative_uri, check_response_status=None,
-                    strip_version=False, **kwargs):
+                    strip_version=False, base_url=True, **kwargs):
         auth_result = self._authenticate()
 
-        # NOTE(justinsb): httplib 'helpfully' converts headers to lower case
-        base_uri = auth_result['x-server-management-url']
+        if base_url:
+            # NOTE(justinsb): httplib 'helpfully' converts headers to lower
+            # case
+            base_uri = auth_result['x-server-management-url']
+        else:
+            base_uri = self.auth_uri
 
         if strip_version:
             # cut out version number and tenant_id
@@ -169,12 +177,12 @@ class TestOpenStackClient(object):
         else:
             return ""
 
-    def api_get(self, relative_uri, **kwargs):
+    def api_get(self, relative_uri, base_url=True, **kwargs):
         kwargs.setdefault('check_response_status', [http_client.OK])
-        response = self.api_request(relative_uri, **kwargs)
+        response = self.api_request(relative_uri, base_url=base_url, **kwargs)
         return self._decode_json(response)
 
-    def api_post(self, relative_uri, body, **kwargs):
+    def api_post(self, relative_uri, body, base_url=True, **kwargs):
         kwargs['method'] = 'POST'
         if body:
             headers = kwargs.setdefault('headers', {})
@@ -183,10 +191,10 @@ class TestOpenStackClient(object):
 
         kwargs.setdefault('check_response_status', [http_client.OK,
                                                     http_client.ACCEPTED])
-        response = self.api_request(relative_uri, **kwargs)
+        response = self.api_request(relative_uri, base_url=base_url, **kwargs)
         return self._decode_json(response)
 
-    def api_put(self, relative_uri, body, **kwargs):
+    def api_put(self, relative_uri, body, base_url=True, **kwargs):
         kwargs['method'] = 'PUT'
         if body:
             headers = kwargs.setdefault('headers', {})
@@ -196,15 +204,15 @@ class TestOpenStackClient(object):
         kwargs.setdefault('check_response_status', [http_client.OK,
                                                     http_client.ACCEPTED,
                                                     http_client.NO_CONTENT])
-        response = self.api_request(relative_uri, **kwargs)
+        response = self.api_request(relative_uri, base_url=base_url, **kwargs)
         return self._decode_json(response)
 
-    def api_delete(self, relative_uri, **kwargs):
+    def api_delete(self, relative_uri, base_url=True, **kwargs):
         kwargs['method'] = 'DELETE'
         kwargs.setdefault('check_response_status', [http_client.OK,
                                                     http_client.ACCEPTED,
                                                     http_client.NO_CONTENT])
-        return self.api_request(relative_uri, **kwargs)
+        return self.api_request(relative_uri, base_url=base_url, **kwargs)
 
     def get_volume(self, volume_id):
         return self.api_get('/volumes/%s' % volume_id)['volume']
@@ -329,3 +337,19 @@ class TestOpenStackClient(object):
 
     def list_group_replication_targets(self, group_id, params):
         return self.api_post('/groups/%s/action' % group_id, params)
+
+    def set_default_type(self, project_id, params):
+        body = {"default_type": params}
+        return self.api_put('default-types/%s' % project_id, body,
+                            base_url=False)['default_type']
+
+    def get_default_type(self, project_id=None):
+        if project_id:
+            return self.api_get('default-types/%s' % project_id,
+                                base_url=False)['default_type']
+        return self.api_get('default-types',
+                            base_url=False)['default_types']
+
+    def unset_default_type(self, project_id):
+        self.api_delete('default-types/%s' % project_id,
+                        base_url=False)

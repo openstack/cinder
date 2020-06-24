@@ -20,6 +20,7 @@
 
 import collections
 from collections import abc
+import contextlib
 import datetime as dt
 import functools
 import itertools
@@ -4353,6 +4354,65 @@ def volume_type_access_remove(context, type_id, project_id):
     if count == 0:
         raise exception.VolumeTypeAccessNotFound(
             volume_type_id=type_id, project_id=project_id)
+
+
+def project_default_volume_type_set(context, volume_type_id, project_id):
+    """Set default volume type for a project"""
+
+    session = get_session()
+    with session.begin():
+        update_default = project_default_volume_type_get(context, project_id,
+                                                         session=session)
+        if update_default:
+            LOG.info("Updating default type for project %s", project_id)
+            update_default.volume_type_id = volume_type_id
+            return update_default
+
+        access_ref = models.DefaultVolumeTypes(volume_type_id=volume_type_id,
+                                               project_id=project_id)
+        access_ref.save(session=session)
+    return access_ref
+
+
+def project_default_volume_type_get(context, project_id=None, session=None):
+    """Get default volume type(s) for a project(s)
+
+    If a project id is passed, it returns default type for that particular
+    project else returns default volume types for all projects
+    """
+    if session:
+        # This is requested by set method.
+        # To avoid race condition, we use the same session here
+        session_ctxt = contextlib.suppress()
+    else:
+        session = get_session()
+        session_ctxt = session.begin()
+    with session_ctxt:
+        if project_id:
+            return model_query(context, models.DefaultVolumeTypes,
+                               session=session).\
+                filter_by(project_id=project_id).first()
+        return model_query(context, models.DefaultVolumeTypes,
+                           session=session).all()
+
+
+def get_all_projects_with_default_type(context, volume_type_id):
+    """Get all projects with volume_type_id as their default type"""
+    session = get_session()
+    with session.begin():
+        return model_query(context, models.DefaultVolumeTypes,
+                           session=session).\
+            filter_by(volume_type_id=volume_type_id).all()
+
+
+def project_default_volume_type_unset(context, project_id):
+    """Unset default volume type for a project (hard delete)"""
+
+    session = get_session()
+    with session.begin():
+        (model_query(context, models.DefaultVolumeTypes,
+                     session=session).
+         filter_by(project_id=project_id).delete())
 
 
 @require_admin_context

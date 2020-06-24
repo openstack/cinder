@@ -21,6 +21,7 @@ from cinder.policies import backups
 from cinder.policies import base
 from cinder.policies import capabilities
 from cinder.policies import clusters
+from cinder.policies import default_types
 from cinder.policies import group_actions
 from cinder.policies import group_snapshot_actions
 from cinder.policies import group_snapshots
@@ -83,4 +84,5 @@ def list_rules():
         volume_metadata.list_rules(),
         type_extra_specs.list_rules(),
         volumes.list_rules(),
+        default_types.list_rules(),
     )

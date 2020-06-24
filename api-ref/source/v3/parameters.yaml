@@ -168,6 +168,12 @@ volume_type_id:
   in: path
   required: true
   type: string
+volume_type_name_or_id:
+  description: |
+    The name or UUID for an existing volume type.
+  in: path
+  required: true
+  type: string
 
 # variables in query
 action:

@@ -163,6 +163,8 @@ VOLUME_TIME_COMPARISON_FILTER = '3.60'
 
 VOLUME_CLUSTER_NAME = '3.61'
 
+DEFAULT_TYPE_OVERRIDES = '3.62'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

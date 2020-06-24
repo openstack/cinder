@@ -18,6 +18,10 @@ from oslo_policy import policy
 RULE_ADMIN_OR_OWNER = 'rule:admin_or_owner'
 RULE_ADMIN_API = 'rule:admin_api'
 
+SYSTEM_ADMIN = 'role:admin and system_scope:all'
+
+SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN = 'rule:system_or_domain_or_project_admin'
+
 rules = [
     policy.RuleDefault('context_is_admin', 'role:admin',
                        description="Decides what is required for the "
@@ -30,6 +34,12 @@ rules = [
                        'is_admin:True or (role:admin and '
                        'is_admin_project:True)',
                        description="Default rule for most Admin APIs."),
+    policy.RuleDefault('system_or_domain_or_project_admin',
+                       '(role:admin and system_scope:all) or '
+                       '(role:admin and domain_id:%(domain_id)s) or '
+                       '(role:admin and project_id:%(project_id)s)',
+                       description="Default rule for admins of cloud, domain "
+                                   "or a project."),
 ]
 
 

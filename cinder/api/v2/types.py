@@ -52,7 +52,7 @@ class VolumeTypesController(wsgi.Controller):
 
         # get default volume type
         if id is not None and id == 'default':
-            vol_type = volume_types.get_default_volume_type()
+            vol_type = volume_types.get_default_volume_type(context)
             if not vol_type:
                 msg = _("Default volume type can not be found.")
                 raise exception.VolumeTypeNotFound(message=msg)

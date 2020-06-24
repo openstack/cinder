@@ -36,8 +36,10 @@ class GenericProjectInfo(object):
                  project_parent_id=None,
                  project_subtree=None,
                  project_parent_tree=None,
-                 is_admin_project=False):
+                 is_admin_project=False,
+                 domain_id=None):
         self.id = project_id
+        self.domain_id = domain_id
         self.keystone_api_version = project_keystone_api_version
         self.parent_id = project_parent_id
         self.subtree = project_subtree
@@ -106,6 +108,7 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
                                         parents_as_ids=parents_as_ids)
 
         generic_project.parent_id = None
+        generic_project.domain_id = project.domain_id
         if project.parent_id != project.domain_id:
             generic_project.parent_id = project.parent_id
 

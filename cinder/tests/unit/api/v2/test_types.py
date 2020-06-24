@@ -74,7 +74,7 @@ def return_volume_types_get_volume_type(context, id):
     return fake_volume_type(id)
 
 
-def return_volume_types_get_default():
+def return_volume_types_get_default(context):
     return fake_volume_type(1)
 
 

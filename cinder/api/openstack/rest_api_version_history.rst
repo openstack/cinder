@@ -473,3 +473,9 @@ Time must be expressed in ISO 8601 format.
 ----
 Add ``cluster_name`` attribute to response body of volume details for admin in
 Active/Active HA mode.
+
+3.62
+----
+Add support for set, get, and unset a default volume type for a specific
+project. Setting this default overrides the configured default_volume_type
+value.

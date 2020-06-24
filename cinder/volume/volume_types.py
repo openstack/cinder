@@ -116,17 +116,28 @@ def destroy(context, id):
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    elevated = context if context.is_admin else context.elevated()
+
+    projects_with_default_type = db.get_all_projects_with_default_type(
+        context.elevated(), id)
+    if len(projects_with_default_type) > 0:
+        # don't allow delete if the type requested is a project default
+        project_list = [p.project_id for p in projects_with_default_type]
+        LOG.exception('Default type with %(volume_type_id)s is associated '
+                      'with projects %(projects)s',
+                      {'volume_type_id': id,
+                       'projects': project_list})
+        raise exception.VolumeTypeDefaultDeletionError(volume_type_id=id)
 
     # Default type *must* be set in order to delete any volume type.
     # If the default isn't set, the following call will raise
     # VolumeTypeDefaultMisconfiguredError exception which will error out the
     # delete operation.
     default_type = get_default_volume_type()
-    # don't allow delete if the type requested is the default type
+    # don't allow delete if the type requested is the conf default type
     if id == default_type.get('id'):
         raise exception.VolumeTypeDefaultDeletionError(volume_type_id=id)
 
+    elevated = context if context.is_admin else context.elevated()
     return db.volume_type_destroy(elevated, id)
 
 
@@ -189,12 +200,18 @@ def get_volume_type_by_name(context, name):
     return db.volume_type_get_by_name(context, name)
 
 
-def get_default_volume_type():
+def get_default_volume_type(contxt=None):
     """Get the default volume type.
 
     :raises VolumeTypeDefaultMisconfiguredError: when the configured default
                                                  is not found
     """
+
+    if contxt:
+        project_default = db.project_default_volume_type_get(
+            contxt, contxt.project_id)
+        if project_default:
+            return get_volume_type(contxt, project_default.volume_type_id)
     name = CONF.default_volume_type
     ctxt = context.get_admin_context()
     vol_type = {}
