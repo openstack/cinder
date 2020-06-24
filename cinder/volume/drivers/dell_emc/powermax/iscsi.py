@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
+# Copyright (c) 2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -127,9 +127,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Switch to Unisphere REST API public replication endpoints
               - Support for multiple replication devices
               - Pools bug fix allowing 'None' variants (bug #1873253)
+        4.3.0 - Changing from 91 to 92 REST endpoints
     """
 
-    VERSION = "4.2.0"
+    VERSION = "4.3.0"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

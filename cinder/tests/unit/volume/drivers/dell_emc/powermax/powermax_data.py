@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2019 Dell Inc. or its subsidiaries.
+# Copyright (c) 2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -78,7 +78,7 @@ class PowerMaxData(object):
     rdf_group_no_2 = '71'
     rdf_group_no_3 = '72'
     rdf_group_no_4 = '73'
-    u4v_version = '91'
+    u4v_version = '92'
     storagegroup_name_source = 'Grp_source_sg'
     storagegroup_name_target = 'Grp_target_sg'
     group_snapshot_name = 'Grp_snapshot'
@@ -988,7 +988,7 @@ class PowerMaxData(object):
                  {'symmetrixId': array_herc,
                   'model': 'PowerMax 2000',
                   'ucode': '5978.1091.1092'}]
-    version_details = {'version': 'V9.1.0.1054'}
+    version_details = {'version': 'V9.2.0.0'}
 
     headroom = {'headroom': [{'headroomCapacity': 20348.29}]}
 
@@ -1274,7 +1274,7 @@ class PowerMaxData(object):
 
     data_dict = {volume_id: volume_info_dict}
     platform = 'Linux-4.4.0-104-generic-x86_64-with-Ubuntu-16.04-xenial'
-    unisphere_version = u'V9.1.0.14'
+    unisphere_version = u'V9.2.0.0'
     unisphere_version_90 = "V9.0.0.1"
     openstack_release = '12.0.0.0b3.dev401'
     openstack_version = '12.0.0'
@@ -1523,3 +1523,11 @@ class PowerMaxData(object):
                       'Emulation': 'FBA',
                       'Configuration': 'TDEV',
                       'CompressionDisabled': False}})
+
+    vol_create_desc1 = 'Populating Storage Group(s) with volumes : [00001]'
+    vol_create_desc2 = ('Refresh [Storage Group [OS-SG] '
+                        'on Symmetrix [000197800123]] ')
+    vol_create_task = [{'execution_order': 1,
+                        'description': vol_create_desc1},
+                       {'execution_order': 2,
+                        'description': vol_create_desc2}]
