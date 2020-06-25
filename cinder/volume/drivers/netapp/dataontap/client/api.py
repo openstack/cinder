@@ -133,6 +133,12 @@ class NaServer(object):
         self._ns = NaServer.NETAPP_NS
         self._refresh_conn = True
 
+    def set_ontap_version(self, version):
+        self._ontap_version = version
+
+    def get_ontap_version(self):
+        return self._ontap_version
+
     def set_api_version(self, major, minor):
         """Set the API version."""
         try:

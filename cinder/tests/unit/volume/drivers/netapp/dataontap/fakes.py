@@ -421,6 +421,21 @@ CG_VOLUME_SNAPSHOT = {
     'volume_id': CG_VOLUME_ID,
 }
 
+SYSTEM_GET_VERSION_RESPONSE = etree.XML("""
+  <results status="passed">
+    <build-timestamp>1395426307</build-timestamp>
+    <is-clustered>true</is-clustered>
+    <version>NetApp Release 9.6P2: Fri Jul 19 06:06:59 UTC 2019</version>
+    <version-tuple>
+      <system-version-tuple>
+        <generation>9</generation>
+        <major>6</major>
+        <minor>0</minor>
+      </system-version-tuple>
+    </version-tuple>
+  </results>
+""")
+
 
 VG_VOLUME_NAME = 'fake_vg_volume'
 VG_GROUP_NAME = 'fake_volume_group'
@@ -435,6 +450,8 @@ VOLUME_GROUP_ID = 'fake_vg_id'
 VG_SNAPSHOT_ID = 'fake_vg_snapshot_id'
 VG_SNAPSHOT_NAME = 'snapshot-' + VG_SNAPSHOT_ID
 VG_VOLUME_SNAPSHOT_ID = 'fake_vg_volume_snapshot_id'
+MIN_SIZE_FOR_A_LUN = '4194304'
+MAX_SIZE_FOR_A_LUN = '17555678822400'
 
 VG_LUN_METADATA = {
     'OsType': None,
