@@ -25,4 +25,5 @@
       devstack_data_subdir_changed: cinder
       devstack_data_subdir_owner: zuul
     - role: run-cinderlib-tests
+      tox_install_siblings: false
       cinderlib_base_dir: "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
