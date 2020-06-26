@@ -261,6 +261,30 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self.RBD_FEATURE_OBJECT_MAP |
             self.RBD_FEATURE_EXCLUSIVE_LOCK)
 
+        self._set_keyring_attributes()
+
+    def _set_keyring_attributes(self):
+        # The rbd_keyring_conf option is not available for OpenStack usage
+        # for security reasons (OSSN-0085) and in OpenStack we use
+        # rbd_secret_uuid or make sure that the keyring files are present on
+        # the hosts (where os-brick will look for them).
+        # For cinderlib usage this option is necessary (no security issue, as
+        # in those cases the contents of the connection are not available to
+        # users). By using getattr Oslo-conf won't read the option from the
+        # file even if it's there (because we have removed the conf option
+        # definition), but cinderlib will find it because it sets the option
+        # directly as an attribute.
+        self.keyring_file = getattr(self.configuration, 'rbd_keyring_conf',
+                                    None)
+
+        self.keyring_data = None
+        try:
+            if self.keyring_file and os.path.isfile(self.keyring_file):
+                with open(self.keyring_file, 'r') as k_file:
+                    self.keyring_data = k_file.read()
+        except IOError:
+            LOG.debug('Cannot read RBD keyring file: %s.', self.keyring_file)
+
     @classmethod
     def get_driver_options(cls):
         additional_opts = cls._get_oslo_driver_opts(
@@ -387,6 +411,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                         "for this feature started with v12.2.0 Luminous.")
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
+
+        # If the keyring is defined (cinderlib usage), then the contents are
+        # necessary.
+        if self.keyring_file and not self.keyring_data:
+            msg = _('No keyring data found')
+            LOG.error(msg)
+            raise exception.InvalidConfigurationValue(
+                option='rbd_keyring_conf', value=self.keyring_file)
 
         self._start_periodic_tasks()
 
@@ -1423,6 +1455,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 "discard": True,
             }
         }
+        if self.keyring_data:
+            data['data']['keyring'] = self.keyring_data
         LOG.debug('connection data: %s', data)
         return data
 
