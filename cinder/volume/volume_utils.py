@@ -1194,6 +1194,11 @@ def check_encryption_provider(db, volume, context):
     """
 
     encryption = db.volume_encryption_metadata_get(context, volume.id)
+
+    if 'provider' not in encryption:
+        message = _("Invalid encryption spec.")
+        raise exception.VolumeDriverException(message=message)
+
     provider = encryption['provider']
     if provider in encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP:
         provider = encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP[provider]

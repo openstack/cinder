@@ -14,10 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import binascii
 import errno
 import os
+import tempfile
 import time
 
+from castellan import key_manager
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
@@ -121,6 +124,8 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
             volume_utils.get_max_over_subscription_ratio(
                 self.configuration.max_over_subscription_ratio,
                 supports_auto=supports_auto_mosr))
+
+        self._supports_encryption = True
 
     @staticmethod
     def get_driver_options():
@@ -577,7 +582,9 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         self._check_snapshot_support()
         return self._delete_snapshot(snapshot)
 
-    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size,
+                                   src_encryption_key_id=None,
+                                   new_encryption_key_id=None):
         """Copy data from snapshot to destination volume.
 
         This is done with a qemu-img convert to raw/qcow2 from the snapshot
@@ -610,9 +617,46 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
         else:
             out_format = 'raw'
 
-        image_utils.convert_image(path_to_snap_img,
-                                  path_to_new_vol,
-                                  out_format,
-                                  run_as_root=self._execute_as_root)
+        if new_encryption_key_id is not None:
+            if src_encryption_key_id is None:
+                message = _("Can't create an encrypted volume %(format)s "
+                            "from an unencrypted source."
+                            ) % {'format': out_format}
+                LOG.error(message)
+                # TODO(enriquetaso): handle unencrypted snap->encrypted vol
+                raise exception.NfsException(message)
+            keymgr = key_manager.API(CONF)
+            new_key = keymgr.get(volume.obj_context, new_encryption_key_id)
+            new_passphrase = \
+                binascii.hexlify(new_key.get_encoded()).decode('utf-8')
+
+            # volume.obj_context is the owner of this request
+            src_key = keymgr.get(volume.obj_context, src_encryption_key_id)
+            src_passphrase = \
+                binascii.hexlify(src_key.get_encoded()).decode('utf-8')
+
+            tmp_dir = volume_utils.image_conversion_dir()
+            with tempfile.NamedTemporaryFile(prefix='luks_',
+                                             dir=tmp_dir) as src_pass_file:
+                with open(src_pass_file.name, 'w') as f:
+                    f.write(src_passphrase)
+
+                with tempfile.NamedTemporaryFile(prefix='luks_',
+                                                 dir=tmp_dir) as new_pass_file:
+                    with open(new_pass_file.name, 'w') as f:
+                        f.write(new_passphrase)
+
+                    image_utils.convert_image(
+                        path_to_snap_img,
+                        path_to_new_vol,
+                        'luks',
+                        passphrase_file=new_pass_file.name,
+                        src_passphrase_file=src_pass_file.name,
+                        run_as_root=self._execute_as_root)
+        else:
+            image_utils.convert_image(path_to_snap_img,
+                                      path_to_new_vol,
+                                      out_format,
+                                      run_as_root=self._execute_as_root)
 
         self._set_rw_permissions_for_all(path_to_new_vol)
