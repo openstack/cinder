@@ -1232,9 +1232,9 @@ def backup_get_all_by_project(context, project_id, filters=None, marker=None,
                                           sort_dirs=sort_dirs)
 
 
-def backup_get_all_by_volume(context, volume_id, filters=None):
+def backup_get_all_by_volume(context, volume_id, vol_project_id, filters=None):
     """Get all backups belonging to a volume."""
-    return IMPL.backup_get_all_by_volume(context, volume_id,
+    return IMPL.backup_get_all_by_volume(context, volume_id, vol_project_id,
                                          filters=filters)
 
 

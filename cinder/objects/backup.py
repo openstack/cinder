@@ -261,8 +261,10 @@ class BackupList(base.ObjectListBase, base.CinderObject):
                                   backups, expected_attrs=expected_attrs)
 
     @classmethod
-    def get_all_by_volume(cls, context, volume_id, filters=None):
-        backups = db.backup_get_all_by_volume(context, volume_id, filters)
+    def get_all_by_volume(
+            cls, context, volume_id, vol_project_id, filters=None):
+        backups = db.backup_get_all_by_volume(
+            context, volume_id, vol_project_id, filters)
         expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups, expected_attrs=expected_attrs)
