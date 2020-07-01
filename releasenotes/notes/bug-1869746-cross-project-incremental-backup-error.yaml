@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Cinder no longer allows an incremental backup to be
+    created while having the parent backup in another
+    project.
