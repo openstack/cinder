@@ -730,18 +730,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         return not host_still_used
 
     @pure_driver_debug_trace
-    def get_volume_stats(self, refresh=False):
-        """Return the current state of the volume service.
-
-        If 'refresh' is True, run the update first.
-        """
-
-        if refresh:
-            LOG.debug("Updating volume stats.")
-            self._update_stats()
-        return self._stats
-
-    def _update_stats(self):
+    def _update_volume_stats(self):
         """Set self._stats with relevant information."""
         current_array = self._get_current_array()
 

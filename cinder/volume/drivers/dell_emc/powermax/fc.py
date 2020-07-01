@@ -489,18 +489,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         self.common.extend_volume(volume, new_size)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        :param refresh: boolean -- If True, run update the stats first.
-        :returns: dict -- the stats dict
-        """
-        if refresh:
-            self.update_volume_stats()
-
-        return self._stats
-
-    def update_volume_stats(self):
+    def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats")
         data = self.common.update_volume_stats()

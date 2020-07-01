@@ -818,16 +818,6 @@ class NexentaNfsDriver(nfs.NfsDriver):
         volume_path = posixpath.join(self.root_path, volume_name)
         return '%s@%s' % (volume_path, snapshot_name)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, update the stats first.
-        """
-        if refresh or not self._stats:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         """Retrieve stats info for NexentaStor Appliance."""
         LOG.debug('Updating volume backend %(volume_backend_name)s stats',

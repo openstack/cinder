@@ -708,13 +708,6 @@ class MacroSANBaseDriver(driver.VolumeDriver):
         pass
 
     @record_request_id
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats."""
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         data = {}
         pool = {}

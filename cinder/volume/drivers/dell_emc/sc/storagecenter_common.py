@@ -702,21 +702,6 @@ class SCCommonDriver(driver.ManageableVD,
         msg = _('Unable to extend volume %s') % volume_name
         raise exception.VolumeBackendAPIException(data=msg)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-
-        # Take this opportunity to report our failover state.
-        if self.failed_over:
-            LOG.debug('%(source)s has been failed over to %(dest)s',
-                      {'source': self.backend_name,
-                       'dest': self.active_backend_id})
-        return self._stats
-
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         with self._client.open_connection() as api:
@@ -764,6 +749,12 @@ class SCCommonDriver(driver.ManageableVD,
             LOG.debug('Total cap %(total)s Free cap %(free)s',
                       {'total': data['total_capacity_gb'],
                        'free': data['free_capacity_gb']})
+
+        # Take this opportunity to report our failover state.
+        if self.failed_over:
+            LOG.debug('%(source)s has been failed over to %(dest)s',
+                      {'source': self.backend_name,
+                       'dest': self.active_backend_id})
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):

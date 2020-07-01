@@ -1153,19 +1153,6 @@ class VxFlexOSDriver(driver.VolumeDriver):
                 return r["dataLayout"] == "FineGranularity"
         return False
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-
-        :param refresh: update stats or get them from cache
-        :return: storage backend stats
-        """
-
-        if refresh:
-            self._update_volume_stats()
-        return self._stats
-
     @staticmethod
     def _get_volumetype_extraspecs(volume):
         specs = {}

@@ -722,17 +722,6 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
         # Detach volume from server
         self._detach_vpsa_volume(vpsa_vol=vpsa_vol, vpsa_srv=vpsa_srv)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _get_servers_attached_to_volume(self, vpsa_vol):
         """Return all servers attached to volume."""
         xml_tree = self.vpsa.send_cmd('list_vol_attachments',

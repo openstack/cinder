@@ -581,17 +581,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
                     image_service):
         return None, False
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first.
-        """
-
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def extend_volume(self, volume, new_size):
         """Extend an existing volume's size."""
         self.vg.extend_volume(volume['name'],

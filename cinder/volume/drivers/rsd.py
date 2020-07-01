@@ -570,6 +570,7 @@ class RSDDriver(driver.VolumeDriver):
                                               volume_name=volume.name,
                                               ignore_non_exist=True)
 
+    @utils.trace
     def _update_volume_stats(self):
         backend_name = (
             self.configuration.safe_get('volume_backend_name') or 'RSD')
@@ -595,12 +596,6 @@ class RSDDriver(driver.VolumeDriver):
         self._stats['storage_protocol'] = 'nvmeof'
         # SinglePool
         self._stats['pools'] = [spool]
-
-    @utils.trace
-    def get_volume_stats(self, refresh=False):
-        if refresh:
-            self._update_volume_stats()
-        return self._stats
 
     @utils.trace
     def initialize_connection(self, volume, connector, **kwargs):

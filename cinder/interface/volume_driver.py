@@ -60,6 +60,9 @@ class VolumeDriverCore(base.CinderInterface):
         information from the driver instance related to information about the
         driver, available and used space, and driver/backend capabilities.
 
+        stats are stored in 'self._stats' field, which could be updated in
+        '_update_volume_stats' method.
+
         It returns a dict with the following required fields:
 
         * volume_backend_name

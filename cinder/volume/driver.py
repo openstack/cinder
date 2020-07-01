@@ -630,14 +630,14 @@ class BaseVD(object):
         return False
 
     def get_volume_stats(self, refresh=False):
-        """Return the current state of the volume service.
+        """Get volume stats.
 
-        If 'refresh' is True, run the update first.
-
-        For replication the following state should be reported:
-        replication = True (None or false disables replication)
+        If 'refresh' is True, run update the stats first.
         """
-        return
+        if not self._stats or refresh:
+            self._update_volume_stats()
+
+        return self._stats
 
     def get_prefixed_property(self, property):
         """Return prefixed property name
@@ -2780,16 +2780,6 @@ class ISCSIDriver(VolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
@@ -2934,16 +2924,6 @@ class FibreChannelDriver(VolumeDriver):
                 "No '%(setting)s'. Make sure HBA state is Online.",
                 {'setting': setting})
             raise exception.InvalidConnectorException(missing=setting)
-
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""

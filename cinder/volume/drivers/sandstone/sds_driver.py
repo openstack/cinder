@@ -129,12 +129,6 @@ class SdsBaseDriver(driver.VolumeDriver):
         data['pools'].append(pool)
         return data
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume status and reload sandstone config file."""
-        if refresh:
-            return self._update_volume_stats(self.pool)
-        return self._stats
-
     def _raise_exception(self, msg):
         LOG.error(msg)
         raise exception.VolumeBackendAPIException(data=msg)

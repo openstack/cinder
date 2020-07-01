@@ -619,15 +619,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             LOG.exception('error refreshing volume stats')
         self._stats = stats
 
-    def get_volume_stats(self, refresh=False):
-        """Return the current state of the volume service.
-
-        If 'refresh' is True, run the update first.
-        """
-        if refresh:
-            self._update_volume_stats()
-        return self._stats
-
     def _get_clone_depth(self, client, volume_name, depth=0):
         """Returns the number of ancestral clones of the given volume."""
         parent_volume = self.rbd.Image(client.ioctx, volume_name)

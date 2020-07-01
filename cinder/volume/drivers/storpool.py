@@ -262,12 +262,6 @@ class StorPoolDriver(driver.VolumeDriver):
             LOG.error("StorPoolDriver API initialization failed: %s", e)
             raise
 
-    def get_volume_stats(self, refresh=False):
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         try:
             dl = self._attach.api().disksList()
