@@ -46,7 +46,6 @@ from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
-from cinder.volume import volume_types
 
 CONF = cfg.CONF
 
@@ -275,10 +274,6 @@ class VolumeApiTest(test.TestCase):
             self.controller.volume_api, context,
             vol['size'], v2_fakes.DEFAULT_VOL_NAME,
             v2_fakes.DEFAULT_VOL_DESCRIPTION,
-            volume_type=
-            objects.VolumeType.get_by_name_or_id(
-                context,
-                volume_types.get_default_volume_type()['id']),
             **kwargs)
 
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
@@ -340,10 +335,6 @@ class VolumeApiTest(test.TestCase):
             self.controller.volume_api, context,
             vol['size'], v2_fakes.DEFAULT_VOL_NAME,
             v2_fakes.DEFAULT_VOL_DESCRIPTION,
-            volume_type=
-            objects.VolumeType.get_by_name_or_id(
-                context,
-                volume_types.get_default_volume_type()['id']),
             **kwargs)
 
     @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
