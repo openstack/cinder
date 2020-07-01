@@ -5248,9 +5248,9 @@ def backup_get_all_by_project(context, project_id, filters=None, marker=None,
 
 
 @require_context
-def backup_get_all_by_volume(context, volume_id, filters=None):
+def backup_get_all_by_volume(context, volume_id, vol_project_id, filters=None):
 
-    authorize_project_context(context, volume_id)
+    authorize_project_context(context, vol_project_id)
     if not filters:
         filters = {}
     else:
