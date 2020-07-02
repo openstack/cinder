@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``unique_fqdn_network`` configuration option for the Kaminario driver,
+    as it was being ignored when defined in the driver section, which used to
+    work.
+    (Bug #1886042).

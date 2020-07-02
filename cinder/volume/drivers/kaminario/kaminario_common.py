@@ -837,10 +837,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         """
         name = connector.get('initiator',
                              connector.get('wwnns', [''])[0])[::-1]
-        SHARED_CONF_GROUP = 'backend_defaults'
-        shared_backend_conf = CONF._get(SHARED_CONF_GROUP)
-        unique_fqdn_network = shared_backend_conf.unique_fqdn_network
-        if unique_fqdn_network:
+        if self.configuration.unique_fqdn_network:
             name = connector.get('host', name)
         return re.sub('[^0-9a-zA-Z-_]', '_', name[:32])
 

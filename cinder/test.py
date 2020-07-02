@@ -31,6 +31,7 @@ import fixtures
 from keystonemiddleware import auth_token
 import mock
 from oslo_concurrency import lockutils
+from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
 import oslo_messaging
@@ -55,6 +56,8 @@ from cinder import service
 from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
+from cinder.volume import configuration
+from cinder.volume import driver as vol_driver
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
@@ -469,6 +472,25 @@ class TestCase(testtools.TestCase):
         on mox) going forward.
         """
         self.useFixture(fixtures.MonkeyPatch(old, new))
+
+    def _set_unique_fqdn_override(self, value, in_shared):
+        """Override the unique_fqdn_network configuration option.
+
+        Meant for driver tests that use a Mock for their driver configuration
+        instead of a real Oslo Conf.
+        """
+        # Since we don't use a real oslo config for the driver we don't get
+        # the default initialization, so create a group and register the option
+        cfg.CONF.register_group(cfg.OptGroup('driver_cfg'))
+        new_config = configuration.Configuration([], config_group='driver_cfg')
+        new_config.append_config_values(vol_driver.fqdn_opts)
+
+        # Now we override the value for this test
+        group = configuration.SHARED_CONF_GROUP if in_shared else 'driver_cfg'
+        self.addCleanup(CONF.clear_override, 'unique_fqdn_network',
+                        group=group)
+        cfg.CONF.set_override('unique_fqdn_network', value, group=group)
+        return new_config
 
 
 class ModelsObjectComparatorMixin(object):

@@ -339,7 +339,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
                 # for now, do not remove zones
                 zone_remove = False
             else:
-                hostname = common._safe_hostname(connector['host'], connector)
+                hostname = common._safe_hostname(connector, self.configuration)
                 common.terminate_connection(volume, hostname,
                                             wwn=connector['wwpns'],
                                             remote_client=remote_client)
@@ -528,7 +528,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         """Creates or modifies existing 3PAR host."""
         host = None
         domain = None
-        hostname = common._safe_hostname(connector['host'], connector)
+        hostname = common._safe_hostname(connector, self.configuration)
         if remote_target:
             cpg = common._get_cpg_from_cpg_map(
                 remote_target['cpg_map'], src_cpg)
