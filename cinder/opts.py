@@ -74,6 +74,8 @@ from cinder.volume.drivers.datera import datera_iscsi as \
     cinder_volume_drivers_datera_dateraiscsi
 from cinder.volume.drivers.dell_emc.powermax import common as \
     cinder_volume_drivers_dell_emc_powermax_common
+from cinder.volume.drivers.dell_emc.powerstore import driver as \
+    cinder_volume_drivers_dell_emc_powerstore_driver
 from cinder.volume.drivers.dell_emc.sc import storagecenter_common as \
     cinder_volume_drivers_dell_emc_sc_storagecentercommon
 from cinder.volume.drivers.dell_emc.unity import driver as \
@@ -296,6 +298,8 @@ def list_opts():
                 cinder_volume_driver.image_opts,
                 cinder_volume_driver.fqdn_opts,
                 cinder_volume_drivers_dell_emc_powermax_common.powermax_opts,
+                cinder_volume_drivers_dell_emc_powerstore_driver.
+                POWERSTORE_OPTS,
                 cinder_volume_drivers_dell_emc_sc_storagecentercommon.
                 common_opts,
                 cinder_volume_drivers_dell_emc_unity_driver.UNITY_OPTS,

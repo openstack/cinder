@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add Dell EMC PowerStore Storage Driver (iSCSI, FC).
