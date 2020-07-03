@@ -314,7 +314,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                  mock.call(*command3, run_as_root=True)]
         self._driver._execute.assert_has_calls(calls)
 
-    def _test_create_snapshot(self, volume_in_use=False, tmp_snap=False,
+    def _test_create_snapshot(self, display_name=None, volume_in_use=False,
                               encryption=False):
         fake_snapshot_info = {}
         if encryption:
@@ -329,6 +329,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             snapshot = self._fake_snapshot
             snapshot_path = self._fake_snapshot_path
 
+        snapshot.display_name = display_name
         self._driver._local_path_volume_info = mock.Mock(
             return_value=mock.sentinel.fake_info_path)
         self._driver._read_info_file = mock.Mock(
@@ -347,18 +348,15 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             snapshot.id: fake_snapshot_file_name
         }
         exp_acceptable_states = ['available', 'in-use', 'backing-up']
-        if tmp_snap:
+        if display_name and display_name.startswith('tmp-snap-'):
             exp_acceptable_states.append('downloading')
             self._fake_snapshot.volume.status = 'downloading'
-            display_name = 'tmp-snap-%s' % self._fake_snapshot.id
-            self._fake_snapshot.display_name = display_name
 
         if volume_in_use:
             snapshot.volume.status = 'backing-up'
             snapshot.volume.attach_status = 'attached'
             expected_method_called = '_create_snapshot_online'
         else:
-            snapshot.volume.status = 'available'
             expected_method_called = '_do_create_snapshot'
 
         self._driver._create_snapshot(snapshot)
@@ -389,8 +387,9 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                           self._driver._create_snapshot,
                           self._fake_snapshot)
 
-    def test_create_snapshot_w_image_caching(self):
-        self._test_create_snapshot(tmp_snap=True)
+    @ddt.data(None, 'test', 'tmp-snap-404f-404')
+    def test_create_snapshot_names(self, display_name):
+        self._test_create_snapshot(display_name=display_name)
 
     @mock.patch('cinder.db.snapshot_get')
     @mock.patch('time.sleep')
