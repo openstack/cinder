@@ -1440,7 +1440,8 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         status = snapshot.volume.status
 
         acceptable_states = ['available', 'in-use', 'backing-up']
-        if snapshot.display_name.startswith('tmp-snap-'):
+        if (snapshot.display_name and
+                snapshot.display_name.startswith('tmp-snap-')):
             # This is an internal volume snapshot. In order to support
             # image caching, we'll allow creating/deleting such snapshots
             # while having volumes in 'downloading' state.
