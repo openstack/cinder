@@ -1,4 +1,4 @@
-
+#
 # Copyright 2012 OpenStack Foundation
 # All Rights Reserved.
 #
@@ -62,6 +62,8 @@ f_uuid = ['262b9ce2-a71a-4fbe-830c-c20c5596caea',
 
 @ddt.ddt
 class SolidFireVolumeTestCase(test.TestCase):
+
+    EXPECTED_QOS = {'minIOPS': 110, 'burstIOPS': 1530, 'maxIOPS': 1020}
 
     def setUp(self):
         self.ctxt = context.get_admin_context()
@@ -939,6 +941,58 @@ class SolidFireVolumeTestCase(test.TestCase):
                               return_value=fake_no_volumes):
             sfv.delete_snapshot(testsnap)
 
+    def fake_ext_qos_issue_api_request(obj, method, params, version='1.0',
+                                       endpoint=None):
+        EXPECTED_SIZE = 2 << 30  # 2147483648 size + increase
+
+        if method == 'ModifyVolume':
+            response = {'error': {'code': 0,
+                                  'name': 'Extend Volume',
+                                  'message': 'extend fail, size/scale-iops'},
+                        'id': 1}
+            if params.get('totalSize', None) != EXPECTED_SIZE:
+                msg = ('Error (%s) encountered during '
+                       'SolidFire API call.' % response['error']['name'])
+                raise exception.SolidFireAPIException(message=msg)
+
+            if params.get('qos', None) != SolidFireVolumeTestCase.EXPECTED_QOS:
+                msg = ('Error (%s) encountered during '
+                       'SolidFire API call.' % response['error']['name'])
+                raise exception.SolidFireAPIException(message=msg)
+
+            return {'result': {}, 'id': 1}
+
+        elif method == 'GetAccountByName' and version == '1.0':
+            results = {'result': {'account':
+                                  {'accountID': 25,
+                                   'username': params['username'],
+                                   'status': 'active',
+                                   'initiatorSecret': '123456789012',
+                                   'targetSecret': '123456789012',
+                                   'attributes': {},
+                                   'volumes': [6, 7, 20]}},
+                       "id": 1}
+            return results
+
+        elif method == 'ListVolumesForAccount' and version == '1.0':
+            test_name = 'OS-VOLID-a720b3c0-d1f0-11e1-9b23-0800200c9a66'
+            result = {'result': {
+                'volumes': [{'volumeID': 5,
+                             'name': test_name,
+                             'accountID': 25,
+                             'sliceCount': 1,
+                             'totalSize': 1 * units.Gi,
+                             'enable512e': True,
+                             'access': "readWrite",
+                             'status': "active",
+                             'attributes': {},
+                             'qos': None,
+                             'iqn': test_name}]}}
+            return result
+
+        else:
+            return None
+
     def test_extend_volume(self):
         self.mock_object(solidfire.SolidFireDriver,
                          '_issue_api_request',
@@ -951,6 +1005,30 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         sfv.extend_volume(testvol, 2)
+
+    def test_extend_volume_with_scaled_qos(self):
+        size = 1
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        qos_ref = qos_specs.create(self.ctxt,
+                                   'qos-specs-1', {'minIOPS': '100',
+                                                   'maxIOPS': '1000',
+                                                   'burstIOPS': '1500',
+                                                   'scaledIOPS': 'True',
+                                                   'scaleMin': '10',
+                                                   'scaleMax': '20',
+                                                   'scaleBurst': '30'})
+        type_ref = volume_types.create(self.ctxt, "type1",
+                                       {'qos:minIOPS': '1000',
+                                        'qos:maxIOPS': '10000',
+                                        'qos:burstIOPS': '20000'})
+        qos_specs.associate_qos_with_type(self.ctxt,
+                                          qos_ref['id'],
+                                          type_ref['id'])
+        qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'], size + 1)
+        self.assertEqual(SolidFireVolumeTestCase.EXPECTED_QOS, qos)
 
     def test_extend_volume_fails_no_volume(self):
         self.mock_object(solidfire.SolidFireDriver,
@@ -1502,8 +1580,8 @@ class SolidFireVolumeTestCase(test.TestCase):
             if 'ListSnapshots'in method:
                 return {'result': {'snapshots': sf_snaps}}
 
-        with mock.patch.object(
-                sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
+        with mock.patch.object(sfv, '_issue_api_request',
+                               side_effect=_fake_issue_api_req):
             volume_updates, snapshot_updates = sfv.update_provider_info(
                 vrefs, snaprefs)
             self.assertEqual('99 100 53c8be1e-89e2-4f7f-a2e3-7cb84c47e0ec',

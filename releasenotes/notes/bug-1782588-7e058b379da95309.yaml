@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Solidfire fix extend volume with qos-Scaling to honor the increased size
+    with increased iops on the extended volume.
