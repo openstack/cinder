@@ -413,7 +413,7 @@ class InStorageMCSFcDriverTestCase(test.TestCase):
                               }
                      }
 
-        self.assertItemsEqual(term_data, term_ret)
+        self.assertCountEqual(term_data, term_ret)
 
     def test_instorage_mcs_fc_host_maps(self):
         # Create two volumes to be used in mappings

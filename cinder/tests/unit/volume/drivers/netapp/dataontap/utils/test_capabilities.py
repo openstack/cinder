@@ -96,7 +96,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         result = self.ssc_library.get_ssc_flexvol_names()
 
-        self.assertItemsEqual(fake.SSC_VOLUMES, result)
+        self.assertCountEqual(fake.SSC_VOLUMES, result)
 
     def test_get_ssc_for_flexvol(self):
 

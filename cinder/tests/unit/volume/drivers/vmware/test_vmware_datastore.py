@@ -285,7 +285,7 @@ class DatastoreTest(test.TestCase):
             datastores, valid_host_refs=[host2, host3])
 
         self.assertEqual((host2, rp, ds3_props['summary']), ret)
-        self.assertItemsEqual([mock.call(mock.sentinel.ds1_mount_info2),
+        self.assertCountEqual([mock.call(mock.sentinel.ds1_mount_info2),
                                mock.call(mock.sentinel.ds1_mount_info3),
                                mock.call(mock.sentinel.ds2_mount_info2),
                                mock.call(mock.sentinel.ds2_mount_info3),
