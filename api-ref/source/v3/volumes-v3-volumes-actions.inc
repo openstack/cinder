@@ -413,7 +413,7 @@ the volume.
 Policy defaults enable only users with the administrative role to
 perform this operation. Cloud providers can change these permissions
 through the ``volume_extension:volume_admin_actions:force_detach`` rule in
-the ``policy.json`` file.
+the policy configuration file.
 
 Response codes
 --------------
@@ -459,7 +459,7 @@ more than one active read/write attachment.
 
 Policy defaults enable only users with the administrative role or the owner of
 the volume to perform this operation. Cloud providers can change these
-permissions through the policy.json file.
+permissions through the policy configuration file.
 
 Response codes
 --------------
@@ -502,7 +502,7 @@ that volume has more than one active read/write attachment.
 
 Policy defaults enable only users with the administrative role to perform this
 operation. Cloud providers can change these permissions through the
-policy.json file.
+policy configuration file.
 
 .. _3.16 microversion: https://docs.openstack.org/cinder/latest/contributor/api_microversion_history.html#id15
 
