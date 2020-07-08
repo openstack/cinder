@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The default value of the configuration option, ``glance_num_retries``,
+    has been changed to 3 in this release. Its former value was 0.
+    The option controls how many times to retry a Glance API call
+    in response to a HTTP connection failure, timeout or ServiceUnavailable status.
+    By this change, Cinder can be more resilient to temporary failure and continue
+    the request if a retry succeeds.

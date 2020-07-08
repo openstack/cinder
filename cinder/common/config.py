@@ -172,7 +172,7 @@ image_opts = [
                      'is not specified it defaults to http.'),
     cfg.IntOpt('glance_num_retries',
                min=0,
-               default=0,
+               default=3,
                help='Number retries when downloading an image from glance'),
     cfg.BoolOpt('glance_api_insecure',
                 default=False,
