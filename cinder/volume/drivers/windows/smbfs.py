@@ -606,8 +606,16 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                                   volume.size * units.Gi,
                                   is_file_max_size=False)
 
-    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size,
+                                   src_encryption_key_id=None,
+                                   new_encryption_key_id=None):
         """Copy data from snapshot to destination volume."""
+
+        if new_encryption_key_id:
+            msg = _("Encryption key %s was requested. Volume "
+                    "encryption is not currently supported.")
+            raise exception.NotSupportedOperation(
+                message=msg % new_encryption_key_id)
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
                   "volume_size: %(size)s",

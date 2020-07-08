@@ -847,6 +847,17 @@ class WindowsSmbFsTestCase(test.TestCase):
             self.volume.size * units.Gi,
             is_file_max_size=False)
 
+    def test_copy_encrypted_volume_from_snapshot(self):
+        # We expect an exception to be raised if an encryption
+        # key is provided since we don't support encryted volumes
+        # for the time being.
+        self.assertRaises(exception.NotSupportedOperation,
+                          self._smbfs_driver._copy_volume_from_snapshot,
+                          self.snapshot, self.volume,
+                          self.volume.size,
+                          mock.sentinel.src_key,
+                          mock.sentinel.dest_key)
+
     def test_rebase_img(self):
         drv = self._smbfs_driver
         drv._rebase_img(
