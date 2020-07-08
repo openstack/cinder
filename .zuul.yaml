@@ -9,6 +9,8 @@
       - release-notes-jobs-python3
     check:
       jobs:
+        - cinder-code-coverage:
+            voting: false
         - cinder-tox-bandit-baseline:
             voting: false
         - openstack-tox-functional-py36:
@@ -103,6 +105,24 @@
     required-projects:
       - openstack/requirements
     irrelevant-files: *gate-irrelevant-files
+
+- job:
+    name: cinder-code-coverage
+    parent: openstack-tox-cover
+    timeout: 2400
+    irrelevant-files:
+      - ^(test-|)requirements.txt$
+      - ^lower-constraints.txt$
+      - ^.*\.rst$
+      - ^api-ref/.*$
+      - ^cinder/cmd/status\.py$
+      - ^cinder/locale/.*$
+      - ^contrib/block-box.*$
+      - ^doc/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
 
 - job:
     name: cinder-rally-task
