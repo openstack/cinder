@@ -594,3 +594,16 @@ class InStorageMCSFcDriverTestCase(test.TestCase):
         volume = self._generate_vol_info(None, None)
         self.fc_driver.create_volume(volume)
         self.fc_driver.add_vdisk_copy(volume['name'], 'fake-pool', None)
+
+    def test_make_initiator_target_all2all_map(self):
+        initiator_wwpns = ['ff00000000000000', 'ff00000000000001']
+        target_wwpns = ['bb00000000000000', 'bb00000000000001']
+
+        expected = {
+            'ff00000000000000': ['bb00000000000000', 'bb00000000000001'],
+            'ff00000000000001': ['bb00000000000000', 'bb00000000000001']
+        }
+
+        ret = self.fc_driver.make_initiator_target_all2all_map(initiator_wwpns,
+                                                               target_wwpns)
+        self.assertEqual(ret, expected)

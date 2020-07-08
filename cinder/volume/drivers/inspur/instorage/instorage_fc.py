@@ -28,7 +28,6 @@ from cinder import interface
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.inspur.instorage import instorage_common
-from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -56,6 +55,17 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
     def __init__(self, *args, **kwargs):
         super(InStorageMCSFCDriver, self).__init__(*args, **kwargs)
         self.protocol = 'FC'
+
+    @staticmethod
+    def make_initiator_target_all2all_map(initiator_wwpns, target_wwpns):
+        """Build a simplistic all-to-all mapping."""
+        i_t_map = {}
+        for i_wwpn in initiator_wwpns:
+            i_t_map[str(i_wwpn)] = []
+            for t_wwpn in target_wwpns:
+                i_t_map[i_wwpn].append(t_wwpn)
+
+        return i_t_map
 
     @cinder_utils.trace
     @coordination.synchronized('instorage-host'
@@ -141,7 +151,7 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
 
             properties['target_wwn'] = conn_wwpns
 
-            i_t_map = volume_utils.make_initiator_target_all2all_map(
+            i_t_map = self.make_initiator_target_all2all_map(
                 connector['wwpns'], conn_wwpns)
             properties['initiator_target_map'] = i_t_map
 
@@ -224,7 +234,7 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
                     for node in self._state['storage_nodes'].values():
                         target_wwpns.extend(node['WWPN'])
                     init_targ_map = (
-                        volume_utils.make_initiator_target_all2all_map(
+                        self.make_initiator_target_all2all_map(
                             connector['wwpns'],
                             target_wwpns))
                     info['data'] = {'initiator_target_map': init_targ_map}
