@@ -37,6 +37,8 @@ Supported operations
 * Force backup of an in-use volume
 * Retype a volume
 * Create a Thinly Provisioned Volume
+* Attach a volume to multiple servers simultaneously (multiattach)
+
 
 Nimble Storage driver configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,9 +127,6 @@ The Nimble volume driver also supports the following extra spec options:
 'nimble:perfpol-name'=PERF_POL_NAME
   PERF_POL_NAME is the name of a performance policy which exists on the
   Nimble array and should be enabled for every volume in a volume type.
-
-'nimble:multi-initiator'='true'
-  Used to enable multi-initiator access for a volume-type.
 
 nimble:dedupe'='true'
   Used to enable dedupe support for a volume-type.

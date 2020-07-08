@@ -17,12 +17,14 @@
 import sys
 from unittest import mock
 
+from oslo_utils import uuidutils
 from six.moves import http_client
 
 from cinder import context
 from cinder import exception
 from cinder.objects import volume as obj_volume
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.volume.drivers import nimble
 from cinder.volume import volume_types
@@ -83,6 +85,9 @@ FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_QOS = {
     'clone': False,
     'name': "testvolume-qos"}
 
+FAKE_EXTRA_SPECS = {'multiattach': '<is> True',
+                    'nimble:iops-limit': '1024'}
+
 FAKE_GET_VOL_INFO_RESPONSE = {'name': 'testvolume',
                               'clone': False,
                               'target_name': 'iqn.test',
@@ -98,6 +103,13 @@ FAKE_GET_VOL_INFO_ONLINE = {'name': 'testvolume',
                             'size': 2048,
                             'online': True,
                             'agent_type': 'none'}
+
+FAKE_GET_VOL_INFO_RETYPE = {'name': 'testvolume',
+                            'size': 2048,
+                            'online': True,
+                            'agent_type': 'none',
+                            'pool_id': 'none',
+                            'pool_name': 'none'}
 
 FAKE_GET_VOL_INFO_BACKUP_RESPONSE = {'name': 'testvolume',
                                      'clone': True,
@@ -250,6 +262,26 @@ class NimbleDriverBaseTestCase(test.TestCase):
             return inner_client_mock
         return client_mock_wrapper
 
+    @staticmethod
+    def client_mock_decorator_nimble_api(username, password, ip, verify):
+        def client_mock_wrapper(func):
+            def inner_client_mock(
+                    self, mock_client_class, mock_urllib2, *args, **kwargs):
+                self.mock_client_class = mock_client_class
+                self.mock_client_service = mock.MagicMock(name='Client')
+                self.mock_client_class.return_value = (
+                    self.mock_client_service)
+                self.driver = nimble.NimbleRestAPIExecutor(
+                    username=username, password=password, ip=ip, verify=verify)
+                mock_login_response = mock_urllib2.post.return_value
+                mock_login_response = mock.MagicMock()
+                mock_login_response.status_code.return_value = http_client.OK
+                mock_login_response.json.return_value = (
+                    FAKE_LOGIN_POST_RESPONSE)
+                func(self, *args, **kwargs)
+            return inner_client_mock
+        return client_mock_wrapper
+
 
 class NimbleDriverLoginTestCase(NimbleDriverBaseTestCase):
 
@@ -371,7 +403,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                            'nimble:perfpol-name': 'default',
                            'nimble:encryption': 'yes',
-                           'nimble:multi-initiator': 'false'}))
+                           'multiattach': 'false'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_encryption_positive(self):
@@ -412,7 +444,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                            'nimble:perfpol-name': 'VMware ESX',
                            'nimble:encryption': 'no',
-                           'nimble:multi-initiator': 'false'}))
+                           'multiattach': 'false'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_perfpolicy_positive(self):
@@ -452,7 +484,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                            'nimble:perfpol-name': 'default',
                            'nimble:encryption': 'no',
-                           'nimble:multi-initiator': 'true'}))
+                           'multiattach': 'true'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_multi_initiator_positive(self):
@@ -573,7 +605,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                            'nimble:perfpol-name': 'default',
                            'nimble:encryption': 'no',
-                           'nimble:multi-initiator': 'true'}))
+                           'multiattach': 'false'}))
     def test_create_volume_negative(self):
         self.mock_client_service.get_vol_info.side_effect = (
             FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE)
@@ -761,7 +793,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                  return_value={
                                      'nimble:perfpol-name': 'default',
                                      'nimble:encryption': 'yes',
-                                     'nimble:multi-initiator': 'false',
+                                     'multiattach': False,
                                      'nimble:iops-limit': '1024'}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*', False))
@@ -979,7 +1011,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                      'extra_specs':
                                      {'nimble:perfpol-name': 'default',
                                       'nimble:encryption': 'yes',
-                                      'nimble:multi-initiator': 'false',
+                                      'multiattach': False,
                                       'nimble:iops-limit': '1024'}}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -993,6 +1025,27 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                             None, None)
         self.assertTrue(retype)
         self.assertIsNone(update)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_ISCSI_DRIVER)
+    @mock.patch.object(nimble.NimbleRestAPIExecutor, 'login')
+    @mock.patch.object(nimble.NimbleRestAPIExecutor,
+                       'get_performance_policy_id')
+    @mock.patch.object(nimble.NimbleRestAPIExecutor, 'get_pool_info')
+    @mock.patch.object(nimble.NimbleRestAPIExecutor, 'get_folder_id')
+    @NimbleDriverBaseTestCase.client_mock_decorator_nimble_api(
+        'nimble', 'nimble_pass', '10.18.108.55', 'False')
+    def test_nimble_extraspecs_retype(self, mock_folder,
+                                      mock_pool, mock_perf_id,
+                                      mock_login):
+        mock_folder.return_value = None
+        mock_pool.return_value = None
+        mock_perf_id.return_value = None
+        mock_login.return_value = None
+        data = self.driver.get_valid_nimble_extraspecs(
+            FAKE_EXTRA_SPECS,
+            FAKE_GET_VOL_INFO_RETYPE)
+        self.assertTrue(data['multi_initiator'])
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
@@ -1011,7 +1064,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                    'total_capacity_gb': 7466.30419921875,
                                    'free_capacity_gb': 7463.567649364471,
                                    'reserved_percentage': 0,
-                                   'QoS_support': False}]}
+                                   'QoS_support': False,
+                                   'multiattach': True}]}
         self.assertEqual(
             expected_res,
             self.driver.get_volume_stats(refresh=True))
@@ -1095,7 +1149,7 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
                                  'nimble:perfpol-name': 'default',
                                  'nimble:encryption': 'yes',
-                                 'nimble:multi-initiator': 'false'}))
+                                 'multiattach': False}))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
     def test_create_volume_from_snapshot(self):
@@ -1361,10 +1415,15 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     def test_terminate_connection_positive(self):
         self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE)
+        ctx = context.get_admin_context()
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=False)
+
         self.driver.terminate_connection(
-            {'name': 'test-volume',
-             'provider_location': '12 13',
-             'id': 12},
+            volume,
             {'initiator': 'test-initiator1'})
         expected_calls = [mock.call._get_igroupname_for_initiator(
             'test-initiator1'),
@@ -1406,10 +1465,15 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
         mock_wwpns.return_value = ["1111111111111101"]
         self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE_FC)
+        ctx = context.get_admin_context()
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=14, multiattach=False)
+
         self.driver.terminate_connection(
-            {'name': 'test-volume',
-             'provider_location': 'array1',
-             'id': 12},
+            volume,
             {'initiator': 'test-initiator1',
              'wwpns': ['1000000000000000']})
         expected_calls = [
@@ -1430,9 +1494,159 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
     def test_terminate_connection_negative(self):
         self.mock_client_service.get_initiator_grp_list.return_value = (
             FAKE_IGROUP_LIST_RESPONSE)
+        ctx = context.get_admin_context()
+
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=False)
+
         self.assertRaises(
             exception.VolumeDriverException,
             self.driver.terminate_connection,
-            {'name': 'test-volume',
-             'provider_location': '12 13', 'id': 12},
+            volume,
             {'initiator': 'test-initiator3'})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
+    def test_terminate_connection_negative_fc(self, mock_wwpns):
+        mock_wwpns.return_value = ["1111111111111101"]
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE_FC)
+        ctx = context.get_admin_context()
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=False)
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.terminate_connection,
+            volume,
+            {'initiator': 'test-initiator3',
+             'wwpns': ['1000000000000010']})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_terminate_connection_multiattach(self):
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
+        ctx = context.get_admin_context()
+
+        att_1 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid())
+        att_2 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid())
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=True)
+        volume.volume_attachment.objects = [att_1, att_2]
+        self.driver.terminate_connection(
+            volume,
+            {'initiator': 'test-initiator1'})
+        self.mock_client_service.remove_acl.assert_not_called()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_terminate_connection_multiattach_complete(self):
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE)
+        ctx = context.get_admin_context()
+
+        att_1 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid())
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=True)
+        volume.volume_attachment.objects = [att_1]
+        self.driver.terminate_connection(
+            volume,
+            {'initiator': 'test-initiator1'})
+        expected_calls = [mock.call._get_igroupname_for_initiator(
+            'test-initiator1'),
+            mock.call.remove_acl({'name': 'test-volume'},
+                                 'test-igrp1')]
+        self.mock_client_service.assert_has_calls(
+            self.mock_client_service.method_calls,
+            expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
+    def test_terminate_connection_multiattach_fc(self, mock_wwpns):
+        mock_wwpns.return_value = ["1111111111111101"]
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE_FC)
+        ctx = context.get_admin_context()
+
+        att_1 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid())
+        att_2 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid())
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=True)
+        volume.volume_attachment.objects = [att_1, att_2]
+        self.driver.terminate_connection(
+            volume,
+            {'initiator': 'test-initiator1',
+             'wwpns': ['1000000000000000']})
+        self.mock_client_service.remove_acl.assert_not_called()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
+    def test_terminate_connection_multiattach_complete_fc(self, mock_wwpns):
+        mock_wwpns.return_value = ["1111111111111101"]
+        self.mock_client_service.get_initiator_grp_list.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE_FC)
+        ctx = context.get_admin_context()
+
+        att_1 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid())
+        volume = fake_volume.fake_volume_obj(
+            ctx, name='test-volume',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, multiattach=True)
+        volume.volume_attachment.objects = [att_1]
+        self.driver.terminate_connection(
+            volume,
+            {'initiator': 'test-initiator1',
+             'wwpns': ['1000000000000000']})
+        expected_calls = [
+            mock.call.get_igroupname_for_initiator_fc(
+                "10:00:00:00:00:00:00:00"),
+            mock.call.remove_acl({'name': 'test-volume'},
+                                 'test-igrp1')]
+        self.mock_client_service.assert_has_calls(
+            self.mock_client_service.method_calls,
+            expected_calls)

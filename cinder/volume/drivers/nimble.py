@@ -50,7 +50,6 @@ AES_256_XTS_CIPHER = 'aes_256_xts'
 DEFAULT_CIPHER = 'none'
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
 EXTRA_SPEC_PERF_POLICY = 'nimble:perfpol-name'
-EXTRA_SPEC_MULTI_INITIATOR = 'nimble:multi-initiator'
 EXTRA_SPEC_DEDUPE = 'nimble:dedupe'
 EXTRA_SPEC_IOPS_LIMIT = 'nimble:iops-limit'
 EXTRA_SPEC_FOLDER = 'nimble:folder'
@@ -58,7 +57,6 @@ DEFAULT_PERF_POLICY_SETTING = 'default'
 DEFAULT_ENCRYPTION_SETTING = 'no'
 DEFAULT_DEDUPE_SETTING = 'false'
 DEFAULT_IOPS_LIMIT_SETTING = None
-DEFAULT_MULTI_INITIATOR_SETTING = 'false'
 DEFAULT_FOLDER_SETTING = None
 DEFAULT_SNAP_QUOTA = sys.maxsize
 BACKUP_VOL_PREFIX = 'backup-vol-'
@@ -393,7 +391,8 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                 total_capacity_gb=total_capacity,
                 free_capacity_gb=free_space,
                 reserved_percentage=0,
-                QoS_support=False)
+                QoS_support=False,
+                multiattach=True)
             self.group_stats['pools'] = [single_pool]
         return self.group_stats
 
@@ -721,6 +720,24 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                                  {'vol': volume['name'],
                                   'igroup': initiator_group_name})
 
+    def _is_multiattach(self, volume):
+        if volume.multiattach:
+            attachment_list = volume.volume_attachment
+            try:
+                attachment_list = attachment_list.objects
+            except AttributeError:
+                pass
+
+            if attachment_list is not None and len(attachment_list) > 1:
+                LOG.info("Volume %(volume)s is attached to multiple "
+                         "instances on host %(host_name)s, "
+                         "skip terminate volume connection",
+                         {'volume': volume.name,
+                          'host_name': volume.host.split('@')[0]})
+                return True
+            else:
+                return False
+
 
 @interface.volumedriver
 class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
@@ -798,6 +815,8 @@ class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
             LOG.warning("Removing ALL host connections for volume %s",
                         volume)
             self.APIExecutor.remove_all_acls(volume)
+            return
+        if self._is_multiattach(volume):
             return
 
         initiator_name = connector['initiator']
@@ -996,6 +1015,8 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
                         volume)
             self.APIExecutor.remove_all_acls(volume)
             return
+        if self._is_multiattach(volume):
+            return
 
         initiator_name = connector['initiator']
         for wwpn in connector['wwpns']:
@@ -1161,8 +1182,6 @@ class NimbleRestAPIExecutor(object):
                                            DEFAULT_PERF_POLICY_SETTING)
         encryption = extra_specs.get(EXTRA_SPEC_ENCRYPTION,
                                      DEFAULT_ENCRYPTION_SETTING)
-        multi_initiator = extra_specs.get(EXTRA_SPEC_MULTI_INITIATOR,
-                                          DEFAULT_MULTI_INITIATOR_SETTING)
         iops_limit = extra_specs.get(EXTRA_SPEC_IOPS_LIMIT,
                                      DEFAULT_IOPS_LIMIT_SETTING)
         folder_name = extra_specs.get(EXTRA_SPEC_FOLDER,
@@ -1172,11 +1191,9 @@ class NimbleRestAPIExecutor(object):
         extra_specs_map = {}
         extra_specs_map[EXTRA_SPEC_PERF_POLICY] = perf_policy_name
         extra_specs_map[EXTRA_SPEC_ENCRYPTION] = encryption
-        extra_specs_map[EXTRA_SPEC_MULTI_INITIATOR] = multi_initiator
         extra_specs_map[EXTRA_SPEC_IOPS_LIMIT] = iops_limit
         extra_specs_map[EXTRA_SPEC_DEDUPE] = dedupe
         extra_specs_map[EXTRA_SPEC_FOLDER] = folder_name
-
         return extra_specs_map
 
     def get_valid_nimble_extraspecs(self, extra_specs_map, vol_info):
@@ -1192,10 +1209,10 @@ class NimbleRestAPIExecutor(object):
         if encrypt.lower() == 'yes':
             cipher = AES_256_XTS_CIPHER
         data['cipher'] = cipher
-
-        multi_initiator = extra_specs_map_updated[EXTRA_SPEC_MULTI_INITIATOR]
-        data['multi_initiator'] = multi_initiator
-
+        if extra_specs_map.get('multiattach') == "<is> True":
+            data['multi_initiator'] = True
+        else:
+            data['multi_initiator'] = False
         folder_name = extra_specs_map_updated[EXTRA_SPEC_FOLDER]
         folder_id = None
         pool_id = vol_info['pool_id']
@@ -1290,7 +1307,7 @@ class NimbleRestAPIExecutor(object):
         perf_policy_name = extra_specs_map[EXTRA_SPEC_PERF_POLICY]
         perf_policy_id = self.get_performance_policy_id(perf_policy_name)
         encrypt = extra_specs_map[EXTRA_SPEC_ENCRYPTION]
-        multi_initiator = extra_specs_map[EXTRA_SPEC_MULTI_INITIATOR]
+        multi_initiator = volume.get('multiattach', False)
         folder_name = extra_specs_map[EXTRA_SPEC_FOLDER]
         iops_limit = extra_specs_map[EXTRA_SPEC_IOPS_LIMIT]
         dedupe = extra_specs_map[EXTRA_SPEC_DEDUPE]
@@ -1521,11 +1538,11 @@ class NimbleRestAPIExecutor(object):
                   "initiator_group_id": initiator_group_id}
         api = "access_control_records"
         r = self.get_query(api, filter)
+        LOG.info("ACL record is %result", {'result': r.json()})
         if not r.json()['data']:
-            raise NimbleAPIException(_("Unable to retrieve ACL for volume: "
-                                       "%(vol)s %(igroup)s ") %
-                                     {'vol': volume_id,
-                                      'igroup': initiator_group_id})
+            LOG.warning('ACL is not available for this volume %vol_id', {
+                        'vol_id': volume_id})
+            return
         return r.json()['data'][0]
 
     def get_volume_acl_records(self, volume_id):
@@ -1560,9 +1577,10 @@ class NimbleRestAPIExecutor(object):
         try:
             acl_record = self.get_acl_record(volume_id, initiator_group_id)
             LOG.debug("ACL Record %(acl)s", {"acl": acl_record})
-            acl_id = acl_record['id']
-            api = 'access_control_records/' + six.text_type(acl_id)
-            self.delete(api)
+            if acl_record is not None:
+                acl_id = acl_record['id']
+                api = 'access_control_records/' + six.text_type(acl_id)
+                self.delete(api)
         except NimbleAPIException as ex:
             LOG.debug("remove_acl_exception: %s", ex)
             if SM_OBJ_ENOENT_MSG in six.text_type(ex):
@@ -1700,7 +1718,7 @@ class NimbleRestAPIExecutor(object):
         perf_policy_name = extra_specs_map.get(EXTRA_SPEC_PERF_POLICY)
         perf_policy_id = self.get_performance_policy_id(perf_policy_name)
         encrypt = extra_specs_map.get(EXTRA_SPEC_ENCRYPTION)
-        multi_initiator = extra_specs_map.get(EXTRA_SPEC_MULTI_INITIATOR)
+        multi_initiator = volume.get('multiattach', False)
         iops_limit = extra_specs_map[EXTRA_SPEC_IOPS_LIMIT]
         folder_name = extra_specs_map[EXTRA_SPEC_FOLDER]
         pool_id = self.get_pool_id(pool_name)
