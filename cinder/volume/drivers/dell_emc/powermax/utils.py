@@ -1834,7 +1834,7 @@ class PowerMaxUtils(object):
         return list(replication_targets)
 
     def validate_failover_request(self, is_failed_over, failover_backend_id,
-                                  rep_configs):
+                                  rep_configs, primary_array, arrays_list):
         """Validate failover_host request's parameters
 
         Validate that a failover_host operation can be performed with
@@ -1843,6 +1843,8 @@ class PowerMaxUtils(object):
         :param is_failed_over: current failover state
         :param failover_backend_id: backend_id given during failover request
         :param rep_configs: backend rep_configs -- list
+        :param primary_array: configured primary array SID -- string
+        :param arrays_list: list of U4P symmetrix IDs -- list
         :return: (bool, str) is valid, reason on invalid
         """
         is_valid = True
@@ -1853,6 +1855,13 @@ class PowerMaxUtils(object):
                 msg = _('Cannot failover, the backend is already in a failed '
                         'over state, if you meant to failback, please add '
                         '--backend_id default to the command.')
+            elif primary_array not in arrays_list:
+                is_valid = False
+                msg = _('Cannot failback, the configured primary array is '
+                        'not currently available to perform failback to. '
+                        'Please ensure array %s is visible in '
+                        'Unisphere.') % primary_array
+
         else:
             if failover_backend_id == 'default':
                 is_valid = False

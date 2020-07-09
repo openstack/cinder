@@ -2293,6 +2293,21 @@ class PowerMaxCommonTest(test.TestCase):
         device_ids = self.common._get_volume_device_ids(volumes, array)
         self.assertEqual(ref_device_ids, device_ids)
 
+    @mock.patch.object(common.PowerMaxCommon, '_find_device_on_array',
+                       return_value=tpd.PowerMaxData.device_id)
+    def test_get_volume_device_ids_remote_volumes(self, mck_find):
+        array = self.data.array
+        volumes = [self.data.test_rep_volume]
+        ref_device_ids = [self.data.device_id]
+        replication_details = ast.literal_eval(
+            self.data.test_rep_volume.replication_driver_data)
+        remote_array = replication_details.get(utils.ARRAY)
+        specs = {utils.ARRAY: remote_array}
+        device_ids = self.common._get_volume_device_ids(volumes, array, True)
+        self.assertEqual(ref_device_ids, device_ids)
+        mck_find.assert_called_once_with(
+            self.data.test_rep_volume, specs, True)
+
     def test_get_members_of_volume_group(self):
         array = self.data.array
         group_name = self.data.storagegroup_name_source
@@ -2541,6 +2556,32 @@ class PowerMaxCommonTest(test.TestCase):
                 self.common, '_clone_check') as mock_clone_chk:
             self.common._delete_group(group, volumes)
             mock_clone_chk.assert_called_once()
+
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(common.PowerMaxCommon, '_failover_replication',
+                       return_value=(True, None))
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volumes_to_storage_group')
+    @mock.patch.object(common.PowerMaxCommon, '_get_volume_device_ids',
+                       return_value=[tpd.PowerMaxData.device_id])
+    @mock.patch.object(provision.PowerMaxProvision, 'create_volume_group')
+    @mock.patch.object(common.PowerMaxCommon, '_initial_setup',
+                       return_value=tpd.PowerMaxData.ex_specs_rep_config_sync)
+    def test_update_volume_list_from_sync_vol_list(
+            self, mck_setup, mck_grp, mck_ids, mck_add, mck_fover, mck_del):
+        vol_list = [self.data.test_rep_volume]
+        vol_ids = [self.data.device_id]
+        remote_array = self.data.remote_array
+        temp_group = 'OS-23_24_007-temp-rdf-sg'
+        extra_specs = self.data.ex_specs_rep_config_sync
+        self.common._update_volume_list_from_sync_vol_list(vol_list, None)
+        mck_grp.assert_called_once_with(remote_array, temp_group, extra_specs)
+        mck_ids.assert_called_once_with(
+            vol_list, remote_array, remote_volumes=True)
+        mck_add.assert_called_once_with(
+            remote_array, vol_ids, temp_group, extra_specs)
+        mck_fover.assert_called_once_with(
+            vol_list, None, temp_group, secondary_backend_id=None, host=True)
+        mck_del.assert_called_once_with(remote_array, temp_group)
 
     @mock.patch.object(
         common.PowerMaxCommon, '_remove_vol_and_cleanup_replication')

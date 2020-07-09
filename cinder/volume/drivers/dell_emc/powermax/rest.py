@@ -692,6 +692,18 @@ class PowerMaxRest(object):
         operation = 'delete %(res)s resource' % {'res': resource_type}
         self.check_status_code_success(operation, status_code, message)
 
+    def get_arrays_list(self):
+        """Get a list of all arrays on U4P instance.
+
+        :returns arrays -- list
+        """
+        target_uri = '/%s/sloprovisioning/symmetrix' % U4V_VERSION
+        array_details = self.get_request(target_uri, 'sloprovisioning')
+        if not array_details:
+            LOG.error("Could not get array details from Unisphere instance.")
+        arrays = array_details.get('symmetrixId', list())
+        return arrays
+
     def get_array_detail(self, array):
         """Get an array from its serial number.
 

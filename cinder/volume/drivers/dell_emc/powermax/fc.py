@@ -128,6 +128,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
                 (bp powermax-port-load-balance)
               - Fix to enable legacy volumes to live migrate (#1867163)
               - Use of snap id instead of generation (bp powermax-snapset-ids)
+              - Support for Failover Abilities (bp/powermax-failover-abilities)
     """
 
     VERSION = "4.3.0"

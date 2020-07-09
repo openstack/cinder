@@ -230,6 +230,13 @@ class PowerMaxData(object):
         volume_type=test_volume_type, host=fake_host,
         replication_driver_data=six.text_type(provider_location3))
 
+    test_rep_volume = fake_volume.fake_volume_obj(
+        context=ctx, name='vol1', size=2, provider_auth=None,
+        provider_location=six.text_type(provider_location),
+        volume_type=test_volume_type, host=fake_host,
+        replication_driver_data=six.text_type(provider_location3),
+        replication_status=fields.ReplicationStatus.ENABLED)
+
     test_attached_volume = fake_volume.fake_volume_obj(
         id='4732de9b-98a4-4b6d-ae4b-3cafb3d34220', context=ctx, name='vol1',
         size=0, provider_auth=None, attach_status='attached',
