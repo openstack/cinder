@@ -16,10 +16,10 @@
 from cinder import context
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 
 
-class TestAttachDetachVolume(vxflexos.TestVxFlexOSDriver):
+class TestAttachDetachVolume(powerflex.TestPowerFlexDriver):
 
     def setUp(self):
         super(TestAttachDetachVolume, self).setUp()

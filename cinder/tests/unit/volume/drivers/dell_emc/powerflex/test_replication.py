@@ -16,18 +16,18 @@
 import ddt
 
 from cinder import exception
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 from cinder.volume import configuration
 
 
 @ddt.ddt
-class TestReplication(vxflexos.TestVxFlexOSDriver):
-    """Test cases for VxFlex OS replication support."""
+class TestReplication(powerflex.TestPowerFlexDriver):
+    """Test cases for PowerFlex replication support."""
 
     def setUp(self):
         super(TestReplication, self).setUp()
 
-        self.replication_backend_id = 'vxflex_repl'
+        self.replication_backend_id = 'powerflex_repl'
         replication_device = [
             {
                 'backend_id': self.replication_backend_id,
@@ -55,7 +55,7 @@ class TestReplication(vxflexos.TestVxFlexOSDriver):
         }
 
     def test_do_setup_replication_configured(self):
-        super(vxflexos.mocks.VxFlexOSDriver, self.driver).do_setup({})
+        super(powerflex.mocks.PowerFlexDriver, self.driver).do_setup({})
         self.driver.check_for_setup_error()
         self.assertTrue(self.driver.secondary_client.is_configured)
         self.assertTrue(self.driver.replication_enabled)
@@ -63,15 +63,15 @@ class TestReplication(vxflexos.TestVxFlexOSDriver):
     @ddt.data(
         [
             {
-                'backend_id': 'vxflex_repl1'
+                'backend_id': 'powerflex_repl1'
             },
             {
-                'backend_id': 'vxflex_repl2'
+                'backend_id': 'powerflex_repl2'
             }
         ],
         [
             {
-                'backend_id': 'vxflex_repl1',
+                'backend_id': 'powerflex_repl1',
                 'san_ip': '127.0.0.2'
             },
         ]
@@ -81,13 +81,13 @@ class TestReplication(vxflexos.TestVxFlexOSDriver):
                              override=replication_device,
                              group=configuration.SHARED_CONF_GROUP)
         self.assertRaises(exception.InvalidInput,
-                          super(vxflexos.mocks.VxFlexOSDriver,
+                          super(powerflex.mocks.PowerFlexDriver,
                                 self.driver).do_setup,
                           {})
 
     def test_do_setup_already_failed_over(self):
-        self.driver.active_backend_id = 'vxflex_repl'
-        super(vxflexos.mocks.VxFlexOSDriver, self.driver).do_setup({})
+        self.driver.active_backend_id = 'powerflex_repl'
+        super(powerflex.mocks.PowerFlexDriver, self.driver).do_setup({})
         self.driver.check_for_setup_error()
         self.assertFalse(self.driver.replication_enabled)
 

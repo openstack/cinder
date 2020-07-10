@@ -20,13 +20,13 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
-from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 
-class TestCreateVolumeFromSnapShot(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver.create_volume_from_snapshot()``"""
+class TestCreateVolumeFromSnapShot(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver.create_volume_from_snapshot()``"""
     def setUp(self):
         """Setup a test case environment.
 

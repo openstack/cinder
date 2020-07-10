@@ -1,38 +1,39 @@
-===========================================
-Dell EMC VxFlex OS (ScaleIO) Storage driver
-===========================================
+=================================
+Dell EMC PowerFlex Storage driver
+=================================
 
 Overview
 --------
 
-Dell EMC VxFlex OS (formerly named Dell EMC ScaleIO) is a software-only
-solution that uses existing servers local
+Dell EMC PowerFlex (formerly named Dell EMC ScaleIO/VxFlex OS) is a
+software-only solution that uses existing servers local
 disks and LAN to create a virtual SAN that has all of the benefits of
 external storage, but at a fraction of the cost and complexity. Using the
-driver, Block Storage hosts can connect to a VxFlex OS Storage
+driver, Block Storage hosts can connect to a PowerFlex Storage
 cluster.
 
-The Dell EMC VxFlex OS Cinder driver is designed and tested to work with
-both VxFlex OS and with ScaleIO. The
-:ref:`configuration options <cg_configuration_options_emc>`
-are identical for both VxFlex OS and ScaleIO.
+The Dell EMC PowerFlex Cinder driver is designed and tested to work with
+both PowerFlex and with ScaleIO. The
+:ref:`configuration options <cg_configuration_options_dellemc>`
+are identical for both PowerFlex and ScaleIO.
 
-.. _scaleio_docs:
+.. _powerflex_docs:
 
-Official VxFlex OS documentation
+Official PowerFlex documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To find the VxFlex OS documentation:
+To find the PowerFlex documentation:
 
-#. Go to the `VxFlex OS product documentation page <https://support.emc.com/products/33925_ScaleIO/Documentation/?source=promotion>`_.
+#. Go to the `PowerFlex product documentation page <https://support.emc.com/products/33925_ScaleIO/Documentation/?source=promotion>`_.
 
-#. From the left-side panel, select the relevant VxFlex OS version.
+#. From the left-side panel, select the relevant PowerFlex version.
 
-Supported VxFlex OS and ScaleIO Versions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Supported PowerFlex, VxFlex OS and ScaleIO Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Dell EMC VxFlex OS Block Storage driver has been tested against the
-following versions of ScaleIO and VxFlex OS and found to be compatible:
+The Dell EMC PowerFlex Block Storage driver has been tested against the
+following versions of ScaleIO, VxFlex OS and PowerFlex and found to be
+compatible:
 
 * ScaleIO 2.0.x
 
@@ -42,27 +43,27 @@ following versions of ScaleIO and VxFlex OS and found to be compatible:
 
 * VxFlex OS 3.0.x
 
-* VxFlex OS 3.5.x
+* PowerFlex 3.5.x
 
-Please consult the :ref:`scaleio_docs`
+Please consult the :ref:`powerflex_docs`
 to determine supported operating systems for each version
-of VxFlex OS or ScaleIO.
+of PowerFlex, VxFlex OS or ScaleIO.
 
 Deployment prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-* The VxFlex OS Gateway must be installed and accessible in the network.
+* The PowerFlex Gateway must be installed and accessible in the network.
   For installation steps, refer to the Preparing the installation Manager
-  and the Gateway section in VxFlex OS Deployment Guide. See
-  :ref:`scaleio_docs`.
+  and the Gateway section in PowerFlex Deployment Guide. See
+  :ref:`powerflex_docs`.
 
-* VxFlex OS Storage Data Client (SDC) must be installed
+* PowerFlex Storage Data Client (SDC) must be installed
   on all OpenStack nodes.
 
-.. note:: Ubuntu users must follow the specific instructions in the VxFlex
+.. note:: Ubuntu users must follow the specific instructions in the PowerFlex
           OS Deployment Guide for Ubuntu environments. See the ``Deploying
-          on Ubuntu Servers`` section in VxFlex OS Deployment Guide. See
-          :ref:`scaleio_docs`.
+          on Ubuntu Servers`` section in PowerFlex Deployment Guide. See
+          :ref:`powerflex_docs`.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -89,42 +90,42 @@ Supported operations
 
 * OpenStack replication v2.1 support
 
-VxFlex OS Block Storage driver configuration
+PowerFlex Block Storage driver configuration
 --------------------------------------------
 
 This section explains how to configure and connect the block storage
-nodes to a VxFlex OS storage cluster.
+nodes to a PowerFlex storage cluster.
 
 Edit the ``cinder.conf`` file by adding the configuration below under
-a new section (for example, ``[vxflexos]``) and change the ``enable_backends``
+a new section (for example, ``[powerflex]``) and change the ``enable_backends``
 setting (in the ``[DEFAULT]`` section) to include this new back end.
 The configuration file is usually located at
 ``/etc/cinder/cinder.conf``.
 
 For a configuration example, refer to the example
-:ref:`cinder.conf <cg_configuration_example_emc>`.
+:ref:`cinder.conf <cg_configuration_example_dellemc>`.
 
-VxFlex OS driver name
+PowerFlex driver name
 ~~~~~~~~~~~~~~~~~~~~~
 
 Configure the driver name by adding the following parameter:
 
 .. code-block:: ini
 
-   volume_driver = cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver
+   volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver
 
-VxFlex OS Gateway server IP
+PowerFlex Gateway server IP
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The VxFlex OS Gateway provides a REST interface to VxFlex OS.
+The PowerFlex Gateway provides a REST interface to PowerFlex.
 
 Configure the Gateway server IP address by adding the following parameter:
 
 .. code-block:: ini
 
-   san_ip = <VxFlex OS GATEWAY IP>
+   san_ip = <PowerFlex GATEWAY IP>
 
-VxFlex OS Storage Pools
+PowerFlex Storage Pools
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Multiple Storage Pools and Protection Domains can be listed for use by
@@ -138,43 +139,43 @@ Configure the available Storage Pools by adding the following parameter:
 
 .. code-block:: ini
 
-   vxflexos_storage_pools = <Comma-separated list of protection domain:storage pool name>
+   powerflex_storage_pools = <Comma-separated list of protection domain:storage pool name>
 
-VxFlex OS user credentials
+PowerFlex user credentials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Block Storage requires a VxFlex OS user with administrative
+Block Storage requires a PowerFlex user with administrative
 privileges. Dell EMC recommends creating a dedicated OpenStack user
 account that has an administrative user role.
 
-Refer to the VxFlex OS User Guide for details on user account management.
+Refer to the PowerFlex User Guide for details on user account management.
 
 Configure the user credentials by adding the following parameters:
 
 .. code-block:: ini
 
-   san_login = <SIO_USER>
-   san_password = <SIO_PASSWD>
+   san_login = <POWERFLEX_USER>
+   san_password = <POWERFLEX_PASSWD>
 
 Oversubscription
 ~~~~~~~~~~~~~~~~
 
 Configure the oversubscription ratio by adding the following parameter
-under the separate section for VxFlex OS:
+under the separate section for PowerFlex:
 
 .. code-block:: ini
 
-   vxflexos_max_over_subscription_ratio = <OVER_SUBSCRIPTION_RATIO>
+   powerflex_max_over_subscription_ratio = <OVER_SUBSCRIPTION_RATIO>
 
 .. note::
 
-   The default value for ``vxflexos_max_over_subscription_ratio``
+   The default value for ``powerflex_max_over_subscription_ratio``
    is 10.0.
 
 Oversubscription is calculated correctly by the Block Storage service
 only if the extra specification ``provisioning:type``
 appears in the volume type regardless of the default provisioning type.
-Maximum oversubscription value supported for VxFlex OS is 10.0.
+Maximum oversubscription value supported for PowerFlex is 10.0.
 
 Default provisioning type
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -194,9 +195,9 @@ in the configuration file, as follows:
 The configuration file is usually located in
 ``/etc/cinder/cinder.conf``.
 For a configuration example, see:
-:ref:`cinder.conf <cg_configuration_example_emc>`.
+:ref:`cinder.conf <cg_configuration_example_dellemc>`.
 
-.. _cg_configuration_example_emc:
+.. _cg_configuration_example_dellemc:
 
 Configuration example
 ~~~~~~~~~~~~~~~~~~~~~
@@ -209,68 +210,68 @@ parameters as follows:
 .. code-block:: ini
 
    [DEFAULT]
-   enabled_backends = vxflexos
+   enabled_backends = powerflex
 
-   [vxflexos]
-   volume_driver = cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver
-   volume_backend_name = vxflexos
+   [powerflex]
+   volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver
+   volume_backend_name = powerflex
    san_ip = GATEWAY_IP
-   vxflexos_storage_pools = Domain1:Pool1,Domain2:Pool2
-   san_login = SIO_USER
-   san_password = SIO_PASSWD
+   powerflex_storage_pools = Domain1:Pool1,Domain2:Pool2
+   san_login = POWERFLEX_USER
+   san_password = POWERFLEX_PASSWD
    san_thin_provision = false
 
 Connector configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Before using attach/detach volume operations VxFlex OS connector must be
-properly configured. On each node where VxFlex OS SDC is installed do the
+Before using attach/detach volume operations PowerFlex connector must be
+properly configured. On each node where PowerFlex SDC is installed do the
 following:
 
-#. Create ``/opt/emc/scaleio/openstack/connector.conf`` if it does not
+#. Create ``/opt/dellemc/powerflex/openstack/connector.conf`` if it does not
    exist.
 
    .. code-block:: console
 
-     $ mkdir -p /opt/emc/scaleio/openstack
-     $ touch /opt/emc/scaleio/openstack/connector.conf
+     $ mkdir -p /opt/dellemc/powerflex/openstack
+     $ touch /opt/dellemc/powerflex/openstack/connector.conf
 
-#. For each VxFlex OS section in the ``cinder.conf`` create the same section in
-   the ``/opt/emc/scaleio/openstack/connector.conf`` and populate it with
+#. For each PowerFlex section in the ``cinder.conf`` create the same section in
+   the ``/opt/dellemc/powerflex/openstack/connector.conf`` and populate it with
    passwords. Example:
 
    .. code-block:: ini
 
-      [vxflexos]
-      san_password = SIO_PASSWD
-      replicating_san_password = REPLICATION_SYSTEM_SIO_PASSWD # if applicable
+      [powerflex]
+      san_password = POWERFLEX_PASSWD
+      replicating_san_password = REPLICATION_SYSTEM_POWERFLEX_PASSWD # if applicable
 
-      [vxflexos-new]
+      [powerflex-new]
       san_password = SIO2_PASSWD
       replicating_san_password = REPLICATION_SYSTEM_SIO2_PASSWD # if applicable
 
-.. _cg_configuration_options_emc:
+.. _cg_configuration_options_dellemc:
 
 Configuration options
 ~~~~~~~~~~~~~~~~~~~~~
 
-The VxFlex OS driver supports these configuration options:
+The PowerFlex driver supports these configuration options:
 
 .. config-table::
-   :config-target: VxFlex OS
+   :config-target: PowerFlex
 
-   cinder.volume.drivers.dell_emc.vxflexos.driver
+   cinder.volume.drivers.dell_emc.powerflex.driver
 
 Volume Types
 ------------
 
 Volume types can be used to specify characteristics of volumes allocated via
-the VxFlex OS Driver. These characteristics are defined as ``Extra Specs``
+the PowerFlex Driver. These characteristics are defined as ``Extra Specs``
 within ``Volume Types``.
 
-.. _vxflexos_pd_sp:
+.. _powerflex_pd_sp:
 
-VxFlex OS Protection Domain and Storage Pool
+PowerFlex Protection Domain and Storage Pool
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When multiple storage pools are specified in the Cinder configuration,
@@ -280,11 +281,11 @@ requested protection_domain:storage_pool.
 
 .. code-block:: console
 
-   $ openstack volume type create vxflexos_type_1
-   $ openstack volume type set --property volume_backend_name=vxflexos vxflexos_type_1
-   $ openstack volume type set --property pool_name=Domain2:Pool2 vxflexos_type_1
+   $ openstack volume type create powerflex_type_1
+   $ openstack volume type set --property volume_backend_name=powerflex powerflex_type_1
+   $ openstack volume type set --property pool_name=Domain2:Pool2 powerflex_type_1
 
-VxFlex OS thin provisioning support
+PowerFlex thin provisioning support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Block Storage driver supports creation of thin-provisioned and
@@ -294,13 +295,13 @@ of the volume type, as follows:
 
 .. code-block:: console
 
-   $ openstack volume type create vxflexos_type_thick
-   $ openstack volume type set --property provisioning:type=thick vxflexos_type_thick
+   $ openstack volume type create powerflex_type_thick
+   $ openstack volume type set --property provisioning:type=thick powerflex_type_thick
 
-VxFlex OS QoS support
+PowerFlex QoS support
 ~~~~~~~~~~~~~~~~~~~~~
 
-QoS support for the VxFlex OS driver includes the ability to set the
+QoS support for the PowerFlex driver includes the ability to set the
 following capabilities:
 
 ``maxIOPS``
@@ -329,8 +330,8 @@ For example:
 .. code-block:: console
 
    $ openstack volume qos create qos-limit-iops --consumer back-end --property maxIOPS=5000
-   $ openstack volume type create vxflexos_limit_iops
-   $ openstack volume qos associate qos-limit-iops vxflexos_limit_iops
+   $ openstack volume type create powerflex_limit_iops
+   $ openstack volume qos associate qos-limit-iops powerflex_limit_iops
 
 The driver always chooses the minimum between the QoS keys value
 and the relevant calculated value of ``maxIOPSperGB`` or ``maxBWSperGB``.
@@ -338,56 +339,56 @@ and the relevant calculated value of ``maxIOPSperGB`` or ``maxBWSperGB``.
 Since the limits are per SDC, they will be applied after the volume
 is attached to an instance, and thus to a compute node/SDC.
 
-VxFlex OS compression support
+PowerFlex compression support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Starting from version 3.0, VxFlex OS supports volume compression.
+Starting from version 3.0, PowerFlex supports volume compression.
 By default driver will create volumes without compression.
 In order to create a compressed volume, a volume type which enables
 compression support needs to be created first:
 
 .. code-block:: console
 
-   $ openstack volume type create vxflexos_compressed
-   $ openstack volume type set --property provisioning:type=compressed vxflexos_compressed
+   $ openstack volume type create powerflex_compressed
+   $ openstack volume type set --property provisioning:type=compressed powerflex_compressed
 
 If a volume with this type is scheduled to a storage pool which doesn't
 support compression, then ``thin`` provisioning will be used.
 See table below for details.
 
-+-------------------+---------------------------+--------------------+
-| provisioning:type |  storage pool supports compression             |
-|                   +---------------------------+--------------------+
-|                   | yes (VxFlex 3.0 FG pool)  |  no (other pools)  |
-+===================+===========================+====================+
-|   compressed      |     thin with compression |     thin           |
-+-------------------+---------------------------+--------------------+
-|   thin            |        thin               |     thin           |
-+-------------------+---------------------------+--------------------+
-|   thick           |        thin               |     thick          |
-+-------------------+---------------------------+--------------------+
-|   not set         |        thin               |     thin           |
-+-------------------+---------------------------+--------------------+
++-------------------+----------------------------+--------------------+
+| provisioning:type |  storage pool supports compression              |
+|                   +----------------------------+--------------------+
+|                   | yes (PowerFlex 3.0 FG pool)|  no (other pools)  |
++===================+============================+====================+
+|   compressed      |     thin with compression  |     thin           |
++-------------------+----------------------------+--------------------+
+|   thin            |        thin                |     thin           |
++-------------------+----------------------------+--------------------+
+|   thick           |        thin                |     thick          |
++-------------------+----------------------------+--------------------+
+|   not set         |        thin                |     thin           |
++-------------------+----------------------------+--------------------+
 
 .. note::
-    VxFlex 3.0 Fine Granularity storage pools don't support thick provisioned volumes.
+    PowerFlex 3.0 Fine Granularity storage pools don't support thick provisioned volumes.
 
 You can add property ``compression_support='<is> True'`` to volume type to
 limit volumes allocation only to data pools which supports compression.
 
 .. code-block:: console
 
-   $ openstack volume type set  --property compression_support='<is> True' vxflexos_compressed
+   $ openstack volume type set  --property compression_support='<is> True' powerflex_compressed
 
-VxFlex OS replication support
+PowerFlex replication support
 -----------------------------
 
-Starting from version 3.5, VxFlex OS supports volume replication.
+Starting from version 3.5, PowerFlex supports volume replication.
 
 Prerequisites
 ~~~~~~~~~~~~~
 
-* VxFlex OS replication components must be installed on source and destination
+* PowerFlex replication components must be installed on source and destination
   systems.
 
 * Source and destination systems must have the same configuration for
@@ -396,7 +397,7 @@ Prerequisites
 * Source and destination systems must be paired and have at least one
   Replication Consistency Group created.
 
-See :ref:`scaleio_docs` for instructions.
+See :ref:`powerflex_docs` for instructions.
 
 Configure replication
 ~~~~~~~~~~~~~~~~~~~~~
@@ -409,54 +410,54 @@ Configure replication
    .. code-block:: ini
 
      [DEFAULT]
-     enabled_backends = vxflexos
+     enabled_backends = powerflex
 
-     [vxflexos]
-     volume_driver = cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver
-     volume_backend_name = vxflexos
+     [powerflex]
+     volume_driver = cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver
+     volume_backend_name = powerflex
      san_ip = GATEWAY_IP
-     vxflexos_storage_pools = Domain1:Pool1,Domain2:Pool2
-     san_login = SIO_USER
-     san_password = SIO_PASSWD
+     powerflex_storage_pools = Domain1:Pool1,Domain2:Pool2
+     san_login = POWERFLEX_USER
+     san_password = POWERFLEX_PASSWD
      san_thin_provision = false
-     replication_device = backend_id:vxflexos_repl,
+     replication_device = backend_id:powerflex_repl,
                           san_ip: REPLICATION_SYSTEM_GATEWAY_IP,
-                          san_login: REPLICATION_SYSTEM_SIO_USER,
-                          san_password: REPLICATION_SYSTEM_SIO_PASSWD
+                          san_login: REPLICATION_SYSTEM_POWERFLEX_USER,
+                          san_password: REPLICATION_SYSTEM_POWERFLEX_PASSWD
 
    * Only one replication device is supported for storage backend.
 
    * The following parameters are optional for replication device:
 
-     * REST API port - ``vxflexos_rest_server_port``.
+     * REST API port - ``powerflex_rest_server_port``.
 
      * SSL certificate verification - ``driver_ssl_cert_verify`` and
        ``driver_ssl_cert_path``.
 
-   For more information see :ref:`cg_configuration_options_emc`.
+   For more information see :ref:`cg_configuration_options_dellemc`.
 
 #. Create volume type for volumes with replication enabled.
 
    .. code-block:: console
 
-     $ openstack volume type create vxflexos_replicated
-     $ openstack volume type set --property replication_enabled='<is> True' vxflexos_replicated
+     $ openstack volume type create powerflex_replicated
+     $ openstack volume type set --property replication_enabled='<is> True' powerflex_replicated
 
-#. Set VxFlex OS Replication Consistency Group name for volume type.
+#. Set PowerFlex Replication Consistency Group name for volume type.
 
    .. code-block:: console
 
-     $ openstack volume type set --property vxflexos:replication_cg=<replication_cg name> \
-         vxflexos_replicated
+     $ openstack volume type set --property powerflex:replication_cg=<replication_cg name> \
+         powerflex_replicated
 
 #. Set Protection Domain and Storage Pool if multiple Protection Domains
    are specified.
 
-   VxFlex OS Replication Consistency Group is created between source and
+   PowerFlex Replication Consistency Group is created between source and
    destination Protection Domains. If more than one Protection Domain is
    specified in ``cinder.conf`` you should set ``pool_name`` property for
    volume type with appropriate Protection Domain and Storage Pool.
-   See :ref:`vxflexos_pd_sp`.
+   See :ref:`powerflex_pd_sp`.
 
 Failover host
 ~~~~~~~~~~~~~
@@ -466,7 +467,7 @@ administrator can issue the failover host command:
 
 .. code-block:: console
 
-   $ cinder failover-host cinder_host@vxflexos --backend_id vxflexos_repl
+   $ cinder failover-host cinder_host@powerflex --backend_id powerflex_repl
 
 After issuing Cinder failover-host command Cinder will switch to configured
 replication device, however to get existing instances to use this target and
@@ -484,12 +485,12 @@ failback operation using ``--backend_id default``:
 
 .. code-block:: console
 
-   $ cinder failover-host cinder_host@vxflexos --backend_id default
+   $ cinder failover-host cinder_host@powerflex --backend_id default
 
-VxFlex OS storage-assisted volume migration
+PowerFlex storage-assisted volume migration
 -------------------------------------------
 
-Starting from version 3.0, VxFlex OS supports storage-assisted volume
+Starting from version 3.0, PowerFlex supports storage-assisted volume
 migration.
 
 Known limitations
@@ -530,7 +531,7 @@ Volume migration is performed by issuing the following command:
              $ cinder reset-state --state available <volume>
 
 
-Using VxFlex OS Storage with a containerized overcloud
+Using PowerFlex Storage with a containerized overcloud
 ------------------------------------------------------
 
 #. Create a file with below contents:
@@ -539,14 +540,14 @@ Using VxFlex OS Storage with a containerized overcloud
 
       parameter_defaults:
         NovaComputeOptVolumes:
-          - /opt/emc/scaleio:/opt/emc/scaleio
+          - /opt/dellemc/powerflex:/opt/dellemc/powerflex
         CinderVolumeOptVolumes:
-          - /opt/emc/scaleio:/opt/emc/scaleio
+          - /opt/dellemc/powerflex:/opt/dellemc/powerflex
         GlanceApiOptVolumes:
-          - /opt/emc/scaleio:/opt/emc/scaleio
+          - /opt/dellemc/powerflex:/opt/dellemc/powerflex
 
 
-   Name it whatever you like, e.g. ``vxflexos_volumes.yml``.
+   Name it whatever you like, e.g. ``powerflex_volumes.yml``.
 
 #. Use ``-e`` to include this customization file to deploy command.
 

@@ -25,8 +25,8 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
-from cinder.volume.drivers.dell_emc.vxflexos import simplecache
-from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
+from cinder.volume.drivers.dell_emc.powerflex import simplecache
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class RestClient(object):
             if not replication_targets:
                 return
             elif len(replication_targets) > 1:
-                msg = _("VxFlex OS does not support more than one "
+                msg = _("PowerFlex does not support more than one "
                         "replication backend.")
                 raise exception.InvalidInput(reason=msg)
             get_config_value = replication_targets[0].get
@@ -94,7 +94,7 @@ class RestClient(object):
         )
         self.rest_ip = get_config_value("san_ip")
         self.rest_port = int(
-            get_config_value("vxflexos_rest_server_port") or
+            get_config_value("powerflex_rest_server_port") or
             get_config_value("sio_rest_server_port") or
             443
         )
@@ -136,7 +136,7 @@ class RestClient(object):
         url = "/version"
 
         if self.rest_api_version is None or fromcache is False:
-            r, unused = self.execute_vxflexos_get_request(url)
+            r, unused = self.execute_powerflex_get_request(url)
             if r.status_code == http_client.OK:
                 self.rest_api_version = r.text.replace('\"', "")
                 LOG.info("REST API Version: %(api_version)s.",
@@ -156,7 +156,7 @@ class RestClient(object):
     def query_volume(self, vol_id):
         url = "/instances/Volume::%(vol_id)s"
 
-        r, response = self.execute_vxflexos_get_request(url, vol_id=vol_id)
+        r, response = self.execute_powerflex_get_request(url, vol_id=vol_id)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to query volume: %s.") % response["message"])
             LOG.error(msg)
@@ -188,7 +188,7 @@ class RestClient(object):
             "volumeSizeInKb": six.text_type(volume_size_kb),
             "compressionMethod": compression,
         }
-        r, response = self.execute_vxflexos_post_request(url, params)
+        r, response = self.execute_powerflex_post_request(url, params)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to create volume: %s.") % response["message"])
             LOG.error(msg)
@@ -207,7 +207,7 @@ class RestClient(object):
                 },
             ],
         }
-        r, response = self.execute_vxflexos_post_request(url, params)
+        r, response = self.execute_powerflex_post_request(url, params)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to create snapshot for volume %(vol_name)s: "
                      "%(response)s.") %
@@ -230,7 +230,7 @@ class RestClient(object):
             return cached_val
         encoded_rcg_name = urllib.parse.quote(rcg_name, "")
         params = {"name": encoded_rcg_name}
-        r, rcg_id = self.execute_vxflexos_post_request(url, params)
+        r, rcg_id = self.execute_powerflex_post_request(url, params)
         if not rcg_id:
             msg = (_("Replication CG with name %s wasn't found.") % rcg_id)
             LOG.error(msg)
@@ -249,7 +249,7 @@ class RestClient(object):
                             pair_id):
         url = "/instances/ReplicationPair::%(pair_id)s"
 
-        r, response = self.execute_vxflexos_get_request(url, pair_id=pair_id)
+        r, response = self.execute_powerflex_get_request(url, pair_id=pair_id)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to query volumes pair %(pair_id)s: %(err)s.") %
                    {"pair_id": pair_id, "err": response["message"]})
@@ -260,7 +260,7 @@ class RestClient(object):
     def _query_replication_pairs(self):
         url = "/types/ReplicationPair/instances"
 
-        r, response = self.execute_vxflexos_get_request(url)
+        r, response = self.execute_powerflex_get_request(url)
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to query replication pairs: %s.") %
                    response["message"])
@@ -306,7 +306,7 @@ class RestClient(object):
             "sourceVolumeId": source_provider_id,
             "destinationVolumeId": dest_provider_id,
         }
-        r, response = self.execute_vxflexos_post_request(url, params, )
+        r, response = self.execute_powerflex_post_request(url, params, )
         if r.status_code != http_client.OK and "errorCode" in response:
             msg = (_("Failed to create volumes pair: %s.") %
                    response["message"])
@@ -325,7 +325,7 @@ class RestClient(object):
         url = ("/instances/ReplicationPair::%(vol_pair_id)s/action"
                "/removeReplicationPair")
 
-        r, response = self.execute_vxflexos_post_request(
+        r, response = self.execute_powerflex_post_request(
             url, vol_pair_id=vol_pair_id
         )
         if r.status_code != http_client.OK:
@@ -343,7 +343,7 @@ class RestClient(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         encoded_domain_name = urllib.parse.quote(domain_name, "")
-        r, domain_id = self.execute_vxflexos_get_request(
+        r, domain_id = self.execute_powerflex_get_request(
             url, encoded_domain_name=encoded_domain_name
         )
         if not domain_id:
@@ -373,7 +373,7 @@ class RestClient(object):
         if cached_val is not None:
             return cached_val
         domain_id = self._get_protection_domain_id_by_name(domain_name)
-        r, response = self.execute_vxflexos_get_request(
+        r, response = self.execute_powerflex_get_request(
             url, domain_id=domain_id
         )
         if r.status_code != http_client.OK:
@@ -397,7 +397,7 @@ class RestClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         domain_id = self._get_protection_domain_id(domain_name)
         encoded_pool_name = urllib.parse.quote(pool_name, "")
-        r, pool_id = self.execute_vxflexos_get_request(
+        r, pool_id = self.execute_powerflex_get_request(
             url, domain_id=domain_id, encoded_pool_name=encoded_pool_name
         )
         if not pool_id:
@@ -423,7 +423,7 @@ class RestClient(object):
         if cached_val is not None:
             return cached_val
         pool_id = self._get_storage_pool_id_by_name(domain_name, pool_name)
-        r, response = self.execute_vxflexos_get_request(url, pool_id=pool_id)
+        r, response = self.execute_powerflex_get_request(url, pool_id=pool_id)
         if r.status_code != http_client.OK:
             msg = (_("Failed to get pool properties from id %(pool_id)s: "
                      "%(err_msg)s.") %
@@ -445,7 +445,7 @@ class RestClient(object):
             verify_cert = self.certificate_path
         return verify_cert
 
-    def execute_vxflexos_get_request(self, url, **url_params):
+    def execute_powerflex_get_request(self, url, **url_params):
         request = self.base_url + url % url_params
         r = requests.get(request,
                          auth=(self.rest_username, self.rest_token),
@@ -454,7 +454,7 @@ class RestClient(object):
         response = r.json()
         return r, response
 
-    def execute_vxflexos_post_request(self, url, params=None, **url_params):
+    def execute_powerflex_post_request(self, url, params=None, **url_params):
         if not params:
             params = {}
         request = self.base_url + url % url_params
@@ -527,16 +527,16 @@ class RestClient(object):
         url = "/instances/Volume::%(vol_id)s/action/setVolumeSize"
 
         round_volume_capacity = (
-            self.configuration.vxflexos_round_volume_capacity
+            self.configuration.powerflex_round_volume_capacity
         )
         if not round_volume_capacity and not new_size % 8 == 0:
-            LOG.warning("VxFlex OS only supports volumes with a granularity "
+            LOG.warning("PowerFlex only supports volumes with a granularity "
                         "of 8 GBs. The new volume size is: %d.",
                         new_size)
         params = {"sizeInGB": six.text_type(new_size)}
-        r, response = self.execute_vxflexos_post_request(url,
-                                                         params,
-                                                         vol_id=vol_id)
+        r, response = self.execute_powerflex_post_request(url,
+                                                          params,
+                                                          vol_id=vol_id)
         if r.status_code != http_client.OK:
             response = r.json()
             msg = (_("Failed to extend volume %(vol_id)s: %(err)s.") %
@@ -558,9 +558,9 @@ class RestClient(object):
         if volume_is_mapped:
             params = {"allSdcs": ""}
             LOG.info("Unmap volume from all sdcs before deletion.")
-            r, unused = self.execute_vxflexos_post_request(url,
-                                                           params,
-                                                           vol_id=vol_id)
+            r, unused = self.execute_powerflex_post_request(url,
+                                                            params,
+                                                            vol_id=vol_id)
 
     @retry(exception.VolumeBackendAPIException)
     def remove_volume(self, vol_id):
@@ -568,9 +568,9 @@ class RestClient(object):
 
         self._unmap_volume_before_delete(vol_id)
         params = {"removeMode": "ONLY_ME"}
-        r, response = self.execute_vxflexos_post_request(url,
-                                                         params,
-                                                         vol_id=vol_id)
+        r, response = self.execute_powerflex_post_request(url,
+                                                          params,
+                                                          vol_id=vol_id)
         if r.status_code != http_client.OK:
             error_code = response["errorCode"]
             if error_code == VOLUME_NOT_FOUND_ERROR:
@@ -578,7 +578,7 @@ class RestClient(object):
                             "Volume not found.", vol_id)
             elif vol_id is None:
                 LOG.warning("Volume does not have provider_id thus does not "
-                            "map to a VxFlex OS volume. "
+                            "map to PowerFlex volume. "
                             "Allowing deletion to proceed.")
             else:
                 msg = (_("Failed to delete volume %(vol_id)s: %(err)s.") %
@@ -594,7 +594,7 @@ class RestClient(object):
         """
 
         # if we have been told to allow unsafe volumes
-        if self.configuration.vxflexos_allow_non_padded_volumes:
+        if self.configuration.powerflex_allow_non_padded_volumes:
             # Enabled regardless of type, so safe to proceed
             return True
         try:
@@ -618,16 +618,16 @@ class RestClient(object):
         new_name = flex_utils.id_to_base64(name)
         vol_id = volume["provider_id"]
         params = {"newName": new_name}
-        r, response = self.execute_vxflexos_post_request(url,
-                                                         params,
-                                                         id=vol_id)
+        r, response = self.execute_powerflex_post_request(url,
+                                                          params,
+                                                          id=vol_id)
         if r.status_code != http_client.OK:
             error_code = response["errorCode"]
             if ((error_code == VOLUME_NOT_FOUND_ERROR or
                  error_code == OLD_VOLUME_NOT_FOUND_ERROR or
                  error_code == ILLEGAL_SYNTAX)):
                 LOG.info("Ignore renaming action because the volume "
-                         "%(vol_id)s is not a VxFlex OS volume.",
+                         "%(vol_id)s is not a PowerFlex volume.",
                          {"vol_id": vol_id})
             else:
                 msg = (_("Failed to rename volume %(vol_id)s: %(err)s.") %
@@ -635,7 +635,7 @@ class RestClient(object):
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
         else:
-            LOG.info("VxFlex OS volume %(vol_id)s was renamed to "
+            LOG.info("PowerFlex volume %(vol_id)s was renamed to "
                      "%(new_name)s.", {"vol_id": vol_id, "new_name": new_name})
 
     def failover_failback_replication_cg(self, rcg_name, is_failback):
@@ -644,9 +644,9 @@ class RestClient(object):
 
         action = "restore" if is_failback else "failover"
         rcg_id = self._get_replication_cg_id_by_name(rcg_name)
-        r, response = self.execute_vxflexos_post_request(url,
-                                                         rcg_id=rcg_id,
-                                                         action=action)
+        r, response = self.execute_powerflex_post_request(url,
+                                                          rcg_id=rcg_id,
+                                                          action=action)
         if r.status_code != http_client.OK:
             msg = (_("Failed to %(action)s rcg with id %(rcg_id)s: "
                      "%(err_msg)s.") % {"action": action,
@@ -658,7 +658,8 @@ class RestClient(object):
     def query_vtree(self, vtree_id, vol_id):
         url = "/instances/VTree::%(vtree_id)s"
 
-        r, response = self.execute_vxflexos_get_request(url, vtree_id=vtree_id)
+        r, response = self.execute_powerflex_get_request(url,
+                                                         vtree_id=vtree_id)
         if r.status_code != http_client.OK:
             msg = (_("Failed to check migration status of volume %s.")
                    % vol_id)
@@ -669,7 +670,7 @@ class RestClient(object):
     def migrate_vtree(self, volume, params):
         url = "/instances/Volume::%(vol_id)s/action/migrateVTree"
 
-        r, response = self.execute_vxflexos_post_request(
+        r, response = self.execute_powerflex_post_request(
             url,
             params=params,
             vol_id=volume.provider_id
@@ -689,7 +690,7 @@ class RestClient(object):
         url = "/instances/Volume::%(vol_id)s/action/overwriteVolumeContent"
 
         params = {"srcVolumeId": snapshot.provider_id}
-        r, response = self.execute_vxflexos_post_request(
+        r, response = self.execute_powerflex_post_request(
             url,
             params=params,
             vol_id=volume.provider_id

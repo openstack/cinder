@@ -18,14 +18,14 @@ from oslo_config import cfg
 import requests
 import six
 
-from cinder.volume.drivers.dell_emc.vxflexos import driver
-from cinder.volume.drivers.dell_emc.vxflexos import rest_client
+from cinder.volume.drivers.dell_emc.powerflex import driver
+from cinder.volume.drivers.dell_emc.powerflex import rest_client
 
 CONF = cfg.CONF
 
 
-class VxFlexOSDriver(driver.VxFlexOSDriver):
-    """Mock VxFlex OS Driver class.
+class PowerFlexDriver(driver.PowerFlexDriver):
+    """Mock PowerFlex Driver class.
 
     Provides some fake configuration options
     """
@@ -34,7 +34,7 @@ class VxFlexOSDriver(driver.VxFlexOSDriver):
             "thin" if self.configuration.san_thin_provision else "thick"
         )
         self.configuration.max_over_subscription_ratio = (
-            self.configuration.vxflexos_max_over_subscription_ratio
+            self.configuration.powerflex_max_over_subscription_ratio
         )
 
     def local_path(self, volume):
@@ -50,8 +50,8 @@ class VxFlexOSDriver(driver.VxFlexOSDriver):
         pass
 
 
-class VxFlexOSClient(rest_client.RestClient):
-    """Mock VxFlex OS Rest Client class.
+class PowerFlexClient(rest_client.RestClient):
+    """Mock PowerFlex Rest Client class.
 
     Provides some fake configuration options
     """

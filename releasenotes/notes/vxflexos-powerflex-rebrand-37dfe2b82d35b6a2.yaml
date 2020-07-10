@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    Dell EMC VxFlex OS has been rebranded to PowerFlex. The drivers
+    ``cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver``
+    will now be updated to
+    ``cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver``
+    in cinder.conf. Driver configuration options that start with ``vxflexos``
+    should also be updated to ``powerflex``. Existing vxFlex OS configuration
+    options will continue to work but will be removed in the W release.
+    The previously deprecated driver
+    ``cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver``
+    and the corresponding sio options will now be removed.
+    Online documentation will also change to reflect these changes.

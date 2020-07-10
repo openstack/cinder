@@ -20,12 +20,12 @@ import ddt
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 
 
 @ddt.ddt
-class TestCreateVolume(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver.create_volume()``"""
+class TestCreateVolume(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver.create_volume()``"""
     def setUp(self):
         """Setup a test case environment.
 

@@ -18,9 +18,9 @@ import requests
 import six
 
 from cinder.tests.unit import test
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.dell_emc.vxflexos import driver
+from cinder.volume.drivers.dell_emc.powerflex import driver
 
 
 class CustomResponseMode(object):
@@ -62,8 +62,8 @@ class CustomResponseMode(object):
         self.test_instance.HTTPS_MOCK_RESPONSES = self.current_responses
 
 
-class TestVxFlexOSDriver(test.TestCase):
-    """Base ``TestCase`` subclass for the ``VxFlexOSDriver``"""
+class TestPowerFlexDriver(test.TestCase):
+    """Base ``TestCase`` subclass for the ``PowerFlexDriver``"""
     RESPONSE_MODE = type(str('ResponseMode'), (object, ), dict(
         Valid='0',
         Invalid='1',
@@ -117,18 +117,19 @@ class TestVxFlexOSDriver(test.TestCase):
     def setUp(self):
         """Setup a test case environment.
 
-        Creates a ``VxFlexOSDriver`` instance
+        Creates a ``PowerFlexDriver`` instance
         Mocks the ``requests.get/post`` methods to return
                   ``MockHTTPSResponse``'s instead.
         """
-        super(TestVxFlexOSDriver, self).setUp()
-        self.configuration = conf.Configuration(driver.vxflexos_opts,
+        super(TestPowerFlexDriver, self).setUp()
+        self.configuration = conf.Configuration(driver.powerflex_opts,
                                                 conf.SHARED_CONF_GROUP)
         self._set_overrides()
-        self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
-        self.driver.primary_client = mocks.VxFlexOSClient(self.configuration)
-        self.driver.secondary_client = mocks.VxFlexOSClient(self.configuration,
-                                                            is_primary=False)
+        self.driver = mocks.PowerFlexDriver(configuration=self.configuration)
+        self.driver.primary_client = mocks.PowerFlexClient(self.configuration)
+        self.driver.secondary_client = mocks.PowerFlexClient(
+            self.configuration,
+            is_primary=False)
         self.driver.do_setup({})
 
         self.mock_object(requests, 'get', self.do_request)
@@ -141,18 +142,18 @@ class TestVxFlexOSDriver(test.TestCase):
         # Override the defaults to fake values
         self.override_config('san_ip', override='127.0.0.1',
                              group=conf.SHARED_CONF_GROUP)
-        self.override_config('vxflexos_rest_server_port', override='8888',
+        self.override_config('powerflex_rest_server_port', override='8888',
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('san_login', override='test',
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('san_password', override='pass',
                              group=conf.SHARED_CONF_GROUP)
-        self.override_config('vxflexos_storage_pools',
+        self.override_config('powerflex_storage_pools',
                              override='PD1:SP1',
                              group=conf.SHARED_CONF_GROUP)
         self.override_config('max_over_subscription_ratio',
                              override=5.0, group=conf.SHARED_CONF_GROUP)
-        self.override_config('vxflexos_server_api_version',
+        self.override_config('powerflex_server_api_version',
                              override='2.0.0', group=conf.SHARED_CONF_GROUP)
 
     def do_request(self, url, *args, **kwargs):

@@ -21,14 +21,14 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
-from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 from cinder.volume import volume_types
 
 
-class TestManageExisting(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver.manage_existing()``"""
+class TestManageExisting(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver.manage_existing()``"""
 
     def setUp(self):
         """Setup a test case environment.

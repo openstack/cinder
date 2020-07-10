@@ -33,7 +33,7 @@ def convert_kb_to_gib(size):
 
 def id_to_base64(_id):
     # Base64 encode the id to get a volume name less than 32 characters due
-    # to VxFlex OS limitation.
+    # to PowerFlex limitation.
     name = str(_id).replace("-", "")
     try:
         name = base64.b16decode(name.upper())
@@ -42,7 +42,7 @@ def id_to_base64(_id):
     if isinstance(name, str):
         name = name.encode()
     encoded_name = base64.b64encode(name).decode()
-    LOG.debug("Converted id %(id)s to VxFlex OS name %(name)s.",
+    LOG.debug("Converted id %(id)s to PowerFlex OS name %(name)s.",
               {"id": _id, "name": encoded_name})
     return encoded_name
 

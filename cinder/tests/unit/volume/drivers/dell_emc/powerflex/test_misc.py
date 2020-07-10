@@ -22,13 +22,13 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 from cinder.volume import configuration
 
 
 @ddt.ddt
-class TestMisc(vxflexos.TestVxFlexOSDriver):
+class TestMisc(powerflex.TestPowerFlexDriver):
 
     DOMAIN_ID = '1'
     POOL_ID = '1'
@@ -136,7 +136,7 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         self.driver._check_volume_size(1)
 
     def test_volume_size_round_false(self):
-        self.override_config('vxflexos_round_volume_capacity', False,
+        self.override_config('powerflex_round_volume_capacity', False,
                              configuration.SHARED_CONF_GROUP)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._check_volume_size, 1)
@@ -220,7 +220,7 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         self.driver.get_volume_stats(True)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.rest_client.RestClient.'
+        'cinder.volume.drivers.dell_emc.powerflex.rest_client.RestClient.'
         'rename_volume',
         return_value=None)
     def test_update_migrated_volume(self, mock_rename):
@@ -231,7 +231,7 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.rest_client.RestClient.'
+        'cinder.volume.drivers.dell_emc.powerflex.rest_client.RestClient.'
         'rename_volume',
         return_value=None)
     def test_update_unavailable_migrated_volume(self, mock_rename):
@@ -243,7 +243,7 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
                          test_vol)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.rest_client.RestClient.'
+        'cinder.volume.drivers.dell_emc.powerflex.rest_client.RestClient.'
         'rename_volume',
         side_effect=exception.VolumeBackendAPIException(data='Error!'))
     def test_fail_update_migrated_volume(self, mock_rename):
@@ -290,9 +290,9 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
                                             expected_provisioning_type):
         self.override_config('san_thin_provision', config_provisioning_type,
                              configuration.SHARED_CONF_GROUP)
-        self.driver = mocks.VxFlexOSDriver(configuration=self.configuration)
+        self.driver = mocks.PowerFlexDriver(configuration=self.configuration)
         self.driver.do_setup({})
-        self.driver.primary_client = mocks.VxFlexOSClient(self.configuration)
+        self.driver.primary_client = mocks.PowerFlexClient(self.configuration)
         self.driver.primary_client.do_setup()
         empty_storage_type = {}
         provisioning, compression = (
@@ -303,7 +303,7 @@ class TestMisc(vxflexos.TestVxFlexOSDriver):
         )
         self.assertEqual(expected_provisioning_type, provisioning)
 
-    @mock.patch('cinder.volume.drivers.dell_emc.vxflexos.rest_client.'
+    @mock.patch('cinder.volume.drivers.dell_emc.powerflex.rest_client.'
                 'RestClient.query_rest_api_version',
                 return_value="3.0")
     def test_get_volume_stats_v3(self, mock_version):

@@ -18,14 +18,14 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 from cinder.volume import configuration
-from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 
-class TestDeleteVolume(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver.delete_volume()``"""
+class TestDeleteVolume(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver.delete_volume()``"""
     def setUp(self):
         """Setup a test case environment.
 
@@ -81,6 +81,6 @@ class TestDeleteVolume(vxflexos.TestVxFlexOSDriver):
 
     def test_delete_volume(self):
         """Setting the unmap volume before delete flag for tests """
-        self.override_config('vxflexos_unmap_volume_before_deletion', True,
+        self.override_config('powerflex_unmap_volume_before_deletion', True,
                              configuration.SHARED_CONF_GROUP)
         self.driver.delete_volume(self.volume)
