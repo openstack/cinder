@@ -387,17 +387,28 @@ class PowerMaxVolumeMetadata(object):
 
     @debug_required
     def capture_snapshot_info(
-            self, source, extra_specs, successful_operation, last_ss_name):
+            self, source, extra_specs, successful_operation,
+            snapshot_metadata):
         """Captures snapshot info in volume metadata
 
         :param source: the source volume object
         :param extra_specs: extra specifications
         :param successful_operation: snapshot operation
-        :param last_ss_name: the last snapshot name
+        :param snapshot_metadata: snapshot metadata
         """
+        last_ss_name, snapshot_label, source_device_id = None, None, None
+        source_device_label, snap_ids, is_snap_id = None, None, None
         if isinstance(source, volume.Volume):
-            if 'create' in successful_operation:
+            if 'create' or 'manage' in successful_operation:
                 snapshot_count = six.text_type(len(source.snapshots))
+                if snapshot_metadata:
+                    last_ss_name = snapshot_metadata.get('snap_display_name')
+                    snapshot_label = snapshot_metadata.get('SnapshotLabel')
+                    source_device_id = snapshot_metadata.get('SourceDeviceID')
+                    source_device_label = snapshot_metadata.get(
+                        'SourceDeviceLabel')
+                    snap_ids = snapshot_metadata.get('SnapIdList')
+                    is_snap_id = snapshot_metadata.get('is_snap_id')
             else:
                 snapshot_count = six.text_type(len(source.snapshots) - 1)
             default_sg = (
@@ -414,7 +425,12 @@ class PowerMaxVolumeMetadata(object):
                     self.utils.get_volume_element_name(source.id)),
                 openstack_name=source.display_name,
                 snapshot_count=snapshot_count,
-                last_ss_name=last_ss_name)
+                last_ss_name=last_ss_name,
+                snapshot_label=snapshot_label,
+                is_snap_id=is_snap_id,
+                snap_ids_or_gens=snap_ids,
+                source_device_id=source_device_id,
+                source_device_label=source_device_label)
             volume_metadata = self.update_volume_info_metadata(
                 datadict, self.version_dict)
             self.print_pretty_table(volume_metadata)

@@ -42,6 +42,7 @@ MAX_SRP_LENGTH = 16
 TRUNCATE_5 = 5
 TRUNCATE_27 = 27
 UCODE_5978_ELMSR = 221
+UCODE_5978_HICKORY = 660
 UCODE_5978 = 5978
 UPPER_HOST_CHARS = 16
 UPPER_PORT_GROUP_CHARS = 12
@@ -207,6 +208,9 @@ DATA_FORMAT = 'dataFormat'
 INST_ID = 'instanceId'
 DIR_ID = 'directorId'
 PORT_ID = 'portId'
+
+# Revert snapshot exception
+REVERT_SS_EXC = 'Link must be fully copied for this operation to proceed'
 
 
 class PowerMaxUtils(object):

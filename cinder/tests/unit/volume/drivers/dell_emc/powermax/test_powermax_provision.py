@@ -165,11 +165,11 @@ class PowerMaxProvisionTest(test.TestCase):
                 self.provision, '_unlink_volume') as mock_unlink:
             self.provision.unlink_snapvx_tgt_volume(
                 array, target_device_id, source_device_id, snap_name,
-                extra_specs, generation=6, loop=True)
+                extra_specs, self.data.snap_id, loop=True)
             mock_unlink.assert_called_once_with(
                 array, source_device_id, target_device_id,
-                snap_name, extra_specs, list_volume_pairs=None,
-                generation=6, loop=True)
+                snap_name, extra_specs, snap_id=self.data.snap_id,
+                list_volume_pairs=None, loop=True)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -177,21 +177,22 @@ class PowerMaxProvisionTest(test.TestCase):
         with mock.patch.object(self.rest, 'modify_volume_snap') as mock_mod:
             self.provision._unlink_volume(
                 self.data.array, self.data.device_id, self.data.device_id2,
-                self.data.snap_location['snap_name'], self.data.extra_specs)
+                self.data.snap_location['snap_name'], self.data.extra_specs,
+                snap_id=self.data.snap_id)
             mock_mod.assert_called_once_with(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs,
-                list_volume_pairs=None, unlink=True, generation=0)
+                snap_id=self.data.snap_id, list_volume_pairs=None, unlink=True)
 
             mock_mod.reset_mock()
             self.provision._unlink_volume(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs,
-                loop=False)
+                snap_id=self.data.snap_id, loop=False)
             mock_mod.assert_called_once_with(
                 self.data.array, self.data.device_id, self.data.device_id2,
                 self.data.snap_location['snap_name'], self.data.extra_specs,
-                list_volume_pairs=None, unlink=True, generation=0)
+                snap_id=self.data.snap_id, list_volume_pairs=None, unlink=True)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -202,31 +203,33 @@ class PowerMaxProvisionTest(test.TestCase):
         ) as mock_mod:
             self.provision._unlink_volume(
                 self.data.array, self.data.device_id, self.data.device_id2,
-                self.data.snap_location['snap_name'], self.data.extra_specs)
+                self.data.snap_location['snap_name'], self.data.extra_specs,
+                self.data.snap_id)
             self.assertEqual(2, mock_mod.call_count)
 
     def test_delete_volume_snap(self):
         array = self.data.array
         source_device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
-        generation = 0
         with mock.patch.object(self.provision.rest, 'delete_volume_snap'):
             self.provision.delete_volume_snap(
-                array, snap_name, source_device_id)
+                array, snap_name, source_device_id, snap_id=self.data.snap_id)
             self.provision.rest.delete_volume_snap.assert_called_once_with(
-                array, snap_name, source_device_id, False, generation)
+                array, snap_name, source_device_id, snap_id=self.data.snap_id,
+                restored=False)
 
     def test_delete_volume_snap_restore(self):
         array = self.data.array
         source_device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
         restored = True
-        generation = 0
         with mock.patch.object(self.provision.rest, 'delete_volume_snap'):
             self.provision.delete_volume_snap(
-                array, snap_name, source_device_id, restored)
+                array, snap_name, source_device_id, snap_id=self.data.snap_id,
+                restored=restored)
             self.provision.rest.delete_volume_snap.assert_called_once_with(
-                array, snap_name, source_device_id, True, generation)
+                array, snap_name, source_device_id, snap_id=self.data.snap_id,
+                restored=True)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=test_utils.ZeroIntervalLoopingCall)
@@ -234,37 +237,40 @@ class PowerMaxProvisionTest(test.TestCase):
         array = self.data.array
         source_device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
+        snap_id = self.data.snap_id
         extra_specs = self.data.extra_specs
         with mock.patch.object(
                 self.provision, '_is_restore_complete',
                 return_value=True):
             isrestored = self.provision.is_restore_complete(
-                array, source_device_id, snap_name, extra_specs)
+                array, source_device_id, snap_name, snap_id, extra_specs)
             self.assertTrue(isrestored)
         with mock.patch.object(
                 self.provision, '_is_restore_complete',
                 side_effect=exception.CinderException):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.provision.is_restore_complete,
-                              array, source_device_id, snap_name, extra_specs)
+                              array, source_device_id, snap_name, snap_id,
+                              extra_specs)
 
     def test_is_restore_complete(self):
         array = self.data.array
         source_device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
+        snap_id = self.data.snap_id
         snap_details = {
             'linkedDevices':
                 [{'targetDevice': source_device_id, 'state': 'Restored'}]}
         with mock.patch.object(self.provision.rest,
                                'get_volume_snap', return_value=snap_details):
             isrestored = self.provision._is_restore_complete(
-                array, source_device_id, snap_name)
+                array, source_device_id, snap_name, snap_id)
             self.assertTrue(isrestored)
         snap_details['linkedDevices'][0]['state'] = 'Restoring'
         with mock.patch.object(self.provision.rest,
                                'get_volume_snap', return_value=snap_details):
             isrestored = self.provision._is_restore_complete(
-                array, source_device_id, snap_name)
+                array, source_device_id, snap_name, snap_id)
             self.assertFalse(isrestored)
 
     def test_revert_volume_snapshot(self):
@@ -272,13 +278,14 @@ class PowerMaxProvisionTest(test.TestCase):
         source_device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
         extra_specs = self.data.extra_specs
+        snap_id = self.data.snap_id
         with mock.patch.object(
                 self.provision.rest, 'modify_volume_snap', return_value=None):
             self.provision.revert_volume_snapshot(
-                array, source_device_id, snap_name, extra_specs)
+                array, source_device_id, snap_name, snap_id, extra_specs)
             self.provision.rest.modify_volume_snap.assert_called_once_with(
                 array, source_device_id, "", snap_name,
-                extra_specs, restore=True)
+                extra_specs, snap_id=snap_id, restore=True)
 
     def test_extend_volume(self):
         array = self.data.array
@@ -459,9 +466,14 @@ class PowerMaxProvisionTest(test.TestCase):
                 array, snap_name, source_group_name)
 
     @mock.patch.object(rest.PowerMaxRest,
-                       'get_storagegroup_snap_generation_list',
-                       side_effect=[['0', '3', '1', '2'],
-                                    ['0', '1'], ['0'], list()])
+                       'get_storage_group_snap_id_list',
+                       side_effect=[[tpd.PowerMaxData.snap_id,
+                                     tpd.PowerMaxData.snap_id_2,
+                                     tpd.PowerMaxData.snap_id,
+                                     tpd.PowerMaxData.snap_id_2],
+                                    [tpd.PowerMaxData.snap_id,
+                                     tpd.PowerMaxData.snap_id_2],
+                                    [tpd.PowerMaxData.snap_id], list()])
     def test_delete_group_replica_side_effect(self, mock_list):
         array = self.data.array
         snap_name = self.data.group_snapshot_name
@@ -532,14 +544,14 @@ class PowerMaxProvisionTest(test.TestCase):
     def test_delete_volume_snap_check_for_links(self, mock_unlink, mock_tgts):
         self.provision.delete_volume_snap_check_for_links(
             self.data.array, self.data.test_snapshot_snap_name,
-            self.data.device_id, self.data.extra_specs)
+            self.data.device_id, self.data.extra_specs, self.data.snap_id)
         mock_unlink.assert_called_once_with(
             self.data.array, "", "", self.data.test_snapshot_snap_name,
-            self.data.extra_specs, list_volume_pairs=[
-                (self.data.device_id, tpd.PowerMaxData.device_id2)],
-            generation=0)
+            self.data.extra_specs, snap_id=self.data.snap_id,
+            list_volume_pairs=[
+                (self.data.device_id, tpd.PowerMaxData.device_id2)])
         mock_unlink.reset_mock()
         self.provision.delete_volume_snap_check_for_links(
             self.data.array, self.data.test_snapshot_snap_name,
-            self.data.device_id, self.data.extra_specs)
+            self.data.device_id, self.data.extra_specs, self.data.snap_id)
         self.assertEqual(2, mock_unlink.call_count)

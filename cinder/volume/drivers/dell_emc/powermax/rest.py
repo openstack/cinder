@@ -81,6 +81,9 @@ class PowerMaxRest(object):
         self.u4p_failover_backoff_factor = 1
         self.u4p_in_failover = False
         self.u4p_failover_lock = False
+        self.ucode_major_level = None
+        self.ucode_minor_level = None
+        self.is_snap_id = False
 
     def set_rest_credentials(self, array_info):
         """Given the array record set the rest server credentials.
@@ -96,6 +99,9 @@ class PowerMaxRest(object):
         self.base_uri = ("https://%(ip_port)s/univmax/restapi" % {
             'ip_port': ip_port})
         self.session = self._establish_rest_session()
+        self.ucode_major_level, self.ucode_minor_level = (
+            self.get_major_minor_ucode(array_info['SerialNumber']))
+        self.is_snap_id = self._is_snapid_enabled()
 
     def set_u4p_failover_config(self, failover_info):
         """Set the environment failover Unisphere targets and configuration..
@@ -1522,18 +1528,9 @@ class PowerMaxRest(object):
         :param array: the array serial number
         :param device_id: volume device id
         """
-        array_details = self.get_array_detail(array)
-        ucode_major_level = 0
-        ucode_minor_level = 0
 
-        if array_details:
-            split_ucode_level = array_details['ucode'].split('.')
-            ucode_level = [int(level) for level in split_ucode_level]
-            ucode_major_level = ucode_level[0]
-            ucode_minor_level = ucode_level[1]
-
-        if ((ucode_major_level >= utils.UCODE_5978)
-                and (ucode_minor_level > utils.UCODE_5978_ELMSR)):
+        if ((self.ucode_major_level >= utils.UCODE_5978)
+                and (self.ucode_minor_level > utils.UCODE_5978_ELMSR)):
             # Use Rapid TDEV Deallocation to delete after ELMSR
             try:
                 # Rename volume, removing the OS-<cinderUUID>
@@ -2074,9 +2071,9 @@ class PowerMaxRest(object):
                           job, extra_specs)
 
     def modify_volume_snap(self, array, source_id, target_id, snap_name,
-                           extra_specs, link=False, unlink=False,
+                           extra_specs, snap_id=None, link=False, unlink=False,
                            rename=False, new_snap_name=None, restore=False,
-                           list_volume_pairs=None, generation=0, copy=False):
+                           list_volume_pairs=None, copy=False):
         """Modify a snapvx snapshot
 
         :param array: the array serial number
@@ -2084,13 +2081,13 @@ class PowerMaxRest(object):
         :param target_id: the target device id
         :param snap_name: the snapshot name
         :param extra_specs: extra specifications
+        :param snap_id: the unique snap id of the snapVX
         :param link: Flag to indicate action = Link
         :param unlink: Flag to indicate action = Unlink
         :param rename: Flag to indicate action = Rename
         :param new_snap_name: Optional new snapshot name
         :param restore: Flag to indicate action = Restore
         :param list_volume_pairs: list of volume pairs to link, optional
-        :param generation: the generation number of the snapshot
         :param copy: If copy mode should be used for SnapVX target links
         """
         action, operation, payload = '', '', {}
@@ -2105,7 +2102,6 @@ class PowerMaxRest(object):
         elif restore:
             action = "Restore"
 
-        payload = {}
         if action == "Restore":
             operation = 'Restore snapVx snapshot'
             payload = {"deviceNameListSource": [{"name": source_id}],
@@ -2127,14 +2123,18 @@ class PowerMaxRest(object):
                        "copy": copy, "action": action,
                        "star": 'false', "force": 'false',
                        "exact": 'false', "remote": 'false',
-                       "symforce": 'false', "generation": generation}
-
+                       "symforce": 'false'}
         elif action == "Rename":
             operation = 'Rename snapVx snapshot'
             payload = {"deviceNameListSource": [{"name": source_id}],
                        "deviceNameListTarget": [{"name": source_id}],
                        "action": action, "newsnapshotname": new_snap_name}
-
+        if self.is_snap_id:
+            payload.update({"snap_id": snap_id}) if snap_id else (
+                payload.update({"generation": "0"}))
+        else:
+            payload.update({"generation": snap_id}) if snap_id else (
+                payload.update({"generation": "0"}))
         if action:
             status_code, job = self.modify_resource(
                 array, REPLICATION, 'snapshot', payload,
@@ -2142,22 +2142,28 @@ class PowerMaxRest(object):
             self.wait_for_job(operation, status_code, job, extra_specs)
 
     def delete_volume_snap(self, array, snap_name,
-                           source_device_ids, restored=False, generation=0):
+                           source_device_ids, snap_id=None, restored=False):
         """Delete the snapshot of a volume or volumes.
 
         :param array: the array serial number
         :param snap_name: the name of the snapshot
         :param source_device_ids: the source device ids
+        :param snap_id: the unique snap id of the snapVX
         :param restored: Flag to indicate terminate restore session
-        :param generation: the generation number of the snapshot
         """
         device_list = []
         if not isinstance(source_device_ids, list):
             source_device_ids = [source_device_ids]
         for dev in source_device_ids:
             device_list.append({"name": dev})
-        payload = {"deviceNameListSource": device_list,
-                   "generation": int(generation)}
+        payload = {"deviceNameListSource": device_list}
+        if self.is_snap_id:
+            payload.update({"snap_id": snap_id}) if snap_id else (
+                payload.update({"generation": 0}))
+        else:
+            payload.update({"generation": snap_id}) if snap_id else (
+                payload.update({"generation": 0}))
+
         if restored:
             payload.update({"restore": True})
         LOG.debug("The payload is %(payload)s.",
@@ -2178,13 +2184,13 @@ class PowerMaxRest(object):
         return self.get_resource(array, REPLICATION, 'volume',
                                  resource_name, private='/private')
 
-    def get_volume_snap(self, array, device_id, snap_name, generation=0):
+    def get_volume_snap(self, array, device_id, snap_name, snap_id):
         """Given a volume snap info, retrieve the snapVx object.
 
         :param array: the array serial number
         :param device_id: the source volume device id
         :param snap_name: the name of the snapshot
-        :param generation: the generation number of the snapshot
+        :param snap_id: the unique snap id of the snapVX
         :returns: snapshot dict, or None
         """
         snapshot = None
@@ -2194,10 +2200,33 @@ class PowerMaxRest(object):
                     bool(snap_info['snapshotSrcs'])):
                 for snap in snap_info['snapshotSrcs']:
                     if snap['snapshotName'] == snap_name:
-                        if snap['generation'] == generation:
-                            snapshot = snap
-                            break
+                        if self.is_snap_id:
+                            if snap['snap_id'] == snap_id:
+                                snapshot = snap
+                                break
+                        else:
+                            if snap['generation'] == snap_id:
+                                snapshot = snap
+                                break
         return snapshot
+
+    def get_volume_snaps(self, array, device_id, snap_name):
+        """Given a volume snap info, retrieve the snapVx object.
+
+        :param array: the array serial number
+        :param device_id: the source volume device id
+        :param snap_name: the name of the snapshot
+        :returns: snapshot dict, or None
+        """
+        snapshots = list()
+        snap_info = self.get_volume_snap_info(array, device_id)
+        if snap_info:
+            if (snap_info.get('snapshotSrcs', None) and
+                    bool(snap_info['snapshotSrcs'])):
+                for snap in snap_info['snapshotSrcs']:
+                    if snap['snapshotName'] == snap_name:
+                        snapshots.append(snap)
+        return snapshots
 
     def get_volume_snapshot_list(self, array, source_device_id):
         """Get a list of snapshot details for a particular volume.
@@ -2236,7 +2265,7 @@ class PowerMaxRest(object):
         return snapvx_tgt, snapvx_src, rdf_grp
 
     def is_sync_complete(self, array, source_device_id,
-                         target_device_id, snap_name, extra_specs):
+                         target_device_id, snap_name, extra_specs, snap_id):
         """Check if a sync session is complete.
 
         :param array: the array serial number
@@ -2244,6 +2273,7 @@ class PowerMaxRest(object):
         :param target_device_id: target device id
         :param snap_name: snapshot name
         :param extra_specs: extra specifications
+        :param snap_id: the unique snap id of the SnapVX
         :returns: bool
         """
 
@@ -2259,7 +2289,7 @@ class PowerMaxRest(object):
                 if not kwargs['wait_for_sync_called']:
                     if self._is_sync_complete(
                             array, source_device_id, snap_name,
-                            target_device_id):
+                            target_device_id, snap_id):
                         kwargs['wait_for_sync_called'] = True
             except Exception:
                 exception_message = (_("Issue encountered waiting for "
@@ -2283,36 +2313,37 @@ class PowerMaxRest(object):
         return rc
 
     def _is_sync_complete(self, array, source_device_id, snap_name,
-                          target_device_id):
+                          target_device_id, snap_id):
         """Helper function to check if snapVx sync session is complete.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param target_device_id: the target device id
+        :param snap_id: the unique snap id of the SnapVX
         :returns: defined -- bool
         """
         defined = True
         session = self.get_sync_session(
-            array, source_device_id, snap_name, target_device_id)
+            array, source_device_id, snap_name, target_device_id, snap_id)
         if session:
             defined = session['defined']
         return defined
 
     def get_sync_session(self, array, source_device_id, snap_name,
-                         target_device_id, generation=0):
+                         target_device_id, snap_id):
         """Get a particular sync session.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param target_device_id: the target device id
-        :param generation: the generation number of the snapshot
+        :param snap_id: the unique snapid of the snapshot
         :returns: sync session -- dict, or None
         """
         session = None
         linked_device_list = self.get_snap_linked_device_list(
-            array, source_device_id, snap_name, generation)
+            array, source_device_id, snap_name, snap_id)
         for target in linked_device_list:
             if target_device_id == target['targetDevice']:
                 session = target
@@ -2330,23 +2361,25 @@ class PowerMaxRest(object):
         snapshots = self.get_volume_snapshot_list(array, source_device_id)
         for snapshot in snapshots:
             try:
+                snap_id = snapshot['snap_id'] if self.is_snap_id else (
+                    snapshot['generation'])
                 if bool(snapshot['linkedDevices']):
                     link_info = {'linked_vols': snapshot['linkedDevices'],
                                  'snap_name': snapshot['snapshotName'],
-                                 'generation': snapshot['generation']}
+                                 'snapid': snap_id}
                     snap_dict_list.append(link_info)
             except KeyError:
                 pass
         return snap_dict_list
 
     def get_snap_linked_device_list(self, array, source_device_id,
-                                    snap_name, generation=0, state=None):
+                                    snap_name, snap_id, state=None):
         """Get the list of linked devices for a particular snapVx snapshot.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
-        :param generation: the generation number of the snapshot
+        :param snap_id: the unique snapid of the snapshot
         :param state: filter for state of the link
         :returns: linked_device_list or empty list
         """
@@ -2355,25 +2388,24 @@ class PowerMaxRest(object):
         snap_dict_list = self._get_snap_linked_device_dict_list(
             array, source_device_id, snap_name, state=state)
         for snap_dict in snap_dict_list:
-            if generation == snap_dict['generation']:
+            if snap_id == snap_dict['snapid']:
                 linked_device_list = snap_dict['linked_vols']
                 break
         return linked_device_list
 
     def _get_snap_linked_device_dict_list(
             self, array, source_device_id, snap_name, state=None):
-        """Get list of linked devices for all generations for a snapVx snapshot
+        """Get list of linked devices for all snap ids for a snapVx snapshot
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
         :param state: filter for state of the link
-        :returns: list of dict of generations with linked devices
+        :returns: list of dict of snapids with linked devices
         """
         snap_dict_list = []
         snap_list = self._find_snap_vx_source_sessions(
             array, source_device_id)
-        snap_state = None
         for snap in snap_list:
             if snap['snap_name'] == snap_name:
                 for linked_vol in snap['linked_vols']:
@@ -2382,17 +2414,17 @@ class PowerMaxRest(object):
                     # both snap_state and state are not None and are equal
                     if not state or (snap_state and state
                                      and snap_state == state):
-                        generation = snap['generation']
+                        snap_id = snap['snapid']
                         found = False
                         for snap_dict in snap_dict_list:
-                            if generation == snap_dict['generation']:
+                            if snap_id == snap_dict['snapid']:
                                 snap_dict['linked_vols'].append(
                                     linked_vol)
                                 found = True
                                 break
                         if not found:
                             snap_dict_list.append(
-                                {'generation': generation,
+                                {'snapid': snap_id,
                                  'linked_vols': [linked_vol]})
         return snap_dict_list
 
@@ -2406,27 +2438,27 @@ class PowerMaxRest(object):
         """
         snap_tgt_dict, snap_src_dict_list = dict(), list()
         s_in = self.get_volume_snap_info(array, device_id)
-
         snap_src = (
             s_in['snapshotSrcs'] if s_in.get('snapshotSrcs') else list())
         snap_tgt = (
             s_in['snapshotLnks'][0] if s_in.get('snapshotLnks') else dict())
-
         if snap_src and not tgt_only:
             for session in snap_src:
                 snap_src_dict = dict()
 
                 snap_src_dict['source_vol_id'] = device_id
-                snap_src_dict['generation'] = session['generation']
-                snap_src_dict['snap_name'] = session['snapshotName']
-                snap_src_dict['expired'] = session['expired']
+                snap_src_dict['snapid'] = session.get(
+                    'snap_id') if self.is_snap_id else session.get(
+                    'generation')
+                snap_src_dict['snap_name'] = session.get('snapshotName')
+                snap_src_dict['expired'] = session.get('expired')
 
                 if session.get('linkedDevices'):
-                    snap_src_link = session['linkedDevices'][0]
-                    snap_src_dict['target_vol_id'] = snap_src_link[
-                        'targetDevice']
-                    snap_src_dict['copy_mode'] = snap_src_link['copy']
-                    snap_src_dict['state'] = snap_src_link['state']
+                    snap_src_link = session.get('linkedDevices')[0]
+                    snap_src_dict['target_vol_id'] = snap_src_link.get(
+                        'targetDevice')
+                    snap_src_dict['copy_mode'] = snap_src_link.get('copy')
+                    snap_src_dict['state'] = snap_src_link.get('state')
 
                 snap_src_dict_list.append(snap_src_dict)
 
@@ -2449,8 +2481,9 @@ class PowerMaxRest(object):
                                 'snapshotName')
                             snap_tgt_dict['expired'] = snap_tgt_link.get(
                                 'expired')
-                            snap_tgt_dict['generation'] = snap_tgt_link.get(
-                                'generation')
+                            snap_tgt_dict['snapid'] = snap_tgt_link.get(
+                                'snapid') if self.is_snap_id else (
+                                snap_tgt_link.get('generation'))
 
         return snap_src_dict_list, snap_tgt_dict
 
@@ -3056,41 +3089,44 @@ class PowerMaxRest(object):
                           job, extra_specs)
 
     def delete_storagegroup_snap(self, array, source_group,
-                                 snap_name, generation='0'):
+                                 snap_name, snap_id):
         """Delete a snapVx snapshot of a storage group.
 
         :param array: the array serial number
         :param source_group: the source group name
         :param snap_name: the name of the snapshot
-        :param generation: the generation number of the SnapVX
+        :param snap_id: the unique snap id of the SnapVX
         """
+        postfix_uri = "/snapid/%s" % snap_id if self.is_snap_id else (
+            "/generation/%s" % snap_id)
+
         resource_name = ("%(sg_name)s/snapshot/%(snap_name)s"
-                         "/generation/%(generation)s"
+                         "%(postfix_uri)s"
                          % {'sg_name': source_group, 'snap_name': snap_name,
-                            'generation': generation})
+                            'postfix_uri': postfix_uri})
 
         self.delete_resource(
             array, REPLICATION, 'storagegroup', resource_name=resource_name)
 
-    def get_storagegroup_snap_generation_list(
+    def get_storage_group_snap_id_list(
             self, array, source_group, snap_name):
-        """Get a snapshot and its generation count information for an sg.
-
-        The most recent snapshot will have a gen number of 0. The oldest
-        snapshot will have a gen number = genCount - 1 (i.e. if there are 4
-        generations of particular snapshot, the oldest will have a gen num of
-        3).
+        """Get a snapshot and its snapid count information for an sg.
 
         :param array: name of the array -- str
         :param source_group: name of the storage group -- str
         :param snap_name: the name of the snapshot -- str
-        :returns: generation numbers -- list
+        :returns: snapids -- list
         """
-        resource_name = ("%(sg_name)s/snapshot/%(snap_name)s/generation"
-                         % {'sg_name': source_group, 'snap_name': snap_name})
+        postfix_uri = "snapid" if self.is_snap_id else "generation"
+        resource_name = ("%(sg_name)s/snapshot/%(snap_name)s/%(postfix_uri)s"
+                         % {'sg_name': source_group, 'snap_name': snap_name,
+                            'postfix_uri': postfix_uri})
         response = self.get_resource(array, REPLICATION, 'storagegroup',
                                      resource_name=resource_name)
-        return response.get('generations', list()) if response else list()
+        if self.is_snap_id:
+            return response.get('snapids', list()) if response else list()
+        else:
+            return response.get('generations', list()) if response else list()
 
     def get_storagegroup_rdf_details(self, array, storagegroup_name,
                                      rdf_group_num):
@@ -3277,3 +3313,59 @@ class PowerMaxRest(object):
                         "requirements.")
 
         return unisphere_meets_min_req
+
+    def get_snap_id(self, array, device_id, snap_name):
+        """Get the unique snap id for a particular snap name
+
+        :param array: the array serial number
+        :param device_id: the source device ID
+        :param snap_name: the user supplied snapVX name
+        :raises: VolumeBackendAPIException
+        :returns: snap_id -- str
+        """
+        snapshots = self.get_volume_snaps(array, device_id, snap_name)
+        if not snapshots:
+            exception_message = (_(
+                "Snapshot %(snap_name)s is not associated with "
+                "specified volume %(device_id)s.") % {
+                'device_id': device_id, 'snap_name': snap_name})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+        elif len(snapshots) > 1:
+            exception_message = (_(
+                "Snapshot %(snap_name)s is associated with more than "
+                "one snap id. No information available to choose "
+                "which one.") % {
+                'device_id': device_id, 'snap_name': snap_name})
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+        else:
+            return snapshots[0].get('snap_id') if self.is_snap_id else (
+                snapshots[0].get('generation'))
+
+    def get_major_minor_ucode(self, array):
+        """Get the major and minor parts of the ucode
+
+        :param array: the array serial number
+        :returns: ucode_major_level, ucode_minor_level -- str, str
+        """
+        array_details = self.get_array_detail(array)
+        ucode_major_level = 0
+        ucode_minor_level = 0
+
+        if array_details:
+            split_ucode_level = array_details['ucode'].split('.')
+            ucode_level = [int(level) for level in split_ucode_level]
+            ucode_major_level = ucode_level[0]
+            ucode_minor_level = ucode_level[1]
+        return ucode_major_level, ucode_minor_level
+
+    def _is_snapid_enabled(self):
+        """Check if array is snap_id enabled
+
+        :returns: boolean
+        """
+        return (self.ucode_major_level >= utils.UCODE_5978 and
+                self.ucode_minor_level >= utils.UCODE_5978_HICKORY)

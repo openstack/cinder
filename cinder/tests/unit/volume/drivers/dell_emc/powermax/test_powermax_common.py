@@ -64,6 +64,7 @@ class PowerMaxCommonTest(test.TestCase):
         self.utils = self.common.utils
         self.utils.get_volumetype_extra_specs = (
             mock.Mock(return_value=self.data.vol_type_extra_specs))
+        self.rest.is_snap_id = True
 
     @mock.patch.object(rest.PowerMaxRest, 'get_array_ucode_version',
                        return_value=tpd.PowerMaxData.next_gen_ucode)
@@ -396,21 +397,25 @@ class PowerMaxCommonTest(test.TestCase):
             snapshot, self.data.test_volume)
         self.assertEqual(ref_model_update, model_update)
 
-    def test_delete_snapshot(self):
+    @mock.patch.object(
+        common.PowerMaxCommon, '_parse_snap_info',
+        return_value=(tpd.PowerMaxData.device_id,
+                      tpd.PowerMaxData.snap_location['snap_name'],
+                      [tpd.PowerMaxData.snap_id]))
+    def test_delete_snapshot(self, mock_parse):
         snap_name = self.data.snap_location['snap_name']
         sourcedevice_id = self.data.snap_location['source_id']
-        generation = 0
         with mock.patch.object(
                 self.provision, 'delete_volume_snap') as mock_delete_snap:
             self.common.delete_snapshot(
                 self.data.test_snapshot, self.data.test_volume)
             mock_delete_snap.assert_called_once_with(
                 self.data.array, snap_name, [sourcedevice_id],
-                restored=False, generation=generation)
+                self.data.snap_id, restored=False)
 
     def test_delete_snapshot_not_found(self):
         with mock.patch.object(self.common, '_parse_snap_info',
-                               return_value=(None, 'Something')):
+                               return_value=(None, 'Something', None)):
             with mock.patch.object(
                     self.provision, 'delete_volume_snap') as mock_delete_snap:
                 self.common.delete_snapshot(self.data.test_snapshot,
@@ -1144,7 +1149,7 @@ class PowerMaxCommonTest(test.TestCase):
     def test_parse_snap_info_found(self):
         ref_device_id = self.data.device_id
         ref_snap_name = self.data.snap_location['snap_name']
-        sourcedevice_id, foundsnap_name = self.common._parse_snap_info(
+        sourcedevice_id, foundsnap_name, __ = self.common._parse_snap_info(
             self.data.array, self.data.test_snapshot)
         self.assertEqual(ref_device_id, sourcedevice_id)
         self.assertEqual(ref_snap_name, foundsnap_name)
@@ -1153,22 +1158,22 @@ class PowerMaxCommonTest(test.TestCase):
         ref_snap_name = None
         with mock.patch.object(self.rest, 'get_volume_snap',
                                return_value=None):
-            __, foundsnap_name = self.common._parse_snap_info(
+            __, foundsnap_name, __ = self.common._parse_snap_info(
                 self.data.array, self.data.test_snapshot)
             self.assertIsNone(ref_snap_name, foundsnap_name)
 
     def test_parse_snap_info_exception(self):
         with mock.patch.object(
-                self.rest, 'get_volume_snap',
+                self.rest, 'get_volume_snaps',
                 side_effect=exception.VolumeBackendAPIException):
-            __, foundsnap_name = self.common._parse_snap_info(
+            __, foundsnap_name, __ = self.common._parse_snap_info(
                 self.data.array, self.data.test_snapshot)
             self.assertIsNone(foundsnap_name)
 
     def test_parse_snap_info_provider_location_not_string(self):
         snapshot = fake_snapshot.fake_snapshot_obj(
             context='ctxt', provider_loaction={'not': 'string'})
-        sourcedevice_id, foundsnap_name = self.common._parse_snap_info(
+        sourcedevice_id, foundsnap_name, __ = self.common._parse_snap_info(
             self.data.array, snapshot)
         self.assertIsNone(foundsnap_name)
 
@@ -1747,10 +1752,12 @@ class PowerMaxCommonTest(test.TestCase):
                 clone_name, snap_name, self.data.extra_specs,
                 target_volume=clone_volume)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_snap_id',
+                       return_value=tpd.PowerMaxData.snap_id)
     @mock.patch.object(
         masking.PowerMaxMasking,
         'remove_and_reset_members')
-    def test_cleanup_target_sync_present(self, mock_remove):
+    def test_cleanup_target_sync_present(self, mock_remove, mock_snaps):
         array = self.data.array
         clone_volume = self.data.test_clone_volume
         source_device_id = self.data.device_id
@@ -1758,7 +1765,6 @@ class PowerMaxCommonTest(test.TestCase):
         snap_name = self.data.failed_resource
         clone_name = clone_volume.name
         extra_specs = self.data.extra_specs
-        generation = 0
         with mock.patch.object(self.rest, 'get_sync_session',
                                return_value='session'):
             with mock.patch.object(
@@ -1768,10 +1774,13 @@ class PowerMaxCommonTest(test.TestCase):
                     clone_name, snap_name, extra_specs)
                 mock_break.assert_called_with(
                     array, target_device_id, source_device_id,
-                    snap_name, extra_specs, generation)
+                    snap_name, extra_specs, self.data.snap_id)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snaps',
+                       return_value=[{'snap_name': 'snap_name',
+                                      'snap_id': tpd.PowerMaxData.snap_id}])
     @mock.patch.object(masking.PowerMaxMasking, 'remove_volume_from_sg')
-    def test_cleanup_target_no_sync(self, mock_remove):
+    def test_cleanup_target_no_sync(self, mock_remove, mock_snaps):
         array = self.data.array
         clone_volume = self.data.test_clone_volume
         source_device_id = self.data.device_id
@@ -2646,8 +2655,9 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.test_snapshot)
         self.assertEqual(2, size)
 
-    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap',
-                       return_value={'snap_name': 'snap_name'})
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snaps',
+                       return_value=[{'snap_name': 'snap_name',
+                                      'snap_id': tpd.PowerMaxData.snap_id}])
     @mock.patch.object(
         common.PowerMaxCommon, 'get_snapshot_metadata',
         return_value={'snap-meta-key-1': 'snap-meta-value-1',
@@ -2732,29 +2742,35 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common.unmanage_snapshot,
                           self.data.test_snapshot_manage)
 
+    @mock.patch.object(
+        common.PowerMaxCommon, '_parse_snap_info', return_value=(
+            tpd.PowerMaxData.device_id,
+            tpd.PowerMaxData.snap_location['snap_name'],
+            [tpd.PowerMaxData.snap_id]))
     @mock.patch.object(provision.PowerMaxProvision, 'delete_volume_snap')
     @mock.patch.object(provision.PowerMaxProvision, 'is_restore_complete',
                        return_value=True)
     @mock.patch.object(common.PowerMaxCommon, '_clone_check')
     @mock.patch.object(provision.PowerMaxProvision, 'revert_volume_snapshot')
     def test_revert_to_snapshot(self, mock_revert, mock_clone,
-                                mock_complete, mock_delete):
+                                mock_complete, mock_delete, mock_parse):
         volume = self.data.test_volume
         snapshot = self.data.test_snapshot
         array = self.data.array
         device_id = self.data.device_id
         snap_name = self.data.snap_location['snap_name']
+        snap_id = self.data.snap_id
         extra_specs = deepcopy(self.data.extra_specs_intervals_set)
         extra_specs['storagetype:portgroupname'] = (
             self.data.port_group_name_f)
         self.common.revert_to_snapshot(volume, snapshot)
         mock_revert.assert_called_once_with(
-            array, device_id, snap_name, extra_specs)
+            array, device_id, snap_name, snap_id, extra_specs)
         mock_clone.assert_called_once_with(array, device_id, extra_specs)
         mock_complete.assert_called_once_with(array, device_id,
-                                              snap_name, extra_specs)
+                                              snap_name, snap_id, extra_specs)
         mock_delete.assert_called_once_with(array, snap_name, device_id,
-                                            restored=True, generation=0)
+                                            self.data.snap_id, restored=True)
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
                        return_value=True)
@@ -2837,9 +2853,9 @@ class PowerMaxCommonTest(test.TestCase):
                 'reason_not_safe': None, 'cinder_id': None,
                 'extra_info': {
                     'generation': 0, 'secured': False, 'timeToLive': 'N/A',
-                    'timestamp': mock.ANY},
+                    'timestamp': mock.ANY, 'snap_id': self.data.snap_id},
                 'source_reference': {'source-id': '00001'}}]
-            self.assertEqual(snap_list, expected_response)
+            self.assertEqual(expected_response, snap_list)
 
     def test_get_manageable_snapshots_filters_set(self):
         marker, limit, offset = 'testSnap2', 2, 1
@@ -2853,14 +2869,16 @@ class PowerMaxCommonTest(test.TestCase):
                 {'reference': {'source-name': 'testSnap3'},
                  'safe_to_manage': True, 'size': 300, 'reason_not_safe': None,
                  'cinder_id': None, 'extra_info': {
-                    'generation': 0, 'secured': False, 'timeToLive': 'N/A',
-                    'timestamp': mock.ANY},
+                    'snap_id': self.data.snap_id, 'secured': False,
+                    'timeToLive': 'N/A', 'timestamp': mock.ANY,
+                    'generation': 0},
                  'source_reference': {'source-id': '00003'}},
                 {'reference': {'source-name': 'testSnap4'},
                  'safe_to_manage': True, 'size': 400, 'reason_not_safe': None,
                  'cinder_id': None, 'extra_info': {
-                    'generation': 0, 'secured': False, 'timeToLive': 'N/A',
-                    'timestamp': mock.ANY},
+                    'snap_id': self.data.snap_id, 'secured': False,
+                    'timeToLive': 'N/A', 'timestamp': mock.ANY,
+                    'generation': 0},
                  'source_reference': {'source-id': '00004'}}]
             self.assertEqual(vols_lists, expected_response)
 
@@ -3203,14 +3221,14 @@ class PowerMaxCommonTest(test.TestCase):
         session = self.data.snap_tgt_session_cm_enabled
         snap_name = session['snap_name']
         source = session['source_vol_id']
-        generation = session['generation']
+        snap_id = session['snapid']
         target = session['target_vol_id']
 
         self.common._unlink_targets_and_delete_temp_snapvx(
             session, array, extra_specs)
         mck_break.assert_called_with(array, target, source, snap_name,
-                                     extra_specs, generation, True)
-        mck_del.assert_called_once_with(array, snap_name, source, generation)
+                                     extra_specs, snap_id, True)
+        mck_del.assert_called_once_with(array, snap_name, source, snap_id)
 
         mck_break.reset_mock()
         mck_del.reset_mock()
@@ -3220,7 +3238,7 @@ class PowerMaxCommonTest(test.TestCase):
         self.common._unlink_targets_and_delete_temp_snapvx(
             session, array, extra_specs)
         mck_break.assert_called_with(array, target, source, snap_name,
-                                     extra_specs, generation, False)
+                                     extra_specs, snap_id, False)
         mck_del.assert_not_called()
 
     @mock.patch.object(rest.PowerMaxRest, 'find_snap_vx_sessions',
@@ -3385,7 +3403,9 @@ class PowerMaxCommonTest(test.TestCase):
         snap_name = self.data.test_snapshot_snap_name
         ref_metadata = {'SnapshotLabel': snap_name,
                         'SourceDeviceID': device_id,
-                        'SourceDeviceLabel': device_label}
+                        'SourceDeviceLabel': device_label,
+                        'SnapIdList': six.text_type(self.data.snap_id),
+                        'is_snap_id': True}
 
         act_metadata = self.common.get_snapshot_metadata(
             array, device_id, snap_name)
