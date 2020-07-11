@@ -3633,7 +3633,7 @@ class HPE3PARCommon(object):
             try:
                 self.client.stopRemoteCopy(rcg_name)
             except Exception as ex:
-                msg = (_("There was an error stoping remote copy: %s.") %
+                msg = (_("There was an error stopping remote copy: %s.") %
                        six.text_type(ex))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
