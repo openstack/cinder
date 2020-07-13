@@ -1,0 +1,3 @@
+---
+features:
+  - New Cinder Hitachi driver based on REST API for Hitachi VSP storages.
