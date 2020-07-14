@@ -142,3 +142,7 @@ class ConfigTableDirective(rst.Directive):
 
 def setup(app):
     app.add_directive('config-table', ConfigTableDirective)
+    return {
+        'parallel_read_safe': True,
+        'parallel_write_safe': True,
+    }

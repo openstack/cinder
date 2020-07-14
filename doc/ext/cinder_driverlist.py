@@ -22,4 +22,8 @@ def setup(app):
     print('** Generating driver list...')
     rv = utils.execute(sys.executable, './tools/generate_driver_list.py', ['docs'])
     print(rv[0])
+    return {
+        'parallel_read_safe': True,
+        'parallel_write_safe': True,
+    }
 
