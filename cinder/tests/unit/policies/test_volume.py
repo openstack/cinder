@@ -133,7 +133,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         volume = self._create_fake_volume(admin_context)
         path = '/v3/%(project_id)s/volumes/detail' % {
-            'project_id': admin_context.project_id, 'volume_id': volume.id
+            'project_id': admin_context.project_id
         }
 
         response = self._get_request_response(admin_context, path, 'GET')
@@ -149,7 +149,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         volume = self._create_fake_volume(user_context)
         path = '/v3/%(project_id)s/volumes/detail' % {
-            'project_id': user_context.project_id, 'volume_id': volume.id
+            'project_id': user_context.project_id
         }
 
         response = self._get_request_response(user_context, path, 'GET')
@@ -288,9 +288,9 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         # Make sure admins are authorized to show tenant_id in volume detail
         admin_context = self.admin_context
 
-        volume = self._create_fake_volume(admin_context)
+        self._create_fake_volume(admin_context)
         path = '/v3/%(project_id)s/volumes/detail' % {
-            'project_id': admin_context.project_id, 'volume_id': volume.id
+            'project_id': admin_context.project_id
         }
 
         response = self._get_request_response(admin_context, path, 'GET')
@@ -305,9 +305,9 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         # Make sure owners are authorized to show tenant_id in volume detail
         user_context = self.user_context
 
-        volume = self._create_fake_volume(user_context)
+        self._create_fake_volume(user_context)
         path = '/v3/%(project_id)s/volumes/detail' % {
-            'project_id': user_context.project_id, 'volume_id': volume.id
+            'project_id': user_context.project_id
         }
 
         response = self._get_request_response(user_context, path, 'GET')

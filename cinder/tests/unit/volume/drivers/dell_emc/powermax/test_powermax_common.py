@@ -1699,7 +1699,7 @@ class PowerMaxCommonTest(test.TestCase):
         clone_name = 'OS-' + clone_volume.id
         with mock.patch.object(
                 self.common, '_cleanup_target') as mock_cleanup:
-            self.assertRaises(
+            self.assertRaises(                     # noqa: H202
                 Exception, self.common._create_replica, array,
                 clone_volume, source_device_id,
                 self.data.extra_specs, snap_name)  # noqa: ignore=H202

@@ -3,7 +3,7 @@
 # process, which may cause wedges in the gate later.
 
 # Install bounded pep8/pyflakes first, then let flake8 install
-hacking>=3.0.1,<3.1.0 # Apache-2.0
+hacking>=3.1.0,<3.2.0 # Apache-2.0
 flake8-import-order # LGPLv3
 flake8-logging-format>=0.6.0 # Apache-2.0
 
