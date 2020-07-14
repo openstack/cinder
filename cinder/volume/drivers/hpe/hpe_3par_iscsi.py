@@ -387,7 +387,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
 
         Ignore exceptions caused by the keys not being present on a volume.
         """
-        vol_name = common._get_3par_vol_name(volume['id'])
+        vol_name = common._get_3par_vol_name(volume)
 
         try:
             common.client.removeVolumeMetaData(vol_name, CHAP_USER_KEY)
@@ -477,7 +477,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
 
         # Get the CHAP secret if CHAP is enabled
         if common._client_conf['hpe3par_iscsi_chap_enabled']:
-            vol_name = common._get_3par_vol_name(volume['id'])
+            vol_name = common._get_3par_vol_name(volume)
             username = common.client.getVolumeMetaData(
                 vol_name, CHAP_USER_KEY)['value']
             password = common.client.getVolumeMetaData(
@@ -576,7 +576,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                             "Generating new CHAP key.")
 
         # Add CHAP credentials to the volume metadata
-        vol_name = common._get_3par_vol_name(volume['id'])
+        vol_name = common._get_3par_vol_name(volume)
         common.client.setVolumeMetaData(
             vol_name, CHAP_USER_KEY, chap_username)
         common.client.setVolumeMetaData(
@@ -603,7 +603,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         """
         common = self._login()
         try:
-            vol_name = common._get_3par_vol_name(volume['id'])
+            vol_name = common._get_3par_vol_name(volume)
             common.client.getVolume(vol_name)
         except hpeexceptions.HTTPNotFound:
             LOG.error("Volume %s doesn't exist on array.", vol_name)
