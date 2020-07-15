@@ -1791,7 +1791,6 @@ class PowerMaxRest(object):
         if action == "Restore":
             operation = 'Restore snapVx snapshot'
             payload = {"deviceNameListSource": [{"name": source_id}],
-                       "deviceNameListTarget": [{"name": source_id}],
                        "action": action,
                        "star": 'false', "force": 'false'}
         elif action in ('Link', 'Unlink'):

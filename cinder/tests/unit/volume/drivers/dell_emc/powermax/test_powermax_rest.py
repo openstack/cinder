@@ -1066,7 +1066,6 @@ class PowerMaxRestTest(test.TestCase):
                    'symforce': 'false', 'nocopy': 'false',
                    'generation': 0}
         payload_restore = {'deviceNameListSource': [{'name': source_id}],
-                           'deviceNameListTarget': [{'name': source_id}],
                            'action': 'Restore',
                            'star': 'false', 'force': 'false'}
         with mock.patch.object(
