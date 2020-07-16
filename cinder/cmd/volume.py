@@ -74,13 +74,12 @@ backend_name_opt = cfg.StrOpt(
 CONF.register_cli_opt(backend_name_opt)
 
 
-# TODO(geguileo): Once we complete the work on A-A update the option's help.
 cluster_opt = cfg.StrOpt('cluster',
                          default=None,
                          help='Name of this cluster. Used to group volume '
                               'hosts that share the same backend '
                               'configurations to work in HA Active-Active '
-                              'mode.  Active-Active is not yet supported.')
+                              'mode.')
 CONF.register_opt(cluster_opt)
 
 LOG = None
