@@ -1,0 +1,38 @@
+---
+upgrade:
+  - |
+    The ``default_volume_type`` configuration option is now required
+    to have a value.  The default value is ``__DEFAULT__``, so you
+    should see no change in behavior whether or not you have set a
+    value for ``default_volume_type``.  See
+    `Bug #1886632 <https://bugs.launchpad.net/cinder/+bug/1886632>`_
+    for more information about this change.
+
+fixes:
+  - |
+    `Bug #1886632 <https://bugs.launchpad.net/cinder/+bug/1886632>`_:
+    The system defined ``__DEFAULT__`` volume type is now treated as
+    a regular volume-type and may be updated or deleted.  Since the
+    configured ``default_volume_type`` cannot be deleted, however,
+    the ``__DEFAULT__`` volume type may not be deleted if it is the
+    value of that configuration option.
+
+other:
+  - |
+    Beginning with the Train release, untyped volumes (that is, volumes with
+    no volume-type) have been disallowed.  To facilitate this, a
+    ``__DEFAULT__`` volume-type was included as part of the Train database
+    migration.  In this release, handling of the default volume-type has been
+    improved:
+
+    * The ``default_volume_type`` configuration option is required to have a
+      value.  The default value is ``__DEFAULT__``.
+    * A request to delete the currently configured ``default_volume_type``
+      will fail.  (You can delete that volume-type, but you cannot do it
+      while it is the value of the configuration option.)
+    * There must always be at least one volume-type defined in a Cinder
+      installation.  This is enforced by the type-delete call.
+    * If the ``default_volume_type`` is misconfigured (that is, if the value
+      refers to a non-existent volume-type), requests that rely on the
+      default volume-type (for example, a volume-create request that does
+      not specify a volume-type) will result in a HTTP 500 response.

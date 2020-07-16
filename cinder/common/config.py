@@ -107,6 +107,8 @@ global_opts = [
                      'default_availability_zone, then '
                      'storage_availability_zone, instead of failing.'),
     cfg.StrOpt('default_volume_type',
+               default='__DEFAULT__',
+               required=True,
                help='Default volume type to use'),
     cfg.StrOpt('default_group_type',
                help='Default group type to use'),
