@@ -41,3 +41,6 @@ cryptsetup-bin [platform:dpkg]
 # os-brick tests. Net result is the same that lsscsi will be installed for any
 # cinder installation.
 lsscsi
+qemu-img [platform:redhat]
+qemu-tools [platform:suse]
+qemu-utils [platform:dpkg]
