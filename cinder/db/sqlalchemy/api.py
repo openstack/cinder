@@ -4129,6 +4129,9 @@ def volume_type_destroy(context, id):
     utcnow = timeutils.utcnow()
     session = get_session()
     with session.begin():
+        vol_types = volume_type_get_all(context)
+        if len(vol_types) <= 1:
+            raise exception.VolumeTypeDeletionError(volume_type_id=id)
         _volume_type_get(context, id, session)
         results = model_query(context, models.Volume, session=session). \
             filter_by(volume_type_id=id).all()

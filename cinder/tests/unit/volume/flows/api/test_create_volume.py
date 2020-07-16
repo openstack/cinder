@@ -52,14 +52,14 @@ class ExtractVolumeRequestTaskValidationsTestCase(test.TestCase):
          'param_source_vol': None,
          'param_snap': None,
          'param_img_vol_type_id': None,
-         'config_value': None,
+         'config_value': volume_types.DEFAULT_VOLUME_TYPE,
          'expected_vol_type': volume_types.DEFAULT_VOLUME_TYPE},
         # case set 1: if a volume_type is passed, should always be selected
         {'param_vol_type': fake_vol_type,
          'param_source_vol': None,
          'param_snap': None,
          'param_img_vol_type_id': None,
-         'config_value': None,
+         'config_value': volume_types.DEFAULT_VOLUME_TYPE,
          'expected_vol_type': 'vt-from-volume_type'},
         {'param_vol_type': fake_vol_type,
          'param_source_vol': fake_source_vol,
@@ -73,7 +73,7 @@ class ExtractVolumeRequestTaskValidationsTestCase(test.TestCase):
          'param_source_vol': fake_source_vol,
          'param_snap': None,
          'param_img_vol_type_id': None,
-         'config_value': None,
+         'config_value': volume_types.DEFAULT_VOLUME_TYPE,
          'expected_vol_type': 'vt-from-source_vol'},
         {'param_vol_type': None,
          'param_source_vol': fake_source_vol,
@@ -87,7 +87,7 @@ class ExtractVolumeRequestTaskValidationsTestCase(test.TestCase):
          'param_source_vol': None,
          'param_snap': fake_snapshot,
          'param_img_vol_type_id': None,
-         'config_value': None,
+         'config_value': volume_types.DEFAULT_VOLUME_TYPE,
          'expected_vol_type': 'vt-from-snapshot'},
         {'param_vol_type': None,
          'param_source_vol': None,
@@ -101,7 +101,7 @@ class ExtractVolumeRequestTaskValidationsTestCase(test.TestCase):
          'param_source_vol': None,
          'param_snap': None,
          'param_img_vol_type_id': fake_img_vol_type_id,
-         'config_value': None,
+         'config_value': volume_types.DEFAULT_VOLUME_TYPE,
          'expected_vol_type': 'vt-from-image_volume_type_id'},
         {'param_vol_type': None,
          'param_source_vol': None,
@@ -189,10 +189,19 @@ class ExtractVolumeRequestTaskValidationsTestCase(test.TestCase):
 
         test_fn = create_volume.ExtractVolumeRequestTask._get_volume_type
 
-        self.assertRaises(exception.VolumeTypeNotFoundByName,
-                          test_fn,
-                          self.context,
-                          None,
-                          param_source_vol,
-                          param_snap,
-                          param_img_vol_type_id)
+        if config_value:
+            self.assertRaises(exception.VolumeTypeDefaultMisconfiguredError,
+                              test_fn,
+                              self.context,
+                              None,
+                              param_source_vol,
+                              param_snap,
+                              param_img_vol_type_id)
+        else:
+            self.assertRaises(exception.VolumeTypeNotFoundByName,
+                              test_fn,
+                              self.context,
+                              None,
+                              param_source_vol,
+                              param_snap,
+                              param_img_vol_type_id)
