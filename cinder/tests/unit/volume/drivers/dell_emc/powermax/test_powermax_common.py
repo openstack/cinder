@@ -2020,6 +2020,153 @@ class PowerMaxCommonTest(test.TestCase):
             target_slo, target_workload, target_extra_specs)
         self.assertTrue(success)
 
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_post_retype_srdf_protect_storage_group',
+                       return_value=(True, True, True))
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_element_name',
+                       return_value=tpd.PowerMaxData.volume_id)
+    @mock.patch.object(
+        common.PowerMaxCommon, 'configure_volume_replication',
+        return_value=('first_vol_in_rdf_group', True, True,
+                      tpd.PowerMaxData.rep_extra_specs_mgmt, False))
+    @mock.patch.object(common.PowerMaxCommon, '_retype_volume')
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(
+        common.PowerMaxCommon, 'break_rdf_device_pair_session',
+        return_value=(tpd.PowerMaxData.rep_extra_specs_mgmt, True))
+    @mock.patch.object(common.PowerMaxCommon, '_retype_remote_volume')
+    @mock.patch.object(utils.PowerMaxUtils, 'is_replication_enabled',
+                       return_value=True)
+    def test_cleanup_on_migrate_failure(
+            self, mck_rep_enabled, mck_retype_remote, mck_break, mck_resume,
+            mck_retype, mck_configure, mck_get_vname, mck_protect):
+        rdf_pair_broken = True
+        rdf_pair_created = True
+        vol_retyped = True
+        remote_retyped = True
+        extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        target_extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs_mgmt)
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        device_id = self.data.device_id
+        source_sg = self.data.storagegroup_name_f
+        array = self.data.array
+        srp = extra_specs[utils.SRP]
+        slo = extra_specs[utils.SLO]
+        workload = extra_specs[utils.WORKLOAD]
+        rep_mode = utils.REP_ASYNC
+        extra_specs[utils.REP_MODE] = rep_mode
+        self.common._cleanup_on_migrate_failure(
+            rdf_pair_broken, rdf_pair_created, vol_retyped,
+            remote_retyped, extra_specs, target_extra_specs, volume,
+            volume_name, device_id, source_sg)
+        mck_rep_enabled.assert_called_once_with(extra_specs)
+        mck_retype_remote.assert_called_once_with(
+            array, volume, device_id, volume_name,
+            rep_mode, True, extra_specs)
+        mck_break.assert_called_once_with(
+            array, device_id, volume_name, extra_specs, volume)
+        mck_resume.assert_called_once_with(
+            array, rep_extra_specs['mgmt_sg_name'],
+            rep_extra_specs['rdf_group_no'], rep_extra_specs)
+        mck_retype.assert_called_once_with(
+            array, srp, device_id, volume, volume_name,
+            target_extra_specs, slo, workload, extra_specs)
+        mck_configure.assert_called_once_with(
+            array, volume, device_id, extra_specs)
+        mck_get_vname.assert_called_once_with(volume.id)
+        mck_protect.assert_called_once_with(
+            array, source_sg, device_id, volume_name,
+            rep_extra_specs, volume)
+
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'return_volume_to_volume_group')
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'move_volume_between_storage_groups')
+    @mock.patch.object(masking.PowerMaxMasking, 'add_child_sg_to_parent_sg')
+    @mock.patch.object(rest.PowerMaxRest, 'create_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_list',
+                       return_value=['sg'])
+    def test_cleanup_on_retype_volume_failure_moved_sg(
+            self, mck_get_sgs, mck_create_sg, mck_add_child, mck_move,
+            mck_return):
+        created_child_sg = False
+        add_sg_to_parent = False
+        got_default_sg = False
+        moved_between_sgs = True
+        extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        array = extra_specs[utils.ARRAY]
+        source_sg = self.data.storagegroup_name_f
+        parent_sg = self.data.parent_sg_f
+        target_sg_name = self.data.storagegroup_name_i
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        self.common._cleanup_on_retype_volume_failure(
+            created_child_sg, add_sg_to_parent, got_default_sg,
+            moved_between_sgs, array, source_sg, parent_sg, target_sg_name,
+            extra_specs, device_id, volume, volume_name)
+        mck_get_sgs.assert_called_once_with(array)
+        mck_create_sg.assert_called_once_with(
+            array, source_sg, extra_specs['srp'], extra_specs['slo'],
+            extra_specs['workload'], extra_specs, False)
+        mck_add_child.assert_called_once_with(
+            array, source_sg, parent_sg, extra_specs)
+        mck_move.assert_called_once_with(
+            array, device_id, target_sg_name, source_sg, extra_specs,
+            force=True, parent_sg=parent_sg)
+        mck_return.assert_called_once_with(
+            array, volume, device_id, volume_name, extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_volumes_in_storage_group',
+                       return_value=[])
+    def test_cleanup_on_retype_volume_failure_got_default(
+            self, mck_get_vols, mck_del_sg):
+        created_child_sg = False
+        add_sg_to_parent = False
+        got_default_sg = True
+        moved_between_sgs = False
+        extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        array = extra_specs[utils.ARRAY]
+        source_sg = self.data.storagegroup_name_f
+        parent_sg = self.data.parent_sg_f
+        target_sg_name = self.data.storagegroup_name_i
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        self.common._cleanup_on_retype_volume_failure(
+            created_child_sg, add_sg_to_parent, got_default_sg,
+            moved_between_sgs, array, source_sg, parent_sg, target_sg_name,
+            extra_specs, device_id, volume, volume_name)
+        mck_get_vols.assert_called_once_with(array, target_sg_name)
+        mck_del_sg.assert_called_once_with(array, target_sg_name)
+
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'remove_child_sg_from_parent_sg')
+    def test_cleanup_on_retype_volume_failure_created_child(
+            self, mck_remove_child_sg, mck_del_sg):
+        created_child_sg = True
+        add_sg_to_parent = True
+        got_default_sg = False
+        moved_between_sgs = False
+        extra_specs = deepcopy(self.data.extra_specs_rep_enabled)
+        array = extra_specs[utils.ARRAY]
+        source_sg = self.data.storagegroup_name_f
+        parent_sg = self.data.parent_sg_f
+        target_sg_name = self.data.storagegroup_name_i
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        self.common._cleanup_on_retype_volume_failure(
+            created_child_sg, add_sg_to_parent, got_default_sg,
+            moved_between_sgs, array, source_sg, parent_sg, target_sg_name,
+            extra_specs, device_id, volume, volume_name)
+        mck_remove_child_sg.assert_called_once_with(
+            array, target_sg_name, parent_sg, extra_specs)
+        mck_del_sg.assert_called_once_with(array, target_sg_name)
+
     def test_is_valid_for_storage_assisted_migration_true(self):
         device_id = self.data.device_id
         host = {'host': self.data.new_host}

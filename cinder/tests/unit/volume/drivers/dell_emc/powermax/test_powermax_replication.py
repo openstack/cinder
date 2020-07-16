@@ -814,7 +814,8 @@ class PowerMaxReplicationTest(test.TestCase):
         target_workload = self.data.workload
         volume_name = volume.name
         new_type = {'extra_specs': {}}
-        extra_specs = self.data.rep_extra_specs
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_sync
 
         target_extra_specs = {
             utils.SRP: srp, utils.ARRAY: array_id, utils.SLO: target_slo,
@@ -827,7 +828,7 @@ class PowerMaxReplicationTest(test.TestCase):
             array_id, volume, device_id, srp, target_slo, target_workload,
             volume_name, new_type, extra_specs)
         mck_break.assert_called_once_with(
-            array_id, device_id, volume_name, extra_specs)
+            array_id, device_id, volume_name, extra_specs, volume)
         mck_retype.assert_called_once_with(
             array_id, srp, device_id, volume, volume_name, extra_specs,
             target_slo, target_workload, target_extra_specs)
@@ -889,7 +890,7 @@ class PowerMaxReplicationTest(test.TestCase):
             target_slo, target_workload, target_extra_specs)
         mck_protect.assert_called_once_with(
             array_id, target_storage_group, device_id, updated_volume_name,
-            target_extra_specs)
+            target_extra_specs, volume)
         self.assertTrue(success)
 
     @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata',
@@ -938,7 +939,7 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertEqual(2, mck_valid.call_count)
         mck_valid.assert_called_with(array, target_extra_specs)
         mck_break.assert_called_once_with(
-            array, device_id, volume_name, extra_specs)
+            array, device_id, volume_name, extra_specs, volume)
         mck_sync.assert_called_once_with(array, device_id, extra_specs)
         mck_rep.assert_called_once_with(
             array, volume, device_id, target_extra_specs)
@@ -1304,10 +1305,11 @@ class PowerMaxReplicationTest(test.TestCase):
         device_id = self.data.device_id
         volume_name = self.data.test_volume.name
         extra_specs = deepcopy(self.data.ex_specs_rep_config)
+        volume = self.data.test_volume
 
         rep_extra_specs, resume_rdf = (
             self.common.break_rdf_device_pair_session(
-                array, device_id, volume_name, extra_specs))
+                array, device_id, volume_name, extra_specs, volume))
 
         extra_specs[utils.REP_CONFIG]['force_vol_remove'] = True
         self.assertEqual(extra_specs[utils.REP_CONFIG], rep_extra_specs)
@@ -1349,10 +1351,11 @@ class PowerMaxReplicationTest(test.TestCase):
         extra_specs = deepcopy(self.data.ex_specs_rep_config)
         extra_specs[utils.REP_MODE] = utils.REP_SYNC
         extra_specs[utils.REP_CONFIG]['mode'] = utils.REP_SYNC
+        volume = self.data.test_volume
 
         rep_extra_specs, resume_rdf = (
             self.common.break_rdf_device_pair_session(
-                array, device_id, volume_name, extra_specs))
+                array, device_id, volume_name, extra_specs, volume))
 
         extra_specs[utils.REP_CONFIG]['force_vol_remove'] = True
         extra_specs[utils.REP_CONFIG]['mgmt_sg_name'] = (
@@ -1654,3 +1657,143 @@ class PowerMaxReplicationTest(test.TestCase):
         self.assertFalse(is_valid)
         mck_rdf.assert_called_once_with(array, rdf_group)
         mck_sg.assert_called_once_with(array, storage_group)
+
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    def test_cleanup_on_configure_volume_replication_failure_resume(
+            self, mck_resume):
+        resume_rdf = True
+        rdf_pair_created = False
+        remote_sg_get = False
+        add_to_mgmt_sg = False
+        r1_device_id = self.data.device_id
+        r2_device_id = self.data.device_id2
+        mgmt_sg_name = self.data.rdf_managed_async_grp
+        array = self.data.array
+        remote_array = self.data.remote_array
+        extra_specs = self.data.extra_specs_rep_enabled
+        rep_extra_specs = self.data.rep_extra_specs_mgmt
+        rdf_group_no = rep_extra_specs['rdf_group_no']
+        volume = self.data.test_volume
+        tgt_sg_name = self.data.storagegroup_name_i
+        self.common._cleanup_on_configure_volume_replication_failure(
+            resume_rdf, rdf_pair_created, remote_sg_get,
+            add_to_mgmt_sg, r1_device_id, r2_device_id,
+            mgmt_sg_name, array, remote_array, rdf_group_no, extra_specs,
+            rep_extra_specs, volume, tgt_sg_name)
+        mck_resume.assert_called_once_with(
+            array, mgmt_sg_name, rdf_group_no, rep_extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'delete_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_volumes_in_storage_group',
+                       return_value=[])
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'remove_vol_from_storage_group')
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(
+        common.PowerMaxCommon, 'break_rdf_device_pair_session',
+        return_value=(tpd.PowerMaxData.rep_extra_specs_mgmt, True))
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_element_name',
+                       return_value=tpd.PowerMaxData.volume_id)
+    def test_cleanup_on_configure_volume_replication_failure_pair_created(
+            self, mck_elem, mck_break, mck_resume, mck_remove, mck_get,
+            mck_del):
+        resume_rdf = True
+        rdf_pair_created = True
+        remote_sg_get = True
+        add_to_mgmt_sg = True
+        r1_device_id = self.data.device_id
+        r2_device_id = self.data.device_id2
+        mgmt_sg_name = self.data.rdf_managed_async_grp
+        array = self.data.array
+        remote_array = self.data.remote_array
+        extra_specs = self.data.extra_specs_rep_enabled
+        rep_extra_specs = self.data.rep_extra_specs_mgmt
+        rdf_group_no = self.data.rdf_group_no_1
+        volume = self.data.test_volume
+        tgt_sg_name = self.data.storagegroup_name_i
+        volume_name = self.data.volume_id
+        self.common._cleanup_on_configure_volume_replication_failure(
+            resume_rdf, rdf_pair_created, remote_sg_get,
+            add_to_mgmt_sg, r1_device_id, r2_device_id,
+            mgmt_sg_name, array, remote_array, rdf_group_no, extra_specs,
+            rep_extra_specs, volume, tgt_sg_name)
+        mck_elem.assert_called_once_with(volume.id)
+        mck_break.assert_called_once_with(
+            array, r1_device_id, volume_name, extra_specs, volume)
+        mck_resume.assert_called_once_with(
+            array, mgmt_sg_name, rdf_group_no, rep_extra_specs)
+        mck_remove.assert_called_with(
+            remote_array, r2_device_id, mgmt_sg_name, '', rep_extra_specs)
+        self.assertEqual(2, mck_remove.call_count)
+        mck_get.assert_called_once_with(remote_array, tgt_sg_name)
+        mck_del.assert_called_once_with(remote_array, tgt_sg_name)
+
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    def test_cleanup_on_break_rdf_device_pair_session_failure_resume(
+            self, mck_resume):
+        rdfg_suspended = True
+        pair_deleted = False
+        r2_sg_remove = False
+        array = self.data.array
+        management_sg = self.data.rdf_managed_async_grp
+        extra_specs = self.data.extra_specs_rep_enabled
+        rep_extra_specs = self.data.rep_extra_specs
+        rdf_group_no = rep_extra_specs['rdf_group_no']
+        r2_sg_names = [self.data.storagegroup_name_i]
+        device_id = self.data.device_id
+        remote_array = self.data.remote_array
+        remote_device_id = self.data.device_id2
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        self.common._cleanup_on_break_rdf_device_pair_session_failure(
+            rdfg_suspended, pair_deleted, r2_sg_remove, array,
+            management_sg, rdf_group_no, extra_specs, r2_sg_names, device_id,
+            remote_array, remote_device_id, volume, volume_name,
+            rep_extra_specs)
+        mck_resume.assert_called_once_with(
+            array, management_sg, rdf_group_no, extra_specs)
+
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_resume_replication')
+    @mock.patch.object(common.PowerMaxCommon, '_protect_storage_group')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_element_name',
+                       return_value=tpd.PowerMaxData.volume_id)
+    @mock.patch.object(
+        common.PowerMaxCommon, 'configure_volume_replication',
+        return_value=('first_vol_in_rdf_group', True, True,
+                      tpd.PowerMaxData.rep_extra_specs_mgmt, True))
+    @mock.patch.object(common.PowerMaxCommon, '_delete_from_srp')
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_volume_from_sg')
+    def test_cleanup_on_break_rdf_device_pair_session_failure_pair_created(
+            self, mck_remove, mck_delete, mck_configure, mck_elem,
+            mck_protect, mck_resume):
+        rdfg_suspended = True
+        pair_deleted = True
+        r2_sg_remove = False
+        array = self.data.array
+        management_sg = self.data.rdf_managed_async_grp
+        extra_specs = self.data.extra_specs_rep_enabled
+        rep_extra_specs = self.data.rep_extra_specs_mgmt
+        rdf_group_no = rep_extra_specs['rdf_group_no']
+        r2_sg_names = [self.data.storagegroup_name_i]
+        device_id = self.data.device_id
+        remote_array = self.data.remote_array
+        remote_device_id = self.data.device_id2
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        self.common._cleanup_on_break_rdf_device_pair_session_failure(
+            rdfg_suspended, pair_deleted, r2_sg_remove, array,
+            management_sg, rdf_group_no, extra_specs, r2_sg_names, device_id,
+            remote_array, remote_device_id, volume, volume_name,
+            rep_extra_specs)
+        mck_remove.assert_called_once_with(
+            remote_array, remote_device_id, volume_name,
+            r2_sg_names[0], rep_extra_specs)
+        mck_delete.assert_called_once_with(
+            remote_array, remote_device_id, volume_name, extra_specs)
+        mck_configure.assert_called_once_with(
+            array, volume, device_id, extra_specs)
+        mck_elem.assert_called_once_with(volume.id)
+        mck_protect.assert_called_once_with(
+            array, device_id, volume, volume_name, rep_extra_specs)
+        mck_resume.assert_called_once_with(
+            array, management_sg, rdf_group_no, rep_extra_specs)
