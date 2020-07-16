@@ -577,6 +577,95 @@ class PowerMaxCommonTest(test.TestCase):
                                         extra_specs, connector, False,
                                         async_grp=None, host_template=None)
 
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
+                       return_value=True)
+    @mock.patch.object(provision.PowerMaxProvision, 'verify_slo_workload')
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
+                       return_value=(tpd.PowerMaxData.iscsi_device_info,
+                                     False))
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config_metro)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config_metro)
+    def test_unmap_lun_replication_metro(
+            self, mck_setup, mck_rep, mck_find, mck_rem, mck_slo, mck_metro):
+        volume = deepcopy(self.data.test_volume)
+        connector = deepcopy(self.data.connector)
+        volume.volume_attachment.objects = [
+            deepcopy(self.data.test_volume_attachment)]
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        self.common._unmap_lun(volume, connector)
+        self.assertEqual(2, mck_rem.call_count)
+
+    @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
+                       return_value=True)
+    @mock.patch.object(provision.PowerMaxProvision, 'verify_slo_workload')
+    @mock.patch.object(common.PowerMaxCommon, '_remove_members')
+    @mock.patch.object(common.PowerMaxCommon, 'find_host_lun_id',
+                       return_value=(tpd.PowerMaxData.iscsi_device_info,
+                                     False))
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config_metro)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config_metro)
+    def test_unmap_lun_replication_metro_promotion(
+            self, mck_setup, mck_rep, mck_find, mck_rem, mck_slo, mck_metro):
+        volume = deepcopy(self.data.test_volume)
+        connector = deepcopy(self.data.connector)
+        volume.volume_attachment.objects = [
+            deepcopy(self.data.test_volume_attachment)]
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        self.common.promotion = True
+        self.common._unmap_lun(volume, connector)
+        self.common.promotion = False
+        self.assertEqual(1, mck_rem.call_count)
+
+    @mock.patch.object(common.PowerMaxCommon, '_unmap_lun')
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata, 'capture_detach_info')
+    def test_unmap_lun_promotion_non_replicated_volume(
+            self, mck_unmap, mck_info):
+        volume = deepcopy(self.data.test_volume)
+        connector = deepcopy(self.data.connector)
+        ret = self.common._unmap_lun_promotion(volume, connector)
+        self.assertIsNone(ret)
+        self.assertEqual(0, mck_unmap.call_count)
+        self.assertEqual(0, mck_info.call_count)
+
+    @mock.patch.object(common.PowerMaxCommon, '_unmap_lun')
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config_metro)
+    def test_unmap_lun_promotion_replicated_metro_volume(
+            self, mck_setup, mck_unmap):
+        volume = deepcopy(self.data.test_rep_volume)
+        connector = deepcopy(self.data.connector)
+        self.common._unmap_lun_promotion(volume, connector)
+        mck_setup.assert_called_once_with(volume)
+        mck_unmap.assert_called_once_with(volume, connector)
+
+    @mock.patch.object(metadata.PowerMaxVolumeMetadata, 'capture_detach_info')
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    def test_unmap_lun_promotion_replicated_non_metro_volume(
+            self, mck_setup, mck_capture):
+        volume = deepcopy(self.data.test_rep_volume)
+        connector = deepcopy(self.data.connector)
+        extra_specs = self.data.rep_extra_specs_rep_config
+        device_id = self.data.device_id
+        promotion_key = [utils.PMAX_FAILOVER_START_ARRAY_PROMOTION]
+        self.common._unmap_lun_promotion(volume, connector)
+        mck_setup.assert_called_once_with(volume)
+        mck_capture.assert_called_once_with(
+            volume, extra_specs, device_id, promotion_key, promotion_key)
+
     def test_initialize_connection_already_mapped(self):
         volume = self.data.test_volume
         connector = self.data.connector
@@ -711,6 +800,17 @@ class PowerMaxCommonTest(test.TestCase):
             self.common.terminate_connection(volume, connector)
             mock_unmap.assert_called_once_with(
                 volume, connector)
+
+    def test_terminate_connection_promotion(self):
+        volume = self.data.test_volume
+        connector = self.data.connector
+        with mock.patch.object(
+                self.common, '_unmap_lun_promotion') as mock_unmap:
+            self.common.promotion = True
+            self.common.terminate_connection(volume, connector)
+            mock_unmap.assert_called_once_with(
+                volume, connector)
+            self.common.promotion = False
 
     @mock.patch.object(provision.PowerMaxProvision, 'extend_volume')
     @mock.patch.object(common.PowerMaxCommon, '_extend_vol_validation_checks')
@@ -1975,6 +2075,30 @@ class PowerMaxCommonTest(test.TestCase):
         host = self.data.new_host
         self.assertFalse(self.common.retype(volume, new_type, host))
 
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    @mock.patch.object(provision.PowerMaxProvision, 'verify_slo_workload',
+                       return_value=(True, True))
+    @mock.patch.object(common.PowerMaxCommon, '_slo_workload_migration')
+    def test_retype_promotion_extra_spec_update(
+            self, mck_migrate, mck_slo, mck_setup):
+        device_id = self.data.device_id
+        volume_name = self.data.test_rep_volume.name
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        rep_config = extra_specs[utils.REP_CONFIG]
+        rep_extra_specs = self.common._get_replication_extra_specs(
+            extra_specs, rep_config)
+        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
+        volume = self.data.test_rep_volume
+        new_type = {'extra_specs': {}}
+        host = {'host': self.data.new_host}
+        self.common.promotion = True
+        self.common.retype(volume, new_type, host)
+        self.common.promotion = False
+        mck_migrate.assert_called_once_with(
+            device_id, volume, host, volume_name, new_type, rep_extra_specs)
+
     def test_slo_workload_migration_valid(self):
         device_id = self.data.device_id
         volume_name = self.data.test_volume.name
@@ -2222,20 +2346,23 @@ class PowerMaxCommonTest(test.TestCase):
         ref_return = (True, 'Silver', 'OLTP')
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
-            self.data.srp, volume_name, False, False)
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
         self.assertEqual(ref_return, return_val)
         # No current sgs found
         with mock.patch.object(self.rest, 'get_storage_groups_from_volume',
                                return_value=None):
             return_val = self.common._is_valid_for_storage_assisted_migration(
                 device_id, host, self.data.array, self.data.srp,
-                volume_name, False, False)
+                volume_name, False, False, self.data.slo, self.data.workload,
+                False)
             self.assertEqual(ref_return, return_val)
         host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123'}
         ref_return = (True, 'Silver', 'NONE')
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
-            self.data.srp, volume_name, False, False)
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
         self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_false(self):
@@ -2246,25 +2373,29 @@ class PowerMaxCommonTest(test.TestCase):
         host = {'host': 'HostX@Backend#Silver+SRP_1+000197800123+dummy+data'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host, self.data.array,
-            self.data.srp, volume_name, False, False)
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
         self.assertEqual(ref_return, return_val)
         # Wrong array
         host2 = {'host': 'HostX@Backend#Silver+OLTP+SRP_1+00012345678'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host2, self.data.array,
-            self.data.srp, volume_name, False, False)
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
         self.assertEqual(ref_return, return_val)
         # Wrong srp
         host3 = {'host': 'HostX@Backend#Silver+OLTP+SRP_2+000197800123'}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host3, self.data.array,
-            self.data.srp, volume_name, False, False)
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
         self.assertEqual(ref_return, return_val)
         # Already in correct sg
         host4 = {'host': self.data.fake_host}
         return_val = self.common._is_valid_for_storage_assisted_migration(
             device_id, host4, self.data.array,
-            self.data.srp, volume_name, False, False)
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
         self.assertEqual(ref_return, return_val)
 
     def test_is_valid_for_storage_assisted_migration_next_gen(self):
@@ -2276,8 +2407,65 @@ class PowerMaxCommonTest(test.TestCase):
                                return_value=True):
             return_val = self.common._is_valid_for_storage_assisted_migration(
                 device_id, host, self.data.array,
-                self.data.srp, volume_name, False, False)
+                self.data.srp, volume_name, False, False, self.data.slo,
+                self.data.workload, False)
             self.assertEqual(ref_return, return_val)
+
+    def test_is_valid_for_storage_assisted_migration_promotion_change_comp(
+            self):
+        device_id = self.data.device_id
+        host = {'host': self.data.new_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (False, None, None)
+        self.common.promotion = True
+        return_val = self.common._is_valid_for_storage_assisted_migration(
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, True, False, self.data.slo_silver,
+            self.data.workload, False)
+        self.common.promotion = False
+        self.assertEqual(ref_return, return_val)
+
+    def test_is_valid_for_storage_assisted_migration_promotion_change_slo(
+            self):
+        device_id = self.data.device_id
+        host = {'host': self.data.new_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (False, None, None)
+        self.common.promotion = True
+        return_val = self.common._is_valid_for_storage_assisted_migration(
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, False, False, self.data.slo,
+            self.data.workload, False)
+        self.common.promotion = False
+        self.assertEqual(ref_return, return_val)
+
+    def test_is_valid_for_storage_assisted_migration_promotion_change_workload(
+            self):
+        device_id = self.data.device_id
+        host = {'host': self.data.new_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (False, None, None)
+        self.common.promotion = True
+        return_val = self.common._is_valid_for_storage_assisted_migration(
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, False, False, self.data.slo_silver,
+            'fail_workload', False)
+        self.common.promotion = False
+        self.assertEqual(ref_return, return_val)
+
+    def test_is_valid_for_storage_assisted_migration_promotion_target_not_rep(
+            self):
+        device_id = self.data.device_id
+        host = {'host': self.data.new_host}
+        volume_name = self.data.test_volume.name
+        ref_return = (False, None, None)
+        self.common.promotion = True
+        return_val = self.common._is_valid_for_storage_assisted_migration(
+            device_id, host, self.data.array,
+            self.data.srp, volume_name, False, False, self.data.slo_silver,
+            'OLTP', True)
+        self.common.promotion = False
+        self.assertEqual(ref_return, return_val)
 
     def test_find_volume_group(self):
         group = self.data.test_group_1
@@ -2442,9 +2630,8 @@ class PowerMaxCommonTest(test.TestCase):
         add_vols = [self.data.test_volume]
         remove_vols = []
         ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
-        model_update, __, __ = self.common.update_group(group,
-                                                        add_vols,
-                                                        remove_vols)
+        model_update, __, __ = self.common.update_group(
+            group, add_vols, remove_vols)
         self.assertEqual(ref_model_update, model_update)
 
     @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
@@ -2476,12 +2663,99 @@ class PowerMaxCommonTest(test.TestCase):
         with mock.patch.object(
                 rest.PowerMaxRest, 'is_volume_in_storagegroup',
                 return_value=False) as mock_exists:
-            model_update, __, __ = self.common.update_group(group,
-                                                            add_vols,
-                                                            remove_vols)
+            model_update, __, __ = self.common.update_group(
+                group, add_vols, remove_vols)
             mock_exists.assert_called_once()
-
         self.assertEqual(ref_model_update, model_update)
+
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group_failover_failure(
+            self, mock_cg_type, mock_type_check):
+        group = self.data.test_group_1
+        add_vols = []
+        remove_vols = [self.data.test_volume_group_member]
+        self.common.failover = True
+        self.assertRaises(
+            exception.VolumeBackendAPIException, self.common.update_group,
+            group, add_vols, remove_vols)
+        self.common.failover = False
+
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    @mock.patch.object(common.PowerMaxCommon, '_update_group_promotion')
+    def test_update_group_during_promotion(
+            self, mck_update, mock_cg_type, mock_type_check):
+        group = self.data.test_group_1
+        add_vols = []
+        remove_vols = [self.data.test_volume_group_member]
+        ref_model_update = {'status': fields.GroupStatus.AVAILABLE}
+        self.common.promotion = True
+        model_update, __, __ = self.common.update_group(
+            group, add_vols, remove_vols)
+        self.common.promotion = False
+        mck_update.assert_called_once_with(group, add_vols, remove_vols)
+        self.assertEqual(ref_model_update, model_update)
+
+    @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
+                       return_value=True)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_initial_setup',
+        return_value=tpd.PowerMaxData.ex_specs_rep_config)
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=True)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    @mock.patch.object(
+        masking.PowerMaxMasking, 'remove_volumes_from_storage_group')
+    def test_update_group_promotion(
+            self, mck_rem, mock_cg_type, mock_type_check, mck_setup, mck_rep,
+            mck_in_sg):
+        group = self.data.test_rep_group
+        add_vols = []
+        remove_vols = [self.data.test_volume_group_member]
+        remote_array = self.data.remote_array
+        device_id = [self.data.device_id]
+        group_name = self.data.storagegroup_name_source
+        interval_retries_dict = {utils.INTERVAL: 1,
+                                 utils.RETRIES: 1,
+                                 utils.FORCE_VOL_REMOVE: True}
+        self.common._update_group_promotion(group, add_vols, remove_vols)
+        mck_rem.assert_called_once_with(
+            remote_array, device_id, group_name, interval_retries_dict)
+
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=False)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group_promotion_non_replicated(
+            self, mock_cg_type, mock_type_check):
+        group = self.data.test_group_failed
+        add_vols = []
+        remove_vols = [self.data.test_volume_group_member]
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._update_group_promotion,
+                          group, add_vols, remove_vols)
+
+    @mock.patch.object(volume_utils, 'is_group_a_type',
+                       return_value=True)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_update_group_promotion_add_volumes(
+            self, mock_cg_type, mock_type_check):
+        group = self.data.test_rep_group
+        add_vols = [self.data.test_volume_group_member]
+        remove_vols = []
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._update_group_promotion,
+                          group, add_vols, remove_vols)
 
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
     def test_delete_group(self, mock_check):
@@ -3702,7 +3976,7 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.device_id
         volume = self.data.test_attached_volume
         volume_name = self.data.volume_id
-        extra_specs = self.data.rep_extra_specs
+        extra_specs = self.data.rep_extra_specs_rep_config
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         target_extra_specs = deepcopy(self.data.rep_extra_specs)
@@ -3738,7 +4012,7 @@ class PowerMaxCommonTest(test.TestCase):
         device_id = self.data.device_id
         volume = self.data.test_attached_volume
         volume_name = self.data.volume_id
-        extra_specs = self.data.rep_extra_specs
+        extra_specs = self.data.rep_extra_specs_rep_config
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         target_extra_specs = deepcopy(self.data.rep_extra_specs)
