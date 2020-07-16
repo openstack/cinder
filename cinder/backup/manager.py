@@ -1089,8 +1089,6 @@ class BackupManager(manager.SchedulerDependentManager):
         self._publish_service_capabilities(context)
 
     def _report_driver_status(self, context):
-        if not self.is_working():
-            self.setup_backup_backend(context)
         backup_stats = {
             'backend_state': self.is_working(),
             'driver_name': self.driver_name,
