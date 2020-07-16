@@ -171,6 +171,9 @@ class PowerMaxReplicationTest(test.TestCase):
                                                    mock_ip):
         metro_connector = deepcopy(self.data.connector)
         metro_connector['multipath'] = True
+        phys_port = '%(dir)s:%(port)s' % {
+            'dir': self.data.portgroup[0]['symmetrixPortKey'][0]['directorId'],
+            'port': '1'}
         info_dict = self.iscsi_common.initialize_connection(
             self.data.test_volume, metro_connector)
         ref_dict = {'array': self.data.array,
@@ -178,11 +181,13 @@ class PowerMaxReplicationTest(test.TestCase):
                     'hostlunid': 3,
                     'maskingview': self.data.masking_view_name_f,
                     'ip_and_iqn': [{'ip': self.data.ip,
-                                    'iqn': self.data.initiator}],
+                                    'iqn': self.data.initiator,
+                                    'physical_port': phys_port}],
                     'metro_hostlunid': 3,
                     'is_multipath': True,
                     'metro_ip_and_iqn': [{'ip': self.data.ip,
-                                          'iqn': self.data.initiator}]}
+                                          'iqn': self.data.initiator,
+                                         'physical_port': phys_port}]}
         self.assertEqual(ref_dict, info_dict)
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',

@@ -34,6 +34,7 @@ from cinder.utils import retry
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.powermax import masking
 from cinder.volume.drivers.dell_emc.powermax import metadata as volume_metadata
+from cinder.volume.drivers.dell_emc.powermax import performance
 from cinder.volume.drivers.dell_emc.powermax import provision
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
@@ -146,7 +147,34 @@ powermax_opts = [
                help='User defined override for short host name.'),
     cfg.StrOpt(utils.POWERMAX_PORT_GROUP_NAME_TEMPLATE,
                default='portGroupName',
-               help='User defined override for port group name.')]
+               help='User defined override for port group name.'),
+    cfg.BoolOpt(utils.LOAD_BALANCE,
+                default=False,
+                help='Enable/disable load balancing for a PowerMax backend.'),
+    cfg.BoolOpt(utils.LOAD_BALANCE_RT,
+                default=False,
+                help='Enable/disable real-time performance metrics for Port '
+                     'level load balancing for a PowerMax backend.'),
+    cfg.StrOpt(utils.PERF_DATA_FORMAT,
+               default='Avg',
+               help='Performance data format, not applicable for real-time '
+                    'metrics. Available options are "avg" and "max".'),
+    cfg.IntOpt(utils.LOAD_LOOKBACK,
+               default=60,
+               help='How far in minutes to look back for diagnostic '
+                    'performance metrics in load calculation, minimum of 0 '
+                    'maximum of 1440 (24 hours).'),
+    cfg.IntOpt(utils.LOAD_LOOKBACK_RT,
+               default=1,
+               help='How far in minutes to look back for real-time '
+                    'performance metrics in load calculation, minimum of 1 '
+                    'maximum of 10.'),
+    cfg.StrOpt(utils.PORT_GROUP_LOAD_METRIC,
+               default='PercentBusy',
+               help='Metric used for port group load calculation.'),
+    cfg.StrOpt(utils.PORT_LOAD_METRIC,
+               default='PercentBusy',
+               help='Metric used for port load calculation.')]
 
 
 CONF.register_opts(powermax_opts, group=configuration.SHARED_CONF_GROUP)
@@ -197,6 +225,7 @@ class PowerMaxCommon(object):
         self._get_replication_info()
         self._get_u4p_failover_info()
         self._gather_info()
+        self._get_performance_config()
         self.rest.validate_unisphere_version()
 
     def _gather_info(self):
@@ -250,6 +279,20 @@ class PowerMaxCommon(object):
         LOG.debug(
             "Updating volume stats on Cinder backend %(backendName)s.",
             {'backendName': self.pool_info['backend_name']})
+
+    def _get_performance_config(self):
+        """Gather performance configuration, if provided in cinder.conf."""
+        performance_config = {'load_balance': False}
+        self.performance = performance.PowerMaxPerformance(
+            self.rest, performance_config)
+
+        if self.configuration.safe_get(utils.LOAD_BALANCE):
+            LOG.info(
+                "Updating performance config for Cinder backend %(be)s.",
+                {'be': self.pool_info['backend_name']})
+            array_info = self.get_attributes_from_cinder_config()
+            self.performance.set_performance_configuration(
+                array_info['SerialNumber'], self.configuration)
 
     def _get_u4p_failover_info(self):
         """Gather Unisphere failover target information, if provided."""
@@ -844,21 +887,19 @@ class PowerMaxCommon(object):
                          type. These are precreated. If the portGroup does not
                          exist then an error will be returned to the user
          maskingview_name  = OS-<shortHostName>-<srpName>-<shortProtocol>-MV
-                        e.g OS-myShortHost-SRP_1-I-MV
+                           e.g OS-myShortHost-SRP_1-I-MV
 
         :param volume: volume Object
         :param connector: the connector Object
         :returns: dict -- device_info_dict - device information dict
         """
-        extra_specs = self._initial_setup(volume)
+        LOG.info("Initialize connection: %(vol)s.", {'vol': volume.name})
+        extra_specs = self._initial_setup(volume, init_conn=True)
         is_multipath = connector.get('multipath', False)
         rep_config = extra_specs.get(utils.REP_CONFIG)
         rep_extra_specs = self._get_replication_extra_specs(
             extra_specs, rep_config)
         remote_port_group = None
-        volume_name = volume.name
-        LOG.info("Initialize connection: %(volume)s.",
-                 {'volume': volume_name})
         if (self.utils.is_metro_device(rep_config, extra_specs)
                 and not is_multipath and self.protocol.lower() == 'iscsi'):
             LOG.warning("Either multipathing is not correctly/currently "
@@ -889,7 +930,7 @@ class PowerMaxCommon(object):
             hostlunid = device_info_dict['hostlunid']
             LOG.info("Volume %(volume)s is already mapped to host %(host)s. "
                      "The hostlunid is  %(hostlunid)s.",
-                     {'volume': volume_name, 'host': connector['host'],
+                     {'volume': volume.name, 'host': connector['host'],
                       'hostlunid': hostlunid})
             port_group_name = (
                 self.get_port_group_from_masking_view(
@@ -1696,15 +1737,18 @@ class PowerMaxCommon(object):
             final_masking_view_list.extend(masking_view_list)
         return final_masking_view_list, storage_group_list
 
-    def _initial_setup(self, volume, volume_type_id=None):
+    def _initial_setup(self, volume, volume_type_id=None,
+                       init_conn=False):
         """Necessary setup to accumulate the relevant information.
 
         The volume object has a host in which we can parse the
         config group name. The config group name is the key to our EMC
         configuration file. The emc configuration file contains srp name
         and array name which are mandatory fields.
-        :param volume: the volume object
+        :param volume: the volume object -- obj
         :param volume_type_id: optional override of volume.volume_type_id
+                               -- str
+        :param init_conn: if extra specs are for initialize connection -- bool
         :returns: dict -- extra spec dict
         :raises: VolumeBackendAPIException:
         """
@@ -1723,7 +1767,8 @@ class PowerMaxCommon(object):
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
 
-            extra_specs = self._set_vmax_extra_specs(extra_specs, array_info)
+            extra_specs = self._set_vmax_extra_specs(
+                extra_specs, array_info, init_conn)
             if qos_specs and qos_specs.get('consumer') != "front-end":
                 extra_specs['qos'] = qos_specs.get('specs')
         except Exception:
@@ -2197,7 +2242,8 @@ class PowerMaxCommon(object):
                 # from error status codes returned from the various REST jobs.
                 raise e
 
-    def _set_vmax_extra_specs(self, extra_specs, pool_record):
+    def _set_vmax_extra_specs(self, extra_specs, pool_record,
+                              init_conn=False):
         """Set the PowerMax/VMAX extra specs.
 
         The pool_name extra spec must be set, otherwise a default slo/workload
@@ -2205,25 +2251,17 @@ class PowerMaxCommon(object):
         on the volume type (e.g. 'storagetype:portgroupname = os-pg1-pg'), or
         can be chosen from a list provided in the cinder.conf
 
-        :param extra_specs: extra specifications
-        :param pool_record: pool record
-        :returns: dict -- the extra specifications dictionary
+        :param extra_specs: extra specifications -- dict
+        :param pool_record: pool record -- dict
+        :param: init_conn: if extra specs are for initialize connection -- bool
+        :returns: the extra specifications -- dict
         """
         # set extra_specs from pool_record
         extra_specs[utils.SRP] = pool_record['srpName']
         extra_specs[utils.ARRAY] = pool_record['SerialNumber']
-        try:
-            if not extra_specs.get(utils.PORTGROUPNAME):
-                extra_specs[utils.PORTGROUPNAME] = pool_record['PortGroup']
-        except Exception:
-            error_message = (_("Port group name has not been provided - "
-                               "please configure the "
-                               "'storagetype:portgroupname' extra spec on "
-                               "the volume type, or enter a list of "
-                               "portgroups in the cinder.conf associated with "
-                               "this backend."))
-            LOG.error(error_message)
-            raise exception.VolumeBackendAPIException(message=error_message)
+        extra_specs[utils.PORTGROUPNAME] = (
+            self._select_port_group_for_extra_specs(extra_specs, pool_record,
+                                                    init_conn))
 
         self._validate_storage_group_tag_list(extra_specs)
 
@@ -2306,6 +2344,74 @@ class PowerMaxCommon(object):
                     extra_specs[utils.ARRAY]))
 
         return extra_specs
+
+    def _select_port_group_for_extra_specs(self, extra_specs, pool_record,
+                                           init_conn=False):
+        """Determine Port Group for operation extra specs.
+
+        :param extra_specs: existing extra specs -- dict
+        :param pool_record: pool record -- dict
+        :param init_conn: if extra specs are for initialize connection -- bool
+        :returns: Port Group -- str
+        :raises: exception.VolumeBackendAPIException
+        """
+        port_group = None
+        conf_port_groups = pool_record.get(utils.PORT_GROUP, [])
+        vt_port_group = extra_specs.get(utils.PORTGROUPNAME, None)
+
+        # Scenario 1: Port Group is set in volume-type extra specs, over-rides
+        # any settings in cinder.conf
+        if vt_port_group:
+            port_group = vt_port_group
+            LOG.info("Using Port Group '%(pg)s' from volume-type extra specs.",
+                     {'pg': port_group})
+
+        # Scenario 2: Port Group(s) set in cinder.conf and not in volume-type
+        elif conf_port_groups:
+            # Scenario 2-1: There is only one Port Group defined, no load
+            # balance or random selection required
+            if len(conf_port_groups) == 1:
+                port_group = conf_port_groups[0]
+                LOG.info(
+                    "Using Port Group '%(pg)s' from cinder.conf backend "
+                    "configuration.", {'pg': port_group})
+
+            # Scenario 2-2: Else more than one Port Group in cinder.conf
+            else:
+                # Scenario 2-2-1: If load balancing is enabled and the extra
+                # specs are for initialize_connection() method then use load
+                # balance selection
+                if init_conn and (
+                        self.performance.config.get('load_balance', False)):
+                    try:
+                        load, metric, port_group = (
+                            self.performance.process_port_group_load(
+                                extra_specs[utils.ARRAY], conf_port_groups))
+                        LOG.info(
+                            "Selecting Port Group %(pg)s with %(met)s load of "
+                            "%(load)s", {'pg': port_group, 'met': metric,
+                                         'load': load})
+                    except exception.VolumeBackendAPIException:
+                        LOG.error(
+                            "There has been a problem calculating Port Group "
+                            "load, reverting to default random selection.")
+                # Scenario 2-2-2: If the call is not for initialize_connection,
+                # load balancing is not enabled, or there was an error while
+                # calculating PG load, revert to random PG selection method
+                if not port_group:
+                    port_group = random.choice(conf_port_groups)
+
+        # Port group not extracted from volume-type or cinder.conf, raise
+        if not port_group:
+            error_message = (_(
+                "Port Group name has not been provided - please configure the "
+                "'storagetype:portgroupname' extra spec on the volume type, "
+                "or enter a list of Port Groups in the cinder.conf associated "
+                "with this backend."))
+            LOG.error(error_message)
+            raise exception.VolumeBackendAPIException(message=error_message)
+
+        return port_group
 
     def _validate_storage_group_tag_list(self, extra_specs):
         """Validate the storagetype:storagegrouptags list
@@ -2627,33 +2733,36 @@ class PowerMaxCommon(object):
             array, portgroup_name, initiator_group_name)
         return masking_view_list
 
-    def _get_ip_and_iqn(self, array, port):
-        """Get ip and iqn from the director port.
+    def _get_iscsi_ip_iqn_port(self, array, port):
+        """Get ip and iqn from a virtual director port.
 
-        :param array: the array serial number
-        :param port: the director port on the array
-        :returns: ip_and_iqn - dict
+        :param array: the array serial number -- str
+        :param port: the director & virtual port on the array -- str
+        :returns: ip_and_iqn -- dict
         """
         ip_iqn_list = []
         ip_addresses, iqn = self.rest.get_iscsi_ip_address_and_iqn(
             array, port)
         for ip in ip_addresses:
-            ip_iqn_list.append({'iqn': iqn, 'ip': ip})
+            physical_port = self.rest.get_ip_interface_physical_port(
+                array, port.split(':')[0], ip)
+            ip_iqn_list.append({'iqn': iqn, 'ip': ip,
+                                'physical_port': physical_port})
         return ip_iqn_list
 
     def _find_ip_and_iqns(self, array, port_group_name):
-        """Find the list of ips and iqns for the ports in a portgroup.
+        """Find the list of ips and iqns for the ports in a port group.
 
-        :param array: the array serial number
-        :param port_group_name: the portgroup name
-        :returns: ip_and_iqn - list of dicts
+        :param array: the array serial number -- str
+        :param port_group_name: the port group name -- str
+        :returns: ip_and_iqn -- list of dicts
         """
         ips_and_iqns = []
         LOG.debug("The portgroup name for iscsiadm is %(pg)s",
                   {'pg': port_group_name})
         ports = self.rest.get_port_ids(array, port_group_name)
         for port in ports:
-            ip_and_iqn = self._get_ip_and_iqn(array, port)
+            ip_and_iqn = self._get_iscsi_ip_iqn_port(array, port)
             ips_and_iqns.extend(ip_and_iqn)
         return ips_and_iqns
 
@@ -5752,9 +5861,6 @@ class PowerMaxCommon(object):
             workload = self.configuration.safe_get(utils.VMAX_WORKLOAD)
             port_groups = self._get_configuration_value(
                 utils.VMAX_PORT_GROUPS, utils.POWERMAX_PORT_GROUPS)
-            random_portgroup = None
-            if port_groups:
-                random_portgroup = random.choice(port_groups)
 
             kwargs = (
                 {'RestServerIp': self.configuration.safe_get(
@@ -5764,7 +5870,7 @@ class PowerMaxCommon(object):
                  'RestPassword': password,
                  'SerialNumber': serial_number,
                  'srpName': srp_name,
-                 'PortGroup': random_portgroup})
+                 'PortGroup': port_groups})
 
             if self.configuration.safe_get('driver_ssl_cert_verify'):
                 if self.configuration.safe_get('driver_ssl_cert_path'):

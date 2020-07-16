@@ -17,6 +17,7 @@ import ast
 
 from oslo_log import log as logging
 
+from cinder import exception
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell_emc.powermax import common
@@ -123,6 +124,8 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for multiple replication devices
               - Pools bug fix allowing 'None' variants (bug #1873253)
         4.3.0 - Changing from 91 to 92 REST endpoints
+              - Support for Port Group and Port load balancing
+                (bp powermax-port-load-balance)
     """
 
     VERSION = "4.3.0"
@@ -139,6 +142,8 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
             self.VERSION,
             configuration=self.configuration,
             active_backend_id=self.active_backend_id)
+        self.performance = self.common.performance
+        self.rest = self.common.rest
         self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 
     @classmethod
@@ -295,7 +300,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         """
         device_number = device_info['hostlunid']
         target_wwns, init_targ_map = self._build_initiator_target_map(
-            volume, connector)
+            volume, connector, device_info)
 
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {'target_lun': device_number,
@@ -451,11 +456,12 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
 
         return data
 
-    def _build_initiator_target_map(self, volume, connector):
+    def _build_initiator_target_map(self, volume, connector, device_info=None):
         """Build the target_wwns and the initiator target map.
 
         :param volume: the cinder volume object
         :param connector: the connector object
+        :param device_info: device_info
         :returns: target_wwns -- list, init_targ_map -- dict
         """
         target_wwns, init_targ_map = [], {}
@@ -463,6 +469,40 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
         fc_targets, metro_fc_targets = (
             self.common.get_target_wwns_from_masking_view(
                 volume, connector))
+
+        # If load balance is enabled we want to select only the FC target that
+        # has the lowest load of all ports in selected port group.
+        # Note: device_info in if condition as this method is called also for
+        # terminate connection, we only want to calculate load on initialise
+        # connection.
+        if device_info and self.performance.config.get('load_balance'):
+            try:
+                array_id = device_info.get('array')
+                masking_view = device_info.get('maskingview')
+                # Get PG from MV
+                port_group = self.rest.get_element_from_masking_view(
+                    array_id, masking_view, portgroup=True)
+                # Get port list from PG
+                port_list = self.rest.get_port_ids(array_id, port_group)
+                # Get lowest load port in PG
+                load, metric, port = self.performance.process_port_load(
+                    array_id, port_list)
+                LOG.info("Lowest %(met)s load port is %(port)s: %(load)s",
+                         {'met': metric, 'port': port, 'load': load})
+                # Get target WWN
+                port_details = self.rest.get_port(array_id, port)
+                port_info = port_details.get('symmetrixPort')
+                port_wwn = port_info.get('wwn_node')
+                LOG.info("Port %(p)s WWN: %(wwn)s",
+                         {'p': port, 'wwn': port_wwn})
+                # Set lowest load port WWN as FC target for connection
+                fc_targets = [port_wwn]
+            except exception.VolumeBackendAPIException:
+                LOG.error("There was an error calculating port load, "
+                          "reverting to default target selection.")
+                fc_targets, __ = (
+                    self.common.get_target_wwns_from_masking_view(
+                        volume, connector))
 
         if self.zonemanager_lookup_service:
             fc_targets.extend(metro_fc_targets)

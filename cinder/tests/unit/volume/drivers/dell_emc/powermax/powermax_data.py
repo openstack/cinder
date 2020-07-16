@@ -14,6 +14,7 @@
 #    under the License.
 
 from copy import deepcopy
+import random
 
 import six
 
@@ -97,10 +98,13 @@ class PowerMaxData(object):
     wwpn1 = '123456789012345'
     wwpn2 = '123456789054321'
     wwnn1 = '223456789012345'
-    initiator = 'iqn.1993-08.org.debian: 01: 222'
-    ip, ip2 = u'123.456.7.8', u'123.456.7.9'
-    iqn = u'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000001,t,0x0001'
-    iqn2 = u'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000002,t,0x0001'
+    wwnn2 = '223456789012346'
+    initiator = 'iqn.1993-08.org.debian:01:222'
+    iscsi_dir = 'SE-4E'
+    iscsi_port = '1'
+    ip, ip2 = '123.456.7.8', '123.456.7.9'
+    iqn = 'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000001'
+    iqn2 = 'iqn.1992-04.com.emc:600009700bca30c01e3e012e00000002'
     connector = {'ip': ip,
                  'initiator': initiator,
                  'wwpns': [wwpn1, wwpn2],
@@ -111,6 +115,7 @@ class PowerMaxData(object):
     end_point_map = {connector['wwpns'][0]: [wwnn1],
                      connector['wwpns'][1]: [wwnn1]}
     target_wwns = [wwnn1]
+    target_wwns_multi = [wwnn1, wwnn2]
     zoning_mappings = {
         'array': u'000197800123',
         'init_targ_map': end_point_map,
@@ -132,22 +137,33 @@ class PowerMaxData(object):
                       }
         device_map[fabric_name] = fabric_map
 
+    iscsi_dir_port = '%(dir)s:%(port)s' % {'dir': iscsi_dir,
+                                           'port': iscsi_port}
+    iscsi_dir_virtual_port = '%(dir)s:%(port)s' % {'dir': iscsi_dir,
+                                                   'port': '000'}
     iscsi_device_info = {'maskingview': masking_view_name_i,
                          'ip_and_iqn': [{'ip': ip,
-                                         'iqn': initiator}],
+                                         'iqn': initiator,
+                                         'physical_port': iscsi_dir_port}],
                          'is_multipath': True,
                          'array': array,
                          'controller': {'host': '10.00.00.00'},
                          'hostlunid': 3,
                          'device_id': device_id}
     iscsi_device_info_metro = deepcopy(iscsi_device_info)
-    iscsi_device_info_metro['metro_ip_and_iqn'] = [{'ip': ip2, 'iqn': iqn2}]
+    iscsi_device_info_metro['metro_ip_and_iqn'] = [{
+        'ip': ip2, 'iqn': iqn2, 'physical_port': iscsi_dir_port}]
     iscsi_device_info_metro['metro_hostlunid'] = 2
 
     fc_device_info = {'maskingview': masking_view_name_f,
                       'array': array,
                       'controller': {'host': '10.00.00.00'},
                       'hostlunid': 3}
+
+    director_port_keys_empty = {'symmetrixPortKey': []}
+    director_port_keys_multiple = {'symmetrixPortKey': [
+        {'directorId': 'SE-1E', 'portId': '1'},
+        {'directorId': 'SE-1E', 'portId': '2'}]}
 
     # snapshot info
     snapshot_id = '390eeb4d-0f56-4a02-ba14-167167967014'
@@ -1531,3 +1547,66 @@ class PowerMaxData(object):
                         'description': vol_create_desc1},
                        {'execution_order': 2,
                         'description': vol_create_desc2}]
+
+    # performance
+    f_date_a = 1593432600000
+    f_date_b = 1594136400000
+    l_date = 1594730100000
+    perf_pb_metric = 'PercentBusy'
+    perf_df_avg = 'Average'
+    perf_port_groups = ['port_group_a', 'port_group_b', 'port_group_c']
+    perf_ports = ['SE-1E:1', 'SE-1E:2', 'SE-1E:3']
+
+    performance_config = {
+        'load_balance': True, 'load_balance_rt': True,
+        'perf_registered': True, 'rt_registered': True,
+        'collection_interval': 5, 'data_format': 'Average',
+        'look_back': 60, 'look_back_rt': 10,
+        'port_group_metric': 'PercentBusy', 'port_metric': 'PercentBusy'}
+
+    array_registration = {"registrationDetailsInfo": [
+        {"symmetrixId": array, "realtime": True, "message": "Success",
+         "collectionintervalmins": 5, "diagnostic": True}]}
+
+    array_keys = {"arrayInfo": [
+        {"symmetrixId": array,
+         "firstAvailableDate": f_date_a,
+         "lastAvailableDate": l_date},
+        {"symmetrixId": array_herc,
+         "firstAvailableDate": f_date_a,
+         "lastAvailableDate": l_date},
+        {"symmetrixId": remote_array,
+         "firstAvailableDate": f_date_b,
+         "lastAvailableDate": l_date}]}
+
+    dummy_performance_data = {
+        "expirationTime": 1594731525645,
+        "count": 10,
+        "maxPageSize": 1000,
+        "id": "3b757302-6e4a-4dbe-887d-e42aed7f5944_0",
+        "resultList": {
+            "result": [
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593432600000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593432900000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593433200000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593433500000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593433800000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593434100000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593434400000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593434700000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593435000000},
+                {"PercentBusy": random.uniform(0.0, 100.0),
+                 "timestamp": 1593435300000}],
+            "from": 1,
+            "to": 10
+        }
+    }

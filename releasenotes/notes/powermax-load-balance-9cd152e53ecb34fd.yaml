@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    PowerMax for Cinder driver now supports Port Group and Port load
+    balancing when attaching Nova Compute instances to volumes on the
+    backend PowerMax.
