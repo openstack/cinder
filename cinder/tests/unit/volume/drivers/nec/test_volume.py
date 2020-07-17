@@ -213,6 +213,17 @@ xml_out = '''
    </OBJECT>
    <OBJECT name="Logical Disk">
     <SECTION name="LD Detail Information">
+     <UNIT name="LDN(h)">0011</UNIT>
+     <UNIT name="OS Type">LX</UNIT>
+     <UNIT name="LD Name">6EWPOChJkdSysJmpMAB9YR</UNIT>
+     <UNIT name="LD Capacity">6442450944</UNIT>
+     <UNIT name="Pool No.(h)">0001</UNIT>
+     <UNIT name="Purpose">---</UNIT>
+     <UNIT name="RPL Attribute">IV</UNIT>
+    </SECTION>
+   </OBJECT>
+   <OBJECT name="Logical Disk">
+    <SECTION name="LD Detail Information">
      <UNIT name="LDN(h)">0fff</UNIT>
      <UNIT name="OS Type">  </UNIT>
      <UNIT name="LD Name">Pool0000_SYV0FFF</UNIT>
@@ -330,6 +341,26 @@ xml_out = '''
     <SECTION name="LUN/LD List">
      <UNIT name="LUN(h)">0001</UNIT>
      <UNIT name="LDN(h)">0006</UNIT>
+    </SECTION>
+    <SECTION name="LUN/LD List">
+     <UNIT name="LUN(h)">0002</UNIT>
+     <UNIT name="LDN(h)">0011</UNIT>
+    </SECTION>
+   </OBJECT>
+   <OBJECT name="LD Set(FC)">
+    <SECTION name="LD Set(FC) Information">
+     <UNIT name="Platform">LX</UNIT>
+     <UNIT name="LD Set Name">OpenStack3</UNIT>
+    </SECTION>
+    <SECTION name="Path List">
+     <UNIT name="Path">1000-0090-FAA0-786D</UNIT>
+    </SECTION>
+    <SECTION name="Path List">
+     <UNIT name="Path">1000-0090-FAA0-786C</UNIT>
+    </SECTION>
+    <SECTION name="LUN/LD List">
+     <UNIT name="LUN(h)">0001</UNIT>
+     <UNIT name="LDN(h)">0011</UNIT>
     </SECTION>
    </OBJECT>
    <OBJECT name="LD Set(iSCSI)">
@@ -1033,6 +1064,37 @@ class ExportTest(volume_helper.MStorageDSVDriver, test.TestCase):
             self._fc_terminate_connection(vol, connector)
             delldsetld_mock.assert_not_called()
 
+        vol = fake_volume_obj(ctx, id='ccd662e5-2efe-4899-b12f-114b5cad81c3')
+        connector = {'wwpns': ["10000090FAA0786A", "10000090FAA0786B"],
+                     'host': 'HostA'}
+        atchmnt = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**atchmnt)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+
+        info = self._fc_initialize_connection(vol, connector)
+        self.assertEqual(2, info['data']['target_lun'])
+
+        connector = {'wwpns': ["10000090FAA0786C", "10000090FAA0786D"],
+                     'host': 'HostB'}
+        atchmnt = {
+            'id': constants.ATTACHMENT_ID,
+            'volume_id': vol.id,
+            'connector': connector
+        }
+        attach_object = volume_attachment.VolumeAttachment(**atchmnt)
+        attachment = volume_attachment.VolumeAttachmentList(
+            objects=[attach_object])
+        vol.volume_attachment = attachment
+
+        info = self._fc_initialize_connection(vol, connector)
+        self.assertEqual(1, info['data']['target_lun'])
+
     def test_fc_terminate_connection(self):
         ctx = context.RequestContext('admin', 'fake', True)
         vol = fake_volume_obj(ctx, id='46045673-41e7-44a7-9333-02f07feab04b')
@@ -1244,7 +1306,12 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
                       'protocol': 'FC',
                       'wwpn': ['1000-0090-FAA0-786A', '1000-0090-FAA0-786B'],
                       'port': []}
-        return_ldset = [ldset_lds0, ldset_lds1]
+        ldset_lds2 = {'ldsetname': 'LX:OpenStack1',
+                      'lds': {6: {'ldn': 6, 'lun': 1}},
+                      'protocol': 'FC',
+                      'wwpn': ['1000-0090-FAA0-786A', '1000-0090-FAA0-786B'],
+                      'port': []}
+        return_ldset = [ldset_lds0, ldset_lds1, ldset_lds2]
         self.mock_object(self, '_validate_fcldset_exist',
                          side_effect=return_ldset)
         mocker = self.mock_object(self._cli, 'addldsetld',
