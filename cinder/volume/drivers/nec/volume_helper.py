@@ -24,6 +24,7 @@ from oslo_utils import units
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
 from cinder.volume import volume_utils
@@ -1321,14 +1322,12 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
-    def _fc_terminate_connection(self, volume, connector):
+    @utils.trace
+    def _fc_terminate_connection(self, vol_or_snap, connector,
+                                 is_snapshot=False):
         """Disallow connection from connector."""
-        LOG.debug('_fc_terminate_connection'
-                  '(Volume ID = %(id)s, connector = %(connector)s) Start.',
-                  {'id': volume.id, 'connector': connector})
-
-        if connector is not None and (
-           self._is_multi_attachment(volume, connector)):
+        if not is_snapshot and connector is not None and (
+           self._is_multi_attachment(vol_or_snap, connector)):
             return
 
         xml = self._cli.view_all(self._properties['ismview_path'])
@@ -1350,10 +1349,15 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
             info['data'] = {'target_wwn': target_wwns,
                             'initiator_target_map': init_targ_map}
 
+        if is_snapshot:
+            # Detaching the snapshot is performed in the
+            # remove_export_snapshot.
+            return info
+
         if connector is not None and self._properties['ldset_name'] == '':
             # delete LD from LD set.
             ldname = self.get_ldname(
-                volume.id, self._properties['ld_name_format'])
+                vol_or_snap.id, self._properties['ld_name_format'])
             if ldname not in lds:
                 LOG.debug('Logical Disk `%s` has unbound already.', ldname)
                 return info
@@ -1370,19 +1374,14 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                              'Logical Disk Set (%s)') % errnum)
                     raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug('_fc_terminate_connection'
-                  '(Volume ID = %(id)s, connector = %(connector)s, '
-                  'info = %(info)s) End.',
-                  {'id': volume.id,
-                   'connector': connector,
-                   'info': info})
         return info
 
     def fc_terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         msgparm = ('Volume ID = %(id)s, Connector = %(connector)s'
                    % {'id': snapshot.id, 'connector': connector})
         try:
-            ret = self._fc_terminate_connection(snapshot, connector)
+            ret = self._fc_terminate_connection(snapshot, connector,
+                                                is_snapshot=True)
             LOG.info('Terminated FC Connection snapshot(%s)', msgparm)
             self.remove_export_snapshot(None, snapshot)
             return ret
