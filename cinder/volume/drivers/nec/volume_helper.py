@@ -1278,15 +1278,11 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
         else:
             ldn = lds[ldname]['ldn']
 
-        lun = None
-        for ldset in ldsets.values():
-            if ldn in ldset['lds']:
-                lun = ldset['lds'][ldn]['lun']
-                break
+        ldset = self._validate_fcldset_exist(ldsets, connector)
 
         info = {
             'driver_volume_type': 'fibre_channel',
-            'data': {'target_lun': lun,
+            'data': {'target_lun': ldset['lds'][ldn]['lun'],
                      'target_wwn': target_wwns,
                      'initiator_target_map': init_targ_map}}
 
