@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1887908 <https://bugs.launchpad.net/cinder/+bug/1887908>`_：
+    In NEC driver, fix live-migration failure with FC.
+
