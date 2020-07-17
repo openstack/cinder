@@ -1350,8 +1350,12 @@ class NonDisruptiveBackup_test(volume_helper.MStorageDSVDriver,
         attachment = volume_attachment.VolumeAttachmentList(
             objects=[attach_object])
         snap.volume_attachment = attachment
-        ret = self.fc_terminate_connection_snapshot(snap, connector)
+        mocker = self.mock_object(self, '_is_multi_attachment',
+                                  mock.Mock(wraps=self._is_multi_attachment))
+        ret = self.fc_terminate_connection_snapshot(snap, connector,
+                                                    is_snapshot=True)
         self.assertEqual('fibre_channel', ret['driver_volume_type'])
+        mocker.assert_not_called()
 
     def test_remove_export_snapshot(self):
         snap = DummySnapshot('46045673-41e7-44a7-9333-02f07feab04b')
