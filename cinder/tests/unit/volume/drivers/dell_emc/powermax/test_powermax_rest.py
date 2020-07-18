@@ -1785,7 +1785,7 @@ class PowerMaxRestTest(test.TestCase):
         ucode = self.rest.get_array_ucode_version(array)
         self.assertEqual(self.data.powermax_model_details['ucode'], ucode)
 
-    def test_validate_unisphere_version_suceess(self):
+    def test_validate_unisphere_version_success(self):
         version = tpd.PowerMaxData.unisphere_version
         returned_version = {'version': version}
         with mock.patch.object(self.rest, "request",
