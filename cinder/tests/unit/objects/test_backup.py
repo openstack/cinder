@@ -290,11 +290,13 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.backup_get_all_by_volume',
                 return_value=[fake_backup])
     def test_get_all_by_volume(self, get_all_by_volume):
-        backups = objects.BackupList.get_all_by_volume(self.context,
-                                                       fake.VOLUME_ID)
+        backups = objects.BackupList.get_all_by_volume(
+            self.context, fake.VOLUME_ID, 'fake_proj')
         self.assertEqual(1, len(backups))
         get_all_by_volume.assert_called_once_with(self.context,
-                                                  fake.VOLUME_ID, None)
+                                                  fake.VOLUME_ID,
+                                                  'fake_proj',
+                                                  None)
         TestBackup._compare(self, fake_backup, backups[0])
 
 
