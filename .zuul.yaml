@@ -50,7 +50,6 @@
             voting: false
             irrelevant-files: *functional-irrelevant-files
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
-            voting: false
             irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-lvm-multibackend:
             voting: false
@@ -59,7 +58,6 @@
             voting: false
             irrelevant-files: *gate-irrelevant-files
         - neutron-grenade:
-            voting: false
             irrelevant-files: *gate-irrelevant-files
         - tempest-slow-py3:
             irrelevant-files: *gate-irrelevant-files
@@ -68,13 +66,18 @@
         - tempest-full-py3:
             irrelevant-files: *gate-irrelevant-files
         - grenade-py3:
-            voting: false
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
+        - legacy-grenade-dsvm-cinder-mn-sub-volbak:
+            irrelevant-files: *gate-irrelevant-files
+        - neutron-grenade:
+            irrelevant-files: *gate-irrelevant-files
         - tempest-full:
             irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3:
+            irrelevant-files: *gate-irrelevant-files
+        - grenade-py3:
             irrelevant-files: *gate-irrelevant-files
     experimental:
       jobs:
