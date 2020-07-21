@@ -124,6 +124,16 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
             initiator_list, target_list)
         self.assertDictEqual(_device_map_to_verify, device_map)
 
+    @mock.patch.object(brcd_lookup.BrcdFCSanLookupService,
+                       '_get_southbound_client', side_effect=ValueError)
+    def test_get_device_mapping_from_network_fail(self,
+                                                  get_southbound_client_mock):
+        initiator_list = [parsed_switch_port_wwns[1]]
+        target_list = [parsed_switch_port_wwns[0], '20240002ac000a40']
+        self.assertRaises(brcd_lookup.exception.FCSanLookupServiceException,
+                          self.get_device_mapping_from_network,
+                          initiator_list, target_list)
+
 
 class FakeClient(object):
     def is_supported_firmware(self):
