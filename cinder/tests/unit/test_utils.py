@@ -517,7 +517,7 @@ class GetBlkdevMajorMinorTestCase(test.TestCase):
     @mock.patch('stat.S_ISBLK', return_value=False)
     def test_get_blkdev_failure(self, mock_isblk, mock_ischr, mock_stat):
         path = '/some/path'
-        self.assertRaises(exception.Error,
+        self.assertRaises(exception.CinderException,
                           utils.get_blkdev_major_minor,
                           path, lookup_for_file=False)
         mock_stat.assert_called_once_with(path)

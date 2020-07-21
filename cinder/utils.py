@@ -590,7 +590,7 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
         return get_blkdev_major_minor(devpath, False)
     else:
         msg = _("Unable to get a block device for file \'%s\'") % path
-        raise exception.Error(msg)
+        raise exception.CinderException(msg)
 
 
 def check_string_length(value, name, min_length=0, max_length=None,

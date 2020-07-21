@@ -57,10 +57,6 @@ class ConvertedException(webob.exc.WSGIHTTPException):
         super(ConvertedException, self).__init__()
 
 
-class Error(Exception):
-    pass
-
-
 class CinderException(Exception):
     """Base Cinder Exception
 
