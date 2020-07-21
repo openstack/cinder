@@ -975,7 +975,7 @@ class VolumeApiTest(test.TestCase):
 
         # get_attachments should only return attachments with the
         # attached status = ATTACHED
-        attachments = ViewBuilder()._get_attachments(fake_volume)
+        attachments = ViewBuilder()._get_attachments(fake_volume, True)
 
         self.assertEqual(1, len(attachments))
         self.assertEqual(fake.UUID3, attachments[0]['attachment_id'])
@@ -984,6 +984,10 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual('host1', attachments[0]['host_name'])
         self.assertEqual('na', attachments[0]['device'])
         self.assertEqual(att_time, attachments[0]['attached_at'])
+
+        # When admin context is false (non-admin), host_name will be None
+        attachments = ViewBuilder()._get_attachments(fake_volume, False)
+        self.assertIsNone(attachments[0]['host_name'])
 
     @ddt.data(('created_at=gt:', 0), ('created_at=lt:', 2))
     @ddt.unpack

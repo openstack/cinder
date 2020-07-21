@@ -75,7 +75,6 @@ class ViewBuilder(common.ViewBuilder):
                 'availability_zone': volume.get('availability_zone'),
                 'created_at': volume.get('created_at'),
                 'updated_at': volume.get('updated_at'),
-                'attachments': self._get_attachments(volume),
                 'name': volume.get('display_name'),
                 'description': volume.get('display_description'),
                 'volume_type': self._get_volume_type(volume),
@@ -92,9 +91,10 @@ class ViewBuilder(common.ViewBuilder):
             }
         }
         ctxt = request.environ['cinder.context']
-        if not ctxt.is_admin:
-            if volume_ref.get('attachments'):
-                volume_ref['volume']['attachments']['host_name'] = None
+
+        attachments = self._get_attachments(volume, ctxt.is_admin)
+        volume_ref['volume']['attachments'] = attachments
+
         if ctxt.is_admin:
             volume_ref['volume']['migration_status'] = (
                 volume.get('migration_status'))
@@ -115,7 +115,7 @@ class ViewBuilder(common.ViewBuilder):
         """Determine if volume is encrypted."""
         return volume.get('encryption_key_id') is not None
 
-    def _get_attachments(self, volume):
+    def _get_attachments(self, volume, is_admin):
         """Retrieve the attachments of the volume object."""
         attachments = []
 
@@ -130,6 +130,8 @@ class ViewBuilder(common.ViewBuilder):
                      'device': attachment.get('mountpoint'),
                      'attached_at': attachment.get('attach_time'),
                      }
+                if not is_admin:
+                    a['host_name'] = None
                 attachments.append(a)
 
         return attachments
