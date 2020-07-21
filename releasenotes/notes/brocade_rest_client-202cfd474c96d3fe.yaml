@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix `AttributeError` on the Brocade ZM driver when using setting REST_HTTP
+    or REST_HTTPS as the fc_southbound_protocol option and an exception is
+    raised by the client (Bug #1866860).

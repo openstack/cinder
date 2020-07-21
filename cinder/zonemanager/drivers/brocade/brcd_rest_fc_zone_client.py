@@ -25,8 +25,8 @@ from oslo_serialization import base64
 import requests
 import six
 
-from cinder import exception
 from cinder.i18n import _
+from cinder.zonemanager.drivers.brocade import exception
 from cinder.zonemanager.drivers.brocade import fc_zone_constants
 from cinder.zonemanager.drivers.brocade import rest_constants
 
