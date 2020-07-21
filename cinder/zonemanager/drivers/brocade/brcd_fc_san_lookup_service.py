@@ -111,6 +111,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                 # Get name server data from fabric and find the targets
                 # logged in
                 nsinfo = ''
+                conn = None
                 try:
                     LOG.debug("Getting name server data for "
                               "fabric %s", fabric_ip)
