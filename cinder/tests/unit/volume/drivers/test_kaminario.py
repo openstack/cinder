@@ -17,6 +17,7 @@ import re
 
 import ddt
 import mock
+from oslo_config import cfg
 from oslo_utils import units
 import time
 
@@ -33,6 +34,8 @@ from cinder.volume.drivers.kaminario import kaminario_common
 from cinder.volume.drivers.kaminario import kaminario_fc
 from cinder.volume.drivers.kaminario import kaminario_iscsi
 from cinder.volume import volume_utils
+
+CONF = cfg.CONF
 
 CONNECTOR = {'initiator': 'iqn.1993-08.org.debian:01:12aa12aa12aa',
              'ip': '192.168.2.5', 'platform': 'x86_64', 'host': 'test-k2',
@@ -141,7 +144,6 @@ class TestKaminarioCommon(test.TestCase):
         self.conf = mock.Mock(spec=configuration.Configuration)
         self.conf.kaminario_dedup_type_name = "dedup"
         self.conf.volume_dd_blocksize = 2
-        self.conf.unique_fqdn_network = True
         self.conf.disable_discovery = False
 
     def _setup_driver(self):
@@ -524,7 +526,12 @@ class TestKaminarioCommon(test.TestCase):
         self.assertEqual(CONNECTOR['host'], result)
 
     def test_get_initiator_host_name_unique(self):
-        self.driver.configuration.unique_fqdn_network = False
+        self.addCleanup(CONF.clear_override,
+                        'unique_fqdn_network',
+                        group=configuration.SHARED_CONF_GROUP)
+        CONF.set_override('unique_fqdn_network',
+                          False,
+                          group=configuration.SHARED_CONF_GROUP)
         result = self.driver.get_initiator_host_name(CONNECTOR)
         expected = re.sub('[:.]', '_', CONNECTOR['initiator'][::-1][:32])
         self.assertEqual(expected, result)
@@ -627,7 +634,12 @@ class TestKaminarioFC(TestKaminarioCommon):
     def test_get_initiator_host_name_unique(self):
         connector = CONNECTOR.copy()
         del connector['initiator']
-        self.driver.configuration.unique_fqdn_network = False
+        self.addCleanup(CONF.clear_override,
+                        'unique_fqdn_network',
+                        group=configuration.SHARED_CONF_GROUP)
+        CONF.set_override('unique_fqdn_network',
+                          False,
+                          group=configuration.SHARED_CONF_GROUP)
         result = self.driver.get_initiator_host_name(connector)
         expected = re.sub('[:.]', '_', connector['wwnns'][0][::-1][:32])
         self.assertEqual(expected, result)
