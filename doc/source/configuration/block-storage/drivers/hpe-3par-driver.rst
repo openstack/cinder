@@ -555,7 +555,8 @@ creating VMs and they all have names like controller-0.localdomain and
 compute-0.localdomain.
 
 To support these kind of environments, the user can specify below flag
-in backend_defaults section of cinder.conf as follows:
+in backend_defaults section or the specific cinder driver section of
+cinder.conf as follows:
 
 ``unique_fqdn_network = False``
 

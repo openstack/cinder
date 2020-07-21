@@ -1470,11 +1470,10 @@ class HPE3PARCommon(object):
                 raise exception.VolumeBackendAPIException(
                     data=e.get_description())
 
-    def _safe_hostname(self, hostname, connector=None):
+    def _safe_hostname(self, connector, configuration):
         """We have to use a safe hostname length for 3PAR host names."""
-        SHARED_CONF_GROUP = 'backend_defaults'
-        shared_backend_conf = CONF._get(SHARED_CONF_GROUP)
-        unique_fqdn_network = shared_backend_conf.unique_fqdn_network
+        hostname = connector['host']
+        unique_fqdn_network = configuration.unique_fqdn_network
         LOG.debug("unique_fqdn_network: %(fqdn)s",
                   {'fqdn': unique_fqdn_network})
         if(not unique_fqdn_network and connector.get('initiator')):
