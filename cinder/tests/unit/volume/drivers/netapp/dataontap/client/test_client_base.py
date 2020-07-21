@@ -16,6 +16,7 @@
 
 import uuid
 
+import ddt
 from lxml import etree
 import mock
 import six
@@ -38,6 +39,7 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'api_trace_pattern': 'fake_regex'}
 
 
+@ddt.ddt
 class NetAppBaseClientTestCase(test.TestCase):
 
     def setUp(self):
@@ -87,8 +89,27 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.assertIsNone(self.client.check_is_naelement(element))
         self.assertRaises(ValueError, self.client.check_is_naelement, None)
 
-    def test_create_lun(self):
+    @ddt.data({'ontap_version': '9.4', 'space_reservation': 'true'},
+              {'ontap_version': '9.4', 'space_reservation': 'false'},
+              {'ontap_version': '9.6', 'space_reservation': 'true'},
+              {'ontap_version': '9.6', 'space_reservation': 'false'})
+    @ddt.unpack
+    def test_create_lun(self, ontap_version, space_reservation):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
+        self.fake_metadata['SpaceReserved'] = space_reservation
+        expected_space_reservation = space_reservation
+        self.mock_object(self.client, 'get_ontap_version',
+                         return_value=ontap_version)
+        mock_resize_lun = self.mock_object(
+            client_base.Client, 'do_direct_resize')
+        mock_set_space_reservation = self.mock_object(
+            client_base.Client, 'set_lun_space_reservation')
+        initial_size = self.fake_size
+
+        if ontap_version < '9.5':
+            initial_size = fake.MAX_SIZE_FOR_A_LUN
+            expected_space_reservation = 'false'
+
         with mock.patch.object(netapp_api.NaElement,
                                'create_node_with_children',
                                ) as mock_create_node:
@@ -97,19 +118,48 @@ class NetAppBaseClientTestCase(test.TestCase):
                                    self.fake_size,
                                    self.fake_metadata)
 
-            mock_create_node.assert_called_once_with(
+            mock_create_node.assert_called_with(
                 'lun-create-by-size',
                 **{'path': expected_path,
-                   'size': self.fake_size,
+                   'size': initial_size,
                    'ostype': self.fake_metadata['OsType'],
                    'space-reservation-enabled':
-                   self.fake_metadata['SpaceReserved']})
-            self.connection.invoke_successfully.assert_called_once_with(
+                       expected_space_reservation})
+            self.connection.invoke_successfully.assert_called_with(
                 mock.ANY, True)
 
-    def test_create_lun_exact_size(self):
+        if ontap_version < '9.5':
+            mock_resize_lun.assert_called_once_with(
+                expected_path, self.fake_size)
+
+        if ontap_version < '9.5' and space_reservation == 'true':
+            mock_set_space_reservation.assert_called_once_with(
+                expected_path, True)
+        else:
+            mock_set_space_reservation.assert_not_called()
+
+    @ddt.data({'ontap_version': '9.4', 'space_reservation': 'true'},
+              {'ontap_version': '9.4', 'space_reservation': 'false'},
+              {'ontap_version': '9.6', 'space_reservation': 'true'},
+              {'ontap_version': '9.6', 'space_reservation': 'false'})
+    @ddt.unpack
+    def test_create_lun_exact_size(self, ontap_version, space_reservation):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
         self.connection.get_api_version.return_value = (1, 110)
+        self.fake_metadata['SpaceReserved'] = space_reservation
+        expected_space_reservation = self.fake_metadata['SpaceReserved']
+        self.mock_object(self.client, 'get_ontap_version',
+                         return_value=ontap_version)
+        mock_resize_lun = self.mock_object(
+            client_base.Client, 'do_direct_resize')
+        mock_set_space_reservation = self.mock_object(
+            client_base.Client, 'set_lun_space_reservation')
+        initial_size = self.fake_size
+
+        if ontap_version < '9.5':
+            initial_size = fake.MAX_SIZE_FOR_A_LUN
+            expected_space_reservation = 'false'
+
         with mock.patch.object(netapp_api.NaElement,
                                'create_node_with_children',
                                ) as mock_create_node:
@@ -118,21 +168,51 @@ class NetAppBaseClientTestCase(test.TestCase):
                                    self.fake_size,
                                    self.fake_metadata)
 
-            mock_create_node.assert_called_once_with(
+            mock_create_node.assert_called_with(
                 'lun-create-by-size',
                 **{'path': expected_path,
-                   'size': self.fake_size,
+                   'size': initial_size,
                    'ostype': self.fake_metadata['OsType'],
                    'use-exact-size': 'true',
                    'space-reservation-enabled':
-                   self.fake_metadata['SpaceReserved']})
-            self.connection.invoke_successfully.assert_called_once_with(
+                       expected_space_reservation})
+            self.connection.invoke_successfully.assert_called_with(
                 mock.ANY, True)
 
-    def test_create_lun_with_qos_policy_group_name(self):
+        if ontap_version < '9.5':
+            mock_resize_lun.assert_called_once_with(
+                expected_path, self.fake_size)
+
+        if ontap_version < '9.5' and space_reservation == 'true':
+            mock_set_space_reservation.assert_called_once_with(
+                expected_path, True)
+        else:
+            mock_set_space_reservation.assert_not_called()
+
+    @ddt.data({'ontap_version': '9.4', 'space_reservation': 'true'},
+              {'ontap_version': '9.4', 'space_reservation': 'false'},
+              {'ontap_version': '9.6', 'space_reservation': 'true'},
+              {'ontap_version': '9.6', 'space_reservation': 'false'})
+    @ddt.unpack
+    def test_create_lun_with_qos_policy_group_name(
+            self, ontap_version, space_reservation):
         expected_path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
         expected_qos_group_name = 'qos_1'
         mock_request = mock.Mock()
+
+        self.fake_metadata['SpaceReserved'] = space_reservation
+        expected_space_reservation = self.fake_metadata['SpaceReserved']
+        self.mock_object(self.client, 'get_ontap_version',
+                         return_value=ontap_version)
+        mock_resize_lun = self.mock_object(
+            client_base.Client, 'do_direct_resize')
+        mock_set_space_reservation = self.mock_object(
+            client_base.Client, 'set_lun_space_reservation')
+        initial_size = self.fake_size
+
+        if ontap_version < '9.5':
+            initial_size = fake.MAX_SIZE_FOR_A_LUN
+            expected_space_reservation = 'false'
 
         with mock.patch.object(netapp_api.NaElement,
                                'create_node_with_children',
@@ -145,20 +225,65 @@ class NetAppBaseClientTestCase(test.TestCase):
                 self.fake_metadata,
                 qos_policy_group_name=expected_qos_group_name)
 
-            mock_create_node.assert_called_once_with(
+            mock_create_node.assert_called_with(
                 'lun-create-by-size',
-                **{'path': expected_path, 'size': self.fake_size,
+                **{'path': expected_path, 'size': initial_size,
                     'ostype': self.fake_metadata['OsType'],
                     'space-reservation-enabled':
-                    self.fake_metadata['SpaceReserved']})
-            mock_request.add_new_child.assert_called_once_with(
+                        expected_space_reservation})
+            mock_request.add_new_child.assert_called_with(
                 'qos-policy-group', expected_qos_group_name)
+            self.connection.invoke_successfully.assert_called_with(
+                mock.ANY, True)
+
+        if ontap_version < '9.5':
+            mock_resize_lun.assert_called_once_with(
+                expected_path, self.fake_size)
+
+        if ontap_version < '9.5' and space_reservation == 'true':
+            mock_set_space_reservation.assert_called_once_with(
+                expected_path, True)
+        else:
+            mock_set_space_reservation.assert_not_called()
+
+    def test_get_ontap_version(self):
+        version_response = netapp_api.NaElement(
+            fake.SYSTEM_GET_VERSION_RESPONSE)
+        self.connection.invoke_successfully.return_value = version_response
+
+        result = self.client.get_ontap_version(cached=False)
+
+        self.assertEqual(('9.6'), result)
+
+    def test_get_ontap_version_cached(self):
+        self.connection.get_ontap_version.return_value = '9.6'
+
+        result = self.client.get_ontap_version()
+
+        self.connection.get_ontap_version.assert_called_once_with()
+        self.assertEqual(('9.6'), result)
+
+    def test_set_lun_space_reservation(self):
+        path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)
+
+        with mock.patch.object(netapp_api.NaElement,
+                               'create_node_with_children',
+                               ) as mock_set_space_reservation:
+            self.client.set_lun_space_reservation(path, True)
+
+            mock_set_space_reservation.assert_called_once_with(
+                'lun-set-space-reservation-info',
+                **{'path': path,
+                   'enable': 'True'})
             self.connection.invoke_successfully.assert_called_once_with(
                 mock.ANY, True)
 
-    def test_create_lun_raises_on_failure(self):
+    @ddt.data('9.4', '9.6')
+    def test_create_lun_raises_on_failure(self, ontap_version):
         self.connection.invoke_successfully = mock.Mock(
             side_effect=netapp_api.NaApiError)
+        self.mock_object(self.client, 'get_ontap_version',
+                         return_value=ontap_version)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.create_lun,

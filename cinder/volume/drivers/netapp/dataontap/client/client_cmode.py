@@ -52,6 +52,8 @@ class Client(client_base.Client):
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
         self._init_features()
+        ontap_version = self.get_ontap_version(cached=False)
+        self.connection.set_ontap_version(ontap_version)
 
     def _init_features(self):
         super(Client, self)._init_features()

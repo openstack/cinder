@@ -1205,7 +1205,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_extend_volume.assert_called_once_with(
             fake.VOLUME, new_size, fake.QOS_POLICY_GROUP_NAME)
 
-    def test__extend_volume_direct(self):
+    @ddt.data('9.4', '9.6')
+    def test__extend_volume_direct(self, ontap_version):
 
         current_size = fake.LUN_SIZE
         current_size_bytes = current_size * units.Gi
@@ -1214,6 +1215,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         max_size = fake.LUN_SIZE * 10
         max_size_bytes = max_size * units.Gi
 
+        mock_get_ontap_version = self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=ontap_version)
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
                                         current_size_bytes,
@@ -1232,16 +1236,23 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.library._extend_volume(fake.VOLUME, new_size, 'fake_qos_policy')
 
+        mock_get_ontap_version.assert_called_once_with(cached=True)
         mock_get_lun_from_table.assert_called_once_with(fake.VOLUME['name'])
-        mock_get_lun_geometry.assert_called_once_with(
-            fake.LUN_METADATA['Path'])
+
+        if ontap_version < '9.5':
+            mock_get_lun_geometry.assert_called_once_with(
+                fake.LUN_METADATA['Path'])
+        else:
+            mock_get_lun_geometry.assert_not_called()
+
         mock_do_direct_resize.assert_called_once_with(
             fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
         self.assertFalse(mock_do_sub_clone_resize.called)
         self.assertEqual(six.text_type(new_size_bytes),
                          self.library.lun_table[fake.VOLUME['name']].size)
 
-    def test__extend_attached_volume_direct(self):
+    @ddt.data('9.4', '9.6')
+    def test__extend_attached_volume_direct(self, ontap_version):
 
         current_size = fake.LUN_SIZE
         current_size_bytes = current_size * units.Gi
@@ -1253,6 +1264,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume_copy['size'] = new_size
         volume_copy['attach_status'] = fake.ATTACHED
 
+        mock_get_ontap_version = self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=ontap_version)
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
                                         current_size_bytes,
@@ -1267,20 +1281,27 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                                  'do_direct_resize')
         mock_do_sub_clone_resize = self.mock_object(self.library,
                                                     '_do_sub_clone_resize')
-        self.library.lun_table = {volume_copy['name']: fake_lun}
 
+        self.library.lun_table = {volume_copy['name']: fake_lun}
         self.library._extend_volume(volume_copy, new_size, 'fake_qos_policy')
 
         mock_get_lun_from_table.assert_called_once_with(volume_copy['name'])
-        mock_get_lun_geometry.assert_called_once_with(
-            fake.LUN_METADATA['Path'])
+        mock_get_ontap_version.assert_called_once_with(cached=True)
+
+        if ontap_version < '9.5':
+            mock_get_lun_geometry.assert_called_once_with(
+                fake.LUN_METADATA['Path'])
+        else:
+            mock_get_lun_geometry.assert_not_called()
+
         mock_do_direct_resize.assert_called_once_with(
             fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
         self.assertFalse(mock_do_sub_clone_resize.called)
         self.assertEqual(six.text_type(new_size_bytes),
                          self.library.lun_table[volume_copy['name']].size)
 
-    def test__extend_volume_clone(self):
+    @ddt.data('9.4', '9.6')
+    def test__extend_volume_clone(self, ontap_version):
 
         current_size = fake.LUN_SIZE
         current_size_bytes = current_size * units.Gi
@@ -1289,6 +1310,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         max_size = fake.LUN_SIZE * 10
         max_size_bytes = max_size * units.Gi
 
+        mock_get_ontap_version = self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=ontap_version)
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
                                         current_size_bytes,
@@ -1307,29 +1331,43 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.library._extend_volume(fake.VOLUME, new_size, 'fake_qos_policy')
 
+        mock_get_ontap_version.assert_called_once_with(cached=True)
         mock_get_lun_from_table.assert_called_once_with(fake.VOLUME['name'])
-        mock_get_lun_geometry.assert_called_once_with(
-            fake.LUN_METADATA['Path'])
-        self.assertFalse(mock_do_direct_resize.called)
-        mock_do_sub_clone_resize.assert_called_once_with(
-            fake.LUN_METADATA['Path'], six.text_type(new_size_bytes),
-            qos_policy_group_name='fake_qos_policy')
+
+        if ontap_version < '9.5':
+            self.assertFalse(mock_do_direct_resize.called)
+            mock_get_lun_geometry.assert_called_once_with(
+                fake.LUN_METADATA['Path'])
+            mock_do_sub_clone_resize.assert_called_once_with(
+                fake.LUN_METADATA['Path'], six.text_type(new_size_bytes),
+                qos_policy_group_name='fake_qos_policy')
+        else:
+            mock_get_lun_geometry.assert_not_called()
+            mock_do_sub_clone_resize.assert_not_called()
+            mock_do_direct_resize.assert_called_once_with(
+                fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+
         self.assertEqual(six.text_type(new_size_bytes),
                          self.library.lun_table[fake.VOLUME['name']].size)
 
-    def test__extend_attached_volume_clone_error(self):
+    @ddt.data('9.4', '9.6')
+    def test__extend_attached_volume_clone_error(self, ontap_version):
 
         current_size = fake.LUN_SIZE
         current_size_bytes = current_size * units.Gi
         new_size = fake.LUN_SIZE * 20
+        new_size_bytes = new_size * units.Gi
         max_size = fake.LUN_SIZE * 10
         max_size_bytes = max_size * units.Gi
         volume_copy = copy.copy(fake.VOLUME)
         volume_copy['attach_status'] = fake.ATTACHED
 
+        mock_get_ontap_version = self.mock_object(
+            self.library.zapi_client, 'get_ontap_version',
+            return_value=ontap_version)
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
-                                        current_size_bytes,
+                                        six.text_type(current_size_bytes),
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
             self.library, '_get_lun_from_table', return_value=fake_lun)
@@ -1343,21 +1381,35 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                                     '_do_sub_clone_resize')
         self.library.lun_table = {volume_copy['name']: fake_lun}
 
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.library._extend_volume,
-                          volume_copy,
-                          new_size,
-                          fake.QOS_POLICY_GROUP_NAME)
+        # (throne82) This error occurs only with versions older than 9.5
+        if ontap_version < '9.5':
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.library._extend_volume,
+                              volume_copy,
+                              new_size,
+                              fake.QOS_POLICY_GROUP_NAME)
+            self.assertFalse(mock_do_direct_resize.called)
+            self.assertFalse(mock_do_sub_clone_resize.called)
+            mock_get_lun_geometry.assert_called_once_with(
+                fake.LUN_METADATA['Path'])
+            self.assertEqual(six.text_type(current_size_bytes),
+                             self.library.lun_table[volume_copy['name']].size)
+        else:
+            self.library._extend_volume(volume_copy,
+                                        new_size, fake.QOS_POLICY_GROUP_NAME)
+            mock_do_direct_resize.assert_called_once_with(
+                fake.LUN_METADATA['Path'], six.text_type(new_size_bytes))
+            mock_do_sub_clone_resize.assert_not_called()
+            mock_get_lun_geometry.assert_not_called()
+            self.assertEqual(six.text_type(new_size_bytes),
+                             self.library.lun_table[volume_copy['name']].size)
 
-        mock_get_lun_from_table.assert_called_once_with(volume_copy['name'])
-        mock_get_lun_geometry.assert_called_once_with(
-            fake.LUN_METADATA['Path'])
-        self.assertFalse(mock_do_direct_resize.called)
-        self.assertFalse(mock_do_sub_clone_resize.called)
-        self.assertEqual(current_size_bytes,
-                         self.library.lun_table[volume_copy['name']].size)
+        mock_get_ontap_version.assert_called_once_with(cached=True)
+        mock_get_lun_from_table.assert_called_once_with(
+            volume_copy['name'])
 
-    def test__extend_volume_no_change(self):
+    @ddt.data('9.4', '9.6')
+    def test__extend_volume_no_change(self, ontap_version):
 
         current_size = fake.LUN_SIZE
         current_size_bytes = current_size * units.Gi
@@ -1367,6 +1419,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume_copy = copy.copy(fake.VOLUME)
         volume_copy['size'] = new_size
 
+        mock_get_ontap_version = self.mock_object(
+            self.library.zapi_client, 'get_ontap_version')
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE,
                                         fake.LUN_ID,
                                         current_size_bytes,
@@ -1389,6 +1443,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertFalse(mock_get_lun_geometry.called)
         self.assertFalse(mock_do_direct_resize.called)
         self.assertFalse(mock_do_sub_clone_resize.called)
+        self.assertFalse(mock_get_ontap_version.called)
 
     def test_do_sub_clone_resize(self):
 
