@@ -2866,8 +2866,9 @@ class VolumeManager(manager.CleanableManager,
                 not diff.get('encryption') and
                 self._is_our_backend(host['host'], host.get('cluster_name'))):
             try:
-                new_type = volume_types.get_volume_type(context.elevated(),
-                                                        new_type_id)
+                new_type = objects.VolumeType.get_by_id(
+                    context.elevated(),
+                    new_type_id)
                 with volume.obj_as_admin():
                     ret = self.driver.retype(context,
                                              volume,

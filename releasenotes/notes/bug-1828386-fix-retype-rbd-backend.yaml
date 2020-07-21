@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix the bug that a volume retyped from
+    other volume type to replicated or
+    multiattach type cannot be enabled replicated
+    or multiattach in rbd driver. (Bug #1828386)

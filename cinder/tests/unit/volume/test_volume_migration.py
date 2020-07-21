@@ -772,6 +772,8 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         db.volume_type_create(elevated, {'name': 'new',
                                          'extra_specs': new_specs})
         vol_type = db.volume_type_get_by_name(elevated, 'new')
+        new_type = objects.VolumeType.get_by_id(elevated,
+                                                vol_type['id'])
         db.quota_create(elevated, project_id, 'volumes_new', 10)
 
         volume = tests_utils.create_volume(self.context, size=1,
@@ -821,10 +823,12 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                 mock.patch.object(volume_types, 'volume_types_diff') as _diff,\
                 mock.patch.object(self.volume, 'migrate_volume') as _mig,\
                 mock.patch.object(db.sqlalchemy.api, 'volume_get') as _vget,\
-                mock.patch.object(context.RequestContext, 'elevated') as _ctx:
+                mock.patch.object(context.RequestContext, 'elevated') as _ctx,\
+                mock.patch.object(objects.VolumeType, 'get_by_id') as _vtget:
             _vget.return_value = volume
             _retype.return_value = driver
             _ctx.return_value = self.context
+            _vtget.return_value = new_type
             returned_diff = {
                 'encryption': {},
                 'qos_specs': {},
@@ -891,6 +895,14 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
             self.assert_notify_called(mock_notify,
                                       (['INFO', 'volume.retype'],),
                                       any_order=True)
+            if driver:
+                _vtget.assert_called_once_with(self.context,
+                                               new_type.id)
+                _retype.assert_called_once_with(self.context,
+                                                mock.ANY,
+                                                new_type,
+                                                returned_diff,
+                                                host_obj)
         elif not exc:
             self.assertEqual(old_vol_type['id'], volume.volume_type_id)
             self.assertEqual('retyping', volume.status)
@@ -986,16 +998,21 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         db.volume_type_create(elevated, {'name': 'old', 'extra_specs': {}})
         old_vol_type = db.volume_type_get_by_name(elevated, 'old')
         new_extra_specs = {'replication_enabled': '<is> True'}
-        db.volume_type_create(elevated, {'name': 'new',
+        new_type = db.volume_type_create(elevated, {'name': 'new',
                                          'extra_specs': new_extra_specs})
-        new_vol_type = db.volume_type_get_by_name(elevated, 'new')
+        new_vol_type = objects.VolumeType.get_by_id(self.context,
+                                                    new_type['id'])
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host, status='available',
                                            volume_type_id=old_vol_type['id'],
                                            replication_status='not-capable')
         host_obj = {'host': 'newhost', 'capabilities': {}}
         with mock.patch.object(self.volume,
-                               'migrate_volume') as migrate_volume:
+                               'migrate_volume') as migrate_volume,\
+                mock.patch.object(objects.VolumeType,
+                                  'get_by_id') as vt_get:
             migrate_volume.return_value = True
-            self.volume.retype(self.context, volume, new_vol_type['id'],
+            vt_get.return_value = new_vol_type
+            self.volume.retype(self.context, volume, new_vol_type.id,
                                host_obj, migration_policy='on-demand')
+            vt_get.assert_not_called()
