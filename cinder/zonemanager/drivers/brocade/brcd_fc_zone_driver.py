@@ -328,14 +328,14 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     # Check to see if there are other zone members
                     # in the zone besides the initiator and
                     # the targets being removed.
-                    filtered_members = filter(
-                        lambda x: x not in zone_members,
-                        cfgmap_from_fabric['zones'][zone_name])
+                    has_members = any(
+                        x for x in cfgmap_from_fabric['zones'][zone_name]
+                        if x not in zone_members)
 
                     # If there are other zone members, proceed with
                     # zone update to remove the targets.  Otherwise,
                     # delete the zone.
-                    if filtered_members:
+                    if has_members:
                         zone_members.remove(formatted_initiator)
                         # Verify that the zone members in target list
                         # are listed in zone definition.  If not, remove
@@ -437,9 +437,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     raise exception.FCZoneDriverException(msg)
                 finally:
                     conn.cleanup()
-                visible_targets = filter(
-                    lambda x: x in formatted_target_list,
-                    nsinfo)
+                visible_targets = [x for x in nsinfo
+                                   if x in formatted_target_list]
 
                 if visible_targets:
                     LOG.info("Filtered targets for SAN is: %(targets)s",

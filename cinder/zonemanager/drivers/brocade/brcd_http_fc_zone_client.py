@@ -805,7 +805,7 @@ class BrcdHTTPFCZoneClient(object):
                 zones.pop(zone)
                 # iterated all the cfgs, but need to check since in SSH only
                 # active cfg is iterated
-                for k, v in cfgs.items():
+                for k, v in list(cfgs.items()):
                     v = v.split(";")
                     if zone in v:
                         # remove the zone from the cfg string
