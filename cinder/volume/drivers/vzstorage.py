@@ -740,5 +740,5 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         if volume_format == DISK_FORMAT_PLOOP:
             return self._create_cloned_volume_ploop(volume, src_vref)
         else:
-            return super(VZStorageDriver, self)._create_cloned_volume(volume,
-                                                                      src_vref)
+            return super(VZStorageDriver, self)._create_cloned_volume(
+                volume, src_vref, context)

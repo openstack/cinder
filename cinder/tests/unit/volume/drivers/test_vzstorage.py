@@ -419,8 +419,9 @@ class VZStorageTestCase(test.TestCase):
         mock_remotefs_create_cloned_volume.return_value = {
             'provider_location': self._FAKE_SHARE}
         ret = drv.create_cloned_volume(volume, src_vref)
+        # Bug #1875953: code should also be passing context here
         mock_remotefs_create_cloned_volume.assert_called_once_with(
-            volume, src_vref)
+            volume, src_vref, self.context)
         self.assertEqual(ret, {'provider_location': self._FAKE_SHARE})
 
     @mock.patch.object(vzstorage.VZStorageDriver, '_local_path_volume_info')
