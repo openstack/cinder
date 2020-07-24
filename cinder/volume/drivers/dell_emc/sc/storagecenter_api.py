@@ -360,6 +360,7 @@ class SCApiHelper(object):
         connection.vfname = self.config.dell_sc_volume_folder
         connection.sfname = self.config.dell_sc_server_folder
         connection.excluded_domain_ips = self.config.excluded_domain_ips
+        connection.included_domain_ips = self.config.included_domain_ips
         if self.config.excluded_domain_ip:
             LOG.info("Using excluded_domain_ip for "
                      "excluding domain IPs is deprecated in the "
@@ -447,10 +448,11 @@ class SCApi(object):
         4.0.0 - Driver moved to dell_emc.
         4.1.0 - Timeouts added to rest calls.
         4.1.1 - excluded_domain_ips support.
+        4.1.2 - included_domain_ips support.
 
     """
 
-    APIDRIVERVERSION = '4.1.1'
+    APIDRIVERVERSION = '4.1.2'
 
     def __init__(self, host, port, user, password, verify,
                  asynctimeout, synctimeout, apiversion):
@@ -476,6 +478,7 @@ class SCApi(object):
         self.vfname = 'openstack'
         self.sfname = 'openstack'
         self.excluded_domain_ips = []
+        self.included_domain_ips = []
         self.legacypayloadfilters = False
         self.consisgroups = True
         self.protocol = 'Iscsi'
@@ -1829,7 +1832,18 @@ class SCApi(object):
                            controller or not.
             :return: Nothing
             """
-            if self.excluded_domain_ips.count(address) == 0:
+            process_it = False
+
+            # Check the white list
+            # If the white list is empty, check the black list
+            if (not self.included_domain_ips):
+                # Check the black list
+                if self.excluded_domain_ips.count(address) == 0:
+                    process_it = True
+            elif (self.included_domain_ips.count(address) > 0):
+                process_it = True
+
+            if process_it:
                 # Make sure this isn't a duplicate.
                 newportal = address + ':' + six.text_type(port)
                 for idx, portal in enumerate(portals):

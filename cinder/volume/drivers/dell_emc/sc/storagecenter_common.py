@@ -77,6 +77,11 @@ common_opts = [
                 default=[],
                 help='Comma separated Fault Domain IPs to be excluded '
                      'from iSCSI returns.'),
+    cfg.ListOpt('included_domain_ips',
+                item_type=types.IPAddress(),
+                default=[],
+                help='Comma separated Fault Domain IPs to be included '
+                     'from iSCSI returns.'),
     cfg.StrOpt('dell_server_os',
                default='Red Hat Linux 6.x',
                help='Server OS type to use when creating a new server on the '

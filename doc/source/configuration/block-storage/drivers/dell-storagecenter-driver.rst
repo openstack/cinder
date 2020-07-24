@@ -359,8 +359,12 @@ only applies to the ISCSI driver.
 
 Add the excluded_domain_ips option into the backend config for several fault
 domains to be excluded. This option takes a comma separated list of Target
-IPv4 Addresses listed under the fault domain. Older versions of DSM (EM) may
+IP addresses listed under the fault domain. Older versions of DSM (EM) may
 list this as the Well Known IP Address.
+
+Note that the ``included_domain_ips`` takes precedance over
+``excluded_domain_ips``. When ``included_domain_ips`` is not an empty list,
+the option ``excluded_domain_ips`` is ignored.
 
 Add the following to the back-end specification to exclude the domains at
 172.20.25.15 and 172.20.26.15.
@@ -368,7 +372,31 @@ Add the following to the back-end specification to exclude the domains at
 .. code-block:: ini
 
     [dell]
-    excluded_domain_ips=172.20.25.15, 172.20.26.15
+    excluded_domain_ips=172.20.25.15, 172.20.26.15, 0:0:0:0:0:ffff:c0a8:15
+
+Including domains
+~~~~~~~~~~~~~~~~~~
+
+This option includes or will whitelist a list of Storage Center ISCSI fault
+domains from the ISCSI properties returned by the initialize_connection call.
+This only applies to the ISCSI driver.
+
+Add the ``included_domain_ips`` option into the backend config for several
+default domains to be included or whitelisted. This option takes a comma
+separated list of Target IP addresses listed under the fault domain. Older
+versions of DSM (EM) may list this as the Well Known IP Address.
+
+Note that the ``included_domain_ips`` takes precedance over
+``excluded_domain_ips``. When ``included_domain_ips`` is not an empty list,
+the option ``excluded_domain_ips`` is ignored.
+
+Add the following to the back-end specification to include or whitelist the
+domains at 172.20.25.15 and 172.20.26.15.
+
+.. code-block:: ini
+
+    [dell]
+    included_domain_ips=172.20.25.15, 172.20.26.15, 0:0:0:0:0:ffff:c0a8:15
 
 
 
