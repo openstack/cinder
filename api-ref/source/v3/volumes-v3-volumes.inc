@@ -377,6 +377,7 @@ Response Parameters
    - volume_type: volume_type_vol
    - service_uuid: service_uuid
    - shared_targets: shared_targets
+   - cluster_name: cluster_name
 
 
 Response Example

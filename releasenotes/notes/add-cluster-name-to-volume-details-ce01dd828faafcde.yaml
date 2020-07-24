@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added new APIs on microversion 3.61  to show ``cluster_name`` attribute in
+    the response body of volume details for admin.

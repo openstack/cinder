@@ -61,6 +61,11 @@ class ViewBuilder(views_v2.ViewBuilder):
             volume_ref['volume']['service_uuid'] = volume.get(
                 'service_uuid', None)
 
+        if (request.environ['cinder.context'].is_admin and req_version.matches(
+                mv.VOLUME_CLUSTER_NAME, None)):
+            volume_ref['volume']['cluster_name'] = volume.get(
+                'cluster_name', None)
+
         return volume_ref
 
     def _list_view(self, func, request, volumes, volume_count,
