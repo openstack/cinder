@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1888951 <https://bugs.launchpad.net/cinder/+bug/1888951>`_:
+    Fixed an issue with creating a backup from snapshot with NFS volume
+    driver.
