@@ -27,9 +27,15 @@ Server-centric flow is used for authentication.
 """
 
 import base64
-from distutils import version
 import hashlib
 import os
+
+try:
+    # For python 3.8 and later
+    import importlib.metadata as importlib_metadata
+except ImportError:
+    # For everyone else
+    import importlib_metadata
 
 try:
     from google.auth import exceptions as gexceptions
@@ -49,7 +55,7 @@ from googleapiclient import http
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import pkg_resources
+from packaging import version
 import six
 
 from cinder.backup import chunkeddriver
@@ -142,6 +148,17 @@ def gcs_logger(func):
     return func_wrapper
 
 
+def _get_dist_version(name):
+    """Mock-able wrapper for importlib_metadata.version()
+
+    The module name where version() is found varies by python
+    version. This function makes it easier for tests to mock the
+    function and change the return value.
+
+    """
+    return importlib_metadata.version(name)
+
+
 @interface.backupdriver
 class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within GCS."""
@@ -174,8 +191,8 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
         # If we have google client that support google-auth library
         # (v1.6.0 or higher) and all required libraries are installed use
         # google-auth for the credentials
-        dist = pkg_resources.get_distribution('google-api-python-client')
-        if (version.LooseVersion(dist.version) >= version.LooseVersion('1.6.0')
+        dist_version = _get_dist_version('google-api-python-client')
+        if (version.parse(dist_version) >= version.parse('1.6.0')
                 and service_account):
             creds = service_account.Credentials.from_service_account_file(
                 backup_credential)
