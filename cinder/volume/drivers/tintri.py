@@ -113,6 +113,9 @@ class TintriDriver(driver.ManageableVD,
         self._api_version = getattr(self.configuration, 'tintri_api_version')
         self._image_cache_expiry = getattr(self.configuration,
                                            'tintri_image_cache_expiry_days')
+        self.verify_ssl = getattr(self.configuration, 'driver_ssl_cert_verify')
+        self.ssl_cert_path = getattr(self.configuration,
+                                     'driver_ssl_cert_path')
 
     def get_pool(self, volume):
         """Returns pool name where volume resides.
@@ -841,24 +844,31 @@ class TClient(object):
         url = self.api_url + api
 
         return requests.get(url, headers=self.headers,
-                            params=query, verify=False)
+                            params=query, verify=self.verify_ssl,
+                            cert=self.ssl_cert_path)
 
     def delete(self, api):
         url = self.api_url + api
 
-        return requests.delete(url, headers=self.headers, verify=False)
+        return requests.delete(url, headers=self.headers,
+                               verify=self.verify_ssl,
+                               cert=self.ssl_cert_path)
 
     def put(self, api, payload):
         url = self.api_url + api
 
         return requests.put(url, data=json.dumps(payload),
-                            headers=self.headers, verify=False)
+                            headers=self.headers,
+                            verify=self.verify_ssl,
+                            cert=self.ssl_cert_path)
 
     def post(self, api, payload):
         url = self.api_url + api
 
         return requests.post(url, data=json.dumps(payload),
-                             headers=self.headers, verify=False)
+                             headers=self.headers,
+                             verify=self.verify_ssl,
+                             cert=self.ssl_cert_path)
 
     def login(self, username, password):
         # Payload, header and URL for login
@@ -872,7 +882,9 @@ class TClient(object):
         url = self.api_url + '/' + self.api_version + '/session/login'
 
         r = requests.post(url, data=json.dumps(payload),
-                          headers=headers, verify=False)
+                          headers=headers,
+                          verify=self.verify_ssl,
+                          cert=self.ssl_cert_path)
 
         if r.status_code != 200:
             msg = _('Failed to login for user %s.') % username
@@ -883,7 +895,9 @@ class TClient(object):
     def logout(self):
         url = self.api_url + '/' + self.api_version + '/session/logout'
 
-        requests.get(url, headers=self.headers, verify=False)
+        requests.get(url, headers=self.headers,
+                     verify=self.verify_ssl,
+                     cert=self.ssl_cert_path)
 
     @staticmethod
     def _remove_prefix(volume_path, prefix):
