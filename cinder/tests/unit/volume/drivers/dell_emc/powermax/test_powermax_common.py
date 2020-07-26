@@ -283,6 +283,7 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(self.data.replication_update, update)
         self.assertEqual(self.data.rep_info_dict, info)
 
+    @mock.patch.object(common.PowerMaxCommon, '_validate_rdfg_status')
     @mock.patch.object(common.PowerMaxCommon, 'gather_replication_updates',
                        return_value=(tpd.PowerMaxData.replication_update,
                                      tpd.PowerMaxData.rep_info_dict))
@@ -294,7 +295,8 @@ class PowerMaxCommonTest(test.TestCase):
                                     ('', tpd.PowerMaxData.rep_extra_specs5,
                                      tpd.PowerMaxData.rep_info_dict, '')))
     def test_create_replication_enabled_volume_not_first_volume(
-            self, mck_prepare, mck_create, mck_protect, mck_updates):
+            self, mck_prepare, mck_create, mck_protect, mck_updates,
+            mck_valid):
         array = self.data.array
         volume = self.data.test_volume
         volume_name = volume.name
@@ -315,6 +317,7 @@ class PowerMaxCommonTest(test.TestCase):
             array, volume_name, storagegroup_name, volume_size,
             rep_extra_specs, rep_info_dict)
         mck_protect.assert_not_called()
+        mck_valid.assert_called_once_with(array, rep_extra_specs)
         rep_vol.update({'remote_device_id': self.data.device_id2})
         mck_updates.assert_called_once_with(
             rep_extra_specs, rep_extra_specs5, rep_vol)
