@@ -89,6 +89,13 @@ class TestQemuImgInfo(test.TestCase):
         mock_exec.assert_called_once_with('qemu-img', '--version',
                                           check_exit_code=False)
         self.assertEqual(expected_version, version)
+        self.assertEqual(1, mock_exec.call_count)
+
+        version = image_utils.get_qemu_img_version()
+
+        # verify that cached value was used instead of calling execute
+        self.assertEqual(expected_version, version)
+        self.assertEqual(1, mock_exec.call_count)
 
     @mock.patch.object(image_utils, 'get_qemu_img_version')
     def test_validate_qemu_img_version(self, mock_get_qemu_img_version):
