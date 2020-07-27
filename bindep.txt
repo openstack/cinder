@@ -36,3 +36,8 @@ libxslt-devel [platform:rpm test]
 libxslt1-dev [platform:dpkg test]
 cryptsetup [platform:rpm]
 cryptsetup-bin [platform:dpkg]
+# Cinder uses lsscsi via os-brick. Due to bindep usage in devstack and
+# elsewhere, we add it here to make sure it is picked up and available in
+# os-brick tests. Net result is the same that lsscsi will be installed for any
+# cinder installation.
+lsscsi
