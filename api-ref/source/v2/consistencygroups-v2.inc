@@ -10,7 +10,7 @@ restore this database from a previous point in time, it makes sense
 to restore the logs, tables, and configuration together from the
 exact same point in time.
 
-Use the ``policy.json`` file to grant permissions for these actions
+Use the policy configuration file to grant permissions for these actions
 to limit roles.
 
 
