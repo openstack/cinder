@@ -513,8 +513,8 @@ class UnityClient(object):
                 dst_resource_id=dst_resource_id)
         except storops_ex.UnityResourceNotFoundError:
             raise ClientReplicationError(
-                'Replication session with name %(name)s not found.'.format(
-                    name=name))
+                'Replication session with name %(name)s not found.' %
+                {'name': name})
 
     def failover_replication(self, rep_session):
         """Fails over a replication session.
@@ -532,7 +532,7 @@ class UnityClient(object):
         except storops_ex.UnityException as ex:
             raise ClientReplicationError(
                 'Failover of replication: %(name)s failed, '
-                'error: %(err)s'.format(name=name, err=ex)
+                'error: %(err)s' % {'name': name, 'err': ex}
             )
         LOG.debug('Replication: %s failed over', name)
 
@@ -552,7 +552,7 @@ class UnityClient(object):
         except storops_ex.UnityException as ex:
             raise ClientReplicationError(
                 'Failback of replication: %(name)s failed, '
-                'error: %(err)s'.format(name=name, err=ex)
+                'error: %(err)s' % {'name': name, 'err': ex}
             )
         LOG.debug('Replication: %s failed back', name)
 

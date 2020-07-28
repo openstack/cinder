@@ -33,16 +33,19 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
     def test_get_target(self):
         tmp_file = six.StringIO()
         tmp_file.write(
-            'tid:1 name:iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
-            '        sid:844427031282176 initiator:iqn.1994-05.com.redhat:5a6894679665\n'  # noqa
+            'tid:1 name:iqn.2010-10.org.openstack:'
+            'volume-83c2e877-feed-46be-8435-77884fe55b45\n'
+            '        sid:844427031282176 initiator:'
+            'iqn.1994-05.com.redhat:5a6894679665\n'
             '               cid:0 ip:10.9.8.7 state:active hd:none dd:none')
         tmp_file.seek(0)
         with mock.patch('six.moves.builtins.open') as mock_open:
             mock_open.return_value = contextlib.closing(tmp_file)
             self.assertEqual('1',
                              self.target._get_target(
-                                                     'iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45'  # noqa
-                                                    ))
+                                 'iqn.2010-10.org.openstack:'
+                                 'volume-83c2e877-feed-46be-8435-77884fe55b45'
+                             ))
 
             # Test the failure case: Failed to handle the config file
             mock_open.side_effect = MemoryError()
@@ -153,18 +156,21 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
     def test_find_sid_cid_for_target(self, mock_delete_target):
         tmp_file = six.StringIO()
         tmp_file.write(
-            'tid:1 name:iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45\n'  # noqa
-            '        sid:844427031282176 initiator:iqn.1994-05.com.redhat:5a6894679665\n'  # noqa
+            'tid:1 name:iqn.2010-10.org.openstack:'
+            'volume-83c2e877-feed-46be-8435-77884fe55b45\n'
+            '        sid:844427031282176 initiator:'
+            'iqn.1994-05.com.redhat:5a6894679665\n'
             '               cid:0 ip:10.9.8.7 state:active hd:none dd:none')
         tmp_file.seek(0)
         with mock.patch('six.moves.builtins.open') as mock_open:
             mock_open.return_value = contextlib.closing(tmp_file)
             self.assertEqual(('844427031282176', '0'),
                              self.target._find_sid_cid_for_target(
-                                                     '1',
-                                                     'iqn.2010-10.org.openstack:volume-83c2e877-feed-46be-8435-77884fe55b45',  # noqa
-                                                     'volume-83c2e877-feed-46be-8435-77884fe55b45'  # noqa
-                                                    ))
+                                 '1',
+                                 'iqn.2010-10.org.openstack:'
+                                 'volume-83c2e877-feed-46be-8435-77884fe55b45',
+                                 'volume-83c2e877-feed-46be-8435-77884fe55b45'
+            ))
 
     @mock.patch('cinder.volume.targets.iet.IetAdm._get_target',
                 return_value=1)
