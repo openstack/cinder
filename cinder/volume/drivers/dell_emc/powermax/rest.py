@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
+# Copyright (c) 2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,6 +14,7 @@
 #    under the License.
 
 import json
+import re
 import sys
 import time
 
@@ -35,8 +36,8 @@ LOG = logging.getLogger(__name__)
 SLOPROVISIONING = 'sloprovisioning'
 REPLICATION = 'replication'
 SYSTEM = 'system'
-U4V_VERSION = '91'
-MIN_U4P_VERSION = '9.1.0.14'
+U4V_VERSION = '92'
+MIN_U4P_VERSION = '9.2.0.0'
 UCODE_5978 = '5978'
 retry_exc_tuple = (exception.VolumeBackendAPIException,)
 u4p_failover_max_wait = 120
@@ -56,6 +57,7 @@ INCOMPLETE_LIST = ['created', 'unscheduled', 'scheduled', 'running',
 CREATED = 'created'
 SUCCEEDED = 'succeeded'
 CREATE_VOL_STRING = "Creating new Volumes"
+POPULATE_SG_LIST = "Populating Storage Group(s) with volumes"
 
 
 class PowerMaxRest(object):
@@ -367,7 +369,7 @@ class PowerMaxRest(object):
         """
         complete, rc, status, result, task = False, 0, None, None, None
         job_url = "/%s/system/job/%s" % (U4V_VERSION, job_id)
-        job = self._get_request(job_url, 'job')
+        job = self.get_request(job_url, 'job')
         if job:
             status = job['status']
             try:
@@ -426,29 +428,137 @@ class PowerMaxRest(object):
                     message=exception_message)
         return task
 
-    @staticmethod
-    def _build_uri(array, category, resource_type,
-                   resource_name=None, private='', version=U4V_VERSION):
+    def build_uri(self, *args, **kwargs):
         """Build the target url.
 
-        :param array: the array serial number
-        :param category: the resource category e.g. sloprovisioning
-        :param resource_type: the resource type e.g. maskingview
-        :param resource_name: the name of a specific resource
-        :param private: empty string or '/private' if private url
-        :returns: target url, string
+        :param args: input args, see _build_uri_legacy_args() for input
+                     breakdown
+        :param kwargs: input keyword args, see _build_uri_kwargs() for input
+                       breakdown
+        :return: target uri -- str
         """
-        target_uri = ('%(private)s/%(version)s/%(category)s/symmetrix/'
-                      '%(array)s/%(resource_type)s'
-                      % {'private': private, 'version': version,
-                         'category': category, 'array': array,
-                         'resource_type': resource_type})
-        if resource_name:
-            target_uri += '/%(resource_name)s' % {
-                'resource_name': resource_name}
+        if args:
+            target_uri = self._build_uri_legacy_args(*args, **kwargs)
+        else:
+            target_uri = self._build_uri_kwargs(**kwargs)
+
         return target_uri
 
-    def _get_request(self, target_uri, resource_type, params=None):
+    @staticmethod
+    def _build_uri_legacy_args(*args, **kwargs):
+        """Build the target URI using legacy args & kwargs.
+
+        Expected format:
+            arg[0]: the array serial number: the array serial number -- str
+            arg[1]: the resource category e.g. 'sloprovisioning' -- str
+            arg[2]: the resource type e.g. 'maskingview' -- str
+            kwarg resource_name: the name of a specific resource -- str
+            kwarg private: if endpoint is private -- bool
+            kwarg version: U4V REST endpoint version -- int/str
+            kwarg no_version: if endpoint should be versionless -- bool
+
+        :param args: input args -- see above
+        :param kwargs: input keyword args -- see above
+        :return: target URI -- str
+        """
+        # Extract args following legacy _build_uri() format
+        array_id, category, resource_type = args[0], args[1], args[2]
+        # Extract keyword args following legacy _build_uri() format
+        resource_name = kwargs.get('resource_name')
+        private = kwargs.get('private')
+        version = kwargs.get('version', U4V_VERSION)
+        if kwargs.get('no_version'):
+            version = None
+
+        # Build URI
+        target_uri = ''
+        if private:
+            target_uri += '/private'
+        if version:
+            target_uri += '/%(version)s' % {'version': version}
+        target_uri += (
+            '/{cat}/symmetrix/{array_id}/{res_type}'.format(
+                cat=category, array_id=array_id, res_type=resource_type))
+        if resource_name:
+            target_uri += '/{resource_name}'.format(
+                resource_name=kwargs.get('resource_name'))
+
+        return target_uri
+
+    @staticmethod
+    def _build_uri_kwargs(**kwargs):
+        """Build the target URI using kwargs.
+
+        Expected kwargs:
+            private: if endpoint is private (optional) -- bool
+            version: U4P REST endpoint version (optional) -- int/None
+            no_version: if endpoint should be versionless (optional) -- bool
+
+            category: U4P REST category eg. 'common', 'replication'-- str
+
+            resource_level: U4P REST resource level eg. 'symmetrix'
+                            (optional) -- str
+            resource_level_id: U4P REST resource level id (optional) -- str
+
+            resource_type: U4P REST resource type eg. 'rdf_director', 'host'
+                           (optional) -- str
+            resource_type_id: U4P REST resource type id (optional) -- str
+
+            resource: U4P REST resource eg. 'port' (optional) -- str
+            resource_id: U4P REST resource id (optional) -- str
+
+            object_type: U4P REST resource eg. 'rdf_group' (optional) -- str
+            object_type_id: U4P REST resource id (optional) -- str
+
+        :param kwargs: input keyword args -- see above
+        :return: target URI -- str
+        """
+        version = kwargs.get('version', U4V_VERSION)
+        if kwargs.get('no_version'):
+            version = None
+
+        target_uri = ''
+
+        if kwargs.get('private'):
+            target_uri += '/private'
+
+        if version:
+            target_uri += '/%(ver)s' % {'ver': version}
+
+        target_uri += '/%(cat)s' % {'cat': kwargs.get('category')}
+
+        if kwargs.get('resource_level'):
+            target_uri += '/%(res_level)s' % {
+                'res_level': kwargs.get('resource_level')}
+
+        if kwargs.get('resource_level_id'):
+            target_uri += '/%(res_level_id)s' % {
+                'res_level_id': kwargs.get('resource_level_id')}
+
+        if kwargs.get('resource_type'):
+            target_uri += '/%(res_type)s' % {
+                'res_type': kwargs.get('resource_type')}
+            if kwargs.get('resource_type_id'):
+                target_uri += '/%(res_type_id)s' % {
+                    'res_type_id': kwargs.get('resource_type_id')}
+
+        if kwargs.get('resource'):
+            target_uri += '/%(res)s' % {
+                'res': kwargs.get('resource')}
+            if kwargs.get('resource_id'):
+                target_uri += '/%(res_id)s' % {
+                    'res_id': kwargs.get('resource_id')}
+
+        if kwargs.get('object_type'):
+            target_uri += '/%(object_type)s' % {
+                'object_type': kwargs.get('object_type')}
+            if kwargs.get('object_type_id'):
+                target_uri += '/%(object_type_id)s' % {
+                    'object_type_id': kwargs.get('object_type_id')}
+
+        return target_uri
+
+    def get_request(self, target_uri, resource_type, params=None):
         """Send a GET request to the array.
 
         :param target_uri: the target uri
@@ -469,8 +579,30 @@ class PowerMaxRest(object):
             resource_object = self.list_pagination(resource_object)
         return resource_object
 
+    def post_request(self, target_uri, resource_type, request_body):
+        """Send a POST request to the array.
+
+        :param target_uri: the target uri -- str
+        :param resource_type: the resource type -- str
+        :param request_body: the POST request body -- dict
+        :return: resource object -- dict or None
+        """
+        resource_object = None
+        sc, msg = self.request(target_uri, POST, request_object=request_body)
+
+        operation = 'POST %(res)s' % {'res': resource_type}
+        try:
+            self.check_status_code_success(operation, sc, msg)
+        except Exception as e:
+            LOG.debug("POST resource failed with %(e)s", {'e': e})
+
+        if sc == STATUS_200:
+            resource_object = msg
+
+        return resource_object
+
     def get_resource(self, array, category, resource_type,
-                     resource_name=None, params=None, private='',
+                     resource_name=None, params=None, private=False,
                      version=U4V_VERSION):
         """Get resource details from array.
 
@@ -483,12 +615,13 @@ class PowerMaxRest(object):
         :param version: None or specific version number if required
         :returns: resource object -- dict or None
         """
-        target_uri = self._build_uri(array, category, resource_type,
-                                     resource_name, private, version=version)
-        return self._get_request(target_uri, resource_type, params)
+        target_uri = self.build_uri(
+            array, category, resource_type, resource_name=resource_name,
+            private=private, version=version)
+        return self.get_request(target_uri, resource_type, params)
 
     def create_resource(self, array, category, resource_type, payload,
-                        private=''):
+                        private=False):
         """Create a provisioning resource.
 
         :param array: the array serial number
@@ -498,8 +631,8 @@ class PowerMaxRest(object):
         :param private: empty string or '/private' if private url
         :returns: status_code -- int, message -- string, server response
         """
-        target_uri = self._build_uri(array, category, resource_type,
-                                     None, private)
+        target_uri = self.build_uri(
+            array, category, resource_type, private=private)
         status_code, message = self.request(target_uri, POST,
                                             request_object=payload)
         operation = 'Create %(res)s resource' % {'res': resource_type}
@@ -507,8 +640,9 @@ class PowerMaxRest(object):
             operation, status_code, message)
         return status_code, message
 
-    def modify_resource(self, array, category, resource_type, payload,
-                        version=U4V_VERSION, resource_name=None, private=''):
+    def modify_resource(
+            self, array, category, resource_type, payload, version=U4V_VERSION,
+            resource_name=None, private=False):
         """Modify a resource.
 
         :param version: the uv4 version
@@ -520,8 +654,9 @@ class PowerMaxRest(object):
         :param private: empty string or '/private' if private url
         :returns: status_code -- int, message -- string (server response)
         """
-        target_uri = self._build_uri(array, category, resource_type,
-                                     resource_name, private, version)
+        target_uri = self.build_uri(
+            array, category, resource_type, resource_name=resource_name,
+            private=private, version=version)
         status_code, message = self.request(target_uri, PUT,
                                             request_object=payload)
         operation = 'modify %(res)s resource' % {'res': resource_type}
@@ -531,7 +666,7 @@ class PowerMaxRest(object):
     @retry(retry_exc_tuple, interval=2, retries=3)
     def delete_resource(
             self, array, category, resource_type, resource_name,
-            payload=None, private='', params=None):
+            payload=None, private=False, params=None):
         """Delete a provisioning resource.
 
         :param array: the array serial number
@@ -542,8 +677,9 @@ class PowerMaxRest(object):
         :param private: empty string or '/private' if private url
         :param params: dict of optional query params
         """
-        target_uri = self._build_uri(array, category, resource_type,
-                                     resource_name, private)
+        target_uri = self.build_uri(
+            array, category, resource_type, resource_name=resource_name,
+            private=private)
         status_code, message = self.request(target_uri, DELETE,
                                             request_object=payload,
                                             params=params)
@@ -557,7 +693,7 @@ class PowerMaxRest(object):
         :returns: array_details -- dict or None
         """
         target_uri = '/%s/system/symmetrix/%s' % (U4V_VERSION, array)
-        array_details = self._get_request(target_uri, 'system')
+        array_details = self.get_request(target_uri, 'system')
         if not array_details:
             LOG.error("Cannot connect to array %(array)s.",
                       {'array': array})
@@ -570,7 +706,7 @@ class PowerMaxRest(object):
         :returns: tag list -- list or empty list
         """
         target_uri = '/%s/system/tag?array_id=%s' % (U4V_VERSION, array)
-        array_tags = self._get_request(target_uri, 'system')
+        array_tags = self.get_request(target_uri, 'system')
         return array_tags.get('tag_name')
 
     def is_next_gen_array(self, array):
@@ -967,6 +1103,12 @@ class PowerMaxRest(object):
                         device_id = t_list[(len(t_list) - 1)]
                         device_id = device_id[1:-1]
                         break
+                    elif POPULATE_SG_LIST in desc:
+                        regex_str = (r'Populating Storage Group\(s\) ' +
+                                     r'with volumes : \[(.+)\]$')
+                        full_str = re.compile(regex_str)
+                        match = full_str.match(desc)
+                        device_id = match.group(1) if match else None
                     if device_id:
                         self.get_volume(array, device_id)
                 except Exception as e:
@@ -1839,7 +1981,7 @@ class PowerMaxRest(object):
         array_capabilities = None
         target_uri = ("/%s/replication/capabilities/symmetrix"
                       % U4V_VERSION)
-        capabilities = self._get_request(
+        capabilities = self.get_request(
             target_uri, 'replication capabilities')
         if capabilities:
             symm_list = capabilities['symmetrixCapability']
@@ -2245,19 +2387,26 @@ class PowerMaxRest(object):
                 snap_src_dict_list.append(snap_src_dict)
 
         if snap_tgt:
-            snap_tgt_dict['source_vol_id'] = snap_tgt['linkSourceName']
+            snap_tgt_dict['source_vol_id'] = snap_tgt.get('linkSourceName')
             snap_tgt_dict['target_vol_id'] = device_id
-            snap_tgt_dict['state'] = snap_tgt['state']
-            snap_tgt_dict['copy_mode'] = snap_tgt['copy']
+            snap_tgt_dict['state'] = snap_tgt.get('state')
+            snap_tgt_dict['copy_mode'] = snap_tgt.get('copy')
 
             vol_info = self._get_private_volume(array, device_id)
-            vol_tf_sessions = vol_info['timeFinderInfo']['snapVXSession']
-            for session in vol_tf_sessions:
-                if session.get('tgtSrcSnapshotGenInfo'):
-                    snap_tgt_link = session.get('tgtSrcSnapshotGenInfo')
-                    snap_tgt_dict['snap_name'] = snap_tgt_link['snapshotName']
-                    snap_tgt_dict['expired'] = snap_tgt_link['expired']
-                    snap_tgt_dict['generation'] = snap_tgt_link['generation']
+            if vol_info.get('timeFinderInfo'):
+                vol_tf_sessions = vol_info.get(
+                    'timeFinderInfo').get('snapVXSession')
+                if vol_tf_sessions:
+                    for session in vol_tf_sessions:
+                        if session.get('tgtSrcSnapshotGenInfo'):
+                            snap_tgt_link = session.get(
+                                'tgtSrcSnapshotGenInfo')
+                            snap_tgt_dict['snap_name'] = snap_tgt_link.get(
+                                'snapshotName')
+                            snap_tgt_dict['expired'] = snap_tgt_link.get(
+                                'expired')
+                            snap_tgt_dict['generation'] = snap_tgt_link.get(
+                                'generation')
 
         return snap_src_dict_list, snap_tgt_dict
 
@@ -3037,8 +3186,8 @@ class PowerMaxRest(object):
             params = {'to': end_position, 'from': start_position}
             target_uri = ('/common/Iterator/%(iterator_id)s/page' % {
                 'iterator_id': iterator_id})
-            iterator_response = self._get_request(target_uri, 'iterator',
-                                                  params)
+            iterator_response = self.get_request(target_uri, 'iterator',
+                                                 params)
             try:
                 iterator_result += iterator_response['result']
                 start_position += max_page_size

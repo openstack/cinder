@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    PowerMax driver - the minimum version of Unisphere for PowerMax required
+    for Victoria is 9.2, so all the latest 92 REST endpoints will be used.

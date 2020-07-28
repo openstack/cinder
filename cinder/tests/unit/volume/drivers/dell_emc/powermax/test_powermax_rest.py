@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2019 Dell Inc. or its subsidiaries.
+# Copyright (c) 2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -422,6 +422,17 @@ class PowerMaxRestTest(test.TestCase):
             self.data.array, volume_name, self.data.defaultstoragegroup_name,
             self.data.test_volume.size, self.data.extra_specs)
         self.assertEqual(ref_dict, volume_dict)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume')
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_job',
+                       return_value=tpd.PowerMaxData.vol_create_task)
+    def test_create_volume_from_sg_existing_volume_success(
+            self, mock_task, mock_get):
+        volume_name = self.data.volume_details[0]['volume_identifier']
+        self.rest.create_volume_from_sg(
+            self.data.array, volume_name, self.data.defaultstoragegroup_name,
+            self.data.test_volume.size, self.data.extra_specs)
+        mock_get.assert_called_with(self.data.array, self.data.device_id)
 
     def test_create_volume_from_sg_failed(self):
         volume_name = self.data.volume_details[0]['volume_identifier']
@@ -1695,7 +1706,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_iterator_list(self):
         with mock.patch.object(
-                self.rest, '_get_request', side_effect=[
+                self.rest, 'get_request', side_effect=[
                     self.data.rest_iterator_resonse_one,
                     self.data.rest_iterator_resonse_two]):
             expected_response = [
@@ -1744,7 +1755,7 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_vmax_model(self):
         reference = 'PowerMax_2000'
-        with mock.patch.object(self.rest, '_get_request',
+        with mock.patch.object(self.rest, 'get_request',
                                return_value=self.data.powermax_model_details):
             self.assertEqual(self.rest.get_vmax_model(self.data.array),
                              reference)
@@ -2224,7 +2235,7 @@ class PowerMaxRestTest(test.TestCase):
                           array_id, sg_name, rdf_group_no, rep_extra_specs)
 
     def test_validate_unisphere_version_unofficial_success(self):
-        version = 'T9.1.0.1054'
+        version = 'T9.2.0.1054'
         returned_version = {'version': version}
         with mock.patch.object(self.rest, "request",
                                return_value=(200,
@@ -2253,3 +2264,69 @@ class PowerMaxRestTest(test.TestCase):
             self.assertTrue(valid_version)
         request_count = mock_req.call_count
         self.assertEqual(1, request_count)
+
+    @mock.patch.object(rest.PowerMaxRest, '_build_uri_kwargs')
+    @mock.patch.object(rest.PowerMaxRest, '_build_uri_legacy_args')
+    def test_build_uri_legacy(self, mck_build_legacy, mck_build_kwargs):
+        self.rest.build_uri('array', f_key='test')
+        mck_build_legacy.assert_called_once()
+        mck_build_kwargs.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, '_build_uri_kwargs')
+    @mock.patch.object(rest.PowerMaxRest, '_build_uri_legacy_args')
+    def test_build_uri_kwargs(self, mck_build_legacy, mck_build_kwargs):
+        self.rest.build_uri(array='test', f_key='test')
+        mck_build_legacy.assert_not_called()
+        mck_build_kwargs.assert_called_once()
+
+    def test_build_uri_legacy_args_private_no_version(self):
+        target_uri = self.rest._build_uri_legacy_args(
+            self.data.array, 'sloprovisioning', 'storagegroup',
+            resource_name='test-sg', private=True, no_version=True)
+        expected_uri = (
+            '/private/sloprovisioning/symmetrix/%(arr)s/storagegroup/test-sg' %
+            {'arr': self.data.array})
+        self.assertEqual(target_uri, expected_uri)
+
+    def test_build_uri_legacy_args_public_version(self):
+        target_uri = self.rest._build_uri_legacy_args(
+            self.data.array, 'sloprovisioning', 'storagegroup',
+            resource_name='test-sg')
+        expected_uri = (
+            '/%(ver)s/sloprovisioning/symmetrix/%(arr)s/storagegroup/test-sg' %
+            {'ver': rest.U4V_VERSION, 'arr': self.data.array})
+        self.assertEqual(target_uri, expected_uri)
+
+    def test_build_uri_kwargs_private_no_version(self):
+        target_uri = self.rest._build_uri_kwargs(
+            no_version=True, private=True, category='test')
+        expected_uri = '/private/test'
+        self.assertEqual(target_uri, expected_uri)
+
+    def test_build_uri_kwargs_public_version(self):
+        target_uri = self.rest._build_uri_kwargs(category='test')
+        expected_uri = '/%(ver)s/test' % {'ver': rest.U4V_VERSION}
+        self.assertEqual(target_uri, expected_uri)
+
+    def test_build_uri_kwargs_full_uri(self):
+        target_uri = self.rest._build_uri_kwargs(
+            category='test-cat',
+            resource_level='res-level', resource_level_id='id1',
+            resource_type='res-type', resource_type_id='id2',
+            resource='res', resource_id='id3',
+            object_type='obj', object_type_id='id4')
+        expected_uri = (
+            '/%(ver)s/test-cat/res-level/id1/res-type/id2/res/id3/obj/id4' % {
+                'ver': rest.U4V_VERSION})
+        self.assertEqual(target_uri, expected_uri)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'request', return_value=(200, {'success': True}))
+    def test_post_request(self, mck_request):
+        test_uri = '/92/test/uri'
+        test_op = 'performance metrics'
+        test_filters = {'filters': False}
+        response_obj = self.rest.post_request(test_uri, test_op, test_filters)
+        mck_request.assert_called_once_with(
+            test_uri, rest.POST, request_object=test_filters)
+        self.assertEqual(response_obj, {'success': True})

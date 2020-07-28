@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2018 Dell Inc. or its subsidiaries.
+# Copyright (c) 2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -2824,17 +2824,17 @@ class PowerMaxCommon(object):
         :param array: the array serial number
         :param extra_specs: extra specifications
         """
-        snap_name = session['snap_name']
-        source = session['source_vol_id']
-        generation = session['generation']
-        expired = session['expired']
+        snap_name = session.get('snap_name')
+        source = session.get('source_vol_id')
+        generation = session.get('generation')
+        expired = session.get('expired')
 
         target, cm_enabled = None, False
         if session.get('target_vol_id'):
-            target = session['target_vol_id']
-            cm_enabled = session['copy_mode']
+            target = session.get('target_vol_id')
+            cm_enabled = session.get('copy_mode')
 
-        if target:
+        if target and snap_name:
             loop = True if cm_enabled else False
             LOG.debug(
                 "Unlinking source from target. Source: %(vol)s, Target: "
@@ -2848,7 +2848,7 @@ class PowerMaxCommon(object):
         # 1. If legacy snapshot with 'EMC_SMI' in snapshot name
         # 2. If snapVX snapshot with copy mode enabled
         # 3. If snapVX snapshot with copy mode disabled and not expired
-        if ('EMC_SMI' in snap_name or cm_enabled or (
+        if (snap_name and 'EMC_SMI' in snap_name or cm_enabled or (
                 not cm_enabled and not expired)):
             LOG.debug(
                 "Deleting temporary snapshot. Source: %(vol)s, snap name: "
