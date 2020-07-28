@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    NetApp SolidFire driver:
+    Added inter-cluster volume migration (storage assisted) support. This allows
+    users to efficiently migrate volumes between different SolidFire backends.

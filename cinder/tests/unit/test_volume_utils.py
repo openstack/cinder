@@ -41,6 +41,7 @@ from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume import throttling
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
@@ -1197,3 +1198,35 @@ class VolumeUtilsTestCase(test.TestCase):
                               db,
                               volume,
                               mock.sentinel.context)
+
+    @mock.patch('cinder.volume.volume_utils.CONF.list_all_sections')
+    def test_get_backend_configuration_backend_stanza_not_found(self,
+                                                                mock_conf):
+        mock_conf.return_value = []
+        self.assertRaises(exception.ConfigNotFound,
+                          volume_utils.get_backend_configuration,
+                          'backendA')
+
+        mock_conf.return_value = ['backendB']
+        self.assertRaises(exception.ConfigNotFound,
+                          volume_utils.get_backend_configuration,
+                          'backendA')
+
+    @mock.patch('cinder.volume.volume_utils.CONF.list_all_sections')
+    @mock.patch('cinder.volume.configuration.Configuration')
+    def test_get_backend_configuration_backend_opts(self, mock_configuration,
+                                                    mock_conf):
+        mock_conf.return_value = ['backendA']
+        volume_utils.get_backend_configuration('backendA', ['someFakeOpt'])
+        mock_configuration.assert_called_with(driver.volume_opts,
+                                              config_group='backendA')
+        mock_configuration.return_value.\
+            append_config_values.assert_called_with(['someFakeOpt'])
+
+    @mock.patch('cinder.volume.volume_utils.CONF.list_all_sections')
+    @mock.patch('cinder.volume.configuration.Configuration')
+    def test_get_backend_configuration(self, mock_configuration, mock_conf):
+        mock_conf.return_value = ['backendA']
+        volume_utils.get_backend_configuration('backendA')
+        mock_configuration.assert_called_with(driver.volume_opts,
+                                              config_group='backendA')

@@ -14,14 +14,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
 import datetime
 import re
 from unittest import mock
+from unittest.mock import call
+from unittest.mock import MagicMock
 
 from ddt import data
 from ddt import ddt
 from ddt import file_data
 from ddt import unpack
+from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
 import six
@@ -151,13 +155,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                            'iqn': 'super_fake_iqn'}
 
         self.fake_primary_cluster = (
-            {'endpoint': {
-                'passwd': 'admin',
-                'port': 443,
-                'url': 'https://192.168.139.11:443',
-                'svip': '10.10.8.11',
-                'mvip': '10.10.8.12',
-                'login': 'admin'},
+            {'endpoint': {'passwd': 'admin', 'port': 443,
+                          'url': 'https://192.168.139.11:443',
+                          'svip': '10.10.8.11',
+                          'mvip': '10.10.8.12',
+                          'login': 'admin'},
              'name': 'volume-f0632d53-d836-474c-a5bc-478ef18daa32',
              'clusterPairID': 33,
              'uuid': 'f0632d53-d836-474c-a5bc-478ef18daa32',
@@ -167,6 +169,25 @@ class SolidFireVolumeTestCase(test.TestCase):
              'encryptionAtRestState': 'disabled',
              'attributes': {},
              'mvip': '10.10.8.12',
+             'ensemble': ['10.10.5.130'],
+             'svipNodeID': 1})
+
+        self.fake_secondary_cluster = (
+            {'endpoint': {'passwd': 'admin', 'port': 443,
+                          'url': 'https://192.168.139.102:443',
+                          'svip': '10.10.8.134',
+                          'mvip': '192.168.139.102',
+                          'login': 'admin'},
+             'name': 'AutoTest2-6AjG-FOR-TEST-ONLY',
+             'clusterPairID': 331,
+             'clusterAPIVersion': '9.4',
+             'uuid': '9c499d4b-8fff-48b4-b875-27601d5d9889',
+             'svip': '10.10.23.2',
+             'mvipNodeID': 1,
+             'repCount': 1,
+             'encryptionAtRestState': 'disabled',
+             'attributes': {},
+             'mvip': '192.168.139.102',
              'ensemble': ['10.10.5.130'],
              'svipNodeID': 1})
 
@@ -3455,3 +3476,698 @@ class SolidFireVolumeTestCase(test.TestCase):
             expected_tgt_params,
             endpoint=self.cluster_pairs[0]['endpoint']
         )
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalWithTimeoutLoopingCall')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_cluster_pair')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_remote_pairing')
+    def test_get_or_create_cluster_pairing(
+            self, mock_create_remote_pairing,
+            mock_get_cluster_pair,
+            mock_create_cluster_reference,
+            mock_issue_api_request,
+            mock_looping_call):
+
+        fake_remote_pair_connected = {'status': 'Connected'}
+        mock_get_cluster_pair.side_effect = [None, fake_remote_pair_connected]
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv._get_or_create_cluster_pairing(
+            self.fake_secondary_cluster, check_connected=True)
+
+        mock_get_cluster_pair.assert_has_calls(
+            [call(self.fake_secondary_cluster),
+             call(self.fake_secondary_cluster)])
+
+        mock_create_remote_pairing.assert_called_with(
+            self.fake_secondary_cluster)
+
+        mock_looping_call.assert_not_called()
+        self.assertEqual(fake_remote_pair_connected, result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_cluster_pair')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_remote_pairing')
+    def test_get_or_create_cluster_pairing_check_connected_true(
+            self, mock_create_remote_pairing,
+            mock_get_cluster_pair,
+            mock_create_cluster_reference,
+            mock_issue_api_request):
+
+        fake_remote_pair_misconfigured = {'status': 'Misconfigured'}
+        fake_remote_pair_connected = {'status': 'Connected'}
+        mock_get_cluster_pair.side_effect = [None,
+                                             fake_remote_pair_misconfigured,
+                                             fake_remote_pair_connected]
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv._get_or_create_cluster_pairing(
+            self.fake_secondary_cluster, check_connected=True)
+
+        mock_get_cluster_pair.assert_has_calls(
+            [call(self.fake_secondary_cluster),
+             call(self.fake_secondary_cluster),
+             call(self.fake_secondary_cluster)])
+
+        mock_create_remote_pairing.assert_called_with(
+            self.fake_secondary_cluster)
+
+        self.assertEqual(fake_remote_pair_connected, result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def test_get_cluster_pair(self, mock_create_cluster_reference,
+                              mock_update_cluster_status,
+                              mock_issue_api_request):
+        fake_cluster_pair = {
+            'result': {
+                'clusterPairs': [{
+                    'mvip': self.fake_secondary_cluster['mvip']
+                }]
+            }
+        }
+        mock_issue_api_request.return_value = fake_cluster_pair
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv._get_cluster_pair(self.fake_secondary_cluster)
+
+        mock_issue_api_request.assert_called_with('ListClusterPairs', {},
+                                                  version='8.0')
+        self.assertEqual(
+            fake_cluster_pair['result']['clusterPairs'][0], result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def test_get_cluster_pair_remote_not_found(self,
+                                               mock_create_cluster_reference,
+                                               mock_update_cluster_status,
+                                               mock_issue_api_request):
+        fake_cluster_pair = {
+            'result': {
+                'clusterPairs': []
+            }
+        }
+        mock_issue_api_request.return_value = fake_cluster_pair
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv._get_cluster_pair(self.fake_secondary_cluster)
+
+        mock_issue_api_request.assert_called_with('ListClusterPairs', {},
+                                                  version='8.0')
+        self.assertIsNone(result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def _create_volume_pairing(self, mock_issue_api_request,
+                               mock_update_cluster_status,
+                               mock_create_cluster_reference):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        fake_src_sf_volid = 1111
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool',
+            'status': 'in-use',
+            'provider_id': "%s %s %s" % (fake_src_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         self.fake_primary_cluster['uuid'])
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+        fake_dst_sf_volid = 9999
+        fake_dst_volume = {
+            'provider_id': "%s %s %s" % (fake_dst_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         fake_dst_cluster_ref['uuid'])
+        }
+
+        fake_start_volume_pairing = {
+            {'result': {'volumePairingKey': 'CAFE'}}
+        }
+        mock_issue_api_request.side_effect = [MagicMock(),
+                                              fake_start_volume_pairing]
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv._create_volume_pairing(vol, fake_dst_volume, fake_dst_cluster_ref)
+
+        src_params = {'volumeID': fake_src_sf_volid, 'mode': "Sync"}
+        dst_params = {'volumeID': fake_dst_sf_volid,
+                      'volumePairingKey': 'CAFE'}
+
+        mock_issue_api_request.assert_has_calls([
+            call('RemoveVolumePair', src_params, '8.0'),
+            call('StartVolumePairing', src_params, '8.0'),
+            call('CompleteVolumePairing', dst_params, '8.0',
+                 endpoint=fake_dst_cluster_ref['endpoint'])])
+
+    @mock.patch('cinder.volume.drivers.solidfire.retry')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    def _create_volume_pairing_timeout(self, mock_issue_api_request,
+                                       mock_update_cluster_status,
+                                       mock_create_cluster_reference,
+                                       mock_retry):
+
+        ctx = context.get_admin_context()
+        fake_src_sf_volid = 1111
+        vol_fields = {
+            'provider_id': "%s %s %s" % (fake_src_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         self.fake_primary_cluster['uuid'])
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+        fake_dst_sf_volid = 9999
+        fake_dst_volume = {
+            'provider_id': "%s %s %s" % (fake_dst_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         fake_dst_cluster_ref['uuid'])
+        }
+        mock_retry.side_effect = solidfire.SolidFireReplicationPairingError()
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        mock_issue_api_request.reset_mock()
+        self.assertRaises(solidfire.SolidFireReplicationPairingError,
+                          sfv._create_volume_pairing, vol, fake_dst_volume,
+                          fake_dst_cluster_ref)
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    def test_migrate_volume_volume_is_not_available(
+            self, mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+
+        vol_fields = {
+            'status': 'in-use'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        host = {'host': 'fakeHost@anotherFakeBackend#fakePool'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.assertRaises(exception.InvalidVolume,
+                          sfv.migrate_volume, ctx, vol, host)
+
+        mock_do_intercluster_volume_migration.assert_not_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    def test_migrate_volume_volume_is_replicated(
+            self, mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'extra_specs': {'replication_enabled': '<is> True'},
+                       'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@fakeBackend#fakePool'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        self.assertRaises(exception.InvalidVolume,
+                          sfv.migrate_volume, ctx, vol, host)
+        mock_do_intercluster_volume_migration.assert_not_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    def test_migrate_volume_same_host_and_backend(
+            self, mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@fakeBackend#fakePool'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv.migrate_volume(ctx, vol, host)
+
+        mock_do_intercluster_volume_migration.assert_not_called()
+        self.assertEqual((True, {}), result)
+
+    @mock.patch('cinder.volume.volume_utils.get_backend_configuration')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    def test_migrate_volume_different_host_same_backend(
+            self, mock_do_intercluster_volume_migration,
+            mock_get_backend_configuration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'anotherFakeHost@fakeBackend#fakePool'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv.migrate_volume(ctx, vol, host)
+
+        mock_get_backend_configuration.assert_not_called()
+        mock_do_intercluster_volume_migration.assert_not_called()
+
+        self.assertEqual((True, {}), result)
+
+    @mock.patch('cinder.volume.volume_utils.get_backend_configuration')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    def test_migrate_volume_config_stanza_not_found(
+            self, mock_do_intercluster_volume_migration,
+            mock_get_backend_configuration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@anotherFakeBackend#fakePool'}
+
+        mock_get_backend_configuration.side_effect = \
+            exception.ConfigNotFound('error')
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.assertRaises(exception.VolumeMigrationFailed,
+                          sfv.migrate_volume, ctx, vol, host)
+
+        mock_get_backend_configuration.assert_called_with(
+            'anotherFakeBackend', sfv.get_driver_options())
+
+        mock_do_intercluster_volume_migration.assert_not_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    @mock.patch('cinder.volume.volume_utils.get_backend_configuration')
+    def test_migrate_volume_different_backend_same_cluster(
+            self, mock_get_backend_configuration,
+            mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@anotherFakeBackend#fakePool'}
+
+        dst_config = conf.BackendGroupConfiguration(
+            [], conf.SHARED_CONF_GROUP)
+        dst_config.san_ip = '10.10.10.10'
+
+        mock_get_backend_configuration.return_value = dst_config
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.active_cluster['mvip'] = '10.10.10.10'
+        result = sfv.migrate_volume(ctx, vol, host)
+
+        mock_get_backend_configuration.assert_called_with(
+            'anotherFakeBackend', sfv.get_driver_options())
+
+        mock_do_intercluster_volume_migration.assert_not_called()
+        self.assertEqual((True, {}), result)
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
+    @mock.patch('cinder.volume.volume_utils.get_backend_configuration')
+    def test_migrate_volume_different_cluster(
+            self, mock_get_backend_configuration,
+            mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@anotherFakeBackend#fakePool'}
+
+        dst_config = conf.BackendGroupConfiguration(
+            [], conf.SHARED_CONF_GROUP)
+        dst_config.san_ip = '10.10.10.10'
+
+        mock_get_backend_configuration.return_value = dst_config
+        mock_do_intercluster_volume_migration.return_value = {}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.active_cluster['mvip'] = '20.20.20.20'
+        result = sfv.migrate_volume(ctx, vol, host)
+
+        mock_do_intercluster_volume_migration.assert_called()
+        self.assertEqual((True, {}), result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_build_endpoint_info')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_setup_intercluster_volume_migration')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration_data_sync')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_cleanup_intercluster_volume_migration')
+    def test_do_intercluster_volume_migration(
+            self, mock_cleanup_intercluster_volume_migration,
+            mock_do_intercluster_volume_migration_data_sync,
+            mock_setup_intercluster_volume_migration,
+            mock_create_cluster_reference,
+            mock_build_endpoint_info):
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid()
+        }
+
+        vol = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                          **vol_fields)
+        host = {'host': 'fakeHost@anotherFakeBackend#fakePool'}
+
+        dst_config = conf.BackendGroupConfiguration(
+            [], conf.SHARED_CONF_GROUP)
+
+        fake_dst_endpoint = deepcopy(self.fake_secondary_cluster['endpoint'])
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+
+        mock_build_endpoint_info.return_value = fake_dst_endpoint
+        mock_create_cluster_reference.return_value = fake_dst_cluster_ref
+
+        fake_dst_volume = {
+            'provider_id': "%s %s %s" % (9999,
+                                         fakes.get_fake_uuid(),
+                                         fake_dst_cluster_ref['uuid'])
+        }
+
+        mock_setup_intercluster_volume_migration.return_value = \
+            fake_dst_volume
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv._do_intercluster_volume_migration(vol, host, dst_config)
+
+        mock_build_endpoint_info.assert_called_once_with(
+            backend_conf=dst_config)
+
+        mock_create_cluster_reference.assert_called_with(fake_dst_endpoint)
+        mock_setup_intercluster_volume_migration.assert_called_with(
+            vol, fake_dst_cluster_ref)
+        mock_do_intercluster_volume_migration_data_sync.assert_called_with(
+            vol, None, 9999, fake_dst_cluster_ref)
+        mock_cleanup_intercluster_volume_migration.assert_called_with(
+            vol, 9999, fake_dst_cluster_ref)
+        self.assertEqual(fake_dst_volume, result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_default_volume_params')
+    @mock.patch.object(solidfire.SolidFireDriver, '_do_volume_create')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_volume_pairing')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_get_or_create_cluster_pairing')
+    def test_setup_intercluster_volume_migration(
+            self, mock_get_or_create_cluster_pairing,
+            mock_issue_api_request,
+            mock_create_volume_pairing,
+            mock_do_volume_create,
+            mock_get_default_volume_params,
+            mock_get_create_account,
+            mock_create_cluster_reference):
+
+        fake_project_id = fakes.get_fake_uuid()
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'project_id': fake_project_id
+        }
+
+        vol = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                          **vol_fields)
+
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+
+        fake_sfaccount = {'username': 'fakeAccount'}
+        mock_get_create_account.return_value = fake_sfaccount
+
+        fake_vol_default_params = {'name': 'someFakeVolumeName'}
+        mock_get_default_volume_params.return_value = fake_vol_default_params
+
+        fake_dst_volume = {'volumeID': 9999}
+        mock_do_volume_create.return_value = fake_dst_volume
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        mock_issue_api_request.reset_mock()
+        result = sfv._setup_intercluster_volume_migration(
+            vol, fake_dst_cluster_ref)
+
+        mock_get_or_create_cluster_pairing.assert_called_with(
+            fake_dst_cluster_ref, check_connected=True)
+        mock_get_create_account.assert_called_with(
+            fake_project_id, endpoint=fake_dst_cluster_ref['endpoint'])
+        mock_get_default_volume_params.assert_called_with(vol, fake_sfaccount)
+        mock_do_volume_create.assert_called_with(
+            fake_sfaccount,
+            fake_vol_default_params,
+            endpoint=fake_dst_cluster_ref['endpoint'])
+        mock_issue_api_request.assert_not_called()
+        mock_create_volume_pairing.assert_called_with(
+            vol, fake_dst_volume, fake_dst_cluster_ref)
+        self.assertEqual(fake_dst_volume, result)
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_default_volume_params')
+    @mock.patch.object(solidfire.SolidFireDriver, '_do_volume_create')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_volume_pairing')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_get_or_create_cluster_pairing')
+    def test_setup_intercluster_volume_migration_rollback(
+            self, mock_get_or_create_cluster_pairing,
+            mock_issue_api_request,
+            mock_create_volume_pairing,
+            mock_do_volume_create,
+            mock_get_default_volume_params,
+            mock_get_create_account,
+            mock_create_cluster_reference):
+
+        fake_project_id = fakes.get_fake_uuid()
+        fake_src_sf_volid = 1111
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'project_id': fake_project_id,
+            'provider_id': "%s %s %s" % (fake_src_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         self.fake_primary_cluster['uuid'])
+        }
+
+        vol = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                          **vol_fields)
+
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+
+        fake_dst_sf_volid = 9999
+        fake_dst_volume = {
+            'provider_id': "%s %s %s" % (fake_dst_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         fake_dst_cluster_ref['uuid'])
+        }
+
+        mock_do_volume_create.return_value = fake_dst_volume
+
+        mock_create_volume_pairing.side_effect = \
+            solidfire.SolidFireReplicationPairingError()
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.assertRaises(solidfire.SolidFireReplicationPairingError,
+                          sfv._setup_intercluster_volume_migration, vol,
+                          fake_dst_cluster_ref)
+
+        src_params = {'volumeID': fake_src_sf_volid}
+        dst_params = {'volumeID': fake_dst_sf_volid}
+        mock_issue_api_request.assert_has_calls([
+            call('RemoveVolumePair', src_params, '8.0'),
+            call('RemoveVolumePair', dst_params, '8.0',
+                 endpoint=fake_dst_cluster_ref["endpoint"]),
+            call('DeleteVolume', dst_params,
+                 endpoint=fake_dst_cluster_ref["endpoint"]),
+            call('PurgeDeletedVolume', dst_params,
+                 endpoint=fake_dst_cluster_ref["endpoint"])])
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration_complete_data_sync')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_do_intercluster_volume_migration_data_sync(
+            self, mock_issue_api_request,
+            mock_create_cluster_reference,
+            mock_get_sf_volume,
+            mock_do_intercluster_volume_migration_complete_data_sync):
+
+        fake_src_sf_volid = 1111
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'provider_id': "%s %s %s" % (fake_src_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         self.fake_primary_cluster['uuid'])
+        }
+        vol = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                          **vol_fields)
+
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+        fake_dst_sf_volid = 9999
+        fake_sfaccount = {'accountID': 'fakeAccountID'}
+
+        mock_get_sf_volume.return_value = {
+            'volumePairs': [{'remoteReplication': {'state': 'Active'}}]
+        }
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv._do_intercluster_volume_migration_data_sync(vol, fake_sfaccount,
+                                                        fake_dst_sf_volid,
+                                                        fake_dst_cluster_ref)
+
+        params = {'volumeID': fake_dst_sf_volid, 'access': 'replicationTarget'}
+        mock_issue_api_request.assert_called_with(
+            'ModifyVolume', params, '8.0',
+            endpoint=fake_dst_cluster_ref['endpoint'])
+
+        vol_params = {'accountID': fake_sfaccount['accountID']}
+        mock_get_sf_volume.assert_called_with(vol.id, vol_params)
+
+        mock_do_intercluster_volume_migration_complete_data_sync\
+            .asert_called_with(fake_dst_sf_volid, fake_dst_cluster_ref)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalWithTimeoutLoopingCall')
+    @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration_complete_data_sync')
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_do_intercluster_volume_migration_data_sync_timeout(
+            self, mock_issue_api_request, mock_create_cluster_reference,
+            mock_do_intercluster_volume_migration_complete_data_sync,
+            mock_get_sf_volume,
+            mock_looping_call):
+
+        fake_src_sf_volid = 1111
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'provider_id': "%s %s %s" % (fake_src_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         self.fake_primary_cluster['uuid'])
+        }
+        vol = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                          **vol_fields)
+
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+        fake_dst_sf_volid = 9999
+        fake_sfaccount = {'accountID': 'fakeAccountID'}
+
+        mock_looping_call.return_value.start.return_value.wait.side_effect = (
+            loopingcall.LoopingCallTimeOut())
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.assertRaises(solidfire.SolidFireDataSyncTimeoutError,
+                          sfv._do_intercluster_volume_migration_data_sync,
+                          vol,
+                          fake_sfaccount,
+                          fake_dst_sf_volid,
+                          fake_dst_cluster_ref)
+
+        mock_get_sf_volume.assert_not_called()
+        mock_do_intercluster_volume_migration_complete_data_sync\
+            .assert_not_called()
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_do_intercluster_volume_migration_complete_data_sync(
+            self, mock_issue_api_request, mock_create_cluster_reference):
+
+        fake_src_sf_volid = 1111
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv._do_intercluster_volume_migration_complete_data_sync(
+            fake_src_sf_volid, fake_dst_cluster_ref)
+
+        params = {'volumeID': fake_src_sf_volid, 'access': 'readWrite'}
+        mock_issue_api_request.assert_called_with(
+            'ModifyVolume', params, '8.0',
+            endpoint=fake_dst_cluster_ref['endpoint'])
+
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_cleanup_intercluster_volume_migration(
+            self, mock_issue_api_request, mock_create_cluster_reference):
+        fake_src_sf_volid = 1111
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'provider_id': "%s %s %s" % (fake_src_sf_volid,
+                                         fakes.get_fake_uuid(),
+                                         self.fake_primary_cluster['uuid'])
+        }
+        vol = fake_volume.fake_volume_obj(context.get_admin_context(),
+                                          **vol_fields)
+
+        fake_dst_cluster_ref = deepcopy(self.fake_secondary_cluster)
+        fake_dst_sf_volid = 9999
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv._cleanup_intercluster_volume_migration(vol, fake_dst_sf_volid,
+                                                   fake_dst_cluster_ref)
+
+        src_params = {'volumeID': fake_src_sf_volid}
+        dst_params = {'volumeID': fake_dst_sf_volid}
+        mock_issue_api_request.assert_has_calls([
+            call('RemoveVolumePair', dst_params, '8.0',
+                 endpoint=fake_dst_cluster_ref["endpoint"]),
+            call('RemoveVolumePair', src_params, '8.0'),
+            call('DeleteVolume', src_params),
+            call('PurgeDeletedVolume', src_params)])

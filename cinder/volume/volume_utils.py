@@ -56,6 +56,8 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import rpc
 from cinder import utils
+from cinder.volume import configuration
+from cinder.volume import driver
 from cinder.volume import group_types
 from cinder.volume import throttling
 from cinder.volume import volume_types
@@ -1277,3 +1279,25 @@ def upload_volume(context, image_service, image_meta, volume_path,
                               run_as_root=run_as_root,
                               compress=compress, store_id=store_id,
                               base_image_ref=base_image_ref)
+
+
+def get_backend_configuration(backend_name, backend_opts=None):
+    """Get a configuration object for a specific backend."""
+
+    config_stanzas = CONF.list_all_sections()
+    if backend_name not in config_stanzas:
+        msg = _("Could not find backend stanza %(backend_name)s in "
+                "configuration. Available stanzas are %(stanzas)s")
+        params = {
+            "stanzas": config_stanzas,
+            "backend_name": backend_name,
+        }
+        raise exception.ConfigNotFound(message=msg % params)
+
+    config = configuration.Configuration(driver.volume_opts,
+                                         config_group=backend_name)
+
+    if backend_opts:
+        config.append_config_values(backend_opts)
+
+    return config
