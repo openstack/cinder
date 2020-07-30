@@ -34,8 +34,9 @@ class PowerMaxPerformanceTest(test.TestCase):
         self.data = tpd.PowerMaxData()
         self.reference_cinder_conf = tpfo.FakeConfiguration(
             None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i],
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_i],
             load_balance=True, load_balance_real_time=True,
             load_data_format='avg', load_look_back=60,
             load_look_back_real_time=10, port_group_load_metric='PercentBusy',

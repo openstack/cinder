@@ -328,16 +328,16 @@ class FakeConfiguration(object):
         for key, value in kwargs.items():
             if 'san_' in key:
                 self.set_san_config_options(key, value)
-            elif 'vmax_' in key:
-                self.set_vmax_config_options(key, value)
+            elif 'powermax_' and '_name_template' in key:
+                self.set_host_name_template_config_options(key, value)
+            elif 'powermax_' in key:
+                self.set_powermax_config_options(key, value)
             elif 'chap_' in key:
                 self.set_chap_config_options(key, value)
             elif 'driver_ssl_cert' in key:
                 self.set_ssl_cert_config_options(key, value)
             elif 'u4p_' in key:
                 self.set_u4p_failover_config_options(key, value)
-            elif '_name_template' in key:
-                self.set_host_name_template_config_options(key, value)
             elif 'load_' in key:
                 self.set_performance_config_options(key, value)
 
@@ -351,17 +351,17 @@ class FakeConfiguration(object):
         elif key == 'san_api_port':
             self.san_api_port = value
 
-    def set_vmax_config_options(self, key, value):
-        if key == 'vmax_srp':
-            self.vmax_srp = value
-        elif key == 'vmax_service_level':
-            self.vmax_service_level = value
-        elif key == 'vmax_workload':
-            self.vmax_workload = value
-        elif key == 'vmax_port_groups':
-            self.vmax_port_groups = value
-        elif key == 'vmax_array':
-            self.vmax_array = value
+    def set_powermax_config_options(self, key, value):
+        if key == 'powermax_srp':
+            self.powermax_srp = value
+        elif key == 'powermax_service_level':
+            self.powermax_service_level = value
+        elif key == 'powermax_workload':
+            self.powermax_workload = value
+        elif key == 'powermax_port_groups':
+            self.powermax_port_groups = value
+        elif key == 'powermax_array':
+            self.powermax_array = value
 
     def set_chap_config_options(self, key, value):
         if key == 'use_chap_auth':

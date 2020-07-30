@@ -34,8 +34,9 @@ class PowerMaxISCSITest(test.TestCase):
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = tpfo.FakeConfiguration(
             None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_i])
         rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=tpfo.FakeRequestsSession())
         driver = iscsi.PowerMaxISCSIDriver(configuration=configuration)
@@ -236,10 +237,10 @@ class PowerMaxISCSITest(test.TestCase):
         backup_conf = self.common.configuration
         configuration = tpfo.FakeConfiguration(
             None, 'ISCSITests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_rest_port=8443, use_chap_auth=True,
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_rest_port=8443, use_chap_auth=True,
             chap_username='auth_username', chap_password='auth_secret',
-            vmax_port_groups=[self.data.port_group_name_i])
+            powermax_port_groups=[self.data.port_group_name_i])
         self.driver.configuration = configuration
         ip_and_iqn = [{'ip': self.data.ip, 'iqn': self.data.initiator},
                       {'ip': self.data.ip, 'iqn': self.data.iqn}]
