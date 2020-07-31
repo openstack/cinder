@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Add Python 3 support to the Brocade Zone Manager driver.
+    (bug #1888548).
