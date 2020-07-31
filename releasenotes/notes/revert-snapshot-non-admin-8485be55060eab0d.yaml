@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix revert to snapshot not working for non admin users when using the
+    snapshot's name (bug #1889758).
