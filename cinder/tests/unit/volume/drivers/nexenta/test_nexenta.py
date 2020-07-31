@@ -616,7 +616,9 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nms_mock.snapshot.destroy.assert_called_with(
             'stack/share/volume-1@snapshot1', '')
 
-    def test_delete_volume(self):
+    @mock.patch('os_brick.remotefs.remotefs.'
+                'RemoteFsClient._read_mounts')
+    def test_delete_volume(self, list_mount_points):
         self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
         self._create_volume_db_entry()
 
@@ -633,6 +635,7 @@ class TestNexentaNfsDriver(test.TestCase):
         })
         self.nms_mock.folder.destroy.assert_called_with(
             'stack/share/volume-1', '-r')
+        list_mount_points.assert_called_once()
 
         # Check that exception not raised if folder does not exist on
         # NexentaStor appliance.
