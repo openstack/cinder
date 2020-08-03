@@ -69,7 +69,7 @@ oslo.log==3.44.0
 oslo.messaging==6.4.0
 oslo.middleware==3.31.0
 oslo.policy==1.44.1
-oslo.privsep==1.32.0
+oslo.privsep==2.3.0
 oslo.reports==1.18.0
 oslo.rootwrap==5.8.0
 oslo.serialization==2.25.0
