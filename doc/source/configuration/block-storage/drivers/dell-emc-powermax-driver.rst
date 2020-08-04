@@ -2313,15 +2313,14 @@ To create a consistent group snapshot, set a group-spec, having the key
 
 .. code-block:: console
 
-   cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled="<is> True"
+   # cinder --os-volume-api-version 3.11 group-type-key GROUP_TYPE set consistent_group_snapshot_enabled="<is> True"
 
 Similarly the same key should be set on any volume type which is specified
 while creating the group.
 
 .. code-block:: console
 
-   # openstack volume type set --property replication_enabled="<is> True" /
-                           POWERMAX_REPLICATION
+   # openstack volume type set --property consistent_group_snapshot_enabled="<is> True" POWERMAX_GROUP
 
 If this key is not set on the group-spec or volume type, then the generic
 volume group will be created/managed by Cinder (not the PowerMax driver).
