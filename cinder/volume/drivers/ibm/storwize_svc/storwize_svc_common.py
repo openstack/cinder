@@ -53,6 +53,7 @@ from cinder.volume import volume_utils
 
 INTERVAL_1_SEC = 1
 DEFAULT_TIMEOUT = 15
+CMMVC5753E = "CMMVC5753E"
 LOG = logging.getLogger(__name__)
 
 storwize_svc_opts = [
@@ -1851,21 +1852,30 @@ class StorwizeHelpers(object):
         snapshots_model_update = []
 
         try:
-            for snapshot in snapshots:
+            self.delete_fc_consistgrp(fc_consistgrp)
+        except exception.VolumeBackendAPIException as err:
+            if CMMVC5753E in err.msg:
+                LOG.warning('Failed to delete as flash copy consistency '
+                            'group %s does not exist,ignoring err: %s',
+                            fc_consistgrp, err)
+
+        for snapshot in snapshots:
+            try:
                 self.delete_vdisk(snapshot['name'],
                                   force_unmap=False,
                                   force_delete=True)
-        except exception.VolumeBackendAPIException as err:
-            model_update['status'] = (
-                fields.GroupSnapshotStatus.ERROR_DELETING)
-            LOG.error("Failed to delete the snapshot %(snap)s of "
-                      "CGSnapshot. Exception: %(exception)s.",
-                      {'snap': snapshot['name'], 'exception': err})
-
-        for snapshot in snapshots:
-            snapshots_model_update.append(
-                {'id': snapshot['id'],
-                 'status': model_update['status']})
+                snapshots_model_update.append(
+                    {'id': snapshot['id'],
+                     'status': fields.GroupSnapshotStatus.DELETED})
+            except exception.VolumeBackendAPIException as err:
+                model_update['status'] = (
+                    fields.GroupSnapshotStatus.ERROR_DELETING)
+                snapshots_model_update.append(
+                    {'id': snapshot['id'],
+                     'status': fields.GroupSnapshotStatus.ERROR_DELETING})
+                LOG.error("Failed to delete the snapshot %(snap)s of "
+                          "CGSnapshot. Exception: %(exception)s.",
+                          {'snap': snapshot['name'], 'exception': err})
 
         return model_update, snapshots_model_update
 

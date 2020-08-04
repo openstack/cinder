@@ -6297,6 +6297,76 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_fc_consistgrp')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_storwize_delete_consistgroup_snapshot(self,
+                                                   is_grp_a_cg_snapshot_type,
+                                                   delete_fc_consistgrp,
+                                                   delete_vdisk):
+        is_grp_a_cg_snapshot_type.side_effect = [True, True, True, False, True]
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_ids=[type_ref['id']])
+
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+
+        group_snapshot, snapshots = self._create_group_snapshot(group.id)
+        cgsnapshot_id = group_snapshot.id
+        cg_name = 'cg_snap-' + cgsnapshot_id
+
+        self.driver._helpers.delete_consistgrp_snapshots(cg_name, snapshots)
+
+        delete_fc_consistgrp.assert_has_calls([mock.call(cg_name)])
+        self.assertEqual(2, delete_fc_consistgrp.call_count)
+
+        calls = [mock.call(snapshots[0]['name'], force_delete=True,
+                           force_unmap=False),
+                 mock.call(snapshots[1]['name'], force_delete=True,
+                           force_unmap=False)]
+        delete_vdisk.assert_has_calls(calls, any_order=True)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_fc_consistgrp')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_storwize_delete_consistgroup_snapshot_1(self,
+                                                     is_grp_a_cg_snapshot_type,
+                                                     delete_fc_consistgrp,
+                                                     delete_vdisk):
+        is_grp_a_cg_snapshot_type.side_effect = [True, True, True, False, True]
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_ids=[type_ref['id']])
+
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+
+        group_snapshot, snapshots = self._create_group_snapshot(group.id)
+        cgsnapshot_id = group_snapshot.id
+        cg_name = 'cg_snap-' + cgsnapshot_id
+        delete_vdisk.side_effect = exception.VolumeBackendAPIException(data='')
+
+        (model_update,
+         snap_model_update) = self.driver._helpers.delete_consistgrp_snapshots(
+            cg_name, snapshots)
+        self.assertEqual(fields.GroupSnapshotStatus.ERROR_DELETING,
+                         model_update['status'])
+
+        for snapshot in snap_model_update:
+            self.assertEqual(fields.SnapshotStatus.ERROR_DELETING,
+                             snapshot['status'])
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_storwize_create_group_from_src_invalid(self):
         # Invalid input case for create group from src
         type_ref = volume_types.create(self.ctxt, 'testtype', None)

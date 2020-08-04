@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1890241 <https://bugs.launchpad.net/cinder/+bug/1890241>`_:
+    During delete_group_snapshot on IBM storwize, in case of multiple
+    snapshots in the group, delete flow exits if any one snapshot deletion
+    fails, but it should update error state and continue with deleting
+    other snapshots.
