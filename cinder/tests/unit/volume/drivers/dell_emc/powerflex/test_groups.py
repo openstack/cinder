@@ -22,12 +22,12 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_group
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
 
 
-class TestGroups(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver groups support``"""
+class TestGroups(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver groups support``"""
 
     def setUp(self):
         """Setup a test case environment.

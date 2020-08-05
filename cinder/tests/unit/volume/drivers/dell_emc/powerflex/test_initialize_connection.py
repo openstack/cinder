@@ -17,10 +17,10 @@ from unittest import mock
 from cinder import context
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 
 
-class TestInitializeConnection(vxflexos.TestVxFlexOSDriver):
+class TestInitializeConnection(powerflex.TestPowerFlexDriver):
     def setUp(self):
         """Setup a test case environment."""
 

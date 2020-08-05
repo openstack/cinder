@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2019 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Driver for Dell EMC VxFlex OS (formerly named Dell EMC ScaleIO).
+Driver for Dell EMC PowerFlex (formerly named Dell EMC VxFlex OS).
 """
 
 import math
@@ -39,9 +39,9 @@ from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
-from cinder.volume.drivers.dell_emc.vxflexos import options
-from cinder.volume.drivers.dell_emc.vxflexos import rest_client
-from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
+from cinder.volume.drivers.dell_emc.powerflex import options
+from cinder.volume.drivers.dell_emc.powerflex import rest_client
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 from cinder.volume.drivers.san import san
 from cinder.volume import manager
 from cinder.volume import qos_specs
@@ -50,15 +50,15 @@ from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 
-vxflexos_opts = options.deprecated_opts + options.actual_opts
+powerflex_opts = options.deprecated_opts + options.actual_opts
 
-CONF.register_opts(vxflexos_opts, group=configuration.SHARED_CONF_GROUP)
+CONF.register_opts(powerflex_opts, group=configuration.SHARED_CONF_GROUP)
 
 LOG = logging.getLogger(__name__)
 
 
 PROVISIONING_KEY = "provisioning:type"
-REPLICATION_CG_KEY = "vxflexos:replication_cg"
+REPLICATION_CG_KEY = "powerflex:replication_cg"
 QOS_IOPS_LIMIT_KEY = "maxIOPS"
 QOS_BANDWIDTH_LIMIT = "maxBWS"
 QOS_IOPS_PER_GB = "maxIOPSperGB"
@@ -66,16 +66,16 @@ QOS_BANDWIDTH_PER_GB = "maxBWSperGB"
 
 BLOCK_SIZE = 8
 VOLUME_NOT_FOUND_ERROR = 79
-# This code belongs to older versions of VxFlex OS
+# This code belongs to older versions of PowerFlex
 VOLUME_NOT_MAPPED_ERROR = 84
 VOLUME_ALREADY_MAPPED_ERROR = 81
 MIN_BWS_SCALING_SIZE = 128
-VXFLEXOS_MAX_OVERSUBSCRIPTION_RATIO = 10.0
+POWERFLEX_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 
 
 @interface.volumedriver
-class VxFlexOSDriver(driver.VolumeDriver):
-    """Cinder VxFlex OS(formerly named Dell EMC ScaleIO) Driver
+class PowerFlexDriver(driver.VolumeDriver):
+    """Cinder PowerFlex(formerly named Dell EMC VxFlex OS) Driver
 
     .. code-block:: none
 
@@ -86,28 +86,29 @@ class VxFlexOSDriver(driver.VolumeDriver):
           2.0.4 - Added compatibility with os_brick>1.15.3
           2.0.5 - Change driver name, rename config file options
           3.0.0 - Add support for VxFlex OS 3.0.x and for volumes compression
-          3.5.0 - Add support for VxFlex OS 3.5.x
-          3.5.1 - Add volume replication v2.1 support for VxFlex OS 3.5.x
+          3.5.0 - Add support for PowerFlex 3.5.x
+          3.5.1 - Add volume replication v2.1 support for PowerFlex 3.5.x
           3.5.2 - Add volume migration support
           3.5.3 - Add revert volume to snapshot support
           3.5.4 - Fix for Bug #1823200. See OSSN-0086 for details.
+          3.5.5 - Rebrand VxFlex OS to PowerFlex.
     """
 
-    VERSION = "3.5.4"
+    VERSION = "3.5.5"
     # ThirdPartySystems wiki
-    CI_WIKI_NAME = "DellEMC_VxFlexOS_CI"
+    CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
 
-    vxflexos_qos_keys = (QOS_IOPS_LIMIT_KEY,
-                         QOS_BANDWIDTH_LIMIT,
-                         QOS_IOPS_PER_GB,
-                         QOS_BANDWIDTH_PER_GB)
+    powerflex_qos_keys = (QOS_IOPS_LIMIT_KEY,
+                          QOS_BANDWIDTH_LIMIT,
+                          QOS_IOPS_PER_GB,
+                          QOS_BANDWIDTH_PER_GB)
 
     def __init__(self, *args, **kwargs):
-        super(VxFlexOSDriver, self).__init__(*args, **kwargs)
+        super(PowerFlexDriver, self).__init__(*args, **kwargs)
 
         self.active_backend_id = kwargs.get("active_backend_id")
         self.configuration.append_config_values(san.san_opts)
-        self.configuration.append_config_values(vxflexos_opts)
+        self.configuration.append_config_values(powerflex_opts)
         self.statisticProperties = None
         self.storage_pools = None
         self.provisioning_type = None
@@ -122,17 +123,17 @@ class VxFlexOSDriver(driver.VolumeDriver):
         properties = {}
         self._set_property(
             properties,
-            "vxflexos:replication_cg",
-            "VxFlex OS Replication Consistency Group.",
-            _("Specifies the VxFlex OS Replication Consistency group for a "
+            "powerflex:replication_cg",
+            "PowerFlex Replication Consistency Group.",
+            _("Specifies the PowerFlex Replication Consistency group for a "
               "volume type. Source and target volumes will be added to the "
               "specified RCG during creation."),
             "string")
-        return properties, "vxflexos"
+        return properties, "powerflex"
 
     @staticmethod
     def get_driver_options():
-        return vxflexos_opts
+        return powerflex_opts
 
     @staticmethod
     def _extract_domain_and_pool_from_host(host):
@@ -174,12 +175,12 @@ class VxFlexOSDriver(driver.VolumeDriver):
             self.active_backend_id = manager.VolumeManager.FAILBACK_SENTINEL
         if not self.failover_choices:
             self.failover_choices = {manager.VolumeManager.FAILBACK_SENTINEL}
-        vxflexos_storage_pools = (
-            self.configuration.safe_get("vxflexos_storage_pools")
+        powerflex_storage_pools = (
+            self.configuration.safe_get("powerflex_storage_pools")
         )
-        if vxflexos_storage_pools:
+        if powerflex_storage_pools:
             self.storage_pools = [
-                e.strip() for e in vxflexos_storage_pools.split(",")
+                e.strip() for e in powerflex_storage_pools.split(",")
             ]
         LOG.info("Storage pools names: %s.", self.storage_pools)
         self.provisioning_type = (
@@ -187,7 +188,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         )
         LOG.info("Default provisioning type: %s.", self.provisioning_type)
         self.configuration.max_over_subscription_ratio = (
-            self.configuration.vxflexos_max_over_subscription_ratio
+            self.configuration.powerflex_max_over_subscription_ratio
         )
         self.connector = initiator.connector.InitiatorConnector.factory(
             initiator.SCALEIO,
@@ -205,22 +206,22 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
         # validate oversubscription ratio
         if (self.configuration.max_over_subscription_ratio >
-                VXFLEXOS_MAX_OVERSUBSCRIPTION_RATIO):
+                POWERFLEX_MAX_OVERSUBSCRIPTION_RATIO):
             msg = (_("Max over subscription is configured to %(ratio)1f "
-                     "while VxFlex OS support up to %(vxflexos_ratio)s.") %
+                     "while PowerFlex support up to %(powerflex_ratio)s.") %
                    {"ratio": self.configuration.max_over_subscription_ratio,
-                    "vxflexos_ratio": VXFLEXOS_MAX_OVERSUBSCRIPTION_RATIO})
+                    "powerflex_ratio": POWERFLEX_MAX_OVERSUBSCRIPTION_RATIO})
             raise exception.InvalidInput(reason=msg)
-        # validate that version of VxFlex OS is supported
+        # validate that version of PowerFlex is supported
         if not flex_utils.version_gte(client.query_rest_api_version(), "2.0"):
-            # we are running against a pre-2.0.0 VxFlex OS(ScaleIO) instance
-            msg = (_("Using VxFlex OS versions less "
+            # we are running against a pre-2.0.0 PowerFlex(ScaleIO) instance
+            msg = (_("Using PowerFlex versions less "
                      "than v2.0 has been deprecated and will be "
                      "removed in a future version."))
             versionutils.report_deprecated_feature(LOG, msg)
         if not self.storage_pools:
             msg = (_("Must specify storage pools. "
-                     "Option: vxflexos_storage_pools."))
+                     "Option: powerflex_storage_pools."))
             raise exception.InvalidInput(reason=msg)
         # validate the storage pools and check if zero padding is enabled
         for pool in self.storage_pools:
@@ -241,7 +242,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                 LOG.warning("Zero padding is disabled for pool %s. "
                             "This could lead to existing data being "
                             "accessible on new provisioned volumes. "
-                            "Consult the VxFlex OS product documentation "
+                            "Consult the PowerFlex product documentation "
                             "for information on how to enable zero padding "
                             "and prevent this from occurring.", pool)
         # validate replication configuration
@@ -259,7 +260,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                 )
                 if not (flex_utils.version_gte(primary_version, "3.5") and
                         flex_utils.version_gte(secondary_version, "3.5")):
-                    LOG.info("VxFlex OS versions less than v3.5 do not "
+                    LOG.info("PowerFlex versions less than v3.5 do not "
                              "support replication.")
                     self.replication_enabled = False
                 else:
@@ -280,10 +281,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
             return []
 
     def _get_queryable_statistics(self, sio_type, sio_id):
-        """Get statistic properties that can be obtained from VxFlex OS.
+        """Get statistic properties that can be obtained from PowerFlex.
 
-        :param sio_type: VxFlex OS resource type
-        :param sio_id: VxFlex OS resource id
+        :param sio_type: PowerFlex resource type
+        :param sio_id: PowerFlex resource id
         :return: statistic properties
         """
 
@@ -291,7 +292,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         client = self._get_client()
 
         if self.statisticProperties is None:
-            # in VxFlex OS 3.5 snapCapacityInUseInKb is replaced by
+            # in PowerFlex 3.5 snapCapacityInUseInKb is replaced by
             # snapshotCapacityInKb
             if flex_utils.version_gte(client.query_rest_api_version(), "3.5"):
                 self.statisticProperties = [
@@ -303,7 +304,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                     "snapCapacityInUseInKb",
                     "thickCapacityInUseInKb",
                 ]
-            # VxFlex OS 3.0 provide useful precomputed stats
+            # PowerFlex 3.0 provide useful precomputed stats
             if flex_utils.version_gte(client.query_rest_api_version(), "3.0"):
                 self.statisticProperties.extend([
                     "netCapacityInUseInKb",
@@ -328,7 +329,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                         "thinCapacityAllocatedInKb",
                     ],
                 }
-                r, response = client.execute_vxflexos_post_request(
+                r, response = client.execute_powerflex_post_request(
                     url=url,
                     params=params,
                     sio_type=sio_type
@@ -348,11 +349,11 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _setup_volume_replication(self, vol_or_snap, source_provider_id):
         """Configure replication for volume or snapshot.
 
-        Create volume on secondary VxFlex OS storage backend.
+        Create volume on secondary PowerFlex storage backend.
         Pair volumes and add replication pair to replication consistency group.
 
         :param vol_or_snap: source volume/snapshot
-        :param source_provider_id: primary VxFlex OS volume id
+        :param source_provider_id: primary PowerFlex volume id
         """
         try:
             # If vol_or_snap has 'volume' attribute we are dealing
@@ -402,13 +403,13 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _teardown_volume_replication(self, provider_id):
         """Stop volume/snapshot replication.
 
-        Unpair volumes/snapshot and remove volume/snapshot from VxFlex OS
+        Unpair volumes/snapshot and remove volume/snapshot from PowerFlex
         secondary storage backend.
         """
 
         if not provider_id:
             LOG.warning("Volume or snapshot does not have provider_id thus "
-                        "does not map to VxFlex OS volume.")
+                        "does not map to PowerFlex volume.")
             return
         try:
             pair_id, remote_pair_id, vol_id, remote_vol_id = (
@@ -465,7 +466,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _failover_replication_cg(self, rcg_name, is_failback):
         """Failover/failback Replication Consistency Group on storage backend.
 
-        :param rcg_name: name of VxFlex OS Replication Consistency Group
+        :param rcg_name: name of PowerFlex Replication Consistency Group
         :param is_failback: is failover or failback
         :return: failover status of Replication Consistency Group
         """
@@ -560,8 +561,8 @@ class VxFlexOSDriver(driver.VolumeDriver):
         """Get volume provisioning and compression from VolumeType extraspecs.
 
         :param storage_type: extraspecs
-        :param protection_domain_name: name of VxFlex OS Protection Domain
-        :param storage_pool_name: name of VxFlex OS Storage Pool
+        :param protection_domain_name: name of PowerFlex Protection Domain
+        :param storage_pool_name: name of PowerFlex Storage Pool
         :param secondary: primary or secondary client
         :return: volume provisioning and compression
         """
@@ -590,7 +591,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return provisioning, compression
 
     def create_volume(self, volume):
-        """Create volume on VxFlex OS storage backend.
+        """Create volume on PowerFlex storage backend.
 
         :param volume: volume to be created
         :return: volume model updates
@@ -632,7 +633,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
             "replication_status": fields.ReplicationStatus.DISABLED,
         }
         LOG.info("Successfully created volume %(vol_id)s. "
-                 "Volume size: %(size)s. VxFlex OS volume name: %(vol_name)s, "
+                 "Volume size: %(size)s. PowerFlex volume name: %(vol_name)s, "
                  "id: %(provider_id)s.",
                  {
                      "vol_id": volume.id,
@@ -655,7 +656,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
         if size % 8 != 0:
             round_volume_capacity = (
-                self.configuration.vxflexos_round_volume_capacity
+                self.configuration.powerflex_round_volume_capacity
             )
             if not round_volume_capacity:
                 msg = (_("Cannot create volume of size %s: "
@@ -678,14 +679,14 @@ class VxFlexOSDriver(driver.VolumeDriver):
                       "zero padding being disabled for pool, %s:%s. "
                       "This behaviour can be changed by setting "
                       "the configuration option "
-                      "vxflexos_allow_non_padded_volumes = True.",
+                      "powerflex_allow_non_padded_volumes = True.",
                       protection_domain_name, storage_pool_name)
             msg = _("Volume creation rejected due to "
                     "unsafe backend configuration.")
             raise exception.VolumeBackendAPIException(data=msg)
 
     def create_snapshot(self, snapshot):
-        """Create volume snapshot on VxFlex OS storage backend.
+        """Create volume snapshot on PowerFlex storage backend.
 
         :param snapshot: volume snapshot to be created
         :return: snapshot model updates
@@ -699,7 +700,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                                              snapshot.id)
         model_updates = {"provider_id": provider_id}
         LOG.info("Successfully created snapshot %(snap_id)s "
-                 "for volume %(vol_id)s. VxFlex OS volume name: %(vol_name)s, "
+                 "for volume %(vol_id)s. PowerFlex volume name: %(vol_name)s, "
                  "id: %(vol_provider_id)s, snapshot name: %(snap_name)s, "
                  "snapshot id: %(snap_provider_id)s.",
                  {
@@ -715,9 +716,9 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return model_updates
 
     def _create_volume_from_source(self, volume, source):
-        """Create volume from volume or snapshot on VxFlex OS storage backend.
+        """Create volume from volume or snapshot on PowerFlex storage backend.
 
-        We interchange 'volume' and 'snapshot' because in VxFlex OS
+        We interchange 'volume' and 'snapshot' because in PowerFlex
         snapshot is a volume: once a snapshot is generated it
         becomes a new unmapped volume in the system and the user
         may manipulate it in the same manner as any other volume
@@ -736,7 +737,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
             "replication_status": fields.ReplicationStatus.DISABLED,
         }
         LOG.info("Successfully created volume %(vol_id)s "
-                 "from source %(source_id)s. VxFlex OS volume name: "
+                 "from source %(source_id)s. PowerFlex volume name: "
                  "%(vol_name)s, id: %(vol_provider_id)s, source name: "
                  "%(source_name)s, source id: %(source_provider_id)s.",
                  {
@@ -763,7 +764,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return model_updates
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Create volume from snapshot on VxFlex OS storage backend.
+        """Create volume from snapshot on PowerFlex storage backend.
 
         :param volume: volume to be created
         :param snapshot: snapshot from which volume will be created
@@ -775,7 +776,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return self._create_volume_from_source(volume, snapshot)
 
     def extend_volume(self, volume, new_size):
-        """Extend size of existing and available VxFlex OS volume.
+        """Extend size of existing and available PowerFlex volume.
 
         This action will round up volume to nearest size that is
         granularity of 8 GBs.
@@ -800,7 +801,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         self._get_client().extend_volume(volume.provider_id, volume_new_size)
 
     def create_cloned_volume(self, volume, src_vref):
-        """Create cloned volume on VxFlex OS storage backend.
+        """Create cloned volume on PowerFlex storage backend.
 
         :param volume: volume to be created
         :param src_vref: source volume from which volume will be cloned
@@ -812,7 +813,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return self._create_volume_from_source(volume, src_vref)
 
     def delete_volume(self, volume):
-        """Delete volume from VxFlex OS storage backend.
+        """Delete volume from PowerFlex storage backend.
 
         If volume is replicated, replication will be stopped first.
 
@@ -825,7 +826,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         self._get_client().remove_volume(volume.provider_id)
 
     def delete_snapshot(self, snapshot):
-        """Delete snapshot from VxFlex OS storage backend.
+        """Delete snapshot from PowerFlex storage backend.
 
         :param snapshot: snapshot to be deleted
         """
@@ -841,7 +842,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _initialize_connection(self, vol_or_snap, connector, vol_size):
         """Initialize connection and return connection info.
 
-        VxFlex OS driver returns a driver_volume_type of 'scaleio'.
+        PowerFlex driver returns a driver_volume_type of 'scaleio'.
         """
 
         try:
@@ -891,7 +892,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
             LOG.info("Bandwidth per GB: %s.", bw_per_gb)
             if bw_per_gb is None:
                 return max_bandwidth
-            # Since VxFlex OS volumes size is in 8GB granularity
+            # Since PowerFlex volumes size is in 8GB granularity
             # and BWS limitation is in 1024 KBs granularity, we need to make
             # sure that scaled_bw_limit is in 128 granularity.
             scaled_bw_limit = (
@@ -934,7 +935,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _terminate_connection(volume_or_snap, connector):
         """Terminate connection to volume or snapshot.
 
-        With VxFlex OS, snaps and volumes are terminated identically.
+        With PowerFlex, snaps and volumes are terminated identically.
         """
 
         try:
@@ -950,7 +951,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         stats = {}
 
         backend_name = self.configuration.safe_get("volume_backend_name")
-        stats["volume_backend_name"] = backend_name or "vxflexos"
+        stats["volume_backend_name"] = backend_name or "powerflex"
         stats["vendor_name"] = "Dell EMC"
         stats["driver_version"] = self.VERSION
         stats["storage_protocol"] = "scaleio"
@@ -1026,10 +1027,10 @@ class VxFlexOSDriver(driver.VolumeDriver):
         self._stats = stats
 
     def _query_pool_stats(self, domain_name, pool_name):
-        """Get VxFlex OS Storage Pool statistics.
+        """Get PowerFlex Storage Pool statistics.
 
-        :param domain_name: name of VxFlex OS Protection Domain
-        :param pool_name: name of VxFlex OS Storage Pool
+        :param domain_name: name of PowerFlex Protection Domain
+        :param pool_name: name of PowerFlex Storage Pool
         :return: total, free and provisioned capacity in GB
         """
 
@@ -1040,7 +1041,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         pool_id = client.get_storage_pool_id(domain_name, pool_name)
         props = self._get_queryable_statistics("StoragePool", pool_id)
         params = {"ids": [pool_id], "properties": props}
-        r, response = client.execute_vxflexos_post_request(url, params)
+        r, response = client.execute_powerflex_post_request(url, params)
         if r.status_code != http_client.OK:
             msg = (_("Failed to query stats for Storage Pool %s.") % pool_name)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -1066,7 +1067,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
         if flex_utils.version_gte(client.query_rest_api_version(), "3.0"):
             return self._compute_pool_stats_v3(stats)
-        # Divide by two because VxFlex OS creates
+        # Divide by two because PowerFlex creates
         # a copy for each volume
         total_capacity_raw = flex_utils.convert_kb_to_gib(
             (stats["capacityLimitInKb"] - stats["spareCapacityInKb"]) / 2
@@ -1083,7 +1084,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         thin_capacity_allocated = stats.get("thinCapacityAllocatedInKm")
         if thin_capacity_allocated is None:
             thin_capacity_allocated = stats.get("thinCapacityAllocatedInKb", 0)
-        # Divide by two because VxFlex OS creates
+        # Divide by two because PowerFlex creates
         # a copy for each volume
         provisioned_capacity = flex_utils.convert_kb_to_gib(
             (stats["thickCapacityInUseInKb"] +
@@ -1094,7 +1095,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
     @staticmethod
     def _compute_pool_stats_v3(stats):
-        # in VxFlex OS 3.5 snapCapacityInUseInKb is replaced by
+        # in PowerFlex 3.5 snapCapacityInUseInKb is replaced by
         # snapshotCapacityInKb
         snap_capacity_allocated = stats.get("snapshotCapacityInKb")
         if snap_capacity_allocated is None:
@@ -1126,7 +1127,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                                       domain_name,
                                       pool_name,
                                       secondary=False):
-        # thin volumes available since VxFlex OS 2.x
+        # thin volumes available since PowerFlex 2.x
         client = self._get_client(secondary)
 
         return flex_utils.version_gte(client.query_rest_api_version(), "2.0")
@@ -1177,14 +1178,14 @@ class VxFlexOSDriver(driver.VolumeDriver):
             else:
                 specs = {}
             for key, value in specs.items():
-                if key in self.vxflexos_qos_keys:
+                if key in self.powerflex_qos_keys:
                     qos[key] = value
         return qos
 
     def _sio_attach_volume(self, volume):
         """Call connector.connect_volume() and return the path."""
 
-        LOG.info("Call os-brick to attach VxFlex OS volume.")
+        LOG.info("Call os-brick to attach PowerFlex volume.")
         connection_properties = self._get_client().connection_properties
         connection_properties["scaleIO_volname"] = flex_utils.id_to_base64(
             volume.id
@@ -1198,7 +1199,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def _sio_detach_volume(self, volume):
         """Call the connector.disconnect()."""
 
-        LOG.info("Call os-brick to detach VxFlex OS volume.")
+        LOG.info("Call os-brick to detach PowerFlex volume.")
         connection_properties = self._get_client().connection_properties
         connection_properties["scaleIO_volname"] = flex_utils.id_to_base64(
             volume.id
@@ -1249,7 +1250,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
             self._sio_detach_volume(volume)
 
     def migrate_volume(self, ctxt, volume, host):
-        """Migrate VxFlex OS volume within the same backend."""
+        """Migrate PowerFlex volume within the same backend."""
 
         LOG.info("Migrate volume %(vol_id)s to %(host)s.",
                  {"vol_id": volume.id, "host": host["host"]})
@@ -1270,12 +1271,12 @@ class VxFlexOSDriver(driver.VolumeDriver):
         dst_backend = volume_utils.extract_host(host["host"], "backend")
         if src_backend != dst_backend:
             LOG.debug("Cross-backends migration is not supported "
-                      "by VxFlex OS.")
+                      "by PowerFlex.")
             return fall_back_to_host_assisted()
 
         # Check migration is supported by storage API
         if not flex_utils.version_gte(client.query_rest_api_version(), "3.0"):
-            LOG.debug("VxFlex OS versions less than v3.0 do not "
+            LOG.debug("PowerFlex versions less than v3.0 do not "
                       "support volume migration.")
             return fall_back_to_host_assisted()
 
@@ -1380,7 +1381,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
             "volTypeConversion": "NoConversion",
             "compressionMethod": "None",
             "allowDuringRebuild": six.text_type(
-                self.configuration.vxflexos_allow_migration_during_rebuild
+                self.configuration.powerflex_allow_migration_during_rebuild
             ),
         }
         storage_type = self._get_volumetype_extraspecs(volume)
@@ -1459,9 +1460,9 @@ class VxFlexOSDriver(driver.VolumeDriver):
                                volume,
                                new_volume,
                                original_volume_status):
-        """Update volume name of new VxFlex OS volume to match updated ID.
+        """Update volume name of new PowerFlex volume to match updated ID.
 
-        Original volume is renamed first since VxFlex OS does not allow
+        Original volume is renamed first since PowerFlex does not allow
         multiple volumes to have same name.
         """
 
@@ -1497,7 +1498,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return {"_name_id": name_id, "provider_location": location}
 
     def revert_to_snapshot(self, context, volume, snapshot):
-        """Revert VxFlex OS volume to the specified snapshot."""
+        """Revert PowerFlex volume to the specified snapshot."""
 
         LOG.info("Revert volume %(vol_id)s to snapshot %(snap_id)s.",
                  {"vol_id": volume.id, "snap_id": snapshot.id})
@@ -1505,7 +1506,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         client = self._get_client()
 
         if not flex_utils.version_gte(client.query_rest_api_version(), "3.0"):
-            LOG.debug("VxFlex OS versions less than v3.0 do not "
+            LOG.debug("PowerFlex versions less than v3.0 do not "
                       "support reverting volume to snapshot. "
                       "Falling back to generic revert to snapshot method.")
             raise NotImplementedError
@@ -1523,7 +1524,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
 
         client.overwrite_volume_content(volume, snapshot)
 
-    def _query_vxflexos_volume(self, volume, existing_ref):
+    def _query_powerflex_volume(self, volume, existing_ref):
         type_id = volume.get("volume_type_id")
         if "source-id" not in existing_ref:
             reason = _("Reference must contain source-id.")
@@ -1538,14 +1539,14 @@ class VxFlexOSDriver(driver.VolumeDriver):
                 reason=reason
             )
         vol_id = existing_ref["source-id"]
-        LOG.info("Query volume %(vol_id)s with VxFlex OS id %(provider_id)s.",
+        LOG.info("Query volume %(vol_id)s with PowerFlex id %(provider_id)s.",
                  {"vol_id": volume.id, "provider_id": vol_id})
         response = self._get_client().query_volume(vol_id)
         self._manage_existing_check_legal_response(response, existing_ref)
         return response
 
-    def _get_all_vxflexos_volumes(self):
-        """Get all volumes in configured VxFlex OS Storage Pools."""
+    def _get_all_powerflex_volumes(self):
+        """Get all volumes in configured PowerFlex Storage Pools."""
 
         client = self._get_client()
         url = ("/instances/StoragePool::%(storage_pool_id)s"
@@ -1558,7 +1559,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
             domain_name = splitted_name[0]
             pool_name = splitted_name[1]
             sp_id = client.get_storage_pool_id(domain_name, pool_name)
-            r, volumes = client.execute_vxflexos_get_request(
+            r, volumes = client.execute_powerflex_get_request(
                 url,
                 storage_pool_id=sp_id
             )
@@ -1581,7 +1582,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         Return references of volume ids for any others.
         """
 
-        all_sio_volumes = self._get_all_vxflexos_volumes()
+        all_sio_volumes = self._get_all_powerflex_volumes()
         # Put together a map of existing cinder volumes on the array
         # so we can lookup cinder id's to SIO id
         existing_vols = {}
@@ -1633,28 +1634,28 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return False
 
     def manage_existing(self, volume, existing_ref):
-        """Manage existing VxFlex OS volume.
+        """Manage existing PowerFlex volume.
 
         :param volume: volume to be managed
         :param existing_ref: dictionary of form
-                             {'source-id': 'id of VxFlex OS volume'}
+                             {'source-id': 'id of PowerFlex volume'}
         """
 
-        response = self._query_vxflexos_volume(volume, existing_ref)
+        response = self._query_powerflex_volume(volume, existing_ref)
         return {"provider_id": response["id"]}
 
     def manage_existing_get_size(self, volume, existing_ref):
         return self._get_volume_size(volume, existing_ref)
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
-        """Manage existing VxFlex OS snapshot.
+        """Manage existing PowerFlex snapshot.
 
         :param snapshot: snapshot to be managed
         :param existing_ref: dictionary of form
-                             {'source-id': 'id of VxFlex OS snapshot'}
+                             {'source-id': 'id of PowerFlex snapshot'}
         """
 
-        response = self._query_vxflexos_volume(snapshot, existing_ref)
+        response = self._query_powerflex_volume(snapshot, existing_ref)
         not_real_parent = (response.get("orig_parent_overriden") or
                            response.get("is_source_deleted"))
         if not_real_parent:
@@ -1668,7 +1669,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         ancestor_id = response["ancestorVolumeId"]
         volume_id = snapshot.volume.provider_id
         if ancestor_id != volume_id:
-            reason = (_("Snapshot's parent in VxFlex OS is %(ancestor_id)s "
+            reason = (_("Snapshot's parent in PowerFlex is %(ancestor_id)s "
                         "and not %(vol_id)s.") %
                       {"ancestor_id": ancestor_id, "vol_id": volume_id})
             raise exception.ManageExistingInvalidReference(
@@ -1681,7 +1682,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
         return self._get_volume_size(snapshot, existing_ref)
 
     def _get_volume_size(self, volume, existing_ref):
-        response = self._query_vxflexos_volume(volume, existing_ref)
+        response = self._query_powerflex_volume(volume, existing_ref)
         return int(math.ceil(float(response["sizeInKb"]) / units.Mi))
 
     def _manage_existing_check_legal_response(self, response, existing_ref):
@@ -1705,7 +1706,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def create_group(self, context, group):
         """Create Consistency Group.
 
-        VxFlex OS won't create CG until cg-snapshot creation,
+        PowerFlex won't create CG until cg-snapshot creation,
         db will maintain the volumes and CG relationship.
         """
 
@@ -1719,7 +1720,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
     def delete_group(self, context, group, volumes):
         """Delete Consistency Group.
 
-        VxFlex OS will delete volumes of CG.
+        PowerFlex will delete volumes of CG.
         """
 
         # let generic volume group support handle non-cgsnapshots
@@ -1826,7 +1827,7 @@ class VxFlexOSDriver(driver.VolumeDriver):
                      remove_volumes=None):
         """Update Consistency Group.
 
-        VxFlex OS does not handle volume grouping.
+        PowerFlex does not handle volume grouping.
         Cinder maintains volumes and CG relationship.
         """
 

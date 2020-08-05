@@ -19,13 +19,13 @@ from unittest import mock
 import ddt
 
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 
 
 VOLUME_ID = "abcdabcd-1234-abcd-1234-abcdabcdabcd"
 PROVIDER_ID = "0000000000000001"
 
-MANAGEABLE_VXFLEXOS_VOLS = [
+MANAGEABLE_FLEX_VOLS = [
     {
         "volumeType": "ThinProvisioned",
         "storagePoolId": "6c6dc54500000000",
@@ -52,7 +52,7 @@ MANAGEABLE_VXFLEXOS_VOLS = [
     }
 ]
 
-VXFLEXOS_SNAPSHOT = {
+POWERFLEX_SNAPSHOT = {
     "volumeType": "Snapshot",
     "storagePoolId": "6c6dc54500000000",
     "sizeInKb": 8388608,
@@ -61,7 +61,7 @@ VXFLEXOS_SNAPSHOT = {
     "mappedSdcInfo": [],
 }
 
-MANAGEABLE_VXFLEXOS_VOL_REFS = [
+MANAGEABLE_FLEX_VOL_REFS = [
     {
         'reference': {'source-id': PROVIDER_ID},
         'size': 8,
@@ -99,16 +99,16 @@ MANAGEABLE_VXFLEXOS_VOL_REFS = [
 
 
 @ddt.ddt
-class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
+class PowerFlexManageableCase(powerflex.TestPowerFlexDriver):
 
     def setUp(self):
         """Setup a test case environment."""
-        super(VxFlexOSManageableCase, self).setUp()
+        super(PowerFlexManageableCase, self).setUp()
         self.driver.storage_pools = super().STORAGE_POOLS
 
     def _test_get_manageable_things(self,
-                                    vxflexos_objects=MANAGEABLE_VXFLEXOS_VOLS,
-                                    expected_refs=MANAGEABLE_VXFLEXOS_VOL_REFS,
+                                    powerflex_objects=MANAGEABLE_FLEX_VOLS,
+                                    expected_refs=MANAGEABLE_FLEX_VOL_REFS,
                                     cinder_objs=list()):
         marker = mock.Mock()
         limit = mock.Mock()
@@ -120,7 +120,7 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
             self.RESPONSE_MODE.Valid: {
                 'instances/StoragePool::{}/relationships/Volume'.format(
                     self.STORAGE_POOL_ID
-                ): vxflexos_objects,
+                ): powerflex_objects,
                 'types/Pool/instances/getByName::{},{}'.format(
                     self.PROT_DOMAIN_ID,
                     self.STORAGE_POOL_NAME
@@ -153,7 +153,7 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
     def test_get_manageable_volumes(self):
         """Default success case.
 
-        Given a list of VxFlex OS volumes from the REST API, give back a list
+        Given a list of PowerFlex volumes from the REST API, give back a list
         of volume references.
         """
 
@@ -161,12 +161,12 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
 
     def test_get_manageable_volumes_connected_vol(self):
         """Make sure volumes connected to hosts are flagged as unsafe."""
-        mapped_sdc = deepcopy(MANAGEABLE_VXFLEXOS_VOLS)
+        mapped_sdc = deepcopy(MANAGEABLE_FLEX_VOLS)
         mapped_sdc[0]['mappedSdcInfo'] = ["host1"]
         mapped_sdc[1]['mappedSdcInfo'] = ["host1", "host2"]
 
         # change up the expected results
-        expected_refs = deepcopy(MANAGEABLE_VXFLEXOS_VOL_REFS)
+        expected_refs = deepcopy(MANAGEABLE_FLEX_VOL_REFS)
         for x in range(len(mapped_sdc)):
             sdc = mapped_sdc[x]['mappedSdcInfo']
             if sdc and len(sdc) > 0:
@@ -175,7 +175,7 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
                     = 'Volume mapped to %d host(s).' % len(sdc)
 
         self._test_get_manageable_things(expected_refs=expected_refs,
-                                         vxflexos_objects=mapped_sdc)
+                                         powerflex_objects=mapped_sdc)
 
     def test_get_manageable_volumes_already_managed(self):
         """Make sure volumes already owned by cinder are flagged as unsafe."""
@@ -185,7 +185,7 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
         cinders_vols = [cinder_vol]
 
         # change up the expected results
-        expected_refs = deepcopy(MANAGEABLE_VXFLEXOS_VOL_REFS)
+        expected_refs = deepcopy(MANAGEABLE_FLEX_VOL_REFS)
         expected_refs[0]['reference'] = {'source-id': PROVIDER_ID}
         expected_refs[0]['safe_to_manage'] = False
         expected_refs[0]['reason_not_safe'] = 'Volume already managed.'
@@ -196,12 +196,12 @@ class VxFlexOSManageableCase(vxflexos.TestVxFlexOSDriver):
 
     def test_get_manageable_volumes_no_snapshots(self):
         """Make sure refs returned do not include snapshots."""
-        volumes = deepcopy(MANAGEABLE_VXFLEXOS_VOLS)
-        volumes.append(VXFLEXOS_SNAPSHOT)
+        volumes = deepcopy(MANAGEABLE_FLEX_VOLS)
+        volumes.append(POWERFLEX_SNAPSHOT)
 
-        self._test_get_manageable_things(vxflexos_objects=volumes)
+        self._test_get_manageable_things(powerflex_objects=volumes)
 
-    def test_get_manageable_volumes_no_vxflexos_volumes(self):
-        """Expect no refs to be found if no volumes are on VxFlex OS."""
-        self._test_get_manageable_things(vxflexos_objects=[],
+    def test_get_manageable_volumes_no_powerflex_volumes(self):
+        """Expect no refs to be found if no volumes are on PowerFlex."""
+        self._test_get_manageable_things(powerflex_objects=[],
                                          expected_refs=[])

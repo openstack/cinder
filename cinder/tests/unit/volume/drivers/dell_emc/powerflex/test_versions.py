@@ -16,11 +16,11 @@
 import ddt
 
 from cinder import exception
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 
 
 @ddt.ddt
-class TestMultipleVersions(vxflexos.TestVxFlexOSDriver):
+class TestMultipleVersions(powerflex.TestPowerFlexDriver):
 
     version = '1.2.3.4'
     good_versions = ['1.2.3.4',
@@ -33,7 +33,7 @@ class TestMultipleVersions(vxflexos.TestVxFlexOSDriver):
                     '.6'
                     ]
 
-    # Test cases for ``VxFlexOSDriver._get_server_api_version()``
+    # Test cases for ``PowerFlexDriver._get_server_api_version()``
     def setUp(self):
         """Setup a test case environment."""
         super(TestMultipleVersions, self).setUp()

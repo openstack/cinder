@@ -177,8 +177,8 @@ MAPPING = {
     'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver':
         'cinder.volume.drivers.fujitsu.eternus_dx.eternus_dx_iscsi.'
         'FJDXISCSIDriver',
-    'cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver':
-        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver',
+    'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver':
+        'cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver',
 }
 
 

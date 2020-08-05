@@ -22,13 +22,13 @@ from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
-from cinder.tests.unit.volume.drivers.dell_emc.vxflexos import mocks
-from cinder.volume.drivers.dell_emc.vxflexos import utils as flex_utils
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
+from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
+from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 
-class TestCreateSnapShot(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver.create_snapshot()``"""
+class TestCreateSnapShot(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver.create_snapshot()``"""
     def return_fake_volume(self, ctx, id):
         return self.fake_volume
 

@@ -23,7 +23,7 @@ from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.volume.drivers.dell_emc import vxflexos
+from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 
 
 MIGRATE_VOLUME_PARAMS_CASES = (
@@ -42,8 +42,8 @@ MIGRATE_VOLUME_PARAMS_CASES = (
 
 
 @ddt.ddt
-class TestMigrateVolume(vxflexos.TestVxFlexOSDriver):
-    """Test cases for ``VxFlexOSDriver.migrate_volume()``"""
+class TestMigrateVolume(powerflex.TestPowerFlexDriver):
+    """Test cases for ``PowerFlexDriver.migrate_volume()``"""
 
     def setUp(self):
         """Setup a test case environment.
@@ -155,7 +155,8 @@ class TestMigrateVolume(vxflexos.TestVxFlexOSDriver):
     def test_migrate_volume_migration_in_progress(self):
         with self.custom_response_mode(
                 **{'instances/Volume::{}/action/migrateVTree'.format(
-                    self.volume.provider_id): vxflexos.mocks.MockHTTPSResponse(
+                    self.volume.provider_id):
+                        powerflex.mocks.MockHTTPSResponse(
                 {
                     'errorCode': 717,
                     'message': 'Migration in progress',
@@ -165,7 +166,7 @@ class TestMigrateVolume(vxflexos.TestVxFlexOSDriver):
             self.assertEqual(self.migration_success, ret)
 
     @mock.patch(
-        'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver.'
+        'cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver.'
         '_wait_for_volume_migration_to_complete',
         side_effect=loopingcall.LoopingCallTimeOut()
     )
@@ -176,7 +177,7 @@ class TestMigrateVolume(vxflexos.TestVxFlexOSDriver):
     def test_migrate_volume_migration_failed(self):
         with self.custom_response_mode(
                 **{'instances/VTree::{}'.format(self.fake_vtree_id):
-                    vxflexos.mocks.MockHTTPSResponse(
+                    powerflex.mocks.MockHTTPSResponse(
                         {'vtreeMigrationInfo':
                             {'migrationStatus': 'NotInMigration',
                              'migrationPauseReason': 'MigrationError'}}, 200)}

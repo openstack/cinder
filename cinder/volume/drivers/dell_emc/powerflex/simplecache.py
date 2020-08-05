@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2019 Dell Inc. or its subsidiaries.
+# Copyright (c) 2017-2020 Dell Inc. or its subsidiaries.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-SimpleCache utility class for Dell EMC VxFlex OS (formerly
-named Dell EMC ScaleIO).
+SimpleCache utility class for Dell EMC PowerFlex (formerly
+named Dell EMC VxFlex OS).
 """
 
 import datetime
