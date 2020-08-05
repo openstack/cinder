@@ -16,6 +16,8 @@
 ISCSI Drivers for Dell EMC PowerMax/PowerMax/VMAX arrays based on REST.
 
 """
+import random
+
 from oslo_log import log as logging
 from oslo_utils import strutils
 import six
@@ -128,6 +130,8 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Support for multiple replication devices
               - Pools bug fix allowing 'None' variants (bug #1873253)
         4.3.0 - Changing from 91 to 92 REST endpoints
+              - Support for Port Group and Port load balancing
+                (bp powermax-port-load-balance)
     """
 
     VERSION = "4.3.0"
@@ -145,6 +149,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
                 self.VERSION,
                 configuration=self.configuration,
                 active_backend_id=self.active_backend_id))
+        self.performance = self.common.performance
 
     @classmethod
     def get_driver_options(cls):
@@ -298,6 +303,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         """
         metro_ip_iqn, metro_host_lun = None, None
         try:
+            array_id = device_info['array']
             ip_and_iqn = device_info['ip_and_iqn']
             is_multipath = device_info['is_multipath']
             host_lun_id = device_info['hostlunid']
@@ -314,17 +320,19 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
             metro_host_lun = device_info['metro_hostlunid']
 
         iscsi_properties = self.vmax_get_iscsi_properties(
-            volume, ip_and_iqn, is_multipath, host_lun_id,
+            array_id, volume, ip_and_iqn, is_multipath, host_lun_id,
             metro_ip_iqn, metro_host_lun)
 
         LOG.info("iSCSI properties are: %(props)s",
                  {'props': strutils.mask_dict_password(iscsi_properties)})
+        LOG.info("ISCSI volume is: %(volume)s.", {'volume': volume})
+
         return {'driver_volume_type': 'iscsi',
                 'data': iscsi_properties}
 
-    def vmax_get_iscsi_properties(self, volume, ip_and_iqn,
-                                  is_multipath, host_lun_id,
-                                  metro_ip_iqn, metro_host_lun):
+    def vmax_get_iscsi_properties(
+            self, array_id, volume, ip_and_iqn, is_multipath, host_lun_id,
+            metro_ip_iqn, metro_host_lun):
         """Gets iscsi configuration.
 
         We ideally get saved information in the volume entity, but fall back
@@ -340,6 +348,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         present meaning no authentication, or auth_method == `CHAP`
         meaning use CHAP with the specified credentials.
 
+        :param array_id: the array serial number
         :param volume: the cinder volume object
         :param ip_and_iqn: list of ip and iqn dicts
         :param is_multipath: flag for multipath
@@ -350,6 +359,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         """
         properties = {}
         populate_plurals = False
+        tgt_iqn, tgt_portal = None, None
         if len(ip_and_iqn) > 1 and is_multipath:
             populate_plurals = True
         elif len(ip_and_iqn) == 1 and is_multipath and metro_ip_iqn:
@@ -370,15 +380,43 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
                                               metro_ip_iqn]))
             properties['target_luns'].extend(
                 [metro_host_lun] * len(metro_ip_iqn))
+
+        # If load balancing is enabled select target IQN and IP address of
+        # lowest load physical port from all ports in selected port group
+        if self.performance.config.get('load_balance', False):
+            try:
+                # Get the dir/ports and create a new mapped dict
+                tgt_map = {}
+                for tgt in ip_and_iqn:
+                    tgt_map.update({
+                        tgt['physical_port']: {'ip': tgt['ip'],
+                                               'iqn': tgt['iqn']}})
+                # Calculate load for the ports
+                load, metric, port = self.performance.process_port_load(
+                    array_id, tgt_map.keys())
+                # Get the lowest load port from mapping in step 1
+                low_port_map = tgt_map.get(port)
+                LOG.info("Selecting port %(port)s with %(met)s load %(load)s.",
+                         {'port': port, 'met': metric, 'load': load})
+                # Set the target IQN and portal
+                tgt_iqn = low_port_map['iqn']
+                tgt_portal = low_port_map['ip'] + ":3260"
+            except (KeyError, exception.VolumeBackendAPIException):
+                LOG.error("There was an error calculating port load, "
+                          "reverting to default port selection.")
+
+        # If load balancing is not enabled or if there has been a problem
+        # calculating the load, revert to default random IP/IQN selection
+        if not tgt_iqn or not tgt_portal:
+            port_idx = random.randint(0, len(ip_and_iqn) - 1)
+            tgt_iqn = ip_and_iqn[port_idx]['iqn']
+            tgt_portal = ip_and_iqn[port_idx]['ip'] + ":3260"
+
+        properties['target_iqn'] = tgt_iqn
+        properties['target_portal'] = tgt_portal
         properties['target_discovered'] = True
-        properties['target_iqn'] = ip_and_iqn[0]['iqn'].split(",")[0]
-        properties['target_portal'] = ip_and_iqn[0]['ip'] + ":3260"
         properties['target_lun'] = host_lun_id
         properties['volume_id'] = volume.id
-
-        LOG.info("ISCSI properties: %(properties)s.",
-                 {'properties': properties})
-        LOG.info("ISCSI volume is: %(volume)s.", {'volume': volume})
 
         if self.configuration.safe_get('use_chap_auth'):
             LOG.info("Chap authentication enabled.")

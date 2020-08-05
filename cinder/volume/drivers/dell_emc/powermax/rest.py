@@ -1722,6 +1722,50 @@ class PowerMaxRest(object):
             iqn = port_details['symmetrixPort']['identifier']
         return ip_addresses, iqn
 
+    def get_ip_interface_physical_port(self, array_id, virtual_port,
+                                       ip_address):
+        """Get the physical port associated with a virtual port and IP address.
+
+        :param array_id: the array serial number -- str
+        :param virtual_port: the director & virtual port identifier -- str
+        :param ip_address: the ip address associated with the port -- str
+        :returns: physical director:port -- str
+        """
+        director_id = virtual_port.split(':')[0]
+        params = {'ip_list': ip_address, 'iscsi_target': False}
+        target_uri = self.build_uri(
+            category=SYSTEM, resource_level='symmetrix',
+            resource_level_id=array_id, resource_type='director',
+            resource_type_id=director_id, resource='port')
+
+        port_info = self.get_request(
+            target_uri, 'port IP interface', params)
+        port_key = port_info.get('symmetrixPortKey', [])
+
+        if len(port_key) == 1:
+            port_info = port_key[0]
+            port_id = port_info.get('portId')
+            dir_port = '%(d)s:%(p)s' % {'d': director_id, 'p': port_id}
+        else:
+            if len(port_key) == 0:
+                msg = (_(
+                    "Virtual port %(vp)s and IP address %(ip)s are not "
+                    "associated a physical director:port. Please check "
+                    "iSCSI configuration of backend array %(arr)s." % {
+                        'vp': virtual_port, 'ip': ip_address, 'arr': array_id}
+                ))
+            else:
+                msg = (_(
+                    "Virtual port %(vp)s and IP address %(ip)s are associated "
+                    "with more than one physical director:port. Please check "
+                    "iSCSI configuration of backend array %(arr)s." % {
+                        'vp': virtual_port, 'ip': ip_address, 'arr': array_id}
+                ))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(message=msg)
+
+        return dir_port
+
     def get_target_wwns(self, array, portgroup):
         """Get the director ports' wwns.
 

@@ -584,6 +584,15 @@ class PowerMaxCommonTest(test.TestCase):
         device_info_dict = self.common.initialize_connection(volume, connector)
         self.assertEqual(ref_dict, device_info_dict)
 
+    def test_initialize_connection_setup_init_conn(self):
+        volume = self.data.test_volume
+        connector = self.data.connector
+        with mock.patch.object(
+                self.common, '_initial_setup',
+                side_effect=self.common._initial_setup) as mck_setup:
+            self.common.initialize_connection(volume, connector)
+            mck_setup.assert_called_once_with(volume, init_conn=True)
+
     def test_initialize_connection_already_mapped_next_gen(self):
         with mock.patch.object(self.rest, 'is_next_gen_array',
                                return_value=True):
@@ -983,6 +992,18 @@ class PowerMaxCommonTest(test.TestCase):
                 return_value=None):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.common._initial_setup, volume)
+
+    def test_initial_setup_success_specs_init_conn_call(self):
+        volume = self.data.test_volume
+        array_info = self.common.get_attributes_from_cinder_config()
+        extra_specs, __ = self.common._set_config_file_and_get_extra_specs(
+            volume)
+        with mock.patch.object(
+                self.common, '_set_vmax_extra_specs',
+                side_effect=self.common._set_vmax_extra_specs) as mck_specs:
+            self.common._initial_setup(volume, init_conn=True)
+            mck_specs.assert_called_once_with(
+                extra_specs, array_info, True)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_rdf_pair_volume',
                        return_value=tpd.PowerMaxData.rdf_group_vol_details)
@@ -1488,6 +1509,17 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common._set_vmax_extra_specs,
                           self.data.vol_type_extra_specs_tags_bad, srp_record)
 
+    def test_set_vmax_extra_specs_pg_specs_init_conn(self):
+        pool_record = self.common.get_attributes_from_cinder_config()
+        with mock.patch.object(
+                self.common, '_select_port_group_for_extra_specs',
+                side_effect=(
+                    self.common._select_port_group_for_extra_specs)) as mck_s:
+            self.common._set_vmax_extra_specs(
+                self.data.vol_type_extra_specs, pool_record, init_conn=True)
+            mck_s.assert_called_once_with(
+                self.data.vol_type_extra_specs, pool_record, True)
+
     def test_delete_volume_from_srp_success(self):
         array = self.data.array
         device_id = self.data.device_id
@@ -1611,18 +1643,25 @@ class PowerMaxCommonTest(test.TestCase):
             mock_get.assert_called_once_with(
                 array, portgroup_name, initiator_group_name)
 
-    def test_get_ip_and_iqn(self):
+    def test_get_iscsi_ip_iqn_port(self):
+        phys_port = '%(dir)s:%(port)s' % {'dir': self.data.iscsi_dir,
+                                          'port': self.data.iscsi_port}
         ref_ip_iqn = [{'iqn': self.data.initiator,
-                       'ip': self.data.ip}]
+                       'ip': self.data.ip,
+                       'physical_port': phys_port}]
+
         director = self.data.portgroup[1]['symmetrixPortKey'][0]['directorId']
         port = self.data.portgroup[1]['symmetrixPortKey'][0]['portId']
         dirport = "%s:%s" % (director, port)
-        ip_iqn_list = self.common._get_ip_and_iqn(self.data.array, dirport)
+
+        ip_iqn_list = self.common._get_iscsi_ip_iqn_port(self.data.array,
+                                                         dirport)
         self.assertEqual(ref_ip_iqn, ip_iqn_list)
 
     def test_find_ip_and_iqns(self):
         ref_ip_iqn = [{'iqn': self.data.initiator,
-                       'ip': self.data.ip}]
+                       'ip': self.data.ip,
+                       'physical_port': self.data.iscsi_dir_port}]
         ip_iqn_list = self.common._find_ip_and_iqns(
             self.data.array, self.data.port_group_name_i)
         self.assertEqual(ref_ip_iqn, ip_iqn_list)
@@ -2537,7 +2576,7 @@ class PowerMaxCommonTest(test.TestCase):
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
              'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': self.data.port_group_name_i})
+             'PortGroup': [self.data.port_group_name_i]})
         old_conf = tpfo.FakeConfiguration(None, 'CommonTests', 1, 1)
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
@@ -2555,7 +2594,7 @@ class PowerMaxCommonTest(test.TestCase):
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 3448,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
              'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': self.data.port_group_name_i})
+             'PortGroup': [self.data.port_group_name_i]})
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
@@ -2569,7 +2608,7 @@ class PowerMaxCommonTest(test.TestCase):
             {'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
              'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
              'SerialNumber': self.data.array, 'srpName': 'SRP_1',
-             'PortGroup': self.data.port_group_name_i})
+             'PortGroup': [self.data.port_group_name_i]})
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
             vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
@@ -2862,7 +2901,7 @@ class PowerMaxCommonTest(test.TestCase):
             'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
             'RestUserName': 'smc', 'RestPassword': 'smc', 'SSLVerify': False,
             'SerialNumber': '000197800123', 'srpName': 'SRP_1',
-            'PortGroup': 'OS-fibre-PG'}
+            'PortGroup': ['OS-fibre-PG']}
 
         self.common.configuration.vmax_service_level = None
         self.common.configuration.vmax_workload = 'DSS'
@@ -3717,3 +3756,72 @@ class PowerMaxCommonTest(test.TestCase):
                 self.data.test_group_1, self.common.interval,
                 self.common.retries)
             mock_array.assert_called_once()
+
+    def test_get_performance_config(self):
+        ref_cinder_conf = tpfo.FakeConfiguration(
+            None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
+            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
+            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f],
+            load_balance=True, load_balance_real_time=True,
+            load_data_format='avg', load_look_back=60,
+            load_look_back_real_time=10, port_group_load_metric='PercentBusy',
+            port_load_metric='PercentBusy')
+
+        ref_perf_conf = self.data.performance_config
+        volume_utils.get_max_over_subscription_ratio = mock.Mock()
+        rest.PowerMaxRest._establish_rest_session = mock.Mock(
+            return_value=tpfo.FakeRequestsSession())
+        driver = fc.PowerMaxFCDriver(configuration=ref_cinder_conf)
+        self.assertEqual(ref_perf_conf, driver.common.performance.config)
+
+    def test_select_port_group_for_extra_specs_volume_type(self):
+        """Test _select_port_group_for_extra_specs PG in volume-type."""
+        extra_specs = {utils.PORTGROUPNAME: self.data.port_group_name_i}
+        pool_record = {}
+        port_group = self.common._select_port_group_for_extra_specs(
+            extra_specs, pool_record)
+        self.assertEqual(self.data.port_group_name_i, port_group)
+
+    def test_select_port_group_for_extra_specs_cinder_conf_single(self):
+        """Test _select_port_group_for_extra_specs single PG in cinder conf."""
+        extra_specs = {}
+        pool_record = {utils.PORT_GROUP: [self.data.port_group_name_i]}
+        port_group = self.common._select_port_group_for_extra_specs(
+            extra_specs, pool_record)
+        self.assertEqual(self.data.port_group_name_i, port_group)
+
+    def test_select_port_group_for_extra_specs_cinder_conf_multi(self):
+        """Test _select_port_group_for_extra_specs multi PG in cinder conf.
+
+        Random selection is used, no performance configuration supplied.
+        """
+        extra_specs = {}
+        pool_record = {utils.PORT_GROUP: self.data.perf_port_groups}
+        port_group = self.common._select_port_group_for_extra_specs(
+            extra_specs, pool_record)
+        self.assertIn(port_group, self.data.perf_port_groups)
+
+    def test_select_port_group_for_extra_specs_load_balanced(self):
+        """Test _select_port_group_for_extra_specs multi PG in cinder conf.
+
+        Load balanced selection is used, performance configuration supplied.
+        """
+        extra_specs = {utils.ARRAY: self.data.array}
+        pool_record = {utils.PORT_GROUP: self.data.perf_port_groups}
+        self.common.performance.config = self.data.performance_config
+        with mock.patch.object(
+                self.common.performance, 'process_port_group_load',
+                side_effect=(
+                    self.common.performance.process_port_group_load)) as (
+                        mck_process):
+            port_group = self.common._select_port_group_for_extra_specs(
+                extra_specs, pool_record, init_conn=True)
+            mck_process.assert_called_once_with(
+                self.data.array, self.data.perf_port_groups)
+            self.assertIn(port_group, self.data.perf_port_groups)
+
+    def test_select_port_group_for_extra_specs_exception(self):
+        """Test _select_port_group_for_extra_specs exception."""
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common._select_port_group_for_extra_specs, {}, {})

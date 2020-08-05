@@ -88,11 +88,14 @@ class PowerMaxISCSITest(test.TestCase):
                 self.data.test_snapshot, self.data.test_snapshot.volume)
 
     def test_initialize_connection(self):
+        phys_port = '%(dir)s:%(port)s' % {'dir': self.data.iscsi_dir,
+                                          'port': self.data.iscsi_port}
         ref_dict = {'maskingview': self.data.masking_view_name_f,
                     'array': self.data.array, 'hostlunid': 3,
                     'device_id': self.data.device_id,
                     'ip_and_iqn': [{'ip': self.data.ip,
-                                    'iqn': self.data.initiator}],
+                                    'iqn': self.data.initiator,
+                                    'physical_port': phys_port}],
                     'is_multipath': False}
         with mock.patch.object(self.driver, 'get_iscsi_dict') as mock_get:
             with mock.patch.object(
@@ -116,7 +119,8 @@ class PowerMaxISCSITest(test.TestCase):
             data = self.driver.get_iscsi_dict(device_info, volume)
             self.assertEqual(ref_data, data)
             mock_get.assert_called_once_with(
-                volume, ip_and_iqn, True, host_lun_id, None, None)
+                self.data.array, volume, ip_and_iqn, True, host_lun_id, None,
+                None)
 
     def test_get_iscsi_dict_exception(self):
         device_info = {'ip_and_iqn': ''}
@@ -136,7 +140,7 @@ class PowerMaxISCSITest(test.TestCase):
             data = self.driver.get_iscsi_dict(device_info, volume)
             self.assertEqual(ref_data, data)
             mock_get.assert_called_once_with(
-                volume, ip_and_iqn, True, host_lun_id,
+                self.data.array, volume, ip_and_iqn, True, host_lun_id,
                 self.data.iscsi_device_info_metro['metro_ip_and_iqn'],
                 self.data.iscsi_device_info_metro['metro_hostlunid'])
 
@@ -152,28 +156,80 @@ class PowerMaxISCSITest(test.TestCase):
             'target_lun': host_lun_id,
             'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            vol, ip_and_iqn, True, host_lun_id, [], None)
+            self.data.array, vol, ip_and_iqn, True, host_lun_id, [], None)
         self.assertEqual(type(ref_properties), type(iscsi_properties))
         self.assertEqual(ref_properties, iscsi_properties)
 
-    def test_vmax_get_iscsi_properties_multiple_targets(self):
+    def test_vmax_get_iscsi_properties_multiple_targets_random_select(self):
         ip_and_iqn = [{'ip': self.data.ip, 'iqn': self.data.initiator},
-                      {'ip': self.data.ip, 'iqn': self.data.iqn}]
+                      {'ip': self.data.ip2, 'iqn': self.data.iqn}]
         host_lun_id = self.data.iscsi_device_info['hostlunid']
-        ref_properties = {
-            'target_portals': (
-                [t['ip'] + ':3260' for t in ip_and_iqn]),
-            'target_iqns': (
-                [t['iqn'].split(',')[0] for t in ip_and_iqn]),
-            'target_luns': [host_lun_id] * len(ip_and_iqn),
-            'target_discovered': True,
-            'target_iqn': ip_and_iqn[0]['iqn'].split(',')[0],
-            'target_portal': ip_and_iqn[0]['ip'] + ':3260',
-            'target_lun': host_lun_id,
-            'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            self.data.test_volume, ip_and_iqn, True, host_lun_id, [], None)
-        self.assertEqual(ref_properties, iscsi_properties)
+            self.data.array, self.data.test_volume, ip_and_iqn, True,
+            host_lun_id, [], None)
+        iscsi_tgt_iqn = iscsi_properties.get('target_iqn')
+        iscsi_tgt_portal = iscsi_properties.get('target_portal')
+        self.assertIn(iscsi_tgt_iqn, [self.data.initiator, self.data.iqn])
+        self.assertIn(iscsi_tgt_portal, [self.data.ip + ":3260",
+                                         self.data.ip2 + ":3260"])
+        for ip_iqn in ip_and_iqn:
+            if ip_iqn['ip'] + ":3260" == iscsi_tgt_portal:
+                self.assertEqual(iscsi_tgt_iqn, ip_iqn.get('iqn'))
+
+    def test_vmax_get_iscsi_properties_multiple_targets_load_balance(self):
+        ip_and_iqn = [
+            {'ip': self.data.ip, 'iqn': self.data.initiator,
+             'physical_port': self.data.perf_ports[0]},
+            {'ip': self.data.ip2, 'iqn': self.data.iqn,
+             'physical_port': self.data.perf_ports[1]}]
+        host_lun_id = self.data.iscsi_device_info['hostlunid']
+        self.driver.performance.config = self.data.performance_config
+        ref_tgt_map = {}
+        for tgt in ip_and_iqn:
+            ref_tgt_map.update({
+                tgt['physical_port']: {'ip': tgt['ip'],
+                                       'iqn': tgt['iqn']}})
+
+        with mock.patch.object(
+                self.driver.performance, 'process_port_load',
+                side_effect=(
+                    self.driver.performance.process_port_load)) as mck_p:
+            iscsi_properties = self.driver.vmax_get_iscsi_properties(
+                self.data.array, self.data.test_volume, ip_and_iqn, False,
+                host_lun_id, None, None)
+            mck_p.assert_called_once_with(self.data.array, ref_tgt_map.keys())
+            iscsi_tgt_iqn = iscsi_properties.get('target_iqn')
+            iscsi_tgt_portal = iscsi_properties.get('target_portal')
+            self.assertIn(iscsi_tgt_iqn, [self.data.initiator, self.data.iqn])
+            self.assertIn(iscsi_tgt_portal, [self.data.ip + ":3260",
+                                             self.data.ip2 + ":3260"])
+            for ip_iqn in ip_and_iqn:
+                if ip_iqn['ip'] + ":3260" == iscsi_tgt_portal:
+                    self.assertEqual(iscsi_tgt_iqn, ip_iqn.get('iqn'))
+
+    def test_vmax_get_iscsi_properties_multiple_targets_load_balance_exc(self):
+        ip_and_iqn = [
+            {'ip': self.data.ip, 'iqn': self.data.initiator},
+            {'ip': self.data.ip2, 'iqn': self.data.iqn}]
+        host_lun_id = self.data.iscsi_device_info['hostlunid']
+        self.driver.performance.config = self.data.performance_config
+
+        with mock.patch.object(
+                self.driver.performance, 'process_port_load',
+                side_effect=(
+                    self.driver.performance.process_port_load)) as mck_p:
+            iscsi_properties = self.driver.vmax_get_iscsi_properties(
+                self.data.array, self.data.test_volume, ip_and_iqn, False,
+                host_lun_id, None, None)
+            mck_p.assert_not_called()
+            iscsi_tgt_iqn = iscsi_properties.get('target_iqn')
+            iscsi_tgt_portal = iscsi_properties.get('target_portal')
+            self.assertIn(iscsi_tgt_iqn, [self.data.initiator, self.data.iqn])
+            self.assertIn(iscsi_tgt_portal, [self.data.ip + ":3260",
+                                             self.data.ip2 + ":3260"])
+            for ip_iqn in ip_and_iqn:
+                if ip_iqn['ip'] + ":3260" == iscsi_tgt_portal:
+                    self.assertEqual(iscsi_tgt_iqn, ip_iqn.get('iqn'))
 
     def test_vmax_get_iscsi_properties_auth(self):
         vol = deepcopy(self.data.test_volume)
@@ -188,23 +244,14 @@ class PowerMaxISCSITest(test.TestCase):
         ip_and_iqn = [{'ip': self.data.ip, 'iqn': self.data.initiator},
                       {'ip': self.data.ip, 'iqn': self.data.iqn}]
         host_lun_id = self.data.iscsi_device_info['hostlunid']
-        ref_properties = {
-            'target_portals': (
-                [t['ip'] + ':3260' for t in ip_and_iqn]),
-            'target_iqns': (
-                [t['iqn'].split(',')[0] for t in ip_and_iqn]),
-            'target_luns': [host_lun_id] * len(ip_and_iqn),
-            'target_discovered': True,
-            'target_iqn': ip_and_iqn[0]['iqn'].split(',')[0],
-            'target_portal': ip_and_iqn[0]['ip'] + ':3260',
-            'target_lun': host_lun_id,
-            'volume_id': self.data.test_volume.id,
-            'auth_method': 'CHAP',
-            'auth_username': 'auth_username',
-            'auth_password': 'auth_secret'}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            vol, ip_and_iqn, True, host_lun_id, None, None)
-        self.assertEqual(ref_properties, iscsi_properties)
+            self.data.array, vol, ip_and_iqn, True, host_lun_id, None, None)
+        self.assertIn('auth_method', iscsi_properties.keys())
+        self.assertIn('auth_username', iscsi_properties.keys())
+        self.assertIn('auth_password', iscsi_properties.keys())
+        self.assertEqual('CHAP', iscsi_properties['auth_method'])
+        self.assertEqual('auth_username', iscsi_properties['auth_username'])
+        self.assertEqual('auth_secret', iscsi_properties['auth_password'])
         self.driver.configuration = backup_conf
 
     def test_vmax_get_iscsi_properties_metro(self):
@@ -225,8 +272,8 @@ class PowerMaxISCSITest(test.TestCase):
             'target_lun': host_lun_id,
             'volume_id': self.data.test_volume.id}
         iscsi_properties = self.driver.vmax_get_iscsi_properties(
-            self.data.test_volume, ip_and_iqn, True, host_lun_id,
-            self.data.iscsi_device_info_metro['metro_ip_and_iqn'],
+            self.data.array, self.data.test_volume, ip_and_iqn, True,
+            host_lun_id, self.data.iscsi_device_info_metro['metro_ip_and_iqn'],
             self.data.iscsi_device_info_metro['metro_hostlunid'])
         self.assertEqual(ref_properties, iscsi_properties)
 

@@ -152,6 +152,62 @@ PMAX_SLS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze', 'Optimized',
             'None', 'NONE']
 PMAX_WLS = ['NONE', 'None']
 
+# Performance
+# Metrics
+PG_METRICS = [
+    'AvgIOSize', 'IOs', 'MBRead', 'MBWritten', 'MBs', 'PercentBusy',
+    'Reads', 'Writes']
+PORT_METRICS = [
+    'AvgIOSize', 'IOs', 'MBRead', 'MBWritten', 'MBs', 'MaxSpeedGBs',
+    'PercentBusy', 'ReadResponseTime', 'Reads', 'ResponseTime', 'SpeedGBs',
+    'WriteResponseTime', 'Writes']
+PORT_RT_METRICS = [
+    'AvgIOSize', 'IOs', 'MBRead', 'MBWritten', 'MBs', 'PercentBusy', 'Reads',
+    'ResponseTime', 'Writes']
+
+# Cinder config options
+LOAD_BALANCE = 'load_balance'
+LOAD_BALANCE_RT = 'load_balance_real_time'
+PERF_DATA_FORMAT = 'load_data_format'
+LOAD_LOOKBACK = 'load_look_back'
+LOAD_LOOKBACK_RT = 'load_look_back_real_time'
+PORT_GROUP_LOAD_METRIC = 'port_group_load_metric'
+PORT_LOAD_METRIC = 'port_load_metric'
+
+# One minute in milliseconds
+ONE_MINUTE = 60000
+# Default look back windows in minutes
+DEFAULT_DIAG_WINDOw = 60
+DEFAULT_RT_WINDOW = 1
+
+# REST API keys
+PERFORMANCE = 'performance'
+REG_DETAILS = 'registrationdetails'
+REG_DETAILS_INFO = 'registrationDetailsInfo'
+COLLECTION_INT = 'collectionintervalmins'
+DIAGNOSTIC = 'diagnostic'
+REAL_TIME = 'realtime'
+RESULT_LIST = 'resultList'
+RESULT = 'result'
+KEYS = 'keys'
+METRICS = 'metrics'
+CAT = 'category'
+F_DATE = 'firstAvailableDate'
+S_DATE = 'startDate'
+L_DATE = 'lastAvailableDate'
+E_DATE = 'endDate'
+SYMM_ID = 'symmetrixId'
+ARRAY_PERF = 'Array'
+ARRAY_INFO = 'arrayInfo'
+PORT_GROUP = 'PortGroup'
+PORT_GROUP_ID = 'portGroupId'
+FE_PORT_RT = 'FEPORT'
+FE_PORT_DIAG = 'FEPort'
+DATA_FORMAT = 'dataFormat'
+INST_ID = 'instanceId'
+DIR_ID = 'directorId'
+PORT_ID = 'portId'
+
 
 class PowerMaxUtils(object):
     """Utility class for Rest based PowerMax volume drivers.

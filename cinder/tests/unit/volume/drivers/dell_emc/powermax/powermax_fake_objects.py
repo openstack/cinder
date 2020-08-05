@@ -121,12 +121,23 @@ class FakeRequestsSession(object):
 
         elif 'system' in url:
             if 'director' in url:
-                return_object = self._system_port(url)
+                url_split = url.split('/')
+                if 'port' in url_split[-1]:
+                    return_object = self._system_port_list(url)
+                elif url_split[-2] == 'port':
+                    return_object = self._system_port_detail(url)
             else:
                 return_object = self._system(url)
 
         elif 'headroom' in url:
             return_object = self.data.headroom
+
+        elif 'performance' in url:
+            if 'Array' in url:
+                if 'registrationdetails' in url:
+                    return_object = self._performance_registration(url)
+                if 'keys' in url:
+                    return_object = self.data.array_keys
 
         return status_code, return_object
 
@@ -169,13 +180,19 @@ class FakeRequestsSession(object):
                 break
         return return_object
 
-    def _system_port(self, url):
+    def _system_port_detail(self, url):
         return_object = None
         for port in self.data.port_list:
             if port['symmetrixPort']['symmetrixPortKey']['directorId'] in url:
                 return_object = port
                 break
         return return_object
+
+    @staticmethod
+    def _system_port_list(url):
+        url_split = url.split('/')
+        return {'symmetrixPortKey': [{'directorId': url_split[-2],
+                                      'portId': '1'}]}
 
     def _sloprovisioning_ig(self, url):
         return_object = None
@@ -241,12 +258,33 @@ class FakeRequestsSession(object):
                     break
         return return_object
 
+    @staticmethod
+    def _performance_registration(url):
+        url_split = url.split('/')
+        array_id = url_split[-1]
+        return {"registrationDetailsInfo": [
+            {"symmetrixId": array_id, "realtime": True, "message": "Success",
+             "collectionintervalmins": 5, "diagnostic": True}]}
+
     def _post_or_put(self, url, payload):
         return_object = self.data.job_list[0]
         status_code = 201
-        if self.data.failed_resource in url:
+
+        if 'performance' in url:
+            if 'PortGroup' in url:
+                if 'metrics' in url:
+                    return 200, self.data.dummy_performance_data
+            elif 'FEPort' in url:
+                if 'metrics' in url:
+                    return 200, self.data.dummy_performance_data
+            elif 'realtime' in url:
+                if 'metrics' in url:
+                    return 200, self.data.dummy_performance_data
+
+        elif self.data.failed_resource in url:
             status_code = 500
             return_object = self.data.job_list[2]
+
         elif payload:
             payload = ast.literal_eval(payload)
             if self.data.failed_resource in payload.values():
@@ -254,6 +292,7 @@ class FakeRequestsSession(object):
                 return_object = self.data.job_list[2]
             if payload.get('executionOption'):
                 status_code = 202
+
         return status_code, return_object
 
     def _delete(self, url):
@@ -287,48 +326,90 @@ class FakeConfiguration(object):
         if replication_device:
             self.replication_device = replication_device
         for key, value in kwargs.items():
-            if key == 'san_login':
-                self.san_login = value
-            elif key == 'san_password':
-                self.san_password = value
-            elif key == 'san_ip':
-                self.san_ip = value
-            elif key == 'san_api_port':
-                self.san_api_port = value
-            elif key == 'vmax_srp':
-                self.vmax_srp = value
-            elif key == 'vmax_service_level':
-                self.vmax_service_level = value
-            elif key == 'vmax_workload':
-                self.vmax_workload = value
-            elif key == 'vmax_port_groups':
-                self.vmax_port_groups = value
-            elif key == 'vmax_array':
-                self.vmax_array = value
-            elif key == 'use_chap_auth':
-                self.use_chap_auth = value
-            elif key == 'chap_username':
-                self.chap_username = value
-            elif key == 'chap_password':
-                self.chap_password = value
-            elif key == 'driver_ssl_cert_verify':
-                self.driver_ssl_cert_verify = value
-            elif key == 'driver_ssl_cert_path':
-                self.driver_ssl_cert_path = value
-            elif key == 'u4p_failover_target':
-                self.u4p_failover_target = value
-            elif key == 'u4p_failover_backoff_factor':
-                self.u4p_failover_backoff_factor = value
-            elif key == 'u4p_failover_retries':
-                self.u4p_failover_retries = value
-            elif key == 'u4p_failover_timeout':
-                self.u4p_failover_timeout = value
-            elif key == 'u4p_primary':
-                self.u4p_primary = value
-            elif key == 'powermax_short_host_name_template':
-                self.powermax_short_host_name_template = value
-            elif key == 'powermax_port_group_name_template':
-                self.powermax_port_group_name_template = value
+            if 'san_' in key:
+                self.set_san_config_options(key, value)
+            elif 'vmax_' in key:
+                self.set_vmax_config_options(key, value)
+            elif 'chap_' in key:
+                self.set_chap_config_options(key, value)
+            elif 'driver_ssl_cert' in key:
+                self.set_ssl_cert_config_options(key, value)
+            elif 'u4p_' in key:
+                self.set_u4p_failover_config_options(key, value)
+            elif '_name_template' in key:
+                self.set_host_name_template_config_options(key, value)
+            elif 'load_' in key:
+                self.set_performance_config_options(key, value)
+
+    def set_san_config_options(self, key, value):
+        if key == 'san_login':
+            self.san_login = value
+        elif key == 'san_password':
+            self.san_password = value
+        elif key == 'san_ip':
+            self.san_ip = value
+        elif key == 'san_api_port':
+            self.san_api_port = value
+
+    def set_vmax_config_options(self, key, value):
+        if key == 'vmax_srp':
+            self.vmax_srp = value
+        elif key == 'vmax_service_level':
+            self.vmax_service_level = value
+        elif key == 'vmax_workload':
+            self.vmax_workload = value
+        elif key == 'vmax_port_groups':
+            self.vmax_port_groups = value
+        elif key == 'vmax_array':
+            self.vmax_array = value
+
+    def set_chap_config_options(self, key, value):
+        if key == 'use_chap_auth':
+            self.use_chap_auth = value
+        elif key == 'chap_username':
+            self.chap_username = value
+        elif key == 'chap_password':
+            self.chap_password = value
+
+    def set_ssl_cert_config_options(self, key, value):
+        if key == 'driver_ssl_cert_verify':
+            self.driver_ssl_cert_verify = value
+        elif key == 'driver_ssl_cert_path':
+            self.driver_ssl_cert_path = value
+
+    def set_u4p_failover_config_options(self, key, value):
+        if key == 'u4p_failover_target':
+            self.u4p_failover_target = value
+        elif key == 'u4p_failover_backoff_factor':
+            self.u4p_failover_backoff_factor = value
+        elif key == 'u4p_failover_retries':
+            self.u4p_failover_retries = value
+        elif key == 'u4p_failover_timeout':
+            self.u4p_failover_timeout = value
+        elif key == 'u4p_primary':
+            self.u4p_primary = value
+
+    def set_host_name_template_config_options(self, key, value):
+        if key == 'powermax_short_host_name_template':
+            self.powermax_short_host_name_template = value
+        elif key == 'powermax_port_group_name_template':
+            self.powermax_port_group_name_template = value
+
+    def set_performance_config_options(self, key, value):
+        if key == 'load_balance':
+            self.load_balance = value
+        elif key == 'load_balance_real_time':
+            self.load_balance_real_time = value
+        elif key == 'load_data_format':
+            self.load_data_format = value
+        elif key == 'load_look_back':
+            self.load_look_back = value
+        elif key == 'load_look_back_real_time':
+            self.load_look_back_real_time = value
+        elif key == 'port_group_load_metric':
+            self.port_group_load_metric = value
+        elif key == 'port_load_metric':
+            self.port_load_metric = value
 
     def safe_get(self, key):
         try:

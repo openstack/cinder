@@ -15,6 +15,7 @@
 
 from unittest import mock
 
+from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit.volume.drivers.dell_emc.powermax import (
     powermax_data as tpd)
@@ -112,7 +113,8 @@ class PowerMaxFCTest(test.TestCase):
                                              self.data.connector)
             self.assertEqual(ref_data, data)
             mock_build.assert_called_once_with(
-                self.data.test_volume, self.data.connector)
+                self.data.test_volume, self.data.connector,
+                self.data.fc_device_info)
 
     def test_terminate_connection(self):
         with mock.patch.object(
@@ -187,7 +189,7 @@ class PowerMaxFCTest(test.TestCase):
             data = self.driver._cleanup_zones(self.data.zoning_mappings)
             self.assertEqual(ref_data, data)
 
-    def test_build_initiator_target_map(self):
+    def test_build_initiator_target_map_default(self):
         ref_target_map = {'123456789012345': ['543210987654321'],
                           '123456789054321': ['123450987654321']}
         with mock.patch.object(fczm_utils, 'create_lookup_service',
@@ -199,6 +201,39 @@ class PowerMaxFCTest(test.TestCase):
                 targets, target_map = driver._build_initiator_target_map(
                     self.data.test_volume, self.data.connector)
                 self.assertEqual(ref_target_map, target_map)
+
+    def test_build_initiator_target_map_load_balanced(self):
+        init_wwns = self.data.connector.get('wwpns')
+        init_a, init_b = init_wwns[0], init_wwns[1]
+        self.driver.performance.config = self.data.performance_config
+        with mock.patch.object(
+                self.common, 'get_target_wwns_from_masking_view',
+                return_value=(self.data.target_wwns_multi, [])):
+            targets, target_map = self.driver._build_initiator_target_map(
+                self.data.test_volume, self.data.connector,
+                device_info=self.data.iscsi_device_info)
+            self.assertEqual(1, len(target_map.get(init_a)))
+            self.assertEqual(1, len(target_map.get(init_b)))
+            self.assertTrue(
+                len(target_map.get(init_a)) < len(self.data.target_wwns_multi))
+            self.assertTrue(
+                len(target_map.get(init_b)) < len(self.data.target_wwns_multi))
+
+    def test_build_initiator_target_map_load_balanced_exception(self):
+        ref_target_map = {'123456789012345': self.data.target_wwns_multi,
+                          '123456789054321': self.data.target_wwns_multi}
+        self.driver.performance.config = self.data.performance_config
+        with mock.patch.object(
+            self.common, 'get_target_wwns_from_masking_view',
+                return_value=(self.data.target_wwns_multi, [])) as mck_wwns:
+            with mock.patch.object(
+                self.driver.performance, 'process_port_load',
+                    side_effect=exception.VolumeBackendAPIException('')):
+                targets, target_map = self.driver._build_initiator_target_map(
+                    self.data.test_volume, self.data.connector,
+                    device_info=self.data.iscsi_device_info)
+                self.assertEqual(ref_target_map, target_map)
+                self.assertEqual(mck_wwns.call_count, 2)
 
     def test_extend_volume(self):
         with mock.patch.object(self.common, 'extend_volume') as mock_extend:

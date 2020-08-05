@@ -2330,3 +2330,31 @@ class PowerMaxRestTest(test.TestCase):
         mck_request.assert_called_once_with(
             test_uri, rest.POST, request_object=test_filters)
         self.assertEqual(response_obj, {'success': True})
+
+    def test_get_ip_interface_physical_port(self):
+        array_id = self.data.array
+        virtual_port = self.data.iscsi_dir_virtual_port
+        ip_address = self.data.ip
+        response_dir_port = self.rest.get_ip_interface_physical_port(
+            array_id, virtual_port, ip_address)
+        self.assertEqual(self.data.iscsi_dir_port, response_dir_port)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_request',
+        side_effect=[tpd.PowerMaxData.director_port_keys_empty,
+                     tpd.PowerMaxData.director_port_keys_multiple])
+    def test_get_ip_interface_physical_port_exceptions(self, mck_get):
+        array_id = self.data.array
+        virtual_port = self.data.iscsi_dir_virtual_port
+        ip_address = self.data.ip
+
+        # No physical port keys returned
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.rest.get_ip_interface_physical_port,
+            array_id, virtual_port, ip_address)
+        # Multiple physical port keys returned
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.rest.get_ip_interface_physical_port,
+            array_id, virtual_port, ip_address)
