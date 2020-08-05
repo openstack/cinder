@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1873738 <https://bugs.launchpad.net/cinder/+bug/1873738>`_: RBD Driver:
+    Added cleanup for residue destination file if the copy image to encrypted volume
+    operation fails.
