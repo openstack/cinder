@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed `bug #1874541 <https://bugs.launchpad.net/cinder/+bug/1874541>`_
+    Where a ZeroDivisionError was hapenning when the SolidFire driver tried
+    to update cluster capabilities.
