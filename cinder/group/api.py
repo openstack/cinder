@@ -97,6 +97,15 @@ class API(base.Base):
 
         return availability_zone
 
+    def _update_volumes_host(self, context, group):
+        volumes = objects.VolumeList.get_all_by_generic_group(context,
+                                                              group.id)
+        for vol in volumes:
+            # Update the host field for the volume.
+            vol.host = group.host
+            vol.cluster_name = group.cluster_name
+            vol.save()
+
     def create(self, context, name, description, group_type,
                volume_types, availability_zone=None):
         context.authorize(group_policy.CREATE_POLICY)
@@ -247,8 +256,9 @@ class API(base.Base):
         kwargs = {'group_id': group.id,
                   'volume_properties': objects.VolumeProperties(size=size)}
 
-        if not group.host or not self.scheduler_rpcapi.validate_host_capacity(
-                context, group.host, objects.RequestSpec(**kwargs)):
+        host = group.resource_backend
+        if not host or not self.scheduler_rpcapi.validate_host_capacity(
+                context, host, objects.RequestSpec(**kwargs)):
             msg = _("No valid host to create group %s.") % group.id
             LOG.error(msg)
             raise exception.InvalidGroup(reason=msg)
@@ -335,12 +345,7 @@ class API(base.Base):
                               {'group': group.id,
                                'group_snap': group_snapshot.id})
 
-        volumes = objects.VolumeList.get_all_by_generic_group(context,
-                                                              group.id)
-        for vol in volumes:
-            # Update the host field for the volume.
-            vol.host = group.host
-            vol.save()
+        self._update_volumes_host(context, group)
 
         self.volume_rpcapi.create_group_from_src(
             context, group, group_snapshot)
@@ -418,12 +423,7 @@ class API(base.Base):
                               {'group': group.id,
                                'source_group': source_group.id})
 
-        volumes = objects.VolumeList.get_all_by_generic_group(context,
-                                                              group.id)
-        for vol in volumes:
-            # Update the host field for the volume.
-            vol.host = group.host
-            vol.save()
+        self._update_volumes_host(context, group)
 
         self.volume_rpcapi.create_group_from_src(context, group,
                                                  None, source_group)
