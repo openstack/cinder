@@ -819,8 +819,11 @@ class AffinityFilterTestCase(BackendFiltersTestCase):
         self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
 
+@ddt.ddt
 class DriverFilterTestCase(BackendFiltersTestCase):
-    def test_passing_function(self):
+    @ddt.data({'volume_type': {}}, {'volume_type': None})
+    @ddt.unpack
+    def test_passing_function(self, volume_type):
         filt_cls = self.class_map['DriverFilter']()
         host1 = fakes.FakeBackendState(
             'host1', {
@@ -829,7 +832,7 @@ class DriverFilterTestCase(BackendFiltersTestCase):
                 }
             })
 
-        filter_properties = {'volume_type': {}}
+        filter_properties = {'volume_type': volume_type}
 
         self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
