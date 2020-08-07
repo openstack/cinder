@@ -461,6 +461,11 @@ Policy defaults enable only users with the administrative role or the owner of
 the volume to perform this operation. Cloud providers can change these
 permissions through the policy configuration file.
 
+Retyping an unencrypted volume to the same size encrypted volume will most
+likely fail. Even though the volume is the same size as the source volume, the
+encrypted volume needs to store additional encryption information overhead.
+This results in the new volume not being large enough to hold all data.
+
 Response codes
 --------------
 

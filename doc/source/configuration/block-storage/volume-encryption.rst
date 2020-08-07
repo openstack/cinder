@@ -218,3 +218,12 @@ sections.
 
 In the above example you see that the search returns the string
 written to the unencrypted volume, but not the encrypted one.
+
+Known Issues
+~~~~~~~~~~~~
+
+Retyping an unencrypted volume to the same size encrypted volume will
+most likely fail. Even though the volume is the same size as the source
+volume, the encrypted volume needs to store additional encryption
+information overhead. This results in the new volume not being large
+enough to hold all data.
