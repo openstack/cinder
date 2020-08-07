@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize: Added support to enable creating a group from
+    source, when source is a replicated group or consistency group snapshot
+    of a replicated group.
