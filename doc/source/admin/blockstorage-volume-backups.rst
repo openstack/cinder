@@ -215,3 +215,49 @@ to avoid any confusion on whether the restore was successful or not.
    destination volume is useless, as there is no way of knowing how much data,
    or if any, was actually restored, hence our recommendation of using the
    "error" state.
+
+backup_max_operations
+---------------------
+
+With this configuration option will let us select the maximum number of
+operations, backup and restore, that can be performed concurrently.
+
+This option has a default value of 15, which means that we can have 15
+concurrent backups, or 15 concurrent restores, or any combination of backups
+and restores as long as the sum of the 2 operations don't exceed 15.
+
+The concurrency limitation of this configuration option is also enforced when
+we run multiple processes for the same backup service using the
+``backup_workers`` configuration option.  It is not a per process restriction,
+but global to the service, so we won't be able to run ``backup_max_operations``
+on each one of the processes, but on all the running processes from the same
+backup service.
+
+Backups and restore operations are both CPU and memory intensive, but thanks to
+this option we can limit the concurrency and prevent DoS attacks or just
+service disruptions caused by many concurrent requests that lead to Out of
+Memory (OOM) kills.
+
+The amount of memory (RAM) used during the operation depends on the configured
+chunk size as well as the compression ratio achieved on the data during the
+operation.
+
+Example:
+
+  Let's have a look at how much memory would be needed if we use the default
+  backup chunk size (~1.86 GB) while doing a restore to an RBD volume from a
+  non Ceph backend (Swift, NFS etc).
+
+  In a restore operation the worst case scenario, from the memory point of
+  view, is when the compression ratio is close to 0% (the compressed data chunk
+  is almost the same size as the uncompressed data).
+
+  In this case the memory usage would be ~5.58 GB of data for each chunk:
+  ~5.58 GB = read buffer + decompressed buffer + write buffer used by the
+  librbd library = ~1.86 GB + 1.86 GB + 1.86 GB
+
+  For 15 concurrent restore operations, the cinder-backup service will require
+  ~83.7 GB of memory.
+
+Similar calculations can be done for environment specific scenarios and this
+config option can be set accordingly.

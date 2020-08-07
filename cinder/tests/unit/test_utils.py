@@ -1670,3 +1670,44 @@ class TestAutoMaxOversubscriptionRatio(test.TestCase):
         if result is not None:
             result = round(result, 2)
         self.assertEqual(expected_result, result)
+
+
+@ddt.ddt
+class LimitOperationsTestCase(test.TestCase):
+    @ddt.data(1, 5)
+    @mock.patch('contextlib.suppress')
+    def test_semaphore_factory_no_limit(self, processes, mock_suppress):
+        res = utils.semaphore_factory(0, processes)
+        mock_suppress.assert_called_once_with()
+        self.assertEqual(mock_suppress.return_value, res)
+
+    @mock.patch('eventlet.Semaphore')
+    def test_semaphore_factory_with_limit(self, mock_semaphore):
+        max_operations = 15
+        res = utils.semaphore_factory(max_operations, 1)
+        mock_semaphore.assert_called_once_with(max_operations)
+        self.assertEqual(mock_semaphore.return_value, res)
+
+    @mock.patch('cinder.utils.Semaphore')
+    def test_semaphore_factory_with_limit_and_workers(self, mock_semaphore):
+        max_operations = 15
+        processes = 5
+        res = utils.semaphore_factory(max_operations, processes)
+        mock_semaphore.assert_called_once_with(max_operations)
+        self.assertEqual(mock_semaphore.return_value, res)
+
+    @mock.patch('multiprocessing.Semaphore')
+    @mock.patch('eventlet.tpool.execute')
+    def test_semaphore(self, mock_exec, mock_semaphore):
+        limit = 15
+        res = utils.Semaphore(limit)
+        self.assertEqual(limit, res.limit)
+
+        mocked_semaphore = mock_semaphore.return_value
+        self.assertEqual(mocked_semaphore, res.semaphore)
+        mock_semaphore.assert_called_once_with(limit)
+
+        with res:
+            mock_exec.assert_called_once_with(mocked_semaphore.__enter__)
+            mocked_semaphore.__exit__.assert_not_called()
+        mocked_semaphore.__exit__.assert_called_once_with(None, None, None)

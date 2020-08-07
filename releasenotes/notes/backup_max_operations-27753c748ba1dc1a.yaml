@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    We can now limit the number of concurrent backup/restore operations that a
+    Cinder backup service can perform using the ``backup_max_operations``
+    configuration option.

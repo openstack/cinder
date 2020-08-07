@@ -25,6 +25,7 @@ import functools
 import inspect
 import logging as py_logging
 import math
+import multiprocessing
 import operator
 import os
 import pyclbr
@@ -37,6 +38,8 @@ import time
 import types
 
 from castellan import key_manager
+import eventlet
+from eventlet import tpool
 from os_brick import encryptors
 from os_brick.initiator import connector
 from oslo_concurrency import lockutils
@@ -1066,3 +1069,52 @@ def create_ordereddict(adict):
     """Given a dict, return a sorted OrderedDict."""
     return OrderedDict(sorted(adict.items(),
                               key=operator.itemgetter(0)))
+
+
+class Semaphore(object):
+    """Custom semaphore to workaround eventlet issues with multiprocessing."""
+    def __init__(self, limit):
+        self.limit = limit
+        self.semaphore = multiprocessing.Semaphore(limit)
+
+    def __enter__(self):
+        # Eventlet does not work with multiprocessing's Semaphore, so we have
+        # to execute it in a native thread to avoid getting blocked when trying
+        # to acquire the semaphore.
+        return tpool.execute(self.semaphore.__enter__)
+
+    def __exit__(self, *args):
+        # Don't use native thread for exit, as it will only add overhead
+        return self.semaphore.__exit__(*args)
+
+
+def semaphore_factory(limit, concurrent_processes):
+    """Get a semaphore to limit concurrent operations.
+
+    The semaphore depends on the limit we want to set and the concurrent
+    processes that need to be limited.
+    """
+    # Limit of 0 is no limit, so we won't use a semaphore
+    if limit:
+        # If we only have 1 process we can use eventlet's Semaphore
+        if concurrent_processes == 1:
+            return eventlet.Semaphore(limit)
+        # Use our own Sempahore for interprocess because eventlet blocks with
+        # the standard one
+        return Semaphore(limit)
+    return contextlib.suppress()
+
+
+def limit_operations(func):
+    """Decorator to limit the number of concurrent operations.
+
+     This method decorator expects to have a _semaphore attribute holding an
+     initialized semaphore in the self instance object.
+
+     We can get the appropriate semaphore with the semaphore_factory method.
+     """
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with self._semaphore:
+            return func(self, *args, **kwargs)
+    return wrapper
