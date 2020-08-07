@@ -279,7 +279,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 3.4.3 - un-deprecated option vmware_storage_profile and added new
     #         option vmware_enable_volume_stats to optionally enable
     #         real get_volume_stats for proper scheduling of this driver.
-    VERSION = '3.4.3'
+    # 3.4.4 - Ensure datastores exist for storage profiles during
+    #         get_volume_stats()
+    VERSION = '3.4.4'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "VMware_CI"
@@ -374,19 +376,21 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         available_hosts = self._get_hosts(self._clusters)
         global_capacity = 0
         global_free = 0
-        while True:
-            for ds in ds_summaries.objects:
-                ds_props = self._get_object_properties(ds)
-                summary = ds_props['summary']
-                if self._is_datastore_accessible(summary,
-                                                 ds_props['host'],
-                                                 available_hosts):
-                    global_capacity += summary.capacity
-                    global_free += summary.freeSpace
-            if getattr(ds_summaries, 'token', None):
-                ds_summaries = self.volumeops.continue_retrieval(ds_summaries)
-            else:
-                break
+        if ds_summaries:
+            while True:
+                for ds in ds_summaries.objects:
+                    ds_props = self._get_object_properties(ds)
+                    summary = ds_props['summary']
+                    if self._is_datastore_accessible(summary,
+                                                     ds_props['host'],
+                                                     available_hosts):
+                        global_capacity += summary.capacity
+                        global_free += summary.freeSpace
+                if getattr(ds_summaries, 'token', None):
+                    ds_summaries = self.volumeops.continue_retrieval(
+                        ds_summaries)
+                else:
+                    break
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
         data['free_capacity_gb'] = round(global_free / units.Gi)
         self._stats = data
@@ -422,6 +426,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     vim_util.build_object_spec(client_factory,
                                                datastore_ref,
                                                []))
+
+            if not datastores:
+                LOG.warning("No Datastores found for storage profile(s) "
+                            "''%s'",
+                            ', '.join(
+                                self.configuration.safe_get(
+                                    'vmware_storage_profile')))
         else:
             # Build a catch-all object spec that would reach all datastores
             object_specs.append(
@@ -429,6 +440,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     client_factory,
                     self.session.vim.service_content.rootFolder,
                     [vim_util.build_recursive_traversal_spec(client_factory)]))
+
+        # If there are no datastores, we won't have object_specs and will
+        # fail when trying to get stats
+        if not object_specs:
+            return
+
         prop_spec = vim_util.build_property_spec(client_factory, 'Datastore',
                                                  ['summary', 'host'])
         filter_spec = vim_util.build_property_filter_spec(client_factory,
