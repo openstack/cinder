@@ -18,6 +18,7 @@ from unittest import mock
 
 from cinder import exception
 from cinder.message import message_field
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import volume as base
 from cinder.volume import manager as vol_manager
 
@@ -146,3 +147,101 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
             resource_uuid=fake_snapshot['id'],
             exception=fake_exp,
             detail=message_field.Detail.SNAPSHOT_DELETE_ERROR)
+
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI')
+    def test_attach_volume_local(self, mock_api):
+        manager = vol_manager.VolumeManager()
+
+        mock_initialize = self.mock_object(manager, 'initialize_connection')
+        mock_connect = self.mock_object(manager, '_connect_device')
+
+        ctxt = mock.sentinel.context
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        result = manager._attach_volume(ctxt, vol, mock.sentinel.properties,
+                                        remote=False)
+
+        mock_api.assert_not_called()
+        mock_initialize.assert_called_once_with(ctxt, vol,
+                                                mock.sentinel.properties)
+        mock_connect.assert_called_once_with(mock_initialize.return_value)
+        self.assertEqual(mock_connect.return_value, result)
+
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI')
+    def test_attach_volume_remote(self, mock_api):
+        mock_rpc = mock_api.return_value
+
+        manager = vol_manager.VolumeManager()
+        mock_connect = self.mock_object(manager, '_connect_device')
+        mock_initialize = self.mock_object(manager, 'initialize_connection')
+
+        ctxt = mock.sentinel.context
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        result = manager._attach_volume(ctxt, vol, mock.sentinel.properties,
+                                        remote=True)
+        mock_api.assert_called_once_with()
+        mock_initialize.assert_not_called()
+        mock_rpc.initialize_connection.assert_called_once_with(
+            ctxt, vol, mock.sentinel.properties)
+        mock_connect.assert_called_once_with(
+            mock_rpc.initialize_connection.return_value)
+        self.assertEqual(mock_connect.return_value, result)
+
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI')
+    def test_attach_volume_fail_connect(self, mock_api):
+        mock_initialize = mock_api.return_value.initialize_connection
+
+        manager = vol_manager.VolumeManager()
+        mock_detach = self.mock_object(manager, '_detach_volume')
+        mock_connect = self.mock_object(manager, '_connect_device',
+                                        side_effect=ValueError)
+
+        ctxt = mock.sentinel.context
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        self.assertRaises(ValueError,
+                          manager._attach_volume,
+                          ctxt, vol, mock.sentinel.properties,
+                          mock.sentinel.remote)
+
+        mock_initialize.assert_called_once_with(ctxt, vol,
+                                                mock.sentinel.properties)
+        mock_connect.assert_called_once_with(mock_initialize.return_value)
+        mock_detach.assert_called_once_with(
+            ctxt, None, vol, mock.sentinel.properties, force=True,
+            remote=mock.sentinel.remote)
+
+    @mock.patch('cinder.utils.brick_attach_volume_encryptor')
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI')
+    def test_attach_volume_fail_decrypt(self, mock_api, mock_is_encrypted,
+                                        mock_attach_encryptor):
+        mock_initialize = mock_api.return_value.initialize_connection
+
+        manager = vol_manager.VolumeManager()
+        mock_detach = self.mock_object(manager, '_detach_volume')
+        mock_connect = self.mock_object(manager, '_connect_device')
+        mock_db = self.mock_object(manager.db,
+                                   'volume_encryption_metadata_get')
+        mock_attach_encryptor.side_effect = ValueError
+
+        ctxt = mock.Mock()
+        vol = fake_volume.fake_volume_obj(ctxt)
+
+        self.assertRaises(ValueError,
+                          manager._attach_volume,
+                          ctxt, vol, mock.sentinel.properties,
+                          mock.sentinel.remote, attach_encryptor=True)
+
+        mock_initialize.assert_called_once_with(ctxt, vol,
+                                                mock.sentinel.properties)
+        mock_connect.assert_called_once_with(mock_initialize.return_value)
+        mock_is_encrypted.assert_called_once_with(ctxt, vol.volume_type_id)
+        mock_db.assert_called_once_with(ctxt.elevated.return_value, vol.id)
+        mock_attach_encryptor.assert_called_once_with(
+            ctxt, mock_connect.return_value, mock_db.return_value)
+
+        mock_detach.assert_called_once_with(
+            ctxt, mock_connect.return_value, vol, mock.sentinel.properties,
+            force=True, remote=mock.sentinel.remote)

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix leaving mapped volumes on offline volume migration and revert to
+    snapshot operations failure. (bug 1880971).
