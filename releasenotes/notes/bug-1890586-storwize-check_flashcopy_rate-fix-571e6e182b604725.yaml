@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1890586 <https://bugs.launchpad.net/cinder/+bug/1890586>`_:
+    IBM Storwize: Fixed issues in check_flashcopy_rate that impacts
+    the performance during Group Snapshot/Clone operations for bulk
+    volumes.

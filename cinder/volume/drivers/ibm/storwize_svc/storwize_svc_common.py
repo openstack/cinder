@@ -747,6 +747,7 @@ class StorwizeHelpers(object):
     def __init__(self, run_ssh):
         self.ssh = StorwizeSSH(run_ssh)
         self.check_fcmapping_interval = 3
+        self.code_level = None
 
     @staticmethod
     def handle_keyerror(cmd, out):
@@ -1951,18 +1952,20 @@ class StorwizeHelpers(object):
         return volume_model_updates
 
     def check_flashcopy_rate(self, flashcopy_rate):
-        sys_info = self.get_system_info()
-        code_level = sys_info['code_level']
+        if not self.code_level:
+            sys_info = self.get_system_info()
+            self.code_level = sys_info['code_level']
+
         if flashcopy_rate not in range(1, 151):
             raise exception.InvalidInput(
                 reason=_('The configured flashcopy rate should be '
                          'between 1 and 150.'))
-        elif code_level < (7, 8, 1, 0) and flashcopy_rate > 100:
+        elif self.code_level < (7, 8, 1, 0) and flashcopy_rate > 100:
             msg = (_('The configured flashcopy rate is %(fc_rate)s, The '
                      'storage code level is %(code_level)s, the flashcopy_rate'
                      ' range is 1-100 if the storwize code level '
                      'below 7.8.1.') % {'fc_rate': flashcopy_rate,
-                                        'code_level': code_level})
+                                        'code_level': self.code_level})
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
