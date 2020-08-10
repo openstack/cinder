@@ -7181,6 +7181,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         pool = 'openstack2'
         opts['iogrp'] = '0,1'
+        opts['volume_topology'] = 'hyperswap'
         state['available_iogrps'] = [0, 1, 2, 3]
         iog = self.driver._helpers.select_io_group(state, opts, pool)
         self.assertEqual(0, iog)
@@ -8276,6 +8277,66 @@ class StorwizeHelpersTestCase(test.TestCase):
         state = {}
 
         lsmdiskgrp.return_value = {}
+        fake_iog_vdc1 = {0: 10, 1: 50, 2: 50, 3: 300}
+        fake_iog_vdc2 = {0: 2, 1: 1, 2: 200}
+        fake_iog_vdc3 = {0: 2, 2: 200}
+        fake_iog_vdc4 = {0: 100, 1: 100, 2: 100, 3: 100}
+        fake_iog_vdc5 = {0: 10, 1: 1, 2: 200, 3: 300}
+
+        get_vdisk_count_by_io_group.side_effect = [fake_iog_vdc1,
+                                                   fake_iog_vdc2,
+                                                   fake_iog_vdc3,
+                                                   fake_iog_vdc4,
+                                                   fake_iog_vdc5]
+        pool = _get_test_pool(False)
+        opts['volume_topology'] = None
+        opts['iogrp'] = '0,2'
+        state['available_iogrps'] = [0, 1, 2, 3]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(0, iog)
+
+        opts['iogrp'] = '0'
+        state['available_iogrps'] = [0, 1, 2]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(0, iog)
+
+        opts['iogrp'] = '1,2'
+        state['available_iogrps'] = [0, 2]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(2, iog)
+
+        opts['iogrp'] = ' 0, 1, 2 '
+        state['available_iogrps'] = [0, 1, 2, 3]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
+        self.assertTrue(iog in state['available_iogrps'])
+        # since vdisk count in all iogroups is same, it will pick the first
+        self.assertEqual(0, iog)
+
+        opts['iogrp'] = '0,1,2, 3'
+        state['available_iogrps'] = [0, 1, 2, 3]
+
+        iog = self.storwize_svc_common.select_io_group(state, opts, pool)
+        self.assertTrue(iog in state['available_iogrps'])
+        self.assertEqual(1, iog)
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_count_by_io_group')
+    def test_select_io_group_hyperswap(self, get_vdisk_count_by_io_group,
+                                       lsmdiskgrp):
+        # given io groups
+        opts = {}
+        # system io groups
+        state = {}
+
+        lsmdiskgrp.return_value = {}
         fake_iog_vdc1 = {0: 100, 1: 50, 2: 50, 3: 300}
         fake_iog_vdc2 = {0: 2, 1: 1, 2: 200}
         fake_iog_vdc3 = {0: 2, 2: 200}
@@ -8289,6 +8350,7 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                    fake_iog_vdc5]
         pool = _get_test_pool(False)
         opts['iogrp'] = '0,2'
+        opts['volume_topology'] = 'hyperswap'
         state['available_iogrps'] = [0, 1, 2, 3]
 
         iog = self.storwize_svc_common.select_io_group(state, opts, pool)

@@ -871,12 +871,14 @@ class StorwizeHelpers(object):
                    'avail': state['available_iogrps']})
 
         site_iogrp = []
-        pool_data = self.get_pool_attrs(pool)
-        if pool_data is None:
-            msg = (_('Failed getting details for pool %s.') % pool)
-            LOG.error(msg)
-            raise exception.InvalidConfigurationValue(message=msg)
-        if 'site_id' in pool_data and pool_data['site_id']:
+        hyperswap = opts['volume_topology'] == 'hyperswap'
+        if hyperswap:
+            pool_data = self.get_pool_attrs(pool)
+            if pool_data is None:
+                msg = (_('Failed getting details for pool %s.') % pool)
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(message=msg)
+        if hyperswap and pool_data.get('site_id'):
             for node in state['storage_nodes'].values():
                 if pool_data['site_id'] == node['site_id']:
                     site_iogrp.append(node['IO_group'])
