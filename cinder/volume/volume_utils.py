@@ -1197,6 +1197,7 @@ def check_encryption_provider(db, volume, context):
     provider = encryption['provider']
     if provider in encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP:
         provider = encryptors.LEGACY_PROVIDER_CLASS_TO_FORMAT_MAP[provider]
+        encryption['provider'] = provider
     if provider != encryptors.LUKS:
         message = _("Provider %s not supported.") % provider
         raise exception.VolumeDriverException(message=message)
