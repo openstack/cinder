@@ -3942,7 +3942,7 @@ class PowerMaxCommon(object):
         resume_original_sg_dict = dict()
         orig_mgmt_sg_name = ''
 
-        target_extra_specs = new_type['extra_specs']
+        target_extra_specs = dict(new_type['extra_specs'])
         target_extra_specs.update({
             utils.SRP: srp, utils.ARRAY: array, utils.SLO: target_slo,
             utils.WORKLOAD: target_workload,
