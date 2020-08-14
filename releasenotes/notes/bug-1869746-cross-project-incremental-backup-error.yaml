@@ -1,6 +1,7 @@
 ---
 fixes:
   - |
+    `Bug #1869746 <https://bugs.launchpad.net/cinder/+bug/1869746>`_:
     Cinder no longer allows an incremental backup to be
     created while having the parent backup in another
     project.

@@ -1,5 +1,6 @@
 ---
 fixes:
   - |
+    `Bug #1880971 <https://bugs.launchpad.net/cinder/+bug/1880971>`_:
     Fix leaving mapped volumes on offline volume migration and revert to
-    snapshot operations failure. (bug 1880971).
+    snapshot operations failure.

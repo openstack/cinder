@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
+    `Bug #1888548 <https://bugs.launchpad.net/cinder/+bug/1888548>`_:
     Add Python 3 support to the Brocade Zone Manager driver.
-    (bug #1888548).

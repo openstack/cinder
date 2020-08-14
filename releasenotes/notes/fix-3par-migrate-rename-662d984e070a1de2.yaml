@@ -1,8 +1,8 @@
 ---
 fixes:
   - |
+    `Bug #1858119 <https://bugs.launchpad.net/cinder/+bug/1858119>`_:
     Fix the HPE 3PAR driver's attempt to rename the backend volume after
     it was migrated. If the original volume resides on the same 3PAR backend
     then the pre and post migration volume names are swapped. Otherwise, the
     newly migrated volume is renamed to match the original name.
-    (bug 1858119)

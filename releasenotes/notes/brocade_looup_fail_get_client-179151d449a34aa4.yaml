@@ -1,5 +1,6 @@
 ---
 fixes:
   - |
+    `Bug #1888550 <https://bugs.launchpad.net/cinder/+bug/1888550>`_:
     Fix `UnboundLocalError` on the Brocade lookup driver on southbound client
-    creation failure during the device mapping retrieval (Bug #1888550).
+    creation failure during the device mapping retrieval.

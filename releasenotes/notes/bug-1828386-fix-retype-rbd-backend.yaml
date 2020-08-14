@@ -1,7 +1,8 @@
 ---
 fixes:
   - |
+    `Bug #1828386 <https://bugs.launchpad.net/cinder/+bug/1828386>`_:
     Fix the bug that a volume retyped from
-    other volume type to replicated or
-    multiattach type cannot be enabled replicated
-    or multiattach in rbd driver. (Bug #1828386)
+    another volume type to a replicated or
+    multiattach type cannot have replication
+    or multiattach enabled in rbd driver.

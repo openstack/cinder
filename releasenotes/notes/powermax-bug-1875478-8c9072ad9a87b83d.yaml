@@ -1,5 +1,6 @@
 ---
 fixes:
   - |
+    `Bug #1875478 <https://bugs.launchpad.net/cinder/+bug/1875478>`_:
     PowerMax Driver - Concurrent live migrations can sometimes fail when one
     thread deletes a storage group that another thread may need.
