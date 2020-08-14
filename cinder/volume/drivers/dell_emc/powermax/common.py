@@ -561,8 +561,8 @@ class PowerMaxCommon(object):
         """
         group_name = None
         if group_id is not None:
-            if (volume_utils.is_group_a_cg_snapshot_type(group)
-                    or group.is_replicated):
+            if group and (volume_utils.is_group_a_cg_snapshot_type(group)
+                          or group.is_replicated):
                 group_name = self._add_new_volume_to_volume_group(
                     volume, device_id, volume_name,
                     extra_specs, rep_driver_data)
@@ -662,7 +662,7 @@ class PowerMaxCommon(object):
         # Add volume to group
         group_name = self._add_to_group(
             clone_volume, clone_dict['device_id'], clone_volume.name,
-            source_volume.group_id, source_volume.group, extra_specs,
+            clone_volume.group_id, clone_volume.group, extra_specs,
             rep_driver_data)
 
         model_update.update(
