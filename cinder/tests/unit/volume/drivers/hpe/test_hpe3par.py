@@ -7117,7 +7117,6 @@ class TestHPE3PARDriverBase(HPE3PARBaseDriver):
 
 @ddt.ddt
 class TestHPE3PARFCDriver(HPE3PARBaseDriver):
-
     properties = {
         'driver_volume_type': 'fibre_channel',
         'data': {
