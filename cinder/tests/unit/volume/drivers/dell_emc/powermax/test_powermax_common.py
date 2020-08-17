@@ -1903,10 +1903,12 @@ class PowerMaxCommonTest(test.TestCase):
                               self.common.manage_existing_get_size,
                               self.data.test_volume, external_ref)
 
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
+                       return_value=(False, False, False))
     @mock.patch.object(common.PowerMaxCommon,
                        '_remove_vol_and_cleanup_replication')
     @mock.patch.object(common.PowerMaxCommon, '_clone_check')
-    def test_unmanage_success(self, mck_clone, mock_rm):
+    def test_unmanage_success(self, mck_clone, mock_rm, mck_sess):
         volume = self.data.test_volume
         with mock.patch.object(self.rest, 'rename_volume') as mock_rename:
             self.common.unmanage(volume)
@@ -1930,6 +1932,14 @@ class PowerMaxCommonTest(test.TestCase):
             with mock.patch.object(self.rest, 'rename_volume') as mock_rename:
                 self.common.unmanage(volume)
                 mock_rename.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'is_vol_in_rep_session',
+                       return_value=(True, True, False))
+    @mock.patch.object(common.PowerMaxCommon, '_clone_check')
+    def test_unmanage_temp_snapshot_links(self, mck_clone, mck_sess):
+        volume = self.data.test_volume
+        self.assertRaises(exception.VolumeIsBusy, self.common.unmanage,
+                          volume)
 
     @mock.patch.object(common.PowerMaxCommon, '_slo_workload_migration')
     def test_retype(self, mock_migrate):

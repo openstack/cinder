@@ -3330,13 +3330,27 @@ class PowerMaxCommon(object):
                  {'name': volume_name, 'id': volume_id})
         extra_specs = self._initial_setup(volume)
         device_id = self._find_device_on_array(volume, extra_specs)
+        array = extra_specs['array']
         if device_id is None:
             LOG.error("Cannot find Volume: %(id)s for "
                       "unmanage operation. Exiting...",
                       {'id': volume_id})
         else:
             # Check if volume is snap source
-            self._clone_check(extra_specs['array'], device_id, extra_specs)
+            self._clone_check(array, device_id, extra_specs)
+            snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
+                array, device_id)
+            if snapvx_src or snapvx_tgt:
+                msg = _(
+                    'Cannot unmanage volume %s with device id %s as it is '
+                    'busy. Please either wait until all temporary snapshot '
+                    'have expired or manually unlink and terminate any '
+                    'remaining temporary sessions when they have been '
+                    'fully copied to their targets. Volume is a snapvx '
+                    'source: %s. Volume is a snapvx target: %s' %
+                    (volume_id, device_id, snapvx_src, snapvx_tgt))
+                LOG.error(msg)
+                raise exception.VolumeIsBusy(volume.id)
             # Remove volume from any openstack storage groups
             # and remove any replication
             self._remove_vol_and_cleanup_replication(
