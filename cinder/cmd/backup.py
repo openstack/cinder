@@ -69,11 +69,12 @@ CONF.register_opts(backup_cmd_opts)
 
 LOG = None
 
-# NOTE(mriedem): The default backup driver uses swift and performs read/write
+# NOTE: The default backup driver uses swift and performs read/write
 # operations in a thread. swiftclient will log requests and responses at DEBUG
 # level, which can cause a thread switch and break the backup operation. So we
-# set a default log level of WARN for swiftclient to try and avoid this issue.
-_EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN']
+# set a default log level of WARN for swiftclient and boto to try and avoid
+# this issue.
+_EXTRA_DEFAULT_LOG_LEVELS = ['swiftclient=WARN', 'botocore=WARN']
 
 
 def _launch_backup_process(launcher, num_process, _semaphore):

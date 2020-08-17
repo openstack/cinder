@@ -38,6 +38,7 @@ from cinder.backup.drivers import gcs as cinder_backup_drivers_gcs
 from cinder.backup.drivers import glusterfs as cinder_backup_drivers_glusterfs
 from cinder.backup.drivers import nfs as cinder_backup_drivers_nfs
 from cinder.backup.drivers import posix as cinder_backup_drivers_posix
+from cinder.backup.drivers import s3 as cinder_backup_drivers_s3
 from cinder.backup.drivers import swift as cinder_backup_drivers_swift
 from cinder.backup import manager as cinder_backup_manager
 from cinder.cmd import backup as cinder_cmd_backup
@@ -222,6 +223,7 @@ def list_opts():
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
                 cinder_backup_drivers_nfs.nfsbackup_service_opts,
                 cinder_backup_drivers_posix.posixbackup_service_opts,
+                cinder_backup_drivers_s3.s3backup_service_opts,
                 cinder_backup_drivers_swift.swiftbackup_service_opts,
                 cinder_backup_manager.backup_manager_opts,
                 cinder_cmd_backup.backup_cmd_opts,
