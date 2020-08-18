@@ -566,7 +566,7 @@ class PowerMaxCommonTest(test.TestCase):
             deepcopy(self.data.test_volume_attachment)]
         extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
         array = extra_specs[utils.ARRAY]
-        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         self.common._unmap_lun(volume, connector)
         mck_rem.assert_called_once_with(array, volume, device_info,
                                         extra_specs, connector, False,

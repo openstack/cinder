@@ -758,7 +758,7 @@ class PowerMaxCommon(object):
             backend_id = self._get_replicated_volume_backend_id(volume)
             rep_config = self.utils.get_rep_config(
                 backend_id, self.rep_configs)
-            extra_specs[utils.FORCE_VOL_REMOVE] = True
+            extra_specs[utils.FORCE_VOL_EDIT] = True
             rep_extra_specs = self._get_replication_extra_specs(
                 extra_specs, rep_config)
             if self.utils.is_volume_failed_over(volume):
@@ -2426,7 +2426,7 @@ class PowerMaxCommon(object):
         rep_config = extra_specs[utils.REP_CONFIG]
         rep_mode = extra_specs['rep_mode']
         if rep_mode in [utils.REP_METRO, utils.REP_ASYNC]:
-            extra_specs['force_vol_remove'] = True
+            extra_specs[utils.FORCE_VOL_EDIT] = True
         rdf_group_no, remote_array = self.get_rdf_details(array, rep_config)
         rep_extra_specs = self._get_replication_extra_specs(
             extra_specs, rep_config)
@@ -4640,8 +4640,8 @@ class PowerMaxCommon(object):
             array, rdfg_no, device_id)
         remote_device_id = remote_device['remoteVolumeName']
 
-        extra_specs['force_vol_remove'] = True
-        rep_extra_specs['force_vol_remove'] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
+        rep_extra_specs[utils.FORCE_VOL_EDIT] = True
 
         # Get the names of the SGs associated with the volume on the R2 array
         # before any operations are carried out - this will be used later for
@@ -5593,7 +5593,7 @@ class PowerMaxCommon(object):
             if remove_device_ids:
                 if group.is_replicated:
                     # Need force flag when manipulating RDF enabled SGs
-                    interval_retries_dict[utils.FORCE_VOL_REMOVE] = True
+                    interval_retries_dict[utils.FORCE_VOL_EDIT] = True
                 # Check if the volumes exist in the storage group
                 temp_list = deepcopy(remove_device_ids)
                 for device_id in temp_list:
