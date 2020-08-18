@@ -571,7 +571,7 @@ class PowerMaxCommonTest(test.TestCase):
             deepcopy(self.data.test_volume_attachment)]
         extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
         array = extra_specs[utils.ARRAY]
-        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         self.common._unmap_lun(volume, connector)
         mck_rem.assert_called_once_with(array, volume, device_info,
                                         extra_specs, connector, False,
@@ -597,7 +597,7 @@ class PowerMaxCommonTest(test.TestCase):
         volume.volume_attachment.objects = [
             deepcopy(self.data.test_volume_attachment)]
         extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
-        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         self.common._unmap_lun(volume, connector)
         self.assertEqual(2, mck_rem.call_count)
 
@@ -621,7 +621,7 @@ class PowerMaxCommonTest(test.TestCase):
         volume.volume_attachment.objects = [
             deepcopy(self.data.test_volume_attachment)]
         extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
-        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         self.common.promotion = True
         self.common._unmap_lun(volume, connector)
         self.common.promotion = False
@@ -2726,7 +2726,7 @@ class PowerMaxCommonTest(test.TestCase):
         group_name = self.data.storagegroup_name_source
         interval_retries_dict = {utils.INTERVAL: 1,
                                  utils.RETRIES: 1,
-                                 utils.FORCE_VOL_REMOVE: True}
+                                 utils.FORCE_VOL_EDIT: True}
         self.common._update_group_promotion(group, add_vols, remove_vols)
         mck_rem.assert_called_once_with(
             remote_array, device_id, group_name, interval_retries_dict)

@@ -105,7 +105,7 @@ TAG_LIST = 'tag_list'
 USED_HOST_NAME = "used_host_name"
 RDF_SYNCED_STATES = [RDF_SYNC_STATE, RDF_CONSISTENT_STATE,
                      RDF_ACTIVEACTIVE, RDF_ACTIVEBIAS]
-FORCE_VOL_REMOVE = 'force_vol_remove'
+FORCE_VOL_EDIT = 'force_vol_edit'
 PMAX_FAILOVER_START_ARRAY_PROMOTION = 'pmax_failover_start_array_promotion'
 
 # Multiattach constants
