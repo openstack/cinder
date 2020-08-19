@@ -126,9 +126,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.1.3 - Retype attached replication fix (#1851371)
         4.1.4 - Legacy volume not found fix (#1867163)
         4.1.5 - Allowing for default volume type in group (#1866871)
+        4.1.6 - Pools bug fix allowing 'None' variants (bug #1873253)
     """
 
-    VERSION = "4.1.5"
+    VERSION = "4.1.6"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

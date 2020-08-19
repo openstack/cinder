@@ -82,55 +82,35 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertEqual(self.common.ucode_level, self.data.next_gen_ucode)
 
     def test_get_slo_workload_combinations_powermax(self):
-        array_info = self.common.get_attributes_from_cinder_config()
-        finalarrayinfolist = self.common._get_slo_workload_combinations(
-            array_info)
-        self.assertTrue(len(finalarrayinfolist) > 1)
-
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_vmax_model',
-        return_value=(tpd.PowerMaxData.vmax_model_details['model']))
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_slo_list',
-        return_value=(tpd.PowerMaxData.vmax_slo_details['sloId']))
-    def test_get_slo_workload_combinations_vmax(self, mck_slo, mck_model):
-        array_info = self.common.get_attributes_from_cinder_config()
-        finalarrayinfolist = self.common._get_slo_workload_combinations(
-            array_info)
-        self.assertTrue(len(finalarrayinfolist) > 1)
-
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_vmax_model',
-        return_value=tpd.PowerMaxData.powermax_model_details['model'])
-    @mock.patch.object(rest.PowerMaxRest, 'get_workload_settings',
-                       return_value=[])
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_slo_list',
-        return_value=tpd.PowerMaxData.powermax_slo_details['sloId'])
-    def test_get_slo_workload_combinations_next_gen(self, mck_slo, mck_wl,
-                                                    mck_model):
         self.common.next_gen = True
-        self.common.array_model = 'PowerMax 2000'
-        finalarrayinfolist = self.common._get_slo_workload_combinations(
-            self.data.array_info_no_wl)
-        self.assertTrue(len(finalarrayinfolist) == 14)
+        self.common.array_model = 'PowerMax_2000'
+        array_info = {}
+        pools = self.common._get_slo_workload_combinations(array_info)
+        self.assertTrue(len(pools) == 24)
 
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_vmax_model',
-        return_value=tpd.PowerMaxData.vmax_model_details['model'])
-    @mock.patch.object(rest.PowerMaxRest, 'get_workload_settings',
-                       return_value=[])
-    @mock.patch.object(
-        rest.PowerMaxRest, 'get_slo_list',
-        return_value=tpd.PowerMaxData.powermax_slo_details['sloId'])
-    def test_get_slo_workload_combinations_next_gen_vmax(
-            self, mck_slo, mck_wl, mck_model):
+    def test_get_slo_workload_combinations_afa_powermax(self):
         self.common.next_gen = True
-        finalarrayinfolist = self.common._get_slo_workload_combinations(
-            self.data.array_info_no_wl)
-        self.assertTrue(len(finalarrayinfolist) == 18)
+        self.common.array_model = 'VMAX250F'
+        array_info = {}
+        pools = self.common._get_slo_workload_combinations(array_info)
+        self.assertTrue(len(pools) == 28)
+
+    def test_get_slo_workload_combinations_afa_hypermax(self):
+        self.common.next_gen = False
+        self.common.array_model = 'VMAX250F'
+        array_info = {}
+        pools = self.common._get_slo_workload_combinations(array_info)
+        self.assertTrue(len(pools) == 16)
+
+    def test_get_slo_workload_combinations_hybrid(self):
+        self.common.next_gen = False
+        self.common.array_model = 'VMAX100K'
+        array_info = {}
+        pools = self.common._get_slo_workload_combinations(array_info)
+        self.assertTrue(len(pools) == 44)
 
     def test_get_slo_workload_combinations_failed(self):
+        self.common.array_model = 'xxxxxx'
         array_info = {}
         self.assertRaises(
             exception.VolumeBackendAPIException,
