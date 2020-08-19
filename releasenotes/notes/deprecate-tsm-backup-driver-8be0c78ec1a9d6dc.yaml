@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    Cinder TSM Backup Driver is deprecated and will be removed in Wallaby
+    release.
