@@ -56,6 +56,10 @@ class OpenStackApiException400(OpenStackApiException):
     message = _("400 Bad Request")
 
 
+class OpenStackApiException500(OpenStackApiException):
+    message = _("500 Internal Server Error")
+
+
 class TestOpenStackClient(object):
     """Simple OpenStack API Client.
 
