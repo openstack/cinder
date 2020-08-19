@@ -1,6 +1,0 @@
----
-fixes:
-  - |
-    `Bug #1886222 <https://bugs.launchpad.net/cinder/+bug/1886222>`_:
-    Fixed an issue with creating a snapshot on an NFS backend
-    if the snapshot name is not specified.
