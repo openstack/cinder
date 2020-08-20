@@ -270,7 +270,7 @@ class PowerMaxRest(object):
                     "SSL error. Please check your SSL config or supplied "
                     "SSL cert in Cinder configuration. SSL Exception "
                     "message: %(e)s")
-            raise r_exc.SSLError(msg, {'base_uri': self.base_uri, 'e': e})
+            raise r_exc.SSLError(msg % {'base_uri': self.base_uri, 'e': e})
 
         except (r_exc.Timeout, r_exc.ConnectionError,
                 r_exc.HTTPError) as e:
@@ -300,13 +300,10 @@ class PowerMaxRest(object):
         except Exception as e:
             if retry:
                 self.u4p_failover_lock = False
-            msg = _("The %(method)s request to URL %(url)s failed with "
-                    "exception %(e)s")
-            LOG.error(msg, {'method': method, 'url': url,
-                            'e': six.text_type(e)})
-            raise exception.VolumeBackendAPIException(
-                message=(msg, {'method': method, 'url': url,
-                               'e': six.text_type(e)}))
+            msg = _("The %s request to URL %s failed with exception "
+                    "%s" % (method, url, six.text_type(e)))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         return status_code, message
 

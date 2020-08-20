@@ -4112,6 +4112,12 @@ class PowerMaxCommon(object):
                     rdf_pair_broken, rdf_pair_created, vol_retyped,
                     remote_retyped, extra_specs, target_extra_specs, volume,
                     volume_name, device_id, initial_sg_list[0])
+            except Exception:
+                # Don't care what this is, just catch it to prevent exception
+                # occurred while handling another exception type stack trace.
+                LOG.debug(
+                    'Volume migrate cleanup - Could not revert volume to '
+                    'previous state post volume migrate exception.')
             finally:
                 raise e
 
@@ -4136,65 +4142,60 @@ class PowerMaxCommon(object):
         srp = extra_specs[utils.SRP]
         slo = extra_specs[utils.SLO]
         workload = extra_specs.get(utils.WORKLOAD, 'NONE')
-        try:
-            LOG.debug('Volume migrate cleanup - starting revert attempt.')
-            if remote_retyped:
-                LOG.debug('Volume migrate cleanup - Attempt to revert remote '
-                          'volume retype.')
-                rep_mode = extra_specs[utils.REP_MODE]
-                is_rep_enabled = self.utils.is_replication_enabled(extra_specs)
-                self._retype_remote_volume(
-                    array, volume, device_id, volume_name,
-                    rep_mode, is_rep_enabled, extra_specs)
-                LOG.debug('Volume migrate cleanup - Revert remote retype '
-                          'volume successful.')
+        LOG.debug('Volume migrate cleanup - starting revert attempt.')
+        if remote_retyped:
+            LOG.debug('Volume migrate cleanup - Attempt to revert remote '
+                      'volume retype.')
+            rep_mode = extra_specs[utils.REP_MODE]
+            is_rep_enabled = self.utils.is_replication_enabled(extra_specs)
+            self._retype_remote_volume(
+                array, volume, device_id, volume_name,
+                rep_mode, is_rep_enabled, extra_specs)
+            LOG.debug('Volume migrate cleanup - Revert remote retype '
+                      'volume successful.')
 
-            if rdf_pair_created:
-                LOG.debug('Volume migrate cleanup - Attempt to revert rdf '
-                          'pair creation.')
-                rep_extra_specs, resume_rdf = (
-                    self.break_rdf_device_pair_session(
-                        array, device_id, volume_name, extra_specs, volume))
-                if resume_rdf:
-                    self.rest.srdf_resume_replication(
-                        array, rep_extra_specs['mgmt_sg_name'],
-                        rep_extra_specs['rdf_group_no'], rep_extra_specs)
-                LOG.debug('Volume migrate cleanup - Revert rdf pair '
-                          'creation successful.')
+        if rdf_pair_created:
+            LOG.debug('Volume migrate cleanup - Attempt to revert rdf '
+                      'pair creation.')
+            rep_extra_specs, resume_rdf = (
+                self.break_rdf_device_pair_session(
+                    array, device_id, volume_name, extra_specs, volume))
+            if resume_rdf:
+                self.rest.srdf_resume_replication(
+                    array, rep_extra_specs['mgmt_sg_name'],
+                    rep_extra_specs['rdf_group_no'], rep_extra_specs)
+            LOG.debug('Volume migrate cleanup - Revert rdf pair '
+                      'creation successful.')
 
-            if vol_retyped:
-                LOG.debug('Volume migrate cleanup - Attempt to revert local '
-                          'volume retype.')
-                self._retype_volume(
-                    array, srp, device_id, volume, volume_name,
-                    target_extra_specs, slo, workload, extra_specs)
-                LOG.debug('Volume migrate cleanup - Revert local volume '
-                          'retype successful.')
+        if vol_retyped:
+            LOG.debug('Volume migrate cleanup - Attempt to revert local '
+                      'volume retype.')
+            self._retype_volume(
+                array, srp, device_id, volume, volume_name,
+                target_extra_specs, slo, workload, extra_specs)
+            LOG.debug('Volume migrate cleanup - Revert local volume '
+                      'retype successful.')
 
-            if rdf_pair_broken:
-                LOG.debug('Volume migrate cleanup - Attempt to revert to '
-                          'original rdf pair.')
-                (rep_status, __, __, rep_extra_specs, resume_rdf) = (
-                    self.configure_volume_replication(
-                        array, volume, device_id, extra_specs))
-                if rep_status == 'first_vol_in_rdf_group':
-                    volume_name = self.utils.get_volume_element_name(volume.id)
-                    __, __, __ = (
-                        self._post_retype_srdf_protect_storage_group(
-                            array, source_sg, device_id, volume_name,
-                            rep_extra_specs, volume))
-                if resume_rdf:
-                    self.rest.srdf_resume_replication(
-                        array, rep_extra_specs['mgmt_sg_name'],
-                        rep_extra_specs['rdf_group_no'], rep_extra_specs)
-                LOG.debug('Volume migrate cleanup - Revert to original rdf '
-                          'pair successful.')
-
-            LOG.debug('Volume migrate cleanup - Reverted volume to previous '
-                      'state post retype exception.')
-        finally:
-            LOG.debug('Volume migrate cleanup - Could not revert volume to '
-                      'previous state post retype exception')
+        if rdf_pair_broken:
+            LOG.debug('Volume migrate cleanup - Attempt to revert to '
+                      'original rdf pair.')
+            (rep_status, __, __, rep_extra_specs, resume_rdf) = (
+                self.configure_volume_replication(
+                    array, volume, device_id, extra_specs))
+            if rep_status == 'first_vol_in_rdf_group':
+                volume_name = self.utils.get_volume_element_name(volume.id)
+                __, __, __ = (
+                    self._post_retype_srdf_protect_storage_group(
+                        array, source_sg, device_id, volume_name,
+                        rep_extra_specs, volume))
+            if resume_rdf:
+                self.rest.srdf_resume_replication(
+                    array, rep_extra_specs['mgmt_sg_name'],
+                    rep_extra_specs['rdf_group_no'], rep_extra_specs)
+            LOG.debug('Volume migrate cleanup - Revert to original rdf '
+                      'pair successful.')
+        LOG.debug('Volume migrate cleanup - Reverted volume to previous '
+                  'state post retype exception.')
 
     def _retype_volume(
             self, array, srp, device_id, volume, volume_name, extra_specs,
@@ -4314,6 +4315,12 @@ class PowerMaxCommon(object):
                     moved_between_sgs, array, source_sg_name, parent_sg,
                     target_sg_name, extra_specs, device_id, volume,
                     volume_name)
+            except Exception:
+                # Don't care what this is, just catch it to prevent exception
+                # occurred while handling another exception type stack trace.
+                LOG.debug(
+                    'Volume retype cleanup - Could not revert volume to '
+                    'previous state post volume retype exception.')
             finally:
                 raise e
 
@@ -4445,6 +4452,13 @@ class PowerMaxCommon(object):
                         array, device_id, volume_name, rep_extra_specs, volume)
                     LOG.debug('Volume retype srdf protect cleanup - Break new '
                               'rdf pair successful.')
+            except Exception:
+                # Don't care what this is, just catch it to prevent exception
+                # occurred while handling another exception type stack trace.
+                LOG.debug(
+                    'Retype SRDF protect cleanup - Unable to break new RDF '
+                    'pair on volume post volume retype srdf protect '
+                    'exception.')
             finally:
                 raise e
 
@@ -4504,6 +4518,14 @@ class PowerMaxCommon(object):
                             remote_array, remote_sg_name)
                         LOG.debug('Volume retype remote cleanup - Delete '
                                   'target sg successful.')
+                except Exception:
+                    # Don't care what this is, just catch it to prevent
+                    # exception occurred while handling another exception
+                    # type messaging.
+                    LOG.debug(
+                        'Retype remote volume cleanup - Could not delete '
+                        'target storage group on remote array post retype '
+                        'remote volume exception.')
                 finally:
                     raise e
         return success
@@ -4723,11 +4745,19 @@ class PowerMaxCommon(object):
             return (rep_status, pair_info, rep_info_dict, rep_extra_specs,
                     resume_rdf)
         except Exception as e:
-            self._cleanup_on_configure_volume_replication_failure(
-                resume_rdf, rdf_pair_created, remote_sg_get, add_to_mgmt_sg,
-                device_id, r2_device_id, mgmt_sg_name, array, remote_array,
-                rdf_group_no, extra_specs, rep_extra_specs, volume,
-                tgt_sg_name)
+            try:
+                self._cleanup_on_configure_volume_replication_failure(
+                    resume_rdf, rdf_pair_created, remote_sg_get,
+                    add_to_mgmt_sg, device_id, r2_device_id, mgmt_sg_name,
+                    array, remote_array, rdf_group_no, extra_specs,
+                    rep_extra_specs, volume, tgt_sg_name)
+            except Exception:
+                # Don't care what this is, just catch it to prevent exception
+                # occurred while handling another exception type stack trace.
+                LOG.debug(
+                    'Configure volume replication cleanup - Could not revert '
+                    'volume to non-rdf state post configure volume '
+                    'replication exception.')
             raise e
 
     def _cleanup_on_configure_volume_replication_failure(
@@ -4743,7 +4773,7 @@ class PowerMaxCommon(object):
         :param add_to_mgmt_sg: was the volume added to a management group
         :param r1_device_id: local device id
         :param r2_device_id: remote device id
-        :param mgmt_sg_name: rdf management storage group name
+        :param mgmt_sg_name: rdfg management storage group name
         :param array: array
         :param remote_array: remote array
         :param rdf_group_no: rdf group number
@@ -4940,6 +4970,13 @@ class PowerMaxCommon(object):
                     mgmt_sg_name, rdfg_no, extra_specs, r2_sg_names,
                     device_id, remote_array, remote_device_id, volume,
                     volume_name, rep_extra_specs)
+            except Exception:
+                # Don't care what this is, just catch it to prevent exception
+                # occurred while handling another exception type stack trace.
+                LOG.debug(
+                    'Break rdf pair cleanup - Could not revert '
+                    'volume to previous rdf enabled state post break rdf '
+                    'device pair exception replication exception.')
             finally:
                 raise e
 
