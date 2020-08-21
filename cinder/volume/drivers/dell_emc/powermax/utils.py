@@ -21,6 +21,7 @@ import re
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import units
+import packaging.version
 import six
 
 from cinder import exception
@@ -1989,8 +1990,9 @@ class PowerMaxUtils(object):
         :param minimum_version: minimum version allowed
         :returns: boolean
         """
-        from pkg_resources import parse_version
-        return parse_version(version) >= parse_version(minimum_version)
+        checking = packaging.version.parse(version)
+        minimum = packaging.version.parse(minimum_version)
+        return checking >= minimum
 
     @staticmethod
     def parse_specs_from_pool_name(pool_name):
