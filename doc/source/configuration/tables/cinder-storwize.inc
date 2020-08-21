@@ -60,6 +60,8 @@
      - (List) Comma separated list of storage system storage pools for volumes.
    * - ``storwize_svc_mirror_pool`` = ``None``
      - (String) Specifies the name of the pool in which mirrored copy is stored. Example: "pool2"
+   * - ``storwize_svc_retain_aux_volume`` = ``False``
+     - (Boolean) This defines an optional parameter to retain auxiliary volume in a mirror relationship on the delete of primary volume or moving to non-mirror.
    * - ``storwize_peer_pool`` = ``None``
      - (String) Specifies the name of the peer pool for hyperswap volume, the peer pool must exist on the other site.
    * - ``storwize_preferred_host_site`` = ``{}``
