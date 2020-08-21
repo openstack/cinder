@@ -65,13 +65,6 @@ RBD_OPTS = [
     cfg.StrOpt('rbd_ceph_conf',
                default='',  # default determined by librados
                help='Path to the ceph configuration file'),
-    cfg.StrOpt('rbd_keyring_conf',
-               deprecated_for_removal=True,
-               deprecated_reason='Use of this option exposes a security '
-                                 'vulnerability.  See OSSN-0085 for details.',
-               deprecated_since='Ussuri',
-               default='',
-               help='Path to the ceph keyring file'),
     cfg.BoolOpt('rbd_flatten_volume_from_snapshot',
                 default=False,
                 help='Flatten volumes created from snapshots to remove '
@@ -1411,20 +1404,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         """Removes an export for a logical volume."""
         pass
 
-    def _get_keyring_contents(self):
-        # NOTE(danpawlik) If keyring is not provided in Cinder configuration,
-        # os-brick library will take keyring from default path.
-        keyring_file = self.configuration.rbd_keyring_conf
-        keyring_data = None
-        try:
-            if os.path.isfile(keyring_file):
-                with open(keyring_file, 'r') as k_file:
-                    keyring_data = k_file.read()
-        except IOError:
-            LOG.debug('Cannot read RBD keyring file: %s.', keyring_file)
-
-        return keyring_data
-
     def initialize_connection(self, volume, connector):
         hosts, ports = self._get_mon_addrs()
         name, conf, user, secret_uuid = self._get_config_tuple()
@@ -1442,7 +1421,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 'secret_uuid': secret_uuid,
                 'volume_id': volume.id,
                 "discard": True,
-                'keyring': self._get_keyring_contents(),
             }
         }
         LOG.debug('connection data: %s', data)

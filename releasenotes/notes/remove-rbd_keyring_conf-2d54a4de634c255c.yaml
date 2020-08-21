@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    RBD driver: the ``rbd_keyring_conf`` configuration option, which
+    was deprecated in the Ussuri release, has been removed.  If it is
+    present in a configuration file, its value will silently be
+    ignored.  For more information, see `OSSN-0085
+    <https://wiki.openstack.org/wiki/OSSN/OSSN-0085>`_:
+    Cinder configuration option can leak secret key from Ceph backend.

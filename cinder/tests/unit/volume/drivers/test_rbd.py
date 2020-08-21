@@ -171,7 +171,6 @@ class RBDTestCase(test.TestCase):
         cfg.rbd_cluster_name = 'nondefault'
         cfg.rbd_pool = 'rbd'
         cfg.rbd_ceph_conf = '/etc/ceph/my_ceph.conf'
-        cfg.rbd_keyring_conf = '/etc/ceph/my_ceph.client.keyring'
         cfg.rbd_secret_uuid = None
         cfg.rbd_user = 'cinder'
         cfg.volume_backend_name = None
@@ -1569,14 +1568,9 @@ class RBDTestCase(test.TestCase):
             self.assertDictEqual(expected, actual)
             self.assertTrue(mock_get_mon_addrs.called)
 
-    @mock.patch.object(cinder.volume.drivers.rbd.RBDDriver,
-                       '_get_keyring_contents')
-    def test_initialize_connection(self, mock_keyring):
+    def test_initialize_connection(self):
         hosts = ['::1', '::1', '::1', '127.0.0.1', 'example.com']
         ports = ['6789', '6790', '6791', '6792', '6791']
-
-        keyring_data = "[client.cinder]\n  key = test\n"
-        mock_keyring.return_value = keyring_data
 
         self.driver._active_config = {'name': 'secondary_id',
                                       'user': 'foo',
@@ -1595,14 +1589,8 @@ class RBDTestCase(test.TestCase):
                 'secret_uuid': self.cfg.rbd_secret_uuid,
                 'volume_id': self.volume_a.id,
                 'discard': True,
-                'keyring': keyring_data,
             }
         }
-        self._initialize_connection_helper(expected, hosts, ports)
-
-        # Check how it will work with empty keyring path
-        mock_keyring.return_value = None
-        expected['data']['keyring'] = None
         self._initialize_connection_helper(expected, hosts, ports)
 
         self.driver._active_config = {'name': 'secondary_id',
@@ -1611,30 +1599,6 @@ class RBDTestCase(test.TestCase):
                                       'secret_uuid': 'secondary_secret_uuid'}
         expected['data']['secret_uuid'] = 'secondary_secret_uuid'
         self._initialize_connection_helper(expected, hosts, ports)
-
-    def test__get_keyring_contents_no_config_file(self):
-        self.cfg.rbd_keyring_conf = ''
-        self.assertIsNone(self.driver._get_keyring_contents())
-
-    @mock.patch('os.path.isfile')
-    def test__get_keyring_contents_read_file(self, mock_isfile):
-        mock_isfile.return_value = True
-        keyring_data = "[client.cinder]\n  key = test\n"
-        mockopen = mock.mock_open(read_data=keyring_data)
-        mockopen.return_value.__exit__ = mock.Mock()
-        with mock.patch('cinder.volume.drivers.rbd.open', mockopen,
-                        create=True):
-            self.assertEqual(self.driver._get_keyring_contents(), keyring_data)
-
-    @mock.patch('os.path.isfile')
-    def test__get_keyring_contents_raise_error(self, mock_isfile):
-        mock_isfile.return_value = True
-        mockopen = mock.mock_open()
-        mockopen.return_value.__exit__ = mock.Mock()
-        with mock.patch('cinder.volume.drivers.rbd.open', mockopen,
-                        create=True) as mock_keyring_file:
-            mock_keyring_file.side_effect = IOError
-            self.assertIsNone(self.driver._get_keyring_contents())
 
     @ddt.data({'rbd_chunk_size': 1, 'order': 20},
               {'rbd_chunk_size': 8, 'order': 23},
