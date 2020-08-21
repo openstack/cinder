@@ -147,6 +147,13 @@ storwize_svc_opts = [
                'performs a complete cycle at most once each period. '
                'The default is 300 seconds, and the valid seconds '
                'are 60-86400.'),
+    cfg.BoolOpt('storwize_svc_retain_aux_volume',
+                default=False,
+                help='Enable or disable retaining of aux volume on secondary '
+                     'storage during delete of the volume on primary storage '
+                     'or moving the primary volume from mirror to non-mirror '
+                     'with replication enabled. This option is valid for '
+                     'SVC.'),
 ]
 
 CONF = cfg.CONF
@@ -2196,7 +2203,7 @@ class StorwizeHelpers(object):
         return relationship[0] if len(relationship) > 0 else None
 
     def delete_rc_volume(self, volume_name, target_vol=False,
-                         force_unmap=True):
+                         force_unmap=True, retain_aux_volume=False):
         vol_name = volume_name
         if target_vol:
             vol_name = storwize_const.REPLICA_AUX_VOL_PREFIX + volume_name
@@ -2210,9 +2217,15 @@ class StorwizeHelpers(object):
                 storwize_const.REPLICA_CHG_VOL_PREFIX + vol_name,
                 force_unmap=force_unmap,
                 force_delete=False)
-            self.delete_vdisk(vol_name,
-                              force_unmap=force_unmap,
-                              force_delete=False)
+            # We want to retain the aux volume after retyping
+            # from mirror to non mirror storage template or
+            # on delete of the primary volume based on user's
+            # choice of config value for storwize_svc_retain_aux_volume.
+            # Default value is False.
+            if (retain_aux_volume is False and target_vol) or not target_vol:
+                self.delete_vdisk(vol_name,
+                                  force_unmap=force_unmap,
+                                  force_delete=False)
         except Exception as e:
             msg = (_('Unable to delete the volume for '
                      'volume %(vol)s. Exception: %(err)s.'),
@@ -3132,7 +3145,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if rep_type:
             if self._aux_backend_helpers:
                 self._aux_backend_helpers.delete_rc_volume(
-                    volume['name'], target_vol=True, force_unmap=force_unmap)
+                    volume['name'],
+                    target_vol=True,
+                    force_unmap=force_unmap,
+                    retain_aux_volume=self.configuration.safe_get(
+                        'storwize_svc_retain_aux_volume'))
             if not self._active_backend_id:
                 self._master_backend_helpers.delete_rc_volume(
                     volume['name'], force_unmap=force_unmap)
@@ -4890,9 +4907,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             force_unmap = True
 
         if old_rep_type and not new_rep_type:
-            self._aux_backend_helpers.delete_rc_volume(volume['name'],
-                                                       target_vol=True,
-                                                       force_unmap=force_unmap)
+            self._aux_backend_helpers.delete_rc_volume(
+                volume['name'],
+                target_vol=True,
+                force_unmap=force_unmap,
+                retain_aux_volume=self.configuration.safe_get(
+                    'storwize_svc_retain_aux_volume'))
             if storwize_const.GMCV == old_rep_type:
                 self._helpers.delete_vdisk(
                     storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'],
