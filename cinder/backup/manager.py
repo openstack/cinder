@@ -55,7 +55,6 @@ from cinder import manager
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
-from cinder import rpc
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import volume_utils
@@ -987,11 +986,6 @@ class BackupManager(manager.SchedulerDependentManager):
                               "snapshots for backup %(bkup)s.",
                               {'bkup': backup.id})
 
-            # send notification to ceilometer
-            notifier_info = {'id': backup.id, 'update': {'status': status}}
-            notifier = rpc.get_notifier('backupStatusUpdate')
-            notifier.info(context, "backups.reset_status.end",
-                          notifier_info)
             volume_utils.notify_about_backup_usage(context, backup,
                                                    'reset_status.end')
 

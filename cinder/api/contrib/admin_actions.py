@@ -29,7 +29,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
-from cinder import rpc
 from cinder import volume
 from cinder.volume import volume_utils
 
@@ -101,12 +100,6 @@ class AdminController(wsgi.Controller):
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
 
-        # calling notifier here for volumeStatusUpdate is deprecated.
-        # Will be replaced with _notify_reset_status()
-        notifier_info = dict(id=id, update=update)
-        notifier = rpc.get_notifier('volumeStatusUpdate')
-        notifier.info(context, self.collection + '.reset_status.start',
-                      notifier_info)
         self._notify_reset_status(context, id, 'reset_status.start')
 
         # Not found exception will be handled at the wsgi level
@@ -115,8 +108,6 @@ class AdminController(wsgi.Controller):
         if update.get('attach_status') == 'detached':
             _clean_volume_attachment(context, id)
 
-        notifier.info(context, self.collection + '.reset_status.end',
-                      notifier_info)
         self._notify_reset_status(context, id, 'reset_status.end')
 
     @wsgi.response(http_client.ACCEPTED)
@@ -310,10 +301,6 @@ class BackupAdminController(AdminController):
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
 
-        notifier_info = {'id': id, 'update': update}
-        notifier = rpc.get_notifier('backupStatusUpdate')
-        notifier.info(context, self.collection + '.reset_status.start',
-                      notifier_info)
         self._notify_reset_status(context, id, 'reset_status.start')
 
         # Not found exception will be handled at the wsgi level
