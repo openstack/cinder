@@ -1677,6 +1677,34 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.extra_specs, snap_name)
         self.assertEqual(ref_response, (clone_dict, rep_update, rep_info_dict))
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_slo_list', return_value=['Diamond'])
+    @mock.patch.object(
+        common.PowerMaxCommon, '_create_volume',
+        return_value=(tpd.PowerMaxData.rep_info_dict,
+                      tpd.PowerMaxData.replication_update,
+                      tpd.PowerMaxData.rep_info_dict))
+    @mock.patch.object(rest.PowerMaxRest, 'rdf_resume_with_retries')
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_suspend_replication')
+    @mock.patch.object(rest.PowerMaxRest, 'wait_for_rdf_pair_sync')
+    def test_create_replica_rep_enabled(
+            self, mck_wait, mck_susp, mck_res, mck_create, mck_slo):
+        array = self.data.array
+        clone_volume = self.data.test_clone_volume
+        source_device_id = self.data.device_id
+        snap_name = self.data.snap_location['snap_name']
+        extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        __, rep_extra_specs, __, __ = self.common.prepare_replication_details(
+            extra_specs)
+        rdfg = extra_specs['rdf_group_no']
+        self.common._create_replica(
+            array, clone_volume, source_device_id, rep_extra_specs, snap_name)
+        mck_wait.assert_called_once_with(
+            array, rdfg, source_device_id, rep_extra_specs)
+        mck_susp.assert_called_once_with(
+            array, rep_extra_specs['sg_name'], rdfg, rep_extra_specs)
+        mck_res.assert_called_once_with(array, rep_extra_specs)
+
     def test_create_replica_no_snap_name(self):
         array = self.data.array
         clone_volume = self.data.test_clone_volume
