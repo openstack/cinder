@@ -93,6 +93,8 @@ class PowerMaxData(object):
     next_gen_ucode = 5978
     gvg_group_id = 'test-gvg'
     sg_tags = 'production,test'
+    snap_id = 118749976833
+    snap_id_2 = 118749976833
 
     # connector info
     wwpn1 = '123456789012345'
@@ -870,7 +872,7 @@ class PowerMaxData(object):
                             {'snapshotHeader': {
                                 'snapshotName': 'temp-1',
                                 'device': device_id,
-                                'generation': '0'},
+                                'snapid': snap_id},
                                 'lnkSnapshotGenInfo': [
                                     {'targetDevice': device_id2,
                                      'state': 'Copied'}]}]},
@@ -878,7 +880,7 @@ class PowerMaxData(object):
                             'snapshotName': 'temp-1',
                             'targetDevice': device_id2,
                             'sourceDevice': device_id,
-                            'generation': '0',
+                            'snapid': snap_id_2,
                             'state': 'Copied'}}],
                     'snapVXSrc': 'true',
                     'snapVXTgt': 'true'},
@@ -906,14 +908,15 @@ class PowerMaxData(object):
     # replication
     volume_snap_vx = {'snapshotLnks': [],
                       'snapshotSrcs': [
-                          {'generation': 0,
+                          {'snap_id': snap_id,
                            'linkedDevices': [
                                {'targetDevice': device_id2,
                                 'percentageCopied': 100,
                                 'state': 'Copied',
                                 'copy': True,
                                 'defined': True,
-                                'linked': True}],
+                                'linked': True,
+                                'snap_id': snap_id}],
                            'snapshotName': test_snapshot_snap_name,
                            'state': 'Established'}]}
     capabilities = {'symmetrixCapability': [{'rdfCapable': True,
@@ -1068,7 +1071,8 @@ class PowerMaxData(object):
                         {'snapshotHeader': {
                             'timestamp': 1512763278000, 'expired': False,
                             'secured': False, 'snapshotName': 'testSnap1',
-                            'device': '00001', 'generation': 0, 'timeToLive': 0
+                            'device': '00001', 'snapid': snap_id,
+                            'timeToLive': 0, 'generation': 0
                         }}]}]}}]
 
     priv_vol_func_response_multi = [
@@ -1094,7 +1098,8 @@ class PowerMaxData(object):
                         {'snapshotHeader': {
                             'timestamp': 1512763278000, 'expired': False,
                             'secured': False, 'snapshotName': 'testSnap1',
-                            'device': '00001', 'generation': 0, 'timeToLive': 0
+                            'device': '00001', 'snapid': snap_id,
+                            'timeToLive': 0, 'generation': 0
                         }}]}]}},
         {'volumeHeader': {
             'private': False, 'capGB': 200.0, 'capMB': 204800.0,
@@ -1118,7 +1123,8 @@ class PowerMaxData(object):
                         {'snapshotHeader': {
                             'timestamp': 1512763278000, 'expired': False,
                             'secured': False, 'snapshotName': 'testSnap2',
-                            'device': '00002', 'generation': 0, 'timeToLive': 0
+                            'device': '00002', 'snapid': snap_id,
+                            'timeToLive': 0, 'generation': 0
                         }}]}]}},
         {'volumeHeader': {
             'private': False, 'capGB': 300.0, 'capMB': 307200.0,
@@ -1142,7 +1148,8 @@ class PowerMaxData(object):
                         {'snapshotHeader': {
                             'timestamp': 1512763278000, 'expired': False,
                             'secured': False, 'snapshotName': 'testSnap3',
-                            'device': '00003', 'generation': 0, 'timeToLive': 0
+                            'device': '00003', 'snapid': snap_id,
+                            'timeToLive': 0, 'generation': 0
                         }}]}]}},
         {'volumeHeader': {
             'private': False, 'capGB': 400.0, 'capMB': 409600.0,
@@ -1166,7 +1173,8 @@ class PowerMaxData(object):
                         {'snapshotHeader': {
                             'timestamp': 1512763278000, 'expired': False,
                             'secured': False, 'snapshotName': 'testSnap4',
-                            'device': '00004', 'generation': 0, 'timeToLive': 0
+                            'device': '00004', 'snapid': snap_id,
+                            'timeToLive': 0, 'generation': 0
                         }}]}]}}]
 
     priv_vol_func_response_multi_invalid = [
@@ -1340,19 +1348,21 @@ class PowerMaxData(object):
         'RestServerPort': '8443',
         'RestUserName': 'test',
         'RestPassword': 'test',
-        'SSLVerify': '/path/to/cert'},
+        'SSLVerify': '/path/to/cert',
+        'SerialNumber': array},
         {'RestServerIp': '10.10.10.12',
          'RestServerPort': '8443',
          'RestUserName': 'test',
          'RestPassword': 'test',
-         'SSLVerify': 'True'}]
+         'SSLVerify': 'True',
+         'SerialNumber': array}]
 
     snapshot_src_details = {'snapshotSrcs': [{
         'snapshotName': 'temp-000AA-snapshot_for_clone',
-        'generation': 0, 'state': 'Established', 'expired': False,
+        'snap_id': snap_id, 'state': 'Established', 'expired': False,
         'linkedDevices': [{'targetDevice': device_id2, 'state': 'Copied',
                            'copy': True}]},
-        {'snapshotName': 'temp-000AA-snapshot_for_clone', 'generation': 1,
+        {'snapshotName': 'temp-000AA-snapshot_for_clone', 'snap_id': snap_id_2,
          'state': 'Established', 'expired': False,
          'linkedDevices': [{'targetDevice': device_id3, 'state': 'Copied',
                             'copy': True}]}],
@@ -1363,24 +1373,24 @@ class PowerMaxData(object):
 
     snap_tgt_vol_details = {"timeFinderInfo": {"snapVXSession": [{
         "tgtSrcSnapshotGenInfo": {
-            "generation": 6, "expired": True,
+            "snapid": snap_id, "expired": True,
             "snapshotName": "temp-000AA-snapshot_for_clone"}}]}}
 
     snap_tgt_session = {
-        'generation': 0, 'expired': False, 'copy_mode': False,
+        'snapid': snap_id, 'expired': False, 'copy_mode': False,
         'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
         'source_vol_id': device_id, 'target_vol_id': device_id2}
 
     snap_tgt_session_cm_enabled = {
-        'generation': 0, 'expired': False, 'copy_mode': True,
+        'snapid': snap_id, 'expired': False, 'copy_mode': True,
         'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
         'source_vol_id': device_id, 'target_vol_id': device_id2}
 
     snap_src_sessions = [
-        {'generation': 0, 'expired': False, 'copy_mode': False,
+        {'snapid': snap_id, 'expired': False, 'copy_mode': False,
          'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
          'source_vol_id': device_id, 'target_vol_id': device_id3},
-        {'generation': 1, 'expired': False, 'copy_mode': False,
+        {'snapid': snap_id_2, 'expired': False, 'copy_mode': False,
          'snap_name': 'temp-000AA-snapshot_for_clone', 'state': 'Copied',
          'source_vol_id': device_id, 'target_vol_id': device_id4}]
 
@@ -1449,7 +1459,7 @@ class PowerMaxData(object):
     priv_snap_response = {
         'deviceName': snap_device_label, 'snapshotLnks': [],
         'snapshotSrcs': [
-            {'generation': 0,
+            {'snap_id': snap_id,
              'linkedDevices': [
                  {'targetDevice': device_id2, 'percentageCopied': 100,
                   'state': 'Copied', 'copy': True, 'defined': True,
@@ -1620,3 +1630,7 @@ class PowerMaxData(object):
     legacy_mvs = [legacy_mv1, legacy_mv2]
     legacy_not_shared_mv = 'OS-myhostA-SRP_1-Diamond-NONE-MV'
     legacy_not_shared_sg = 'OS-myhostA-SRP_1-Diamond-NONE-SG'
+    snapshot_metadata = {'SnapshotLabel': test_snapshot_snap_name,
+                         'SourceDeviceID': device_id,
+                         'SourceDeviceLabel': device_label,
+                         'SnapIdList': [snap_id]}

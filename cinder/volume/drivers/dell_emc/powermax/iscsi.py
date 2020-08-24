@@ -133,6 +133,7 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Support for Port Group and Port load balancing
                 (bp powermax-port-load-balance)
               - Fix to enable legacy volumes to live migrate (#1867163)
+              - Use of snap id instead of generation (bp powermax-snapset-ids)
     """
 
     VERSION = "4.3.0"

@@ -47,6 +47,7 @@ class PowerMaxRestTest(test.TestCase):
         self.driver = driver
         self.common = self.driver.common
         self.rest = self.common.rest
+        self.rest.is_snap_id = True
         self.utils = self.common.utils
 
     def test_rest_request_no_response(self):
@@ -725,19 +726,15 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_delete_volume(self):
         device_id = self.data.device_id
-        ucode_5978_foxtail = tpd.PowerMaxData.ucode_5978_foxtail
+        self.rest.ucode_major_level = utils.UCODE_5978
+        self.rest.ucode_minor_level = utils.UCODE_5978_HICKORY
         with mock.patch.object(
             self.rest, 'delete_resource') as mock_delete, (
                 mock.patch.object(
-                    self.rest, '_modify_volume')) as mock_modify, (
-                mock.patch.object(
-                    self.rest, 'get_array_detail',
-                    return_value=ucode_5978_foxtail))as mock_det:
+                    self.rest, '_modify_volume')) as mock_modify:
 
             self.rest.delete_volume(self.data.array, device_id)
-            detail_call_count = mock_det.call_count
             mod_call_count = mock_modify.call_count
-            self.assertEqual(1, detail_call_count)
             self.assertEqual(1, mod_call_count)
             mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'volume', device_id)
@@ -1243,58 +1240,62 @@ class PowerMaxRestTest(test.TestCase):
                    'copy': 'false', 'action': "",
                    'star': 'false', 'force': 'false',
                    'exact': 'false', 'remote': 'false',
-                   'symforce': 'false', 'generation': 0}
+                   'symforce': 'false', 'snap_id': self.data.snap_id}
         payload_restore = {'deviceNameListSource': [{'name': source_id}],
                            'deviceNameListTarget': [{'name': source_id}],
                            'action': 'Restore',
-                           'star': 'false', 'force': 'false'}
+                           'star': 'false', 'force': 'false',
+                           'snap_id': self.data.snap_id}
         with mock.patch.object(
                 self.rest, 'modify_resource',
                 return_value=(202, self.data.job_list[0])) as mock_modify:
             # link
             payload['action'] = 'Link'
             self.rest.modify_volume_snap(
-                array, source_id, target_id, snap_name, extra_specs, link=True)
+                array, source_id, target_id, snap_name, extra_specs,
+                self.data.snap_id, link=True)
             mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
             # unlink
             mock_modify.reset_mock()
             payload['action'] = 'Unlink'
-            self.rest.modify_volume_snap(array, source_id, target_id,
-                                         snap_name, extra_specs, unlink=True)
+            self.rest.modify_volume_snap(
+                array, source_id, target_id, snap_name, extra_specs,
+                self.data.snap_id, unlink=True)
             mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
             # restore
             mock_modify.reset_mock()
             payload['action'] = 'Restore'
-            self.rest.modify_volume_snap(array, source_id, "", snap_name,
-                                         extra_specs, unlink=False,
-                                         restore=True)
+            self.rest.modify_volume_snap(
+                array, source_id, "", snap_name, extra_specs,
+                self.data.snap_id, unlink=False, restore=True)
             mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload_restore,
                 resource_name=snap_name, private='/private')
             # link or unlink, list of volumes
             mock_modify.reset_mock()
             payload['action'] = 'Link'
-            self.rest.modify_volume_snap(array, "", "", snap_name, extra_specs,
-                                         unlink=False, link=True,
-                                         list_volume_pairs=[(source_id,
+            self.rest.modify_volume_snap(
+                array, "", "", snap_name, extra_specs, self.data.snap_id,
+                unlink=False, link=True, list_volume_pairs=[(source_id,
                                                              target_id)])
             mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
             # none selected
             mock_modify.reset_mock()
-            self.rest.modify_volume_snap(array, source_id, target_id,
-                                         snap_name, extra_specs)
+            self.rest.modify_volume_snap(
+                array, source_id, target_id, snap_name, extra_specs,
+                self.data.snap_id)
             mock_modify.assert_not_called()
             # copy mode is True
             payload['copy'] = 'true'
             self.rest.modify_volume_snap(
-                array, source_id, target_id, snap_name, extra_specs, link=True,
-                copy=True)
+                array, source_id, target_id, snap_name, extra_specs,
+                self.data.snap_id, link=True, copy=True)
             mock_modify.assert_called_once_with(
                 array, 'replication', 'snapshot', payload,
                 resource_name=snap_name, private='/private')
@@ -1304,11 +1305,10 @@ class PowerMaxRestTest(test.TestCase):
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         source_device_id = self.data.device_id
         payload = {'deviceNameListSource': [{'name': source_device_id}],
-                   'generation': 0}
-        generation = 0
+                   'snap_id': self.data.snap_id}
         with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume_snap(
-                array, snap_name, source_device_id, generation)
+                array, snap_name, source_device_id, self.data.snap_id)
             mock_delete.assert_called_once_with(
                 array, 'replication', 'snapshot', snap_name,
                 payload=payload, private='/private')
@@ -1318,10 +1318,11 @@ class PowerMaxRestTest(test.TestCase):
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         source_device_id = self.data.device_id
         payload = {'deviceNameListSource': [{'name': source_device_id}],
-                   'restore': True, 'generation': 0}
+                   'restore': True, 'snap_id': self.data.snap_id}
         with mock.patch.object(self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume_snap(
-                array, snap_name, source_device_id, restored=True)
+                array, snap_name, source_device_id, self.data.snap_id,
+                restored=True)
             mock_delete.assert_called_once_with(
                 array, 'replication', 'snapshot', snap_name,
                 payload=payload, private='/private')
@@ -1335,23 +1336,27 @@ class PowerMaxRestTest(test.TestCase):
 
     def test_get_volume_snap(self):
         array = self.data.array
+        snap_id = self.data.snap_id
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         device_id = self.data.device_id
         ref_snap = self.data.volume_snap_vx['snapshotSrcs'][0]
-        snap = self.rest.get_volume_snap(array, device_id, snap_name)
+        snap = self.rest.get_volume_snap(array, device_id, snap_name, snap_id)
         self.assertEqual(ref_snap, snap)
 
     def test_get_volume_snap_none(self):
         array = self.data.array
+        snap_id = self.data.snap_id
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         device_id = self.data.device_id
         with mock.patch.object(self.rest, 'get_volume_snap_info',
                                return_value=None):
-            snap = self.rest.get_volume_snap(array, device_id, snap_name)
+            snap = self.rest.get_volume_snap(
+                array, device_id, snap_name, snap_id)
             self.assertIsNone(snap)
         with mock.patch.object(self.rest, 'get_volume_snap_info',
                                return_value={'snapshotSrcs': []}):
-            snap = self.rest.get_volume_snap(array, device_id, snap_name)
+            snap = self.rest.get_volume_snap(
+                array, device_id, snap_name, snap_id)
             self.assertIsNone(snap)
 
     def test_get_snap_linked_device_dict_list(self):
@@ -1360,8 +1365,8 @@ class PowerMaxRestTest(test.TestCase):
         device_id = self.data.device_id
         snap_list = [{'linked_vols': [
             {'target_device': device_id, 'state': 'Copied'}],
-            'snap_name': snap_name, 'generation': '0'}]
-        ref_snap_list = [{'generation': '0', 'linked_vols': [
+            'snap_name': snap_name, 'snapid': self.data.snap_id}]
+        ref_snap_list = [{'snapid': self.data.snap_id, 'linked_vols': [
             {'state': 'Copied', 'target_device': '00001'}]}]
         with mock.patch.object(self.rest, '_find_snap_vx_source_sessions',
                                return_value=snap_list):
@@ -1372,26 +1377,25 @@ class PowerMaxRestTest(test.TestCase):
     def test_get_sync_session(self):
         array = self.data.array
         source_id = self.data.device_id
-        generation = 0
         target_id = self.data.volume_snap_vx[
             'snapshotSrcs'][0]['linkedDevices'][0]['targetDevice']
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         ref_sync = self.data.volume_snap_vx[
             'snapshotSrcs'][0]['linkedDevices'][0]
         sync = self.rest.get_sync_session(
-            array, source_id, snap_name, target_id, generation)
+            array, source_id, snap_name, target_id, self.data.snap_id)
         self.assertEqual(ref_sync, sync)
 
     def test_find_snap_vx_sessions(self):
         array = self.data.array
         source_id = self.data.device_id
-        ref_sessions = [{'generation': 0,
+        ref_sessions = [{'snapid': self.data.snap_id,
                          'snap_name': 'temp-000AA-snapshot_for_clone',
                          'source_vol_id': self.data.device_id,
                          'target_vol_id': self.data.device_id2,
                          'expired': False, 'copy_mode': True,
                          'state': 'Copied'},
-                        {'generation': 1,
+                        {'snapid': self.data.snap_id_2,
                          'snap_name': 'temp-000AA-snapshot_for_clone',
                          'source_vol_id': self.data.device_id,
                          'target_vol_id': self.data.device_id3,
@@ -1411,7 +1415,8 @@ class PowerMaxRestTest(test.TestCase):
     def test_find_snap_vx_sessions_tgt_only(self, mck_snap, mck_vol):
         array = self.data.array
         source_id = self.data.device_id
-        ref_session = {'generation': 6, 'state': 'Linked', 'copy_mode': False,
+        ref_session = {'snapid': self.data.snap_id, 'state': 'Linked',
+                       'copy_mode': False,
                        'snap_name': 'temp-000AA-snapshot_for_clone',
                        'source_vol_id': self.data.device_id2,
                        'target_vol_id': source_id, 'expired': True}
@@ -1592,14 +1597,15 @@ class PowerMaxRestTest(test.TestCase):
                 array, source_group, snap_name, '0')
 
     @mock.patch.object(rest.PowerMaxRest, 'get_resource',
-                       return_value={'generations': ['0', '1']})
-    def test_get_storagegroup_snap_generation_list(self, mock_list):
+                       return_value={'snapids': [tpd.PowerMaxData.snap_id,
+                                                 tpd.PowerMaxData.snap_id_2]})
+    def test_get_storagegroup_snap_id_list(self, mock_list):
         array = self.data.array
         source_group = self.data.storagegroup_name_source
         snap_name = self.data.group_snapshot_name
-        ret_list = self.rest.get_storagegroup_snap_generation_list(
+        ret_list = self.rest.get_storage_group_snap_id_list(
             array, source_group, snap_name)
-        self.assertEqual(['0', '1'], ret_list)
+        self.assertEqual([self.data.snap_id, self.data.snap_id_2], ret_list)
 
     def test_get_storagegroup_rdf_details(self):
         details = self.rest.get_storagegroup_rdf_details(
@@ -1650,8 +1656,8 @@ class PowerMaxRestTest(test.TestCase):
         new_snap_backend_name = self.data.managed_snap_id
         self.rest.modify_volume_snap(
             array, source_id, source_id, old_snap_backend_name,
-            self.data.extra_specs, link=False, unlink=False,
-            rename=True, new_snap_name=new_snap_backend_name)
+            self.data.extra_specs, self.data.snap_id, link=False,
+            unlink=False, rename=True, new_snap_name=new_snap_backend_name)
         mock_modify.assert_called_once()
 
     def test_get_private_volume_list_pass(self):
@@ -1733,6 +1739,7 @@ class PowerMaxRestTest(test.TestCase):
             'RestServerPort': '8443',
             'RestUserName': 'user_test',
             'RestPassword': 'pass_test',
+            'SerialNumber': self.data.array,
             'SSLVerify': True,
         }
         self.rest.set_rest_credentials(array_info)

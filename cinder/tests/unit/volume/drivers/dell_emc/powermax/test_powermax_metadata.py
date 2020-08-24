@@ -151,7 +151,7 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
     def test_capture_snapshot_info(self, mock_uvim):
         self.volume_metadata.capture_snapshot_info(
             self.data.test_volume, self.data.extra_specs, 'createSnapshot',
-            'ss-test-vol')
+            self.data.snapshot_metadata)
         mock_uvim.assert_called_once()
 
     @mock.patch.object(

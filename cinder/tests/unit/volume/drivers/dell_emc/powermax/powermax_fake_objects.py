@@ -229,7 +229,7 @@ class FakeRequestsSession(object):
 
     def _replication_sg(self, url):
         return_object = None
-        if 'generation' in url:
+        if 'snapid' in url:
             return_object = self.data.group_snap_vx
         elif 'rdf_group' in url:
             for sg in self.data.sg_rdf_details:

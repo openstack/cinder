@@ -184,7 +184,7 @@ class PowerMaxProvision(object):
 
     def unlink_snapvx_tgt_volume(
             self, array, target_device_id, source_device_id, snap_name,
-            extra_specs, generation=0, loop=True):
+            extra_specs, snap_id, loop=True):
         """Unlink a snapshot from its target volume.
 
         :param array: the array serial number
@@ -192,7 +192,7 @@ class PowerMaxProvision(object):
         :param target_device_id: target volume device id
         :param snap_name: the name for the snap shot
         :param extra_specs: extra specifications
-        :param generation: the generation number of the snapshot
+        :param snap_id: the unique snap id of the SnapVX
         :param loop: if looping call is required for handling retries
         """
         @coordination.synchronized("emc-snapvx-{src_device_id}")
@@ -202,15 +202,14 @@ class PowerMaxProvision(object):
                       {'src': src_device_id, 'tgt': target_device_id})
 
             self._unlink_volume(array, src_device_id, target_device_id,
-                                snap_name, extra_specs,
-                                list_volume_pairs=None, generation=generation,
-                                loop=loop)
+                                snap_name, extra_specs, snap_id=snap_id,
+                                list_volume_pairs=None, loop=loop)
 
         do_unlink_volume(source_device_id)
 
     def _unlink_volume(
             self, array, source_device_id, target_device_id, snap_name,
-            extra_specs, list_volume_pairs=None, generation=0, loop=True):
+            extra_specs, snap_id=None, list_volume_pairs=None, loop=True):
         """Unlink a target volume from its source volume.
 
         :param array: the array serial number
@@ -218,8 +217,8 @@ class PowerMaxProvision(object):
         :param target_device_id: the target device id
         :param snap_name: the snap name
         :param extra_specs: extra specifications
+        :param snap_id: the unique snap id of the SnapVX
         :param list_volume_pairs: list of volume pairs, optional
-        :param generation: the generation number of the snapshot
         :param loop: if looping call is required for handling retries
         :returns: return code
         """
@@ -234,9 +233,8 @@ class PowerMaxProvision(object):
                 if not kwargs['modify_vol_success']:
                     self.rest.modify_volume_snap(
                         array, source_device_id, target_device_id, snap_name,
-                        extra_specs, unlink=True,
-                        list_volume_pairs=list_volume_pairs,
-                        generation=generation)
+                        extra_specs, snap_id=snap_id, unlink=True,
+                        list_volume_pairs=list_volume_pairs)
                     kwargs['modify_vol_success'] = True
             except exception.VolumeBackendAPIException:
                 pass
@@ -251,9 +249,8 @@ class PowerMaxProvision(object):
         if not loop:
             self.rest.modify_volume_snap(
                 array, source_device_id, target_device_id, snap_name,
-                extra_specs, unlink=True,
-                list_volume_pairs=list_volume_pairs,
-                generation=generation)
+                extra_specs, snap_id=snap_id, unlink=True,
+                list_volume_pairs=list_volume_pairs)
         else:
             kwargs = {'retries': 0,
                       'modify_vol_success': False}
@@ -262,31 +259,40 @@ class PowerMaxProvision(object):
             return rc
 
     def delete_volume_snap(self, array, snap_name,
-                           source_device_id, restored=False, generation=0):
+                           source_device_ids, snap_id=None, restored=False):
         """Delete a snapVx snapshot of a volume.
 
         :param array: the array serial number
         :param snap_name: the snapshot name
-        :param source_device_id: the source device id
+        :param source_device_ids: the source device ids
+        :param snap_id: the unique snap id of the SnapVX
         :param restored: Flag to indicate if restored session is being deleted
-        :param generation: the snapshot generation number
         """
         @coordination.synchronized("emc-snapvx-{src_device_id}")
         def do_delete_volume_snap(src_device_id):
-            LOG.debug("Delete SnapVx: %(snap_name)s for volume %(vol)s.",
-                      {'vol': src_device_id, 'snap_name': snap_name})
+            LOG.debug("Delete SnapVx: %(snap_name)s for source %(src)s and "
+                      "devices %(devs)s.",
+                      {'snap_name': snap_name, 'src': src_device_id,
+                       'devs': source_device_ids})
             self.rest.delete_volume_snap(
-                array, snap_name, src_device_id, restored, generation)
+                array, snap_name, source_device_ids, snap_id=snap_id,
+                restored=restored)
 
-        do_delete_volume_snap(source_device_id)
+        device_id = source_device_ids[0] if isinstance(
+            source_device_ids, list) else source_device_ids
+
+        if snap_id is None:
+            snap_id = self.rest.get_snap_id(array, device_id, snap_name)
+        do_delete_volume_snap(device_id)
 
     def is_restore_complete(self, array, source_device_id,
-                            snap_name, extra_specs):
+                            snap_name, snap_id, extra_specs):
         """Check and wait for a restore to complete
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: snapshot name
+        :param snap_id: unique snap id
         :param extra_specs: extra specification
         :returns: bool
         """
@@ -302,7 +308,7 @@ class PowerMaxProvision(object):
                 kwargs['retries'] = retries + 1
                 if not kwargs['wait_for_restore_called']:
                     if self._is_restore_complete(
-                            array, source_device_id, snap_name):
+                            array, source_device_id, snap_name, snap_id):
                         kwargs['wait_for_restore_called'] = True
             except Exception:
                 exception_message = (_("Issue encountered waiting for "
@@ -325,17 +331,19 @@ class PowerMaxProvision(object):
         rc = timer.start(interval=int(extra_specs[utils.INTERVAL])).wait()
         return rc
 
-    def _is_restore_complete(self, array, source_device_id, snap_name):
+    def _is_restore_complete(
+            self, array, source_device_id, snap_name, snap_id):
         """Helper function to check if restore is complete.
 
         :param array: the array serial number
         :param source_device_id: source device id
         :param snap_name: the snapshot name
+        :param snap_id: unique snap id
         :returns: restored -- bool
         """
         restored = False
         snap_details = self.rest.get_volume_snap(
-            array, source_device_id, snap_name)
+            array, source_device_id, snap_name, snap_id)
         if snap_details:
             linked_devices = snap_details.get("linkedDevices", [])
             for linked_device in linked_devices:
@@ -347,7 +355,7 @@ class PowerMaxProvision(object):
         return restored
 
     def delete_temp_volume_snap(self, array, snap_name,
-                                source_device_id, generation=0):
+                                source_device_id, snap_id):
         """Delete the temporary snapshot created for clone operations.
 
         There can be instances where the source and target both attempt to
@@ -356,17 +364,17 @@ class PowerMaxProvision(object):
         :param array: the array serial number
         :param snap_name: the snapshot name
         :param source_device_id: the source device id
-        :param generation: the generation number for the snapshot
+        :param snap_id: the unique snap id of the SnapVX
         """
         snapvx = self.rest.get_volume_snap(
-            array, source_device_id, snap_name, generation)
+            array, source_device_id, snap_name, snap_id)
         if snapvx:
             self.delete_volume_snap(
-                array, snap_name, source_device_id,
-                restored=False, generation=generation)
+                array, snap_name, source_device_id, snap_id=snap_id,
+                restored=False)
 
     def delete_volume_snap_check_for_links(
-            self, array, snap_name, source_devices, extra_specs, generation=0):
+            self, array, snap_name, source_devices, extra_specs, snap_id):
         """Check if a snap has any links before deletion.
 
         If a snapshot has any links, break the replication relationship
@@ -375,7 +383,7 @@ class PowerMaxProvision(object):
         :param snap_name: the snapshot name
         :param source_devices: the source device ids
         :param extra_specs: the extra specifications
-        :param generation: the generation number for the snapshot
+        :param snap_id: the unique snap id of the SnapVX
         """
         list_device_pairs = []
         if not isinstance(source_devices, list):
@@ -385,7 +393,7 @@ class PowerMaxProvision(object):
                       "for volume %(vol)s.",
                       {'vol': source_device, 'snap_name': snap_name})
             linked_list = self.rest.get_snap_linked_device_list(
-                array, source_device, snap_name, generation)
+                array, source_device, snap_name, snap_id)
             if len(linked_list) == 1:
                 target_device = linked_list[0]['targetDevice']
                 list_device_pairs.append((source_device, target_device))
@@ -394,15 +402,16 @@ class PowerMaxProvision(object):
                     # If a single source volume has multiple targets,
                     # we must unlink each target individually
                     target_device = link['targetDevice']
-                    self._unlink_volume(array, source_device, target_device,
-                                        snap_name, extra_specs, generation)
+                    self._unlink_volume(
+                        array, source_device, target_device, snap_name,
+                        extra_specs, snap_id=snap_id)
         if list_device_pairs:
-            self._unlink_volume(array, "", "", snap_name, extra_specs,
-                                list_volume_pairs=list_device_pairs,
-                                generation=generation)
+            self._unlink_volume(
+                array, "", "", snap_name, extra_specs, snap_id=snap_id,
+                list_volume_pairs=list_device_pairs)
         if source_devices:
-            self.delete_volume_snap(array, snap_name, source_devices,
-                                    restored=False, generation=generation)
+            self.delete_volume_snap(
+                array, snap_name, source_devices, snap_id, restored=False)
 
     def extend_volume(self, array, device_id, new_size, extra_specs,
                       rdf_group=None):
@@ -647,20 +656,22 @@ class PowerMaxProvision(object):
         LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "
                   "snapshot: %(snap_name)s.",
                   {'srcGroup': source_group_name, 'snap_name': snap_name})
-        gen_list = self.rest.get_storagegroup_snap_generation_list(
+        snap_id_list = self.rest.get_storage_group_snap_id_list(
             array, source_group_name, snap_name)
-        if gen_list:
-            gen_list.sort(reverse=True)
-            for gen in gen_list:
+        if snap_id_list:
+            if not self.rest.is_snap_id:
+                snap_id_list.sort(reverse=True)
+            for snap_id in snap_id_list:
                 self.rest.delete_storagegroup_snap(
-                    array, source_group_name, snap_name, gen)
+                    array, source_group_name, snap_name, snap_id)
         else:
-            LOG.debug("Unable to get generation number(s) for: %(srcGroup)s.",
+            LOG.debug("Unable to get snap ids for: %(srcGroup)s.",
                       {'srcGroup': source_group_name})
 
     def link_and_break_replica(self, array, source_group_name,
                                target_group_name, snap_name, extra_specs,
-                               list_volume_pairs, delete_snapshot=False):
+                               list_volume_pairs, delete_snapshot=False,
+                               snap_id=None):
         """Links a group snap and breaks the relationship.
 
         :param array: the array serial
@@ -670,6 +681,7 @@ class PowerMaxProvision(object):
         :param extra_specs: extra specifications
         :param list_volume_pairs: the list of volume pairs
         :param delete_snapshot: delete snapshot flag
+        :param snap_id: the unique snapVx identifier
         """
         LOG.debug("Linking Snap Vx snapshot: source group: %(srcGroup)s "
                   "targetGroup: %(tgtGroup)s.",
@@ -696,17 +708,36 @@ class PowerMaxProvision(object):
             self.delete_volume_snap(array, snap_name, source_devices)
 
     def revert_volume_snapshot(self, array, source_device_id,
-                               snap_name, extra_specs):
+                               snap_name, snap_id, extra_specs):
         """Revert a volume snapshot
 
         :param array: the array serial number
         :param source_device_id: device id of the source
         :param snap_name: snapvx snapshot name
+        :param snap_id: the unique snap identifier
         :param extra_specs: the extra specifications
         """
         start_time = time.time()
-        self.rest.modify_volume_snap(
-            array, source_device_id, "", snap_name, extra_specs, restore=True)
+        try:
+            self.rest.modify_volume_snap(
+                array, source_device_id, "", snap_name, extra_specs,
+                snap_id=snap_id, restore=True)
+        except exception.VolumeBackendAPIException as ex:
+            if utils.REVERT_SS_EXC in ex:
+                exception_message = _(
+                    "Link must be fully copied for this operation to proceed. "
+                    "Please reset the volume state from error to available "
+                    "and wait for awhile before attempting another "
+                    "revert to snapshot operation. You may want to delete "
+                    "the latest snapshot taken in this revert to snapshot "
+                    "operation, as you will only be able to revert to the "
+                    "last snapshot.")
+            else:
+                exception_message = (_(
+                    "Revert to snapshot failed with exception "
+                    "%(e)s.") % {'e': ex})
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         LOG.debug("Restore volume snapshot took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(start_time,
                                                       time.time())})
