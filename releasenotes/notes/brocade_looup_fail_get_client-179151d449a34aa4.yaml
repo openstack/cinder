@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix `UnboundLocalError` on the Brocade lookup driver on southbound client
+    creation failure during the device mapping retrieval (Bug #1888550).
