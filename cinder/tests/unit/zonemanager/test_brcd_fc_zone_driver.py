@@ -18,7 +18,6 @@
 """Unit tests for Brocade fc zone driver."""
 
 import mock
-from oslo_config import cfg
 from oslo_utils import importutils
 import paramiko
 import requests
@@ -26,21 +25,19 @@ import requests
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
+from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers.brocade import brcd_fc_zone_driver as driver
+from cinder.zonemanager import fc_zone_manager as zmanager
+
+_zone_name = 'openstack_fab1_10008c7cff523b0120240002ac000a50'
+_zone_name_initiator_mode = 'openstack_fab1_10008c7cff523b01'
+WWNS = ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50']
 
 _active_cfg_before_add = {}
-_active_cfg_before_delete = {
-    'zones': {
-        'openstack10008c7cff523b0120240002ac000a50': (
-            ['10:00:8c:7c:ff:52:3b:01',
-             '20:24:00:02:ac:00:0a:50']), 't_zone': ['1,0']},
-        'active_zone_config': 'cfg1'}
 _activate = True
-_zone_name = 'openstack10008c7cff523b0120240002ac000a50'
 _target_ns_map = {'100000051e55a100': ['20240002ac000a50']}
 _initiator_ns_map = {'100000051e55a100': ['10008c7cff523b01']}
-_zone_map_to_add = {'openstack10008c7cff523b0120240002ac000a50': (
-    ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50'])}
+_zone_map_to_add = {_zone_name: WWNS}
 
 _initiator_target_map = {'10008c7cff523b01': ['20240002ac000a50']}
 _device_map_to_verify = {
@@ -52,44 +49,43 @@ _fabric_wwn = '100000051e55a100'
 
 class BrcdFcZoneDriverBaseTest(object):
 
+    def _set_conf_overrides(self, group, **kwargs):
+        for name, value in kwargs.items():
+            self.override_config(name, value, group)
+
     def setup_config(self, is_normal, mode):
-        fc_test_opts = [
-            cfg.StrOpt('fc_fabric_address_BRCD_FAB_1', default='10.24.48.213',
-                       help='FC Fabric names'),
-        ]
-        configuration = conf.Configuration(fc_test_opts)
-        # fill up config
-        configuration.zoning_mode = 'fabric'
-        configuration.zone_driver = ('cinder.tests.unit.zonemanager.'
-                                     'test_brcd_fc_zone_driver.'
-                                     'FakeBrcdFCZoneDriver')
-        configuration.brcd_sb_connector = ('cinder.tests.unit.zonemanager.'
-                                           'test_brcd_fc_zone_driver'
-                                           '.FakeBrcdFCZoneClientCLI')
-        configuration.zoning_policy = 'initiator-target'
-        configuration.zone_activate = True
-        configuration.zone_name_prefix = 'openstack'
-        configuration.fc_san_lookup_service = ('cinder.tests.unit.zonemanager.'
-                                               'test_brcd_fc_zone_driver.'
-                                               'FakeBrcdFCSanLookupService')
+        self.override_config('zoning_mode', 'fabric')
 
-        configuration.fc_fabric_names = 'BRCD_FAB_1'
-        configuration.fc_fabric_address_BRCD_FAB_1 = '10.24.48.213'
-        configuration.fc_southbound_connector = 'CLI'
-        if is_normal:
-            configuration.fc_fabric_user_BRCD_FAB_1 = 'admin'
-        else:
-            configuration.fc_fabric_user_BRCD_FAB_1 = 'invaliduser'
-        configuration.fc_fabric_password_BRCD_FAB_1 = 'password'
+        fabric_group_name = 'BRCD_FAB_1'
+        self._set_conf_overrides(
+            'fc-zone-manager',
+            zone_driver=('cinder.tests.unit.zonemanager.'
+                         'test_brcd_fc_zone_driver.FakeBrcdFCZoneDriver'),
+            brcd_sb_connector=('cinder.tests.unit.zonemanager.'
+                               'test_brcd_fc_zone_driver.'
+                               'FakeBrcdFCZoneClientCLI'),
+            zoning_policy='initiator-target',
+            fc_san_lookup_service=('cinder.tests.unit.zonemanager.'
+                                   'test_brcd_fc_zone_driver.'
+                                   'FakeBrcdFCSanLookupService'),
+            fc_fabric_names=fabric_group_name,
+        )
 
-        if mode == 1:
-            configuration.zoning_policy_BRCD_FAB_1 = 'initiator-target'
-        elif mode == 2:
-            configuration.zoning_policy_BRCD_FAB_1 = 'initiator'
-        else:
-            configuration.zoning_policy_BRCD_FAB_1 = 'initiator-target'
-        configuration.zone_activate_BRCD_FAB_1 = True
-        configuration.zone_name_prefix_BRCD_FAB_1 = 'openstack_fab1'
+        # Ensure that we have the fabric_name group
+        conf.Configuration(fabric_opts.brcd_zone_opts, fabric_group_name)
+        self._set_conf_overrides(
+            fabric_group_name,
+            fc_fabric_address='10.24.48.213',
+            fc_fabric_password='password',
+            fc_fabric_user='admin' if is_normal else 'invaliduser',
+            zoning_policy='initiator' if mode == 2 else 'initiator-target',
+            zone_activate=True,
+            zone_name_prefix='openstack_fab1_',
+            fc_southbound_protocol='SSH',
+        )
+
+        configuration = conf.Configuration(zmanager.zone_manager_opts,
+                                           'fc-zone-manager')
         return configuration
 
 
@@ -125,10 +121,6 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         )
         return client
 
-    def fake_get_san_context(self, target_wwn_list):
-        fabric_map = {}
-        return fabric_map
-
     @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
     def test_add_connection(self, get_southbound_client_mock):
         """Normal flow for i-t mode."""
@@ -139,11 +131,17 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
         self.assertIn(_zone_name, GlobalVars._zone_state)
 
+    def _active_cfg_before_delete(self, mode):
+        zone_name = _zone_name if mode == 1 else _zone_name_initiator_mode
+        return {'zones': {zone_name: WWNS, 't_zone': ['1,0']},
+                'active_zone_config': 'cfg1'}
+
     @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
     def test_delete_connection(self, get_southbound_client_mock):
         GlobalVars._is_normal_test = True
+        GlobalVars._zone_state.append(_zone_name)
         get_southbound_client_mock.return_value = self.get_client("CLI")
-        GlobalVars._active_cfg = _active_cfg_before_delete
+        GlobalVars._active_cfg = self._active_cfg_before_delete(mode=1)
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
         self.assertNotIn(_zone_name, GlobalVars._zone_state)
@@ -156,38 +154,57 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         GlobalVars._active_cfg = _active_cfg_before_add
         self.setup_driver(self.setup_config(True, 2))
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
-        self.assertIn(_zone_name, GlobalVars._zone_state)
+        self.assertIn(_zone_name_initiator_mode, GlobalVars._zone_state)
 
     @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
     def test_delete_connection_for_initiator_mode(self,
                                                   get_southbound_client_mk):
         GlobalVars._is_normal_test = True
+        GlobalVars._zone_state.append(_zone_name_initiator_mode)
         get_southbound_client_mk.return_value = self.get_client("HTTPS")
-        GlobalVars._active_cfg = _active_cfg_before_delete
+        GlobalVars._active_cfg = self._active_cfg_before_delete(mode=2)
         self.setup_driver(self.setup_config(True, 2))
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
-        self.assertNotIn(_zone_name, GlobalVars._zone_state)
+        self.assertNotIn(_zone_name_initiator_mode, GlobalVars._zone_state)
 
-    def test_add_connection_for_invalid_fabric(self):
+    @mock.patch('cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli.'
+                'BrcdFCZoneClientCLI.__init__', side_effect=Exception)
+    def test_add_connection_for_invalid_fabric(self, create_client_mock):
         """Test abnormal flows."""
-        GlobalVars._is_normal_test = True
         GlobalVars._active_cfg = _active_cfg_before_add
-        GlobalVars._is_normal_test = False
         self.setup_driver(self.setup_config(False, 1))
         self.assertRaises(exception.FCZoneDriverException,
                           self.driver.add_connection,
                           'BRCD_FAB_1',
                           _initiator_target_map)
 
-    def test_delete_connection_for_invalid_fabric(self):
-        GlobalVars._active_cfg = _active_cfg_before_delete
+    @mock.patch('cinder.zonemanager.drivers.brocade.brcd_fc_zone_client_cli.'
+                'BrcdFCZoneClientCLI.__init__', side_effect=Exception)
+    def test_delete_connection_for_invalid_fabric(self, create_client_mock):
+        GlobalVars._active_cfg = self._active_cfg_before_delete(mode=1)
         GlobalVars._is_normal_test = False
         self.setup_driver(self.setup_config(False, 1))
         self.assertRaises(exception.FCZoneDriverException,
                           self.driver.delete_connection,
                           'BRCD_FAB_1',
                           _initiator_target_map)
+
+    @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
+    def test_get_san_context(self, client_mock):
+        GlobalVars._is_normal_test = True
+        self.setup_driver(self.setup_config(True, 1))
+        get_ns_mock = client_mock.return_value.get_nameserver_info
+        wwn = '20:24:00:02:ac:00:0a:50'
+        get_ns_mock.return_value = [wwn]
+        expected = {'BRCD_FAB_1': ['20240002ac000a50']}
+
+        res = self.driver.get_san_context([WWNS[0], wwn.upper()])
+
+        client_mock.assert_called_once_with('BRCD_FAB_1')
+        client_mock.return_value.cleanup.assert_called_once_with()
+        get_ns_mock.assert_called_once_with()
+        self.assertEqual(expected, res)
 
 
 class FakeClient(object):

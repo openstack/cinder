@@ -751,6 +751,13 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
                 delete_zones_info,
                 active_cfg))
 
+        cfgs = {'openstack_cfg': 'openstack50060b0000c26604201900051ee8e329'}
+        res = self.delete_zones_cfgs(cfgs,
+                                     zones_to_delete.copy(),
+                                     delete_zones_info,
+                                     active_cfg)
+        self.assertEqual((zones, {}, ''), res)
+
         cfgs = {'openstack_cfg': 'zone2'}
         zones = {'zone2': '20:01:00:05:33:0e:96:14;20:00:00:05:33:0e:93:11'}
         delete_zones_info = valid_zone_name + ";zone1"
