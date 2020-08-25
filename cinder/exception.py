@@ -294,10 +294,6 @@ class InvalidGlobalAPIVersion(Invalid):
                 "is %(min_ver)s and maximum is %(max_ver)s.")
 
 
-class MissingRequired(Invalid):
-    message = _("Missing required element '%(element)s' in request body.")
-
-
 class ValidationError(Invalid):
     message = "%(detail)s"
 
@@ -354,11 +350,6 @@ class VolumeAttachmentNotFound(NotFound):
 
 class VolumeMetadataNotFound(NotFound):
     message = _("Volume %(volume_id)s has no metadata with "
-                "key %(metadata_key)s.")
-
-
-class VolumeAdminMetadataNotFound(NotFound):
-    message = _("Volume %(volume_id)s has no administration metadata with "
                 "key %(metadata_key)s.")
 
 
@@ -457,10 +448,6 @@ class VolumeIsBusy(CinderException):
 class SnapshotIsBusy(CinderException):
     message = _("deleting snapshot %(snapshot_name)s that has "
                 "dependent volumes")
-
-
-class ISCSITargetNotFoundForVolume(NotFound):
-    message = _("No target id found for volume %(volume_id)s.")
 
 
 class InvalidImageRef(Invalid):
@@ -573,10 +560,6 @@ class QuotaUsageNotFound(QuotaNotFound):
     message = _("Quota usage for project %(project_id)s could not be found.")
 
 
-class ReservationNotFound(QuotaNotFound):
-    message = _("Quota reservation %(uuid)s could not be found.")
-
-
 class OverQuota(CinderException):
     message = _("Quota exceeded for resources: %(overs)s")
 
@@ -616,14 +599,6 @@ class GroupVolumeTypeMappingExists(Duplicate):
                 "%(volume_type_id)s combination already exists.")
 
 
-class GroupTypeEncryptionExists(Invalid):
-    message = _("Group type encryption for type %(type_id)s already exists.")
-
-
-class GroupTypeEncryptionNotFound(NotFound):
-    message = _("Group type encryption for type %(type_id)s does not exist.")
-
-
 class MalformedRequestBody(CinderException):
     message = _("Malformed message body: %(reason)s")
 
@@ -638,11 +613,6 @@ class ParameterNotFound(NotFound):
 
 class NoValidBackend(CinderException):
     message = _("No valid backend was found. %(reason)s")
-
-
-class NoMoreTargets(CinderException):
-    """No more available targets."""
-    pass
 
 
 class QuotaError(CinderException):
@@ -758,10 +728,6 @@ class RemoveExportException(VolumeDriverException):
     message = _("Failed to remove export for volume %(volume)s: %(reason)s")
 
 
-class MetadataCreateFailure(Invalid):
-    message = _("Failed to create metadata for volume: %(reason)s")
-
-
 class MetadataUpdateFailure(Invalid):
     message = _("Failed to update metadata for volume: %(reason)s")
 
@@ -810,10 +776,6 @@ class EncryptedBackupOperationFailed(BackupDriverException):
 
 class BackupNotFound(NotFound):
     message = _("Backup %(backup_id)s could not be found.")
-
-
-class BackupFailedToGetVolumeBackend(NotFound):
-    message = _("Failed to identify volume backend.")
 
 
 class InvalidBackup(Invalid):
@@ -909,11 +871,6 @@ class ReplicationGroupError(CinderException):
                 "error: %(reason)s.")
 
 
-class ReplicationNotFound(NotFound):
-    message = _("Volume replication for %(volume_id)s "
-                "could not be found.")
-
-
 class ManageExistingVolumeTypeMismatch(CinderException):
     message = _("Manage existing volume failed due to volume type mismatch: "
                 "%(reason)s")
@@ -931,16 +888,8 @@ class LockCreationFailed(CinderException):
     message = _('Unable to create lock. Coordination backend not started.')
 
 
-class LockingFailed(CinderException):
-    message = _('Lock acquisition failed.')
-
-
-UnsupportedObjectError = obj_exc.UnsupportedObjectError
 OrphanedObjectError = obj_exc.OrphanedObjectError
-IncompatibleObjectVersion = obj_exc.IncompatibleObjectVersion
-ReadOnlyFieldError = obj_exc.ReadOnlyFieldError
 ObjectActionError = obj_exc.ObjectActionError
-ObjectFieldInvalid = obj_exc.ObjectFieldInvalid
 
 
 class CappedVersionUnknown(CinderException):

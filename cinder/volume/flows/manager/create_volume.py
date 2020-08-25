@@ -98,7 +98,6 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             # they fail, rescheduling will likely attempt to create the volume
             # on another machine when it still exists locally.
             exception.MetadataCopyFailure,
-            exception.MetadataCreateFailure,
             exception.MetadataUpdateFailure,
             # The volume/snapshot has been removed from the database, that
             # can not be fixed by rescheduling.
