@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed volume group action in Active/Active HA deployment:
+
+    * Update group
+      (`#1876133 <https://bugs.launchpad.net/cinder/+bug/1876133>`_)
+
+    * Create group from group snapshot
+      (`#1867906 <https://bugs.launchpad.net/cinder/+bug/1867906>`_)
