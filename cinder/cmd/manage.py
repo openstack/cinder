@@ -248,12 +248,7 @@ class DbCommands(object):
     # preceed any element of the "online_migrations" tuple, like this:
     #    # Added in Queens remove in Rocky
     #    db.service_uuids_online_data_migration,
-    online_migrations = (
-        # Added in Train
-        db.untyped_volumes_online_data_migration,
-        # Added in Train
-        db.untyped_snapshots_online_data_migration
-    )
+    online_migrations = tuple()
 
     def __init__(self):
         pass
