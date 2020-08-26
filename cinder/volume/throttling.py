@@ -75,7 +75,7 @@ class BlkioCgroup(Throttle):
     def _get_device_number(self, path):
         try:
             return utils.get_blkdev_major_minor(path)
-        except exception.Error as e:
+        except exception.CinderException as e:
             LOG.error('Failed to get device number for throttling: '
                       '%(error)s', {'error': e})
 

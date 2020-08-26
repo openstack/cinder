@@ -406,18 +406,6 @@ class TSMBackupDriver(driver.BackupDriver):
                       'err': exc.stderr})
             LOG.error(err)
             raise exception.InvalidBackup(reason=err)
-        except exception.Error as exc:
-            err = (_('backup: %(vol_id)s failed to run dsmc '
-                     'due to invalid arguments '
-                     'on %(bpath)s.\n'
-                     'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': backup.volume_id,
-                      'bpath': backup_path,
-                      'out': exc.stdout,
-                      'err': exc.stderr})
-            LOG.error(err)
-            raise exception.InvalidBackup(reason=err)
-
         finally:
             _cleanup_device_hardlink(backup_path, volume_path,
                                      backup.volume_id)
@@ -466,18 +454,6 @@ class TSMBackupDriver(driver.BackupDriver):
                       'err': exc.stderr})
             LOG.error(err)
             raise exception.InvalidBackup(reason=err)
-        except exception.Error as exc:
-            err = (_('restore: %(vol_id)s failed to run dsmc '
-                     'due to invalid arguments '
-                     'on %(bpath)s.\n'
-                     'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': volume_id,
-                      'bpath': restore_path,
-                      'out': exc.stdout,
-                      'err': exc.stderr})
-            LOG.error(err)
-            raise exception.InvalidBackup(reason=err)
-
         finally:
             _cleanup_device_hardlink(restore_path, volume_path, volume_id)
 
@@ -519,16 +495,6 @@ class TSMBackupDriver(driver.BackupDriver):
                       'err': exc.stderr})
             LOG.error(err)
             raise exception.InvalidBackup(reason=err)
-        except exception.Error as exc:
-            err = (_('delete: %(vol_id)s failed to run dsmc '
-                     'due to invalid arguments with '
-                     'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': backup.volume_id,
-                      'out': exc.stdout,
-                      'err': exc.stderr})
-            LOG.error(err)
-            raise exception.InvalidBackup(reason=err)
-
         success = _check_dsmc_output(out, delete_attrs)
         if not success:
             # log error if tsm cannot delete the backup object

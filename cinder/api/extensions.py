@@ -140,7 +140,8 @@ class ExtensionManager(object):
         LOG.debug('Loaded extension: %s', alias)
 
         if alias in self.extensions:
-            raise exception.Error("Found duplicate extension: %s" % alias)
+            raise exception.CinderException(
+                "Found duplicate extension: %s" % alias)
         self.extensions[alias] = ext
 
     def get_resources(self):
