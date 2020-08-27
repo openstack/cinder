@@ -1,0 +1,114 @@
+---
+prelude: >
+    This release contains a partial fix for an upgrade issue.  If you are
+    upgrading a Train deployment of cinder to Ussuri, under specific
+    circumstances you may need to take actions outside the normal upgrade
+    process in order to accomplish a successful upgrade.  In particular,
+    there may be changes you must make in your Train deployment **before**
+    you upgrade.  See the "Upgrade Notes" and "Bug Fixes" sections of these
+    release notes for details.
+
+upgrade:
+  - |
+    This release partially fixes an upgrade issue (`Bug #1893107
+    <https://bugs.launchpad.net/cinder/+bug/1893107>`_) that under some
+    circumstances could prevent a cinder database upgrade from Train to
+    Ussuri.  The issue would occur if you had upgraded an unpurged Stein
+    database to Train, and then attempted to upgrade the still unpurged
+    database to Ussuri.  If this describes your situation, please read
+    further, because in order to avert this issue, there are some steps
+    you may need to take in your **Train** deployment *before* you upgrade
+    to Ussuri.
+
+    This upgrade notice applies to you only if **all** of the following
+    conditions are met:
+
+    #. You upgraded to Train from Stein
+    #. Before upgrading from Stein, you did **not** purge the cinder database
+    #. Your original upgrade from Stein was to cinder version 15.3.0 or earlier
+
+    If all of the above apply to you, your upgrade path from Train to Ussuri
+    is slightly more complicated than usual and may require some actions in
+    your Train deployment *before* you upgrade.  Please pick the least
+    inconvenient of the following options:
+
+    #. Upgrade your Train deployment to cinder 15.3.1 or more recent and
+       re-run the online database migrations in your Train deployment.
+
+       * This migration requires the existence of a ``__DEFAULT__`` volume
+         type.  If you have renamed (or renamed and deleted) the ``__DEFAULT__``
+         volume type in Train, you must re-create it before running the online
+         migrations.  (If you renamed it, you don't have to un-rename it; you
+         can create a new one just for the purposes of the online database
+         migration.)
+
+         If necessary, you can create a new ``__DEFAULT__`` volume type as
+         follows using the Block Storage API, or by using the
+         python-cinderclient or python-openstackclient to do the equivalent:
+
+         API request: ``POST /v3/{project_id}/types``
+
+         Request body::
+
+            {
+                "volume_type": {
+                    "name": "__DEFAULT__",
+                    "description": "Default Volume Type",
+                    "os-volume-type-access:is_public": true
+                }
+            }
+
+         The ``__DEFAULT__`` volume type may safely be renamed (or renamed
+         and deleted) after you have run the online migrations as long as
+         the ``default_volume_type`` configuration option is set to a valid
+         existing volume type.
+
+       * After the online database migrations from cinder 15.3.1 or more
+         recent have run, you may upgrade to Ussuri in the normal way.
+
+    #. Upgrade to Ussuri, but run the online database migrations **before**
+       you run the db_sync.  (The normal ordering is to run db_sync first,
+       and then run the online migrations.)
+
+       * If you have renamed (or renamed and deleted) the ``__DEFAULT__``
+         volume type in Train, you must re-create it **in your Train
+         deployment** before upgrading to Ussuri.  This will ensure that
+         the ``__DEFAULT__`` volume type will be present in the database
+         when you run the Ussuri online database migrations.
+
+         Use the directions above if you need to re-create the ``__DEFAULT__``
+         volume type.
+
+         Once your Ussuri upgrade is completed, the ``__DEFAULT__`` volume
+         type may safely be renamed (or renamed and deleted) as long as
+         the ``default_volume_type`` configuration option is set to a valid
+         existing volume type.
+
+    #. While in your Train deployment, purge the cinder database.  This will
+       remove soft-deleted volumes and snapshots and allow you to upgrade to
+       Ussuri in the regular way.
+
+fixes:
+  - |
+    `Bug #1893107 <https://bugs.launchpad.net/cinder/+bug/1893107>`_:
+    The Ussuri release changes the cinder database schema to make the
+    ``volume_type_id`` column in the ``volumes`` and ``snapshots`` tables
+    non-nullable because all volumes have been required to have a volume type
+    since the Train release.  The online migration in cinder release 15.3.0 or
+    earlier, however, did not process soft-deleted rows, leaving the
+    possibility that there could be a deleted volume or snapshot with a null
+    ``volume_type_id``, which in turn would make the database upgrade fail
+    in Ussuri when the non-nullability constraint could not be applied.
+
+    The issue is partially fixed in the current release ("partially" because
+    in specific circumstances, an operator may need to take some actions
+    outside the normal upgrade process).  See the "Upgrade Notes" for more
+    information.
+
+issues:
+  - |
+    Due to `Bug #1893107 <https://bugs.launchpad.net/cinder/+bug/1893107>`_,
+    under specific circumstances, some operators may need to take actions
+    outside the normal upgrade process to upgrade from Train to Ussuri.
+    See the "Upgrade Notes" and "Bug Fixes" sections of these release notes
+    for more details.
