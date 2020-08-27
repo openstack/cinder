@@ -21,6 +21,7 @@ import enum
 import mock
 from mock import call
 from oslo_config import cfg
+from oslo_db import exception as oslo_exc
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
@@ -1689,6 +1690,57 @@ class DBAPIVolumeTestCase(BaseTest):
                 new_cluster_name + vols[i].cluster_name[len(cluster_name):],
                 db_vols[i].cluster_name)
 
+    def test_untyped_volumes_online_data_migration(self):
+        # Bug #1893107: need to make sure we migrate even deleted
+        # volumes so that the DB doesn't need to be purged before
+        # making the volume_type_id column nullable in a subsequent
+        # release.
+
+        # need this or volume_create will fail when creating a deleted volume
+        self.ctxt.read_deleted = 'yes'
+
+        db_volumes = [
+            # non-deleted with volume_type
+            db.volume_create(self.ctxt,
+                             {'id': fake.VOLUME_ID,
+                              'volume_type_id': fake.VOLUME_TYPE_ID,
+                              'deleted': False}),
+            # deleted with volume_type
+            db.volume_create(self.ctxt,
+                             {'id': fake.VOLUME2_ID,
+                              'volume_type_id': fake.VOLUME_TYPE_ID,
+                              'deleted': True})]
+        expected_total = 0
+        expected_updated = 0
+
+        # if the volume_type_id column is nullable, add some that will
+        # have to be migrated
+        try:
+            # non-deleted with NO volume_type
+            v3 = db.volume_create(self.ctxt,
+                                  {'id': fake.VOLUME3_ID,
+                                   'volume_type_id': None,
+                                   'deleted': False})
+            # deleted with NO volume_type
+            v4 = db.volume_create(self.ctxt,
+                                  {'id': fake.VOLUME4_ID,
+                                   'volume_type_id': None,
+                                   'deleted': True})
+            db_volumes.append([v3, v4])
+            expected_total = 2
+            expected_updated = 2
+
+        except oslo_exc.DBError:
+            pass
+
+        # restore context to normal
+        self.ctxt.read_deleted = 'no'
+
+        total, updated = db.untyped_volumes_online_data_migration(
+            self.ctxt, max_count=10)
+        self.assertEqual(expected_total, total)
+        self.assertEqual(expected_updated, updated)
+
 
 @ddt.ddt
 class DBAPISnapshotTestCase(BaseTest):
@@ -2064,6 +2116,63 @@ class DBAPISnapshotTestCase(BaseTest):
         db.snapshot_metadata_delete(self.ctxt, 1, 'c')
 
         self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+
+    def test_untyped_snapshots_online_data_migration(self):
+        # Bug #1893107: need to make sure we migrate even deleted
+        # snapshots so that the DB doesn't need to be purged before
+        # making the volume_type_id column nullable in a subsequent
+        # release.
+
+        # need this or snapshot_create will fail when creating a deleted
+        # snapshot
+        self.ctxt.read_deleted = 'yes'
+
+        db_snapshots = [
+            # non-deleted with volume_type
+            db.snapshot_create(self.ctxt,
+                               {'id': fake.SNAPSHOT_ID,
+                                'volume_id': fake.VOLUME_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID,
+                                'deleted': False}),
+            # deleted with volume_type
+            db.snapshot_create(self.ctxt,
+                               {'id': fake.SNAPSHOT2_ID,
+                                'volume_id': fake.VOLUME2_ID,
+                                'volume_type_id': fake.VOLUME_TYPE_ID,
+                                'deleted': True})]
+        expected_total = 0
+        expected_updated = 0
+
+        # if the volume_type_id column is nullable, add some that will
+        # have to be migrated
+        try:
+            # non-deleted with NO volume_type
+            s3 = db.snapshot_create(self.ctxt,
+                                    {'id': fake.SNAPSHOT3_ID,
+                                     'volume_id': fake.VOLUME3_ID,
+                                     'volume_type_id': None,
+                                     'deleted': False})
+            # deleted with NO volume_type
+            s4 = db.snapshot_create(self.ctxt,
+                                    {'id': fake.UUID4,
+                                     'volume_id': fake.VOLUME4_ID,
+                                     'volume_type_id': None,
+                                     'deleted': True})
+
+            db_snapshots.append([s3, s4])
+            expected_total = 2
+            expected_updated = 2
+
+        except oslo_exc.DBError:
+            pass
+
+        # restore context to normal
+        self.ctxt.read_deleted = 'no'
+
+        total, updated = db.untyped_snapshots_online_data_migration(
+            self.ctxt, max_count=10)
+        self.assertEqual(expected_total, total)
+        self.assertEqual(expected_updated, updated)
 
 
 @ddt.ddt

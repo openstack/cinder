@@ -580,11 +580,11 @@ def untyped_volumes_online_data_migration(context, max_count):
     session = get_session()
     with session.begin():
         total = model_query(context,
-                            models.Volume,
+                            models.Volume, read_deleted='yes',
                             session=session).filter_by(
             volume_type_id=None).limit(max_count).count()
         volumes = model_query(context,
-                              models.Volume,
+                              models.Volume, read_deleted='yes',
                               session=session).filter_by(
             volume_type_id=None).limit(max_count).all()
         for volume in volumes:
@@ -605,11 +605,11 @@ def untyped_snapshots_online_data_migration(context, max_count):
     session = get_session()
     with session.begin():
         total = model_query(context,
-                            models.Snapshot,
+                            models.Snapshot, read_deleted='yes',
                             session=session).filter_by(
             volume_type_id=None).limit(max_count).count()
         snapshots = model_query(context,
-                                models.Snapshot,
+                                models.Snapshot, read_deleted='yes',
                                 session=session).filter_by(
             volume_type_id=None).limit(max_count).all()
         for snapshot in snapshots:
