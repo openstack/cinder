@@ -32,6 +32,7 @@ import stat
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 
 from cinder.backup import driver
 from cinder import exception
@@ -275,6 +276,11 @@ class TSMBackupDriver(driver.BackupDriver):
         return tsm_opts
 
     def check_for_setup_error(self):
+        versionutils.report_deprecated_feature(
+            LOG,
+            "Cinder TSM Backup Driver is deprecated and will be removed "
+            "in Wallaby release. Please, migrate you backups to a supported "
+            "backend.")
         required_flags = ['backup_share']
         for flag in required_flags:
             val = getattr(CONF, flag, None)
