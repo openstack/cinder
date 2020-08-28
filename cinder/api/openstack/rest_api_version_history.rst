@@ -468,3 +468,8 @@ Support volume transfer pagination.
 Users may apply time comparison filters to the volume summary list and volume
 detail list requests by using the ``created_at`` or ``updated_at`` fields.
 Time must be expressed in ISO 8601 format.
+
+3.61
+----
+Add ``cluster_name`` attribute to response body of volume details for admin in
+Active/Active HA mode.

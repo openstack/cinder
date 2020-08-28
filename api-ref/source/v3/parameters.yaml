@@ -782,6 +782,13 @@ cluster_mutex:
   in: body
   required: false
   type: string
+cluster_name:
+  description: |
+    The cluster name of volume backend.
+  in: body
+  required: false
+  type: string
+  min_version: 3.61
 connection_info:
   description: |
     The connection info used for server to connect the volume.
