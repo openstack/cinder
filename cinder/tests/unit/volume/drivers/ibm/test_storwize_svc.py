@@ -1860,6 +1860,8 @@ port_speed!N/A
                      'type', 'se_copy', 'easy_tier', 'easy_tier_status',
                      'compressed_copy'])
         for copy in vol['copies'].values():
+            if 'compressed_copy' not in copy:
+                copy['compressed_copy'] = 'False'
             rows.append([vol['id'], vol['name'], copy['id'],
                         copy['status'], copy['sync'], copy['primary'],
                         copy['mdisk_grp_id'], copy['mdisk_grp_name'],
@@ -4723,7 +4725,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         mock_ssh_pool.side_effect = [
             paramiko.SSHException,
             mock.MagicMock(
-                ip = self._driver.configuration.storwize_san_secondary_ip),
+                ip=self._driver.configuration.storwize_san_secondary_ip),
             mock.MagicMock()]
         mock_ssh_execute.side_effect = [processutils.ProcessExecutionError,
                                         mock.MagicMock()]
@@ -7356,8 +7358,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists(vol.name, True)
 
         vol2 = testutils.create_volume(self.ctxt,
-                                       host = 'openstack@svc#hyperswap1',
-                                       volume_type_id = vol.volume_type_id)
+                                       host='openstack@svc#hyperswap1',
+                                       volume_type_id=vol.volume_type_id)
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_vdisk_attributes') as vdisk_attr:
             vdisk_attr.return_value = None
@@ -9016,18 +9018,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
               ({'replication_enabled': '<is> True',
                 'replication_type': '<in> metro'},
                {'replication_enabled': '<is> True',
-                'replication_type': '<in> global'}),
-              ({'replication_enabled': '<is> True',
-                'replication_type': '<in> metro'},
-               {'mirror_pool': 'openstack1'}),
-              ({'mirror_pool': 'openstack1'},
-               {'mirror_pool': 'openstack1',
-                'replication_enabled': '<is> True',
-                'replication_type': '<in> metro'}),
-              ({'replication_enabled': '<is> False'},
-               {'mirror_pool': 'openstack1',
-                'replication_enabled': '<is> True',
-                'replication_type': '<in> metro'}))
+                'replication_type': '<in> global'}))
     @ddt.unpack
     def test_storwize_retype_invalid_replication(self, old_opts, new_opts):
         # Set replication target
@@ -9043,8 +9034,124 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             False, opts=new_opts, vol_type_name='test_new_type')
         diff, _equal = volume_types.volume_types_diff(
             self.ctxt, new_type['id'], old_type['id'])
-        self.assertRaises(exception.VolumeDriverException, self.driver.retype,
-                          self.ctxt, volume, new_type, diff, host)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.retype, self.ctxt,
+                          volume, new_type, diff, host)
+
+    @ddt.data(({'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'},
+               {'mirror_pool': 'openstack1'}),
+              ({'mirror_pool': 'openstack1'},
+               {'mirror_pool': 'openstack1',
+                'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}),
+              ({'replication_enabled': '<is> False'},
+               {'mirror_pool': 'openstack1',
+                'replication_enabled': '<is> True',
+                'replication_type': '<in> metro'}))
+    @ddt.unpack
+    def test_storwize_retype_valid_replication(self, old_opts, new_opts):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+        old_type = self._create_replica_volume_type(
+            False, opts=old_opts, vol_type_name='test_old_type')
+
+        volume, model_update = self._create_test_volume(old_type)
+        new_type = self._create_replica_volume_type(
+            False, opts=new_opts, vol_type_name='test_new_type')
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, new_type['id'], old_type['id'])
+        self.driver.retype(self.ctxt, volume,
+                           new_type, diff, host)
+
+    def test_storwize_svc_retype_global_mirror_volume_to_thin(self):
+        self.driver.do_setup(self.ctxt)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'openstack@svc#openstack',
+                'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        type_name = 'rep_global_none'
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> global',
+                'drivers:rsize': '-1',
+                'compression': 'False'}
+        type_ref = volume_types.create(self.ctxt, type_name, spec)
+        vol_type1 = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
+
+        type_name = 'rep_global_thin'
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> global',
+                'drivers:rsize': '2',
+                'compression': 'False'}
+        type_ref = volume_types.create(self.ctxt, type_name, spec)
+        vol_type2 = objects.VolumeType.get_by_id(self.ctxt,
+                                                 type_ref['id'])
+
+        diff, _equal = volume_types.volume_types_diff(ctxt, vol_type1.id,
+                                                      vol_type2.id)
+
+        # Create test volume with volume type with rsize as -1
+        vol1, model_update = self._create_test_volume(vol_type1)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        vol1['status'] = 'available'
+
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(1, len(copies))
+        self.driver.retype(self.ctxt, vol1, vol_type2, diff, host)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(2, len(copies))
+        self.driver.delete_volume(vol1)
+
+    def test_storwize_svc_retype_global_mirror_volume_to_none(self):
+        self.driver.do_setup(self.ctxt)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'openstack@svc#openstack',
+                'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        type_name = 'rep_global_thin'
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> global',
+                'drivers:rsize': '2',
+                'compression': 'False'}
+        type_ref = volume_types.create(self.ctxt, type_name, spec)
+        vol_type1 = objects.VolumeType.get_by_id(self.ctxt, type_ref['id'])
+
+        type_name = 'rep_global_none'
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> global',
+                'drivers:rsize': '-1',
+                'compression': 'False'}
+        type_ref = volume_types.create(self.ctxt, type_name, spec)
+        vol_type2 = objects.VolumeType.get_by_id(self.ctxt,
+                                                 type_ref['id'])
+
+        diff, _equal = volume_types.volume_types_diff(ctxt, vol_type1.id,
+                                                      vol_type2.id)
+
+        # Create test volume with volume type with rsize as 2
+        vol1, model_update = self._create_test_volume(vol_type1)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        vol1['status'] = 'available'
+
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(1, len(copies))
+        self.driver.retype(self.ctxt, vol1, vol_type2, diff, host)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(2, len(copies))
+        self.driver.delete_volume(vol1)
 
     def test_storwize_retype_from_mirror_to_none_replication(self):
         # Set replication target
