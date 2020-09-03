@@ -12,18 +12,32 @@ As of the 13.0.0 Rocky release, Cinder supports the following options to
 control volume quality of service, the values of which should be fairly
 self-explanatory:
 
+For Fixed IOPS per volume.
+
 * `read_iops_sec`
 * `write_iops_sec`
 * `total_iops_sec`
-* `read_bytes_sec`
-* `write_bytes_sec`
-* `total_bytes_sec`
+
+For Burst IOPS per volume.
+
 * `read_iops_sec_max`
 * `write_iops_sec_max`
 * `total_iops_sec_max`
+
+For Fixed bandwidth per volume.
+
+* `read_bytes_sec`
+* `write_bytes_sec`
+* `total_bytes_sec`
+
+For Burst bandwidth per volume.
+
 * `read_bytes_sec_max`
 * `write_bytes_sec_max`
 * `total_bytes_sec_max`
+
+For burst bucket size.
+
 * `size_iops_sec`
 
 Note that the `total_*` and `total_*_max` options for both iops and bytes
