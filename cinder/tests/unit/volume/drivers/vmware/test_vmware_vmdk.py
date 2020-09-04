@@ -119,6 +119,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             reserved_percentage=0,
             vmware_profile_check_on_attach=True,
             vmware_storage_profile=[self.STORAGE_PROFILE],
+            vmware_select_random_best_datastore=False,
+            vmware_random_datastore_range=None,
         )
 
         self._db = mock.Mock()

@@ -55,12 +55,15 @@ class DatastoreSelector(object):
     PROFILE_NAME = "storageProfileName"
 
     # TODO(vbala) Remove dependency on volumeops.
-    def __init__(self, vops, session, max_objects, ds_regex=None):
+    def __init__(self, vops, session, max_objects, ds_regex=None,
+                 random_ds=False, random_ds_range=None):
         self._vops = vops
         self._session = session
         self._max_objects = max_objects
         self._ds_regex = ds_regex
         self._profile_id_cache = {}
+        self._random_ds = random_ds
+        self._random_ds_range = random_ds_range
 
     @coordination.synchronized('vmware-datastore-profile-{profile_name}')
     def get_profile_id(self, profile_name):
@@ -246,6 +249,12 @@ class DatastoreSelector(object):
                     return host_mount.key
 
         sorted_ds_props = sorted(datastores.values(), key=_sort_key)
+        if self._random_ds:
+            LOG.debug('Shuffling best datastore selection.')
+            if self._random_ds_range:
+                sorted_ds_props = sorted_ds_props[:self._random_ds_range]
+            random.shuffle(sorted_ds_props)
+
         for ds_props in sorted_ds_props:
             host_ref = _select_host(ds_props['host'])
             if host_ref:
