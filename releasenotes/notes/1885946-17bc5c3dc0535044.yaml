@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Add Multi-attach feature in Nimble driver.
+upgrade:
+  - |
+    Nimble specific extra-spec nimble:multi-initiator is removed.
+    Common extra-spec multiattach is added.
