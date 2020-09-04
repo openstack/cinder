@@ -1,0 +1,6 @@
+features:
+  - |
+    Added support to cinder backup for use of the Zstandard compression
+    algorithm.  To use it, set the ``backup_compression_algorithm`` to
+    ``zstd`` in the cinder configuration file.  (The default value for
+    this option is ``zlib``.)
