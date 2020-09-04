@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The "cinder-manage shell" set of commands has been removed.
+

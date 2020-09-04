@@ -128,79 +128,6 @@ def args(*args, **kwargs):
     return _decorator
 
 
-class ShellCommands(object):
-    def bpython(self):
-        """Runs a bpython shell.
-
-        Falls back to Ipython/python shell if unavailable
-        """
-        self.run('bpython')
-
-    def ipython(self):
-        """Runs an Ipython shell.
-
-        Falls back to Python shell if unavailable
-        """
-        self.run('ipython')
-
-    def python(self):
-        """Runs a python shell.
-
-        Falls back to Python shell if unavailable
-        """
-        self.run('python')
-
-    @args('--shell',
-          metavar='<bpython|ipython|python>',
-          help='Python shell')
-    def run(self, shell=None):
-        """Runs a Python interactive interpreter."""
-        if not shell:
-            shell = 'bpython'
-
-        if shell == 'bpython':
-            try:
-                import bpython
-                bpython.embed()
-            except ImportError:
-                shell = 'ipython'
-        if shell == 'ipython':
-            try:
-                from IPython import embed
-                embed()
-            except ImportError:
-                try:
-                    # Ipython < 0.11
-                    # Explicitly pass an empty list as arguments, because
-                    # otherwise IPython would use sys.argv from this script.
-                    import IPython
-
-                    shell = IPython.Shell.IPShell(argv=[])
-                    shell.mainloop()
-                except ImportError:
-                    # no IPython module
-                    shell = 'python'
-
-        if shell == 'python':
-            import code
-            try:
-                # Try activating rlcompleter, because it's handy.
-                import readline
-            except ImportError:
-                pass
-            else:
-                # We don't have to wrap the following import in a 'try',
-                # because we already know 'readline' was imported successfully.
-                import rlcompleter    # noqa
-                readline.parse_and_bind("tab:complete")
-            code.interact()
-
-    @args('--path', required=True, help='Script path')
-    def script(self, path):
-        """Runs the script from the specified path with flags set properly."""
-        exec(compile(open(path).read(), path, 'exec'), locals(), globals())
-
-
 def _db_error(caught_exception):
     print('%s' % caught_exception)
     print(_("The above error may show that the database has not "
@@ -740,7 +667,6 @@ CATEGORIES = {
     'db': DbCommands,
     'host': HostCommands,
     'service': ServiceCommands,
-    'shell': ShellCommands,
     'version': VersionCommands,
     'volume': VolumeCommands,
 }

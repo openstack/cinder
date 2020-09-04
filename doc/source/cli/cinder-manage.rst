@@ -111,29 +111,6 @@ Displays cinder errors from log files.
 Displays cinder the most recent entries from syslog.  The optional number
 argument specifies the number of entries to display (default 10).
 
-Cinder Shell
-~~~~~~~~~~~~
-
-``cinder-manage shell bpython``
-
-Starts a new bpython shell.
-
-``cinder-manage shell ipython``
-
-Starts a new ipython shell.
-
-``cinder-manage shell python``
-
-Starts a new python shell.
-
-``cinder-manage shell run``
-
-Starts a new shell using python.
-
-``cinder-manage shell script <path/scriptname>``
-
-Runs the named script from the specified path with flags set.
-
 Cinder Volume
 ~~~~~~~~~~~~~
 
