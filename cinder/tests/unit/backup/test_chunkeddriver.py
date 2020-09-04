@@ -208,6 +208,9 @@ class ChunkedDriverTestCase(test.TestCase):
         for algo in ['bz2', 'bzip2']:
             self.assertTrue('bz' in str(self.driver._get_compressor(algo)))
 
+    def test_get_compressor_zstd(self):
+        self.assertTrue('zstd' in str(self.driver._get_compressor('zstd')))
+
     def test_get_compressor_invalid(self):
         self.assertRaises(ValueError, self.driver._get_compressor, 'winzip')
 

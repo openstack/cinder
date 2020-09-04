@@ -53,7 +53,8 @@ backup_opts = [
                ignore_case=True,
                choices=['none', 'off', 'no',
                         'zlib', 'gzip',
-                        'bz2', 'bzip2'],
+                        'bz2', 'bzip2',
+                        'zstd'],
                help='Compression algorithm ("none" to disable)'),
 ]
 
@@ -91,6 +92,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 result = compressor
             elif algorithm.lower() in ('bz2', 'bzip2'):
                 import bz2 as compressor
+                result = compressor
+            elif algorithm.lower() == 'zstd':
+                import zstd as compressor
                 result = compressor
             else:
                 result = None

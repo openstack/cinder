@@ -162,3 +162,4 @@ rsd-lib==1.1.0
 storpool==4.0.0
 storpool.spopenstack==2.2.1
 dfs_sdk==1.2.25
+zstd==1.4.5.0
