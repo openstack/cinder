@@ -122,6 +122,11 @@ def _get_non_shared_target_hosts(ctxt):
 
 # Decorators for actions
 def args(*args, **kwargs):
+    args = list(args)
+    if not args[0].startswith('-') and '-' in args[0]:
+        kwargs.setdefault('metavar', args[0])
+        args[0] = args[0].replace('-', '_')
+
     def _decorator(func):
         func.__dict__.setdefault('args', []).insert(0, (args, kwargs))
         return func
