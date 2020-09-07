@@ -1626,6 +1626,16 @@ class PowerMaxCommonTest(test.TestCase):
             mck_s.assert_called_once_with(
                 self.data.vol_type_extra_specs, pool_record, True)
 
+    def test_raise_exception_if_array_not_configured(self):
+        self.driver.configuration.powermax_array = None
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.common.get_attributes_from_cinder_config)
+
+    def test_raise_exception_if_srp_not_configured(self):
+        self.driver.configuration.powermax_srp = None
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.common.get_attributes_from_cinder_config)
+
     def test_delete_volume_from_srp_success(self):
         array = self.data.array
         device_id = self.data.device_id
@@ -3259,7 +3269,8 @@ class PowerMaxCommonTest(test.TestCase):
             u4p_failover_target=(self.data.u4p_failover_config[
                 'u4p_failover_targets']), u4p_failover_backoff_factor='2',
             u4p_failover_retries='3', u4p_failover_timeout='10',
-            u4p_primary='10.10.10.10')
+            u4p_primary='10.10.10.10', powermax_array=self.data.array,
+            powermax_srp=self.data.srp)
         self.common.configuration = configuration
         self.common._get_u4p_failover_info()
         self.assertTrue(self.rest.u4p_failover_enabled)
