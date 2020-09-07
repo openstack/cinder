@@ -536,6 +536,13 @@ class StorwizeSSH(object):
                    '-filtervalue', '%s=%s' % (filter_name, value)]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
+    def lsthrottle(self):
+        """Returns throttle objects for all vdisks."""
+        ssh_cmd = ['svcinfo', 'lsthrottle', '-delim', '!', '-filtervalue',
+                   'throttle_type=vdisk']
+        throttles = self.run_ssh_info(ssh_cmd, with_header=True)
+        return throttles.result
+
     def chvdisk(self, vdisk, params):
         ssh_cmd = ['svctask', 'chvdisk'] + params + ['"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
@@ -903,6 +910,25 @@ class StorwizeHelpers(object):
                 selected_iog = iog
         LOG.debug("Selected io_group is %d", selected_iog)
         return selected_iog
+
+    def get_pool_max_throttle_rate_vdisk(self, pool, throttle_rate_type):
+        """Returns the IOPs or Bandwidth throttle rate.
+
+        Throttle rate of all vdisks for the specified pool.
+        """
+        max_throttle_rate_vdisk = 0
+        vdisks = self.get_pool_volumes(pool)
+        if vdisks:
+            throttles = self.ssh.lsthrottle()
+            if throttles:
+                vdisk_names = [
+                    vdisk['name'] for vdisk in vdisks if vdisk['name']]
+                for throttle in throttles:
+                    if (throttle['object_name'] in vdisk_names and
+                            throttle[throttle_rate_type]):
+                        max_throttle_rate_vdisk += int(
+                            throttle[throttle_rate_type])
+        return max_throttle_rate_vdisk
 
     def get_volume_io_group(self, vol_name):
         vdisk = self.ssh.lsvdisk(vol_name)

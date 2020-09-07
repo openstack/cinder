@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added fucntionality
+    that returns throttle rate of maximum IOPS and bandwidth of
+    all VDisks of a specified storage pool.
