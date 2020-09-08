@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    PowerMax for Cinder driver now supports the ability to transition to a
+    new primary array as part of the failover process if the existing
+    primary array is deemed unrecoverable.

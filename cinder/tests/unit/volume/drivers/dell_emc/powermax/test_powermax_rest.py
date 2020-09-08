@@ -231,6 +231,20 @@ class PowerMaxRestTest(test.TestCase):
                           self.rest.modify_resource, array, category,
                           resource_type, resource_name)
 
+    def test_get_arrays_list(self):
+        ret_val = {'symmetrixId': tpd.PowerMaxData.array}
+        with mock.patch.object(self.rest, 'get_request',
+                               return_value=ret_val):
+            ref_details = self.data.array
+            array_details = self.rest.get_arrays_list()
+            self.assertEqual(ref_details, array_details)
+
+    def test_get_arrays_list_failed(self):
+        with mock.patch.object(self.rest, 'get_request',
+                               return_value=dict()):
+            array_details = self.rest.get_arrays_list()
+            self.assertEqual(list(), array_details)
+
     def test_get_array_detail(self):
         ref_details = self.data.symmetrix[0]
         array_details = self.rest.get_array_detail(self.data.array)

@@ -1562,11 +1562,12 @@ class PowerMaxCommon(object):
                 backend_id = volume_backend_id
         return backend_id
 
-    def _find_device_on_array(self, volume, extra_specs):
+    def _find_device_on_array(self, volume, extra_specs, remote_device=False):
         """Given the volume get the PowerMax/VMAX device Id.
 
         :param volume: volume object
         :param extra_specs: the extra Specs
+        :param remote_device: find remote device for replicated volumes
         :returns: array, device_id
         """
         founddevice_id = None
@@ -1575,7 +1576,11 @@ class PowerMaxCommon(object):
             name_id = volume._name_id
         except AttributeError:
             name_id = None
-        loc = volume.provider_location
+
+        if remote_device:
+            loc = volume.replication_driver_data
+        else:
+            loc = volume.provider_location
 
         if isinstance(loc, six.string_types):
             name = ast.literal_eval(loc)
@@ -4958,8 +4963,12 @@ class PowerMaxCommon(object):
         :returns: secondary_id, volume_update_list, group_update_list
         :raises: VolumeBackendAPIException
         """
+        primary_array = self._get_configuration_value(
+            utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
+        array_list = self.rest.get_arrays_list()
         is_valid, msg = self.utils.validate_failover_request(
-            self.failover, secondary_id, self.rep_configs)
+            self.failover, secondary_id, self.rep_configs, primary_array,
+            array_list)
         if not is_valid:
             LOG.error(msg)
             raise exception.InvalidReplicationTarget(msg)
@@ -5012,9 +5021,6 @@ class PowerMaxCommon(object):
             extra_specs = self._initial_setup(volume)
             extra_specs[utils.ARRAY] = array
             if self.utils.is_replication_enabled(extra_specs):
-                device_id = self._find_device_on_array(volume, extra_specs)
-                self._sync_check(array, device_id, extra_specs)
-
                 rep_mode = extra_specs.get(utils.REP_MODE, utils.REP_SYNC)
                 backend_id = self._get_replicated_volume_backend_id(
                     volume)
@@ -5073,21 +5079,23 @@ class PowerMaxCommon(object):
         :returns: vol_updates
         """
         extra_specs = self._initial_setup(sync_vol_list[0])
-        array = ast.literal_eval(
-            sync_vol_list[0].provider_location)['array']
-        extra_specs[utils.ARRAY] = array
+        replication_details = ast.literal_eval(
+            sync_vol_list[0].replication_driver_data)
+        remote_array = replication_details.get(utils.ARRAY)
+        extra_specs[utils.ARRAY] = remote_array
         temp_grp_name = self.utils.get_temp_failover_grp_name(
             extra_specs[utils.REP_CONFIG])
         self.provision.create_volume_group(
-            array, temp_grp_name, extra_specs)
-        device_ids = self._get_volume_device_ids(sync_vol_list, array)
+            remote_array, temp_grp_name, extra_specs)
+        device_ids = self._get_volume_device_ids(
+            sync_vol_list, remote_array, remote_volumes=True)
         self.masking.add_volumes_to_storage_group(
-            array, device_ids, temp_grp_name, extra_specs)
+            remote_array, device_ids, temp_grp_name, extra_specs)
         __, vol_updates = (
             self._failover_replication(
                 sync_vol_list, None, temp_grp_name,
                 secondary_backend_id=group_fo, host=True))
-        self.rest.delete_storage_group(array, temp_grp_name)
+        self.rest.delete_storage_group(remote_array, temp_grp_name)
         return vol_updates
 
     def _get_replication_extra_specs(self, extra_specs, rep_config):
@@ -5711,16 +5719,26 @@ class PowerMaxCommon(object):
             remote_array, remote_device_list, group_name, extra_specs)
         LOG.info("Removed volumes from remote volume group.")
 
-    def _get_volume_device_ids(self, volumes, array):
+    def _get_volume_device_ids(self, volumes, array, remote_volumes=False):
         """Get volume device ids from volume.
 
         :param volumes: volume objects
+        :param array: array id
+        :param remote_volumes: get the remote ids for replicated volumes
         :returns: device_ids
         """
         device_ids = []
         for volume in volumes:
-            specs = {utils.ARRAY: array}
-            device_id = self._find_device_on_array(volume, specs)
+            if remote_volumes:
+                replication_details = ast.literal_eval(
+                    volume.replication_driver_data)
+                remote_array = replication_details.get(utils.ARRAY)
+                specs = {utils.ARRAY: remote_array}
+                device_id = self._find_device_on_array(
+                    volume, specs, remote_volumes)
+            else:
+                specs = {utils.ARRAY: array}
+                device_id = self._find_device_on_array(volume, specs)
             if device_id is None:
                 LOG.error("Volume %(name)s not found on the array.",
                           {'name': volume['name']})
@@ -6131,15 +6149,17 @@ class PowerMaxCommon(object):
             return model_update, vol_model_updates
 
         extra_specs = self._initial_setup(volumes[0])
-        array = ast.literal_eval(volumes[0].provider_location)['array']
-        extra_specs[utils.ARRAY] = array
+        replication_details = ast.literal_eval(
+            volumes[0].replication_driver_data)
+        remote_array = replication_details.get(utils.ARRAY)
+        extra_specs[utils.ARRAY] = remote_array
         failover = False if secondary_backend_id == 'default' else True
 
         try:
             rdf_group_no, __ = self.get_rdf_details(
-                array, extra_specs[utils.REP_CONFIG])
+                remote_array, extra_specs[utils.REP_CONFIG])
             if group:
-                volume_group = self._find_volume_group(array, group)
+                volume_group = self._find_volume_group(remote_array, group)
                 if volume_group:
                     if 'name' in volume_group:
                         vol_grp_name = volume_group['name']
@@ -6149,10 +6169,10 @@ class PowerMaxCommon(object):
             if not is_metro:
                 if failover:
                     self.rest.srdf_failover_group(
-                        array, vol_grp_name, rdf_group_no, extra_specs)
+                        remote_array, vol_grp_name, rdf_group_no, extra_specs)
                 else:
                     self.rest.srdf_failback_group(
-                        array, vol_grp_name, rdf_group_no, extra_specs)
+                        remote_array, vol_grp_name, rdf_group_no, extra_specs)
 
             if failover:
                 model_update.update({
@@ -6183,7 +6203,8 @@ class PowerMaxCommon(object):
                 self.volume_metadata.capture_failover_volume(
                     vol, local['device_id'], local['array'], rdf_group_no,
                     remote['device_id'], remote['array'], extra_specs,
-                    failover, vol_grp_name, vol_rep_status, utils.REP_ASYNC)
+                    failover, vol_grp_name, vol_rep_status,
+                    extra_specs[utils.REP_MODE])
 
             update = {'id': vol.id,
                       'replication_status': vol_rep_status,
