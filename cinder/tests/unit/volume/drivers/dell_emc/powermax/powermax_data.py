@@ -468,6 +468,10 @@ class PowerMaxData(object):
     rep_extra_specs_rep_config = deepcopy(rep_extra_specs6)
     rep_extra_specs_rep_config[utils.REP_CONFIG] = rep_config_sync
 
+    rep_extra_specs_rep_config_metro = deepcopy(rep_extra_specs6)
+    rep_extra_specs_rep_config_metro[utils.REP_CONFIG] = rep_config_metro
+    rep_extra_specs_rep_config_metro[utils.REP_MODE] = utils.REP_METRO
+
     extra_specs_tags = deepcopy(extra_specs)
     extra_specs_tags.update({utils.STORAGE_GROUP_TAGS: sg_tags})
 

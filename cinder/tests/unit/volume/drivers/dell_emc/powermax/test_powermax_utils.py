@@ -354,6 +354,23 @@ class PowerMaxUtilsTest(test.TestCase):
                      {'pool_name': 'Diamond+SRP_1+000197800111'}]
         self.assertEqual(ref_pools, new_pools)
 
+    def test_add_promotion_pools(self):
+        array = self.data.array
+        pools = [{'pool_name': 'Diamond+None+SRP_1+000197800111',
+                  'location_info': '000197800111#SRP_1#None#Diamond'},
+                 {'pool_name': 'Gold+OLTP+SRP_1+000197800111',
+                  'location_info': '000197800111#SRP_1#OLTP#Gold'}]
+        new_pools = self.utils.add_promotion_pools(pools, array)
+        ref_pools = [{'pool_name': 'Diamond+None+SRP_1+000197800111',
+                      'location_info': '000197800111#SRP_1#None#Diamond'},
+                     {'pool_name': 'Gold+OLTP+SRP_1+000197800111',
+                      'location_info': '000197800111#SRP_1#OLTP#Gold'},
+                     {'pool_name': 'Diamond+None+SRP_1+000197800123',
+                      'location_info': '000197800123#SRP_1#None#Diamond'},
+                     {'pool_name': 'Gold+OLTP+SRP_1+000197800123',
+                      'location_info': '000197800123#SRP_1#OLTP#Gold'}]
+        self.assertEqual(ref_pools, new_pools)
+
     def test_update_volume_group_name(self):
         group = self.data.test_group_1
         ref_group_name = self.data.test_vol_grp_name
@@ -1277,6 +1294,15 @@ class PowerMaxUtilsTest(test.TestCase):
             self.utils.validate_multiple_rep_device,
             rep_devices)
 
+    def test_validate_multiple_rep_device_promotion_start_backend_id(self):
+        backend_id = utils.PMAX_FAILOVER_START_ARRAY_PROMOTION
+        rep_devices = deepcopy(self.data.multi_rep_device)
+        rep_devices[0][utils.BACKEND_ID] = backend_id
+        self.assertRaises(
+            exception.InvalidConfigurationValue,
+            self.utils.validate_multiple_rep_device,
+            rep_devices)
+
     def test_validate_multiple_rep_device_missing_backend_id(self):
         rep_devices = deepcopy(self.data.multi_rep_device)
         rep_devices[0].pop(utils.BACKEND_ID)
@@ -1357,6 +1383,12 @@ class PowerMaxUtilsTest(test.TestCase):
             excep_msg = str(e)
             self.assertIn(expected_str, excep_msg)
 
+    def test_get_rep_config_promotion_stats(self):
+        rep_configs = self.data.multi_rep_config_list
+        backend_id = 'testing'
+        rep_device = self.utils.get_rep_config(backend_id, rep_configs, True)
+        self.assertEqual(rep_configs[0], rep_device)
+
     def test_get_replication_targets(self):
         rep_targets_expected = [self.data.remote_array]
         rep_configs = self.data.multi_rep_config_list
@@ -1365,25 +1397,27 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_validate_failover_request_success(self):
         is_failed_over = False
+        is_promoted = False
         failover_backend_id = self.data.rep_backend_id_sync
         rep_configs = self.data.multi_rep_config_list
         primary_array = self.data.array
         array_list = [self.data.array]
         is_valid, msg = self.utils.validate_failover_request(
             is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list)
+            primary_array, array_list, is_promoted)
         self.assertTrue(is_valid)
         self.assertEqual("", msg)
 
     def test_validate_failover_request_already_failed_over(self):
         is_failed_over = True
+        is_promoted = False
         failover_backend_id = self.data.rep_backend_id_sync
         rep_configs = self.data.multi_rep_config_list
         primary_array = self.data.array
         array_list = [self.data.array]
         is_valid, msg = self.utils.validate_failover_request(
             is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list)
+            primary_array, array_list, is_promoted)
         self.assertFalse(is_valid)
         expected_msg = ('Cannot failover, the backend is already in a failed '
                         'over state, if you meant to failback, please add '
@@ -1392,13 +1426,14 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_validate_failover_request_failback_missing_array(self):
         is_failed_over = True
+        is_promoted = False
         failover_backend_id = 'default'
         rep_configs = self.data.multi_rep_config_list
         primary_array = self.data.array
         array_list = [self.data.remote_array]
         is_valid, msg = self.utils.validate_failover_request(
             is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list)
+            primary_array, array_list, is_promoted)
         self.assertFalse(is_valid)
         expected_msg = ('Cannot failback, the configured primary array is '
                         'not currently available to perform failback to. '
@@ -1406,15 +1441,33 @@ class PowerMaxUtilsTest(test.TestCase):
                         'Unisphere.') % primary_array
         self.assertEqual(expected_msg, msg)
 
+    def test_validate_failover_request_promotion_finalize(self):
+        is_failed_over = True
+        is_promoted = True
+        failover_backend_id = utils.PMAX_FAILOVER_START_ARRAY_PROMOTION
+        rep_configs = self.data.multi_rep_config_list
+        primary_array = self.data.array
+        array_list = [self.data.array]
+        is_valid, msg = self.utils.validate_failover_request(
+            is_failed_over, failover_backend_id, rep_configs,
+            primary_array, array_list, is_promoted)
+        self.assertFalse(is_valid)
+        expected_msg = ('Failover promotion currently in progress, please '
+                        'finish the promotion process and issue a failover '
+                        'using the "default" backend_id to complete this '
+                        'process.')
+        self.assertEqual(expected_msg, msg)
+
     def test_validate_failover_request_invalid_failback(self):
         is_failed_over = False
+        is_promoted = False
         failover_backend_id = 'default'
         rep_configs = self.data.multi_rep_config_list
         primary_array = self.data.array
         array_list = [self.data.array]
         is_valid, msg = self.utils.validate_failover_request(
             is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list)
+            primary_array, array_list, is_promoted)
         self.assertFalse(is_valid)
         expected_msg = ('Cannot failback, backend is not in a failed over '
                         'state. If you meant to failover, please either omit '
@@ -1424,13 +1477,14 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_validate_failover_request_no_backend_id_multi_rep(self):
         is_failed_over = False
+        is_promoted = False
         failover_backend_id = None
         rep_configs = self.data.multi_rep_config_list
         primary_array = self.data.array
         array_list = [self.data.array]
         is_valid, msg = self.utils.validate_failover_request(
             is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list)
+            primary_array, array_list, is_promoted)
         self.assertFalse(is_valid)
         expected_msg = ('Cannot failover, no backend_id provided while '
                         'multiple replication devices are defined in '
@@ -1441,6 +1495,7 @@ class PowerMaxUtilsTest(test.TestCase):
 
     def test_validate_failover_request_incorrect_backend_id_multi_rep(self):
         is_failed_over = False
+        is_promoted = False
         failover_backend_id = 'invalid_id'
         rep_configs = self.data.multi_rep_config_list
         primary_array = self.data.array
@@ -1448,7 +1503,23 @@ class PowerMaxUtilsTest(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.utils.validate_failover_request,
                           is_failed_over, failover_backend_id, rep_configs,
-                          primary_array, array_list)
+                          primary_array, array_list, is_promoted)
+
+    def test_validate_failover_request_promotion_before_failover(self):
+        is_failed_over = False
+        is_promoted = False
+        failover_backend_id = utils.PMAX_FAILOVER_START_ARRAY_PROMOTION
+        rep_configs = self.data.multi_rep_config_list
+        primary_array = self.data.array
+        array_list = [self.data.array]
+        is_valid, msg = self.utils.validate_failover_request(
+            is_failed_over, failover_backend_id, rep_configs,
+            primary_array, array_list, is_promoted)
+        self.assertFalse(is_valid)
+        expected_msg = ('Cannot start failover promotion. The backend must '
+                        'already be in a failover state to perform this'
+                        'action.')
+        self.assertEqual(expected_msg, msg)
 
     def test_validate_replication_group_config_success(self):
         rep_configs = deepcopy(self.data.multi_rep_config_list)

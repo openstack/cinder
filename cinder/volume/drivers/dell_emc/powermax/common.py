@@ -219,9 +219,12 @@ class PowerMaxCommon(object):
         self.replication_enabled = False
         self.rep_devices = []
         self.failover = True if active_backend_id else False
+        self.promotion = False
         self.powermax_array_tag_list = None
         self.powermax_short_host_name_template = None
         self.powermax_port_group_name_template = None
+        if active_backend_id == utils.PMAX_FAILOVER_START_ARRAY_PROMOTION:
+            self.promotion = True
 
         # Gather environment info
         self._get_replication_info()
@@ -850,7 +853,8 @@ class PowerMaxCommon(object):
                 array, volume, device_info['device_id'], extra_specs,
                 connector, is_multiattach, async_grp=mgmt_sg_name,
                 host_template=self.powermax_short_host_name_template)
-            if self.utils.is_metro_device(rep_config, extra_specs):
+            if (self.utils.is_metro_device(rep_config, extra_specs) and
+                    not self.promotion):
                 # Need to remove from remote masking view
                 device_info, __ = (self.find_host_lun_id(
                     volume, host_name, extra_specs, rep_extra_specs))
@@ -874,6 +878,31 @@ class PowerMaxCommon(object):
         self.volume_metadata.capture_detach_info(
             volume, extra_specs, device_info['device_id'], mv_list,
             sg_list)
+
+    def _unmap_lun_promotion(self, volume, connector):
+        """Unmaps a volume from the host during promotion.
+
+        :param volume: the volume Object
+        :param connector: the connector Object
+        """
+        extra_specs = self._initial_setup(volume)
+        if not self.utils.is_replication_enabled(extra_specs):
+            LOG.error('Unable to terminate connections for non-replicated '
+                      'volumes during promotion failover. Could not unmap '
+                      'volume %s', volume.id)
+        else:
+            mode = extra_specs[utils.REP_MODE]
+            if mode == utils.REP_METRO:
+                self._unmap_lun(volume, connector)
+            else:
+                # During a promotion scenario only Metro volumes will have
+                # connections present on their remote volumes.
+                loc = ast.literal_eval(volume.provider_location)
+                device_id = loc.get('device_id')
+                promotion_key = [utils.PMAX_FAILOVER_START_ARRAY_PROMOTION]
+                self.volume_metadata.capture_detach_info(
+                    volume, extra_specs, device_id, promotion_key,
+                    promotion_key)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns device and connection info.
@@ -1116,7 +1145,10 @@ class PowerMaxCommon(object):
         volume_name = volume.name
         LOG.info("Terminate connection: %(volume)s.",
                  {'volume': volume_name})
-        self._unmap_lun(volume, connector)
+        if self.promotion:
+            self._unmap_lun_promotion(volume, connector)
+        else:
+            self._unmap_lun(volume, connector)
 
     def extend_volume(self, volume, new_size):
         """Extends an existing volume.
@@ -1333,7 +1365,7 @@ class PowerMaxCommon(object):
         for array_info in array_info_list:
             if self.failover:
                 rep_config = self.utils.get_rep_config(
-                    self.active_backend_id, self.rep_configs)
+                    self.active_backend_id, self.rep_configs, True)
                 array_info = self.get_secondary_stats_info(
                     rep_config, array_info)
             # Add both SLO & Workload name in the pool name
@@ -1393,6 +1425,9 @@ class PowerMaxCommon(object):
 
             pools.append(pool)
         pools = self.utils.add_legacy_pools(pools)
+        if self.promotion:
+            primary_array = self.configuration.safe_get('powermax_array')
+            pools = self.utils.add_promotion_pools(pools, primary_array)
         data = {'vendor_name': "Dell EMC",
                 'driver_version': self.version,
                 'storage_protocol': 'unknown',
@@ -3798,6 +3833,11 @@ class PowerMaxCommon(object):
                  {'volume': volume_name})
 
         extra_specs = self._initial_setup(volume)
+        if self.utils.is_replication_enabled(extra_specs) and self.promotion:
+            rep_config = extra_specs.get('rep_config')
+            extra_specs = self._get_replication_extra_specs(
+                extra_specs, rep_config)
+
         if not self.utils.is_retype_supported(volume, extra_specs,
                                               new_type['extra_specs'],
                                               self.rep_configs):
@@ -3839,17 +3879,21 @@ class PowerMaxCommon(object):
         # Check if old type and new type have different compression types
         do_change_compression = (self.utils.change_compression_type(
             is_compression_disabled, new_type))
+        is_tgt_rep = self.utils.is_replication_enabled(
+            new_type[utils.EXTRA_SPECS])
         is_valid, target_slo, target_workload = (
             self._is_valid_for_storage_assisted_migration(
                 device_id, host, extra_specs[utils.ARRAY],
                 extra_specs[utils.SRP], volume_name,
-                do_change_compression, do_change_replication))
+                do_change_compression, do_change_replication,
+                extra_specs[utils.SLO], extra_specs[utils.WORKLOAD],
+                is_tgt_rep))
 
         if not is_valid:
             # Check if this is multiattach retype case
             do_change_multiattach = self.utils.change_multiattach(
                 extra_specs, new_type['extra_specs'])
-            if do_change_multiattach:
+            if do_change_multiattach and not self.promotion:
                 return True
             else:
                 LOG.error(
@@ -3934,7 +3978,7 @@ class PowerMaxCommon(object):
                 utils.BACKEND_ID_LEGACY_REP)
             backend_ids_differ = curr_backend_id != tgt_backend_id
 
-        if was_rep_enabled:
+        if was_rep_enabled and not self.promotion:
             self._validate_rdfg_status(array, extra_specs)
             orig_mgmt_sg_name = self.utils.get_rdf_management_group_name(
                 extra_specs[utils.REP_CONFIG])
@@ -3953,11 +3997,23 @@ class PowerMaxCommon(object):
             # Scenario 1: Rep -> Non-Rep
             # Scenario 2: Cleanup for Rep -> Diff Rep type
             if (was_rep_enabled and not is_rep_enabled) or backend_ids_differ:
-                rep_extra_specs, resume_original_sg = (
-                    self.break_rdf_device_pair_session(
-                        array, device_id, volume_name, extra_specs, volume))
+                if self.promotion:
+                    resume_original_sg = False
+                    rdf_group = extra_specs['rdf_group_no']
+                    is_partitioned = self._rdf_vols_partitioned(
+                        array, [volume], rdf_group)
+                    if not is_partitioned:
+                        self.break_rdf_device_pair_session_promotion(
+                            array, device_id, volume_name, extra_specs)
+                else:
+                    rep_extra_specs, resume_original_sg = (
+                        self.break_rdf_device_pair_session(
+                            array, device_id, volume_name, extra_specs,
+                            volume))
+                status = (REPLICATION_ERROR if self.promotion else
+                          REPLICATION_DISABLED)
                 model_update = {
-                    'replication_status': REPLICATION_DISABLED,
+                    'replication_status': status,
                     'replication_driver_data': None}
                 rdf_pair_broken = True
                 if resume_original_sg:
@@ -4014,7 +4070,8 @@ class PowerMaxCommon(object):
                 self.rest.srdf_resume_replication(
                     array, rep_extra_specs['mgmt_sg_name'],
                     rep_extra_specs['rdf_group_no'], rep_extra_specs)
-            if resume_original_sg and resume_original_sg_dict:
+            if (resume_original_sg and resume_original_sg_dict and
+                    not self.promotion):
                 self.rest.srdf_resume_replication(
                     resume_original_sg_dict[utils.ARRAY],
                     resume_original_sg_dict[utils.SG_NAME],
@@ -4025,6 +4082,14 @@ class PowerMaxCommon(object):
                 model_update = self.update_metadata(
                     model_update, volume.metadata,
                     self.get_volume_metadata(array, device_id))
+
+                if self.promotion:
+                    previous_host = volume.get('host')
+                    host_details = previous_host.split('+')
+                    array_index = len(host_details) - 1
+                    host_details[array_index] = array
+                    updated_host = '+'.join(host_details)
+                    model_update['host'] = updated_host
 
                 target_backend_id = None
                 if is_rep_enabled:
@@ -4054,6 +4119,19 @@ class PowerMaxCommon(object):
             self, rdf_pair_broken, rdf_pair_created, vol_retyped,
             remote_retyped, extra_specs, target_extra_specs, volume,
             volume_name, device_id, source_sg):
+        """Attempt rollback to previous volume state before migrate exception.
+
+        :param rdf_pair_broken: was the rdf pair broken during migration
+        :param rdf_pair_created: was a new rdf pair created during migration
+        :param vol_retyped: was the local volume retyped during migration
+        :param remote_retyped: was the remote volume retyped during migration
+        :param extra_specs: extra specs
+        :param target_extra_specs: target extra specs
+        :param volume: volume
+        :param volume_name: volume name
+        :param device_id: local device id
+        :param source_sg: local device pre-migrate storage group name
+        """
         array = extra_specs[utils.ARRAY]
         srp = extra_specs[utils.SRP]
         slo = extra_specs[utils.SLO]
@@ -4143,8 +4221,9 @@ class PowerMaxCommon(object):
         parent_sg = None
         if self.utils.is_replication_enabled(target_extra_specs):
             is_re, rep_mode = True, target_extra_specs['rep_mode']
+        if self.utils.is_replication_enabled(extra_specs):
             mgmt_sg_name = self.utils.get_rdf_management_group_name(
-                target_extra_specs[utils.REP_CONFIG])
+                extra_specs[utils.REP_CONFIG])
 
         device_info = self.rest.get_volume(array, device_id)
 
@@ -4242,6 +4321,21 @@ class PowerMaxCommon(object):
             self, created_child_sg, add_sg_to_parent, got_default_sg,
             moved_between_sgs, array, source_sg, parent_sg, target_sg_name,
             extra_specs, device_id, volume, volume_name):
+        """Attempt to rollback to previous volume state on retype exception.
+
+        :param created_child_sg: was a child sg created during retype
+        :param add_sg_to_parent: was a child sg added to parent during retype
+        :param got_default_sg: was a default sg possibly created during retype
+        :param moved_between_sgs: was the volume moved between storage groups
+        :param array: array
+        :param source_sg: volumes originating storage group name
+        :param parent_sg: parent storage group name
+        :param target_sg_name: storage group volume was to be moved to
+        :param extra_specs: extra specs
+        :param device_id: device id
+        :param volume: volume
+        :param volume_name: volume name
+        """
         if moved_between_sgs:
             LOG.debug('Volume retype cleanup - Attempt to revert move between '
                       'storage groups.')
@@ -4416,7 +4510,8 @@ class PowerMaxCommon(object):
 
     def _is_valid_for_storage_assisted_migration(
             self, device_id, host, source_array, source_srp, volume_name,
-            do_change_compression, do_change_replication):
+            do_change_compression, do_change_replication, source_slo,
+            source_workload, is_tgt_rep):
         """Check if volume is suitable for storage assisted (pool) migration.
 
         :param device_id: the volume device id
@@ -4426,6 +4521,9 @@ class PowerMaxCommon(object):
         :param volume_name: the name of the volume to be migrated
         :param do_change_compression: do change compression
         :param do_change_replication: flag indicating replication change
+        :param source_slo: slo setting for source volume type
+        :param source_workload: workload setting for source volume type
+        :param is_tgt_rep: is the target volume type replication enabled
         :returns: boolean -- True/False
         :returns: string -- targetSlo
         :returns: string -- targetWorkload
@@ -4460,24 +4558,53 @@ class PowerMaxCommon(object):
             LOG.error("Error parsing array, pool, SLO and workload.")
             return false_ret
 
-        if target_array_serial not in source_array:
-            LOG.error(
-                "The source array: %(source_array)s does not "
-                "match the target array: %(target_array)s - "
-                "skipping storage-assisted migration.",
-                {'source_array': source_array,
-                 'target_array': target_array_serial})
-            return false_ret
+        if self.promotion:
+            if do_change_compression:
+                LOG.error(
+                    "When retyping during array promotion, compression "
+                    "changes should not occur during the retype operation. "
+                    "Please ensure the same compression settings are defined "
+                    "in the source and target volume types.")
+                return false_ret
 
-        if target_srp not in source_srp:
-            LOG.error(
-                "Only SLO/workload migration within the same SRP Pool is "
-                "supported in this version. The source pool: "
-                "%(source_pool_name)s does not match the target array: "
-                "%(target_pool)s. Skipping storage-assisted migration.",
-                {'source_pool_name': source_srp,
-                 'target_pool': target_srp})
-            return false_ret
+            if source_slo != target_slo:
+                LOG.error(
+                    "When retyping during array promotion, the SLO setting "
+                    "for the source and target volume types should match. "
+                    "Found %s SLO for the source volume type and %s SLO for "
+                    "the target volume type.", source_slo, target_slo)
+                return false_ret
+
+            if source_workload != target_workload:
+                LOG.error(
+                    "When retyping during array promotion, the workload "
+                    "setting for the source and target volume types should "
+                    "match. Found %s workload for the source volume type "
+                    "and %s workload for the target volume type.",
+                    source_workload, target_workload)
+                return false_ret
+
+            if is_tgt_rep:
+                LOG.error(
+                    "When retyping during array promotion, the target volume "
+                    "type should not have replication enabled. Please ensure "
+                    "replication is disabled on the target volume type.")
+                return false_ret
+
+        if not self.promotion:
+            if target_array_serial not in source_array:
+                LOG.error("The source array: %s does not match the target "
+                          "array: %s - skipping storage-assisted "
+                          "migration.", source_array, target_array_serial)
+                return false_ret
+
+            if target_srp not in source_srp:
+                LOG.error(
+                    "Only SLO/workload migration within the same SRP Pool is "
+                    "supported in this version. The source pool: %s does not "
+                    "match the target array: %s. Skipping storage-assisted "
+                    "migration.", source_srp, target_srp)
+                return false_ret
 
         found_storage_group_list = self.rest.get_storage_groups_from_volume(
             source_array, device_id)
@@ -4608,6 +4735,23 @@ class PowerMaxCommon(object):
             add_to_mgmt_sg, r1_device_id, r2_device_id,
             mgmt_sg_name, array, remote_array, rdf_group_no, extra_specs,
             rep_extra_specs, volume, tgt_sg_name):
+        """Attempt rollback to previous volume state on setup rep exception.
+
+        :param resume_rdf: does the rdfg need to be resumed
+        :param rdf_pair_created: was an rdf pair created
+        :param remote_sg_get: was a remote storage group possibly created
+        :param add_to_mgmt_sg: was the volume added to a management group
+        :param r1_device_id: local device id
+        :param r2_device_id: remote device id
+        :param mgmt_sg_name: rdf management storage group name
+        :param array: array
+        :param remote_array: remote array
+        :param rdf_group_no: rdf group number
+        :param extra_specs: extra specs
+        :param rep_extra_specs: rep extra specs
+        :param volume: volume
+        :param tgt_sg_name: remote replication storage group name
+        """
         if resume_rdf and not rdf_pair_created:
             LOG.debug('Configure volume replication cleanup - Attempt to '
                       'resume replication.')
@@ -4748,7 +4892,7 @@ class PowerMaxCommon(object):
             sg_name = r1_sg_names[0]
             rdf_pair = self.rest.get_rdf_pair_volume(
                 array, rdfg_no, device_id)
-            rdf_pair_state = rdf_pair['rdfpairState']
+            rdf_pair_state = rdf_pair[utils.RDF_PAIR_STATE]
             if rdf_pair_state.lower() not in utils.RDF_SYNCED_STATES:
                 self.rest.wait_for_rdf_pair_sync(
                     array, rdfg_no, device_id, rep_extra_specs)
@@ -4804,6 +4948,23 @@ class PowerMaxCommon(object):
             management_sg, rdf_group_no, extra_specs, r2_sg_names, device_id,
             remote_array, remote_device_id, volume, volume_name,
             rep_extra_specs):
+        """Attempt rollback to previous volume state on remove rep exception.
+
+        :param rdfg_suspended: was the rdf group suspended
+        :param pair_deleted: was the rdf pair deleted
+        :param r2_sg_remove: was the remote volume removed from its sg
+        :param array: array
+        :param management_sg: rdf management storage group name
+        :param rdf_group_no: rdf group number
+        :param extra_specs: extra specs
+        :param r2_sg_names: remote volume storage group names
+        :param device_id: device id
+        :param remote_array: remote array sid
+        :param remote_device_id: remote device id
+        :param volume: volume
+        :param volume_name: volume name
+        :param rep_extra_specs: rep extra specs
+        """
         if rdfg_suspended and not pair_deleted:
             LOG.debug('Break RDF pair cleanup - Attempt to resume RDFG.')
             self.rest.srdf_resume_replication(
@@ -4843,6 +5004,54 @@ class PowerMaxCommon(object):
                     rep_extra_specs['rdf_group_no'], rep_extra_specs)
             LOG.debug('Break RDF pair cleanup - Revert to original rdf '
                       'pair successful.')
+
+    def break_rdf_device_pair_session_promotion(
+            self, array, device_id, volume_name, extra_specs):
+        """Delete RDF device pair deleting R2 volume but leaving R1 in place.
+
+        :param array: the array serial number
+        :param device_id: the device id
+        :param volume_name: the volume name
+        :param extra_specs: the volume extra specifications
+        """
+        LOG.debug('Starting promotion replication cleanup for RDF pair '
+                  'source device: %(d_id)s.', {'d_id': device_id})
+
+        mgmt_sg_name = None
+        rep_config = extra_specs[utils.REP_CONFIG]
+        rdfg_no = extra_specs['rdf_group_no']
+        extra_specs['force_vol_remove'] = True
+        if rep_config['mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
+            mgmt_sg_name = self.utils.get_rdf_management_group_name(
+                rep_config)
+
+        if rep_config['mode'] == utils.REP_METRO:
+            group_states = self.rest.get_storage_group_rdf_group_state(
+                array, mgmt_sg_name, rdfg_no)
+            group_states = set([x.lower() for x in group_states])
+            metro_active_states = {
+                utils.RDF_ACTIVE, utils.RDF_ACTIVEACTIVE, utils.RDF_ACTIVEBIAS}
+            active_state_found = (
+                bool(group_states.intersection(metro_active_states)))
+            if active_state_found:
+                LOG.debug('Found Metro RDF in active state during promotion, '
+                          'attempting to suspend.')
+                try:
+                    self.rest.srdf_suspend_replication(
+                        array, mgmt_sg_name, rdfg_no, extra_specs)
+                except exception.VolumeBackendAPIException:
+                    LOG.error(
+                        'Found Metro rdf pair in active state during '
+                        'promotion. Attempt to suspend this group using '
+                        'storage group %s failed. Please move the rdf pairs '
+                        'in this storage group to a non-active state and '
+                        'retry the retype operation.', mgmt_sg_name)
+                    raise
+        self.rest.srdf_delete_device_pair(array, rdfg_no, device_id)
+        # Remove the volume from the R1 RDFG mgmt SG (R1)
+        if rep_config['mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
+            self.masking.remove_volume_from_sg(
+                array, device_id, volume_name, mgmt_sg_name, extra_specs)
 
     @coordination.synchronized('emc-{rdf_group}-rdf')
     def _cleanup_remote_target(
@@ -4963,12 +5172,14 @@ class PowerMaxCommon(object):
         :returns: secondary_id, volume_update_list, group_update_list
         :raises: VolumeBackendAPIException
         """
+        volume_update_list = list()
+        group_update_list = list()
         primary_array = self._get_configuration_value(
             utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
         array_list = self.rest.get_arrays_list()
         is_valid, msg = self.utils.validate_failover_request(
             self.failover, secondary_id, self.rep_configs, primary_array,
-            array_list)
+            array_list, self.promotion)
         if not is_valid:
             LOG.error(msg)
             raise exception.InvalidReplicationTarget(msg)
@@ -4977,13 +5188,21 @@ class PowerMaxCommon(object):
         if not self.failover:
             self.failover = True
             self.active_backend_id = secondary_id if secondary_id else None
-        else:
+        elif secondary_id == 'default':
             self.failover = False
             group_fo = 'default'
 
-        volume_update_list, group_update_list = (
-            self._populate_volume_and_group_update_lists(
-                volumes, groups, group_fo))
+        if secondary_id == utils.PMAX_FAILOVER_START_ARRAY_PROMOTION:
+            self.promotion = True
+            LOG.info("Enabled array promotion.")
+        else:
+            volume_update_list, group_update_list = (
+                self._populate_volume_and_group_update_lists(
+                    volumes, groups, group_fo))
+
+        if secondary_id == 'default' and self.promotion:
+            self.promotion = False
+            LOG.info("Disabled array promotion.")
 
         LOG.info("Failover host complete.")
         return secondary_id, volume_update_list, group_update_list
@@ -5061,7 +5280,17 @@ class PowerMaxCommon(object):
             volume_update_list += vol_updates
 
         if len(non_rep_vol_list) > 0:
-            if self.failover:
+            if self.promotion:
+                # Volumes that were promoted will have a replication state
+                # of error with no other replication metadata. Use this to
+                # determine which volumes should updated to have a replication
+                # state of disabled.
+                for vol in non_rep_vol_list:
+                    volume_update_list.append({
+                        'volume_id': vol.id,
+                        'updates': {
+                            'replication_status': REPLICATION_DISABLED}})
+            elif self.failover:
                 # Since the array has been failed-over,
                 # volumes without replication should be in error.
                 for vol in non_rep_vol_list:
@@ -5633,66 +5862,132 @@ class PowerMaxCommon(object):
                 and not group.is_replicated):
             raise NotImplementedError()
 
-        array, interval_retries_dict = self._get_volume_group_info(group)
         model_update = {'status': fields.GroupStatus.AVAILABLE}
-        add_vols = [vol for vol in add_volumes] if add_volumes else []
-        add_device_ids = self._get_volume_device_ids(add_vols, array)
-        remove_vols = [vol for vol in remove_volumes] if remove_volumes else []
-        remove_device_ids = self._get_volume_device_ids(remove_vols, array)
-        vol_grp_name = None
-        try:
-            volume_group = self._find_volume_group(array, group)
-            if volume_group:
-                if 'name' in volume_group:
-                    vol_grp_name = volume_group['name']
-            if vol_grp_name is None:
-                raise exception.GroupNotFound(group_id=group.id)
-            # Add volume(s) to the group
-            if add_device_ids:
-                self.utils.check_rep_status_enabled(group)
-                for vol in add_vols:
-                    extra_specs = self._initial_setup(vol)
-                    self.utils.check_replication_matched(vol, extra_specs)
-                self.masking.add_volumes_to_storage_group(
-                    array, add_device_ids, vol_grp_name, interval_retries_dict)
-                if group.is_replicated:
-                    # Add remote volumes to remote storage group
-                    self.masking.add_remote_vols_to_volume_group(
-                        add_vols, group, interval_retries_dict)
-            # Remove volume(s) from the group
-            if remove_device_ids:
-                if group.is_replicated:
-                    # Need force flag when manipulating RDF enabled SGs
-                    interval_retries_dict[utils.FORCE_VOL_REMOVE] = True
-                # Check if the volumes exist in the storage group
-                temp_list = deepcopy(remove_device_ids)
-                for device_id in temp_list:
-                    if not self.rest.is_volume_in_storagegroup(
-                            array, device_id, vol_grp_name):
-                        remove_device_ids.remove(device_id)
+        if self.promotion:
+            self._update_group_promotion(
+                group, add_volumes, remove_volumes)
+        elif self.failover:
+            msg = _('Cannot perform group updates during failover, please '
+                    'either failback or perform a promotion operation.')
+            raise exception.VolumeBackendAPIException(msg)
+        else:
+            array, interval_retries_dict = self._get_volume_group_info(group)
+            add_vols = [vol for vol in add_volumes] if add_volumes else []
+            add_device_ids = self._get_volume_device_ids(add_vols, array)
+            remove_vols = [
+                vol for vol in remove_volumes] if remove_volumes else []
+            remove_device_ids = self._get_volume_device_ids(remove_vols, array)
+            vol_grp_name = None
+            try:
+                volume_group = self._find_volume_group(array, group)
+                if volume_group:
+                    if 'name' in volume_group:
+                        vol_grp_name = volume_group['name']
+                if vol_grp_name is None:
+                    raise exception.GroupNotFound(group_id=group.id)
+                # Add volume(s) to the group
+                if add_device_ids:
+                    self.utils.check_rep_status_enabled(group)
+                    for vol in add_vols:
+                        extra_specs = self._initial_setup(vol)
+                        self.utils.check_replication_matched(vol, extra_specs)
+                    self.masking.add_volumes_to_storage_group(
+                        array, add_device_ids, vol_grp_name,
+                        interval_retries_dict)
+                    if group.is_replicated:
+                        # Add remote volumes to remote storage group
+                        self.masking.add_remote_vols_to_volume_group(
+                            add_vols, group, interval_retries_dict)
+                # Remove volume(s) from the group
                 if remove_device_ids:
-                    self.masking.remove_volumes_from_storage_group(
-                        array, remove_device_ids,
-                        vol_grp_name, interval_retries_dict)
-                if group.is_replicated:
-                    # Remove remote volumes from the remote storage group
-                    self._remove_remote_vols_from_volume_group(
-                        array, remove_vols, group, interval_retries_dict)
-        except exception.GroupNotFound:
-            raise
-        except Exception as ex:
-            exception_message = (_("Failed to update volume group:"
-                                   " %(volGrpName)s. Exception: %(ex)s.")
-                                 % {'volGrpName': group.id,
-                                    'ex': ex})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(
-                message=exception_message)
+                    if group.is_replicated:
+                        # Need force flag when manipulating RDF enabled SGs
+                        interval_retries_dict[utils.FORCE_VOL_REMOVE] = True
+                    # Check if the volumes exist in the storage group
+                    temp_list = deepcopy(remove_device_ids)
+                    for device_id in temp_list:
+                        if not self.rest.is_volume_in_storagegroup(
+                                array, device_id, vol_grp_name):
+                            remove_device_ids.remove(device_id)
+                    if remove_device_ids:
+                        self.masking.remove_volumes_from_storage_group(
+                            array, remove_device_ids,
+                            vol_grp_name, interval_retries_dict)
+                    if group.is_replicated:
+                        # Remove remote volumes from the remote storage group
+                        self._remove_remote_vols_from_volume_group(
+                            array, remove_vols, group, interval_retries_dict)
+            except exception.GroupNotFound:
+                raise
+            except Exception as ex:
+                exception_message = (_("Failed to update volume group:"
+                                       " %(volGrpName)s. Exception: %(ex)s.")
+                                     % {'volGrpName': group.id,
+                                        'ex': ex})
+                LOG.error(exception_message)
+                raise exception.VolumeBackendAPIException(
+                    message=exception_message)
 
-        self.volume_metadata.capture_modify_group(
-            vol_grp_name, group.id, add_vols, remove_volumes, array)
+            self.volume_metadata.capture_modify_group(
+                vol_grp_name, group.id, add_vols, remove_volumes, array)
 
         return model_update, None, None
+
+    def _update_group_promotion(self, group, add_volumes, remove_volumes):
+        """Updates LUNs in generic volume group during array promotion.
+
+        :param group: storage configuration service instance
+        :param add_volumes: the volumes uuids you want to add to the vol grp
+        :param remove_volumes: the volumes uuids you want to remove from
+                               the CG
+        :returns: model_update
+        :raises: VolumeBackendAPIException
+        """
+        if not group.is_replicated:
+            msg = _('Group updates are only supported on replicated volume '
+                    'groups during failover promotion.')
+            raise exception.VolumeBackendAPIException(msg)
+        if add_volumes:
+            msg = _('Unable to add to volumes to a group, only volume '
+                    'removal is supported during promotion.')
+            raise exception.VolumeBackendAPIException(msg)
+
+        # Either add_volumes or remove_volumes must be provided, if add_volumes
+        # then excep is raised, other there must be remove_volumes present
+        volume = remove_volumes[0]
+        extra_specs = self._initial_setup(volume, volume.volume_type_id)
+        rep_extra_specs = self._get_replication_extra_specs(
+            extra_specs, extra_specs[utils.REP_CONFIG])
+        remote_array = rep_extra_specs['array']
+
+        vol_grp_name = None
+        volume_group = self._find_volume_group(remote_array, group)
+        if volume_group:
+            if 'name' in volume_group:
+                vol_grp_name = volume_group['name']
+        if vol_grp_name is None:
+            raise exception.GroupNotFound(group_id=group.id)
+
+        interval_retries_dict = {
+            utils.INTERVAL: self.interval, utils.RETRIES: self.retries}
+        # Volumes have already failed over and had their provider_location
+        # updated, do not get remote device IDs here
+        remove_device_ids = self._get_volume_device_ids(
+            remove_volumes, remote_array)
+        if remove_device_ids:
+            interval_retries_dict[utils.FORCE_VOL_REMOVE] = True
+            # Check if the volumes exist in the storage group
+            temp_list = deepcopy(remove_device_ids)
+            for device_id in temp_list:
+                if not self.rest.is_volume_in_storagegroup(
+                        remote_array, device_id, vol_grp_name):
+                    remove_device_ids.remove(device_id)
+            if remove_device_ids:
+                self.masking.remove_volumes_from_storage_group(
+                    remote_array, remove_device_ids,
+                    vol_grp_name, interval_retries_dict)
+            self.volume_metadata.capture_modify_group(
+                vol_grp_name, group.id, list(), remove_volumes, remote_array)
 
     def _remove_remote_vols_from_volume_group(
             self, array, volumes, group, extra_specs):
@@ -6166,7 +6461,10 @@ class PowerMaxCommon(object):
                 if vol_grp_name is None:
                     raise exception.GroupNotFound(group_id=group.id)
 
-            if not is_metro:
+            is_partitioned = self._rdf_vols_partitioned(
+                remote_array, volumes, rdf_group_no)
+
+            if not is_metro and not is_partitioned:
                 if failover:
                     self.rest.srdf_failover_group(
                         remote_array, vol_grp_name, rdf_group_no, extra_specs)
@@ -6216,6 +6514,29 @@ class PowerMaxCommon(object):
 
         LOG.debug("Volume model updates: %s", vol_model_updates)
         return model_update, vol_model_updates
+
+    def _rdf_vols_partitioned(self, array, volumes, rdfg):
+        """Check if rdf volumes have been failed over by powermax array
+
+        :param array: remote array
+        :param volumes: rdf volumes
+        :param rdfg: rdf group
+        :return: devices have partitioned states
+        """
+        is_partitioned = False
+        for volume in volumes:
+            if self.promotion:
+                vol_data = volume.provider_location
+            else:
+                vol_data = volume.replication_driver_data
+            vol_data = ast.literal_eval(vol_data)
+            device_id = vol_data.get(utils.DEVICE_ID)
+            vol_details = self.rest.get_rdf_pair_volume(array, rdfg, device_id)
+            rdf_pair_state = vol_details.get(utils.RDF_PAIR_STATE, '').lower()
+            if rdf_pair_state in utils.RDF_PARTITIONED_STATES:
+                is_partitioned = True
+                break
+        return is_partitioned
 
     def get_attributes_from_cinder_config(self):
         """Get all attributes from the configuration file

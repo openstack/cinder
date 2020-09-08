@@ -80,12 +80,16 @@ RDF_FAILEDOVER_STATE = 'failed over'
 RDF_ACTIVE = 'active'
 RDF_ACTIVEACTIVE = 'activeactive'
 RDF_ACTIVEBIAS = 'activebias'
+RDF_PARTITIONED_STATE = 'partitioned'
+RDF_TRANSIDLE_STATE = 'transidle'
+RDF_PAIR_STATE = 'rdfpairState'
 RDF_VALID_STATES_SYNC = [RDF_SYNC_STATE, RDF_SUSPENDED_STATE,
                          RDF_SYNCINPROG_STATE]
 RDF_VALID_STATES_ASYNC = [RDF_CONSISTENT_STATE, RDF_SUSPENDED_STATE,
                           RDF_SYNCINPROG_STATE]
 RDF_VALID_STATES_METRO = [RDF_ACTIVEBIAS, RDF_ACTIVEACTIVE,
                           RDF_SUSPENDED_STATE, RDF_SYNCINPROG_STATE]
+RDF_PARTITIONED_STATES = [RDF_PARTITIONED_STATE, RDF_TRANSIDLE_STATE]
 RDF_CONS_EXEMPT = 'exempt'
 RDF_ALLOW_METRO_DELETE = 'allow_delete_metro'
 RDF_GROUP_NO = 'rdf_group_number'
@@ -102,6 +106,7 @@ USED_HOST_NAME = "used_host_name"
 RDF_SYNCED_STATES = [RDF_SYNC_STATE, RDF_CONSISTENT_STATE,
                      RDF_ACTIVEACTIVE, RDF_ACTIVEBIAS]
 FORCE_VOL_REMOVE = 'force_vol_remove'
+PMAX_FAILOVER_START_ARRAY_PROMOTION = 'pmax_failover_start_array_promotion'
 
 # Multiattach constants
 IS_MULTIATTACH = 'multiattach'
@@ -794,6 +799,35 @@ class PowerMaxUtils(object):
             pools.append(new_pool)
         return pools
 
+    @staticmethod
+    def add_promotion_pools(pools, primary_array):
+        """Add duplicate pools with primary SID for operations during promotion
+
+        :param pools: the pool list
+        :param primary_array: the original primary array.
+        :returns: pools - the updated pool list
+        """
+        i_pools = deepcopy(pools)
+        for pool in i_pools:
+            # pool name
+            pool_name = pool['pool_name']
+            split_name = pool_name.split('+')
+            array_pos = 3 if len(split_name) == 4 else 2
+            array_sid = split_name[array_pos]
+            updated_pool_name = re.sub(array_sid, primary_array, pool_name)
+
+            # location info
+            loc = pool['location_info']
+            split_loc = loc.split('#')
+            split_loc[0] = primary_array  # Replace the array SID
+            updated_loc = '#'.join(split_loc)
+
+            new_pool = deepcopy(pool)
+            new_pool['pool_name'] = updated_pool_name
+            new_pool['location_info'] = updated_loc
+            pools.append(new_pool)
+        return pools
+
     def check_replication_matched(self, volume, extra_specs):
         """Check volume type and group type.
 
@@ -1203,6 +1237,14 @@ class PowerMaxUtils(object):
                              'rep_device when multiple replication devices '
                              'are defined in cinder.conf, backend_id %s is '
                              'defined more than once.') % backend_id)
+                    raise exception.InvalidConfigurationValue(msg)
+                elif backend_id == PMAX_FAILOVER_START_ARRAY_PROMOTION:
+                    msg = (_('Invalid Backend ID found. Defining a '
+                             'replication device with a Backend ID of %s is '
+                             'currently not supported. Please update '
+                             'the Backend ID of the related replication '
+                             'device in cinder.conf to use valid '
+                             'Backend ID value.') % backend_id)
                     raise exception.InvalidConfigurationValue(msg)
             else:
                 msg = _('Backend IDs must be assigned for each rep_device '
@@ -1787,11 +1829,12 @@ class PowerMaxUtils(object):
                     return False
 
     @staticmethod
-    def get_rep_config(backend_id, rep_configs):
+    def get_rep_config(backend_id, rep_configs, promotion_vol_stats=False):
         """Get rep_config for given backend_id.
 
         :param backend_id: rep config search key -- str
         :param rep_configs: backend rep_configs -- list
+        :param promotion_vol_stats: get rep config for vol stats -- bool
         :returns: rep_config -- dict
         """
         if len(rep_configs) == 1:
@@ -1802,20 +1845,25 @@ class PowerMaxUtils(object):
                 if rep_config[BACKEND_ID] == backend_id:
                     rep_device = rep_config
             if rep_device is None:
-                msg = (_('Could not find a replication_device with a '
-                         'backend_id of "%s" in cinder.conf. Please confirm '
-                         'that the replication_device_backend_id extra spec '
-                         'for this volume type matches the backend_id of the '
-                         'intended replication_device in '
-                         'cinder.conf.') % backend_id)
-                if BACKEND_ID_LEGACY_REP in msg:
-                    msg = (_('Could not find replication_device. Legacy '
-                             'replication_device key found, please ensure the '
-                             'backend_id for the legacy replication_device in '
-                             'cinder.conf has been changed to '
-                             '"%s".') % BACKEND_ID_LEGACY_REP)
-                LOG.error(msg)
-                raise exception.InvalidInput(msg)
+                if promotion_vol_stats:
+                    # Stat collection only need remote array and srp, any of
+                    # the available replication_devices can provide this.
+                    rep_device = rep_configs[0]
+                else:
+                    msg = (_('Could not find a replication_device with a '
+                             'backend_id of "%s" in cinder.conf. Please '
+                             'confirm that the replication_device_backend_id '
+                             'extra spec for this volume type matches the '
+                             'backend_id of the intended replication_device '
+                             'in cinder.conf.') % backend_id)
+                    if BACKEND_ID_LEGACY_REP in msg:
+                        msg = (_('Could not find replication_device. Legacy '
+                                 'replication_device key found, please ensure '
+                                 'the backend_id for the legacy '
+                                 'replication_device in cinder.conf has been '
+                                 'changed to "%s".') % BACKEND_ID_LEGACY_REP)
+                    LOG.error(msg)
+                    raise exception.InvalidInput(msg)
         return rep_device
 
     @staticmethod
@@ -1834,7 +1882,8 @@ class PowerMaxUtils(object):
         return list(replication_targets)
 
     def validate_failover_request(self, is_failed_over, failover_backend_id,
-                                  rep_configs, primary_array, arrays_list):
+                                  rep_configs, primary_array, arrays_list,
+                                  is_promoted):
         """Validate failover_host request's parameters
 
         Validate that a failover_host operation can be performed with
@@ -1845,23 +1894,32 @@ class PowerMaxUtils(object):
         :param rep_configs: backend rep_configs -- list
         :param primary_array: configured primary array SID -- string
         :param arrays_list: list of U4P symmetrix IDs -- list
+        :param is_promoted: current promotion state -- bool
         :return: (bool, str) is valid, reason on invalid
         """
         is_valid = True
         msg = ""
         if is_failed_over:
-            if failover_backend_id != 'default':
+            valid_backend_ids = [
+                'default', PMAX_FAILOVER_START_ARRAY_PROMOTION]
+            if failover_backend_id not in valid_backend_ids:
                 is_valid = False
                 msg = _('Cannot failover, the backend is already in a failed '
                         'over state, if you meant to failback, please add '
                         '--backend_id default to the command.')
-            elif primary_array not in arrays_list:
+            elif (failover_backend_id == 'default' and
+                  primary_array not in arrays_list):
                 is_valid = False
                 msg = _('Cannot failback, the configured primary array is '
                         'not currently available to perform failback to. '
                         'Please ensure array %s is visible in '
                         'Unisphere.') % primary_array
-
+            elif is_promoted and failover_backend_id != 'default':
+                is_valid = False
+                msg = _('Failover promotion currently in progress, please '
+                        'finish the promotion process and issue a failover '
+                        'using the "default" backend_id to complete this '
+                        'process.')
         else:
             if failover_backend_id == 'default':
                 is_valid = False
@@ -1869,6 +1927,11 @@ class PowerMaxUtils(object):
                         'state. If you meant to failover, please either omit '
                         'the --backend_id parameter or use the --backend_id '
                         'parameter with a valid backend id.')
+            elif failover_backend_id == PMAX_FAILOVER_START_ARRAY_PROMOTION:
+                is_valid = False
+                msg = _('Cannot start failover promotion. The backend must '
+                        'already be in a failover state to perform this'
+                        'action.')
             elif len(rep_configs) > 1:
                 if failover_backend_id is None:
                     is_valid = False
