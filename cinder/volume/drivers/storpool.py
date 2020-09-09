@@ -90,9 +90,10 @@ class StorPoolDriver(driver.VolumeDriver):
         1.2.2   - Reintroduce the driver into OpenStack Queens,
                   add ignore_errors to the internal _detach_volume() method
         1.2.3   - Advertise some more driver capabilities.
+        2.0.0   - Implement revert_to_snapshot().
     """
 
-    VERSION = '1.2.3'
+    VERSION = '2.0.0'
     CI_WIKI_NAME = 'StorPool_distributed_storage_CI'
 
     def __init__(self, *args, **kwargs):
@@ -423,3 +424,18 @@ class StorPoolDriver(driver.VolumeDriver):
                       '%(err)s',
                       {'tname': temp_name, 'oname': orig_name, 'err': e})
             return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        volname = self._attach.volumeName(volume['id'])
+        snapname = self._attach.snapshotName('snap', snapshot['id'])
+        try:
+            rev = sptypes.VolumeRevertDesc(toSnapshot=snapname)
+            self._attach.api().volumeRevert(volname, rev)
+        except spapi.ApiError as e:
+            LOG.error('StorPool revert_to_snapshot(): could not revert '
+                      'the %(vol_id)s volume to the %(snap_id)s snapshot: '
+                      '%(err)s',
+                      {'vol_id': volume['id'],
+                       'snap_id': snapshot['id'],
+                       'err': e})
+            raise self._backendException(e)

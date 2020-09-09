@@ -140,6 +140,16 @@ class MockAPI(object):
                 volumes[new_name]['name'] = new_name
             del volumes[name]
 
+    def volumeRevert(self, name, data):
+        if name not in volumes:
+            raise MockApiError('No such volume {name}'.format(name=name))
+
+        snapname = data['toSnapshot']
+        if snapname not in snapshots:
+            raise MockApiError('No such snapshot {name}'.format(name=snapname))
+
+        volumes[name] = dict(snapshots[snapname])
+
 
 class MockAttachDB(object):
     def __init__(self, log):
@@ -153,6 +163,10 @@ class MockAttachDB(object):
 
     def snapshotName(self, vtype, vid):
         return snapshotName(vtype, vid)
+
+
+def MockVolumeRevertDesc(toSnapshot):
+    return {'toSnapshot': toSnapshot}
 
 
 def MockVolumeUpdateDesc(size):
@@ -170,6 +184,7 @@ def MockSPConfig(section = 's01'):
 fakeStorPool.spapi.ApiError = MockApiError
 fakeStorPool.spconfig.SPConfig = MockSPConfig
 fakeStorPool.spopenstack.AttachDB = MockAttachDB
+fakeStorPool.sptypes.VolumeRevertDesc = MockVolumeRevertDesc
 fakeStorPool.sptypes.VolumeUpdateDesc = MockVolumeUpdateDesc
 
 
@@ -524,3 +539,51 @@ class StorPoolTestCase(test.TestCase):
                          self.driver.get_pool({
                              'volume_type': volume_type
                          }))
+
+    def test_volume_revert(self):
+        vol_id = 'rev1'
+        vol_name = volumeName(vol_id)
+        snap_id = 'rev-s1'
+        snap_name = snapshotName('snap', snap_id)
+
+        self.assertVolumeNames([])
+        self.assertDictEqual({}, volumes)
+        self.assertDictEqual({}, snapshots)
+
+        self.driver.create_volume({'id': vol_id, 'name': 'v1', 'size': 1,
+                                   'volume_type': None})
+        self.assertVolumeNames((vol_id,))
+        self.assertDictEqual({}, snapshots)
+
+        self.driver.create_snapshot({'id': snap_id, 'volume_id': vol_id})
+        self.assertVolumeNames((vol_id,))
+        self.assertListEqual([snap_name], sorted(snapshots.keys()))
+        self.assertDictEqual(volumes[vol_name], snapshots[snap_name])
+        self.assertIsNot(volumes[vol_name], snapshots[snap_name])
+
+        self.driver.extend_volume({'id': vol_id}, 2)
+        self.assertVolumeNames((vol_id,))
+        self.assertNotEqual(volumes[vol_name], snapshots[snap_name])
+
+        self.driver.revert_to_snapshot(None, {'id': vol_id}, {'id': snap_id})
+        self.assertVolumeNames((vol_id,))
+        self.assertDictEqual(volumes[vol_name], snapshots[snap_name])
+        self.assertIsNot(volumes[vol_name], snapshots[snap_name])
+
+        self.driver.delete_snapshot({'id': snap_id})
+        self.assertVolumeNames((vol_id,))
+        self.assertDictEqual({}, snapshots)
+
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               'No such snapshot',
+                               self.driver.revert_to_snapshot, None,
+                               {'id': vol_id}, {'id': snap_id})
+
+        self.driver.delete_volume({'id': vol_id})
+        self.assertDictEqual({}, volumes)
+        self.assertDictEqual({}, snapshots)
+
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               'No such volume',
+                               self.driver.revert_to_snapshot, None,
+                               {'id': vol_id}, {'id': snap_id})
