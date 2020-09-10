@@ -24,9 +24,14 @@ the quality of service.
 There are currently 6 options to control capacity based quality of service
 which values should be fairly self explanatory:
 
+For dynamic IOPS per volume.
+
 * `read_iops_sec_per_gb`
 * `write_iops_sec_per_gb`
 * `total_iops_sec_per_gb`
+
+For dynamic bandwidth per volume.
+
 * `read_bytes_sec_per_gb`
 * `write_bytes_sec_per_gb`
 * `total_bytes_sec_per_gb`
@@ -35,9 +40,14 @@ In addition, there are 6 more options which allow you to control the minimum
 possible value.  This can be useful in cases where a user creates a volume that
 is very small and ends up with an unusable volume because of performance.
 
+For minimum IOPS per volume.
+
 * `read_iops_sec_per_gb_min`
 * `write_iops_sec_per_gb_min`
 * `total_iops_sec_per_gb_min`
+
+For minimum bandwidth per volume.
+
 * `read_bytes_sec_per_gb_min`
 * `write_bytes_sec_per_gb_min`
 * `total_bytes_sec_per_gb_min`
