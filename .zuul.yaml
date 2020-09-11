@@ -1,6 +1,6 @@
 - project:
     templates:
-      - openstack-lower-constraints-jobs
+      #- openstack-lower-constraints-jobs
       - openstack-python3-victoria-jobs
       - publish-openstack-docs-pti
       - periodic-stable-jobs
@@ -23,6 +23,9 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
+        - openstack-tox-lower-constraints:
+            nodeset: ubuntu-bionic
+            irrelevant-files: *functional-irrelevant-files
         - openstack-tox-functional-py38:
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
@@ -70,6 +73,9 @@
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
+        - openstack-tox-lower-constraints:
+            nodeset: ubuntu-bionic
+            irrelevant-files: *functional-irrelevant-files
         - cinder-grenade-mn-sub-volbak:
             irrelevant-files: *gate-irrelevant-files
         - cinder-plugin-ceph-tempest:
