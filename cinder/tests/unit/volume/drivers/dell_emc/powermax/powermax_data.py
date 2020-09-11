@@ -94,7 +94,7 @@ class PowerMaxData(object):
     gvg_group_id = 'test-gvg'
     sg_tags = 'production,test'
     snap_id = 118749976833
-    snap_id_2 = 118749976833
+    snap_id_2 = 118749976834
 
     # connector info
     wwpn1 = '123456789012345'
