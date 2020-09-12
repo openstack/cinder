@@ -106,7 +106,7 @@ class PowerMaxReplicationTest(test.TestCase):
         extra_specs = deepcopy(self.extra_specs)
         extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         extra_specs[utils.IS_RE] = True
-        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         rep_config = self.data.rep_config_sync
         rep_config[utils.RDF_CONS_EXEMPT] = False
         extra_specs[utils.REP_CONFIG] = rep_config
@@ -711,6 +711,9 @@ class PowerMaxReplicationTest(test.TestCase):
         self.common._delete_group(group, [])
         mock_cleanup.assert_called_once()
 
+    @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
+                       return_value=True)
+    @mock.patch.object(masking.PowerMaxMasking, 'add_volumes_to_storage_group')
     @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
     @mock.patch.object(utils.PowerMaxUtils, 'check_rep_status_enabled')
@@ -721,15 +724,27 @@ class PowerMaxReplicationTest(test.TestCase):
     @mock.patch.object(volume_utils, 'is_group_a_type', return_value=True)
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                        return_value=True)
-    def test_update_replicated_group(self, mock_cg_type, mock_type_check,
-                                     mock_add, mock_remove, mock_check,
-                                     mock_rm):
+    def test_update_replicated_group(
+            self, mock_cg_type, mock_type_check, mock_add_remote,
+            mock_remove_remote, mock_check, mock_remove_local, mock_add_local,
+            mock_vol_in_sg):
+        array = self.data.array
         add_vols = [self.data.test_volume]
+        add_vols_id = [self.data.device_id]
         remove_vols = [self.data.test_clone_volume]
-        self.common.update_group(
-            self.data.test_group_1, add_vols, remove_vols)
-        mock_add.assert_called_once()
-        mock_remove.assert_called_once()
+        remove_vols_id = [self.data.device_id2]
+        group = self.data.test_group_1
+        group_sg = self.data.storagegroup_name_source
+        extra_specs = {
+            utils.INTERVAL: 1, utils.RETRIES: 1, utils.FORCE_VOL_EDIT: True}
+        self.common.update_group(group, add_vols, remove_vols)
+        mock_add_local.assert_called_once_with(
+            array, add_vols_id, group_sg, extra_specs)
+        mock_add_remote.assert_called_once_with(add_vols, group, extra_specs)
+        mock_remove_local.assert_called_once_with(
+            array, remove_vols_id, group_sg, extra_specs)
+        mock_remove_remote.assert_called_once_with(
+            array, remove_vols, group, extra_specs)
 
     @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
@@ -1580,7 +1595,7 @@ class PowerMaxReplicationTest(test.TestCase):
             self.common.break_rdf_device_pair_session(
                 array, device_id, volume_name, extra_specs, volume))
 
-        extra_specs[utils.REP_CONFIG]['force_vol_remove'] = True
+        extra_specs[utils.REP_CONFIG][utils.FORCE_VOL_EDIT] = True
         self.assertEqual(extra_specs[utils.REP_CONFIG], rep_extra_specs)
         self.assertFalse(resume_rdf)
 
@@ -1626,7 +1641,7 @@ class PowerMaxReplicationTest(test.TestCase):
             self.common.break_rdf_device_pair_session(
                 array, device_id, volume_name, extra_specs, volume))
 
-        extra_specs[utils.REP_CONFIG]['force_vol_remove'] = True
+        extra_specs[utils.REP_CONFIG][utils.FORCE_VOL_EDIT] = True
         extra_specs[utils.REP_CONFIG]['mgmt_sg_name'] = (
             self.data.default_sg_no_slo_re_enabled)
 
