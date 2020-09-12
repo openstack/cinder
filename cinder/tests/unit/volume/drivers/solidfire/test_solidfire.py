@@ -2908,6 +2908,16 @@ class SolidFireVolumeTestCase(test.TestCase):
         ep = sfv._build_endpoint_info(mvip='1.2.3.4', password='nunyabiz')
         self.assertEqual(expected_ep, ep)
 
+        # Make sure we add brackets for IPv6 MVIP
+        expected_ep = {'passwd': 'nunyabiz',
+                       'url': 'https://[ff00::00]:443',
+                       'svip': None,
+                       'mvip': 'ff00::00',
+                       'login': 'admin',
+                       'port': 443}
+        ep = sfv._build_endpoint_info(mvip='ff00::00', password='nunyabiz')
+        self.assertEqual(expected_ep, ep)
+
     def test_generate_random_string(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         a = sfv._generate_random_string(12)
