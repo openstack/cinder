@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1504,10 +1504,6 @@ msgstr "Не удалось создать поток manage_existing."
 msgid "Failed to create map."
 msgstr "Не удалось создать карту."
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "Не удалось создать метаданные для тома: %(reason)s"
-
 msgid "Failed to create partition."
 msgstr "Не удалось создать раздел."
 
@@ -1712,9 +1708,6 @@ msgstr "Не удалось получить целевые объекты"
 
 msgid "Failed to get wwn info."
 msgstr "Не удалось получить информацию о WWN."
-
-msgid "Failed to identify volume backend."
-msgstr "Не удалось идентифицировать базовую программу тома."
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2747,9 +2740,6 @@ msgstr "Лицензия недоступна."
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "Связанный дубликат исходного тома не поддерживается в состоянии %s."
 
-msgid "Lock acquisition failed."
-msgstr "Не удается установить блокировку."
-
 msgid "Logout session error."
 msgstr "Ошибка завершения сеанса."
 
@@ -3108,10 +3098,6 @@ msgid "No support to restore backup version %s"
 msgstr "Нет поддержки восстановления резервной версии %s"
 
 #, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr "Не найден target id  для тома  %(volume_id)s."
-
-#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "Vdisk с UID, заданным по ссылке %s, отсутствует."
 
@@ -3309,10 +3295,6 @@ msgid ""
 msgstr ""
 "Неверно задано ограничение квот в проекте '%(proj)s' для ресурса '%(res)s': "
 "порог %(limit)d меньше, чем текущее использование %(used)d"
-
-#, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "Резервирование квоты %(uuid)s не найдено."
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -4156,11 +4138,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "Не удалось получить статистику для backend_name: %s"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr ""
-"Не удалось найти учетную запись %(account_name)s на устройстве Solidfire"
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "Не удалось найти SVM, управляющую IP-адресом '%s'"
 
@@ -4477,14 +4454,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "Том %(volume_id)s не найден."
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr ""
-"У тома %(volume_id)s нет метаданных администрирования с ключом "
-"%(metadata_key)s."
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr "Том %(volume_id)s не имеет метаданных с ключом %(metadata_key)s."
 
@@ -4665,10 +4634,6 @@ msgstr "Том не является уникальным."
 
 msgid "Volume not yet assigned to host."
 msgstr "Том не связан с хостом."
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "Копия тома %(volume_id)s не найдена."
 
 msgid "Volume should have agent-type set as None."
 msgstr "В параметре agent-type тома должно быть указано значение None."
@@ -5214,18 +5179,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"Во время выполнения резервного копирования %(vol_id)s не удалось выполнить "
-"команду dsmc: недопустимые аргументы в %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -5439,16 +5392,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: Для состояние тома требуется состояние "
 "моментальной копии \"available\". Недопустимое состояние: %s."
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"Во время удаления %(vol_id)s не удалось выполнить команду dsmc: недопустимые "
-"аргументы с stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""
@@ -5688,18 +5631,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "Ошибка replication_failover. Базовая система не настроена для переключения "
 "после сбоя"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"Во время выполнения восстановления %(vol_id)s не удалось выполнить команду "
-"dsmc: недопустимые аргументы в %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""

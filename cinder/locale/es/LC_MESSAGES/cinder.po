@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1559,10 +1559,6 @@ msgstr "No se ha podido crear el flujo manage_existing."
 msgid "Failed to create map."
 msgstr "No se ha podido crear la correlación."
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "No se ha podido crear los metadatos para volumen: %(reason)s"
-
 msgid "Failed to create partition."
 msgstr "No se ha podido crear la partición."
 
@@ -1788,9 +1784,6 @@ msgstr "No se han podido obtener los destinos"
 
 msgid "Failed to get wwn info."
 msgstr "No se ha podido obtener información de wwn."
-
-msgid "Failed to identify volume backend."
-msgstr "No se ha podido identificar el programa de fondo de volumen."
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2871,9 +2864,6 @@ msgstr "La licencia no está disponible."
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "No se soporta el clon enlazado del volumen de origen en estado: %s."
 
-msgid "Lock acquisition failed."
-msgstr "Ha fallado la adquisición del bloqueo."
-
 msgid "Logout session error."
 msgstr "Error al cerrar la sesión."
 
@@ -3037,11 +3027,6 @@ msgstr ""
 
 msgid "Missing request body."
 msgstr "No se ha hallado el cuerpo de la solicitud."
-
-#, python-format
-msgid "Missing required element '%(element)s' in request body."
-msgstr ""
-"Falta el elemento obligatorio '%(element)s' en el cuerpo de la solicitud."
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3263,11 +3248,6 @@ msgstr "No se ha encontrado ningún IP de descubrimiento adecuado"
 msgid "No support to restore backup version %s"
 msgstr "No hay soporte para restaurar la versión de copia de seguridad %s"
 
-#, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr ""
-"No se ha encontrado ningún ID de destino para el volumen %(volume_id)s."
-
 msgid "No valid ports."
 msgstr "No hay puertos válidos."
 
@@ -3484,10 +3464,6 @@ msgid ""
 msgstr ""
 "Límite de cuota no válido para el proyecto '%(proj)s' para el recurso "
 "'%(res)s': el límite de %(limit)d es menor que el valor en uso, de %(used)d"
-
-#, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "No se ha podido encontrar la reserva de cuota %(uuid)s."
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -4378,12 +4354,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "No se puede obtener estadísticas para backend_name: %s"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr ""
-"No se ha podido localizar la cuenta %(account_name)s en el dispositivo "
-"Solidfire"
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "No se ha podido localizar un SVM que gestione la dirección IP '%s'"
 
@@ -4710,14 +4680,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "El volumen %(volume_id)s no se ha podido encontrar."
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr ""
-"Volumen %(volume_id)s no tiene metadatos de administración con la clave "
-"%(metadata_key)s."
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "El volumen %(volume_id)s no tiene metadatos con la clave %(metadata_key)s."
@@ -4907,10 +4869,6 @@ msgstr "El volumen no es exclusivo."
 
 msgid "Volume not yet assigned to host."
 msgstr "Aún no se ha asignado el volumen al host."
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "La réplica de volumen de %(volume_id)s no se ha encontrado."
 
 msgid "Volume should have agent-type set as None."
 msgstr "El volumen debe tener agent-type establecido como None."
@@ -5474,18 +5432,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"copia de seguridad: %(vol_id)s no ha podido ejecutar dsmc debido a "
-"argumentos no válidos en %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -5708,16 +5654,6 @@ msgstr ""
 
 msgid "data not found"
 msgstr "No se han encontrado datos"
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"suprimir: %(vol_id)s no ha podido ejecutar dsmc debido a argumentos no "
-"válidos con stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""
@@ -5971,18 +5907,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "replication_failover ha fallado. No se ha configurado un programa de fondo "
 "para la migración tras error"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"restaurar: %(vol_id)s no ha podido ejecutar dsmc debido a argumentos no "
-"válidos en %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""

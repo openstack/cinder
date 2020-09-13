@@ -11,16 +11,17 @@
 # Ian Y. Choi <ianyrchoi@gmail.com>, 2017. #zanata
 # Jaewook Oh <kyle.oh95@gmail.com>, 2018. #zanata
 # Sungwook Choi <csucom@gmail.com>, 2018. #zanata
+# chohanjoo <vjswl132@gmail.com>, 2020. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2018-09-20 12:09+0000\n"
-"Last-Translator: Sungwook Choi <csucom@gmail.com>\n"
+"PO-Revision-Date: 2020-09-12 11:05+0000\n"
+"Last-Translator: chohanjoo <vjswl132@gmail.com>\n"
 "Language: ko_KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -1521,10 +1522,6 @@ msgstr "manage_existing 플로우를 작성하지 못했습니다."
 msgid "Failed to create map."
 msgstr "맵 작성에 실패했습니다. "
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "볼륨에 대한 메타데이터를 작성하지 못함: %(reason)s"
-
 msgid "Failed to create partition."
 msgstr "파티션 작성에 실패했습니다. "
 
@@ -1730,9 +1727,6 @@ msgstr "대상을 가져오지 못함"
 
 msgid "Failed to get wwn info."
 msgstr "WWN 정보를 가져오지 못했습니다. "
-
-msgid "Failed to identify volume backend."
-msgstr "볼륨 백엔드 식별 실패"
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2355,14 +2349,6 @@ msgstr "%(id)s 그룹 유형이 이미 존재합니다."
 msgid "Group type %(group_type_id)s could not be found."
 msgstr "%(group_type_id)s 그룹 유형을 찾을 수 없습니다."
 
-#, python-format
-msgid "Group type encryption for type %(type_id)s already exists."
-msgstr "%(type_id)s 타입에 대한 그룹 유형 암호화가 이미 존재합니다."
-
-#, python-format
-msgid "Group type encryption for type %(type_id)s does not exist."
-msgstr "%(type_id)s 타입에 대한 그룹 유형 암호화가 존재하지 않습니다."
-
 msgid "Group type name can not be empty."
 msgstr "그룹 유형 이름은 빈 상태로 둘 수 없습니다."
 
@@ -2799,9 +2785,6 @@ msgstr "라이센스를 사용할 수 없습니다."
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "소스 볼륨의 링크된 복제본이 다음 상태에서 지원되지 않음: %s"
 
-msgid "Lock acquisition failed."
-msgstr "잠금 확보에 실패했습니다."
-
 msgid "Logout session error."
 msgstr "로그아웃 세션 오류."
 
@@ -2943,10 +2926,6 @@ msgstr "파이버 채널 SAN 구성 매개변수 누락 - fc_fabric_names"
 
 msgid "Missing request body."
 msgstr "요청 본문이 누락되었습니다. "
-
-#, python-format
-msgid "Missing required element '%(element)s' in request body."
-msgstr "request body 내 필요 항목 '%(element)s' 누락"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3165,10 +3144,6 @@ msgid "No support to restore backup version %s"
 msgstr "백업 버전 %s 복원을 지원하지 않음"
 
 #, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr "%(volume_id)s 볼륨에 대한 대상ID가 없습니다. "
-
-#, python-format
 msgid "No valid backend was found. %(reason)s"
 msgstr "유효한 백엔드가 발견되지 않습니다. %(reason)s"
 
@@ -3371,10 +3346,6 @@ msgstr ""
 "%(limit)d의 한계가 사용 중인 값 %(used)d보다 적음"
 
 #, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "할당 예약 %(uuid)s을(를) 찾을 수 없습니다. "
-
-#, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
 msgstr "%(project_id)s 프로젝트에 대한 할당 사용량을 찾을 수 없습니다. "
 
@@ -3465,6 +3436,20 @@ msgstr "%(ssn)s에 %(name)s을(를) 복제하는 데 실패했습니다."
 
 msgid "Replication not allowed yet."
 msgstr "복제가 아직 허용되지 않습니다."
+
+msgid ""
+"Replication setup failure: replication has been enabled but no replication "
+"target has been specified for this backend."
+msgstr ""
+"복제 설정 실패: 복제가 사용 가능하지만 이 백엔드에 대해 복제 대상이 지정되지 "
+"않았습니다.."
+
+msgid ""
+"Replication setup failure: replication:livevolume has been enabled but more "
+"than one replication target has been specified for this backend."
+msgstr ""
+"복제 설정 실패: 복제:라이브볼륨이 사용 가능으로 설정되었지만 이 백엔드에 대"
+"해 둘 이상의 복제 대상이 지정되었습니다."
 
 msgid "Request body and URI mismatch"
 msgstr "요청 본문 및 URI 불일치"
@@ -4207,10 +4192,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "backend_name에 대한 통계를 가져올 수 없음: %s"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr "Solidfire 디바이스에서 %(account_name)s 계정을 찾을 수 없음"
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "IP 주소 '%s'을(를) 관리하는 SVM을 찾을 수 없음"
 
@@ -4287,6 +4268,10 @@ msgstr "백엔드에서 볼륨 연결을 종료할 수 없습니다."
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s"
 msgstr "볼륨 연결을 종료할 수 없음: %(err)s"
+
+#, python-format
+msgid "Unable to update group %s"
+msgstr "%s 그룹을 업데이트 할 수 없습니다."
 
 msgid "Unacceptable parameters."
 msgstr "허용할 수 없는 매개변수입니다. "
@@ -4522,13 +4507,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "%(volume_id)s 볼륨을 찾을 수 없습니다. "
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr ""
-"%(volume_id)s 볼륨에 %(metadata_key)s 키를 갖는 관리 메타데이터가 없습니다. "
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "%(volume_id)s 볼륨에 %(metadata_key)s 키를 갖는 메타데이터가 없습니다. "
@@ -4716,10 +4694,6 @@ msgstr "볼륨이 고유하지 않습니다."
 
 msgid "Volume not yet assigned to host."
 msgstr "볼륨을 아직 호스트에 지정하지 않았습니다."
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "%(volume_id)s의 볼륨 복제를 찾을 수 없습니다. "
 
 msgid "Volume should have agent-type set as None."
 msgstr "볼륨의 에이전트 유형은 None으로 설정되어야 합니다. "
@@ -5260,17 +5234,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"백업: %(vol_id)s이(가) %(bpath)s으로 백업 하드 링크를 제거하지 못했습니다.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -5480,16 +5443,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: 볼륨 작성에 스냅샷 상태가 \"사용 가능\"해야 합니"
 "다. 올바르지 않은 상태는 %s입니다."
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"삭제: %(vol_id)s이(가) 올바르지 않은 인수 때문에 dsmc를 실행하는 데 실패함. "
-"stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""
@@ -5728,17 +5681,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "replication_failover에 실패했습니다. 백엔드를 장애 복구하도록 구성되지 않았습"
 "니다."
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"복원: %(vol_id)s이(가) %(bpath)s으로 백업 하드 링크를 제거하지 못했습니다.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""

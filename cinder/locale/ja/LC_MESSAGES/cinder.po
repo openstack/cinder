@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1835,10 +1835,6 @@ msgstr "manage_existing フローの作成に失敗しました。"
 msgid "Failed to create map."
 msgstr "マップの作成に失敗しました。"
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "ボリュームのメタデータの作成に失敗しました: %(reason)s"
-
 msgid "Failed to create partition."
 msgstr "パーティションの作成に失敗しました。"
 
@@ -2064,9 +2060,6 @@ msgstr "ターゲットを取得できませんでした"
 
 msgid "Failed to get wwn info."
 msgstr "wwn 情報の取得に失敗しました。"
-
-msgid "Failed to identify volume backend."
-msgstr "ボリュームバックエンドを識別できませんでした。"
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2824,14 +2817,6 @@ msgstr ""
 "%(group_type_id)s / %(project_id)s の組み合わせのグループ種別アクセスが見つか"
 "りません。"
 
-#, python-format
-msgid "Group type encryption for type %(type_id)s already exists."
-msgstr "タイプ %(type_id)s のグループ種別暗号化は既に存在します。"
-
-#, python-format
-msgid "Group type encryption for type %(type_id)s does not exist."
-msgstr "タイプ %(type_id)s に対するグループ種別暗号化は存在しません。"
-
 msgid "Group type name can not be empty."
 msgstr "グループ種別名を空にすることはできません"
 
@@ -3333,9 +3318,6 @@ msgid "Linked clone of source volume not supported in state: %s."
 msgstr ""
 "状態 %s でのソースボリュームのリンクされた複製はサポートされていません。"
 
-msgid "Lock acquisition failed."
-msgstr "ロックの取得に失敗しました。"
-
 msgid "Login failed."
 msgstr "ログインに失敗しました。"
 
@@ -3531,10 +3513,6 @@ msgstr "NetApp のイテレーター API 起動記録カウントがありませ
 
 msgid "Missing request body."
 msgstr "要求本体がありません。"
-
-#, python-format
-msgid "Missing required element '%(element)s' in request body."
-msgstr "リクエストの本文に必要な要素  '%(element)s'  がありません。"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3777,10 +3755,6 @@ msgstr "フェイルオーバーに適したホストが見つかりませんで
 msgid "No support to restore backup version %s"
 msgstr "バックアップバージョン %s をリストアすることができません"
 
-#, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr "ボリューム %(volume_id)s のターゲット ID が見つかりません。"
-
 msgid "No valid ports."
 msgstr "有効なポートがありません。"
 
@@ -4020,10 +3994,6 @@ msgid ""
 msgstr ""
 "リソース '%(res)s' のプロジェクト'%(proj)s' に関するクォーター上限が無効で"
 "す : %(limit)d の上限が %(used)d の使用中の値よりも小さくなっています"
-
-#, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "クォータの予約 %(uuid)s が見つかりませんでした。"
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -5078,12 +5048,6 @@ msgid "Unable to import 'krest' python module."
 msgstr "'krest' python モジュールをインポートできません。"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr ""
-"Solidfire デバイス上でアカウント %(account_name)s を見つけることができませ"
-"ん。"
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "IP アドレス「%s」を管理している SVM が見つかりません"
 
@@ -5438,14 +5402,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "ボリューム %(volume_id)s が見つかりませんでした。"
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr ""
-"ボリューム %(volume_id)s には、キー %(metadata_key)s を持つ管理メタデータがあ"
-"りません。"
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "ボリューム %(volume_id)s にはキー %(metadata_key)s を持つメタデータはありませ"
@@ -5658,10 +5614,6 @@ msgstr "ボリュームが一意ではありません。"
 
 msgid "Volume not yet assigned to host."
 msgstr "ボリュームがまだホストに割り当てられていません。"
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "%(volume_id)s のボリューム複製が見つかりませんでした。"
 
 msgid "Volume should have agent-type set as None."
 msgstr "ボリュームには agent-type として None を設定する必要があります。"
@@ -6243,18 +6195,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"バックアップ: %(vol_id)s で、%(bpath)s 上の無効な引数のため、dsmc の実行に失"
-"敗しました。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -6508,16 +6448,6 @@ msgstr ""
 
 msgid "data not found"
 msgstr "データが見つかりません。"
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"削除: %(vol_id)s で、以下の無効な引数のため、dsmc の実行に失敗しました。 "
-"stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""
@@ -6841,18 +6771,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "replication_failover が失敗しました。バックエンドがフェイルオーバーのために設"
 "定されていません。"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"復元: %(vol_id)s で、%(bpath)s 上の無効な引数のため、dsmc の実行に失敗しまし"
-"た。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
 
 #, python-format
 msgid ""

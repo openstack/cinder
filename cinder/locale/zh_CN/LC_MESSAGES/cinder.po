@@ -19,7 +19,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1629,10 +1629,6 @@ msgstr "未能创建 manage_existing 流。"
 msgid "Failed to create map."
 msgstr "未能创建映射。"
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "未能为卷创建元数据：%(reason)s"
-
 msgid "Failed to create partition."
 msgstr "未能创建分区。"
 
@@ -1836,9 +1832,6 @@ msgstr "未能获取目标"
 
 msgid "Failed to get wwn info."
 msgstr "未能获取 WWN 信息。"
-
-msgid "Failed to identify volume backend."
-msgstr "未能识别卷后端。"
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2470,14 +2463,6 @@ msgid ""
 "combination."
 msgstr "使用 %(group_type_id)s / %(project_id)s 组合无法访问组类型。"
 
-#, python-format
-msgid "Group type encryption for type %(type_id)s already exists."
-msgstr "针对类型为 %(type_id)s 的组类型加密方式已存在。"
-
-#, python-format
-msgid "Group type encryption for type %(type_id)s does not exist."
-msgstr "针对组类型 %(type_id)s 加密方式不存在。"
-
 msgid "Group type name can not be empty."
 msgstr "组类型名称不能为空。"
 
@@ -2944,9 +2929,6 @@ msgstr "许可证不可用。"
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "不支持处于以下状态的源卷的已链接克隆：%s。"
 
-msgid "Lock acquisition failed."
-msgstr "锁定获取失败。"
-
 msgid "Logout session error."
 msgstr "注销会话错误。"
 
@@ -3104,10 +3086,6 @@ msgstr "缺少光纤通道 SAN 配置参数 - fc_fabric_names"
 
 msgid "Missing request body."
 msgstr "缺少请求主体。"
-
-#, python-format
-msgid "Missing required element '%(element)s' in request body."
-msgstr "请求主体中缺少必要的元素'%(element)s'"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3326,10 +3304,6 @@ msgid "No support to restore backup version %s"
 msgstr "不支持复原备份版本 %s"
 
 #, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr "没有为卷 %(volume_id)s 找到目标id。"
-
-#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "没有具备引用 %s 指定的 UID 的 vdisk。"
 
@@ -3526,10 +3500,6 @@ msgid ""
 msgstr ""
 "资源“%(res)s”的项目“%(proj)s”的配合限制无效：限制 %(limit)d 小于“in-use”值 "
 "%(used)d"
-
-#, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "找不到配额预留 %(uuid)s。"
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -4388,10 +4358,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "无法获取 backend_name %s 的统计信息"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr "无法在 Solidfire 设备上找到帐户 %(account_name)s"
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "无法找到正在管理 IP 地址“%s”的 SVM"
 
@@ -4712,12 +4678,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "卷 %(volume_id)s 没有找到。"
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr "卷 %(volume_id)s 没有任何具有键 %(metadata_key)s 的元数据。"
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr "卷 %(volume_id)s 没有含键 %(metadata_key)s 的元数据。"
 
@@ -4902,10 +4862,6 @@ msgstr "卷并非唯一。"
 
 msgid "Volume not yet assigned to host."
 msgstr "卷尚未分配给主机。"
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "找不到 %(volume_id)s 的卷复制。"
 
 msgid "Volume should have agent-type set as None."
 msgstr "卷应该将 agent-type 设置为“无”。"
@@ -5436,17 +5392,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"备份：由于 %(bpath)s 上的自变量无效，使得 %(vol_id)s 未能运行 dsmc。\n"
-"标准输出：%(out)s\n"
-"标准错误：%(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -5662,15 +5607,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot：快照状态必须为“可用”，以便创建卷。无效状态为 "
 "%s。"
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"删除：%(vol_id)s 由于自变量无效而未能运行 dsmc，标准输出：%(out)s\n"
-"标准错误：%(err)s"
 
 #, python-format
 msgid ""
@@ -5935,17 +5871,6 @@ msgstr "replication_failover 失败。找不到 %s。"
 
 msgid "replication_failover failed. Backend not configured for failover"
 msgstr "replication_failover 失败。未配置后端，无法进行故障转移"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"复原：%(vol_id)s 由于 %(bpath)s 上的自变量无效而未能运行 dsmc。\n"
-"标准输出：%(out)s\n"
-"标准错误：%(err)s"
 
 #, python-format
 msgid ""

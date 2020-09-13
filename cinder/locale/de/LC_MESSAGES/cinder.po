@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1599,10 +1599,6 @@ msgstr "Fehler beim Erstellen von manage_existing-Ablauf."
 msgid "Failed to create map."
 msgstr "Fehler beim Erstellen der Zuordnung."
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "Erstellen von Metadaten für Datenträger fehlgeschlagen: %(reason)s"
-
 msgid "Failed to create partition."
 msgstr "Fehler beim Erstellen der Partition."
 
@@ -1828,9 +1824,6 @@ msgstr "Ziele konnten nicht abgerufen werden."
 
 msgid "Failed to get wwn info."
 msgstr "Fehler beim Abrufen der Informationen zum WWN."
-
-msgid "Failed to identify volume backend."
-msgstr "Datenträger-Backend konnte nicht identifiziert werden."
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2965,9 +2958,6 @@ msgstr "Die Lizenz ist nicht verfügbar."
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "Verlinkter Klon von Quellendatenträger im Status %s nicht unterstützt."
 
-msgid "Lock acquisition failed."
-msgstr "Erstellen der Sperre fehlgeschlagen."
-
 msgid "Logout session error."
 msgstr "Fehler beim Abmelden der Sitzung."
 
@@ -3138,10 +3128,6 @@ msgstr "Fehlende Fibre Channel-SAN-Konfigurationsparameter - fc_fabric_names"
 
 msgid "Missing request body."
 msgstr "Anforderungshauptteil fehlt."
-
-#, python-format
-msgid "Missing required element '%(element)s' in request body."
-msgstr "Erforderliches Element '%(element)s' im Body der Anfrage."
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -3363,10 +3349,6 @@ msgstr "Keine geeignete Erkennungs-IP-Adresse gefunden."
 #, python-format
 msgid "No support to restore backup version %s"
 msgstr "Keine Unterstützung für die Wiederherstellung der Sicherungsversion %s"
-
-#, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr "Keine Ziel-ID für Datenträger %(volume_id)s gefunden."
 
 #, python-format
 msgid "No valid backend was found. %(reason)s"
@@ -3593,10 +3575,6 @@ msgstr ""
 "Kontingentgrenzwert ungültig für Projekt '%(proj)s' für die Ressource "
 "'%(res)s': Grenzwert von %(limit)d ist kleiner als der Wert von %(used)d, "
 "der im Gebrauch ist."
-
-#, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "Kontingentreservierung %(uuid)s wurde nicht gefunden."
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -4505,11 +4483,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "Fehler beim Abrufen der Statistiken für backend_name: %s"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr ""
-"Das Konto %(account_name)s wurde auf dem SolidFire-Gerät nicht gefunden."
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "Es kann keine SVM bestimmt werden, die die IP-Adresse '%s' verwaltet."
 
@@ -4848,14 +4821,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "Datenträger %(volume_id)s wurde nicht gefunden."
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr ""
-"Datenträger %(volume_id)s enthält keine Verwaltungsmetadaten mit dem "
-"Schlüssel %(metadata_key)s."
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "Datenträger %(volume_id)s enthält keine Metadaten mit dem Schlüssel "
@@ -5057,10 +5022,6 @@ msgstr "Datenträger ist nicht eindeutig."
 
 msgid "Volume not yet assigned to host."
 msgstr "Datenträger noch nicht dem Host zugeordnet."
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "Die Datenträgerreplizierung für %(volume_id)s wurde nicht gefunden."
 
 msgid "Volume should have agent-type set as None."
 msgstr "Für Datenträger sollte Agententyp auf None festgelegt werden."
@@ -5630,18 +5591,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"Sicherung: %(vol_id)s konnte DSMC aufgrund von ungültigen Argumenten nicht "
-"unter %(bpath)s ausführen.\n"
-"Standardausgabe: %(out)s\n"
-" Standardfehler: %(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -5866,16 +5815,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: Der Status der Schattenkopie muss \"available\" "
 "zum Erstellen eines Datenträgers sein. Der ungültige Status ist %s."
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"Löschen: %(vol_id)s konnte DSMC aufgrund von ungültigen Argumenten nicht "
-"ausführen. Standardausgabe: %(out)s\n"
-" Standardfehler: %(err)s"
 
 #, python-format
 msgid ""
@@ -6119,18 +6058,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "'replication_failover' fehlgeschlagen. Das Backend ist nicht für ein "
 "Failover konfiguriert."
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"Wiederherstellung: %(vol_id)s konnte DSMC wegen ungültiger Argumente nicht "
-"unter %(bpath)s ausführen.\n"
-"Standardausgabe: %(out)s\n"
-" Standardfehler: %(err)s"
 
 #, python-format
 msgid ""

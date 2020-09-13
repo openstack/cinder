@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-06-16 16:05+0000\n"
+"POT-Creation-Date: 2020-09-12 13:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1560,10 +1560,6 @@ msgstr "Echec de la création du flux manage_existing."
 msgid "Failed to create map."
 msgstr "Echec de création de la mappe."
 
-#, python-format
-msgid "Failed to create metadata for volume: %(reason)s"
-msgstr "Échec de la création de métadonnées pour le volume : %(reason)s"
-
 msgid "Failed to create partition."
 msgstr "Echec de la création de la partition."
 
@@ -1783,9 +1779,6 @@ msgstr "Echec de l'obtention des cibles"
 
 msgid "Failed to get wwn info."
 msgstr "Echec d'obtention des informations wwn."
-
-msgid "Failed to identify volume backend."
-msgstr "Echec d'identification du back-end du volume."
 
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
@@ -2881,9 +2874,6 @@ msgstr "La licence n'est pas disponible."
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "Le clone lié du volume source n'est pas pris en charge à l'état : %s."
 
-msgid "Lock acquisition failed."
-msgstr "L'acquisition du verrou a échoué."
-
 msgid "Logout session error."
 msgstr "Erreur de déconnexion de la session."
 
@@ -3253,10 +3243,6 @@ msgstr ""
 "Aucune prise en charge pour la restauration de la version de sauvegarde %s"
 
 #, python-format
-msgid "No target id found for volume %(volume_id)s."
-msgstr "Aucun ID cible trouvé pour le volume %(volume_id)s."
-
-#, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "Aucun disque virtuel (vdisk) avec l'UID indiqué par ref %s."
 
@@ -3456,10 +3442,6 @@ msgstr ""
 "La limite de quota n'est pas valide pour le projet '%(proj)s' de la "
 "ressource '%(res)s' : la limite %(limit)d est inférieure à la valeur "
 "utilisée %(used)d"
-
-#, python-format
-msgid "Quota reservation %(uuid)s could not be found."
-msgstr "Réservation de quota %(uuid)s introuvable."
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -4332,10 +4314,6 @@ msgid "Unable to get stats for backend_name: %s"
 msgstr "Impossible d'obtenir des statistiques pour backend_name : %s"
 
 #, python-format
-msgid "Unable to locate account %(account_name)s on Solidfire device"
-msgstr "Compte %(account_name)s introuvable sur l'unité Solidfire"
-
-#, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr ""
 "Impossible de localiser une machine virtuelle de stockage (SVM) qui gère "
@@ -4664,14 +4642,6 @@ msgid "Volume %(volume_id)s could not be found."
 msgstr "Le volume %(volume_id)s est introuvable."
 
 #, python-format
-msgid ""
-"Volume %(volume_id)s has no administration metadata with key "
-"%(metadata_key)s."
-msgstr ""
-"Le volume %(volume_id)s n'a aucune métadonnée d'administration avec la clé "
-"%(metadata_key)s."
-
-#, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "Le volume %(volume_id)s ne comporte pas de métadonnées avec la clé "
@@ -4862,10 +4832,6 @@ msgstr "Le volume n'est pas unique."
 
 msgid "Volume not yet assigned to host."
 msgstr "Volume non encore affecté à l'hôte."
-
-#, python-format
-msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "Réplication du volume pour %(volume_id)s introuvable."
 
 msgid "Volume should have agent-type set as None."
 msgstr "Le volume doit avoir la valeur agent-type définie à None."
@@ -5426,18 +5392,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"backup: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"sauvegarde : échec de %(vol_id)s pour l'exécution de dsmc en raison "
-"d'arguments non valides sur %(bpath)s.\n"
-"stdout : %(out)s\n"
-" stderr : %(err)s"
-
-#, python-format
-msgid ""
 "backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
 "stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -5657,16 +5611,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot : le statut de l'instantané doit être \"available"
 "\" pour créer le volume. Le statut non valide est : %s."
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
-"%(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"suppression : échec de %(vol_id)s pour l'exécution de dsmc en raison "
-"d'arguments non valides avec stdout : %(out)s\n"
-" stderr : %(err)s"
 
 #, python-format
 msgid ""
@@ -5907,18 +5851,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "Echec de replication_failover. Le back-end n'est pas configuré pour le "
 "basculement"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"restauration : échec de %(vol_id)s pour l'exécution de dsmc en raison "
-"d'arguments non valides sur %(bpath)s.\n"
-"stdout : %(out)s\n"
-" stderr : %(err)s"
 
 #, python-format
 msgid ""
