@@ -528,7 +528,7 @@ class FilterScheduler(driver.Scheduler):
         weighed_backends = self._get_weighted_candidates(context, request_spec,
                                                          filter_properties)
         # When we get the weighed_backends, we clear those backends that don't
-        # match the resource's backend (it could be assigend from group,
+        # match the resource's backend (it could be assigned from group,
         # snapshot or volume).
         resource_backend = request_spec.get('resource_backend')
         if weighed_backends and resource_backend:
