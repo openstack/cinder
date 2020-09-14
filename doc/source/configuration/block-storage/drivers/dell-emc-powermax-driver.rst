@@ -28,12 +28,12 @@ System requirements and licensing
 The Dell EMC PowerMax Cinder driver supports the VMAX-3 hybrid series, VMAX
 All-Flash series and the PowerMax arrays.
 
-The array operating system software, Solutions Enabler 9.1.x series, and
-Unisphere for PowerMax 9.1.x series are required to run Dell EMC PowerMax
+The array operating system software, Solutions Enabler 9.2.x series, and
+Unisphere for PowerMax 9.2.x series are required to run Dell EMC PowerMax
 Cinder driver.
 
 Download Solutions Enabler and Unisphere from the Dell EMC's support web site
-(login is required). See the ``Dell EMC Solutions Enabler 9.1.x Installation
+(login is required). See the ``Dell EMC Solutions Enabler 9.2.x Installation
 and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
 Guide`` at the `Dell EMC Support`_ site.
 
@@ -47,6 +47,8 @@ Guide`` at the `Dell EMC Support`_ site.
    +-----------+------------------------+-------------+
    | OpenStack | Unisphere for PowerMax | PowerMax OS |
    +===========+========================+=============+
+   | Victoria  | 9.2.x                  | 5978.669    |
+   +-----------+------------------------+-------------+
    | Ussuri    | 9.1.x                  | 5978.479    |
    +-----------+------------------------+-------------+
    | Train     | 9.1.x                  | 5978.444    |
@@ -195,7 +197,17 @@ PowerMax drivers also support the following features:
 -  Multiple replication devices
 -  PowerMax array and storage group tagging
 -  Short host name and port group templates
+-  Snap id support
+-  Seamless Live Migration from SMI-S support
+-  Port group & port performance load balancing
 
+.. note::
+
+   In certain cases, when creating a volume from a source snapshot or
+   source volume, subsequent operations using the volumes may fail due to
+   a missing snap_name exception. A manual refresh on the connected
+   Unisphere instance or waiting until another operation automatically
+   refreshes the connected Unisphere instance, will alleviate this issue.
 
 PowerMax naming conventions
 ===========================
@@ -324,13 +336,13 @@ PowerMax driver integration
    Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
    OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
    (eManagement) container application. See the ``Dell EMC Solutions Enabler
-   9.1.x Installation and Configuration Guide`` on `Dell EMC Support`_ for
+   9.2.x Installation and Configuration Guide`` on `Dell EMC Support`_ for
    more details.
 
    .. note::
 
       You must discover storage arrays before you can use the PowerMax drivers.
-      Follow instructions in ``Dell EMC Solutions Enabler 9.1.x Installation
+      Follow instructions in ``Dell EMC Solutions Enabler 9.2.x Installation
       and Configuration Guide`` on `Dell EMC Support`_ for more details.
 
 #. Download Unisphere from `Dell EMC Support`_ and install it.
@@ -339,7 +351,7 @@ PowerMax driver integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   PowerMax). See ``Dell EMC Solutions Enabler 9.1.x Installation and
+   PowerMax). See ``Dell EMC Solutions Enabler 9.2.x Installation and
    Configuration Guide`` at `Dell EMC Support`_.
 
 
@@ -366,14 +378,6 @@ complex and open-zoning would raise security concerns.
 4. Configure block storage in cinder.conf
 -----------------------------------------
 
-.. note::
-
-   VMAX driver was rebranded to PowerMax in Stein, so some of the driver
-   specific tags have also changed. Legacy tags like ``vmax_srp``,
-   ``vmax_array``, ``vmax_service_level`` and ``vmax_port_group``, as well
-   as the old driver location, will continue to work until the 'V' release.
-
-
 .. config-table::
    :config-target: PowerMax
 
@@ -393,11 +397,15 @@ complex and open-zoning would raise security concerns.
    PowerMax ``PortGroups`` must be pre-configured to expose volumes managed
    by the array. Port groups can be supplied in ``cinder.conf``, or
    can be specified as an extra spec ``storagetype:portgroupname`` on a
-   volume type. The latter gives the user more control. When a dynamic
-   masking view is created by the PowerMax driver, if there is no port group
-   specified as an extra specification, the port group is chosen randomly
-   from the PortGroup list, to evenly distribute load across the set of
-   groups provided.
+   volume type. If a port group is set on a volume type as an extra
+   specification it takes precedence over any port groups set in
+   ``cinder.conf``. For more information on port and port group selection
+   please see the section ``port group & port load balancing``.
+
+.. note::
+
+   PowerMax ``SRP`` cannot be changed once configured and in-use. SRP renaming
+   on the PowerMax array is not supported.
 
 .. note::
 
@@ -1423,7 +1431,8 @@ migration.
 
    .. code-block:: console
 
-      $ openstack server migrate --live HostA \
+      $ openstack server migrate --os-compute-api-version 2.30 \
+                                 --live-migration --host HostA \
                                  server_lm_1
 
 #. Run the command on step 3 above when the instance is back in available
@@ -1675,6 +1684,12 @@ metadata.
    +----------------+----------------+--------------+--------------+-------------+
    | R1 uCode Level | R2 uCode Level | Sync         | Async        | Metro       |
    +================+================+==============+==============+=============+
+   | 5978.669       | 5978.669       | Y            | Y            | Y           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5978.669       | 5978.444       | Y            | Y            | Y           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5978.669       | 5978.221       | Y            | Y            | N           |
+   +----------------+----------------+--------------+--------------+-------------+
    | 5978.444       | 5978.444       | Y            | Y            | Y           |
    +----------------+----------------+--------------+--------------+-------------+
    | 5978.444       | 5978.221       | Y            | Y            | N           |
@@ -1693,14 +1708,15 @@ Assumptions, restrictions and prerequisites
 - Where one array is a lower uCode than the other, the environment is limited
   to functionality of that of the lowest uCode level, i.e. if R1 is 5978.444
   and R2 is 5978.221, expanding a metro volume is not supported, both R1 and
-  R2 need to be on 5978.444 uCode.
+  R2 need to be on 5978.444 uCode at a minimum.
 
 
 20. PowerMax array and storage group tagging
 --------------------------------------------
 
-Unisphere for PowerMax 9.1 supports tagging of storage groups and arrays,
-so the user can give their own 'tag' for ease of searching and/or grouping.
+Unisphere for PowerMax 9.1 and later supports tagging of storage groups and
+arrays, so the user can give their own 'tag' for ease of searching and/or
+grouping.
 
 Assumptions, restrictions and prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1759,6 +1775,15 @@ the short host name needs to be truncated to 16 characters or less and port
 group needs to be truncated to 12 characters or less.  This functionality
 offers a little bit more flexibility to determine how these truncated
 components should look.
+
+.. note::
+
+   Once the port group and short host name have been overridden with any
+   new format, it is not possible to return to the default format or change
+   to another format if any volumes are in an attached state. This is because
+   there is no way to determine the overridden format once
+   ``powermax_short_host_name_template` or ``powermax_port_group_name_template``
+   have been removed or changed.
 
 Assumptions, restrictions, and prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1851,6 +1876,21 @@ Assumptions, restrictions, and prerequisites
    +-----------------------------------+-------------------------------------+------------------------------------+
 
 
+21. Snap ids replacing generations
+----------------------------------
+
+Snap ids were introduced to the PowerMax in microcde 5978.669.669 and
+Unisphere for PowerMax 9.2.  Generations existed previously and could cause
+stale data if deleted out of sequence, even though we locked against this
+occurence.  This happened when the newer generation(s) inherited its deleted
+predecessors generation number.  So in a series of 0, 1, 2 and 3 generations,
+if generation 1 gets deleted, generation 2 now becomes generation 1 and
+generation 3 becomes generation 2 and so on down the line.
+Snap ids are unique to each snapVX and will not change once assigned at
+creation so out of sequence deletions are no longer an issue.
+Generations will remain for arrays with microcode less than 5978.669.669.
+
+
 Cinder supported operations
 ===========================
 
@@ -1892,6 +1932,27 @@ Configure a single replication target
 
    .. note::
       The PowerMax Cinder drivers do not support Cascaded SRDF.
+
+   .. note::
+
+      The transmit idle functionality must be disabled on the R2 array for
+      Asynchronous rdf groups. If this is not disabled it will prevent failover
+      promotion in the event of access to the R1 array being lost.
+
+      .. code-block:: console
+
+         # symrdf -sid <sid> -rdfg <rdfg> set rdfa -transmit_idle off
+
+   .. note::
+
+      When creating RDF enabled volumes, if there are existing volumes in the
+      target storage group, all rdf pairs related to that storage group must
+      have the same rdf state i.e. rdf pair states must be consistent across
+      all volumes in a storage group when attempting to create a new replication
+      enabled volume. If mixed rdf pair states are found during a volume creation
+      attempt, an error will be raised by the rdf state validation checks.
+      In this event, please wait until all volumes in the storage group have
+      reached a consistent state.
 
 #. Enable replication in ``/etc/cinder/cinder.conf``.
    To enable the replication functionality in PowerMax Cinder driver, it is
@@ -2171,14 +2232,6 @@ host command to failover to the configured target:
 
    # cinder failover-host cinder_host@POWERMAX_FC_REPLICATION
 
-.. note::
-
-    In cases where multiple replication devices are enabled, a backend_id must
-    be specified during initial failover. This can be achieved by appending
-    ``--backend_id <backend_id>`` to the failover command above. The backend_id
-    specified must match one of the backend_ids specified in ``cinder.conf's``
-    ``replication_device's``.
-
 After issuing ``cinder failover-host`` Cinder will set the R2 array as the
 target array for Cinder, however, to get existing instances to use this new
 array and paths to volumes it is necessary to first shelve Nova instances and
@@ -2206,6 +2259,164 @@ necessary to re-issue the Nova shelve and unshelve commands to restore the
 data paths between Nova instances and their corresponding back end volumes.
 Once reverted to the default backend volume and snapshot provisioning
 operations can continue as normal.
+
+Failover promotion
+~~~~~~~~~~~~~~~~~~
+
+Failover promotion can be used to transfer all existing RDF enabled volumes
+to the R2 array and overwrite any references to the original R1 array. This
+can be used in the event of total R1 array failure or in other cases where
+an array transfer is warranted. If the R1 array is online and working and the
+RDF links are still enabled the failover promotion will automatically delete
+rdf pairs as necessary. If the R1 array or the link to the R1 array is down,
+a half deletepair must be issued manually for those volumes during the
+failover promotion.
+
+1. Issue failover command:
+
+.. code-block:: console
+
+   # cinder failover-host <host>
+
+2. Enable array promotion:
+
+.. code-block:: console
+
+   # cinder failover-host --backend_id=pmax_failover_start_array_promotion <host>
+
+3. View and re-enable the cinder service
+
+.. code-block:: console
+
+   # cinder service-list
+   # cinder service-enable <host> <binary>
+
+4. Remove all volumes from volume groups
+
+.. code-block:: console
+
+   # cinder --os-volume-api-version 3.13 group-update --remove-volumes <Vol1ID, etc..> <volume_group_name>
+
+5. Detach all volumes that are attached to instances
+
+.. code-block:: console
+
+   # openstack server remove volume <instance_id> <volume_id>
+
+.. note::
+
+   Deleting the instance will call a detach volume for each attached volume.
+   A terminate connection can be issued manually using the following command
+   for volumes that are stuck in the attached state without an instance.
+
+   .. code-block:: console
+
+      # cinder --os-volume-api-version 3.50 attachment-delete <attachment_id>
+
+6. Delete all remaining instances
+
+.. code-block:: console
+
+   # nova delete <instance_id>
+
+7. Create new volume types
+
+New volume types must be created with references to the remote array. All new
+volume types must adhere to the following guidelines:
+
+.. code-block:: text
+
+    1. Uses the same workload, SLO & compression setting as the previous R1 volume type.
+    2. Uses the remote array instead of the primary for its pool name.
+    3. Uses the same volume_backend_name as the previous volume type.
+    4. Must not have replication enabled.
+
+Example existing volume type extra specs.
+
+.. code-block:: text
+
+   pool_name='Gold+None+SRP_1+000297900330', replication_enabled='<is> True',
+   storagetype:replication_device_backend_id='async-rep-1', volume_backend_name='POWERMAX_ISCSI_NONE'
+
+Example new volume type extra specs.
+
+.. code-block:: text
+
+   pool_name='Gold+None+SRP_1+000197900049', volume_backend_name='POWERMAX_ISCSI_NONE'
+
+8. Retype volumes to new volume types
+
+Additional checks will be performed during failover promotion retype to ensure
+workload, compression and slo settings meet the criteria specified above when
+creating the new volume types.
+
+.. code-block:: console
+
+   # cinder retype --migration-policy on-demand <volume> <volume_type>
+
+.. note::
+
+   If the volumes RDF links are offline during this retype then a half deletepair
+   must be performed manually after retype. Please reference section 8.a. below
+   for guidance on this process.
+
+8.a. Retype and RDF half deletepair
+
+In instances where the rdf links are offline and rdf pairs have been set to
+partitioned state there are additional requirements. In that scenario the
+following order should be adhered to:
+
+.. code-block:: text
+
+   1. Retype all Synchronous volumes.
+   2. Half_deletepair all Synchronous volumes using the default storage group.
+   3. Retype all Asynchronous volumes.
+   4. Half_deletepair all Asynchronous volumes using their management storage group.
+   5. Retype all Metro volumes.
+   6. Half_deletepair all Metro volumes using their management storage group.
+   7. Delete the Asynchronous and Metro management storage groups.
+
+.. note::
+
+   A half deletepair cannot be performed on Metro enabled volumes unless the
+   symforce option has been enabled in the symapi options. In symapi/config/options
+   uncomment and set 'SYMAPI_ALLOW_RDF_SYMFORCE = True'.
+
+.. code-block:: console
+
+   # symrdf -sid <sid> -sg <sg> -rdfg <rdfg> -force -symforce half_deletepair
+
+9. Issue failback
+
+Issuing the failback command will disable both the failover and promotion
+flags. Please ensure all volumes have been retyped and all replication pairs
+have been deleted before issuing this command.
+
+.. code-block:: console
+
+   # cinder failover-host --backend_id default <host>
+
+10. Update cinder.conf
+
+Update the cinder.conf file to include details for the new primary array. For
+more information please see the Configure block storage in cinder.conf section
+of this documentation.
+
+11. Restart the cinder services
+
+Restart the cinder volume service to allow it to detect the changes made to
+the cinder.conf file.
+
+12. Set Metro volumes to ready state
+
+Metro volumes will be set to a Not Ready state after performing rdf pair
+cleanup. Set these volumes back to Ready state to allow them to be attached
+to instances. The U4P instance must be restarted for this change to be
+detected.
+
+.. code-block:: console
+
+   # symdev -sid <sid> ready -devs <dev_id1, dev_id2>
 
 Asynchronous and metro replication management groups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2256,13 +2467,13 @@ retype, follow these steps:
 
 .. note::
 
-   The Ussuri release of OpenStack supports retyping in-use volumes to and from
-   replication enabled volume types with limited exception of volumes with
-   Metro replication enabled. To retype to a volume-type that is Metro enabled
-   the volume **must** first be detached then retyped. The reason for this is
-   so the paths from the instance to the Metro R1 & R2 volumes must be
-   initialised, this is not possible on the R2 device whilst a volume is
-   attached.
+   From the Ussuri release of OpenStack the PowerMax driver supports retyping
+   in-use volumes to and from replication enabled volume types with limited
+   exception of volumes with Metro replication enabled. To retype to a
+   volume-type that is Metro enabled the volume **must** first be detached
+   then retyped. The reason for this is so the paths from the instance to the
+   Metro R1 & R2 volumes must be initialised, this is not possible on the R2
+   device whilst a volume is attached.
 
 .. note::
 
@@ -2744,17 +2955,178 @@ information on setup, configuration and usage please see the official
 OpenStack `volume backup`_ documentation and related `volume backup CLI`_
 guide.
 
+
+Port group & port load balancing
+--------------------------------
+
+By default port groups are selected at random from ``cinder.conf`` when
+connections are initialised between volumes on the backend array and
+compute instances in Nova. If a port group is set in the volume type extra
+specifications this will take precedence over any port groups configured in
+``cinder.conf``. Port selection within the chosen port group is also selected
+at random by default.
+
+With port group and port load balancing in the PowerMax for Cinder driver users
+can now select the port group and port load by determining which has the lowest
+load. The load metric is defined by the user in both instances so the selection
+process can better match the needs of the user and their environment. Available
+metrics are detailed in the ``performance metrics`` section.
+
+Port Groups are reported on at five minute time deltas (diagnostic), and FE
+Ports are reported on at one minute time deltas (real-time) if real-time
+metrics are enabled, else default five minute time delta (diagnostic). The
+window at which performance metrics are analysed is a user-configured option in
+``cinder.conf``, this is detailed in the ``configuration`` section.
+
+Calculating load
+~~~~~~~~~~~~~~~~
+
+The process by which Port Group or Port load is calculated is the same for
+both. The user specifies the look back window which determines how many
+performance intervals to measure, 60 minutes will give 12 intervals of 5
+minutes each for example.  If no lookback window is specified or is set to
+0 only the most recent performance metric will be analysed. This will give a
+slight performance improvement but with the improvements made to the
+performance REST endpoints for load this improvement is negligible.
+For real-time stats a minimum of 1 minute is required.
+
+Once a call is made to the performance REST endpoints, the performance data for
+that PG or port is extracted. Then the metric values are summed and divided by
+the count of intervals to get the average for the look back window.
+
+The performance metric average value for each asset is added to a Python heap.
+Once all assets have been measured the lowest value will always be at position
+0 in the heap so there is no extra time penalty requirement for search.
+
+
+Pre-requisites
+~~~~~~~~~~~~~~
+
+Before load balancing can be enabled in the PowerMax for Cinder driver
+performance metrics collection must be enabled in Unisphere. Real-time
+performance metrics collection is enabled separately from diagnostic metrics
+collection. Performance metric collection is only available for local arrays
+in Unisphere.
+
+After performance metrics registration there is a time delay before Unisphere
+records performance metrics, adequate time must be given before enabling load
+balancing in Cinder else default random selection method will be used. It is
+recommended to wait 4 hours after performance registration before enabling
+load balancing in Cinder.
+
+
+Configuration
+~~~~~~~~~~~~~
+
+A number of configuration options are available for users so load balancing
+can be set to better suit the needs of the environment. These configuration
+options are detailed in the table below.
+
+.. table:: Load balance cinder.conf configuration options
+
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``cinder.conf parameter``   | options        | Default         | Description                            |
+    +=============================+================+=================+========================================+
+    |  ``load_balance``           | ``True/False`` | ``False``       | | Enable/disable load balancing for    |
+    |                             |                |                 | | a PowerMax backend.                  |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``load_balance_real_time``  | ``True/False`` | ``False``       | | Enable/disable real-time performance |
+    |                             |                |                 | | metrics for Port level metrics       |
+    |                             |                |                 | | (not available for Port Group).      |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``load_data_format``        | ``Avg/Max``    | ``Avg``         | | Performance data format, not         |
+    |                             |                |                 | | applicable for real-time.            |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``load_lookback``           | ``int``        | ``60``          | | How far in minutes to look back for  |
+    |                             |                |                 | | diagnostic performance metrics in    |
+    |                             |                |                 | | load calculation, minimum of 0       |
+    |                             |                |                 | | maximum of 1440 (24 hours).          |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``load_real_time_lookback`` | ``int``        | ``1``           | | How far in minutes to look back for  |
+    |                             |                |                 | | real-time performance metrics in     |
+    |                             |                |                 | | load calculation, minimum of 1       |
+    |                             |                |                 | | maximum of 60 (24 hours).            |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``port_group_load_metric``  | See below      | ``PercentBusy`` | | Metric used for port group load      |
+    |                             |                |                 | | calculation.                         |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+    | ``port_load_metric``        | See below      | ``PercentBusy`` | | Metric used for port group load      |
+    |                             |                |                 | | calculation.                         |
+    +-----------------------------+----------------+-----------------+----------------------------------------+
+
+Port-Group Metrics
+~~~~~~~~~~~~~~~~~~
+
+.. table:: Port-group performance metrics
+
+    +-------------------+--------------------+-----------------------------------------------------------+
+    | Metric            | cinder.conf option | Description                                               |
+    +===================+====================+===========================================================+
+    |  % Busy           | ``PercentBusy``    | The percent of time the port group is busy.               |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  Avg IO Size (KB) | ``AvgIOSize``      | | Calculated value: (HA Kbytes transferred per sec /      |
+    |                   |                    | | total IOs per sec)                                      |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  Host IOs/sec     | ``IOs``            | | The number of host IO operations performed each second, |
+    |                   |                    | | including writes and random and sequential reads.       |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  Host MBs/sec     | ``MBs``            | The number of host MBs read each second.                  |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  MBs Read/sec     | ``MBRead``         | The number of reads per second in MBs.                    |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  MBs Written/sec  | ``MBWritten``      | The number of writes per second in MBs.                   |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  Reads/sec        | ``Reads``          | The average number of host reads performed per second.    |
+    +-------------------+--------------------+-----------------------------------------------------------+
+    |  Writes/sec       | ``Writes``         | The average number of host writes performed per second.   |
+    +-------------------+--------------------+-----------------------------------------------------------+
+
+Port Metrics
+~~~~~~~~~~~~
+
+.. table:: Port performance metrics
+
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    | Metric              | cinder.conf option    | Real-Time Supported |  Description                                               |
+    +=====================+=======================+=====================+============================================================+
+    |  % Busy             | ``PercentBusy``       |  Yes                |  The percent of time the port is busy.                     |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Avg IO Size (KB)   | ``AvgIOSize``         |  Yes                |  | Calculated value: (HA Kbytes transferred per sec /      |
+    |                     |                       |                     |  | total IOs per sec)                                      |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Host IOs/sec       | ``IOs``               |  Yes                |  | The number of host IO operations performed each second, |
+    |                     |                       |                     |  | including writes and random and sequential reads.       |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Host MBs/sec       | ``MBs``               |  Yes                |  The number of host MBs read each second.                  |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  MBs Read/sec       | ``MBRead``            |  Yes                |  The number of reads per second in MBs.                    |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  MBs Written/sec    | ``MBWritten``         |  Yes                |  The number of writes per second in MBs.                   |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Reads/sec          | ``Reads``             |  Yes                |  The number of read operations performed by the port per   |
+    |                     |                       |                     |  second.                                                   |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Writes/sec         | ``Writes``            |  Yes                |  The number of write operations performed each second by   |
+    |                     |                       |                     |  the port.                                                 |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Speed Gb/sec       | ``SpeedGBs``          |  No                 |  Speed.                                                    |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Response Time (ms) | ``ResponseTime``      |  No                 |  The average response time for the reads and writes.       |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Read RT (ms)       | ``ReadResponseTime``  |  No                 |  The average time it takes to serve one read IO.           |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+    |  Write RT (ms)      | ``WriteResponseTime`` |  No                 |  The average time it takes to serve one write IO.          |
+    +---------------------+-----------------------+---------------------+------------------------------------------------------------+
+
+
 Upgrading from SMI-S based driver to REST API based driver
 ==========================================================
 
 Seamless upgrades from an SMI-S based driver to REST API based driver,
 following the setup instructions above, are supported with a few exceptions:
 
-#. OpenStack's ``live migration`` functionality will not work on already
-   attached/in-use legacy volumes without first migrating the volumes to
-   the new REST masking view structure. If you are upgrading from Newton
-   or Ocata to Pike or greater please contact `Dell EMC Support`_ and we
-   will guide you through the process.
+#. Seamless upgrade from SMI-S(Ocata and earlier) to REST(Pike and later)
+   is now available on all functionality including Live Migration.
 
 #. Consistency groups are deprecated in Pike. Generic Volume Groups are
    supported from Pike onwards.
