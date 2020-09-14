@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1883490 <https://bugs.launchpad.net/cinder/+bug/1883490>`_:
+    Fixed incorrect response of listing volumes with filters.
