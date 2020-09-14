@@ -1,5 +1,5 @@
 export DEBIAN_FRONTEND=noninteractive && \
-export UPPER_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/queens-m3/upper-constraints.txt && \
+export UPPER_CONSTRAINTS_FILE=https://raw.githubusercontent.com/sapcc/requirements/stable/train-m3/upper-constraints.txt && \
 apt-get update && \
 apt-get install -y build-essential python-pip python-dev python3-dev git libpcre++-dev gettext libpq-dev && \
 pip install -U pip && \

@@ -713,7 +713,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
             backup1 = backup_list[index]
             index = index - 1
             metadata = self._read_metadata(backup1)
-            restore_handle.add_backup(backup1, metadata)
+            restore_handle.add_backup(backup1, metadata, backup, volume_id)
 
             volume_meta = metadata.get('volume_meta', None)
             try:
@@ -775,7 +775,7 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
         self._idx = -1
 
     @abc.abstractmethod
-    def add_backup(self, backup, metadata):
+    def add_backup(self, backup, metadata, requested_backup, volume_id):
         """This is called for each backup in the incremental backups chain."""
         return
 
@@ -934,7 +934,7 @@ class BackupRestoreHandle(object, metaclass=abc.ABCMeta):
 class BackupRestoreHandleV1(BackupRestoreHandle):
     """Handles restoring of V1 backups."""
 
-    def add_backup(self, backup, metadata):
+    def add_backup(self, backup, metadata, requested_backup, volume_id):
         """Processes a v1 volume backup for being restored."""
         metadata_objects = metadata['objects']
         metadata_object_names = []
@@ -952,6 +952,11 @@ class BackupRestoreHandleV1(BackupRestoreHandle):
             raise exception.InvalidBackup(reason=err)
 
         for metadata_object in metadata_objects:
+            with requested_backup.as_read_deleted():
+                requested_backup.refresh()
+            if requested_backup.status != fields.BackupStatus.RESTORING:
+                raise exception.BackupRestoreCancel(back_id=backup.id,
+                                                    vol_id=volume_id)
             object_name, obj = list(metadata_object.items())[0]
             # keep the information needed to read the object from the
             # storage backend

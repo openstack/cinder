@@ -455,7 +455,8 @@ class ChunkedDriverTestCase(test.TestCase):
                           self.backup,
                           mock.Mock())
 
-    def test_restore(self):
+    @mock.patch('cinder.backup.chunkeddriver.BackupRestoreHandleV1.add_backup')
+    def test_restore(self, mock_add_backup):
         volume_file = mock.Mock()
         restore_test = mock.Mock()
         self.driver._restore_v1 = restore_test
@@ -468,7 +469,7 @@ class ChunkedDriverTestCase(test.TestCase):
             self.driver.restore(backup, self.volume, volume_file)
             self.assertEqual(2, mock_put.call_count)
 
-        restore_test.assert_called()
+        mock_add_backup.assert_called()
 
     def test_delete_backup(self):
         with mock.patch.object(self.driver, 'delete_object') as mock_delete:
