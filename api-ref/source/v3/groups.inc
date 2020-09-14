@@ -317,6 +317,7 @@ Response Parameters
    - id: group_id_path
    - name: name
    - volumes: volume_ids
+   - replication_status: group_replication_status
    - project_id: project_id_group
 
 Response Example
