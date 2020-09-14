@@ -5386,9 +5386,11 @@ class PowerMaxCommon(object):
         rep_extra_specs[utils.PORTGROUPNAME] = rep_config['portgroup']
 
         # Get the RDF Group label & number
+        array = (rep_config[utils.ARRAY] if self.promotion else
+                 extra_specs[utils.ARRAY])
         rep_extra_specs['rdf_group_label'] = rep_config['rdf_group_label']
         rdf_group_no, __ = self.get_rdf_details(
-            extra_specs['array'], rep_config)
+            array, rep_config)
         rep_extra_specs['rdf_group_no'] = rdf_group_no
         # Get the SRDF wait/retries settings
         rep_extra_specs['sync_retries'] = rep_config['sync_retries']
