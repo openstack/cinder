@@ -2750,11 +2750,8 @@ Upgrading from SMI-S based driver to REST API based driver
 Seamless upgrades from an SMI-S based driver to REST API based driver,
 following the setup instructions above, are supported with a few exceptions:
 
-#. OpenStack's ``live migration`` functionality will not work on already
-   attached/in-use legacy volumes without first migrating the volumes to
-   the new REST masking view structure. If you are upgrading from Newton
-   or Ocata to Pike or greater please contact `Dell EMC Support`_ and we
-   will guide you through the process.
+#. Seamless upgrade from SMI-S(Ocata and earlier) to REST(Pike and later)
+   is now available on all functionality including Live Migration.
 
 #. Consistency groups are deprecated in Pike. Generic Volume Groups are
    supported from Pike onwards.
