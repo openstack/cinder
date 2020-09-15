@@ -61,10 +61,10 @@ class DS8KCommonHelper(object):
 
     OPTIONAL_PARAMS = ['ds8k_host_type', 'lss_range_for_cg']
     # if use new REST API, please update the version below
-    VALID_REST_VERSION_5_7_MIN = '5.7.51.1047'
+    VALID_REST_VERSION_87_51_MIN = '87.51.52.0'
     INVALID_STORAGE_VERSION = '8.0.1'
-    REST_VERSION_5_7_MIN_PPRC_CG = '5.7.51.1068'
-    REST_VERSION_5_8_MIN_PPRC_CG = '5.8.20.1059'
+    REST_VERSION_87_51_MIN_PPRC_CG = '87.51.63.0'
+    REST_VERSION_88_20_MIN_PPRC_CG = '88.20.112.0'
 
     def __init__(self, conf, HTTPConnectorObject=None):
         self.conf = conf
@@ -148,7 +148,7 @@ class DS8KCommonHelper(object):
         except restclient.TimeoutException:
             raise restclient.APIException(
                 data=(_("Can't connect to %(host)s") % {'host': san_ip}))
-        self.backend['rest_version'] = self._get_version()['bundle_version']
+        self.backend['rest_version'] = self._get_version()['bundle']
         LOG.info("Connection to DS8K storage system %(host)s has been "
                  "established successfully, the version of REST is %(rest)s.",
                  {'host': self._get_value('san_ip'),
@@ -224,14 +224,15 @@ class DS8KCommonHelper(object):
                            "if you want to use this version of driver, "
                            "please upgrade the CCL.")
                          % self.INVALID_STORAGE_VERSION))
-        if ('5.7' in self.backend['rest_version'] and
+        rest_ver = self.backend['rest_version'][0:2]
+        if ('87' == rest_ver and
            dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.VALID_REST_VERSION_5_7_MIN)):
+           dist_version.LooseVersion(self.VALID_REST_VERSION_87_51_MIN)):
             raise exception.VolumeDriverException(
                 message=(_("REST version %(invalid)s is lower than "
                            "%(valid)s, please upgrade it in DS8K.")
                          % {'invalid': self.backend['rest_version'],
-                            'valid': self.VALID_REST_VERSION_5_7_MIN}))
+                            'valid': self.VALID_REST_VERSION_87_51_MIN}))
 
     def verify_rest_version_for_pprc_cg(self):
         if '8.1' in self.backend['rest_version']:
@@ -239,14 +240,15 @@ class DS8KCommonHelper(object):
                 message=_("REST for DS8K 8.1 does not support PPRC "
                           "consistency group, please upgrade the CCL."))
         valid_rest_version = None
-        if ('5.7' in self.backend['rest_version'] and
+        rest_ver = self.backend['rest_version'][0:2]
+        if ('87' == rest_ver and
            dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.REST_VERSION_5_7_MIN_PPRC_CG)):
-            valid_rest_version = self.REST_VERSION_5_7_MIN_PPRC_CG
-        elif ('5.8' in self.backend['rest_version'] and
+           dist_version.LooseVersion(self.REST_VERSION_87_51_MIN_PPRC_CG)):
+            valid_rest_version = self.REST_VERSION_87_51_MIN_PPRC_CG
+        elif ('88' == rest_ver and
               dist_version.LooseVersion(self.backend['rest_version']) <
-              dist_version.LooseVersion(self.REST_VERSION_5_8_MIN_PPRC_CG)):
-            valid_rest_version = self.REST_VERSION_5_8_MIN_PPRC_CG
+              dist_version.LooseVersion(self.REST_VERSION_88_20_MIN_PPRC_CG)):
+            valid_rest_version = self.REST_VERSION_88_20_MIN_PPRC_CG
 
         if valid_rest_version:
             raise exception.VolumeDriverException(
@@ -760,7 +762,7 @@ class DS8KCommonHelper(object):
         self._client.send('DELETE', '/volumes/%s' % lun_id)
 
     def _get_version(self):
-        return self._client.fetchone('GET', '')
+        return self._client.fetchone('GET', '/systems')
 
     @proxy.logger
     def _create_lun(self, volData):
@@ -1042,8 +1044,8 @@ class DS8KECKDHelper(DS8KCommonHelper):
     OPTIONAL_PARAMS = ['ds8k_host_type', 'port_pairs', 'ds8k_ssid_prefix',
                        'lss_range_for_cg']
     # if use new REST API, please update the version below
-    VALID_REST_VERSION_5_7_MIN = '5.7.51.1068'
-    VALID_REST_VERSION_5_8_MIN = '5.8.20.1059'
+    VALID_REST_VERSION_87_51_MIN = '87.51.63.0'
+    VALID_REST_VERSION_88_20_MIN = '88.20.112.0'
     MIN_VALID_STORAGE_VERSION = '8.1'
     INVALID_STORAGE_VERSION = '8.0.1'
 
@@ -1094,19 +1096,20 @@ class DS8KECKDHelper(DS8KCommonHelper):
            dist_version.LooseVersion(self.MIN_VALID_STORAGE_VERSION)):
             self._disable_thin_provision = True
 
-        if (('5.7' in self.backend['rest_version'] and
+        rest_ver = self.backend['rest_version'][0:2]
+        if (('87' == rest_ver and
            dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.VALID_REST_VERSION_5_7_MIN)) or
-           ('5.8' in self.backend['rest_version'] and
+           dist_version.LooseVersion(self.VALID_REST_VERSION_87_51_MIN)) or
+           ('88' == rest_ver and
            dist_version.LooseVersion(self.backend['rest_version']) <
-           dist_version.LooseVersion(self.VALID_REST_VERSION_5_8_MIN))):
+           dist_version.LooseVersion(self.VALID_REST_VERSION_88_20_MIN))):
             raise exception.VolumeDriverException(
                 message=(_("REST version %(invalid)s is lower than "
                            "%(valid)s, please upgrade it in DS8K.")
                          % {'invalid': self.backend['rest_version'],
-                            'valid': (self.VALID_REST_VERSION_5_7_MIN if '5.7'
-                                      in self.backend['rest_version'] else
-                                      self.VALID_REST_VERSION_5_8_MIN)}))
+                            'valid': (self.VALID_REST_VERSION_87_51_MIN
+                                      if '87' == rest_ver else
+                                      self.VALID_REST_VERSION_88_20_MIN)}))
 
     @proxy.logger
     def _get_device_mapping(self):
