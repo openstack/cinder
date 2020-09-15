@@ -65,7 +65,7 @@ networkx==1.11
 oauth2client==1.5.0
 openstackdocstheme==1.20.0
 os-api-ref==1.4.0
-os-brick==2.10.4
+os-brick==2.10.5
 os-client-config==1.29.0
 os-win==3.0.0
 oslo.cache==1.29.0
