@@ -618,6 +618,19 @@ class PowerMaxReplicationTest(test.TestCase):
 
         self.assertEqual(ref_vol_update, vols_model_update[0])
 
+    @mock.patch.object(common.PowerMaxCommon, '_initial_setup',
+                       return_value=tpd.PowerMaxData.extra_specs)
+    def test_populate_volume_and_group_update_lists_group_update_vol_list(
+            self, mck_setup):
+        volume = deepcopy(self.data.test_volume)
+        volume.group_id = self.data.test_group.id
+        volumes = [volume]
+        groups = [self.data.test_group]
+        volume_updates, group_updates = (
+            self.common._populate_volume_and_group_update_lists(
+                volumes, groups, None))
+        self.assertEqual([volume], volumes)
+
     @mock.patch.object(
         utils.PowerMaxUtils, 'validate_non_replication_group_config')
     @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',

@@ -5218,16 +5218,21 @@ class PowerMaxCommon(object):
         """
         volume_update_list = []
         group_update_list = []
+        # Since we are updating volumes if a volume is in a group, copy to
+        # a new variable otherwise we will be updating the replicated_vols
+        # variable assigned in manager.py's failover method.
+        vols = deepcopy(volumes)
 
         if groups:
             for group in groups:
-                vol_list = []
-                for index, vol in enumerate(volumes):
+                group_vol_list = []
+                for index, vol in enumerate(vols):
                     if vol.group_id == group.id:
-                        vol_list.append(volumes.pop(index))
+                        group_vol_list.append(vols[index])
+                vols = [vol for vol in vols if vol not in group_vol_list]
                 grp_update, vol_updates = (
                     self.failover_replication(
-                        None, group, vol_list, group_fo, host=True))
+                        None, group, group_vol_list, group_fo, host=True))
 
                 group_update_list.append({'group_id': group.id,
                                           'updates': grp_update})
@@ -5235,7 +5240,7 @@ class PowerMaxCommon(object):
 
         non_rep_vol_list, sync_vol_dict, async_vol_dict, metro_vol_list = (
             [], {}, {}, [])
-        for volume in volumes:
+        for volume in vols:
             array = ast.literal_eval(volume.provider_location)['array']
             extra_specs = self._initial_setup(volume)
             extra_specs[utils.ARRAY] = array
