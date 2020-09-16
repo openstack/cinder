@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    PowerMax Driver - `bug #1908920
+    <https://bugs.launchpad.net/cinder/+bug/1908920>`_: This offline r1
+    promotion fix resets replication enabled and configuration metadata
+    during promotion retype with offline r1 array. It also gets management
+    storage group name from source extra_specs during promotion.
