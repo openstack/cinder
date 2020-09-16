@@ -72,7 +72,7 @@ class QuotaUtilsTest(test.TestCase):
         del returned_project.subtree
         keystoneclient.projects.get.return_value = returned_project
         expected_project = quota_utils.GenericProjectInfo(
-            self.context.project_id, 'v3', 'bar')
+            self.context.project_id, 'v3', 'bar', domain_id='default')
         project = quota_utils.get_project_hierarchy(
             self.context, self.context.project_id)
         self.assertEqual(expected_project.__dict__, project.__dict__)
@@ -86,7 +86,8 @@ class QuotaUtilsTest(test.TestCase):
         returned_project.subtree = subtree_dict
         keystoneclient.projects.get.return_value = returned_project
         expected_project = quota_utils.GenericProjectInfo(
-            self.context.project_id, 'v3', 'bar', subtree_dict)
+            self.context.project_id, 'v3', 'bar', subtree_dict,
+            domain_id='default')
         project = quota_utils.get_project_hierarchy(
             self.context, self.context.project_id, subtree_as_ids=True)
         keystoneclient.projects.get.assert_called_once_with(

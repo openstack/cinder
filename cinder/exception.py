@@ -392,13 +392,17 @@ class VolumeTypeDeletionError(Invalid):
 
 
 class VolumeTypeDefaultDeletionError(Invalid):
-    message = _("The volume type %(volume_type_id)s is the default volume "
+    message = _("The volume type %(volume_type_id)s is a default volume "
                 "type and cannot be deleted.")
 
 
 class VolumeTypeDefaultMisconfiguredError(CinderException):
     message = _("The request cannot be fulfilled as the default volume type "
                 "%(volume_type_name)s cannot be found.")
+
+
+class VolumeTypeProjectDefaultNotFound(NotFound):
+    message = _("Default type for project %(project_id)s not found.")
 
 
 class GroupTypeNotFound(NotFound):

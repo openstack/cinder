@@ -1,0 +1,12 @@
+{
+    "default_types": [
+        {
+        "project_id": "6685584b-1eac-4da6-b5c3-555430cf68ff",
+        "volume_type_id": "40ec6e5e-c9bd-4170-8740-c1cd42d7eabb"
+        },
+        {
+        "project_id": "dd46ea3e-6f3f-4e50-85fa-40c182e25d12",
+        "volume_type_id": "9fb51b63-3cd4-493f-9380-53d8f0a04bd4"
+        }
+    ]
+}

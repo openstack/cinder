@@ -129,11 +129,13 @@ class HTTPRequest(webob.Request):
                 kwargs['base_url'] = 'http://localhost/v3'
         use_admin_context = kwargs.pop('use_admin_context', False)
         version = kwargs.pop('version', api_version._MIN_API_VERSION)
+        system_scope = kwargs.pop('system_scope', None)
         out = os_wsgi.Request.blank(*args, **kwargs)
         out.environ['cinder.context'] = FakeRequestContext(
             fake.USER_ID,
             fake.PROJECT_ID,
-            is_admin=use_admin_context)
+            is_admin=use_admin_context,
+            system_scope=system_scope)
         out.api_version_request = api_version.APIVersionRequest(version)
         return out
 

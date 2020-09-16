@@ -13,10 +13,13 @@
 from cinder.api import microversions as mv
 from cinder.api.v2 import types
 from cinder import context
+from cinder import db
+from cinder import exception
 from cinder import objects
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
+from cinder.volume import volume_types
 
 
 class VolumeTypesApiTest(test.TestCase):
@@ -89,3 +92,19 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(
             ['volume_type1', 'volume_type2'],
             sorted([az['name'] for az in res_dict['volume_types']]))
+
+    def test_delete_non_project_default_type(self):
+        type = self._create_volume_type(self.ctxt, 'type1')
+        db.project_default_volume_type_set(
+            self.ctxt, fake.VOLUME_TYPE_ID, fake.PROJECT_ID)
+        volume_types.destroy(self.ctxt, type.id)
+        self.assertRaises(exception.VolumeTypeNotFound,
+                          volume_types.get_by_name_or_id,
+                          self.ctxt, type.id)
+
+    def test_cannot_delete_project_default_type(self):
+        default_type = db.project_default_volume_type_set(
+            self.ctxt, fake.VOLUME_TYPE_ID, fake.PROJECT_ID)
+        self.assertRaises(exception.VolumeTypeDefaultDeletionError,
+                          volume_types.destroy,
+                          self.ctxt, default_type['volume_type_id'])

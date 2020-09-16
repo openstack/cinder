@@ -99,11 +99,11 @@ volume creation.
 
 #. volume_type
 #. cinder_img_volume_type (via glance image metadata)
-#. default_volume_type (via cinder.conf)
+#. default volume type (via project defaults or cinder.conf)
 
 
 volume-type
-+++++++++++
+^^^^^^^^^^^
 
 User can specify `volume type` when creating a volume.
 
@@ -122,7 +122,7 @@ User can specify `volume type` when creating a volume.
 
 
 cinder_img_volume_type
-++++++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^^^^
 
 If glance image has ``cinder_img_volume_type`` property, Cinder uses this
 parameter to specify ``volume type`` when creating a volume.
@@ -198,11 +198,37 @@ a volume from the image.
       | user_id             | 33fdc37314914796883706b33e587d51     |
       +---------------------+--------------------------------------+
 
-default_volume_type
-+++++++++++++++++++
+default volume type
+^^^^^^^^^^^^^^^^^^^
 
-If above parameters are not set, Cinder uses default_volume_type which is
-defined in cinder.conf during volume creation.
+If above parameters are not set, cinder uses default volume type during
+volume creation.
+
+The effective default volume type (whether it be project default or
+default_volume_type) can be checked with the following command:
+
+.. code-block:: console
+
+    $ cinder type-default
+
+There are 2 ways to set the default volume type:
+
+1) Project specific defaults
+2) default_volume_type defined in cinder.conf
+
+Project specific defaults (available since mv 3.62 or higher)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Project specific defaults can be managed using the `Default Volume Types API
+<https://docs.openstack.org/api-ref/block-storage/v3/#default-volume-types-default-types>`_
+It is set on a per project basis and has a higher priority over
+default_volume_type defined in cinder.conf
+
+default_volume_type
+"""""""""""""""""""
+
+If the project specific default is not set then default_volume_type
+configured in cinder.conf is used to create volumes.
 
 Example cinder.conf file configuration.
 

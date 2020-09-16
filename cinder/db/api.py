@@ -711,6 +711,27 @@ def volume_type_access_remove(context, type_id, project_id):
     return IMPL.volume_type_access_remove(context, type_id, project_id)
 
 
+def project_default_volume_type_set(context, volume_type_id, project_id):
+    """Set default volume type for a project"""
+    return IMPL.project_default_volume_type_set(context, volume_type_id,
+                                                project_id)
+
+
+def project_default_volume_type_get(context, project_id=None):
+    """Get default volume type for a project"""
+    return IMPL.project_default_volume_type_get(context, project_id)
+
+
+def project_default_volume_type_unset(context, project_id):
+    """Unset default volume type for a project (hard delete)"""
+    return IMPL.project_default_volume_type_unset(context, project_id)
+
+
+def get_all_projects_with_default_type(context, volume_type_id):
+    """Get all the projects associated with a default type"""
+    return IMPL.get_all_projects_with_default_type(context, volume_type_id)
+
+
 ####################
 
 

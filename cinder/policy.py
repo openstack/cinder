@@ -155,20 +155,20 @@ def authorize(context, action, target, do_raise=True, exc=None):
              do_raise is False.
     """
     init()
-    credentials = context.to_policy_values()
     if not exc:
         exc = exception.PolicyNotAuthorized
     try:
-        result = _ENFORCER.authorize(action, target, credentials,
+        result = _ENFORCER.authorize(action, target, context,
                                      do_raise=do_raise, exc=exc, action=action)
     except policy.PolicyNotRegistered:
         with excutils.save_and_reraise_exception():
             LOG.exception('Policy not registered')
     except Exception:
         with excutils.save_and_reraise_exception():
-            LOG.error('Policy check for %(action)s failed with credentials '
+            LOG.error('Policy check for %(action)s failed with context '
                       '%(credentials)s',
-                      {'action': action, 'credentials': credentials})
+                      {'action': action,
+                       'credentials': context.to_policy_values()})
     return result
 
 
