@@ -14,14 +14,11 @@
 import abc
 
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_utils import importutils
 import six
 
 from cinder import exception
 from cinder.i18n import _
-
-LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 
