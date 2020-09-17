@@ -518,7 +518,7 @@ class DefaultVolumeTypes(BASE, CinderBase):
     __tablename__ = "default_volume_types"
     volume_type_id = Column(String, ForeignKey('volume_types.id'),
                             nullable=False, index=True)
-    project_id = Column(String(255), unique=True, primary_key=True)
+    project_id = Column(String(255), primary_key=True)
     volume_type = relationship(
         VolumeType,
         foreign_keys=volume_type_id,

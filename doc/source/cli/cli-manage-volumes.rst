@@ -209,7 +209,7 @@ default_volume_type) can be checked with the following command:
 
 .. code-block:: console
 
-    $ cinder type-default
+   $ cinder type-default
 
 There are 2 ways to set the default volume type:
 
