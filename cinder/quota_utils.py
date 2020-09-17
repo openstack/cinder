@@ -228,10 +228,30 @@ def _keystone_client(context, version=(3, 0)):
     :param version: version of Keystone to request
     :return: keystoneclient.client.Client object
     """
-    auth_plugin = identity.Token(
-        auth_url=CONF.keystone_authtoken.auth_url,
-        token=context.auth_token,
-        project_id=context.project_id)
+    if context.system_scope is not None:
+        auth_plugin = identity.Token(
+            auth_url=CONF.keystone_authtoken.auth_url,
+            token=context.auth_token,
+            system_scope=context.system_scope
+        )
+    elif context.domain_id is not None:
+        auth_plugin = identity.Token(
+            auth_url=CONF.keystone_authtoken.auth_url,
+            token=context.auth_token,
+            domain_id=context.domain_id
+        )
+    elif context.project_id is not None:
+        auth_plugin = identity.Token(
+            auth_url=CONF.keystone_authtoken.auth_url,
+            token=context.auth_token,
+            project_id=context.project_id
+        )
+    else:
+        # We're dealing with an unscoped token from keystone that doesn't
+        # carry any authoritative power outside of the user simplify proving
+        # they know their own password. This token isn't associated with any
+        # authorization target (e.g., system, domain, or project).
+        auth_plugin = context.get_auth_plugin()
 
     client_session = ka_loading.session.Session().load_from_options(
         auth=auth_plugin,
