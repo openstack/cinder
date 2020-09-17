@@ -678,9 +678,10 @@ class API(base.Base):
 
         search_opts = search_opts or {}
 
-        if context.is_admin and 'all_tenants' in search_opts:
-            # Need to remove all_tenants to pass the filtering below.
-            del search_opts['all_tenants']
+        # Need to remove all_tenants to pass the filtering below.
+        all_tenants = strutils.bool_from_string(search_opts.pop('all_tenants',
+                                                                'false'))
+        if context.is_admin and all_tenants:
             snapshots = objects.SnapshotList.get_all(
                 context, search_opts, marker, limit, sort_keys, sort_dirs,
                 offset)
