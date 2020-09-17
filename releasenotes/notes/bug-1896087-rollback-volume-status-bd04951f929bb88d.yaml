@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1896087 <https://bugs.launchpad.net/cinder/+bug/1896087>`_:
+    Volume status will be rolled back to the previous state if backup creation
+    fails when backup service is not available
+
