@@ -23,7 +23,6 @@ import time
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
-from oslo_utils import strutils
 import six
 
 from cinder import coordination
@@ -2384,11 +2383,8 @@ class PowerMaxCommon(object):
         extra_specs[utils.SLO] = slo_from_extra_spec
         extra_specs[utils.WORKLOAD] = workload_from_extra_spec
         if self.rest.is_compression_capable(extra_specs[utils.ARRAY]):
-            if extra_specs.get(utils.DISABLECOMPRESSION):
-                # If not True remove it.
-                if not strutils.bool_from_string(
-                        extra_specs[utils.DISABLECOMPRESSION]):
-                    extra_specs.pop(utils.DISABLECOMPRESSION, None)
+            if not self.utils.is_compression_disabled(extra_specs):
+                extra_specs.pop(utils.DISABLECOMPRESSION, None)
         else:
             extra_specs.pop(utils.DISABLECOMPRESSION, None)
 
@@ -3871,14 +3867,16 @@ class PowerMaxCommon(object):
         :param extra_specs: extra specifications
         :returns: boolean -- True if migration succeeded, False if error.
         """
+        do_change_compression = False
         # Check if old type and new type have different replication types
         do_change_replication = self.utils.change_replication(
             extra_specs, new_type[utils.EXTRA_SPECS])
-        is_compression_disabled = self.utils.is_compression_disabled(
-            extra_specs)
-        # Check if old type and new type have different compression types
-        do_change_compression = (self.utils.change_compression_type(
-            is_compression_disabled, new_type))
+        if self.rest.is_compression_capable(extra_specs[utils.ARRAY]):
+            is_compression_disabled = self.utils.is_compression_disabled(
+                extra_specs)
+            # Check if old type and new type have different compression types
+            do_change_compression = (self.utils.change_compression_type(
+                is_compression_disabled, new_type))
         is_tgt_rep = self.utils.is_replication_enabled(
             new_type[utils.EXTRA_SPECS])
         is_valid, target_slo, target_workload = (
@@ -4102,7 +4100,7 @@ class PowerMaxCommon(object):
                 self.volume_metadata.capture_retype_info(
                     volume, device_id, array, srp, target_slo,
                     target_workload, target_sg_name, is_rep_enabled, rep_mode,
-                    target_extra_specs[utils.DISABLECOMPRESSION],
+                    self.utils.is_compression_disabled(target_extra_specs),
                     target_backend_id)
 
             return success, model_update
@@ -4229,7 +4227,8 @@ class PowerMaxCommon(object):
 
         target_extra_specs[utils.PORTGROUPNAME] = (
             extra_specs.get(utils.PORTGROUPNAME, None))
-        disable_compression = target_extra_specs[utils.DISABLECOMPRESSION]
+        disable_compression = self.utils.is_compression_disabled(
+            target_extra_specs)
         source_sg_list = device_info['storageGroupId']
         if mgmt_sg_name in source_sg_list:
             source_sg_list.remove(mgmt_sg_name)
@@ -4341,8 +4340,8 @@ class PowerMaxCommon(object):
                       'storage groups.')
             storage_groups = self.rest.get_storage_group_list(array)
             if source_sg not in storage_groups:
-                disable_compression = extra_specs.get(
-                    utils.DISABLECOMPRESSION, False)
+                disable_compression = self.utils.is_compression_disabled(
+                    extra_specs)
                 self.rest.create_storage_group(
                     array, source_sg, extra_specs['srp'], extra_specs['slo'],
                     extra_specs['workload'], extra_specs, disable_compression)

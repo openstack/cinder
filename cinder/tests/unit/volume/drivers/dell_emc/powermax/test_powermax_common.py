@@ -2139,7 +2139,10 @@ class PowerMaxCommonTest(test.TestCase):
             device_id, volume, host, volume_name, new_type, extra_specs)
         self.assertFalse(migrate_status)
 
-    def test_slo_workload_migration_same_host_change_compression(self):
+    @mock.patch.object(rest.PowerMaxRest, 'is_compression_capable',
+                       return_value=True)
+    def test_slo_workload_migration_same_host_change_compression(
+            self, mock_cap):
         device_id = self.data.device_id
         volume_name = self.data.test_volume.name
         extra_specs = self.data.extra_specs
@@ -2391,12 +2394,17 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.workload, False)
         self.assertEqual(ref_return, return_val)
         # Already in correct sg
-        host4 = {'host': self.data.fake_host}
-        return_val = self.common._is_valid_for_storage_assisted_migration(
-            device_id, host4, self.data.array,
-            self.data.srp, volume_name, False, False, self.data.slo,
-            self.data.workload, False)
-        self.assertEqual(ref_return, return_val)
+        with mock.patch.object(
+                self.common.provision,
+                'get_slo_workload_settings_from_storage_group',
+                return_value='Diamond+DSS') as mock_settings:
+            host4 = {'host': self.data.fake_host}
+            return_val = self.common._is_valid_for_storage_assisted_migration(
+                device_id, host4, self.data.array,
+                self.data.srp, volume_name, False, False, self.data.slo,
+                self.data.workload, False)
+            self.assertEqual(ref_return, return_val)
+            mock_settings.assert_called_once()
 
     def test_is_valid_for_storage_assisted_migration_next_gen(self):
         device_id = self.data.device_id
