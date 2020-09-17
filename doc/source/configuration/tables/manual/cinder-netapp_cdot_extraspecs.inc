@@ -21,6 +21,12 @@
        object within Data ONTAP should be defined before an OpenStack Block
        Storage volume is created, and that the QoS policy group is not
        associated with the destination FlexVol volume.
+   * - ``netapp:qos_policy_group_is_adaptive``
+     - Boolean
+     - Set to "<is> True" in order to instruct the driver to use an Adaptive
+       QoS policy group for the netapp:qos_policy_group setting. Leave this
+       unset or set to "<is> False" in order to use a standard QoS policy
+       group for the netapp:qos_policy_group setting.
    * - ``netapp_mirrored``
      - Boolean
      - Limit the candidate volume list to only the ones that are mirrored on

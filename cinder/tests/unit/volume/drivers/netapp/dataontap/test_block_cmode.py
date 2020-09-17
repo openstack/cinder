@@ -273,7 +273,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None,
-            source_snapshot=None, is_snapshot=False)
+            qos_policy_group_is_adaptive=False, source_snapshot=None,
+            is_snapshot=False)
 
     def test_clone_lun_blocks(self):
         """Test for when clone lun is passed block information."""
@@ -298,6 +299,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false',
             block_count=block_count, dest_block=dest_block,
             src_block=src_block, qos_policy_group_name=None,
+            qos_policy_group_is_adaptive=False,
             source_snapshot=None, is_snapshot=False)
 
     def test_clone_lun_no_space_reservation(self):
@@ -318,6 +320,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None,
+            qos_policy_group_is_adaptive=False,
             source_snapshot=None, is_snapshot=True)
 
     def test_get_fc_target_wwpns(self):
@@ -335,7 +338,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client.create_lun.assert_called_once_with(
             fake.VOLUME_ID, fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA,
-            None)
+            None, False)
 
     @ddt.data({'replication_backends': [], 'cluster_credentials': False},
               {'replication_backends': ['target_1', 'target_2'],

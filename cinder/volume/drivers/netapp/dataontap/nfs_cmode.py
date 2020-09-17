@@ -161,11 +161,14 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 self.ssc_library.get_ssc_flexvol_names())
 
     def _do_qos_for_volume(self, volume, extra_specs, cleanup=True):
+        qos_policy_group_is_adaptive = volume_utils.is_boolean_str(
+            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
                 volume, extra_specs)
             self.zapi_client.provision_qos_policy_group(qos_policy_group_info)
-            self._set_qos_policy_group_on_volume(volume, qos_policy_group_info)
+            self._set_qos_policy_group_on_volume(volume, qos_policy_group_info,
+                                                 qos_policy_group_is_adaptive)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Setting QoS for %s failed", volume['id'])
@@ -178,7 +181,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         if self.replication_enabled:
             return {'replication_status': fields.ReplicationStatus.ENABLED}
 
-    def _set_qos_policy_group_on_volume(self, volume, qos_policy_group_info):
+    def _set_qos_policy_group_on_volume(self, volume, qos_policy_group_info,
+                                        qos_policy_group_is_adaptive):
         if qos_policy_group_info is None:
             return
         qos_policy_group_name = na_utils.get_qos_policy_group_name_from_info(
@@ -192,6 +196,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                                                  export_path)
         self.zapi_client.file_assign_qos(flex_vol_name,
                                          qos_policy_group_name,
+                                         qos_policy_group_is_adaptive,
                                          target_path)
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,

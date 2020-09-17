@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    NetApp ONTAP:
+    Added support for Adaptive QoS policies that have been pre-created on
+    the storage system, with the NetApp driver and clustered ONTAP version
+    9.4 or higher.  To use this feature, configure a Cinder volume type with
+    the following extra-specs::
+
+        netapp:qos_policy_group=<name_of_precreated_aqos_policy>
+        netapp:qos_policy_group_is_adaptive="<is> True"
+
+    Note that a cluster scoped account must be used in the driver
+    configuration in order to use QoS in clustered ONTAP.

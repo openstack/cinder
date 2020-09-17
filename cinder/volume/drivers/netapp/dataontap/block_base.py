@@ -237,10 +237,13 @@ class NetAppBlockStorageLibrary(object):
         qos_policy_group_name = (
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
+        qos_policy_group_is_adaptive = volume_utils.is_boolean_str(
+            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
 
         try:
             self._create_lun(pool_name, lun_name, size, metadata,
-                             qos_policy_group_name)
+                             qos_policy_group_name,
+                             qos_policy_group_is_adaptive)
         except Exception:
             LOG.exception("Exception creating LUN %(name)s in pool %(pool)s.",
                           {'name': lun_name, 'pool': pool_name})
@@ -357,11 +360,15 @@ class NetAppBlockStorageLibrary(object):
         qos_policy_group_name = (
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
+        qos_policy_group_is_adaptive = volume_utils.is_boolean_str(
+            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
 
         try:
-            self._clone_lun(source_name, destination_name,
-                            space_reserved=self.lun_space_reservation,
-                            qos_policy_group_name=qos_policy_group_name)
+            self._clone_lun(
+                source_name, destination_name,
+                space_reserved=self.lun_space_reservation,
+                qos_policy_group_name=qos_policy_group_name,
+                qos_policy_group_is_adaptive=qos_policy_group_is_adaptive)
 
             if destination_size != source_size:
 

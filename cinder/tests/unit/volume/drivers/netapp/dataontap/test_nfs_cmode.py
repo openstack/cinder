@@ -635,7 +635,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_provision_qos.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_INFO)])
         mock_set_policy.assert_has_calls([
-            mock.call(fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO)])
+            mock.call(fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO, False)])
         self.assertEqual(0, mock_error_log.call_count)
         self.assertEqual(0, mock_debug_log.call_count)
         self.assertEqual(0, mock_cleanup.call_count)
@@ -663,7 +663,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_provision_qos.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_INFO)])
         mock_set_policy.assert_has_calls([
-            mock.call(fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO)])
+            mock.call(fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO, False)])
         self.assertEqual(1, mock_error_log.call_count)
         self.assertEqual(1, mock_debug_log.call_count)
         mock_cleanup.assert_has_calls([
@@ -708,8 +708,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mock_file_assign_qos = self.driver.zapi_client.file_assign_qos
 
-        self.driver._set_qos_policy_group_on_volume(fake.NFS_VOLUME,
-                                                    fake.QOS_POLICY_GROUP_INFO)
+        self.driver._set_qos_policy_group_on_volume(
+            fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO, False)
 
         mock_get_name_from_info.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_INFO)])
@@ -719,7 +719,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             mock.call(fake.VSERVER_NAME, fake.EXPORT_PATH)])
         mock_file_assign_qos.assert_has_calls([
             mock.call(fake.FLEXVOL, fake.QOS_POLICY_GROUP_NAME,
-                      fake.NFS_VOLUME['name'])])
+                      False, fake.NFS_VOLUME['name'])])
 
     def test_set_qos_policy_group_on_volume_no_info(self):
 
@@ -734,7 +734,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_file_assign_qos = self.driver.zapi_client.file_assign_qos
 
         self.driver._set_qos_policy_group_on_volume(fake.NFS_VOLUME,
-                                                    None)
+                                                    None, False)
 
         self.assertEqual(0, mock_get_name_from_info.call_count)
         self.assertEqual(0, mock_extract_host.call_count)
@@ -754,8 +754,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mock_file_assign_qos = self.driver.zapi_client.file_assign_qos
 
-        self.driver._set_qos_policy_group_on_volume(fake.NFS_VOLUME,
-                                                    fake.QOS_POLICY_GROUP_INFO)
+        self.driver._set_qos_policy_group_on_volume(
+            fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO, False)
 
         mock_get_name_from_info.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_INFO)])

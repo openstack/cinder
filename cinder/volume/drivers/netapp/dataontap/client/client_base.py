@@ -105,7 +105,8 @@ class Client(object):
             raise ValueError('Expects NaElement')
 
     def create_lun(self, volume_name, lun_name, size, metadata,
-                   qos_policy_group_name=None):
+                   qos_policy_group_name=None,
+                   qos_policy_group_is_adaptive=False):
         """Issues API request for creating LUN on volume."""
 
         path = '/vol/%s/%s' % (volume_name, lun_name)
@@ -133,7 +134,12 @@ class Client(object):
             'lun-create-by-size',
             **params)
         if qos_policy_group_name:
-            lun_create.add_new_child('qos-policy-group', qos_policy_group_name)
+            if qos_policy_group_is_adaptive:
+                lun_create.add_new_child(
+                    'qos-adaptive-policy-group', qos_policy_group_name)
+            else:
+                lun_create.add_new_child(
+                    'qos-policy-group', qos_policy_group_name)
 
         try:
             self.connection.invoke_successfully(lun_create, True)

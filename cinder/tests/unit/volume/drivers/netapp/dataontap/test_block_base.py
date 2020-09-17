@@ -117,7 +117,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_create_volume(self):
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
-        self.mock_object(na_utils, 'get_volume_extra_specs')
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value={})
         self.mock_object(na_utils, 'log_extra_spec_warnings')
         self.mock_object(block_base, 'LOG')
         self.mock_object(volume_utils, 'extract_host',
@@ -134,7 +135,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.library._create_lun.assert_called_once_with(
             fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
-            fake.LUN_METADATA, None)
+            fake.LUN_METADATA, None, False)
         self.library._get_volume_model_update.assert_called_once_with(
             fake.VOLUME)
         self.assertEqual(
@@ -1062,7 +1063,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library._clone_lun.assert_called_once_with(
             fake.CLONE_SOURCE_NAME, fake.CLONE_DESTINATION_NAME,
             space_reserved='false',
-            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME)
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME,
+            qos_policy_group_is_adaptive=False)
         self.library._extend_volume.assert_called_once_with(
             fake.CLONE_DESTINATION, fake.CLONE_DESTINATION_SIZE,
             fake.QOS_POLICY_GROUP_NAME)
@@ -1092,7 +1094,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library._clone_lun.assert_called_once_with(
             fake.CLONE_SOURCE_NAME, fake.CLONE_DESTINATION_NAME,
             space_reserved='true',
-            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME)
+            qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME,
+            qos_policy_group_is_adaptive=False)
         self.library._extend_volume.assert_called_once_with(
             fake.CLONE_DESTINATION, fake.CLONE_DESTINATION_SIZE,
             fake.QOS_POLICY_GROUP_NAME)
