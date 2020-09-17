@@ -35,7 +35,7 @@ class DefaultVolumeTypesTest(functional_helpers._FunctionalTestBase):
         _keystone_client.version = 'v3'
         _keystone_client.projects.get.side_effect = self._get_project
         _keystone_client_get = mock.patch(
-            'cinder.quota_utils._keystone_client',
+            'cinder.api.api_utils._keystone_client',
             lambda *args, **kwargs: _keystone_client)
         _keystone_client_get.start()
         self.addCleanup(_keystone_client_get.stop)
@@ -44,14 +44,11 @@ class DefaultVolumeTypesTest(functional_helpers._FunctionalTestBase):
         return self.project
 
     class FakeProject(object):
-        _dom_id = uuid.uuid4().hex
-
-        def __init__(self, parent_id=None):
+        def __init__(self, name=None):
             self.id = uuid.uuid4().hex
-            self.parent_id = parent_id
-            self.domain_id = self._dom_id
-            self.subtree = None
-            self.parents = None
+            self.name = name
+            self.description = 'fake project description'
+            self.domain_id = 'default'
 
     @mock.patch.object(context.RequestContext, 'authorize')
     def test_default_type_set(self, mock_authorize):

@@ -99,7 +99,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
 
         self.req.environ['cinder.context'].project_id = uuid.uuid4().hex
 
-        get_patcher = mock.patch('cinder.quota_utils.get_project_hierarchy',
+        get_patcher = mock.patch('cinder.api.api_utils.get_project',
                                  self._get_project)
         get_patcher.start()
         self.addCleanup(get_patcher.stop)

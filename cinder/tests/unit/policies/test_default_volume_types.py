@@ -15,6 +15,7 @@
 
 from http import HTTPStatus
 from unittest import mock
+import uuid
 
 from cinder.api import microversions as mv
 from cinder import db
@@ -38,7 +39,7 @@ class DefaultVolumeTypesPolicyTests(test_base.CinderPolicyTests):
         _keystone_client.version = 'v3'
         _keystone_client.projects.get.side_effect = self._get_project
         _keystone_client_get = mock.patch(
-            'cinder.quota_utils._keystone_client',
+            'cinder.api.api_utils._keystone_client',
             lambda *args, **kwargs: _keystone_client)
         _keystone_client_get.start()
         self.addCleanup(_keystone_client_get.stop)
@@ -47,14 +48,11 @@ class DefaultVolumeTypesPolicyTests(test_base.CinderPolicyTests):
         return self.project
 
     class FakeProject(object):
-        _dom_id = fake_constants.DOMAIN_ID
-
-        def __init__(self, parent_id=None):
-            self.id = fake_constants.PROJECT_ID
-            self.parent_id = parent_id
-            self.domain_id = self._dom_id
-            self.subtree = None
-            self.parents = None
+        def __init__(self, name=None):
+            self.id = uuid.uuid4().hex
+            self.name = name
+            self.description = 'fake project description'
+            self.domain_id = 'default'
 
     def test_system_admin_can_set_default(self):
         system_admin_context = self.system_admin_context
