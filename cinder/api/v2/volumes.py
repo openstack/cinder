@@ -264,11 +264,12 @@ class VolumeController(wsgi.Controller):
                    "be to specify multiattach enabled volume types.")
             versionutils.report_deprecated_feature(LOG, msg)
 
-        new_volume = self.volume_api.create(context,
-                                            size,
-                                            volume.get('display_name'),
-                                            volume.get('display_description'),
-                                            **kwargs)
+        try:
+            new_volume = self.volume_api.create(
+                context, size, volume.get('display_name'),
+                volume.get('display_description'), **kwargs)
+        except exception.VolumeTypeDefaultMisconfiguredError as err:
+            raise webob.exc.HTTPInternalServerError(explanation=err.msg)
 
         retval = self._view_builder.detail(req, new_volume)
 

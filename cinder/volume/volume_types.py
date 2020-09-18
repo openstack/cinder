@@ -102,14 +102,31 @@ def update(context, id, name, description, is_public=None):
 
 
 def destroy(context, id):
-    """Marks volume types as deleted."""
+    """Marks volume types as deleted.
+
+    There must exist at least one volume type (i.e. the default type) in
+    the deployment.
+    This method achieves that by ensuring:
+    1) the default_volume_type is set and is a valid one
+    2) the type requested to delete isn't the default type
+
+    :raises VolumeTypeDefaultDeletionError: when the type requested to
+                                            delete is the default type
+    """
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    vol_type = get_volume_type(context, id)
-    if vol_type['name'] == DEFAULT_VOLUME_TYPE:
-        raise exception.VolumeTypeDefault(vol_type['name'])
     elevated = context if context.is_admin else context.elevated()
+
+    # Default type *must* be set in order to delete any volume type.
+    # If the default isn't set, the following call will raise
+    # VolumeTypeDefaultMisconfiguredError exception which will error out the
+    # delete operation.
+    default_type = get_default_volume_type()
+    # don't allow delete if the type requested is the default type
+    if id == default_type.get('id'):
+        raise exception.VolumeTypeDefaultDeletionError(volume_type_id=id)
+
     return db.volume_type_destroy(elevated, id)
 
 
@@ -173,22 +190,23 @@ def get_volume_type_by_name(context, name):
 
 
 def get_default_volume_type():
-    """Get the default volume type."""
+    """Get the default volume type.
+
+    :raises VolumeTypeDefaultMisconfiguredError: when the configured default
+                                                 is not found
+    """
     name = CONF.default_volume_type
-    vol_type = {}
     ctxt = context.get_admin_context()
-    if name:
-        try:
-            vol_type = get_volume_type_by_name(ctxt, name)
-        except exception.VolumeTypeNotFoundByName:
-            # Couldn't find volume type with the name in default_volume_type
-            # flag, record this issue and raise exception
-            # TODO(zhiteng) consider add notification to warn admin
-            LOG.exception('Default volume type is not found. '
-                          'Please check default_volume_type config:')
-            raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
-    else:
-        vol_type = get_volume_type_by_name(ctxt, DEFAULT_VOLUME_TYPE)
+    vol_type = {}
+    try:
+        vol_type = get_volume_type_by_name(ctxt, name)
+    except (exception.VolumeTypeNotFoundByName, exception.InvalidVolumeType):
+        # Couldn't find volume type with the name in default_volume_type
+        # flag, record this issue and raise exception
+        LOG.exception('Default volume type is not found. '
+                      'Please check default_volume_type config:')
+        raise exception.VolumeTypeDefaultMisconfiguredError(
+            volume_type_name=name)
 
     return vol_type
 

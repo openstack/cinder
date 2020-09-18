@@ -226,6 +226,30 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(conf_fixture.def_vol_type,
                          default_vol_type.get('name'))
 
+    def test_get_default_volume_type_not_found(self):
+        """Ensure setting non-existent default type raises error."""
+        self.flags(default_volume_type='fake_type')
+        self.assertRaises(exception.VolumeTypeDefaultMisconfiguredError,
+                          volume_types.get_default_volume_type)
+
+    def test_delete_default_volume_type(self):
+        """Ensures default volume type cannot be deleted."""
+        default = volume_types.create(self.ctxt, 'default_type')
+
+        self.flags(default_volume_type='default_type')
+        self.assertRaises(exception.VolumeTypeDefaultDeletionError,
+                          volume_types.destroy, self.ctxt, default['id'])
+
+    def test_delete_when_default_volume_type_not_found(self):
+        """Ensures volume types cannot be deleted until valid default is set.
+
+        """
+        default = volume_types.create(self.ctxt, 'default_type')
+
+        self.flags(default_volume_type='fake_default')
+        self.assertRaises(exception.VolumeTypeDefaultMisconfiguredError,
+                          volume_types.destroy, self.ctxt, default['id'])
+
     def test_default_volume_type_missing_in_db(self):
         """Test default volume type is missing in database.
 
@@ -248,6 +272,9 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_non_existent_vol_type_shouldnt_delete(self):
         """Ensures that volume type creation fails with invalid args."""
+        # create a dummy type as DB requires at least 1 type to perform the
+        # delete operation
+        volume_types.create(self.ctxt, self.vol_type1_name)
         self.assertRaises(exception.VolumeTypeNotFound,
                           volume_types.destroy, self.ctxt, "sfsfsdfdfs")
 

@@ -606,6 +606,17 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                                    volume_type=self.vol_type)
         self.assertEqual('default-az', volume['availability_zone'])
 
+    def test_create_volume_with_default_type_misconfigured(self):
+        """Test volume creation with non-existent default volume type."""
+        volume_api = cinder.volume.api.API()
+
+        self.flags(default_volume_type='fake_type')
+        # Create volume with default volume type while default
+        # volume type doesn't exist
+        self.assertRaises(exception.VolumeTypeDefaultMisconfiguredError,
+                          volume_api.create, self.context, 1,
+                          'name', 'description')
+
     @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.MagicMock())
     @mock.patch('cinder.quota.QUOTAS.commit', new=mock.MagicMock())
     @mock.patch('cinder.quota.QUOTAS.reserve', return_value=["RESERVATION"])

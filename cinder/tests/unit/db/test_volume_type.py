@@ -40,6 +40,12 @@ class VolumeTypeTestCase(test.TestCase):
                           volume_types.get_by_name_or_id, self.ctxt,
                           volume_type['id'])
 
+    def test_volume_db_delete_last_type(self):
+        default = volume_types.get_default_volume_type()
+        self.assertRaises(exception.VolumeTypeDeletionError,
+                          db.volume_type_destroy, self.ctxt,
+                          default['id'])
+
     def test_volume_type_delete_with_volume_in_use(self):
         volume_type = db.volume_type_create(self.ctxt, {'name':
                                                         'fake volume type'})

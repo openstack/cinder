@@ -15,9 +15,9 @@
 
 from oslo_utils import uuidutils
 
+from cinder.tests.functional.api import client
 from cinder.tests.functional import functional_helpers
 from cinder.volume import configuration
-from cinder.volume import volume_types
 
 
 class VolumesTest(functional_helpers._FunctionalTestBase):
@@ -79,10 +79,7 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
         self.assertIsNone(found_volume)
 
     def test_create_no_volume_type(self):
-        """Verify volume_type is not None (should be system default type.)"""
-
-        # un-configure operator default volume type
-        self.flags(default_volume_type=None)
+        """Verify volume_type is not None"""
 
         # Create volume
         created_volume = self.api.post_volume({'volume': {'size': 1}})
@@ -93,14 +90,57 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
         found_volume = self._poll_volume_while(created_volume_id, ['creating'])
         self.assertEqual('available', found_volume['status'])
 
-        # It should have the system default volume_type
-        self.assertEqual(volume_types.DEFAULT_VOLUME_TYPE,
-                         found_volume['volume_type'])
+        # It should have a volume_type
+        self.assertIsNotNone(found_volume['volume_type'])
 
         # Delete the volume
         self.api.delete_volume(created_volume_id)
         found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
         self.assertIsNone(found_volume)
+
+    def test_create_volume_default_type(self):
+        """Verify that the configured default_volume_type is used"""
+
+        my_vol_type_name = 'default_type'
+        self.api.create_type(my_vol_type_name)
+        self.flags(default_volume_type=my_vol_type_name)
+
+        # Create volume
+        created_volume = self.api.post_volume({'volume': {'size': 1}})
+        self.assertTrue(uuidutils.is_uuid_like(created_volume['id']))
+        created_volume_id = created_volume['id']
+
+        # Wait (briefly) for creation. Delay is due to the 'message queue'
+        found_volume = self._poll_volume_while(created_volume_id, ['creating'])
+        self.assertEqual('available', found_volume['status'])
+
+        # It should have the default volume_type
+        self.assertEqual(my_vol_type_name, found_volume['volume_type'])
+
+        # Delete the volume
+        self.api.delete_volume(created_volume_id)
+        found_volume = self._poll_volume_while(created_volume_id, ['deleting'])
+        self.assertIsNone(found_volume)
+
+    def test_create_volume_bad_default_type(self):
+        """Verify non-existent default volume type errors out."""
+
+        # configure a non-existent default type
+        self.flags(default_volume_type='non-existent-type')
+
+        # Create volume and verify it errors out with 500 status
+        self.assertRaises(client.OpenStackApiException500,
+                          self.api.post_volume, {'volume': {'size': 1}})
+
+    def test_create_volume_default_type_set_none(self):
+        """Verify None default volume type errors out."""
+
+        # configure None default type
+        self.flags(default_volume_type=None)
+
+        # Create volume and verify it errors out with 500 status
+        self.assertRaises(client.OpenStackApiException500,
+                          self.api.post_volume, {'volume': {'size': 1}})
 
     def test_create_volume_specified_type(self):
         """Verify volume_type is not default."""
