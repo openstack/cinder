@@ -735,8 +735,7 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                          {'volume': volume.name,
                           'host_name': volume.host.split('@')[0]})
                 return True
-            else:
-                return False
+        return False
 
 
 @interface.volumedriver
@@ -1538,9 +1537,9 @@ class NimbleRestAPIExecutor(object):
                   "initiator_group_id": initiator_group_id}
         api = "access_control_records"
         r = self.get_query(api, filter)
-        LOG.info("ACL record is %result", {'result': r.json()})
+        LOG.info("ACL record is %(result)s", {'result': r.json()})
         if not r.json()['data']:
-            LOG.warning('ACL is not available for this volume %vol_id', {
+            LOG.warning('ACL is not available for this volume %(vol_id)', {
                         'vol_id': volume_id})
             return
         return r.json()['data'][0]
@@ -1579,7 +1578,7 @@ class NimbleRestAPIExecutor(object):
             LOG.debug("ACL Record %(acl)s", {"acl": acl_record})
             if acl_record is not None:
                 acl_id = acl_record['id']
-                api = 'access_control_records/' + six.text_type(acl_id)
+                api = 'access_control_records/%s' % acl_id
                 self.delete(api)
         except NimbleAPIException as ex:
             LOG.debug("remove_acl_exception: %s", ex)

@@ -128,6 +128,11 @@ The Nimble volume driver also supports the following extra spec options:
   PERF_POL_NAME is the name of a performance policy which exists on the
   Nimble array and should be enabled for every volume in a volume type.
 
+.. note::
+
+    When upgrading to OpenStack deployment to Victoria or later,
+    do unset ``nimble:multi-initiator`` extra-spec and set ``multiattach='<is> True'``.
+
 nimble:dedupe'='true'
   Used to enable dedupe support for a volume-type.
 
