@@ -32,8 +32,8 @@ def upgrade(migrate_engine):
         Column('deleted_at', DateTime),
         Column('volume_type_id', String(36),
                ForeignKey('volume_types.id'), index=True),
-        Column('project_id', String(length=255), unique=True,
-               primary_key=True, nullable=False),
+        Column('project_id', String(length=255), primary_key=True,
+               nullable=False),
         Column('deleted', Boolean(create_constraint=True, name=None)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
