@@ -1188,6 +1188,7 @@ class VolumeUtilsTestCase(test.TestCase):
                 volume,
                 mock.sentinel.context)
             self.assertEqual('aes-xts-plain64', ret['cipher'])
+            self.assertEqual('luks', ret['provider'])
 
     def test_check_encryption_provider_invalid(self):
         encryption_metadata = {'cipher': 'aes-xts-plain64',
