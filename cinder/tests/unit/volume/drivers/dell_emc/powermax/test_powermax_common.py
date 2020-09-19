@@ -49,8 +49,9 @@ class PowerMaxCommonTest(test.TestCase):
         configuration = tpfo.FakeConfiguration(
             emc_file=None, volume_backend_name='CommonTests', interval=1,
             retries=1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f],
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_f],
             powermax_port_group_name_template='portGroupName',
             replication_device=replication_device)
         rest.PowerMaxRest._establish_rest_session = mock.Mock(
@@ -2914,8 +2915,9 @@ class PowerMaxCommonTest(test.TestCase):
         old_conf = tpfo.FakeConfiguration(None, 'CommonTests', 1, 1)
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i])
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_i])
         self.common.configuration = configuration
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
@@ -2931,8 +2933,9 @@ class PowerMaxCommonTest(test.TestCase):
              'PortGroup': [self.data.port_group_name_i]})
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=3448, vmax_port_groups=[self.data.port_group_name_i])
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=3448,
+            powermax_port_groups=[self.data.port_group_name_i])
         self.common.configuration = configuration
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
@@ -2945,8 +2948,9 @@ class PowerMaxCommonTest(test.TestCase):
              'PortGroup': [self.data.port_group_name_i]})
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            vmax_port_groups=[self.data.port_group_name_i])
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc',
+            powermax_port_groups=[self.data.port_group_name_i])
         self.common.configuration = configuration
         kwargs_returned = self.common.get_attributes_from_cinder_config()
         self.assertEqual(kwargs_expected, kwargs_returned)
@@ -2954,8 +2958,9 @@ class PowerMaxCommonTest(test.TestCase):
     def test_get_ssl_attributes_from_cinder_config(self):
         conf = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            vmax_port_groups=[self.data.port_group_name_i],
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc',
+            powermax_port_groups=[self.data.port_group_name_i],
             driver_ssl_cert_verify=True,
             driver_ssl_cert_path='/path/to/cert')
 
@@ -3227,16 +3232,16 @@ class PowerMaxCommonTest(test.TestCase):
             self.assertEqual(vols_lists, expected_response)
 
     def test_get_slo_workload_combo_from_cinder_conf(self):
-        self.common.configuration.vmax_service_level = 'Diamond'
+        self.common.configuration.powermax_service_level = 'Diamond'
         self.common.configuration.vmax_workload = 'DSS'
         response1 = self.common.get_attributes_from_cinder_config()
         self.assertEqual('Diamond', response1['ServiceLevel'])
         self.assertEqual('DSS', response1['Workload'])
 
-        self.common.configuration.vmax_service_level = 'Diamond'
+        self.common.configuration.powermax_service_level = 'Diamond'
         self.common.configuration.vmax_workload = None
         response2 = self.common.get_attributes_from_cinder_config()
-        self.assertEqual(self.common.configuration.vmax_service_level,
+        self.assertEqual(self.common.configuration.powermax_service_level,
                          response2['ServiceLevel'])
         self.assertIsNone(response2['Workload'])
 
@@ -3246,12 +3251,12 @@ class PowerMaxCommonTest(test.TestCase):
             'SerialNumber': '000197800123', 'srpName': 'SRP_1',
             'PortGroup': ['OS-fibre-PG']}
 
-        self.common.configuration.vmax_service_level = None
+        self.common.configuration.powermax_service_level = None
         self.common.configuration.vmax_workload = 'DSS'
         response3 = self.common.get_attributes_from_cinder_config()
         self.assertEqual(expected_response, response3)
 
-        self.common.configuration.vmax_service_level = None
+        self.common.configuration.powermax_service_level = None
         self.common.configuration.vmax_workload = None
         response4 = self.common.get_attributes_from_cinder_config()
         self.assertEqual(expected_response, response4)
@@ -3474,8 +3479,9 @@ class PowerMaxCommonTest(test.TestCase):
         # Test user set port ID
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=1234, vmax_port_groups=[self.data.port_group_name_i])
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=1234,
+            powermax_port_groups=[self.data.port_group_name_i])
         self.common.configuration = configuration
         port = self.common._get_unisphere_port()
         self.assertEqual(1234, port)
@@ -3483,8 +3489,9 @@ class PowerMaxCommonTest(test.TestCase):
         # Test no set port ID, use default port
         configuration = tpfo.FakeConfiguration(
             None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            vmax_port_groups=[self.data.port_group_name_i])
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc',
+            powermax_port_groups=[self.data.port_group_name_i])
         self.common.configuration = configuration
         ref_port = utils.DEFAULT_PORT
         port = self.common._get_unisphere_port()
@@ -4094,7 +4101,7 @@ class PowerMaxCommonTest(test.TestCase):
         self.common.interval = 1
         self.common.retries = 1
         with mock.patch.object(
-                self.common, '_get_configuration_value') as mock_array:
+                tpfo.FakeConfiguration, 'safe_get') as mock_array:
             self.common._get_volume_group_info(
                 self.data.test_group_1)
             mock_group_utils.assert_called_once_with(
@@ -4105,8 +4112,9 @@ class PowerMaxCommonTest(test.TestCase):
     def test_get_performance_config(self):
         ref_cinder_conf = tpfo.FakeConfiguration(
             None, 'ProvisionTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_f],
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_f],
             load_balance=True, load_balance_real_time=True,
             load_data_format='avg', load_look_back=60,
             load_look_back_real_time=10, port_group_load_metric='PercentBusy',

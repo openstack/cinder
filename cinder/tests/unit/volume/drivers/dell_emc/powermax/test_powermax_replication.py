@@ -45,18 +45,18 @@ class PowerMaxReplicationTest(test.TestCase):
         volume_utils.get_max_over_subscription_ratio = mock.Mock()
         configuration = tpfo.FakeConfiguration(
             None, 'CommonReplicationTests', interval=1, retries=1,
-            san_ip='1.1.1.1', san_login='smc', vmax_array=self.data.array,
-            vmax_srp='SRP_1', san_password='smc', san_api_port=8443,
-            vmax_port_groups=[self.data.port_group_name_f],
+            san_ip='1.1.1.1', san_login='smc', powermax_array=self.data.array,
+            powermax_srp='SRP_1', san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_f],
             replication_device=self.replication_device)
         rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=tpfo.FakeRequestsSession())
         driver = fc.PowerMaxFCDriver(configuration=configuration)
         iscsi_config = tpfo.FakeConfiguration(
             None, 'CommonReplicationTests', interval=1, retries=1,
-            san_ip='1.1.1.1', san_login='smc', vmax_array=self.data.array,
-            vmax_srp='SRP_1', san_password='smc', san_api_port=8443,
-            vmax_port_groups=[self.data.port_group_name_i],
+            san_ip='1.1.1.1', san_login='smc', powermax_array=self.data.array,
+            powermax_srp='SRP_1', san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_i],
             replication_device=self.replication_device)
         iscsi_driver = iscsi.PowerMaxISCSIDriver(configuration=iscsi_config)
         self.iscsi_common = iscsi_driver.common
@@ -76,18 +76,18 @@ class PowerMaxReplicationTest(test.TestCase):
         self.async_rep_device = self.data.async_rep_device
         async_configuration = tpfo.FakeConfiguration(
             None, 'CommonReplicationTests', interval=1, retries=1,
-            san_ip='1.1.1.1', san_login='smc', vmax_array=self.data.array,
-            vmax_srp='SRP_1', san_password='smc', san_api_port=8443,
-            vmax_port_groups=[self.data.port_group_name_f],
+            san_ip='1.1.1.1', san_login='smc', powermax_array=self.data.array,
+            powermax_srp='SRP_1', san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_f],
             replication_device=self.async_rep_device)
         self.async_driver = fc.PowerMaxFCDriver(
             configuration=async_configuration)
         self.metro_rep_device = self.data.metro_rep_device
         metro_configuration = tpfo.FakeConfiguration(
             None, 'CommonReplicationTests', interval=1, retries=1,
-            san_ip='1.1.1.1', san_login='smc', vmax_array=self.data.array,
-            vmax_srp='SRP_1', san_password='smc', san_api_port=8443,
-            vmax_port_groups=[self.data.port_group_name_f],
+            san_ip='1.1.1.1', san_login='smc', powermax_array=self.data.array,
+            powermax_srp='SRP_1', san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_f],
             replication_device=self.metro_rep_device)
         self.metro_driver = fc.PowerMaxFCDriver(
             configuration=metro_configuration)

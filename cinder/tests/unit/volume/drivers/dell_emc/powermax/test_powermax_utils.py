@@ -44,8 +44,9 @@ class PowerMaxUtilsTest(test.TestCase):
         self.replication_device = self.data.sync_rep_device
         configuration = tpfo.FakeConfiguration(
             None, 'UtilsTests', 1, 1, san_ip='1.1.1.1', san_login='smc',
-            vmax_array=self.data.array, vmax_srp='SRP_1', san_password='smc',
-            san_api_port=8443, vmax_port_groups=[self.data.port_group_name_i],
+            powermax_array=self.data.array, powermax_srp='SRP_1',
+            san_password='smc', san_api_port=8443,
+            powermax_port_groups=[self.data.port_group_name_i],
             replication_device=self.replication_device)
         rest.PowerMaxRest._establish_rest_session = mock.Mock(
             return_value=tpfo.FakeRequestsSession())

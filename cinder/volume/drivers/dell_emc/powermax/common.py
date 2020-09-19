@@ -67,35 +67,13 @@ powermax_opts = [
                default=200,
                help='Use this value to specify '
                     'number of retries.'),
-    cfg.IntOpt(utils.VMAX_SNAPVX_UNLINK_LIMIT,
-               default=3,
-               help='DEPRECATED: vmax_snapvc_unlink_limit.',
-               deprecated_for_removal=True,
-               deprecated_reason='Replaced by powermax_snapvx_unlink_limit.'),
     cfg.BoolOpt('initiator_check',
                 default=False,
                 help='Use this value to enable '
                      'the initiator_check.'),
-    cfg.StrOpt(utils.VMAX_ARRAY,
-               help='DEPRECATED: vmax_array.',
-               deprecated_for_removal=True,
-               deprecated_reason='Replaced by powermax_array.'),
-    cfg.StrOpt(utils.VMAX_SRP,
-               help='DEPRECATED: vmax_srp.',
-               deprecated_for_removal=True,
-               deprecated_reason='Replaced by powermax_srp.'),
-    cfg.StrOpt(utils.VMAX_SERVICE_LEVEL,
-               help='DEPRECATED: vmax_service_level.',
-               deprecated_for_removal=True,
-               deprecated_reason='Replaced by powermax_service_level.'),
     cfg.StrOpt(utils.VMAX_WORKLOAD,
                help='Workload, setting this as an extra spec in '
                     'pool_name is preferable.'),
-    cfg.ListOpt(utils.VMAX_PORT_GROUPS,
-                bounds=True,
-                help='DEPRECATED: vmax_port_groups.',
-                deprecated_for_removal=True,
-                deprecated_reason='Replaced by powermax_port_groups.'),
     cfg.IntOpt(utils.U4P_FAILOVER_TIMEOUT,
                default=20.0,
                help='How long to wait for the server to send data before '
@@ -265,8 +243,7 @@ class PowerMaxCommon(object):
         """Get relevent details from configuration file."""
         self.interval = self.configuration.safe_get('interval')
         self.retries = self.configuration.safe_get('retries')
-        self.snapvx_unlink_limit = self._get_unlink_configuration_value(
-            utils.VMAX_SNAPVX_UNLINK_LIMIT,
+        self.snapvx_unlink_limit = self.configuration.safe_get(
             utils.POWERMAX_SNAPVX_UNLINK_LIMIT)
         self.powermax_array_tag_list = self.configuration.safe_get(
             utils.POWERMAX_ARRAY_TAG_LIST)
@@ -5188,8 +5165,7 @@ class PowerMaxCommon(object):
         """
         volume_update_list = list()
         group_update_list = list()
-        primary_array = self._get_configuration_value(
-            utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
+        primary_array = self.configuration.safe_get(utils.POWERMAX_ARRAY)
         array_list = self.rest.get_arrays_list()
         is_valid, msg = self.utils.validate_failover_request(
             self.failover, secondary_id, self.rep_configs, primary_array,
@@ -6566,19 +6542,16 @@ class PowerMaxCommon(object):
         username = self.configuration.safe_get(utils.VMAX_USER_NAME)
         password = self.configuration.safe_get(utils.VMAX_PASSWORD)
         if username and password:
-            serial_number = self._get_configuration_value(
-                utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
+            serial_number = self.configuration.safe_get(utils.POWERMAX_ARRAY)
             if serial_number is None:
                 LOG.error("Array Serial Number must be set in cinder.conf")
-            srp_name = self._get_configuration_value(
-                utils.VMAX_SRP, utils.POWERMAX_SRP)
+            srp_name = self.configuration.safe_get(utils.POWERMAX_SRP)
             if srp_name is None:
                 LOG.error("SRP Name must be set in cinder.conf")
-            slo = self._get_configuration_value(
-                utils.VMAX_SERVICE_LEVEL, utils.POWERMAX_SERVICE_LEVEL)
+            slo = self.configuration.safe_get(utils.POWERMAX_SERVICE_LEVEL)
             workload = self.configuration.safe_get(utils.VMAX_WORKLOAD)
-            port_groups = self._get_configuration_value(
-                utils.VMAX_PORT_GROUPS, utils.POWERMAX_PORT_GROUPS)
+            port_groups = self.configuration.safe_get(
+                utils.POWERMAX_PORT_GROUPS)
 
             kwargs = (
                 {'RestServerIp': self.configuration.safe_get(
@@ -6604,25 +6577,6 @@ class PowerMaxCommon(object):
 
         return kwargs
 
-    def _get_configuration_value(self, first_key, second_key):
-        """Get the configuration value of the first or second key
-
-        :param first_key: the first key
-        :param second_key: the second key
-        :returns: value
-        """
-        return_value = None
-        if (self.configuration.safe_get(first_key)
-                and self.configuration.safe_get(second_key)):
-            LOG.error("Cannot specifiy both %(first_key)s. "
-                      "and %(second_key)s.",
-                      {'first_key': first_key, 'second_key': second_key})
-        else:
-            return_value = self.configuration.safe_get(first_key)
-            if return_value is None:
-                return_value = self.configuration.safe_get(second_key)
-        return return_value
-
     def _get_volume_group_info(self, group):
         """Get the volume group array, retries and intervals
 
@@ -6633,8 +6587,7 @@ class PowerMaxCommon(object):
         array, interval_retries_dict = self.utils.get_volume_group_utils(
             group, self.interval, self.retries)
         if not array:
-            array = self._get_configuration_value(
-                utils.VMAX_ARRAY, utils.POWERMAX_ARRAY)
+            array = self.configuration.safe_get(utils.POWERMAX_ARRAY)
             if not array:
                 exception_message = _(
                     "Cannot get the array serial_number")
@@ -6643,22 +6596,6 @@ class PowerMaxCommon(object):
                 raise exception.VolumeBackendAPIException(
                     message=exception_message)
         return array, interval_retries_dict
-
-    def _get_unlink_configuration_value(self, first_key, second_key):
-        """Get the configuration value of snapvx_unlink_limit
-
-        This will give back the value of the default snapvx_unlink_limit
-        unless either powermax_snapvx_unlink_limit or vmax_snapvx_unlink_limit
-        is set to something else
-
-        :param first_key: the first key
-        :param second_key: the second key
-        :returns: value
-        """
-        return_value = self.configuration.safe_get(second_key)
-        if return_value == 3:
-            return_value = self.configuration.safe_get(first_key)
-        return return_value
 
     def _get_unisphere_port(self):
         """Get unisphere port from the configuration file
