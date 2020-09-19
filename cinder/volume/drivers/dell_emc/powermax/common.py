@@ -6544,10 +6544,14 @@ class PowerMaxCommon(object):
         if username and password:
             serial_number = self.configuration.safe_get(utils.POWERMAX_ARRAY)
             if serial_number is None:
-                LOG.error("Array Serial Number must be set in cinder.conf")
+                msg = _("Powermax Array Serial must be set in cinder.conf")
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(message=msg)
             srp_name = self.configuration.safe_get(utils.POWERMAX_SRP)
             if srp_name is None:
-                LOG.error("SRP Name must be set in cinder.conf")
+                msg = _("Powermax SRP must be set in cinder.conf")
+                LOG.error(msg)
+                raise exception.InvalidConfigurationValue(message=msg)
             slo = self.configuration.safe_get(utils.POWERMAX_SERVICE_LEVEL)
             workload = self.configuration.safe_get(utils.VMAX_WORKLOAD)
             port_groups = self.configuration.safe_get(
