@@ -135,9 +135,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.2.6 - Volume migrate exception handling (bug #1886662, #1874187)
         4.2.7 - Fix to enable legacy volumes to live migrate (#1867163)
         4.2.8 - Force flag to add to rep enable storage groups (#1892057)
+        4.2.9 - Failover group volume update (#1888831)
     """
 
-    VERSION = "4.2.8"
+    VERSION = "4.2.9"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
