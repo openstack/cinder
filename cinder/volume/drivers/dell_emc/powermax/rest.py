@@ -1105,8 +1105,8 @@ class PowerMaxRest(object):
         :param extra_specs: the extra specifications
         """
 
-        force_vol_remove = (
-            "true" if utils.FORCE_VOL_REMOVE in extra_specs else "false")
+        force_vol_edit = (
+            "true" if utils.FORCE_VOL_EDIT in extra_specs else "false")
         if not isinstance(device_id, list):
             device_id = [device_id]
         payload = ({"executionOption": "ASYNCHRONOUS",
@@ -1114,7 +1114,7 @@ class PowerMaxRest(object):
                         "removeVolumeParam": {
                             "volumeId": device_id,
                             "remoteSymmSGInfoParam": {
-                                "force": force_vol_remove}}}})
+                                "force": force_vol_edit}}}})
         status_code, job = self.modify_storage_group(
             array, storagegroup_name, payload)
 

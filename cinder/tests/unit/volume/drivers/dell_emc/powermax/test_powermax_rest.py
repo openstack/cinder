@@ -523,7 +523,7 @@ class PowerMaxRestTest(test.TestCase):
     def test_remove_vol_from_sg_force_true(self, mck_wait):
         device_id = self.data.device_id
         extra_specs = deepcopy(self.data.extra_specs)
-        extra_specs[utils.FORCE_VOL_REMOVE] = True
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         expected_payload = (
             {"executionOption": "ASYNCHRONOUS",
              "editStorageGroupActionParam": {
@@ -545,7 +545,7 @@ class PowerMaxRestTest(test.TestCase):
     def test_remove_vol_from_sg_force_false(self, mck_wait):
         device_id = self.data.device_id
         extra_specs = deepcopy(self.data.extra_specs)
-        extra_specs.pop(utils.FORCE_VOL_REMOVE, None)
+        extra_specs.pop(utils.FORCE_VOL_EDIT, None)
         expected_payload = (
             {"executionOption": "ASYNCHRONOUS",
              "editStorageGroupActionParam": {

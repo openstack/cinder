@@ -743,6 +743,7 @@ class PowerMaxMasking(object):
             return
         start_time = time.time()
         temp_device_id_list = list_device_id
+        force = extra_specs.get(utils.FORCE_VOL_EDIT, False)
 
         @coordination.synchronized("emc-sg-{sg_name}-{serial_number}")
         def do_add_volumes_to_sg(sg_name, serial_number):
@@ -759,7 +760,8 @@ class PowerMaxMasking(object):
                     # Remove this device id from the list
                     temp_device_id_list.remove(volume)
             self.rest.add_vol_to_sg(serial_number, storagegroup_name,
-                                    temp_device_id_list, extra_specs)
+                                    temp_device_id_list, extra_specs,
+                                    force=force)
         do_add_volumes_to_sg(storagegroup_name, serial_number)
 
         LOG.debug("Add volumes to storagegroup took: %(delta)s H:MM:SS.",
