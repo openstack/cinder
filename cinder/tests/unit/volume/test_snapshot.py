@@ -630,3 +630,38 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         snapshot.refresh()
         self.assertEqual(fields.SnapshotStatus.ERROR_DELETING,
                          snapshot.status)
+
+    @ddt.data({'all_tenants': '1', 'name': 'snap1'},
+              {'all_tenants': 'true', 'name': 'snap1'},
+              {'all_tenants': 'false', 'name': 'snap1'},
+              {'all_tenants': '0', 'name': 'snap1'},
+              {'name': 'snap1'})
+    @mock.patch.object(objects, 'SnapshotList')
+    @mock.patch.object(context.RequestContext, 'authorize')
+    def test_get_all_snapshots_non_admin(self, search_opts, auth_mock,
+                                         snaplist_mock):
+        ctxt = context.RequestContext(user_id=None, is_admin=False,
+                                      project_id=mock.sentinel.project_id,
+                                      read_deleted='no', overwrite=False)
+        volume_api = cinder.volume.api.API()
+        res = volume_api.get_all_snapshots(ctxt,
+                                           search_opts,
+                                           mock.sentinel.marker,
+                                           mock.sentinel.limit,
+                                           mock.sentinel.sort_keys,
+                                           mock.sentinel.sort_dirs,
+                                           mock.sentinel.offset)
+
+        auth_mock.assert_called_once_with(
+            cinder.volume.api.snapshot_policy.GET_ALL_POLICY)
+        snaplist_mock.get_all.assert_not_called()
+        snaplist_mock.get_all_by_project.assert_called_once_with(
+            ctxt,
+            mock.sentinel.project_id,
+            {'name': 'snap1'},
+            mock.sentinel.marker,
+            mock.sentinel.limit,
+            mock.sentinel.sort_keys,
+            mock.sentinel.sort_dirs,
+            mock.sentinel.offset)
+        self.assertEqual(snaplist_mock.get_all_by_project.return_value, res)
