@@ -763,14 +763,15 @@ class HPE3PARBaseDriver(test.TestCase):
         spec=True,
     )
     def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None,
-                          is_primera=False):
+                          is_primera=False,
+                          wsapi_version=wsapi_version_latest):
 
         _m_client = _m_client.return_value
 
         # Configure the base constants, defaults etc...
         _m_client.configure_mock(**self.mock_client_conf)
 
-        _m_client.getWsApiVersion.return_value = self.wsapi_version_latest
+        _m_client.getWsApiVersion.return_value = wsapi_version
 
         _m_client.is_primera_array.return_value = is_primera
 
@@ -8901,10 +8902,49 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
 
         return mock_client
 
-    def test_iscsi_primera(self):
+    def test_iscsi_primera_old(self):
+        # primera 4.0.xx.yyy
+        wsapi_version_primera_old = {'major': 1,
+                                     'build': 40000128,
+                                     'minor': 8,
+                                     'revision': 1}
+
         self.assertRaises(NotImplementedError, self.setup_mock_client,
                           driver=hpedriver.HPE3PARISCSIDriver,
-                          is_primera=True)
+                          is_primera=True,
+                          wsapi_version=wsapi_version_primera_old)
+
+    def test_iscsi_primera_new(self, config=None, mock_conf=None):
+        # primera 4.2.xx.yyy
+        wsapi_version_primera_new = {'major': 1,
+                                     'build': 40202010,
+                                     'minor': 8,
+                                     'revision': 1}
+
+        self.ctxt = context.get_admin_context()
+
+        mock_client = self.setup_mock_client(
+            conf=config,
+            m_conf=mock_conf,
+            driver=hpedriver.HPE3PARISCSIDriver,
+            is_primera=True,
+            wsapi_version=wsapi_version_primera_new)
+
+        expected_get_cpgs = [
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
+        expected_get_ports = [mock.call.getPorts()]
+        expected_primera = [
+            mock.call.is_primera_array(),
+            mock.call.getWsApiVersion()]
+        mock_client.assert_has_calls(
+            self.standard_login +
+            expected_get_cpgs +
+            self.standard_logout +
+            expected_primera +
+            self.standard_login +
+            expected_get_ports +
+            self.standard_logout)
 
     @ddt.data('volume', 'volume_name_id')
     def test_initialize_connection(self, volume_attr):
