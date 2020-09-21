@@ -9,12 +9,12 @@ OpenStack deployments.
 System requirements
 ~~~~~~~~~~~~~~~~~~~
 
-To use the HP MSA drivers, the following are required:
+To use the HPMSA drivers, the following are required:
 
-- HPE MSA 2050, 1050, 2040 or 1040 array with:
+- HPE MSA 2060, 1060, 2050, 1050, 2040 or 1040 array with:
 
   - iSCSI or FC host interfaces
-  - G22x firmware or later
+  - G22x, V270 or I100 firmware or later
 
 - Network connectivity between the OpenStack host and the array management
   interfaces
@@ -173,7 +173,7 @@ Driver-specific options
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 The following table contains the configuration options that are specific to
-the HP MSA drivers.
+the HPMSA drivers.
 
 .. config-table::
    :config-target: HPE MSA
