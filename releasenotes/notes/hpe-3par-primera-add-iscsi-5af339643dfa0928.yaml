@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    HPE 3PAR Driver: Add support of iSCSI driver for Primera 4.2
+    or higher versions.

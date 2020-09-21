@@ -128,10 +128,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                 failover. bug #1773069
         4.0.4 - Added Peer Persistence feature
         4.0.5 - Added Primera array check. bug #1849525
+        4.0.6 - Allow iSCSI support for Primera 4.2 onwards
 
     """
 
-    VERSION = "4.0.5"
+    VERSION = "4.0.6"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -144,9 +145,17 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         client_obj = common.client
         is_primera = client_obj.is_primera_array()
         if is_primera:
-            LOG.error("For Primera, only FC is supported. "
-                      "iSCSI cannot be used")
-            raise NotImplementedError()
+            api_version = client_obj.getWsApiVersion()
+            array_version = api_version['build']
+            LOG.debug("array version: %(version)s",
+                      {'version': array_version})
+            if array_version < 40200000:
+                err_msg = (_('The iSCSI driver is not supported for '
+                             'Primera %(version)s. It is supported '
+                             'for Primera 4.2 or higher versions.')
+                           % {'version': array_version})
+                LOG.error(err_msg)
+                raise NotImplementedError()
 
         self.iscsi_ips = {}
         common.client_login()
