@@ -4189,3 +4189,35 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertRaises(
             exception.VolumeBackendAPIException,
             self.common._select_port_group_for_extra_specs, {}, {})
+
+    @mock.patch.object(
+        common.PowerMaxCommon, '_add_new_volume_to_volume_group',
+        return_value='my_group')
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_add_to_group(self, mock_cond, mock_group):
+        source_volume = self.data.test_volume
+        extra_specs = self.data.extra_specs
+        rep_driver_data = dict()
+        group_name = self.common._add_to_group(
+            source_volume, self.data, source_volume.name,
+            self.data.test_group_1.id, self.data.test_group_1, extra_specs,
+            rep_driver_data)
+        self.assertEqual('my_group', group_name)
+        mock_group.assert_called_once()
+
+    @mock.patch.object(
+        common.PowerMaxCommon, '_add_new_volume_to_volume_group',
+        return_value='my_group')
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
+                       return_value=True)
+    def test_add_to_group_no_group_obj(self, mock_cond, mock_group):
+        source_volume = self.data.test_volume
+        extra_specs = self.data.extra_specs
+        rep_driver_data = dict()
+        group_name = self.common._add_to_group(
+            source_volume, self.data, source_volume.name,
+            self.data.test_group_1.id, None, extra_specs,
+            rep_driver_data)
+        self.assertIsNone(group_name)
+        mock_group.assert_not_called()
