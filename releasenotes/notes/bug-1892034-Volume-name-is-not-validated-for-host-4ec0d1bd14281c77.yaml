@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1892034
+    <https://bugs.launchpad.net/cinder/+bug/1892034>`_: Fixed issue in
+    get_host_from_connector that volume name is not validated to get the
+    host during terminate connection when the volume name is passed as input.

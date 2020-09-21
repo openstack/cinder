@@ -1038,6 +1038,20 @@ class StorwizeHelpers(object):
                         self.handle_keyerror('lsfabric', wwpn_info)
                 if host_name:
                     break
+
+        if host_name and volume_name:
+            hosts_map_info = self.ssh.lsvdiskhostmap(volume_name)
+            hosts_map_info_list = list(hosts_map_info.select('host_name'))
+            if host_name in hosts_map_info_list:
+                LOG.debug("get_host_from_connector: hosts_map_info:"
+                          " %s", hosts_map_info_list)
+                LOG.debug('Leave: get_host_from_connector host %s', host_name)
+                return host_name
+            else:
+                LOG.debug('get_host_from_connector: host %s not mapped '
+                          'to volume', host_name)
+                host_name = None
+
         if host_name:
             LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
             return host_name
