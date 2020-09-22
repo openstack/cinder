@@ -2857,6 +2857,9 @@ class PowerMaxCommon(object):
                     rep_extra_specs['sg_name'] = (
                         self.utils.get_rdf_management_group_name(
                             rep_extra_specs[utils.REP_CONFIG]))
+                self.rest.wait_for_rdf_pair_sync(
+                    array, rep_extra_specs['rdf_group_no'], target_device_id,
+                    rep_extra_specs)
                 self.rest.srdf_suspend_replication(
                     array, rep_extra_specs['sg_name'],
                     rep_extra_specs['rdf_group_no'], rep_extra_specs)
