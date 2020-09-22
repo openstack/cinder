@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added the option ``storwize_svc_retain_aux_volume`` to IBM Storwize Driver
+    which takes ``True`` or ``False``. This option is to enable or disable
+    retaining of auxiliary volume on secondary storage during delete of the
+    volume on primary storage or moving the primary volume from mirror to
+    non-mirror with replication enabled. The default value is ``False``.
