@@ -194,9 +194,9 @@ class PowerMaxReplicationTest(test.TestCase):
     @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
                        return_value=True)
     def test_initialize_connection_no_multipath_iscsi(self, mock_md):
-        info_dict = self.iscsi_common.initialize_connection(
-            self.data.test_volume, self.data.connector)
-        self.assertIsNone(info_dict)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.iscsi_common.initialize_connection,
+                          self.data.test_volume, self.data.connector)
 
     @mock.patch.object(
         masking.PowerMaxMasking, 'pre_multiattach',

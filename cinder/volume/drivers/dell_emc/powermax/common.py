@@ -918,12 +918,15 @@ class PowerMaxCommon(object):
         remote_port_group = None
         if (self.utils.is_metro_device(rep_config, extra_specs)
                 and not is_multipath and self.protocol.lower() == 'iscsi'):
-            LOG.warning("Either multipathing is not correctly/currently "
-                        "enabled on your system or the volume was created "
-                        "prior to multipathing being enabled. Please refer "
-                        "to the online PowerMax Cinder driver documentation "
-                        "for this release for further details.")
-            return
+            exception_message = _(
+                "Either multipathing is not correctly/currently "
+                "enabled on your system or the volume was created "
+                "prior to multipathing being enabled. Please refer "
+                "to the online PowerMax Cinder driver documentation "
+                "for this release for further details.")
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
         if self.utils.is_volume_failed_over(volume):
             extra_specs = rep_extra_specs
