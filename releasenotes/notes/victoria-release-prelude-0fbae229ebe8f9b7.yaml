@@ -1,0 +1,107 @@
+---
+prelude: |
+    Welcome to the Victoria release of the OpenStack Block Storage service
+    (cinder).  With this release, the Block Storage API version 3 has reached
+    microversion **3.62**.  The cinder team would like to bring the following
+    points to your attention.  Details may be found below.
+
+    * Microversion 3.61 adds the ``cluster_name`` attribute to the volume
+      detail response when called in an administrative context.
+
+    * Microversion 3.62 adds API calls to manage the default volume type
+      for a specific project.  See the `Default volume types (default-types)
+      <https://docs.openstack.org/api-ref/block-storage/v3/#default-volume-types-default-types>`_
+      section of the
+      `Block Storage API v3 Reference
+      <https://docs.openstack.org/api-ref/block-storage/v3/>`_
+      for more information.
+
+    * The handling of the default volume type for a cinder installation
+      has been improved in this release.
+
+    * The cinder backup service has added support for the popular Zstandard
+      compression algorithm.  (The default is the venerable Deflate (zlib)
+      algorithm.)
+
+    * Many backend storage drivers have added features and fixed bugs.
+
+features:
+  - |
+    PowerMax Driver - support for using snap_ids instead of generations
+    for better handling of volume snapshots
+    (Change-Id `I0edf2ac777bef888e760f711a94e3fe4f94262ae
+    <https://review.opendev.org/#/q/I0edf2ac777bef888e760f711a94e3fe4f94262ae>`_)
+
+fixes:
+  - |
+    PowerMax Driver - corrected handling of exceptions occurring during cleanup
+    in the context of volume migration
+    (Change-Id `I0c0a96e21209c5abe359c6985fae7cee598c21ab
+    <https://review.opendev.org/#/q/I0c0a96e21209c5abe359c6985fae7cee598c21ab>`_)
+  - |
+    REST API - fixed issue where the Get Current Log Levels for Cinder
+    Services call in microversion 3.32 was ignoring the server name filter
+    (Change-Id `Iecb3faad9270f969185089cc291127b340483a46
+    <https://review.opendev.org/#/q/Iecb3faad9270f969185089cc291127b340483a46>`_)
+  - |
+    Additionally, the following bugs were addressed:
+
+    * `Bug #1888831 <https://bugs.launchpad.net/cinder/+bug/1888831>`_:
+      PowerMax Driver - Volume updates for volumes in groups not performed
+      during failover
+    * `Bug #1867906 <https://bugs.launchpad.net/cinder/+bug/1867906>`_:
+      group-create-from-src doesn't work in active/active mode
+    * `Bug #1886662 <https://bugs.launchpad.net/cinder/+bug/1886662>`_:
+      PowerMax Driver - Volumes not cleaned up after exception during
+      migrate, retype, srdf protect creates/deletes blocks subsequent
+      operations
+    * `Bug #1874187 <https://bugs.launchpad.net/cinder/+bug/1874187>`_:
+      PowerMax driver - Exception was not handled and breaks the flow while
+      add/remove volumes to generic volume group
+    * `Bug #1886689 <https://bugs.launchpad.net/cinder/+bug/1886689>`_:
+      Rekey fails when provider is legacy provider class
+    * `Bug #1877976 <https://bugs.launchpad.net/cinder/+bug/1877976>`_:
+      PowerMax Driver - RDFG suspended on vol create exception
+    * `Bug #1877445 <https://bugs.launchpad.net/cinder/+bug/1877445>`_:
+      Pure Storage Driver - doesn't handle synchronous replication CIDR
+      filters properly
+    * `Bug #1875953 <https://bugs.launchpad.net/cinder/+bug/1875953>`_:
+      Virtuozzo driver - missing context in create_cloned_volume call
+    * `Bug #1863021 <https://bugs.launchpad.net/cinder/+bug/1863021>`_:
+      Eventlet monkey patch results in assert len(_active) == 1 AssertionError
+    * `Bug #1875640 <https://bugs.launchpad.net/cinder/+bug/1875640>`_:
+      PowerMax Driver - Failover lock not released during U4P failover
+      during exception
+    * `Bug #1875959 <https://bugs.launchpad.net/cinder/+bug/1875959>`_:
+      NetApp ONTAP NFS driver - Unable to perform flexclone from glance share
+    * `Bug #1875433 <https://bugs.launchpad.net/cinder/+bug/1875433>`_:
+      PowerMax Driver - Retype from rep to rep leaving storage group suspended
+    * `Bug #1875432 <https://bugs.launchpad.net/cinder/+bug/1875432>`_:
+      PowerMax Driver - Live migration fails when an instance has more than
+      one replication device
+    * `Bug #1871744 <https://bugs.launchpad.net/cinder/+bug/1871744>`_:
+      Glance retry failed: TypeError: get() got an unexpected keyword
+      argument 'schema_name'
+    * `Bug #1873463 <https://bugs.launchpad.net/cinder/+bug/1873463>`_:
+      Virtuozzo driver - copy_volume_to_image() needs to support glance
+      multistore
+    * `Bug #1892057 <https://bugs.launchpad.net/cinder/+bug/1892057>`_:
+      PowerMax Driver - Missing force flag for rep group volume adds
+    * `Bug #1892718 <https://bugs.launchpad.net/cinder/+bug/1892718>`_:
+      PowerMax Driver - SRDF suspend can fail during _create_replica
+  - |
+    Additionally, the following minor fixes for which no bugs were filed
+    were made:
+
+    * `PowerMax Driver - Migrate extra spec class fix
+      <https://review.opendev.org/#/q/I18361315da9630e735044e1e7fb720c554a80456>`_
+    * `PowerMax Driver - Force array and srp configuration
+      <https://review.opendev.org/#/q/I2add29441cf0410b32c4c7f53824d9d301018349>`_
+    * `PowerMax Driver - Prevent unmanage with snapvx
+      <https://review.opendev.org/#/q/I3409308eb0b37352b069ec250db6adb9e082a27d>`_
+    * `PowerMax Driver -  Allowing for an empty group on a clone volume
+      <https://review.opendev.org/#/q/I8a39887a2eb1f0a21772525ca4b0d13ab07bd014>`_
+    * `PowerMax Driver - RDF State Validation Enhancements
+      <https://review.opendev.org/#/q/Ib4e7fb0a1a42fd2da8ee6244d78a16c308bfd1c1>`_
+    * `PowerMax Driver - Remove mandatory failover BID
+      <https://review.opendev.org/#/q/I914a1abe42edf40cb9ebdd7679b85dbf5c82ad81>`_
