@@ -527,6 +527,10 @@ class SpdkDriverTestCase(test.TestCase):
             self.assertEqual(1, len(self.driver._stats['pools']))
             self.assertEqual("lvs_test",
                              self.driver._stats['pools'][0]['pool_name'])
+            self.assertEqual('SPDK', self.driver._stats['volume_backend_name'])
+            self.assertEqual('Open Source', self.driver._stats['vendor_name'])
+            self.assertEqual('NVMe-oF', self.driver._stats['storage_protocol'])
+            self.assertIsNotNone(self.driver._stats['driver_version'])
 
     def test__get_spdk_volume_name(self):
         with mock.patch.object(self.driver, "_rpc_call",

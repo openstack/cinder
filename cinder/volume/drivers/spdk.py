@@ -89,7 +89,10 @@ class SPDKDriver(driver.VolumeDriver):
         """Retrieve stats info from volume group."""
 
         LOG.debug('SPDK Updating volume stats')
-        status = {}
+        status = {'volume_backend_name': 'SPDK',
+                  'vendor_name': 'Open Source',
+                  'driver_version': self.VERSION,
+                  'storage_protocol': 'NVMe-oF'}
         pools_status = []
         self.lvs = []
 
