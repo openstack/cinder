@@ -113,6 +113,10 @@ class STXClient(object):
     def _get_session_key(self):
         """Retrieve a session key from the array."""
 
+        # TODO(alee): This appears to use md5 in a security related
+        # context in providing a session key and hashing a login and
+        # password.  This should likely be replaced by a version that
+        # does not use md5 here.
         self._session_key = None
         hash_ = "%s_%s" % (self._login, self._password)
         if six.PY3:

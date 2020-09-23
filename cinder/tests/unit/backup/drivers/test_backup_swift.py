@@ -48,7 +48,7 @@ CONF = cfg.CONF
 ANY = mock.ANY
 
 
-def fake_md5(arg):
+def fake_md5(arg, usedforsecurity=False):
     class result(object):
         def hexdigest(self):
             return 'fake-md5-sum'

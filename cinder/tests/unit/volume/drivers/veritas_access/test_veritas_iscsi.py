@@ -14,13 +14,13 @@
 """
 Unit tests for Veritas Access cinder driver.
 """
-import hashlib
 import json
 import tempfile
 from unittest import mock
 from xml.dom.minidom import Document
 
 from oslo_config import cfg
+from oslo_utils.secretutils import md5
 import requests
 
 from cinder import context
@@ -225,8 +225,10 @@ class ACCESSIscsiDriverTestCase(test.TestCase):
         index = int(length / 2)
         name1 = self.volume.id[:index]
         name2 = self.volume.id[index:]
-        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:5]
-        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:5]
+        crc1 = md5(name1.encode('utf-8'),
+                   usedforsecurity=False).hexdigest()[:5]
+        crc2 = md5(name2.encode('utf-8'),
+                   usedforsecurity=False).hexdigest()[:5]
 
         volume_name_to_ret = 'cinder' + '-' + crc1 + '-' + crc2
 

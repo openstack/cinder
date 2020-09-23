@@ -15,10 +15,10 @@
 
 from copy import deepcopy
 import datetime
-import hashlib
 import re
 
 from oslo_log import log as logging
+from oslo_utils.secretutils import md5
 from oslo_utils import strutils
 from oslo_utils import units
 import packaging.version
@@ -431,7 +431,7 @@ class PowerMaxUtils(object):
         :returns: uuid
         """
         input_str = input_str.lower()
-        m = hashlib.md5()
+        m = md5(usedforsecurity=False)
         m.update(input_str.encode('utf-8'))
         return m.hexdigest()
 

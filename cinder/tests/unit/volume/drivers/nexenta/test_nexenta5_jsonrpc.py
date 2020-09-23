@@ -15,12 +15,12 @@
 """Unit tests for NexentaStor 5 REST API helper."""
 
 import copy
-import hashlib
 import json
 import posixpath
 from unittest import mock
 import uuid
 
+from oslo_utils.secretutils import md5
 import requests
 import six
 
@@ -1187,7 +1187,7 @@ class TestNefProxy(test.TestCase):
         path = '%s:%s' % (guid, self.proxy.path)
         if isinstance(path, six.text_type):
             path = path.encode('utf-8')
-        expected = hashlib.md5(path).hexdigest()
+        expected = md5(path, usedforsecurity=False).hexdigest()
         self.assertEqual(expected, self.proxy.lock)
 
     def test_url(self):

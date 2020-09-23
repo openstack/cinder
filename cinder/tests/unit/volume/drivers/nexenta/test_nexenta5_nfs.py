@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Unit tests for OpenStack Cinder volume driver."""
-import hashlib
 import os
 from unittest import mock
 
+from oslo_utils.secretutils import md5
 from oslo_utils import units
 
 from cinder import context
@@ -802,7 +802,7 @@ class TestNexentaNfsDriver(test.TestCase):
         result = self.drv._local_volume_dir(volume)
         get_share.assert_called_with(volume)
         share = share.encode('utf-8')
-        digest = hashlib.md5(share).hexdigest()
+        digest = md5(share, usedforsecurity=False).hexdigest()
         expected = os.path.join(self.cfg.nexenta_mount_point_base, digest)
         self.assertEqual(expected, result)
 

@@ -43,12 +43,12 @@
                              certificate for SSL connections (default: False)
 """
 
-import hashlib
 import io
 import socket
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import secretutils
 from oslo_utils import timeutils
 from swiftclient import client as swift
 
@@ -289,7 +289,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                                             content_length=len(self.data))
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
-            md5 = hashlib.md5(self.data).hexdigest()
+            md5 = secretutils.md5(self.data, usedforsecurity=False).hexdigest()
             if etag != md5:
                 err = _('error writing object to swift, MD5 of object in '
                         'swift %(etag)s is not the same as MD5 of object sent '

@@ -14,12 +14,12 @@
 #    under the License.
 """Mock unit tests for the NetApp cmode nfs storage driver."""
 
-import hashlib
 from unittest import mock
 import uuid
 
 import ddt
 from os_brick.remotefs import remotefs as remotefs_brick
+from oslo_utils.secretutils import md5
 from oslo_utils import units
 
 from cinder import exception
@@ -880,8 +880,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv = self.driver
         cinder_mount_point_base = '/opt/stack/data/cinder/mnt/'
         # To get the cinder mount point directory, we use:
-        mount_dir = hashlib.md5(
-            '203.0.113.122:/cinder-flexvol1'.encode('utf-8')).hexdigest()
+        mount_dir = md5(
+            '203.0.113.122:/cinder-flexvol1'.encode('utf-8'),
+            usedforsecurity=False).hexdigest()
         cinder_mount_point = cinder_mount_point_base + mount_dir
         destination_copied_file = (
             '/cinder-flexvol1/a155308c-0290-497b-b278-4cdd01de0253'

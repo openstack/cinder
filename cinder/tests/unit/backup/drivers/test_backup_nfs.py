@@ -175,7 +175,7 @@ class BackupNFSShareTestCase(test.TestCase):
                          mock_remotefsclient.mount.call_args_list)
 
 
-def fake_md5(arg):
+def fake_md5(arg, usedforsecurity=False):
     class result(object):
         def hexdigest(self):
             return 'fake-md5-sum'

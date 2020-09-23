@@ -13,13 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import hashlib
 import os
 import re
 
 from eventlet import greenthread
 from oslo_log import log as logging
 from oslo_utils import fileutils
+from oslo_utils.secretutils import md5
 from oslo_utils import units
 import six
 
@@ -613,7 +613,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         nfs_share = nfs_share.encode('utf-8')
         return os.path.join(self.configuration.nexenta_mount_point_base,
-                            hashlib.md5(nfs_share).hexdigest())
+                            md5(nfs_share, usedforsecurity=False).hexdigest())
 
     def remote_path(self, volume):
         """Get volume path (mounted remotely fs path) for given volume.

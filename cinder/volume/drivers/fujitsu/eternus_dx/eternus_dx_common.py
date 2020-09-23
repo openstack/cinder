@@ -20,7 +20,6 @@
 
 import ast
 import base64
-import hashlib
 import time
 
 from lxml import etree as ET
@@ -28,6 +27,7 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
+from oslo_utils.secretutils import md5
 from oslo_utils import units
 import six
 
@@ -1102,7 +1102,7 @@ class FJDXCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        m = hashlib.md5()
+        m = md5(usedforsecurity=False)
         m.update(id_code.encode('utf-8'))
 
         # pylint: disable=E1121
