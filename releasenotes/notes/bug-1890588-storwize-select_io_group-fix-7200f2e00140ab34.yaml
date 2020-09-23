@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1890588 <https://bugs.launchpad.net/cinder/+bug/1890588>`_:
+    IBM Storwize: Fixed issues in select_io_group that impacts the
+    performance during Create_volume, Group Snapshot/Clone operations
+    for bulk non-hyperswap volumes.
