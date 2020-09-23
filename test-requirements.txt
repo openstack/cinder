@@ -16,7 +16,6 @@ PyMySQL>=0.8.0 # MIT License
 psycopg2>=2.8 # LGPL/ZPL
 SQLAlchemy-Utils>=0.36.1 # BSD License
 testtools>=2.4.0 # MIT
-oslo.versionedobjects[fixtures]>=1.31.2 # Apache-2.0
 
 # bandit is not included in upper-constraints,
 # so we need to pin it here to a known working version
