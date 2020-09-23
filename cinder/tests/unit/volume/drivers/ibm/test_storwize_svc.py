@@ -8426,6 +8426,32 @@ class StorwizeHelpersTestCase(test.TestCase):
         self.storwize_svc_common.pretreatment_before_revert(vol)
         stopfcmap.assert_called_once_with('4', split=True)
 
+    def test_storwize_check_flashcopy_rate_invalid1(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 6, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            flashcopy_rate = 120
+            self.assertRaises(exception.VolumeDriverException,
+                              self.storwize_svc_common.check_flashcopy_rate,
+                              flashcopy_rate)
+
+    def test_storwize_check_flashcopy_rate_invalid2(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 8, 1, 2),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            flashcopy_rate = 200
+            self.assertRaises(exception.InvalidInput,
+                              self.storwize_svc_common.check_flashcopy_rate,
+                              flashcopy_rate)
+
 
 @ddt.ddt
 class StorwizeSSHTestCase(test.TestCase):
