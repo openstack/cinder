@@ -2627,7 +2627,7 @@ class VolumeManager(manager.CleanableManager,
 
                 # Append cacheable flag for iSCSI/FC/NVMe-oF and only when
                 # cacheable is not set in driver level
-                if volume_stats['storage_protocol'] in [
+                if volume_stats.get('storage_protocol') in [
                         'iSCSI', 'FC', 'NVMe-oF']:
                     if volume_stats.get('pools'):
                         for pool in volume_stats.get('pools'):
