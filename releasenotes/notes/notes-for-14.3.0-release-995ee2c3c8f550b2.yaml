@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    This release updates the os-brick library used by Cinder to version
+    2.8.7 to correct hopefully the final problem with the fix for
+    `Bug #1823200
+    <https://bugs.launchpad.net/cinder/+bug/1823200>`_ in the previous
+    os-brick release.
+
+    See the `os-brick 2.8.7 release notes
+    <https://docs.openstack.org/releasenotes/os-brick/stein.html#relnotes-2-8-7-stable-stein>`_
+    for more information.
