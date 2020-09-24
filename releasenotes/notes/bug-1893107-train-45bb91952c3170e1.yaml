@@ -18,10 +18,10 @@ upgrade:
 
        .. note::
           If you are upgrading a Stein installation directly to this release
-          (cinder 15.3.1) or later, this notice does *not* apply to you.
+          (cinder 15.4.0) or later, this notice does *not* apply to you.
 
     If all the above three items apply to you, as part of your upgrade
-    to cinder 15.3.1 you should re-run the online database migrations
+    to cinder 15.4.0 you should re-run the online database migrations
     contained in this release.  This will prepare your cinder database
     for an eventual upgrade to the Ussuri release.
 

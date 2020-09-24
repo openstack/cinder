@@ -1,0 +1,37 @@
+---
+prelude: |
+    The Cinder project team would like to point out some issues addressed
+    by this release:
+
+    * The online data migrations for Train have been updated to address
+      an upgrade issue (`Bug #1893107
+      <https://bugs.launchpad.net/cinder/+bug/1893107>`_).  The issue does
+      not manifest itself in the Train release of cinder, but under specific
+      circumstances it can prevent a cinder database upgrade from Train to
+      Ussuri.  See the "Upgrade Notes" and "Bug Fixes" sections below for
+      more information.
+
+    * This release improves the handling of the ``__DEFAULT__`` volume-type
+      (see "Other Notes", below) and fixes `Bug #1879578
+      <https://bugs.launchpad.net/cinder/+bug/1879578>`_, in which the
+      default type was applied too aggressively (see the discussion of
+      this issue in "Bug Fixes", below).
+
+    * Operators affected by `OSSN-0086
+      <https://wiki.openstack.org/wiki/OSSN/OSSN-0086>`_ should note that
+      this release updates the os-brick library used by cinder to version
+      2.10.5 in order to address an issue associated with the previous
+      fixes for `Bug #1823200
+      <https://bugs.launchpad.net/cinder/+bug/1823200>`_.
+
+upgrade:
+  - |
+    This release updates the os-brick library used by Cinder to version
+    2.10.5 to correct hopefully the final problem with the fix for
+    `Bug #1823200
+    <https://bugs.launchpad.net/cinder/+bug/1823200>`_ in the previous
+    os-brick release.
+
+    See the `os-brick 2.10.5 release notes
+    <https://docs.openstack.org/releasenotes/os-brick/train.html#relnotes-2-10-5-stable-train>`_
+    for more information.
