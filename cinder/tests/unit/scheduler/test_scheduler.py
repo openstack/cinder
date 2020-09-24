@@ -605,9 +605,12 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.volume.volume_utils.update_backup_error')
     @mock.patch('cinder.scheduler.driver.Scheduler.get_backup_host')
     @mock.patch('cinder.db.volume_get')
-    def test_create_backup_no_service(self, mock_volume_get, mock_host,
-                                      mock_error):
+    @mock.patch('cinder.db.volume_update')
+    def test_create_backup_no_service(self, mock_volume_update,
+                                      mock_volume_get, mock_host, mock_error):
         volume = fake_volume.fake_db_volume()
+        volume['status'] = 'backing-up'
+        volume['previous_status'] = 'available'
         mock_volume_get.return_value = volume
         mock_host.side_effect = exception.ServiceNotFound(
             service_id='cinder-volume')
@@ -617,6 +620,11 @@ class SchedulerManagerTestCase(test.TestCase):
 
         mock_host.assert_called_once_with(volume)
         mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
+        mock_volume_update.assert_called_once_with(
+            self.context,
+            backup.volume_id,
+            {'status': 'available',
+             'previous_status': 'backing-up'})
         mock_error.assert_called_once_with(
             backup, 'Service not found for creating backup.')
 

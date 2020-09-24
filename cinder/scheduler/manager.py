@@ -629,13 +629,17 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         return requested, not_requested
 
     def create_backup(self, context, backup):
-        volume = self.db.volume_get(context, backup.volume_id)
+        volume_id = backup.volume_id
+        volume = self.db.volume_get(context, volume_id)
         try:
             host = self.driver.get_backup_host(volume)
             backup.host = host
             backup.save()
             self.backup_api.create_backup(context, backup)
         except exception.ServiceNotFound:
+            self.db.volume_update(context, volume_id,
+                                  {'status': volume['previous_status'],
+                                   'previous_status': volume['status']})
             msg = "Service not found for creating backup."
             LOG.error(msg)
             vol_utils.update_backup_error(backup, msg)
