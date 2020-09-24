@@ -32,7 +32,7 @@ upgrade:
     your Train deployment *before* you upgrade.  Please pick the least
     inconvenient of the following options:
 
-    #. Upgrade your Train deployment to cinder 15.3.1 or more recent and
+    #. Upgrade your Train deployment to cinder 15.4.0 or more recent and
        re-run the online database migrations in your Train deployment.
 
        * This migration requires the existence of a ``__DEFAULT__`` volume
@@ -63,7 +63,7 @@ upgrade:
          the ``default_volume_type`` configuration option is set to a valid
          existing volume type.
 
-       * After the online database migrations from cinder 15.3.1 or more
+       * After the online database migrations from cinder 15.4.0 or more
          recent have run, you may upgrade to Ussuri in the normal way.
 
     #. Upgrade to Ussuri, but run the online database migrations **before**

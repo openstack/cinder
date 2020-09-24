@@ -1,0 +1,29 @@
+---
+prelude: |
+    The Cinder project team would like to point out some issues addressed
+    by this release:
+
+    * This release improves the handling of the ``__DEFAULT__`` volume-type
+      (see "Other Notes", below) and fixes `Bug #1879578
+      <https://bugs.launchpad.net/cinder/+bug/1879578>`_, in which the
+      default type was applied too aggressively (see the discussion of
+      this issue in "Bug Fixes", below).
+
+    * Operators affected by `OSSN-0086
+      <https://wiki.openstack.org/wiki/OSSN/OSSN-0086>`_ should note that
+      this release updates the os-brick library used by cinder to version
+      3.0.3 in order to address an issue associated with the previous
+      fixes for `Bug #1823200
+      <https://bugs.launchpad.net/cinder/+bug/1823200>`_.
+
+upgrade:
+  - |
+    This release updates the os-brick library used by Cinder to version
+    3.0.3 to correct hopefully the final problem with the fix for
+    `Bug #1823200
+    <https://bugs.launchpad.net/cinder/+bug/1823200>`_ in the previous
+    os-brick release.
+
+    See the `os-brick 3.0.3 release notes
+    <https://docs.openstack.org/releasenotes/os-brick/ussuri.html#relnotes-3-0-3-stable-ussuri>`_
+    for more information.
