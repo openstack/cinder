@@ -1922,25 +1922,6 @@ class PowerMaxUtils(object):
                         'state. If you meant to failover, please either omit '
                         'the --backend_id parameter or use the --backend_id '
                         'parameter with a valid backend id.')
-            elif failover_backend_id == PMAX_FAILOVER_START_ARRAY_PROMOTION:
-                is_valid = False
-                msg = _('Cannot start failover promotion. The backend must '
-                        'already be in a failover state to perform this'
-                        'action.')
-            elif len(rep_configs) > 1:
-                if failover_backend_id is None:
-                    is_valid = False
-                    msg = _('Cannot failover, no backend_id provided while '
-                            'multiple replication devices are defined in '
-                            'cinder.conf, please provide a backend_id '
-                            'which will act as new primary array by '
-                            'appending --backend_id <id> to your command.')
-                else:
-                    rc = self.get_rep_config(failover_backend_id, rep_configs)
-                    if rc is None:
-                        is_valid = False
-                        msg = _('Can not find replication device with '
-                                'backend_id of %s') % failover_backend_id
         return is_valid, msg
 
     def validate_replication_group_config(self, rep_configs, extra_specs_list):

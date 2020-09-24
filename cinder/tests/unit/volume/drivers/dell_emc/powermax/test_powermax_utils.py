@@ -1476,52 +1476,6 @@ class PowerMaxUtilsTest(test.TestCase):
                         'parameter with a valid backend id.')
         self.assertEqual(expected_msg, msg)
 
-    def test_validate_failover_request_no_backend_id_multi_rep(self):
-        is_failed_over = False
-        is_promoted = False
-        failover_backend_id = None
-        rep_configs = self.data.multi_rep_config_list
-        primary_array = self.data.array
-        array_list = [self.data.array]
-        is_valid, msg = self.utils.validate_failover_request(
-            is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list, is_promoted)
-        self.assertFalse(is_valid)
-        expected_msg = ('Cannot failover, no backend_id provided while '
-                        'multiple replication devices are defined in '
-                        'cinder.conf, please provide a backend_id '
-                        'which will act as new primary array by '
-                        'appending --backend_id <id> to your command.')
-        self.assertEqual(expected_msg, msg)
-
-    def test_validate_failover_request_incorrect_backend_id_multi_rep(self):
-        is_failed_over = False
-        is_promoted = False
-        failover_backend_id = 'invalid_id'
-        rep_configs = self.data.multi_rep_config_list
-        primary_array = self.data.array
-        array_list = [self.data.array]
-        self.assertRaises(exception.InvalidInput,
-                          self.utils.validate_failover_request,
-                          is_failed_over, failover_backend_id, rep_configs,
-                          primary_array, array_list, is_promoted)
-
-    def test_validate_failover_request_promotion_before_failover(self):
-        is_failed_over = False
-        is_promoted = False
-        failover_backend_id = utils.PMAX_FAILOVER_START_ARRAY_PROMOTION
-        rep_configs = self.data.multi_rep_config_list
-        primary_array = self.data.array
-        array_list = [self.data.array]
-        is_valid, msg = self.utils.validate_failover_request(
-            is_failed_over, failover_backend_id, rep_configs,
-            primary_array, array_list, is_promoted)
-        self.assertFalse(is_valid)
-        expected_msg = ('Cannot start failover promotion. The backend must '
-                        'already be in a failover state to perform this'
-                        'action.')
-        self.assertEqual(expected_msg, msg)
-
     def test_validate_replication_group_config_success(self):
         rep_configs = deepcopy(self.data.multi_rep_config_list)
         extra_specs = deepcopy(

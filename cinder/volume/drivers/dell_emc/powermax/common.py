@@ -1344,8 +1344,7 @@ class PowerMaxCommon(object):
         already_queried = False
         for array_info in array_info_list:
             if self.failover:
-                rep_config = self.utils.get_rep_config(
-                    self.active_backend_id, self.rep_configs, True)
+                rep_config = self.rep_configs[0]
                 array_info = self.get_secondary_stats_info(
                     rep_config, array_info)
             # Add both SLO & Workload name in the pool name
@@ -5220,7 +5219,8 @@ class PowerMaxCommon(object):
         group_fo = None
         if not self.failover:
             self.failover = True
-            self.active_backend_id = secondary_id if secondary_id else None
+            if not secondary_id:
+                secondary_id = utils.RDF_FAILEDOVER_STATE
         elif secondary_id == 'default':
             self.failover = False
             group_fo = 'default'
