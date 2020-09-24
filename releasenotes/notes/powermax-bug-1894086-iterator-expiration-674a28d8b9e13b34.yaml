@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1894086 <https://bugs.launchpad.net/cinder/+bug/1894086>`_:
+    PowerMax Cinder driver addresses an issue whereby Unisphere REST iterators
+    expire before all data can be read from them. The iterator expiration is now
+    set to 180mins and deleted once all data has been read so no artifacts are
+    left behind.
