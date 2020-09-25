@@ -258,6 +258,16 @@ class RBDTestCase(test.TestCase):
             self.assertRaises(exception.InvalidConfigurationValue,
                               self.driver.check_for_setup_error)
 
+    @mock.patch.object(driver, 'rados', mock.Mock())
+    @mock.patch.object(driver, 'RADOSClient')
+    def test_check_for_setup_error_missing_keyring_data(self, mock_client):
+        self.driver.keyring_file = '/etc/ceph/ceph.client.admin.keyring'
+        self.driver.keyring_data = None
+
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.driver.check_for_setup_error)
+        mock_client.assert_called_once_with(self.driver)
+
     def test_parse_replication_config_empty(self):
         self.driver._parse_replication_configs([])
         self.assertEqual([], self.driver._replication_targets)
@@ -1593,12 +1603,80 @@ class RBDTestCase(test.TestCase):
         }
         self._initialize_connection_helper(expected, hosts, ports)
 
+        # Check how it will work with keyring data (for cinderlib)
+        keyring_data = "[client.cinder]\n  key = test\n"
+        self.driver.keyring_data = keyring_data
+        expected['data']['keyring'] = keyring_data
+        self._initialize_connection_helper(expected, hosts, ports)
+
         self.driver._active_config = {'name': 'secondary_id',
                                       'user': 'foo',
                                       'conf': 'bar',
                                       'secret_uuid': 'secondary_secret_uuid'}
         expected['data']['secret_uuid'] = 'secondary_secret_uuid'
         self._initialize_connection_helper(expected, hosts, ports)
+
+    def test__set_keyring_attributes_openstack(self):
+        # OpenStack usage doesn't have the rbd_keyring_conf Oslo Config option
+        self.assertFalse(hasattr(self.driver.configuration,
+                                 'rbd_keyring_conf'))
+        # Set initial values so we can confirm that we set them to None
+        self.driver.keyring_file = mock.sentinel.keyring_file
+        self.driver.keyring_data = mock.sentinel.keyring_data
+
+        self.driver._set_keyring_attributes()
+
+        self.assertIsNone(self.driver.keyring_file)
+        self.assertIsNone(self.driver.keyring_data)
+
+    def test__set_keyring_attributes_cinderlib(self):
+        # OpenStack usage doesn't have the rbd_keyring_conf Oslo Config option
+        cfg_file = '/etc/ceph/ceph.client.admin.keyring'
+        self.driver.configuration.rbd_keyring_conf = cfg_file
+        self.driver._set_keyring_attributes()
+        self.assertEqual(cfg_file, self.driver.keyring_file)
+        self.assertIsNone(self.driver.keyring_data)
+
+    @mock.patch('os.path.isfile')
+    @mock.patch.object(driver, 'open')
+    def test__set_keyring_attributes_cinderlib_read_file(self, mock_open,
+                                                         mock_isfile):
+        cfg_file = '/etc/ceph/ceph.client.admin.keyring'
+        # This is how cinderlib sets the config option
+        setattr(self.driver.configuration, 'rbd_keyring_conf', cfg_file)
+
+        keyring_data = "[client.cinder]\n  key = test\n"
+        mock_read = mock_open.return_value.__enter__.return_value.read
+        mock_read.return_value = keyring_data
+
+        self.assertIsNone(self.driver.keyring_file)
+        self.assertIsNone(self.driver.keyring_data)
+
+        self.driver._set_keyring_attributes()
+
+        mock_isfile.assert_called_once_with(cfg_file)
+        mock_open.assert_called_once_with(cfg_file, 'r')
+        mock_read.assert_called_once_with()
+        self.assertEqual(cfg_file, self.driver.keyring_file)
+        self.assertEqual(keyring_data, self.driver.keyring_data)
+
+    @mock.patch('os.path.isfile')
+    @mock.patch.object(driver, 'open', side_effect=IOError)
+    def test__set_keyring_attributes_cinderlib_error(self, mock_open,
+                                                     mock_isfile):
+        cfg_file = '/etc/ceph/ceph.client.admin.keyring'
+        # This is how cinderlib sets the config option
+        setattr(self.driver.configuration, 'rbd_keyring_conf', cfg_file)
+
+        self.assertIsNone(self.driver.keyring_file)
+        self.driver.keyring_data = mock.sentinel.keyring_data
+
+        self.driver._set_keyring_attributes()
+
+        mock_isfile.assert_called_once_with(cfg_file)
+        mock_open.assert_called_once_with(cfg_file, 'r')
+        self.assertEqual(cfg_file, self.driver.keyring_file)
+        self.assertIsNone(self.driver.keyring_data)
 
     @ddt.data({'rbd_chunk_size': 1, 'order': 20},
               {'rbd_chunk_size': 8, 'order': 23},
