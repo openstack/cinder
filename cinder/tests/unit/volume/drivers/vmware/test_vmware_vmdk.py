@@ -2398,6 +2398,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         tmp_backing = mock.sentinel.tmp_backing
         vops.clone_backing.return_value = tmp_backing
 
+        disk_device = mock.sentinel.disk_device
+        disk_device.capacityInKB = self.VOL_SIZE + 11111111
+        vops._get_disk_device.return_value = disk_device
+
         volume = self._create_volume_obj()
         inv_path = mock.sentinel.inv_path
         self._driver._create_volume_from_template(volume, inv_path)
@@ -2413,7 +2417,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                    disk_type=disk_type,
                                                    host=host,
                                                    resource_pool=rp,
-                                                   folder=folder)
+                                                   folder=folder,
+                                                   device_changes=None)
         create_volume_from_temp_backing.assert_called_once_with(volume,
                                                                 tmp_backing)
 

@@ -44,6 +44,7 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
     IP = 'localhost'
     PORT = 2321
     IMG_TX_TIMEOUT = 10
+    MAX_OBJECTS = 100
     RESERVED_PERCENTAGE = 0
     VMDK_DRIVER = vmdk.VMwareVcVmdkDriver
     FCD_DRIVER = fcd.VMwareVStorageObjectDriver
@@ -65,6 +66,8 @@ class VMwareVStorageObjectDriverTestCase(test.TestCase):
         self._config.vmware_host_ip = self.IP
         self._config.vmware_host_port = self.PORT
         self._config.vmware_image_transfer_timeout_secs = self.IMG_TX_TIMEOUT
+        self._config.vmware_max_objects_retrieval = self.MAX_OBJECTS
+        self._config.vmware_storage_profile = None
         self._config.reserved_percentage = self.RESERVED_PERCENTAGE
         self._driver = fcd.VMwareVStorageObjectDriver(
             configuration=self._config)
