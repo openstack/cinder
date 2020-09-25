@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1890591 <https://bugs.launchpad.net/cinder/+bug/1890591>`_:
+    IBM Spectrum Virtualize Family: Fixed issue in do_setup of
+    StorwizeSVCCommonDriver to save pool information in stats
+    during initialisation.
