@@ -6481,6 +6481,173 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'mkfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_pool')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'add_vdisk_qos')
+    def test_storwize_create_flashcopy_to_consistgrp(self, add_vdisk_qos,
+                                                     _get_pool,
+                                                     mkfcmap,
+                                                     create_vdisk,
+                                                     get_vdisk_attributes):
+        source = "volume-36cd5a6f-a13c-456c-8129-c3e8874fb15c"
+        target = "volume-55eb6c7e-a13c-456c-8129-c3e8874kl34f"
+        consistgrp = "cg_snap-9021b016-ce1e-4145-a1f0-0bd4007a3a78"
+        config = self.driver.configuration
+        pool = "openstack2"
+        opts = {'rsize': 2, 'iogrp': 0, 'qos': None, 'flashcopy_rate': 50}
+        self.driver._helpers.create_flashcopy_to_consistgrp(source,
+                                                            target, consistgrp,
+                                                            config, opts,
+                                                            full_copy=False,
+                                                            pool=pool)
+        _get_pool.assert_not_called()
+        add_vdisk_qos.assert_not_called()
+
+        opts = {'rsize': 2, 'iogrp': 0, 'qos': 'abc', 'flashcopy_rate': 50}
+        self.driver._helpers.create_flashcopy_to_consistgrp(source,
+                                                            target, consistgrp,
+                                                            config, opts,
+                                                            full_copy=False,
+                                                            pool=pool)
+        add_vdisk_qos.assert_called_with(target, opts['qos'])
+        pool = None
+        self.driver._helpers.create_flashcopy_to_consistgrp(source,
+                                                            target, consistgrp,
+                                                            config, opts,
+                                                            full_copy=False,
+                                                            pool=pool)
+        _get_pool.assert_called_with(get_vdisk_attributes())
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_copies')
+    def test_storwize_get_pool(self, get_vdisk_copies):
+        vol_attrs = {'mdisk_grp_name': 'openstack', 'IO_group_id': 0,
+                     'capacity': 1, 'name': 'vol1'}
+        self.driver._helpers._get_pool(vol_attrs)
+        get_vdisk_copies.assert_not_called()
+        vol_attrs['mdisk_grp_name'] = 'many'
+        self.driver._helpers._get_pool(vol_attrs)
+        get_vdisk_copies.assert_called_once()
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_flashcopy_to_consistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_params')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'start_fc_consistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'prepare_fc_consistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_fc_consistgrp')
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_pool')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_attributes')
+    def test_run_consistgrp_snapshots_forhost(
+            self,
+            get_vdisk_attributes,
+            _get_pool,
+            is_grp_a_cg_snapshot_type,
+            delete_fc_consistgrp,
+            prepare_fc_consistgrp,
+            start_fc_consistgrp,
+            get_vdisk_params,
+            create_flashcopy_to_consistgrp):
+        fake_opts = self._get_default_opts()
+        get_vdisk_params.return_value = fake_opts
+        is_grp_a_cg_snapshot_type.side_effect = [True, True, True, False, True]
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=fake.GROUP_TYPE_ID,
+                                       volume_type_ids=[type_ref['id']])
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        self._create_volume(volume_type_id=type_ref['id'], group_id=group.id)
+        group_snapshot, snapshots = self._create_group_snapshot(group.id)
+        cgsnapshot_id = group_snapshot.id
+        fc_consistgrp = 'cg_snap-' + cgsnapshot_id
+        config = None
+        state = self.driver._state
+        timeout = 20
+        self.driver._helpers.run_consistgrp_snapshots(fc_consistgrp, snapshots,
+                                                      state, config, timeout)
+        start_fc_consistgrp.assert_called_with(fc_consistgrp)
+        _get_pool.assert_not_called()
+        get_vdisk_attributes.assert_not_called()
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_flashcopy_to_consistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_params')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'start_fc_consistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'prepare_fc_consistgrp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_fc_consistgrp')
+    @mock.patch('cinder.volume.volume_utils.extract_host')
+    def test_create_cg_from_source_forhost(
+            self,
+            extract_host,
+            delete_fc_consistgrp,
+            prepare_fc_consistgrp,
+            start_fc_consistgrp,
+            get_vdisk_params,
+            create_flashcopy_to_consistgrp):
+        fake_opts = self._get_default_opts()
+        get_vdisk_params.return_value = fake_opts
+        extract_host.return_value = 'openstack'
+        # Valid case for create cg from src
+        type_ref = volume_types.create(self.ctxt, 'testtype', None)
+        spec = {'consistent_group_snapshot_enabled': '<is> True'}
+        cg_type_ref = group_types.create(self.ctxt, 'cg_type', spec)
+        pool = _get_test_pool()
+        # Create cg in db
+        tgt_group = self._create_group_in_db(volume_type_ids=[type_ref.id],
+                                             group_type_id=cg_type_ref.id)
+        # Create volumes in db without hash
+        testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                group_id=tgt_group.id,
+                                host='openstack@svc%s' % pool)
+        testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                consistencygroup_id=tgt_group.id,
+                                host='openstack@svc%s' % pool)
+        tgt_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), tgt_group.id)
+
+        # Create source CG
+        source_cg = self._create_group_in_db(volume_type_ids=[type_ref.id],
+                                             group_type_id=cg_type_ref.id)
+        # Add volumes to source CG
+        self._create_volume(volume_type_id=type_ref.id,
+                            group_id=source_cg['id'])
+        self._create_volume(volume_type_id=type_ref.id,
+                            group_id=source_cg['id'])
+        source_vols = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), source_cg['id'])
+
+        fc_consistgrp = 'cg_snap-' + source_cg.id
+
+        config = None
+        state = self.driver._state
+        timeout = 20
+
+        # test create_cg_from_source from volume group
+        self.driver._helpers.create_cg_from_source(tgt_group, fc_consistgrp,
+                                                   source_vols, tgt_volumes,
+                                                   state, config, timeout)
+        start_fc_consistgrp.assert_called_with(fc_consistgrp)
+        self.assertEqual(2, extract_host.call_count)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_storwize_group_from_src(self):
         # Valid case for create cg from src
         type_ref = volume_types.create(self.ctxt, 'testtype', None)
