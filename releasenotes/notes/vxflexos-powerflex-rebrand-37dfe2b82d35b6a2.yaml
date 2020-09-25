@@ -10,17 +10,19 @@ upgrade:
     release, and thus we recommend that you update the driver name in
     ``cinder.conf`` at your earliest convenience.
 
-    Existing vxFlex OS configuration options will continue to work in this
-    release, but this functionality will be removed in the Wallaby release.
+    Existing vxFlex OS configuration options, whose usage was DEPRECATED
+    in the Stein release, will no longer be recognized in this release.
     Thus all driver configuration options that start with ``vxflexos``
-    should be updated to ``powerflex`` in your ``cinder.conf`` as soon
-    as possible.
+    must be updated to ``powerflex`` in your ``cinder.conf`` before
+    you deploy this release.
 
     Before the Rocky release, this driver was named
     ``cinder.volume.drivers.dell_emc.scaleio.driver.ScaleIODriver``.
     That name was deprecated in the Rocky release.  In this release,
     the pre-Rocky name for this driver is no longer recognized and
     support for configuration options beginning with ``sio`` has been
-    removed.
+    removed.  Thus any driver configuration options that start with
+    ``sio`` must be updated to ``powerflex`` in your ``cinder.conf``
+    before you deploy this release.
 
     The online documentation has been updated to reflect these changes.
