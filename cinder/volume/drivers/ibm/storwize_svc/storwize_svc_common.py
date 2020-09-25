@@ -743,6 +743,8 @@ class StorwizeHelpers(object):
     def __init__(self, run_ssh):
         self.ssh = StorwizeSSH(run_ssh)
         self.check_fcmapping_interval = 3
+        self.code_level = None
+        self.stats = {}
 
     @staticmethod
     def handle_keyerror(cmd, out):
@@ -811,6 +813,12 @@ class StorwizeHelpers(object):
 
     def is_data_reduction_pool(self, pool_name):
         """Check if pool is data reduction pool."""
+        # Check pool is data reduction pool or not from pool information
+        # saved in stats.
+        for pool in self.stats.get('pools', []):
+            if pool['pool_name'] == pool_name:
+                return pool['data_reduction']
+
         pool_data = self.get_pool_attrs(pool_name)
         if (pool_data and 'data_reduction' in pool_data and
                 pool_data['data_reduction'] == 'yes'):
@@ -2729,6 +2737,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # This is used to save the available pools in failed-over status
         self._secondary_pools = None
 
+        # This dictionary is used to save pools information.
+        self._stats = {}
+
         # Storwize has the limitation that can not burst more than 3 new ssh
         # connections within 1 second. So slow down the initialization.
         time.sleep(1)
@@ -2745,6 +2756,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         # Get list of all volumes
         self._get_all_volumes()
+
+        # Update the pool stats
+        self._update_volume_stats()
+
+        # Save the pool stats information in helpers class.
+        self._master_backend_helpers.stats = self._stats
 
         # Build the list of in-progress vdisk copy operations
         if ctxt is None:
@@ -3516,6 +3533,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._state = self._master_state
 
         self._update_volume_stats()
+        self._master_backend_helpers.stats = self._stats
+
         return storwize_const.FAILBACK_VALUE, volumes_update, groups_update
 
     def _failback_replica_volumes(self, ctxt, rep_volumes):
@@ -3765,6 +3784,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._state = self._aux_state
 
         self._update_volume_stats()
+        self._aux_backend_helpers.stats = self._stats
+
         return self._active_backend_id, volumes_update, groups_update
 
     def _failover_replica_volumes(self, ctxt, rep_volumes):
@@ -5563,6 +5584,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """Build pool status"""
         QoS_support = True
         pool_stats = {}
+        is_dr_pool = False
         pool_data = self._helpers.get_pool_attrs(pool)
         if pool_data:
             easy_tier = pool_data['easy_tier'] in ['on', 'auto']
@@ -5586,6 +5608,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                            storwize_svc_multihostmap_enabled)
             backend_state = ('up' if pool_data['status'] == 'online' else
                              'down')
+
+            # Get the data_reduction information for pool and set
+            # is_dr_pool flag.
+            if pool_data.get('data_reduction') == 'Yes':
+                is_dr_pool = True
+            elif pool_data.get('data_reduction') == 'No':
+                is_dr_pool = False
+
             pool_stats = {
                 'pool_name': pool_data['name'],
                 'total_capacity_gb': total_capacity_gb,
@@ -5605,6 +5635,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 'max_over_subscription_ratio': over_sub_ratio,
                 'consistent_group_snapshot_enabled': True,
                 'backend_state': backend_state,
+                'data_reduction': is_dr_pool,
             }
             if self._replica_enabled:
                 pool_stats.update({
@@ -5626,6 +5657,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           'thick_provisioning_support': False,
                           'max_over_subscription_ratio': 0,
                           'reserved_percentage': 0,
+                          'data_reduction': is_dr_pool,
                           'backend_state': 'down'}
 
         return pool_stats
