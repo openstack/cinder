@@ -139,3 +139,31 @@ reference, are:
 - `cinder/volume/drivers/nec/cli.py`
 - `cinder/volume/drivers/nec/volume_helper.py`
 - `cinder/volume/drivers/netapp/dataontap/nfs_base.py`
+
+
+Notes on Driver Locking
+-----------------------
+
+From the volume manager flow, create_cloned_volume() happens to be called
+with a lock that prevents concurrent calls to clone from the same volume
+at the same time.
+
+This is done by the cinder/volume/manager.py create_volume() code::
+
+    elif source_volid is not None:
+        locked_action = "%s-%s" % (source_volid, 'delete_volume')
+
+and subsequent COORDINATOR.get_lock() call.
+
+This seems to have been intended to prevent a volume from being deleted
+while being used as the source of a volume clone, the fact that it
+prevents concurrent clone operations is a side effect.
+
+This means that a driver that cannot correctly handle concurrent clone
+operations from the same volume will work for normal clone operations,
+but then fail when a clone operation is performed as part of cloning
+from the image-volume cache, or cloning from a Cinder backend of Glance.
+(See https://bugs.launchpad.net/cinder/+bug/1851512 for an example.)
+
+It should be assumed that, at some point, this locking behavior will be
+changed to allow concurrent clone calls.
