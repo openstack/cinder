@@ -29,15 +29,15 @@ from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 MIGRATE_VOLUME_PARAMS_CASES = (
     # Cases for testing _get_volume_params function.
     # +----------------------------------------------------+------------------+
-    # |Volume type|Real provisioning|Conversion|Compression|Pool support thick|
+    # |Volume Type|Real provisioning|Conversion|Compression|Pool support thick|
     # +-----------+-----------------+----------+-----------+-----+------------+
-    ('thin', 'ThinProvisioned', 'NoConversion', 'None', False),
-    ('thin', 'ThickProvisioned', 'ThickToThin', 'None', True),
-    ('thick', 'ThinProvisioned', 'NoConversion', 'None', False),
-    ('thick', 'ThinProvisioned', 'ThinToThick', 'None', True),
-    ('compressed', 'ThinProvisioned', 'NoConversion', 'Normal', False),
-    ('compressed', 'ThickProvisioned', 'ThickToThin', 'Normal', False),
-    ('compressed', 'ThickProvisioned', 'ThickToThin', 'None', False)
+    ('ThinProvisioned', 'ThinProvisioned', 'NoConversion', 'None', False),
+    ('ThinProvisioned', 'ThickProvisioned', 'ThickToThin', 'None', True),
+    ('ThickProvisioned', 'ThinProvisioned', 'NoConversion', 'None', False),
+    ('ThickProvisioned', 'ThinProvisioned', 'ThinToThick', 'None', True),
+    ('ThinProvisioned', 'ThinProvisioned', 'NoConversion', 'Normal', False),
+    ('ThinProvisioned', 'ThickProvisioned', 'ThickToThin', 'Normal', False),
+    ('ThinProvisioned', 'ThickProvisioned', 'ThickToThin', 'None', False)
 )
 
 
