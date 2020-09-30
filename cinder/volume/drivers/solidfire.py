@@ -244,9 +244,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                    service is restarted
           2.0.18 - Fix bug #1896112 SolidFire Driver creates duplicate volume
                    when API response is lost
+          2.0.19 - Fix bug #1891914 fix error on cluster workload rebalancing
+                   by adding xNotPrimary to the retryable exception list
     """
 
-    VERSION = '2.0.18'
+    VERSION = '2.0.19'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_SolidFire_CI"
@@ -282,7 +284,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                         'xMaxSnapshotsPerNodeExceeded',
                         'xMaxClonesPerNodeExceeded',
                         'xSliceNotRegistered',
-                        'xNotReadyForIO']
+                        'xNotReadyForIO',
+                        'xNotPrimary']
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)
