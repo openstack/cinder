@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family `Bug #1896214
+    <https://bugs.launchpad.net/cinder/+bug/1896214>`_:
+    Fixed issues in change_vdisk_iogrp.
+    During retyping a volume between I/O groups, if addvdiskaccess fails
+    an exception is raised and if movevdisk fails rmvdiskaccess should be
+    done for new I/O group before failing the retype operation.
