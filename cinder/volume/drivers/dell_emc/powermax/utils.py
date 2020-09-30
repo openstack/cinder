@@ -1001,3 +1001,28 @@ class PowerMaxUtils(object):
                     and 'NONE' not in extra_specs.get(WORKLOAD)):
                 workload = extra_specs.get(WORKLOAD)
         return service_level, workload
+
+    def get_object_components_and_correct_host(self, regex_str, input_str):
+        """Get components from input string.
+
+        :param regex_str: the regex -- str
+        :param input_str: the input string -- str
+        :returns: object components -- dict
+        """
+        object_dict = self.get_object_components(regex_str, input_str)
+        if object_dict and 'host' in object_dict:
+            if object_dict['host'].endswith('-'):
+                object_dict['host'] = object_dict['host'][:-1]
+        return object_dict
+
+    @staticmethod
+    def get_object_components(regex_str, input_str):
+        """Get components from input string.
+
+        :param regex_str: the regex -- str
+        :param input_str: the input string -- str
+        :returns: dict
+        """
+        full_str = re.compile(regex_str)
+        match = full_str.match(input_str)
+        return match.groupdict() if match else None
