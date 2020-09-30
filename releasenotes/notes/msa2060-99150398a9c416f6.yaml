@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    HPMSA driver: The HPE MSA driver was updated to avoid using
+    deprecated command syntax that has been removed in the latest
+    version of the MSA API.  This is required to support the newest
+    firmware in the MSA 2060/1060.

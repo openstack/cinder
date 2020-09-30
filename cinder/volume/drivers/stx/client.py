@@ -17,6 +17,7 @@
 
 import hashlib
 import math
+import re
 import time
 
 from lxml import etree
@@ -44,7 +45,8 @@ class STXClient(object):
         self._session_key = None
         self.ssl_verify = ssl_verify
         self._set_host(self._mgmt_ip_addrs[0])
-        self._fw = ''
+        self._fw_type = ''
+        self._fw_rev = 0
         self._driver_name = self.__class__.__name__.split('.')[0]
         self._array_name = 'unknown'
         self._luns_in_use_by_host = {}
@@ -245,8 +247,19 @@ class STXClient(object):
             return False
 
     def is_titanium(self):
-        """True if array is an older generation."""
-        return True if len(self._fw) > 0 and self._fw[0] == 'T' else False
+        """True for older array firmware."""
+        return self._fw_type == 'T'
+
+    def is_g5_fw(self):
+        """Identify firmware updated in/after 2020.
+
+        Long-deprecated commands have or will be removed.
+        """
+        if self._fw_type in ['I', 'V']:
+            return True
+        if self._fw_type == 'G' and self._fw_rev >= 280:
+            return True
+        return False
 
     def create_volume(self, name, size, backend_name, backend_type):
         # NOTE: size is in this format: [0-9]+GiB
@@ -390,7 +403,8 @@ class STXClient(object):
         if not isinstance(ids, list):
             ids = [ids]
         try:
-            xml = self._request('/show/volume-maps', volume_name)
+            cmd = "/show/volume-maps" if self.is_titanium() else "/show/maps"
+            xml = self._request(cmd, volume_name)
 
             for obj in xml.xpath("//OBJECT[@basetype='volume-view-mappings']"):
                 lun = obj.findtext("PROPERTY[@name='lun']")
@@ -420,7 +434,11 @@ class STXClient(object):
             if host_status != 0:
                 hostname = self._safe_hostname(connector['host'])
                 try:
-                    self._request("/create/host", hostname, id=host)
+                    if self.is_g5_fw():
+                        self._request("/set/initiator", nickname=hostname,
+                                      id=host)
+                    else:
+                        self._request("/create/host", hostname, id=host)
                 except stx_exception.RequestError as e:
                     # -10058: The host identifier or nickname is already in use
                     if '(-10058)' in e.msg:
@@ -434,11 +452,18 @@ class STXClient(object):
 
         while lun < 255:
             try:
-                self._request("/map/volume",
-                              volume_name,
-                              lun=str(lun),
-                              host=host,
-                              access="rw")
+                if self.is_g5_fw():
+                    self._request("/map/volume",
+                                  volume_name,
+                                  lun=str(lun),
+                                  initiator=host,
+                                  access="rw")
+                else:
+                    self._request("/map/volume",
+                                  volume_name,
+                                  lun=str(lun),
+                                  host=host,
+                                  access="rw")
                 return lun
             except stx_exception.RequestError as e:
                 # -3177 => "The specified LUN overlaps a previously defined LUN
@@ -468,7 +493,10 @@ class STXClient(object):
         else:
             host = connector['initiator']
         try:
-            self._request("/unmap/volume", volume_name, host=host)
+            if self.is_g5_fw():
+                self._request("/unmap/volume", volume_name, initiator=host)
+            else:
+                self._request("/unmap/volume", volume_name, host=host)
         except stx_exception.RequestError as e:
             # -10050 => The volume was not found on this system.
             # This can occur during controller failover.
@@ -574,12 +602,20 @@ class STXClient(object):
         return True
 
     def _check_host(self, host):
-        host_status = -1
+        """Return 0 if initiator id found in the array's host table."""
+        if self.is_g5_fw():
+            tree = self._request("/show/initiators")
+            for prop in tree.xpath("//PROPERTY[@name='id' and text()='%s']"
+                                   % host):
+                return 0
+            return -1
+
+        # Use older syntax for older firmware
         tree = self._request("/show/hosts")
         for prop in tree.xpath("//PROPERTY[@name='host-id' and text()='%s']"
                                % host):
-            host_status = 0
-        return host_status
+            return 0
+        return -1
 
     def _safe_hostname(self, hostname):
         """Modify an initiator name to match firmware requirements.
@@ -650,7 +686,16 @@ class STXClient(object):
         return self._get_size(size)
 
     def get_firmware_version(self):
+        """Get the array firmware version"""
         tree = self._request("/show/controllers")
-        self._fw = tree.xpath("//PROPERTY[@name='sc-fw']")[0].text
-        LOG.debug("Array firmware is %s\n", self._fw)
-        return self._fw
+        s = tree.xpath("//PROPERTY[@name='sc-fw']")[0].text
+        if len(s):
+            self._fw_type = s[0]
+            fw_rev_match = re.match('^[^0-9]*([0-9]+).*', s)
+            if not fw_rev_match:
+                LOG.error('firmware revision not found in "%s"', s)
+                return s
+            self._fw_rev = int(fw_rev_match.groups()[0])
+            LOG.debug("Array firmware is %s (%s%d)\n",
+                      s, self._fw_type, self._fw_rev)
+        return s

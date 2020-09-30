@@ -50,6 +50,9 @@ resp_fw_ti = '''<RESPONSE><PROPERTY name="sc-fw">T252R07</PROPERTY>
 resp_fw = '''<RESPONSE><PROPERTY name="sc-fw">GLS220R001</PROPERTY>
                        <PROPERTY name="return-code">0</PROPERTY></RESPONSE>'''
 
+resp_fw_nomatch = '''<RESPONSE><PROPERTY name="sc-fw">Z</PROPERTY>
+                       <PROPERTY name="return-code">0</PROPERTY></RESPONSE>'''
+
 resp_system = '''<RESPONSE>
              <PROPERTY name="midplane-serial-number">00C0FFEEEEEE</PROPERTY>
              <PROPERTY name="return-code">0</PROPERTY>
@@ -186,6 +189,12 @@ class TestSeagateClient(test.TestCase):
         self.assertRaises(stx_exception.AuthenticationError,
                           self.client.login)
 
+        m.text.encode.side_effect = [resp_login, resp_fw_nomatch, resp_system]
+        self.client.login()
+        self.assertEqual('Z', self.client._fw_type)
+        self.assertEqual(0, self.client._fw_rev)
+        self.assertEqual(False, self.client.is_g5_fw())
+
         m.text.encode.side_effect = [resp_login, resp_fw, resp_system]
         self.client.login()
         self.assertEqual(session_key, self.client._session_key)
@@ -313,11 +322,15 @@ class TestSeagateClient(test.TestCase):
     @mock.patch.object(STXClient, '_request')
     def test_list_luns_for_host(self, mock_request):
         mock_request.side_effect = [etree.XML(response_no_lun),
+                                    etree.XML(response_lun),
                                     etree.XML(response_lun)]
-        self.client._fw = 'T100'
+        self.client._fw_type = 'T'
         self.client.list_luns_for_host('dummy')
         mock_request.assert_called_with('/show/host-maps', 'dummy')
-        self.client._fw = 'G221'
+        self.client._fw_type = 'G'
+        self.client.list_luns_for_host('dummy')
+        mock_request.assert_called_with('/show/maps/initiator', 'dummy')
+        self.client._fw_type = 'I'
         self.client.list_luns_for_host('dummy')
         mock_request.assert_called_with('/show/maps/initiator', 'dummy')
 
