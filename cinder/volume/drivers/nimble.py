@@ -1539,7 +1539,7 @@ class NimbleRestAPIExecutor(object):
         r = self.get_query(api, filter)
         LOG.info("ACL record is %(result)s", {'result': r.json()})
         if not r.json()['data']:
-            LOG.warning('ACL is not available for this volume %(vol_id)', {
+            LOG.warning('ACL is not available for this volume %(vol_id)s', {
                         'vol_id': volume_id})
             return
         return r.json()['data'][0]
