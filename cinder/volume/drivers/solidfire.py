@@ -24,6 +24,7 @@ import warnings
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -86,7 +87,18 @@ sf_opts = [
                     'provisioning calculations. If this parameter is set to '
                     '\'usedSpace\', the  driver will report correct '
                     'values as expected by Cinder '
-                    'thin provisioning.')]
+                    'thin provisioning.'),
+    cfg.IntOpt('sf_api_request_timeout',
+               default=30,
+               min=30,
+               help='Sets time in seconds to wait for an api request to '
+                    'complete.'),
+    cfg.IntOpt('sf_volume_clone_timeout',
+               default=600,
+               min=60,
+               help='Sets time in seconds to wait for a clone of a volume or '
+                    'snapshot to complete.'
+               )]
 
 CONF = cfg.CONF
 CONF.register_opts(sf_opts, group=configuration.SHARED_CONF_GROUP)
@@ -591,11 +603,14 @@ class SolidFireDriver(san.SanISCSIDriver):
         return endpoint
 
     @retry(retry_exc_tuple, tries=6)
-    def _issue_api_request(self, method, params, version='1.0', endpoint=None):
+    def _issue_api_request(self, method, params, version='1.0',
+                           endpoint=None, timeout=None):
         if params is None:
             params = {}
         if endpoint is None:
             endpoint = self.active_cluster['endpoint']
+        if not timeout:
+            timeout = self.configuration.sf_api_request_timeout
 
         payload = {'method': method, 'params': params}
         url = '%s/json-rpc/%s/' % (endpoint['url'], version)
@@ -607,7 +622,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                 data=json.dumps(payload),
                                 auth=(endpoint['login'], endpoint['passwd']),
                                 verify=self.verify_ssl,
-                                timeout=30)
+                                timeout=timeout)
         response = req.json()
         req.close()
         if (('error' in response) and
@@ -794,15 +809,13 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def _get_model_info(self, sfaccount, sf_volume_id, endpoint=None):
         volume = None
-        iteration_count = 0
-        while not volume and iteration_count < 600:
-            volume_list = self._get_volumes_by_sfaccount(
-                sfaccount['accountID'], endpoint=endpoint)
-            for v in volume_list:
-                if v['volumeID'] == sf_volume_id:
-                    volume = v
-                    break
-            iteration_count += 1
+        volume_list = self._get_volumes_by_sfaccount(
+            sfaccount['accountID'], endpoint=endpoint)
+
+        for v in volume_list:
+            if v['volumeID'] == sf_volume_id:
+                volume = v
+                break
 
         if not volume:
             LOG.error('Failed to retrieve volume SolidFire-'
@@ -872,10 +885,27 @@ class SolidFireDriver(san.SanISCSIDriver):
         params['volumeID'] = sf_cloned_id
         data = self._issue_api_request('ModifyVolume', params)
 
-        model_update = self._get_model_info(sf_account, sf_cloned_id)
-        if model_update is None:
-            mesg = _('Failed to get model update from clone')
-            raise SolidFireAPIException(mesg)
+        def _wait_volume_is_active():
+            try:
+                model_info = self._get_model_info(sf_account, sf_cloned_id)
+                if model_info:
+                    raise loopingcall.LoopingCallDone(model_info)
+            except exception.VolumeNotFound:
+                LOG.debug('Waiting for cloned volume [%s] - [%s] to become '
+                          'active', sf_cloned_id, vref.id)
+                pass
+
+        try:
+            timer = loopingcall.FixedIntervalWithTimeoutLoopingCall(
+                _wait_volume_is_active)
+            model_update = timer.start(
+                interval=1,
+                timeout=self.configuration.sf_volume_clone_timeout).wait()
+        except loopingcall.LoopingCallTimeOut:
+            msg = _('Failed to get model update from clone [%s] - [%s]' %
+                    (sf_cloned_id, vref.id))
+            LOG.error(msg)
+            raise SolidFireAPIException(msg)
 
         rep_settings = self._retrieve_replication_settings(vref)
         if self.replication_enabled and rep_settings:

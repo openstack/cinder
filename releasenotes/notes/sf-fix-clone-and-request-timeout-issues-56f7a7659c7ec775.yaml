@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1898587 <https://bugs.launchpad.net/cinder/+bug/1898587>`_:
+    Address cloning and api request timeout issues users may hit in
+    certain environments, by allowing configuring timeout values for
+    these operations through cinder configuration file.
