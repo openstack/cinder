@@ -13,7 +13,7 @@
 import binascii
 import traceback
 import typing
-from typing import Any, Dict, Optional, Tuple  # noqa: H301
+from typing import Any, Dict, List, Optional, Tuple  # noqa: H301
 
 from castellan import key_manager
 import os_brick.initiator.connectors
@@ -22,7 +22,9 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import fileutils
+from oslo_utils import netutils
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
@@ -667,6 +669,34 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.db.volume_glance_metadata_bulk_create(context, volume_id,
                                                    volume_metadata)
 
+    @staticmethod
+    def _extract_cinder_ids(urls: List[str]) -> List[str]:
+        """Process a list of location URIs from glance
+
+        :param urls: list of glance location URIs
+        :return: list of IDs extracted from the 'cinder://' URIs
+
+        """
+        ids = []
+        for url in urls:
+            # The url can also be None and a TypeError is raised
+            # TypeError: a bytes-like object is required, not 'str'
+            if not url:
+                continue
+            parts = netutils.urlsplit(url)
+            if parts.scheme == 'cinder':
+                if parts.path:
+                    vol_id = parts.path.split('/')[-1]
+                else:
+                    vol_id = parts.netloc
+                if uuidutils.is_uuid_like(vol_id):
+                    ids.append(vol_id)
+                else:
+                    LOG.debug("Ignoring malformed image location uri "
+                              "'%(url)s'", {'url': url})
+
+        return ids
+
     def _clone_image_volume(self,
                             context: cinder_context.RequestContext,
                             volume: objects.Volume,
@@ -690,9 +720,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         image_volume = None
         direct_url, locations = image_location
-        urls = set([direct_url] + [loc.get('url') for loc in locations or []])
-        image_volume_ids = [url[9:] for url in urls
-                            if url and url.startswith('cinder://')]
+        urls = list(set([direct_url]
+                        + [loc.get('url') for loc in locations or []]))
+        image_volume_ids = self._extract_cinder_ids(urls)
         image_volumes = self.db.volume_get_all_by_host(
             context, volume['host'], filters={'id': image_volume_ids})
 

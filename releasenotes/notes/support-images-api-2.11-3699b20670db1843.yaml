@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    `Bug #1898075
+    <https://bugs.launchpad.net/cinder/+bug/1898075>`_: When Glance added
+    support for multiple cinder stores, Images API version 2.11 modified
+    the format of the image location URI, which Cinder reads in order
+    to try to use an optimized data path when creating a volume from an
+    image.  Unfortunately, Cinder did not understand the new format and
+    when Glance multiple cinder stores were used, Cinder could not use
+    the optimized data path, and instead downloaded image data from
+    the Image service.  Cinder now supports Images API version 2.11.
