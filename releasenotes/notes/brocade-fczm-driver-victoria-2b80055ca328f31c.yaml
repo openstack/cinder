@@ -1,0 +1,36 @@
+---
+issues:
+  - |
+    The Brocade Fibre Channel Zone Manager driver was marked 'unsupported' in
+    the Ussuri release because the vendor declined to support Python 3,
+    whereas all OpenStack releases beginning with Ussuri support Python 3 only.
+
+    In order to provide operators with a choice of FCZM drivers, the Cinder
+    community decided to continue supporting the Brocade FCZM driver on a
+    best-effort basis.  See the "Bug Fixes" section of these notes for
+    changes made to allow the driver to run in a Python 3 environment.
+
+    While the driver has been tested against the first Release Candidate for
+    the cinder Victoria release, be aware that it does not have ongoing
+    third-party CI.  If you choose to use the driver, the configuration
+    option ``enable_unsupported_driver`` must be set to ``True`` in the
+    ``fc-zone-manager`` section in cinder.conf to allow its use in this
+    release.
+upgrade:
+  - |
+    The Brocade Fibre Channel Zone Manager driver was marked 'unsupported' in
+    the Ussuri release, and it continues as 'unsupported' in this release.
+    If you choose to use the driver, the configuration option
+    ``enable_unsupported_driver`` must be set to ``True`` in the
+    ``fc-zone-manager`` section in cinder.conf to allow its use.
+other:
+  - |
+    In order to provide operators with a choice of Fibre Channel Zone Manager
+    drivers, the Cinder community has decided to continue supporting the
+    Brocade FCZM driver, which was marked 'unsupported' in the Ussuri release,
+    on a best-effort basis.
+
+    The driver has been tested against the first Release Candidate for
+    the cinder Victoria release, but it does not have ongoing third-party CI.
+    If you use this driver, and would be interested in running third-party
+    CI for it, please contact the Cinder project team.
