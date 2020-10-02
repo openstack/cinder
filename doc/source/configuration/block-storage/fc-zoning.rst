@@ -52,9 +52,13 @@ through HTTP, HTTPS, or SSH.
 
 .. warning::
 
-   The Brocade Fibre Channel Zone Driver is no longer supported. It is subject
-   to removal during the "V" development cycle, following the standard
-   OpenStack deprecation policy.
+   The Brocade Fibre Channel Zone Driver is being supported by the Cinder
+   community on a best-effort basis.  While it is tested with the first
+   Release Candidate of each release, be aware that it is not continually
+   tested by a third-party CI system.  The driver was deprecated and
+   marked as 'unsupported' in the Ussuri release, and is subject to
+   immediate removal if the maintenance burden exceeds the community's
+   capacity.
 
 Set the following options in the ``cinder.conf`` configuration file under the
 ``[fc-zone-manager]`` section.
