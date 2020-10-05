@@ -634,8 +634,7 @@ class PowerMaxCommonTest(test.TestCase):
             self, mck_unmap, mck_info):
         volume = deepcopy(self.data.test_volume)
         connector = deepcopy(self.data.connector)
-        ret = self.common._unmap_lun_promotion(volume, connector)
-        self.assertIsNone(ret)
+        self.common._unmap_lun_promotion(volume, connector)
         self.assertEqual(0, mck_unmap.call_count)
         self.assertEqual(0, mck_info.call_count)
 
@@ -4250,8 +4249,8 @@ class PowerMaxCommonTest(test.TestCase):
         rep_driver_data = dict()
         group_name = self.common._add_to_group(
             source_volume, self.data, source_volume.name,
-            self.data.test_group_1.id, self.data.test_group_1, extra_specs,
-            rep_driver_data)
+            self.data.test_group_1.fields.get('id'), self.data.test_group_1,
+            extra_specs, rep_driver_data)
         self.assertEqual('my_group', group_name)
         mock_group.assert_called_once()
 
@@ -4266,7 +4265,7 @@ class PowerMaxCommonTest(test.TestCase):
         rep_driver_data = dict()
         group_name = self.common._add_to_group(
             source_volume, self.data, source_volume.name,
-            self.data.test_group_1.id, None, extra_specs,
+            self.data.test_group_1.fields.get('id'), None, extra_specs,
             rep_driver_data)
         self.assertIsNone(group_name)
         mock_group.assert_not_called()
