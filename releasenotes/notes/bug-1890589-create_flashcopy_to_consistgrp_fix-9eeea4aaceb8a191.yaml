@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1890589 <https://bugs.launchpad.net/cinder/+bug/1890589>`_:
+    IBM Spectrum Virtualize Family: Fixed issues in create_flashcopy_to_consistgrp,
+    made use of iogrp,qos from opts for create_vdisk, mkfcmap calls
+    if the data exists in opts.

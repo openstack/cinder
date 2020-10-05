@@ -1836,7 +1836,12 @@ class StorwizeHelpers(object):
                            % {"id": snapshot.id})
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
-                pool = volume_utils.extract_host(volume.host, 'pool')
+                vhost = volume.host
+                if '#' not in vhost:
+                    attrs = self.get_vdisk_attributes(volume['name'])
+                    pool = self._get_pool(attrs)
+                else:
+                    pool = volume_utils.extract_host(volume.host, 'pool')
                 self.create_flashcopy_to_consistgrp(snapshot['volume_name'],
                                                     snapshot['name'],
                                                     fc_consistgrp,
@@ -1934,7 +1939,11 @@ class StorwizeHelpers(object):
             for source, target in zip(sources, targets):
                 opts = self.get_vdisk_params(config, state,
                                              source['volume_type_id'])
-                pool = volume_utils.extract_host(target['host'], 'pool')
+                vhost = target['host']
+                if '#' not in vhost:
+                    pool = opts.get('storage_pool')
+                else:
+                    pool = volume_utils.extract_host(target['host'], 'pool')
                 self.create_flashcopy_to_consistgrp(source['name'],
                                                     target['name'],
                                                     fc_consistgrp,
@@ -2039,10 +2048,15 @@ class StorwizeHelpers(object):
         src_size = src_attrs['capacity']
         # In case we need to use a specific pool
         if not pool:
-            pool = src_attrs['mdisk_grp_name']
-        opts['iogrp'] = src_attrs['IO_group_id']
+            pool = self._get_pool(src_attrs)
+        if not full_copy:
+            opts['rsize'] = config.storwize_svc_vol_rsize
+            opts['autoexpand'] = True
+        if opts and opts.get('iogrp') is None:
+            opts['iogrp'] = src_attrs['IO_group_id']
         self.create_vdisk(target, src_size, 'b', pool, opts)
-
+        if opts['qos']:
+            self.add_vdisk_qos(target, opts['qos'])
         self.check_flashcopy_rate(opts['flashcopy_rate'])
         self.ssh.mkfcmap(source, target, full_copy,
                          opts['flashcopy_rate'],
@@ -2051,6 +2065,16 @@ class StorwizeHelpers(object):
         LOG.debug('Leave: create_flashcopy_to_consistgrp: '
                   'FlashCopy started from  %(source)s to %(target)s.',
                   {'source': source, 'target': target})
+
+    def _get_pool(self, volume):
+        pool = volume['mdisk_grp_name']
+        if 'many' in pool:
+            LOG.info("Mirror volume copy found %s: Getting volume "
+                     "copies", volume['name'])
+            copies = self.get_vdisk_copies(volume['name'])
+            if 'primary' in copies:
+                pool = copies['primary']['mdisk_grp_name']
+        return pool
 
     def _get_vdisk_fc_mappings(self, vdisk):
         """Return FlashCopy mappings that this vdisk is associated with."""

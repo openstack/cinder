@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1837524 <https://bugs.launchpad.net/cinder/+bug/1837524>`_:
+    IBM Spectrum Virtualize Family: Fixed create_consistency_group if 
+    the volume has mirror copy and mdisk_grp_name=many.
