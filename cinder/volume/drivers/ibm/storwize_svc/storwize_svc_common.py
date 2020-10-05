@@ -4635,15 +4635,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             if not old_opts['mirror_pool'] and new_opts['mirror_pool']:
                 need_check_dr_pool_param = True
 
-        # There are four options for rep_type: None, metro, global, gmcv
-        if new_rep_type or old_rep_type:
-            # If volume is replicated, can't copy
-            if need_copy or new_opts['mirror_pool'] or old_opts['mirror_pool']:
-                msg = (_('Unable to retype: current action needs volume-copy, '
-                         'it is not allowed for replication type. '
-                         'Volume = %s') % volume.id)
-                raise exception.VolumeDriverException(message=msg)
-
         if new_rep_type != old_rep_type:
             old_io_grp = self._helpers.get_volume_io_group(volume.name)
             if (old_io_grp not in

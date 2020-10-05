@@ -1,0 +1,5 @@
+---
+features:
+      - |
+        IBM Spectrum Virtualize: Adds support for retype operation on
+        global mirror volumes.
