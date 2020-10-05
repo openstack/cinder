@@ -98,7 +98,13 @@ sf_opts = [
                min=60,
                help='Sets time in seconds to wait for a clone of a volume or '
                     'snapshot to complete.'
-               )]
+               ),
+
+    cfg.IntOpt('sf_volume_create_timeout',
+               default=60,
+               min=30,
+               help='Sets time in seconds to wait for a create volume '
+                    'operation to complete.')]
 
 CONF = cfg.CONF
 CONF.register_opts(sf_opts, group=configuration.SHARED_CONF_GROUP)
@@ -236,9 +242,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                    SnapshotsOnly)
           2.0.17 - Fix bug #1859653 SolidFire fails to failback when volume
                    service is restarted
+          2.0.18 - Fix bug #1896112 SolidFire Driver creates duplicate volume
+                   when API response is lost
     """
 
-    VERSION = '2.0.17'
+    VERSION = '2.0.18'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_SolidFire_CI"
@@ -928,10 +936,62 @@ class SolidFireDriver(san.SanISCSIDriver):
         params['attributes'] = attributes
         return self._issue_api_request('ModifyVolume', params)
 
+    def _list_volumes_by_name(self, sf_volume_name):
+        params = {'volumeName': sf_volume_name}
+        return self._issue_api_request(
+            'ListVolumes', params, version='8.0')['result']['volumes']
+
+    def _wait_volume_is_active(self, sf_volume_name):
+
+        def _wait():
+            volumes = self._list_volumes_by_name(sf_volume_name)
+            if volumes:
+                LOG.debug("Found Volume [%s] in SolidFire backend. "
+                          "Current status is [%s].",
+                          sf_volume_name, volumes[0]['status'])
+                if volumes[0]['status'] == 'active':
+                    raise loopingcall.LoopingCallDone(volumes[0])
+
+        try:
+            timer = loopingcall.FixedIntervalWithTimeoutLoopingCall(
+                _wait)
+            sf_volume = (timer.start(
+                interval=1,
+                timeout=self.configuration.sf_volume_create_timeout).wait())
+
+            return sf_volume
+        except loopingcall.LoopingCallTimeOut:
+            msg = ("Timeout while waiting volume [%s] "
+                   "to be in active state." % sf_volume_name)
+            LOG.error(msg)
+            raise SolidFireAPIException(msg)
+
     def _do_volume_create(self, sf_account, params, endpoint=None):
-        params['accountID'] = sf_account['accountID']
-        sf_volid = self._issue_api_request(
-            'CreateVolume', params, endpoint=endpoint)['result']['volumeID']
+
+        sf_volume_name = params['name']
+        volumes_found = self._list_volumes_by_name(sf_volume_name)
+        if volumes_found:
+            msg = ('Volume name [%s] already exists '
+                   'in SolidFire backend.') % sf_volume_name
+            LOG.error(msg)
+            raise DuplicateSfVolumeNames(message=msg)
+
+        sf_volid = None
+        try:
+            params['accountID'] = sf_account['accountID']
+            response = self._issue_api_request(
+                'CreateVolume', params, endpoint=endpoint)
+            sf_volid = response['result']['volumeID']
+
+        except requests.exceptions.ReadTimeout:
+            LOG.debug("Read Timeout exception caught while creating "
+                      "volume [%s].", sf_volume_name)
+            # Check if volume was created for the given name,
+            # in case the backend has processed the request but failed
+            # to deliver the response before api request timeout.
+            volume_created = self._wait_volume_is_active(sf_volume_name)
+            sf_volid = volume_created['volumeID']
+
         return self._get_model_info(sf_account, sf_volid, endpoint=endpoint)
 
     def _do_snapshot_create(self, params):
