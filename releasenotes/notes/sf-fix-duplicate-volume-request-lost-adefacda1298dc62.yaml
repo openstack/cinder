@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    NetApp SolidFire driver `Bug #1896112
+    <https://bugs.launchpad.net/cinder/+bug/1896112>`_:
+    Fixes an issue that may duplicate volumes during creation, in case
+    the SolidFire backend successfully processes a request and creates
+    the volume, but fails to deliver the result back to the driver (the
+    response is lost). When this scenario occurs, the SolidFire driver
+    will retry the operation, which previously resulted in the creation
+    of a duplicate volume. This fix adds the ``sf_volume_create_timeout``
+    configuration option (default value: 60 seconds) which specifies an
+    additional length of time that the driver will wait for the volume to
+    become active on the backend before raising an exception.
