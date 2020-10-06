@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize driver `Bug #1890254
+    <https://bugs.launchpad.net/cinder/+bug/1890254>`_:
+    Fix check_vdisk_fc_mappings is not deleting all flashcopy
+    mappings while deleting source volume, when multiple clones
+    and snapshots are created using common source volume.
