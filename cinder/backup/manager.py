@@ -1023,7 +1023,7 @@ class BackupManager(manager.SchedulerDependentManager):
                     LOG.warning("Failed to terminate the connection "
                                 "of volume %(volume_id)s, but it is "
                                 "acceptable.",
-                                {'volume_id', volume.id})
+                                {'volume_id': volume.id})
 
     def _attach_snapshot(self, ctxt, snapshot, properties):
         """Attach a snapshot."""
@@ -1041,7 +1041,7 @@ class BackupManager(manager.SchedulerDependentManager):
                     LOG.warning("Failed to terminate the connection "
                                 "of snapshot %(snapshot_id)s, but it is "
                                 "acceptable.",
-                                {'snapshot_id', snapshot.id})
+                                {'snapshot_id': snapshot.id})
 
     def _connect_device(self, conn):
         """Establish connection to device."""
