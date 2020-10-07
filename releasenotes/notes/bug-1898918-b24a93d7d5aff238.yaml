@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    RBD driver `Bug #1898918
+    <https://bugs.launchpad.net/cinder/+bug/1898918>`_: Fix thread block caused
+    by the flatten operation during cloning a volume. Now the flatten operation
+    is executed in a different thread.

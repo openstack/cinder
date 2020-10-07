@@ -1168,6 +1168,9 @@ class RBDTestCase(test.TestCase):
     def test_create_cloned_volume_w_flatten(self, mock_enable_repl):
         self.cfg.rbd_max_clone_depth = 1
 
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+
         with mock.patch.object(self.driver, '_get_clone_info') as \
                 mock_get_clone_info:
             mock_get_clone_info.return_value = (
@@ -1197,9 +1200,13 @@ class RBDTestCase(test.TestCase):
                  .assert_called_once_with('.'.join(
                      (self.volume_b.name, 'clone_snap'))))
 
-                # We expect the driver to close both volumes, so 2 is expected
+                self.mock_proxy.assert_called_once_with(
+                    self.driver, self.volume_b.name,
+                    client=client, ioctx=client.ioctx)
+
+                # Source volume is closed by direct call of close()
                 self.assertEqual(
-                    2, self.mock_rbd.Image.return_value.close.call_count)
+                    1, self.mock_rbd.Image.return_value.close.call_count)
                 self.assertTrue(mock_get_clone_depth.called)
                 mock_enable_repl.assert_not_called()
 
