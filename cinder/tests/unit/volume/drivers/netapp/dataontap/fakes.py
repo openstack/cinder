@@ -280,8 +280,28 @@ QOS_POLICY_GROUP_SPEC_MAX = {
     'policy_name': QOS_POLICY_GROUP_NAME,
 }
 
+EXPECTED_IOPS_PER_GB = '128'
+PEAK_IOPS_PER_GB = '512'
+EXPECTED_IOPS_ALLOCATION = 'used-space'
+PEAK_IOPS_ALLOCATION = 'used-space'
+ABSOLUTE_MIN_IOPS = '75'
+BLOCK_SIZE = 'ANY'
+ADAPTIVE_QOS_SPEC = {
+    'policy_name': QOS_POLICY_GROUP_NAME,
+    'expected_iops': EXPECTED_IOPS_PER_GB,
+    'peak_iops': PEAK_IOPS_PER_GB,
+    'expected_iops_allocation': EXPECTED_IOPS_ALLOCATION,
+    'peak_iops_allocation': PEAK_IOPS_ALLOCATION,
+    'absolute_min_iops': ABSOLUTE_MIN_IOPS,
+    'block_size': BLOCK_SIZE,
+}
+
 QOS_POLICY_GROUP_INFO = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC}
 QOS_POLICY_GROUP_INFO_MAX = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC_MAX}
+ADAPTIVE_QOS_POLICY_GROUP_INFO = {
+    'legacy': None,
+    'spec': ADAPTIVE_QOS_SPEC,
+}
 
 CLONE_SOURCE_NAME = 'fake_clone_source_name'
 CLONE_SOURCE_ID = 'fake_clone_source_id'

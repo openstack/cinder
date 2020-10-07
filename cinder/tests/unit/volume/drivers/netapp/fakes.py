@@ -98,6 +98,21 @@ MAX_THROUGHPUT_BPS = '21734278B/s'
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 LEGACY_EXTRA_SPECS = {'netapp:qos_policy_group': QOS_POLICY_GROUP_NAME}
 
+EXPECTED_IOPS_PER_GB = '128'
+PEAK_IOPS_PER_GB = '512'
+EXPECTED_IOPS_ALLOCATION = 'used-space'
+PEAK_IOPS_ALLOCATION = 'used-space'
+ABSOLUTE_MIN_IOPS = '75'
+BLOCK_SIZE = 'ANY'
+ADAPTIVE_QOS_SPEC = {
+    'expectedIOPSperGiB': EXPECTED_IOPS_PER_GB,
+    'peakIOPSperGiB': PEAK_IOPS_PER_GB,
+    'expectedIOPSAllocation': EXPECTED_IOPS_ALLOCATION,
+    'peakIOPSAllocation': PEAK_IOPS_ALLOCATION,
+    'absoluteMinIOPS': ABSOLUTE_MIN_IOPS,
+    'blockSize': BLOCK_SIZE,
+}
+
 LEGACY_QOS = {
     'policy_name': QOS_POLICY_GROUP_NAME,
 }
@@ -111,14 +126,29 @@ QOS_POLICY_GROUP_INFO_NONE = {'legacy': None, 'spec': None}
 
 QOS_POLICY_GROUP_INFO = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC}
 
+ADAPTIVE_QOS_POLICY_GROUP_SPEC = {
+    'expected_iops': '128IOPS/GB',
+    'peak_iops': '512IOPS/GB',
+    'expected_iops_allocation': 'used-space',
+    'peak_iops_allocation': 'used-space',
+    'absolute_min_iops': '75IOPS',
+    'block_size': 'ANY',
+    'policy_name': 'openstack-%s' % VOLUME_ID,
+}
+
 LEGACY_QOS_POLICY_GROUP_INFO = {
     'legacy': LEGACY_QOS,
     'spec': None,
 }
 
-INVALID_QOS_POLICY_GROUP_INFO = {
+INVALID_QOS_POLICY_GROUP_INFO_LEGACY_AND_SPEC = {
     'legacy': LEGACY_QOS,
     'spec': QOS_POLICY_GROUP_SPEC,
+}
+
+INVALID_QOS_POLICY_GROUP_INFO_STANDARD_AND_ADAPTIVE = {
+    'legacy': None,
+    'spec': {**QOS_POLICY_GROUP_SPEC, **ADAPTIVE_QOS_SPEC},
 }
 
 QOS_SPECS_ID = 'fake_qos_specs_id'

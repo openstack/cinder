@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added support for Adaptive QoS specs. The driver now
+    accepts ``expectedIOPSperGiB``, ``peakIOPSperGiB``, ``expectedIOPSAllocation``,
+    ``peakIOPSAllocation``, ``absoluteMinIOPS`` and ``blockSize``. The field
+    ``peakIOPSperGiB`` and the field ``expectedIOPSperGiB`` are required together.
+    The ``expectedIOPSperGiB`` and ``absoluteMinIOPS`` specs are only guaranteed
+    by ONTAP AFF systems. All specs can only be used with ONTAP version equal
+    or greater than 9.4, excepting the ``expectedIOPSAllocation`` and
+    ``blockSize`` specs which require at least 9.5.

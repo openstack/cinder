@@ -109,6 +109,7 @@ class Client(object):
                    qos_policy_group_name=None,
                    qos_policy_group_is_adaptive=False):
         """Issues API request for creating LUN on volume."""
+        self._validate_qos_policy_group(qos_policy_group_is_adaptive)
 
         path = '/vol/%s/%s' % (volume_name, lun_name)
         space_reservation = metadata['SpaceReserved']
@@ -312,6 +313,10 @@ class Client(object):
 
     def get_igroup_by_initiators(self, initiator_list):
         """Get igroups exactly matching a set of initiators."""
+        raise NotImplementedError()
+
+    def _validate_qos_policy_group(self, is_adaptive, spec=None, is_nfs=False):
+        """Raises an exception if the backend doesn't support the QoS spec."""
         raise NotImplementedError()
 
     def _has_luns_mapped_to_initiator(self, initiator):

@@ -50,9 +50,9 @@ class Client(client_base.Client):
         self.connection.set_api_version(1, 15)
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
-        self._init_features()
         ontap_version = self.get_ontap_version(cached=False)
         self.connection.set_ontap_version(ontap_version)
+        self._init_features()
 
     def _init_features(self):
         super(Client, self)._init_features()
@@ -65,6 +65,8 @@ class Client(client_base.Client):
         ontapi_1_100 = ontapi_version >= (1, 100)
         ontapi_1_1xx = (1, 100) <= ontapi_version < (1, 200)
         ontapi_1_60 = ontapi_version >= (1, 160)
+        ontapi_1_40 = ontapi_version >= (1, 140)
+        ontapi_1_50 = ontapi_version >= (1, 150)
 
         nodes_info = self._get_cluster_nodes_info()
         for node in nodes_info:
@@ -98,6 +100,12 @@ class Client(client_base.Client):
         self.features.add_feature('BACKUP_CLONE_PARAM', supported=ontapi_1_100)
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_1xx)
+
+        self.features.add_feature('ADAPTIVE_QOS', supported=ontapi_1_40)
+        self.features.add_feature('ADAPTIVE_QOS_BLOCK_SIZE',
+                                  supported=ontapi_1_50)
+        self.features.add_feature('ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION',
+                                  supported=ontapi_1_50)
 
         LOG.info('Reported ONTAPI Version: %(major)s.%(minor)s',
                  {'major': ontapi_version[0], 'minor': ontapi_version[1]})
@@ -511,10 +519,39 @@ class Client(client_base.Client):
 
         return igroup_list
 
+    def _validate_qos_policy_group(self, is_adaptive, spec=None,
+                                   qos_min_support=False):
+        if is_adaptive and not self.features.ADAPTIVE_QOS:
+            msg = _("Adaptive QoS feature requires ONTAP 9.4 or later.")
+            raise na_utils.NetAppDriverException(msg)
+
+        if not spec:
+            return
+
+        qos_spec_support = [
+            {'key': 'min_throughput',
+             'support': qos_min_support,
+             'reason': _('is not supported by this back end.')},
+            {'key': 'block_size',
+             'support': self.features.ADAPTIVE_QOS_BLOCK_SIZE,
+             'reason': _('requires ONTAP >= 9.5.')},
+            {'key': 'expected_iops_allocation',
+             'support': self.features.ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION,
+             'reason': _('requires ONTAP >= 9.5.')},
+        ]
+        for feature in qos_spec_support:
+            if feature['key'] in spec and not feature['support']:
+                msg = '%(key)s %(reason)s'
+                raise na_utils.NetAppDriverException(msg % {
+                    'key': feature['key'],
+                    'reason': feature['reason']})
+
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
                   block_count=0, source_snapshot=None, is_snapshot=False,
                   qos_policy_group_is_adaptive=False):
+        self._validate_qos_policy_group(qos_policy_group_is_adaptive)
+
         # ONTAP handles only 128 MB per call as of v9.1
         bc_limit = 2 ** 18  # 2^18 blocks * 512 bytes/block = 128 MB
         z_calls = int(math.ceil(block_count / float(bc_limit)))
@@ -541,13 +578,9 @@ class Client(client_base.Client):
             clone_create = netapp_api.NaElement.create_node_with_children(
                 'clone-create', **zapi_args)
             if qos_policy_group_name is not None:
-                if qos_policy_group_is_adaptive:
-                    clone_create.add_new_child(
-                        'qos-adaptive-policy-group-name',
-                        qos_policy_group_name)
-                else:
-                    clone_create.add_new_child('qos-policy-group-name',
-                                               qos_policy_group_name)
+                child_name = 'qos-%spolicy-group-name' % (
+                    'adaptive-' if qos_policy_group_is_adaptive else '')
+                clone_create.add_new_child(child_name, qos_policy_group_name)
             if block_count > 0:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
@@ -589,6 +622,8 @@ class Client(client_base.Client):
     def file_assign_qos(self, flex_vol, qos_policy_group_name,
                         qos_policy_group_is_adaptive, file_path):
         """Assigns the named QoS policy-group to a file."""
+        self._validate_qos_policy_group(qos_policy_group_is_adaptive)
+
         qos_arg_name = "qos-%spolicy-group-name" % (
             "adaptive-" if qos_policy_group_is_adaptive else "")
         api_args = {
@@ -612,33 +647,46 @@ class Client(client_base.Client):
             return
 
         spec = qos_policy_group_info.get('spec')
-        if spec:
-            if spec.get('min_throughput') and not qos_min_support:
-                msg = _('QoS min_throughput is not supported by this back '
-                        'end.')
-                raise na_utils.NetAppDriverException(msg)
+
+        if not spec:
+            return
+
+        is_adaptive = na_utils.is_qos_policy_group_spec_adaptive(
+            qos_policy_group_info)
+        self._validate_qos_policy_group(is_adaptive, spec=spec,
+                                        qos_min_support=qos_min_support)
+        if is_adaptive:
+            if not self.qos_policy_group_exists(spec['policy_name'],
+                                                is_adaptive=True):
+                self.qos_adaptive_policy_group_create(spec)
+            else:
+                self.qos_adaptive_policy_group_modify(spec)
+        else:
             if not self.qos_policy_group_exists(spec['policy_name']):
                 self.qos_policy_group_create(spec)
             else:
                 self.qos_policy_group_modify(spec)
 
-    def qos_policy_group_exists(self, qos_policy_group_name):
+    def qos_policy_group_exists(self, qos_policy_group_name,
+                                is_adaptive=False):
         """Checks if a QOS policy group exists."""
+        query_name = 'qos-%spolicy-group-info' % (
+            'adaptive-' if is_adaptive else '')
+        request_name = 'qos-%spolicy-group-get-iter' % (
+            'adaptive-' if is_adaptive else '')
         api_args = {
             'query': {
-                'qos-policy-group-info': {
+                query_name: {
                     'policy-group': qos_policy_group_name,
                 },
             },
             'desired-attributes': {
-                'qos-policy-group-info': {
+                query_name: {
                     'policy-group': None,
                 },
             },
         }
-        result = self.connection.send_request('qos-policy-group-get-iter',
-                                              api_args,
-                                              False)
+        result = self.connection.send_request(request_name, api_args, False)
         return self._has_records(result)
 
     def _qos_spec_to_api_args(self, spec, **kwargs):
@@ -656,29 +704,39 @@ class Client(client_base.Client):
         return self.connection.send_request(
             'qos-policy-group-create', api_args, False)
 
+    def qos_adaptive_policy_group_create(self, spec):
+        """Creates a QOS adaptive policy group."""
+        api_args = self._qos_spec_to_api_args(
+            spec, vserver=self.vserver)
+        return self.connection.send_request(
+            'qos-adaptive-policy-group-create', api_args, False)
+
     def qos_policy_group_modify(self, spec):
         """Modifies a QOS policy group."""
         api_args = self._qos_spec_to_api_args(spec)
         return self.connection.send_request(
             'qos-policy-group-modify', api_args, False)
 
-    def qos_policy_group_delete(self, qos_policy_group_name):
-        """Attempts to delete a QOS policy group."""
-        api_args = {'policy-group': qos_policy_group_name}
+    def qos_adaptive_policy_group_modify(self, spec):
+        """Modifies a QOS adaptive policy group."""
+        api_args = self._qos_spec_to_api_args(spec)
         return self.connection.send_request(
-            'qos-policy-group-delete', api_args, False)
+            'qos-adaptive-policy-group-modify', api_args, False)
 
-    def qos_policy_group_rename(self, qos_policy_group_name, new_name):
+    def qos_policy_group_rename(self, qos_policy_group_name, new_name,
+                                is_adaptive=False):
         """Renames a QOS policy group."""
+        request_name = 'qos-%spolicy-group-rename' % (
+            'adaptive-' if is_adaptive else '')
         api_args = {
             'policy-group-name': qos_policy_group_name,
             'new-name': new_name,
         }
-        return self.connection.send_request(
-            'qos-policy-group-rename', api_args, False)
+        return self.connection.send_request(request_name, api_args, False)
 
-    def mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
-        """Do (soft) delete of backing QOS policy group for a cinder volume."""
+    def mark_qos_policy_group_for_deletion(self, qos_policy_group_info,
+                                           is_adaptive=False):
+        """Soft delete a QOS policy group backing a cinder volume."""
         if qos_policy_group_info is None:
             return
 
@@ -690,11 +748,12 @@ class Client(client_base.Client):
         # we instead rename the QoS policy group using a specific pattern and
         # later attempt on a best effort basis to delete any QoS policy groups
         # matching that pattern.
-        if spec is not None:
+        if spec:
             current_name = spec['policy_name']
             new_name = client_base.DELETED_PREFIX + current_name
             try:
-                self.qos_policy_group_rename(current_name, new_name)
+                self.qos_policy_group_rename(current_name, new_name,
+                                             is_adaptive)
             except netapp_api.NaApiError as ex:
                 LOG.warning('Rename failure in cleanup of cDOT QOS policy '
                             'group %(name)s: %(ex)s',
@@ -703,11 +762,15 @@ class Client(client_base.Client):
         # Attempt to delete any QoS policies named "delete-openstack-*".
         self.remove_unused_qos_policy_groups()
 
-    def remove_unused_qos_policy_groups(self):
-        """Deletes all QOS policy groups that are marked for deletion."""
+    def _send_qos_policy_group_delete_iter_request(self, is_adaptive=False):
+        request_name = 'qos-%spolicy-group-delete-iter' % (
+            'adaptive-' if is_adaptive else '')
+        query_name = 'qos-%spolicy-group-info' % (
+            'adaptive-' if is_adaptive else '')
+
         api_args = {
             'query': {
-                'qos-policy-group-info': {
+                query_name: {
                     'policy-group': '%s*' % client_base.DELETED_PREFIX,
                     'vserver': self.vserver,
                 }
@@ -719,18 +782,32 @@ class Client(client_base.Client):
         }
 
         try:
-            self.connection.send_request(
-                'qos-policy-group-delete-iter', api_args, False)
+            self.connection.send_request(request_name, api_args, False)
         except netapp_api.NaApiError as ex:
-            msg = 'Could not delete QOS policy groups. Details: %(ex)s'
-            msg_args = {'ex': ex}
+            msg = ('Could not delete QOS %(prefix)spolicy groups. '
+                   'Details: %(ex)s')
+            msg_args = {
+                'prefix': 'adaptive ' if is_adaptive else '',
+                'ex': ex,
+            }
             LOG.debug(msg, msg_args)
 
-    def set_lun_qos_policy_group(self, path, qos_policy_group):
+    def remove_unused_qos_policy_groups(self):
+        """Deletes all QOS policy groups that are marked for deletion."""
+        self._send_qos_policy_group_delete_iter_request()
+        if self.features.ADAPTIVE_QOS:
+            self._send_qos_policy_group_delete_iter_request(is_adaptive=True)
+
+    def set_lun_qos_policy_group(self, path, qos_policy_group,
+                                 is_adaptive=False):
         """Sets qos_policy_group on a LUN."""
+        self._validate_qos_policy_group(is_adaptive)
+
+        policy_group_key = 'qos-%spolicy-group' % (
+            'adaptive-' if is_adaptive else '')
         api_args = {
             'path': path,
-            'qos-policy-group': qos_policy_group,
+            policy_group_key: qos_policy_group,
         }
         return self.connection.send_request(
             'lun-set-qos-policy-group', api_args)

@@ -494,7 +494,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_delete_backing_file_for_volume')
         self.mock_object(na_utils,
                          'get_valid_qos_policy_group_info',
-                         return_value='fake_qos_policy_group_info')
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(na_utils, 'is_qos_policy_group_spec_adaptive',
+                         return_value=False)
 
         self.driver.delete_volume(fake_volume)
 
@@ -502,8 +504,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake_volume)
         na_utils.get_valid_qos_policy_group_info.assert_called_once_with(
             fake_volume)
+        na_utils.is_qos_policy_group_spec_adaptive.assert_called_once_with(
+            fake.QOS_POLICY_GROUP_INFO)
         (self.driver.zapi_client.mark_qos_policy_group_for_deletion.
-         assert_called_once_with('fake_qos_policy_group_info'))
+         assert_called_once_with(fake.QOS_POLICY_GROUP_INFO, False))
 
     def test_delete_volume_exception_path(self):
         fake_provider_location = 'fake_provider_location'
@@ -511,7 +515,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_delete_backing_file_for_volume')
         self.mock_object(na_utils,
                          'get_valid_qos_policy_group_info',
-                         return_value='fake_qos_policy_group_info')
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
+        self.mock_object(na_utils, 'is_qos_policy_group_spec_adaptive',
+                         return_value=False)
         self.mock_object(
             self.driver.zapi_client,
             'mark_qos_policy_group_for_deletion',
@@ -523,8 +529,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake_volume)
         na_utils.get_valid_qos_policy_group_info.assert_called_once_with(
             fake_volume)
+        na_utils.is_qos_policy_group_spec_adaptive.assert_called_once_with(
+            fake.QOS_POLICY_GROUP_INFO)
         (self.driver.zapi_client.mark_qos_policy_group_for_deletion.
-         assert_called_once_with('fake_qos_policy_group_info'))
+         assert_called_once_with(fake.QOS_POLICY_GROUP_INFO, False))
 
     def test_delete_backing_file_for_volume(self):
         mock_filer_delete = self.mock_object(self.driver, '_delete_file')

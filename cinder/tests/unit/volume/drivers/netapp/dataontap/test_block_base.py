@@ -21,6 +21,7 @@
 """Mock unit tests for the NetApp block storage library"""
 
 import copy
+import itertools
 from unittest import mock
 import uuid
 
@@ -124,7 +125,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(volume_utils, 'extract_host',
                          return_value=fake.POOL_NAME)
         self.mock_object(self.library, '_setup_qos_for_volume',
-                         return_value=None)
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_create_lun')
         self.mock_object(self.library, '_create_lun_handle')
         self.mock_object(self.library, '_add_lun_to_table')
@@ -135,7 +136,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.library._create_lun.assert_called_once_with(
             fake.POOL_NAME, fake.LUN_NAME, volume_size_in_bytes,
-            fake.LUN_METADATA, None, False)
+            fake.LUN_METADATA, fake.QOS_POLICY_GROUP_NAME, False)
         self.library._get_volume_model_update.assert_called_once_with(
             fake.VOLUME)
         self.assertEqual(
@@ -152,7 +153,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(block_base, 'LOG')
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(self.library, '_setup_qos_for_volume',
-                         return_value=None)
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_create_lun', side_effect=Exception)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
 
@@ -692,8 +693,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(2, mock_info_log.call_count)
         self.library._add_lun_to_table.assert_called_once_with(mock_lun)
 
-    @ddt.data(None, 'fake_qos_policy_group_name')
-    def test_manage_existing_rename_lun(self, qos_policy_group_name):
+    @ddt.data(*itertools.product((None, 'fake_qos_policy_group_name'),
+                                 (True, False)))
+    @ddt.unpack
+    def test_manage_existing_rename_lun(self, qos_policy_group_name,
+                                        is_qos_policy_group_spec_adaptive):
         expected_update = (
             {'replication_status': fields.ReplicationStatus.ENABLED})
         volume = fake_volume.fake_volume_obj(self.ctxt)
@@ -710,6 +714,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_setup_qos_for_volume')
         self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
                          return_value=qos_policy_group_name)
+        self.mock_object(na_utils, 'is_qos_policy_group_spec_adaptive',
+                         return_value=is_qos_policy_group_spec_adaptive)
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_get_volume_model_update',
                          return_value=expected_update)
@@ -724,7 +730,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library._add_lun_to_table.assert_called_once_with(mock_lun)
         if qos_policy_group_name:
             (self.zapi_client.set_lun_qos_policy_group.
-             assert_called_once_with(expected_new_path, qos_policy_group_name))
+             assert_called_once_with(expected_new_path, qos_policy_group_name,
+                                     is_qos_policy_group_spec_adaptive))
         else:
             self.assertFalse(
                 self.zapi_client.set_lun_qos_policy_group.called)
