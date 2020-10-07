@@ -720,11 +720,13 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 LOG.info("maximum clone depth (%d) has been reached - "
                          "flattening dest volume",
                          self.configuration.rbd_max_clone_depth)
-                dest_volume = self.rbd.Image(client.ioctx, dest_name)
+
+                # Flatten destination volume
                 try:
-                    # Flatten destination volume
-                    LOG.debug("flattening dest volume %s", dest_name)
-                    dest_volume.flatten()
+                    with RBDVolumeProxy(self, dest_name, client=client,
+                                        ioctx=client.ioctx) as dest_volume:
+                        LOG.debug("flattening dest volume %s", dest_name)
+                        dest_volume.flatten()
                 except Exception as e:
                     msg = (_("Failed to flatten volume %(volume)s with "
                              "error: %(error)s.") %
@@ -733,8 +735,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                     LOG.exception(msg)
                     src_volume.close()
                     raise exception.VolumeBackendAPIException(data=msg)
-                finally:
-                    dest_volume.close()
 
                 try:
                     # remove temporary snap
