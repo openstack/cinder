@@ -13,10 +13,9 @@
 #    under the License.
 
 """The group type & group type specs controller."""
+from http import client as http_client
 
 from oslo_utils import strutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -81,7 +80,7 @@ class GroupTypesController(wsgi.Controller):
         except exception.GroupTypeExists as err:
             self._notify_group_type_error(
                 context, 'group_type.create', err, group_type=grp_type)
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=str(err))
         except exception.GroupTypeNotFoundByName as err:
             self._notify_group_type_error(
                 context, 'group_type.create', err, name=name)
@@ -126,16 +125,16 @@ class GroupTypesController(wsgi.Controller):
         except exception.GroupTypeNotFound as err:
             self._notify_group_type_error(
                 context, 'group_type.update', err, id=id)
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            raise webob.exc.HTTPNotFound(explanation=str(err))
         except exception.GroupTypeExists as err:
             self._notify_group_type_error(
                 context, 'group_type.update', err, group_type=grp_type)
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=str(err))
         except exception.GroupTypeUpdateFailed as err:
             self._notify_group_type_error(
                 context, 'group_type.update', err, group_type=grp_type)
             raise webob.exc.HTTPInternalServerError(
-                explanation=six.text_type(err))
+                explanation=str(err))
 
         return self._view_builder.show(req, grp_type)
 

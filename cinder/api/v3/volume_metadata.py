@@ -16,10 +16,9 @@
 """The volume metadata V3 api."""
 
 import hashlib
+from http import client as http_client
 
 from oslo_serialization import jsonutils
-import six
-from six.moves import http_client
 import webob
 
 from cinder.api import microversions as mv
@@ -37,8 +36,7 @@ class Controller(volume_meta_v2.Controller):
         context = req.environ['cinder.context']
         metadata = self._get_metadata(context, volume_id)
         data = jsonutils.dumps({"metadata": metadata})
-        if six.PY3:
-            data = data.encode('utf-8')
+        data = data.encode('utf-8')
         checksum = hashlib.md5(data).hexdigest()
         return checksum in req.if_match.etags
 
@@ -48,8 +46,7 @@ class Controller(volume_meta_v2.Controller):
         metadata = super(Controller, self).index(req, volume_id)
         if req_version.matches(mv.ETAGS):
             data = jsonutils.dumps(metadata)
-            if six.PY3:
-                data = data.encode('utf-8')
+            data = data.encode('utf-8')
             resp = webob.Response()
             resp.headers['Etag'] = hashlib.md5(data).hexdigest()
             resp.body = data

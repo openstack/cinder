@@ -12,7 +12,6 @@
 
 from oslo_log import log as logging
 from oslo_utils import strutils
-import six
 import webob
 from webob import exc
 
@@ -44,7 +43,7 @@ def _parse_is_public(is_public):
 
 def is_none_string(val):
     """Check if a string represents a None value."""
-    if not isinstance(val, six.string_types):
+    if not isinstance(val, str):
         return False
 
     return val.lower() == 'none'
@@ -129,7 +128,7 @@ def validate_integer(value, name, min_value=None, max_value=None):
         value = strutils.validate_integer(value, name, min_value, max_value)
         return value
     except ValueError as e:
-        raise webob.exc.HTTPBadRequest(explanation=six.text_type(e))
+        raise webob.exc.HTTPBadRequest(explanation=str(e))
 
 
 def walk_class_hierarchy(clazz, encountered=None):

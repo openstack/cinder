@@ -16,10 +16,10 @@
 #    under the License.
 
 """The backups api."""
+from http import client as http_client
 
 from oslo_log import log as logging
 from oslo_utils import strutils
-from six.moves import http_client
 from webob import exc
 
 from cinder.api import api_utils

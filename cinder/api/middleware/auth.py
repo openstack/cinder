@@ -17,14 +17,13 @@ Common Auth Middleware.
 
 """
 
-
+from http import client as http_client
 import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_middleware import request_id
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob.dec
 import webob.exc
 

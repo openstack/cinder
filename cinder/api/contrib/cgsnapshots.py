@@ -14,11 +14,10 @@
 #    under the License.
 
 """The cgsnapshots api."""
+from http import client as http_client
 
 from oslo_log import log as logging
 from oslo_log import versionutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -66,7 +65,7 @@ class CgsnapshotsController(wsgi.Controller):
             cgsnapshot = self._get_cgsnapshot(context, id)
             self.group_snapshot_api.delete_group_snapshot(context, cgsnapshot)
         except exception.InvalidGroupSnapshot as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=str(e))
         except (exception.GroupSnapshotNotFound,
                 exception.PolicyNotAuthorized):
             # Exceptions will be handled at the wsgi level

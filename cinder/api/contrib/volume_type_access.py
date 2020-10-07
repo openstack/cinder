@@ -12,9 +12,8 @@
 #    under the License.
 
 """The volume type access extension."""
+from http import client as http_client
 
-import six
-from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -106,7 +105,7 @@ class VolumeTypeActionController(wsgi.Controller):
             volume_types.add_volume_type_access(context, id, project)
         # Not found exception will be handled at the wsgi level
         except exception.VolumeTypeAccessExists as err:
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=str(err))
         return webob.Response(status_int=http_client.ACCEPTED)
 
     @wsgi.action('removeProjectAccess')

@@ -17,10 +17,10 @@ import enum
 import json
 import os
 import re
+import urllib
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from six.moves import urllib
 import webob
 
 from cinder.api import api_utils

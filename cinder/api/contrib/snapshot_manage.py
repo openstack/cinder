@@ -11,9 +11,9 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
+from http import client as http_client
 
 from oslo_log import log as logging
-from six.moves import http_client
 
 from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions

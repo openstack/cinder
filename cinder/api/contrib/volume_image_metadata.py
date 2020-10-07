@@ -13,8 +13,9 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
+from http import client as http_client
+
 from oslo_log import log as logging
-from six.moves import http_client
 import webob
 
 from cinder.api import common

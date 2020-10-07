@@ -14,9 +14,9 @@
 #    under the License.
 
 """The resource filters api."""
+from http import client as http_client
 
 from keystoneauth1 import exceptions as ks_exc
-from six.moves import http_client
 from webob import exc
 
 from cinder.api import microversions as mv

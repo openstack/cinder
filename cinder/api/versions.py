@@ -16,9 +16,9 @@
 
 
 import copy
+from http import client as http_client
 
 from oslo_config import cfg
-from six.moves import http_client
 
 from cinder.api import extensions
 from cinder.api import openstack

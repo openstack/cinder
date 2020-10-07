@@ -14,10 +14,10 @@
 #    under the License.
 
 """The volumes snapshots api."""
+from http import client as http_client
 
 from oslo_log import log as logging
 from oslo_utils import strutils
-from six.moves import http_client
 import webob
 
 from cinder.api import api_utils

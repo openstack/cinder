@@ -13,8 +13,8 @@
 #    under the License.
 
 """The group types specs controller"""
+from http import client as http_client
 
-from six.moves import http_client
 import webob
 
 from cinder.api import microversions as mv

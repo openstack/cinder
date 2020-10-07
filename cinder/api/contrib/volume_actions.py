@@ -11,14 +11,12 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
-
+from http import client as http_client
 
 from castellan import key_manager
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_utils import strutils
-import six
-from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -247,13 +245,13 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
         except ValueError as error:
-            raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
+            raise webob.exc.HTTPBadRequest(explanation=str(error))
         except messaging.RemoteError as error:
             msg = "%(err_type)s: %(err_msg)s" % {'err_type': error.exc_type,
                                                  'err_msg': error.value}
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except Exception as error:
-            raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
+            raise webob.exc.HTTPBadRequest(explanation=str(error))
         return {'os-volume_upload_image': response}
 
     @wsgi.response(http_client.ACCEPTED)

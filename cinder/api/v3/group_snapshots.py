@@ -14,10 +14,9 @@
 #    under the License.
 
 """The group_snapshots API."""
+from http import client as http_client
 
 from oslo_log import log as logging
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -83,7 +82,7 @@ class GroupSnapshotsController(wsgi.Controller):
             self.group_snapshot_api.delete_group_snapshot(context,
                                                           group_snapshot)
         except exception.InvalidGroupSnapshot as e:
-            raise exc.HTTPBadRequest(explanation=six.text_type(e))
+            raise exc.HTTPBadRequest(explanation=str(e))
         except (exception.GroupSnapshotNotFound,
                 exception.PolicyNotAuthorized):
             # Not found exception will be handled at the wsgi level

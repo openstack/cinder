@@ -16,9 +16,9 @@
 
 import copy
 import re
+import urllib
 
 from oslo_config import cfg
-from six.moves import urllib
 
 
 versions_opts = [
