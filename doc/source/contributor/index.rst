@@ -60,6 +60,7 @@ Managing the Development Cycle
    :maxdepth: 1
 
    releasecycle
+   cinder-groups
 
 Documentation Contribution
 --------------------------
