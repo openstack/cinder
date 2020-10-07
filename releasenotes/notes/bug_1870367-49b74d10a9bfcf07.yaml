@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1870367 <https://bugs.launchpad.net/cinder/+bug/1870367>`_ :
+    Partially fixed NFS and Quobyte drivers by no longer allowing extending a
+    volume while it is attached, to prevent failures due to Qemu internal
+    locking mechanisms.
