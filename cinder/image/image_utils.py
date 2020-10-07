@@ -43,7 +43,6 @@ from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import psutil
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -480,8 +479,7 @@ def verify_glance_image_signature(context, image_service, image_id, path):
                     message = _('Failed to verify signature for '
                                 'image: %(image)s due to '
                                 'error: %(error)s ') % {'image': image_id,
-                                                        'error':
-                                                            six.text_type(ex)}
+                                                        'error': ex}
                     LOG.error(message)
                     raise exception.ImageSignatureVerificationException(
                         reason=message)

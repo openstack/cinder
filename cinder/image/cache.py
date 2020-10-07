@@ -16,7 +16,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from pytz import timezone
-import six
 
 from cinder import objects
 from cinder import rpc
@@ -94,7 +93,7 @@ class ImageVolumeCache(object):
         # we just need to parse it into one. If it is an actual datetime
         # we want to just grab it as a UTC naive datetime.
         image_updated_at = image_meta['updated_at']
-        if isinstance(image_updated_at, six.string_types):
+        if isinstance(image_updated_at, str):
             image_updated_at = timeutils.parse_strtime(image_updated_at)
         else:
             image_updated_at = image_updated_at.astimezone(timezone('UTC'))
@@ -222,13 +221,13 @@ class ImageVolumeCache(object):
 
         LOG.debug('Image-volume cache entry image_update_at = %(entry_utc)s, '
                   'requested image updated_at = %(image_utc)s.',
-                  {'entry_utc': six.text_type(cache_updated_utc),
-                   'image_utc': six.text_type(image_updated_utc)})
+                  {'entry_utc': str(cache_updated_utc),
+                   'image_utc': str(image_updated_utc)})
 
         return image_updated_utc != cache_updated_utc
 
     def _entry_to_str(self, cache_entry):
-        return six.text_type({
+        return str({
             'id': cache_entry['id'],
             'image_id': cache_entry['image_id'],
             'volume_id': cache_entry['volume_id'],
