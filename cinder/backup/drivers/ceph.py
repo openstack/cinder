@@ -55,7 +55,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
-from six.moves import range
 
 from cinder.backup import driver
 from cinder import exception

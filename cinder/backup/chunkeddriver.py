@@ -33,7 +33,6 @@ from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
-import six
 
 from cinder.backup import driver
 from cinder import exception
@@ -67,8 +66,7 @@ CONF.register_opts(backup_opts)
 # (https://github.com/eventlet/eventlet/issues/432) that would result in
 # failures.
 
-@six.add_metaclass(abc.ABCMeta)
-class ChunkedBackupDriver(driver.BackupDriver):
+class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
     """Abstract chunked backup driver.
 
        Implements common functionality for backup drivers that store volume
@@ -266,8 +264,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         if extra_metadata:
             metadata['extra_metadata'] = extra_metadata
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
-        if six.PY3:
-            metadata_json = metadata_json.encode('utf-8')
+        metadata_json = metadata_json.encode('utf-8')
         with self._get_object_writer(container, filename) as writer:
             writer.write(metadata_json)
         LOG.debug('_write_metadata finished. Metadata: %s.', metadata_json)
@@ -283,12 +280,11 @@ class ChunkedBackupDriver(driver.BackupDriver):
         sha256file['volume_id'] = volume_id
         sha256file['backup_name'] = backup['display_name']
         sha256file['backup_description'] = backup['display_description']
-        sha256file['created_at'] = six.text_type(backup['created_at'])
+        sha256file['created_at'] = str(backup['created_at'])
         sha256file['chunk_size'] = self.sha_block_size_bytes
         sha256file['sha256s'] = sha256_list
         sha256file_json = json.dumps(sha256file, sort_keys=True, indent=2)
-        if six.PY3:
-            sha256file_json = sha256file_json.encode('utf-8')
+        sha256file_json = sha256file_json.encode('utf-8')
         with self._get_object_writer(container, filename) as writer:
             writer.write(sha256file_json)
         LOG.debug('_write_sha256file finished.')
@@ -301,8 +297,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   {'container': container, 'filename': filename})
         with self._get_object_reader(container, filename) as reader:
             metadata_json = reader.read()
-        if six.PY3:
-            metadata_json = metadata_json.decode('utf-8')
+        metadata_json = metadata_json.decode('utf-8')
         metadata = json.loads(metadata_json)
         LOG.debug('_read_metadata finished. Metadata: %s.', metadata_json)
         return metadata
@@ -315,8 +310,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   {'container': container, 'filename': filename})
         with self._get_object_reader(container, filename) as reader:
             sha256file_json = reader.read()
-        if six.PY3:
-            sha256file_json = sha256file_json.decode('utf-8')
+        sha256file_json = sha256file_json.decode('utf-8')
         sha256file = json.loads(sha256file_json)
         LOG.debug('_read_sha256file finished.')
         return sha256file

@@ -44,12 +44,12 @@
 """
 
 import hashlib
+import io
 import socket
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import six
 from swiftclient import client as swift
 
 from cinder.backup import chunkeddriver
@@ -282,7 +282,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             self.data += data
 
         def close(self):
-            reader = six.BytesIO(self.data)
+            reader = io.BytesIO(self.data)
             try:
                 etag = self.conn.put_object(self.container, self.object_name,
                                             reader,

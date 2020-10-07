@@ -28,6 +28,7 @@ Server-centric flow is used for authentication.
 
 import base64
 import hashlib
+import io
 import os
 
 try:
@@ -56,7 +57,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from packaging import version
-import six
 
 from cinder.backup import chunkeddriver
 from cinder import exception
@@ -328,7 +328,7 @@ class GoogleObjectWriter(object):
 
     @gcs_logger
     def close(self):
-        media = http.MediaIoBaseUpload(six.BytesIO(self.data),
+        media = http.MediaIoBaseUpload(io.BytesIO(self.data),
                                        'application/octet-stream',
                                        chunksize=self.chunk_size,
                                        resumable=self.resumable)
@@ -339,9 +339,8 @@ class GoogleObjectWriter(object):
             media_body=media).execute(num_retries=self.num_retries)
         etag = resp['md5Hash']
         md5 = hashlib.md5(self.data).digest()
-        if six.PY3:
-            md5 = md5.encode('utf-8')
-            etag = bytes(etag, 'utf-8')
+        md5 = md5.encode('utf-8')
+        etag = bytes(etag, 'utf-8')
         md5 = base64.b64encode(md5)
         if etag != md5:
             err = _('MD5 of object: %(object_name)s before: '
@@ -377,7 +376,7 @@ class GoogleObjectReader(object):
         req = self.conn.objects().get_media(
             bucket=self.bucket,
             object=self.object_name)
-        fh = six.BytesIO()
+        fh = io.BytesIO()
         downloader = GoogleMediaIoBaseDownload(
             fh, req, chunksize=self.chunk_size)
         done = False
@@ -401,7 +400,7 @@ class GoogleMediaIoBaseDownload(http.MediaIoBaseDownload):
                 self._sleep(self._rand() * 2 ** retry_num)
 
             resp, content = gcs_http.request(self._uri, headers=headers)
-            if resp.status < 500 and (six.text_type(resp.status)
+            if resp.status < 500 and (str(resp.status)
                                       not in error_codes):
                 break
         if resp.status in [200, 206]:
