@@ -17,8 +17,6 @@
 import abc
 import inspect
 
-import six
-
 if hasattr(inspect, 'getfullargspec'):
     getargspec = inspect.getfullargspec
 else:
@@ -59,8 +57,7 @@ def _get_method_info(cls):
     return result
 
 
-@six.add_metaclass(abc.ABCMeta)
-class CinderInterface(object):
+class CinderInterface(object, metaclass=abc.ABCMeta):
     """Interface base class for Cinder.
 
     Cinder interfaces should inherit from this class to support indirect

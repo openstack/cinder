@@ -20,7 +20,6 @@
 import datetime
 
 from oslo_log import log as logging
-from six.moves import range
 import sqlalchemy
 import sqlalchemy.sql as sa_sql
 from sqlalchemy.sql import type_api
