@@ -16,7 +16,6 @@
 import operator
 
 from oslo_serialization import jsonutils
-import six
 
 from cinder.scheduler import filters
 
@@ -127,7 +126,7 @@ class JsonFilter(filters.BaseBackendFilter):
         for arg in query[1:]:
             if isinstance(arg, list):
                 arg = self._process_filter(arg, backend_state)
-            elif isinstance(arg, six.string_types):
+            elif isinstance(arg, str):
                 arg = self._parse_string(arg, backend_state)
             if arg is not None:
                 cooked_args.append(arg)

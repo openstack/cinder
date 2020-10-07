@@ -17,7 +17,6 @@ import operator
 import re
 
 import pyparsing
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -40,7 +39,7 @@ class EvalConstant(object):
 
     def eval(self):
         result = self.value
-        if (isinstance(result, six.string_types) and
+        if (isinstance(result, str) and
                 re.match(r"^[a-zA-Z_]+\.[a-zA-Z_]+$", result)):
             (which_dict, entry) = result.split('.')
             try:

@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_log import log as logging
-import six
 
 from cinder.scheduler.evaluator import evaluator
 from cinder.scheduler import filters
@@ -120,7 +119,7 @@ class DriverFilter(filters.BaseBackendFilter):
 
         if ('filter_function' in backend_caps and
                 backend_caps['filter_function'] is not None):
-            filter_function = six.text_type(backend_caps['filter_function'])
+            filter_function = str(backend_caps['filter_function'])
 
         qos_specs = filter_properties.get('qos_specs', {})
 

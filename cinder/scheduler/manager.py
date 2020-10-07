@@ -21,6 +21,7 @@ Scheduler Service
 
 import collections
 from datetime import datetime
+import functools
 
 import eventlet
 from oslo_config import cfg
@@ -31,7 +32,6 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import versionutils
-import six
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
@@ -74,7 +74,7 @@ LOG = logging.getLogger(__name__)
 
 def append_operation_type(name=None):
     def _decorator(schedule_function):
-        @six.wraps(schedule_function)
+        @functools.wraps(schedule_function)
         def inject_operation_decorator(*args, **kwargs):
 
             request_spec = kwargs.get('request_spec', None)
@@ -485,7 +485,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         # TODO(harlowja): move into a task that just does this later.
         if not msg:
             msg = ("Failed to schedule_%(method)s: %(ex)s" %
-                   {'method': method, 'ex': six.text_type(ex)})
+                   {'method': method, 'ex': ex})
         LOG.error(msg)
 
         volume_state = updates['volume_state']
@@ -515,7 +515,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
                                        msg=None):
         if not msg:
             msg = ("Failed to schedule_%(method)s: %(ex)s" %
-                   {'method': method, 'ex': six.text_type(ex)})
+                   {'method': method, 'ex': ex})
         LOG.error(msg)
 
         model_update = dict(status=state)
