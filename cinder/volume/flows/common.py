@@ -17,7 +17,6 @@
 #    under the License.
 
 from oslo_log import log as logging
-import six
 
 from cinder import exception
 
@@ -66,7 +65,7 @@ def restore_source_status(context, db, volume_spec):
 def _clean_reason(reason):
     if reason is None:
         return 'Unknown reason'
-    reason = six.text_type(reason)
+    reason = str(reason)
     if len(reason) <= REASON_LENGTH:
         return reason
     else:

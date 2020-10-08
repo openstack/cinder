@@ -24,7 +24,6 @@ from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -357,8 +356,7 @@ CONF.register_opts(fqdn_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.import_opt('backup_use_same_host', 'cinder.backup.api')
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseVD(object):
+class BaseVD(object, metaclass=abc.ABCMeta):
     """Executes commands relating to Volumes.
 
     Base Driver for Cinder Volume Control Path,
@@ -1046,15 +1044,13 @@ class BaseVD(object):
             except Exception as err:
                 try:
                     err_msg = (_('Unable to fetch connection information from '
-                                 'backend: %(err)s') %
-                               {'err': six.text_type(err)})
+                                 'backend: %(err)s') % {'err': err})
                     LOG.error(err_msg)
                     LOG.debug("Cleaning up failed connect initialization.")
                     self.remove_export(context, volume)
                 except Exception as ex:
                     ex_msg = (_('Error encountered during cleanup '
-                                'of a failed attach: %(ex)s') %
-                              {'ex': six.text_type(ex)})
+                                'of a failed attach: %(ex)s') % {'ex': ex})
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
@@ -1112,15 +1108,13 @@ class BaseVD(object):
         except Exception as err:
             try:
                 err_msg = (_('Unable to fetch connection information from '
-                             'backend: %(err)s') %
-                           {'err': six.text_type(err)})
+                             'backend: %(err)s') % {'err': err})
                 LOG.error(err_msg)
                 LOG.debug("Cleaning up failed connect initialization.")
                 self.remove_export_snapshot(ctxt, snapshot)
             except Exception as ex:
                 ex_msg = (_('Error encountered during cleanup '
-                            'of a failed attach: %(ex)s') %
-                          {'ex': six.text_type(ex)})
+                            'of a failed attach: %(ex)s') % {'ex': ex})
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=ex_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -1953,8 +1947,7 @@ class BaseVD(object):
                 for cfg_name in cfg_names]
 
 
-@six.add_metaclass(abc.ABCMeta)
-class CloneableImageVD(object):
+class CloneableImageVD(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def clone_image(self, volume, image_location,
                     image_id, image_meta, image_service):
@@ -1983,8 +1976,7 @@ class CloneableImageVD(object):
         return None, False
 
 
-@six.add_metaclass(abc.ABCMeta)
-class MigrateVD(object):
+class MigrateVD(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def migrate_volume(self, context, volume, host):
         """Migrate the volume to the specified host.
@@ -2001,8 +1993,7 @@ class MigrateVD(object):
         return (False, None)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ManageableVD(object):
+class ManageableVD(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.
@@ -2098,8 +2089,7 @@ class ManageableVD(object):
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ManageableSnapshotsVD(object):
+class ManageableSnapshotsVD(object, metaclass=abc.ABCMeta):
     # NOTE: Can't use abstractmethod before all drivers implement it
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings an existing backend storage object under Cinder management.

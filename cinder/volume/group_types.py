@@ -18,7 +18,6 @@
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
-import six
 import webob
 
 from cinder import context
@@ -80,7 +79,7 @@ def destroy(context, id):
         try:
             db.group_type_destroy(elevated, id)
         except exception.GroupTypeInUse as e:
-            msg = _('Target group type is still in use. %s') % six.text_type(e)
+            msg = _('Target group type is still in use. %s') % e
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
 

@@ -17,7 +17,6 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import uuidutils
-import six
 
 from cinder import exception
 from cinder.privsep import nvmcli
@@ -122,7 +121,7 @@ class NVMET(nvmeof.NVMeOF):
             "namespaces": [
                 {
                     "device": {
-                        "nguid": six.text_type(uuidutils.generate_uuid()),
+                        "nguid": str(uuidutils.generate_uuid()),
                         "path": volume_path,
                     },
                     "enable": 1,

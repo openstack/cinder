@@ -50,7 +50,6 @@ from oslo_utils import units
 from oslo_utils import uuidutils
 profiler = importutils.try_import('osprofiler.profiler')
 import requests
-import six
 from taskflow import exceptions as tfe
 
 from cinder.common import constants
@@ -1071,7 +1070,7 @@ class VolumeManager(manager.CleanableManager,
                        'snapshot %(s_id)s failed with %(error)s.')
                 msg_args = {'v_id': volume.id,
                             's_id': snapshot.id,
-                            'error': six.text_type(error)}
+                            'error': error}
                 v_res = volume.update_single_status_where(
                     'error',
                     'reverting')
@@ -1184,7 +1183,7 @@ class VolumeManager(manager.CleanableManager,
                     exception=ex,
                     detail=message_field.Detail.SNAPSHOT_UPDATE_METADATA_FAILED
                 )
-                raise exception.MetadataCopyFailure(reason=six.text_type(ex))
+                raise exception.MetadataCopyFailure(reason=str(ex))
 
         snapshot.status = fields.SnapshotStatus.AVAILABLE
         snapshot.progress = '100%'
@@ -1467,7 +1466,7 @@ class VolumeManager(manager.CleanableManager,
                           "remove-export failure.",
                           resource=volume)
             raise exception.RemoveExportException(volume=volume_id,
-                                                  reason=six.text_type(ex))
+                                                  reason=str(ex))
 
         volume.finish_detach(attachment.id)
         self._notify_about_volume_usage(context, volume, "detach.end")
@@ -1688,7 +1687,7 @@ class VolumeManager(manager.CleanableManager,
                 # Deletes the image if it is in queued or saving state
                 self._delete_image(context, image_meta['id'], image_service)
             with excutils.save_and_reraise_exception():
-                payload['message'] = six.text_type(error)
+                payload['message'] = str(error)
         finally:
             self.db.volume_update_status_based_on_attachment(context,
                                                              volume_id)
@@ -1834,10 +1833,10 @@ class VolumeManager(manager.CleanableManager,
         try:
             self.driver.validate_connector(connector)
         except exception.InvalidConnectorException as err:
-            raise exception.InvalidInput(reason=six.text_type(err))
+            raise exception.InvalidInput(reason=str(err))
         except Exception as err:
             err_msg = (_("Validate volume connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
+                         "(error: %(err)s).") % {'err': err})
             LOG.exception(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -1859,13 +1858,13 @@ class VolumeManager(manager.CleanableManager,
                 self.driver.remove_export(context.elevated(), volume)
             except Exception:
                 LOG.exception('Could not remove export after DB model failed.')
-            raise exception.ExportFailure(reason=six.text_type(ex))
+            raise exception.ExportFailure(reason=str(ex))
 
         try:
             conn_info = self.driver.initialize_connection(volume, connector)
         except Exception as err:
             err_msg = (_("Driver initialize connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
+                         "(error: %(err)s).") % {'err': err})
             LOG.exception(err_msg, resource=volume)
 
             self.driver.remove_export(context.elevated(), volume)
@@ -1883,10 +1882,10 @@ class VolumeManager(manager.CleanableManager,
         try:
             self.driver.validate_connector(connector)
         except exception.InvalidConnectorException as err:
-            raise exception.InvalidInput(reason=six.text_type(err))
+            raise exception.InvalidInput(reason=str(err))
         except Exception as err:
             err_msg = (_("Validate snapshot connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
+                         "(error: %(err)s).") % {'err': err})
             LOG.exception(err_msg, resource=snapshot)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -1912,7 +1911,7 @@ class VolumeManager(manager.CleanableManager,
                 snapshot.save()
         except exception.CinderException as ex:
             LOG.exception("Model update failed.", resource=snapshot)
-            raise exception.ExportFailure(reason=six.text_type(ex))
+            raise exception.ExportFailure(reason=str(ex))
 
         try:
             conn = self.driver.initialize_connection_snapshot(snapshot,
@@ -1920,15 +1919,13 @@ class VolumeManager(manager.CleanableManager,
         except Exception as err:
             try:
                 err_msg = (_('Unable to fetch connection information from '
-                             'backend: %(err)s') %
-                           {'err': six.text_type(err)})
+                             'backend: %(err)s') % {'err': err})
                 LOG.error(err_msg)
                 LOG.debug("Cleaning up failed connect initialization.")
                 self.driver.remove_export_snapshot(ctxt.elevated(), snapshot)
             except Exception as ex:
                 ex_msg = (_('Error encountered during cleanup '
-                            'of a failed attach: %(ex)s') %
-                          {'ex': six.text_type(ex)})
+                            'of a failed attach: %(ex)s') % {'ex': ex})
                 LOG.error(ex_msg)
                 raise exception.VolumeBackendAPIException(data=ex_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -1953,7 +1950,7 @@ class VolumeManager(manager.CleanableManager,
                                              force=force)
         except Exception as err:
             err_msg = (_('Terminate volume connection failed: %(err)s')
-                       % {'err': six.text_type(err)})
+                       % {'err': err})
             LOG.exception(err_msg, resource=volume_ref)
             raise exception.VolumeBackendAPIException(data=err_msg)
         LOG.info("Terminate volume connection completed successfully.",
@@ -1969,7 +1966,7 @@ class VolumeManager(manager.CleanableManager,
                                                       force=force)
         except Exception as err:
             err_msg = (_('Terminate snapshot connection failed: %(err)s')
-                       % {'err': six.text_type(err)})
+                       % {'err': err})
             LOG.exception(err_msg, resource=snapshot)
             raise exception.VolumeBackendAPIException(data=err_msg)
         LOG.info("Terminate snapshot connection completed successfully.",
@@ -2053,7 +2050,7 @@ class VolumeManager(manager.CleanableManager,
         root_access = True
 
         if not connector.check_valid_device(vol_handle['path'], root_access):
-            if isinstance(vol_handle['path'], six.string_types):
+            if isinstance(vol_handle['path'], str):
                 raise exception.DeviceUnavailable(
                     path=vol_handle['path'],
                     reason=(_("Unable to access the backend storage via the "
@@ -3467,7 +3464,7 @@ class VolumeManager(manager.CleanableManager,
             if group:
                 group.status = fields.GroupStatus.ERROR
                 group.save()
-            raise exception.MetadataCopyFailure(reason=six.text_type(ex))
+            raise exception.MetadataCopyFailure(reason=str(ex))
 
         self.db.volume_update(context, vol['id'], update)
 
@@ -3935,7 +3932,7 @@ class VolumeManager(manager.CleanableManager,
                     snapshot.status = fields.SnapshotStatus.ERROR
                     snapshot.save()
                     raise exception.MetadataCopyFailure(
-                        reason=six.text_type(ex))
+                        reason=str(ex))
 
             snapshot.status = fields.SnapshotStatus.AVAILABLE
             snapshot.progress = '100%'
@@ -4498,10 +4495,10 @@ class VolumeManager(manager.CleanableManager,
         try:
             self.driver.validate_connector(connector)
         except exception.InvalidConnectorException as err:
-            raise exception.InvalidInput(reason=six.text_type(err))
+            raise exception.InvalidInput(reason=str(err))
         except Exception as err:
             err_msg = (_("Validate volume connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
+                         "(error: %(err)s).") % {'err': err})
             LOG.error(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -4519,13 +4516,13 @@ class VolumeManager(manager.CleanableManager,
                 volume.save()
         except exception.CinderException as ex:
             LOG.exception("Model update failed.", resource=volume)
-            raise exception.ExportFailure(reason=six.text_type(ex))
+            raise exception.ExportFailure(reason=str(ex))
 
         try:
             conn_info = self.driver.initialize_connection(volume, connector)
         except Exception as err:
             err_msg = (_("Driver initialize connection failed "
-                         "(error: %(err)s).") % {'err': six.text_type(err)})
+                         "(error: %(err)s).") % {'err': err})
             LOG.exception(err_msg, resource=volume)
             self.driver.remove_export(ctxt.elevated(), volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
@@ -4641,7 +4638,7 @@ class VolumeManager(manager.CleanableManager,
 
         except Exception as err:
             err_msg = (_('Terminate volume connection failed: %(err)s')
-                       % {'err': six.text_type(err)})
+                       % {'err': err})
             LOG.exception(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
         LOG.info("Terminate volume connection completed successfully.",
@@ -4770,8 +4767,7 @@ class VolumeManager(manager.CleanableManager,
                     vol.status = 'error'
                     vol.replication_status = fields.ReplicationStatus.ERROR
                     vol.save()
-            err_msg = _("Enable replication group failed: "
-                        "%s.") % six.text_type(ex)
+            err_msg = _("Enable replication group failed: %s.") % ex
             raise exception.ReplicationGroupError(reason=err_msg,
                                                   group_id=group.id)
 
@@ -4855,8 +4851,7 @@ class VolumeManager(manager.CleanableManager,
                     vol.status = 'error'
                     vol.replication_status = fields.ReplicationStatus.ERROR
                     vol.save()
-            err_msg = _("Disable replication group failed: "
-                        "%s.") % six.text_type(ex)
+            err_msg = _("Disable replication group failed: %s.") % ex
             raise exception.ReplicationGroupError(reason=err_msg,
                                                   group_id=group.id)
 
@@ -4947,8 +4942,7 @@ class VolumeManager(manager.CleanableManager,
                     vol.status = 'error'
                     vol.replication_status = fields.ReplicationStatus.ERROR
                     vol.save()
-            err_msg = _("Failover replication group failed: "
-                        "%s.") % six.text_type(ex)
+            err_msg = _("Failover replication group failed: %s.") % ex
             raise exception.ReplicationGroupError(reason=err_msg,
                                                   group_id=group.id)
 

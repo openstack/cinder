@@ -13,13 +13,11 @@
 import abc
 
 from oslo_config import cfg
-import six
 
 CONF = cfg.CONF
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Target(object):
+class Target(object, metaclass=abc.ABCMeta):
     """Target object for block storage devices.
 
     Base class for target object, where target

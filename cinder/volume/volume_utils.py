@@ -43,8 +43,6 @@ from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
-import six
-from six.moves import range
 
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
@@ -550,11 +548,11 @@ def _transfer_data(src, dest, length, chunk_size):
 
 def _copy_volume_with_file(src, dest, size_in_m):
     src_handle = src
-    if isinstance(src, six.string_types):
+    if isinstance(src, str):
         src_handle = _open_volume_with_path(src, 'rb')
 
     dest_handle = dest
-    if isinstance(dest, six.string_types):
+    if isinstance(dest, str):
         dest_handle = _open_volume_with_path(dest, 'wb')
 
     if not src_handle:
@@ -571,9 +569,9 @@ def _copy_volume_with_file(src, dest, size_in_m):
 
     duration = max(1, timeutils.delta_seconds(start_time, timeutils.utcnow()))
 
-    if isinstance(src, six.string_types):
+    if isinstance(src, str):
         src_handle.close()
-    if isinstance(dest, six.string_types):
+    if isinstance(dest, str):
         dest_handle.close()
 
     mbps = (size_in_m / duration)
@@ -598,8 +596,8 @@ def copy_volume(src, dest, size_in_m, blocksize, sync=False,
     instead of file paths and, at present moment, throttling is unavailable.
     """
 
-    if (isinstance(src, six.string_types) and
-            isinstance(dest, six.string_types)):
+    if (isinstance(src, str) and
+            isinstance(dest, str)):
         if not throttle:
             throttle = throttling.Throttle.get_default()
         with throttle.subcommand(src, dest) as throttle_cmd:
@@ -823,7 +821,7 @@ def check_already_managed_volume(vol_id):
                       volume id exists, otherwise return False
     """
     try:
-        return (vol_id and isinstance(vol_id, six.string_types) and
+        return (vol_id and isinstance(vol_id, str) and
                 uuid.UUID(vol_id, version=4) and
                 objects.Volume.exists(context.get_admin_context(), vol_id))
     except ValueError:
@@ -1215,12 +1213,8 @@ def sanitize_host(host):
 
 def sanitize_hostname(hostname):
     """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
-    if six.PY3:
-        hostname = hostname.encode('latin-1', 'ignore')
-        hostname = hostname.decode('latin-1')
-    else:
-        if isinstance(hostname, six.text_type):
-            hostname = hostname.encode('latin-1', 'ignore')
+    hostname = hostname.encode('latin-1', 'ignore')
+    hostname = hostname.decode('latin-1')
 
     hostname = re.sub(r'[ _]', '-', hostname)
     hostname = re.sub(r'[^\w.-]+', '', hostname)
