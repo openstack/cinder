@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
 
 import iso8601
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder.api import extensions
