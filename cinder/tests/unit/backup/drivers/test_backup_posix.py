@@ -14,10 +14,9 @@
 #    under the License.
 """Tests for Posix backup driver."""
 
+import builtins
 import os
 from unittest import mock
-
-from six.moves import builtins
 
 from cinder.backup.drivers import posix
 from cinder import context

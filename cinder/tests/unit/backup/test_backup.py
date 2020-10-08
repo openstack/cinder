@@ -688,7 +688,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open', wraps=open)
+    @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
     def test_create_backup(self, mock_isdir, mock_open, mock_temporary_chown,
                            mock_get_backup_device, mock_get_conn):
@@ -738,7 +738,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch.object(os.path, 'isdir', return_value=True)
     def test_create_backup_set_parent_id_to_none(self, mock_isdir, mock_open,
                                                  mock_chown,
@@ -774,7 +774,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch.object(os.path, 'isdir', return_value=True)
     def test_create_backup_set_parent_id(self, mock_isdir, mock_open,
                                          mock_chown, mock_backup_device,
@@ -809,7 +809,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch.object(os.path, 'isdir', return_value=True)
     def test_create_backup_fail_with_excep(self, mock_isdir, mock_open,
                                            mock_chown, mock_backup_device,
@@ -846,7 +846,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch.object(os.path, 'isdir', return_value=True)
     def test_run_backup_with_dir_device_path(self, mock_isdir,
                                              mock_open,
@@ -904,7 +904,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('builtins.open')
     @mock.patch.object(os.path, 'isdir', return_value=False)
     def test_create_backup_with_temp_snapshot(self, mock_isdir,
                                               mock_open,
@@ -1219,7 +1219,7 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open', wraps=open)
+    @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
     @ddt.data({'os_name': 'nt', 'exp_open_mode': 'rb+'},
               {'os_name': 'posix', 'exp_open_mode': 'wb'})
@@ -1269,7 +1269,7 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open', wraps=open)
+    @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
     @ddt.data({'os_name': 'nt', 'exp_open_mode': 'rb+'},
               {'os_name': 'posix', 'exp_open_mode': 'wb'})

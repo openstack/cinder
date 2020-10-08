@@ -13,13 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
 import json
 import os
 import socket
 import zlib
 
-import six
-from six.moves import http_client
 from swiftclient import client as swift
 
 
@@ -86,8 +85,7 @@ class FakeSwiftConnection(object):
                                'offset': 20}
             }]
             metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
-            if six.PY3:
-                metadata_json = metadata_json.encode('utf-8')
+            metadata_json = metadata_json.encode('utf-8')
             fake_object_body = metadata_json
             return (fake_object_header, fake_object_body)
 
