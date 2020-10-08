@@ -16,7 +16,6 @@
 from unittest import mock
 
 from oslo_utils import timeutils
-import six
 import webob
 
 from cinder.api.v2 import types
@@ -40,8 +39,8 @@ def fake_volume_type(id):
     }
     return dict(
         id=id,
-        name='vol_type_%s' % six.text_type(id),
-        description='vol_type_desc_%s' % six.text_type(id),
+        name='vol_type_%s' % id,
+        description='vol_type_desc_%s' % id,
         extra_specs=specs,
     )
 

@@ -15,11 +15,11 @@
 
 """Tests for volume transfer code."""
 
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder.api.contrib import volume_transfer
@@ -107,7 +107,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual('test_transfer', res_dict['transfer']['name'])
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
@@ -127,7 +127,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(self.SUMMARY_LEN, len(res_dict['transfers'][0]))
         self.assertEqual(transfer1['id'], res_dict['transfers'][0]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][0]['name'])
@@ -200,7 +200,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(self.DETAIL_LEN, len(res_dict['transfers'][0]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][0]['name'])
@@ -231,7 +231,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(self.DETAIL_LEN, len(res_dict['transfers'][0]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][0]['name'])
@@ -262,7 +262,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['transfer'])
         self.assertIn('auth_key', res_dict['transfer'])
         self.assertIn('created_at', res_dict['transfer'])
@@ -287,7 +287,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['transfer'])
         self.assertIn('auth_key', res_dict['transfer'])
         self.assertIn('created_at', res_dict['transfer'])
@@ -308,7 +308,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
         # verify transfer has been deleted
         req = webob.Request.blank('/v3/%s/volume-transfers/%s' % (
@@ -319,8 +319,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Transfer %s could not be found.' % transfer['id'],
                          res_dict['itemNotFound']['message'])
@@ -346,7 +346,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
         # cleanup

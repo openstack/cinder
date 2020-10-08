@@ -19,7 +19,6 @@ import uuid
 import ddt
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import six
 import webob
 
 from cinder.api import microversions as mv
@@ -46,8 +45,8 @@ def stub_group_type(id):
     }
     return dict(
         id=id,
-        name='group_type_%s' % six.text_type(id),
-        description='group_type_desc_%s' % six.text_type(id),
+        name='group_type_%s' % id,
+        description='group_type_desc_%s' % id,
         group_specs=specs,
     )
 
@@ -345,7 +344,7 @@ class GroupTypesApiTest(test.TestCase):
     def test_update_group_type_with_valid_is_public_in_string(
             self, is_public, mock_show, mock_cache_resource,
             mock_update, mock_get):
-        type_id = six.text_type(uuid.uuid4())
+        type_id = str(uuid.uuid4())
         req = fakes.HTTPRequest.blank(
             '/v3/%s/types/%s' % (fake.PROJECT_ID, type_id),
             version=mv.GROUP_TYPE)
@@ -398,7 +397,7 @@ class GroupTypesApiTest(test.TestCase):
         self.mock_object(group_types, 'get_group_type',
                          return_group_types_get_group_type)
 
-        type_id = six.text_type(uuid.uuid4())
+        type_id = str(uuid.uuid4())
         req = fakes.HTTPRequest.blank('/v3/%s/group_types/' % fake.PROJECT_ID
                                       + type_id,
                                       version=mv.GROUP_TYPE)

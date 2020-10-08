@@ -13,13 +13,13 @@
 #   under the License.
 
 import datetime
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder.api.contrib import volume_actions
@@ -95,7 +95,7 @@ class VolumeActionsTest(test.TestCase):
             req.body = jsonutils.dump_as_bytes({_action: None})
             req.content_type = 'application/json'
             res = req.get_response(app)
-            self.assertEqual(http_client.ACCEPTED, res.status_int)
+            self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_initialize_connection(self):
         with mock.patch.object(volume_api.API,
@@ -111,7 +111,7 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
-            self.assertEqual(http_client.OK, res.status_int)
+            self.assertEqual(HTTPStatus.OK, res.status_int)
 
     def test_initialize_connection_without_connector(self):
         with mock.patch.object(volume_api.API,
@@ -126,7 +126,7 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
-            self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+            self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.initialize_connection')
     def test_initialize_connection_without_initiator(self,
@@ -141,7 +141,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
                                fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_initialize_connection_exception(self):
         with mock.patch.object(volume_api.API,
@@ -158,7 +158,7 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
-            self.assertEqual(http_client.INTERNAL_SERVER_ERROR,
+            self.assertEqual(HTTPStatus.INTERNAL_SERVER_ERROR,
                              res.status_int)
 
     def test_terminate_connection(self):
@@ -174,7 +174,7 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
-            self.assertEqual(http_client.ACCEPTED, res.status_int)
+            self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_terminate_connection_without_connector(self):
         with mock.patch.object(volume_api.API,
@@ -189,7 +189,7 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
-            self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+            self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_terminate_connection_with_exception(self):
         with mock.patch.object(volume_api.API,
@@ -205,7 +205,7 @@ class VolumeActionsTest(test.TestCase):
 
             res = req.get_response(fakes.wsgi_app(
                 fake_auth_context=self.context))
-            self.assertEqual(http_client.INTERNAL_SERVER_ERROR,
+            self.assertEqual(HTTPStatus.INTERNAL_SERVER_ERROR,
                              res.status_int)
 
     def test_attach_to_instance(self):
@@ -220,7 +220,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
         body = {'os-attach': {'instance_uuid': fake.INSTANCE_ID,
                               'host_name': 'fake_host',
@@ -232,7 +232,7 @@ class VolumeActionsTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_attach_to_host(self):
         # using 'read-write' mode attach volume by default
@@ -246,7 +246,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_volume_attach_to_instance_raises_remote_error(self):
         volume_remote_error = \
@@ -295,7 +295,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_detach_null_attachment_id(self):
         body = {'os-detach': {'attachment_id': None}}
@@ -307,7 +307,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_volume_detach_raises_remote_error(self):
         volume_remote_error = \
@@ -352,7 +352,7 @@ class VolumeActionsTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
         # Invalid request to attach volume with an invalid mode
         body = {'os-attach': {'instance_uuid': 'fake',
@@ -365,7 +365,7 @@ class VolumeActionsTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         body = {'os-attach': {'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc',
                               'mode': 'ww'}}
@@ -376,7 +376,7 @@ class VolumeActionsTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_attach_to_instance_no_mountpoint(self):
         # The mountpoint parameter is required. If not provided the
@@ -408,7 +408,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_roll_detaching(self):
         def fake_roll_detaching(*args, **kwargs):
@@ -425,7 +425,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_extend_volume(self):
         def fake_extend_volume(*args, **kwargs):
@@ -442,7 +442,7 @@ class VolumeActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_extend_volume_invalid_status(self):
         def fake_extend_volume(*args, **kwargs):
@@ -459,13 +459,13 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
-    @ddt.data((True, http_client.ACCEPTED), (False, http_client.ACCEPTED),
-              ('1', http_client.ACCEPTED), ('0', http_client.ACCEPTED),
-              ('true', http_client.ACCEPTED), ('false', http_client.ACCEPTED),
-              ('tt', http_client.BAD_REQUEST), (11, http_client.BAD_REQUEST),
-              (None, http_client.BAD_REQUEST))
+    @ddt.data((True, HTTPStatus.ACCEPTED), (False, HTTPStatus.ACCEPTED),
+              ('1', HTTPStatus.ACCEPTED), ('0', HTTPStatus.ACCEPTED),
+              ('true', HTTPStatus.ACCEPTED), ('false', HTTPStatus.ACCEPTED),
+              ('tt', HTTPStatus.BAD_REQUEST), (11, HTTPStatus.BAD_REQUEST),
+              (None, HTTPStatus.BAD_REQUEST))
     @ddt.unpack
     def test_update_readonly_flag(self, readonly, return_code):
         def fake_update_readonly_flag(*args, **kwargs):
@@ -485,11 +485,11 @@ class VolumeActionsTest(test.TestCase):
             fake_auth_context=self.context))
         self.assertEqual(return_code, res.status_int)
 
-    @ddt.data((True, http_client.OK), (False, http_client.OK),
-              ('1', http_client.OK), ('0', http_client.OK),
-              ('true', http_client.OK), ('false', http_client.OK),
-              ('tt', http_client.BAD_REQUEST), (11, http_client.BAD_REQUEST),
-              (None, http_client.BAD_REQUEST))
+    @ddt.data((True, HTTPStatus.OK), (False, HTTPStatus.OK),
+              ('1', HTTPStatus.OK), ('0', HTTPStatus.OK),
+              ('true', HTTPStatus.OK), ('false', HTTPStatus.OK),
+              ('tt', HTTPStatus.BAD_REQUEST), (11, HTTPStatus.BAD_REQUEST),
+              (None, HTTPStatus.BAD_REQUEST))
     @ddt.unpack
     def test_set_bootable(self, bootable, return_code):
         body = {"os-set_bootable": {"bootable": bootable}}
@@ -548,7 +548,7 @@ class VolumeRetypeActionsTest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-retype': None})
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_retype_volume_bad_policy(self):
         # Request with invalid migration policy should fail
@@ -562,7 +562,7 @@ class VolumeRetypeActionsTest(test.TestCase):
         retype_body = {'new_type': 'foo', 'migration_policy': 'invalid'}
         req.body = jsonutils.dump_as_bytes({'os-retype': retype_body})
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_retype_volume_bad_status(self):
         # Should fail if volume does not have proper status
@@ -575,7 +575,7 @@ class VolumeRetypeActionsTest(test.TestCase):
                                   volume_type_id=vol_type_old.id,
                                   testcase_instance=self)
 
-        self._retype_volume_exec(http_client.BAD_REQUEST, vol_type_new.id,
+        self._retype_volume_exec(HTTPStatus.BAD_REQUEST, vol_type_new.id,
                                  vol.id)
 
     def test_retype_type_no_exist(self):
@@ -586,7 +586,7 @@ class VolumeRetypeActionsTest(test.TestCase):
                                   status='available',
                                   volume_type_id=vol_type_old.id,
                                   testcase_instance=self)
-        self._retype_volume_exec(http_client.NOT_FOUND, 'fake_vol_type',
+        self._retype_volume_exec(HTTPStatus.NOT_FOUND, 'fake_vol_type',
                                  vol.id)
 
     def test_retype_same_type(self):
@@ -597,7 +597,7 @@ class VolumeRetypeActionsTest(test.TestCase):
                                   status='available',
                                   volume_type_id=vol_type_old.id,
                                   testcase_instance=self)
-        self._retype_volume_exec(http_client.BAD_REQUEST, vol_type_old.id,
+        self._retype_volume_exec(HTTPStatus.BAD_REQUEST, vol_type_old.id,
                                  vol.id)
 
     def test_retype_over_quota(self):
@@ -613,32 +613,32 @@ class VolumeRetypeActionsTest(test.TestCase):
                                   usages={'gigabytes': {'reserved': 5,
                                                         'in_use': 15}})
         self.retype_mocks['reserve'].side_effect = exc
-        self._retype_volume_exec(http_client.REQUEST_ENTITY_TOO_LARGE,
+        self._retype_volume_exec(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                                  vol_type_new.id, vol.id)
 
-    @ddt.data(('in-use', 'front-end', http_client.BAD_REQUEST),
-              ('in-use', 'back-end', http_client.ACCEPTED),
-              ('available', 'front-end', http_client.ACCEPTED),
-              ('available', 'back-end', http_client.ACCEPTED),
-              ('in-use', 'front-end', http_client.ACCEPTED, True),
-              ('in-use', 'back-end', http_client.ACCEPTED, True),
-              ('available', 'front-end', http_client.ACCEPTED, True),
-              ('available', 'back-end', http_client.ACCEPTED, True),
-              ('in-use', 'front-end', http_client.BAD_REQUEST, False, False),
-              ('in-use', 'back-end', http_client.ACCEPTED, False, False),
-              ('in-use', '', http_client.ACCEPTED, True, False),
-              ('available', 'front-end', http_client.ACCEPTED, False, False),
-              ('available', 'back-end', http_client.ACCEPTED, False, False),
-              ('available', '', http_client.ACCEPTED, True, False),
-              ('in-use', 'front-end', http_client.BAD_REQUEST, False,
+    @ddt.data(('in-use', 'front-end', HTTPStatus.BAD_REQUEST),
+              ('in-use', 'back-end', HTTPStatus.ACCEPTED),
+              ('available', 'front-end', HTTPStatus.ACCEPTED),
+              ('available', 'back-end', HTTPStatus.ACCEPTED),
+              ('in-use', 'front-end', HTTPStatus.ACCEPTED, True),
+              ('in-use', 'back-end', HTTPStatus.ACCEPTED, True),
+              ('available', 'front-end', HTTPStatus.ACCEPTED, True),
+              ('available', 'back-end', HTTPStatus.ACCEPTED, True),
+              ('in-use', 'front-end', HTTPStatus.BAD_REQUEST, False, False),
+              ('in-use', 'back-end', HTTPStatus.ACCEPTED, False, False),
+              ('in-use', '', HTTPStatus.ACCEPTED, True, False),
+              ('available', 'front-end', HTTPStatus.ACCEPTED, False, False),
+              ('available', 'back-end', HTTPStatus.ACCEPTED, False, False),
+              ('available', '', HTTPStatus.ACCEPTED, True, False),
+              ('in-use', 'front-end', HTTPStatus.BAD_REQUEST, False,
                False, False),
-              ('in-use', '', http_client.ACCEPTED, True, False, False),
-              ('in-use', 'back-end', http_client.ACCEPTED, False,
+              ('in-use', '', HTTPStatus.ACCEPTED, True, False, False),
+              ('in-use', 'back-end', HTTPStatus.ACCEPTED, False,
                False, False),
-              ('available', 'front-end', http_client.ACCEPTED, False,
+              ('available', 'front-end', HTTPStatus.ACCEPTED, False,
                False, False),
-              ('in-use', '', http_client.ACCEPTED, True, False, False),
-              ('in-use', 'back-end', http_client.ACCEPTED, False,
+              ('in-use', '', HTTPStatus.ACCEPTED, True, False, False),
+              ('in-use', 'back-end', HTTPStatus.ACCEPTED, False,
                False, False))
     @ddt.unpack
     def test_retype_volume_qos(self, vol_status, consumer_pass,
@@ -722,11 +722,11 @@ class VolumeRetypeActionsTest(test.TestCase):
 
         self._retype_volume_exec(expected_status, vol_type_new, vol.id)
 
-    @ddt.data(('available', http_client.ACCEPTED, False, False, False),
-              ('available', http_client.ACCEPTED, False, False),
-              ('available', http_client.ACCEPTED, True, False, False),
-              ('available', http_client.ACCEPTED, True, False),
-              ('available', http_client.ACCEPTED))
+    @ddt.data(('available', HTTPStatus.ACCEPTED, False, False, False),
+              ('available', HTTPStatus.ACCEPTED, False, False),
+              ('available', HTTPStatus.ACCEPTED, True, False, False),
+              ('available', HTTPStatus.ACCEPTED, True, False),
+              ('available', HTTPStatus.ACCEPTED))
     @ddt.unpack
     def test_retype_volume_encryption(self, vol_status, expected_status,
                                       has_type=True,
@@ -1096,7 +1096,7 @@ class VolumeImageActionsTest(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_volume_upload_image_without_type(self):
         id = fake.VOLUME2_ID
@@ -1111,7 +1111,7 @@ class VolumeImageActionsTest(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @mock.patch.object(volume_api.API, 'get', fake_volume_get)
     def test_extend_volume_valueerror(self):

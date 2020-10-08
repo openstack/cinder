@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http
 import re
 import sys
 
 import fixtures
-import six
-from six.moves import http_client as http
 
 from cinder.api.openstack import api_version_request as api_version
 from cinder.api import validation
@@ -38,7 +37,7 @@ class ValidationRegex(test.TestCase):
 
         def _get_all_chars():
             for i in range(0x7F):
-                yield six.unichr(i)
+                yield chr(i)
 
         self.useFixture(fixtures.MonkeyPatch(
             'cinder.api.validation.parameter_types._get_all_chars',

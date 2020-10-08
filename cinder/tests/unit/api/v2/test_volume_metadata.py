@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import HTTPStatus
 from unittest import mock
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -203,7 +203,7 @@ class VolumeMetaDataTest(test.TestCase):
                                'get') as get_volume:
             get_volume.return_value = fake_volume
             res = self.controller.delete(req, self.req_id, 'key2')
-            self.assertEqual(http_client.OK, res.status_int)
+            self.assertEqual(HTTPStatus.OK, res.status_int)
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
     @mock.patch.object(db, 'volume_metadata_delete')

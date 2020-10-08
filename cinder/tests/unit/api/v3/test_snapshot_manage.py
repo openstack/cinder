@@ -12,13 +12,13 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from http import HTTPStatus
 from unittest import mock
+from urllib.parse import urlencode
 
 import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from six.moves import http_client
-from six.moves.urllib.parse import urlencode
 import webob
 
 from cinder.api import microversions as mv
@@ -85,13 +85,13 @@ class SnapshotManageTest(test.TestCase):
         body = {'snapshot': {'volume_id': fake.VOLUME_ID,
                              'ref': {'fake_ref': "fake_val"}}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int, res)
 
     def test_manage_snapshot_previous_version(self):
         body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
         res = self._get_resp_post(
             body, version=mv.get_prior_version(mv.MANAGE_EXISTING_LIST))
-        self.assertEqual(http_client.NOT_FOUND, res.status_int, res)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int, res)
 
     def _get_resp_get(self, host, detailed, paging,
                       version=mv.MANAGE_EXISTING_LIST, **kwargs):
@@ -124,13 +124,13 @@ class SnapshotManageTest(test.TestCase):
         than copying all the tests.
         """
         res = self._get_resp_get('fakehost', False, False)
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
 
     def test_get_manageable_snapshots_previous_version(self):
         res = self._get_resp_get(
             'fakehost', False, False,
             version=mv.get_prior_version(mv.MANAGE_EXISTING_LIST))
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
 
     @mock.patch('cinder.volume.api.API.get_manageable_snapshots',
                 wraps=test_contrib.api_get_manageable_snapshots)
@@ -142,13 +142,13 @@ class SnapshotManageTest(test.TestCase):
         than copying all the tests.
         """
         res = self._get_resp_get('fakehost', True, True)
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
 
     def test_get_manageable_snapshots_detail_previous_version(self):
         res = self._get_resp_get(
             'fakehost', True, True,
             version=mv.get_prior_version(mv.MANAGE_EXISTING_LIST))
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
 
     @ddt.data((True, True, 'detail_list'), (True, False, 'summary_list'),
               (False, True, 'detail_list'), (False, False, 'summary_list'))
@@ -182,7 +182,7 @@ class SnapshotManageTest(test.TestCase):
             res = self._get_resp_get(host, is_detail, False, version=version,
                                      **kwargs)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         get_cctxt_mock.assert_called_once_with(service.service_topic_queue,
                                                version=('3.10', '3.0'))
         get_cctxt_mock.return_value.call.assert_called_once_with(
@@ -197,10 +197,10 @@ class SnapshotManageTest(test.TestCase):
     @ddt.data(mv.MANAGE_EXISTING_LIST, mv.MANAGE_EXISTING_CLUSTER)
     def test_get_manageable_missing_host(self, version):
         res = self._get_resp_get(None, True, False, version=version)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_get_manageable_both_host_cluster(self):
         res = self._get_resp_get('host', True, False,
                                  version=mv.MANAGE_EXISTING_CLUSTER,
                                  cluster='cluster')
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)

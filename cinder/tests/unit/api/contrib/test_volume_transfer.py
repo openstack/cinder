@@ -15,10 +15,10 @@
 
 """Tests for volume transfer code."""
 
+from http import HTTPStatus
 from unittest import mock
 
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder.api.contrib import volume_transfer
@@ -82,7 +82,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual('test_transfer', res_dict['transfer']['name'])
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
@@ -99,8 +99,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Transfer %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -120,7 +120,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(4, len(res_dict['transfers'][0]))
         self.assertEqual(transfer1['id'], res_dict['transfers'][0]['id'])
         self.assertEqual('test_transfer', res_dict['transfers'][0]['name'])
@@ -147,7 +147,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(5, len(res_dict['transfers'][0]))
         self.assertEqual('test_transfer',
                          res_dict['transfers'][0]['name'])
@@ -202,7 +202,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['transfer'])
         self.assertIn('auth_key', res_dict['transfer'])
         self.assertIn('created_at', res_dict['transfer'])
@@ -222,8 +222,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
     def test_create_transfer_with_body_KeyError(self):
@@ -237,8 +237,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
     def test_create_transfer_with_invalid_volume_id_value(self):
@@ -254,8 +254,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
     def test_create_transfer_with_InvalidVolume(self):
@@ -271,8 +271,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid volume: status must be available',
                          res_dict['badRequest']['message'])
@@ -294,7 +294,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(body['transfer']['name'].strip(),
                          res_dict['transfer']['name'])
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -309,7 +309,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
         # verify transfer has been deleted
         req = webob.Request.blank('/v2/%s/os-volume-transfer/%s' % (
@@ -320,8 +320,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Transfer %s could not be found.' % transfer['id'],
                          res_dict['itemNotFound']['message'])
@@ -339,8 +339,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Transfer %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -363,7 +363,7 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
         # cleanup
@@ -383,8 +383,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
         db.transfer_destroy(context.get_admin_context(), transfer['id'])
@@ -406,8 +406,8 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
         db.transfer_destroy(context.get_admin_context(), transfer['id'])
@@ -427,8 +427,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual(res_dict['badRequest']['message'],
                          'Invalid auth key: Attempt to transfer %s with '
@@ -451,8 +451,8 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Transfer %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -547,9 +547,9 @@ class VolumeTransferAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
         db.transfer_destroy(context.get_admin_context(), transfer['id'])
         db.volume_destroy(context.get_admin_context(), volume_id)

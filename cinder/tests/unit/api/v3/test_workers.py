@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder.api import microversions as mv
@@ -78,7 +78,7 @@ class WorkersTestCase(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
     def test_cleanup_old_api_version(self, rpc_mock):
         res = self._get_resp_post({}, mv.get_prior_version(mv.WORKERS_CLEANUP))
-        self.assertEqual(http_client.NOT_FOUND, res.status_code)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
         rpc_mock.assert_not_called()
 
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
@@ -89,7 +89,7 @@ class WorkersTestCase(test.TestCase):
                                       read_deleted='no',
                                       overwrite=False)
         res = self._get_resp_post({}, ctxt=ctxt)
-        self.assertEqual(http_client.FORBIDDEN, res.status_code)
+        self.assertEqual(HTTPStatus.FORBIDDEN, res.status_code)
         rpc_mock.assert_not_called()
 
     @ddt.data({'binary': 'nova-scheduler'},
@@ -100,7 +100,7 @@ class WorkersTestCase(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
     def test_cleanup_wrong_param(self, body, rpc_mock):
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         expected = 'Invalid input'
         self.assertIn(expected, res.json['badRequest']['message'])
         rpc_mock.assert_not_called()
@@ -109,7 +109,7 @@ class WorkersTestCase(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
     def test_cleanup_with_additional_properties(self, body, rpc_mock):
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         expected = 'Additional properties are not allowed'
         self.assertIn(expected, res.json['badRequest']['message'])
         rpc_mock.assert_not_called()
@@ -137,7 +137,7 @@ class WorkersTestCase(test.TestCase):
                 return_value=SERVICES)
     def test_cleanup_params(self, body, rpc_mock):
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.ACCEPTED, res.status_code)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
         rpc_mock.assert_called_once_with(self.context, mock.ANY)
         cleanup_request = rpc_mock.call_args[0][1]
         for key, value in body.items():
@@ -153,7 +153,7 @@ class WorkersTestCase(test.TestCase):
                 return_value=SERVICES)
     def test_cleanup_missing_location_ok(self, rpc_mock, worker_mock):
         res = self._get_resp_post({'resource_id': fake.VOLUME_ID})
-        self.assertEqual(http_client.ACCEPTED, res.status_code)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
         rpc_mock.assert_called_once_with(self.context, mock.ANY)
         cleanup_request = rpc_mock.call_args[0][1]
         self.assertEqual(fake.VOLUME_ID, cleanup_request.resource_id)
@@ -164,7 +164,7 @@ class WorkersTestCase(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.work_cleanup')
     def test_cleanup_missing_location_fail_none(self, rpc_mock):
         res = self._get_resp_post({'resource_id': fake.VOLUME_ID})
-        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         self.assertIn('Invalid input', res.json['badRequest']['message'])
         rpc_mock.assert_not_called()
 
@@ -172,6 +172,6 @@ class WorkersTestCase(test.TestCase):
                 return_value=[1, 2])
     def test_cleanup_missing_location_fail_multiple(self, rpc_mock):
         res = self._get_resp_post({'resource_id': fake.VOLUME_ID})
-        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         self.assertIn('Invalid input', res.json['badRequest']['message'])
         rpc_mock.assert_not_called()

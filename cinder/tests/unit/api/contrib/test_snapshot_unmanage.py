@@ -12,10 +12,10 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from http import HTTPStatus
 from unittest import mock
 
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder import context
@@ -100,9 +100,9 @@ class SnapshotUnmanageTest(test.TestCase):
         self.assertEqual(3, len(mock_rpcapi.call_args[0]))
         self.assertEqual(0, len(mock_rpcapi.call_args[1]))
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int, res)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int, res)
 
     def test_unmanage_snapshot_bad_snapshot_id(self):
         """Return 404 if the volume does not exist."""
         res = self._get_resp(bad_snp_id)
-        self.assertEqual(http_client.NOT_FOUND, res.status_int, res)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int, res)

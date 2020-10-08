@@ -15,11 +15,11 @@
 
 """Tests for consistency group code."""
 
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder import context
@@ -100,7 +100,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual('az1',
                          res_dict['consistencygroup']['availability_zone'])
         self.assertEqual('this is a test consistency group',
@@ -121,8 +121,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Group %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -138,7 +138,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual('az1',
                          res_dict['consistencygroup']['availability_zone'])
         self.assertEqual('this is a test consistency group',
@@ -167,7 +167,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(consistencygroup3.id,
                          res_dict['consistencygroups'][0]['id'])
         self.assertEqual('test_consistencygroup',
@@ -200,7 +200,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(1, len(res_dict['consistencygroups']))
         self.assertEqual(consistencygroup3.id,
                          res_dict['consistencygroups'][0]['id'])
@@ -229,7 +229,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(2, len(res_dict['consistencygroups']))
         self.assertEqual(consistencygroup2.id,
                          res_dict['consistencygroups'][0]['id'])
@@ -251,7 +251,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @ddt.data(False, True)
     def test_list_consistencygroups_with_limit_and_offset(self, is_detail):
@@ -269,7 +269,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(2, len(res_dict['consistencygroups']))
         self.assertEqual(consistencygroup2.id,
                          res_dict['consistencygroups'][0]['id'])
@@ -300,7 +300,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(1, len(res_dict['consistencygroups']))
         self.assertEqual(consistencygroup3.id,
                          res_dict['consistencygroups'][0]['id'])
@@ -352,7 +352,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          consistencygroup3.id]
         expect_result.sort()
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(3, len(res_dict['consistencygroups']))
         self.assertEqual(expect_result[0],
                          res_dict['consistencygroups'][0]['id'])
@@ -392,7 +392,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup2.destroy()
         consistencygroup3.destroy()
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual('az1',
                          res_dict['consistencygroups'][0]['availability_zone'])
         self.assertEqual('this is a test consistency group',
@@ -451,7 +451,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
         self.assertTrue(mock_validate.called)
 
@@ -471,8 +471,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual("Missing required element 'consistencygroup' in "
                          "request body.",
@@ -490,7 +490,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('deleting', consistencygroup.status)
 
         consistencygroup.destroy()
@@ -512,7 +512,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('deleting', consistencygroup.status)
 
         consistencygroup.destroy()
@@ -531,7 +531,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
                          consistencygroup.status)
 
@@ -547,8 +547,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Group %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -573,7 +573,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('deleting', consistencygroup.status)
 
     def test_delete_consistencygroup_no_host(self):
@@ -588,7 +588,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
         cg = objects.Group.get_by_id(
             context.get_admin_context(read_deleted='yes'),
@@ -643,7 +643,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_delete_consistencygroup_with_invalid_force_value_in_body(self):
         consistencygroup = self._create_consistencygroup(
@@ -657,7 +657,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_delete_consistencygroup_with_empty_force_value_in_body(self):
         consistencygroup = self._create_consistencygroup(
@@ -671,7 +671,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_ctxt))
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def _assert_deleting_result_400(self, cg_id, force=False):
         req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
@@ -681,10 +681,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         body = {"consistencygroup": {"force": force}}
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -740,7 +740,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('deleting', consistencygroup.status)
         consistencygroup.destroy()
 
@@ -761,7 +761,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('deleting', consistencygroup.status)
         consistencygroup.destroy()
 
@@ -778,8 +778,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -860,7 +860,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertTrue(mock_validate.called)
         self.assertEqual(fields.ConsistencyGroupStatus.UPDATING,
                          consistencygroup.status)
@@ -905,7 +905,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          consistencygroup.status)
 
@@ -950,7 +950,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          consistencygroup.status)
 
@@ -974,8 +974,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -998,8 +998,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1022,8 +1022,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
         consistencygroup.destroy()
@@ -1051,8 +1051,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1080,8 +1080,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1108,8 +1108,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1139,8 +1139,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1184,7 +1184,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
         self.assertEqual(test_cg_name, res_dict['consistencygroup']['name'])
         self.assertTrue(mock_validate.called)
@@ -1226,7 +1226,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
         self.assertEqual(test_cg_name, res_dict['consistencygroup']['name'])
 
@@ -1272,8 +1272,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1296,8 +1296,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         # Missing 'consistencygroup-from-src' in the body.
         self.assertIsNotNone(res_dict['badRequest']['message'])
@@ -1316,8 +1316,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1351,8 +1351,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         msg = _('Invalid Group: No valid host to create group')
         self.assertIn(msg, res_dict['badRequest']['message'])
@@ -1390,8 +1390,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1421,8 +1421,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -1454,8 +1454,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertIsNotNone(res_dict['itemNotFound']['message'])
 
@@ -1481,8 +1481,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertIsNotNone(res_dict['itemNotFound']['message'])
 
@@ -1522,8 +1522,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         msg = _("Create volume failed.")
         self.assertEqual(msg, res_dict['badRequest']['message'])
@@ -1563,8 +1563,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_ctxt))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 

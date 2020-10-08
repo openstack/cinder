@@ -11,8 +11,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import HTTPStatus
+
 import ddt
-from six.moves import http_client
 import webob
 
 from cinder.api import microversions as mv
@@ -86,7 +87,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                           body)
         consistencygroup = objects.Group.get_by_id(
             self.ctxt, consistencygroup.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual("", consistencygroup.name)
         self.assertEqual("", consistencygroup.description)
         consistencygroup.destroy()

@@ -15,7 +15,6 @@
 #    under the License.
 
 import ddt
-import six
 
 from cinder.api.openstack import api_version_request
 from cinder import exception
@@ -144,7 +143,7 @@ class APIVersionRequestTests(test.TestCase):
     def test_str(self, major, minor):
         request_input = '%s.%s' % (major, minor)
         request = api_version_request.APIVersionRequest(request_input)
-        request_string = six.text_type(request)
+        request_string = str(request)
 
         self.assertEqual('API Version Request '
                          'Major: %s, Minor: %s' % (major, minor),

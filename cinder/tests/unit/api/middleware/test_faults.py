@@ -12,9 +12,11 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+from http import HTTPStatus
+
 from oslo_i18n import fixture as i18n_fixture
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob.dec
 
 from cinder.api.middleware import fault
@@ -43,7 +45,7 @@ class TestFaults(test.TestCase):
             expected = {
                 "badRequest": {
                     "message": "scram",
-                    "code": http_client.BAD_REQUEST,
+                    "code": HTTPStatus.BAD_REQUEST,
                 },
             }
             actual = jsonutils.loads(response.body)
@@ -67,7 +69,7 @@ class TestFaults(test.TestCase):
             expected = {
                 "overLimit": {
                     "message": "sorry",
-                    "code": http_client.REQUEST_ENTITY_TOO_LARGE,
+                    "code": HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                     "retryAfter": "4",
                 },
             }
@@ -79,7 +81,7 @@ class TestFaults(test.TestCase):
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
-        self.assertEqual(http_client.BAD_REQUEST, fault.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, fault.status_int)
 
 
 class ExceptionTest(test.TestCase):

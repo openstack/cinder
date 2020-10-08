@@ -17,10 +17,10 @@
 Tests dealing with HTTP rate-limiting.
 """
 
+from http import client as http_client
+import io
+
 from oslo_serialization import jsonutils
-import six
-from six.moves import http_client
-from six.moves import range
 import webob
 
 from cinder.api.v2 import limits
@@ -348,7 +348,7 @@ class ParseLimitsTest(BaseLimitTestSuite):
                 '(POST, /bar*, /bar.*, 5, second);'
                 '(Say, /derp*, /derp.*, 1, day)')
         except ValueError as e:
-            self.assertFalse(six.text_type(e))
+            self.assertFalse(str(e))
 
         # Make sure the number of returned limits are correct
         self.assertEqual(4, len(test_limits))
@@ -624,9 +624,9 @@ class FakeHttplibSocket(object):
 
     def __init__(self, response_string):
         """Initialize new `FakeHttplibSocket`."""
-        if isinstance(response_string, six.text_type):
+        if isinstance(response_string, str):
             response_string = response_string.encode('utf-8')
-        self._buffer = six.BytesIO(response_string)
+        self._buffer = io.BytesIO(response_string)
 
     def makefile(self, mode, *args):
         """Returns the socket's internal buffer."""

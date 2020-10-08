@@ -12,6 +12,7 @@
 #    under the License.
 
 import datetime
+from http import HTTPStatus
 import json
 from unittest import mock
 
@@ -21,7 +22,6 @@ import iso8601
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
-from six.moves import http_client
 import webob
 
 from cinder.api import api_utils
@@ -748,7 +748,7 @@ class VolumeApiTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.ctxt))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['volume'])
 
     @ddt.data('fake_host', '', 1234, '          ')

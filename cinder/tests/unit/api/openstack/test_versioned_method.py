@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from cinder.api.openstack import versioned_method
 from cinder.tests.unit import test
 
@@ -24,7 +22,7 @@ class VersionedMethodTestCase(test.TestCase):
     def test_str(self):
         args = ('fake_name', 'fake_min', 'fake_max')
         method = versioned_method.VersionedMethod(*(args + (False, None)))
-        method_string = six.text_type(method)
+        method_string = str(method)
 
         self.assertEqual('Version Method %s: min: %s, max: %s' % args,
                          method_string)
