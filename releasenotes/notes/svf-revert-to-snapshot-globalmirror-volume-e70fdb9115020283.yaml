@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family: Added support for revert to snapshot for global-mirror volume.
