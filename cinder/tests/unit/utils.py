@@ -14,6 +14,7 @@
 #
 
 import datetime
+import functools
 import socket
 from unittest import mock
 import uuid
@@ -23,7 +24,6 @@ from oslo_config import cfg
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 import oslo_versionedobjects
-import six
 
 from cinder.common import constants
 from cinder import context
@@ -544,7 +544,7 @@ def set_timeout(timeout):
 
     def _decorator(f):
 
-        @six.wraps(f)
+        @functools.wraps(f)
         def _wrapper(self, *args, **kwargs):
             self.useFixture(fixtures.Timeout(timeout, gentle=True))
             return f(self, *args, **kwargs)

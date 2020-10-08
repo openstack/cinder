@@ -17,7 +17,6 @@
 import re
 
 from eventlet import greenthread
-import six
 
 _fake_execute_repliers = []
 _fake_execute_log = []
@@ -71,7 +70,7 @@ def fake_execute(*cmd_parts, **kwargs):
             reply_handler = fake_replier[1]
             break
 
-    if isinstance(reply_handler, six.string_types):
+    if isinstance(reply_handler, str):
         # If the reply handler is a string, return it as stdout
         reply = reply_handler, ''
     else:

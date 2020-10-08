@@ -38,7 +38,6 @@ from oslo_messaging import conffixture as messaging_conffixture
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import six
 import testtools
 
 from cinder.api import common as api_common
@@ -283,12 +282,11 @@ class TestCase(testtools.TestCase):
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
 
-        if six.PY3:
-            # TODO(smcginnis) Python 3 deprecates assertRaisesRegexp to
-            # assertRaisesRegex, but Python 2 does not have the new name. This
-            # can be removed once we stop supporting py2 or the new name is
-            # added.
-            self.assertRaisesRegexp = self.assertRaisesRegex
+        # TODO(smcginnis) Python 3 deprecates assertRaisesRegexp to
+        # assertRaisesRegex, but Python 2 does not have the new name. This
+        # can be removed once we stop supporting py2 or the new name is
+        # added.
+        self.assertRaisesRegexp = self.assertRaisesRegex
 
         # Ensure we have the default tpool size value and we don't carry
         # threads from other test runs.
@@ -471,7 +469,7 @@ class ModelsObjectComparatorMixin(object):
 
         self.assertEqual(
             len(obj1), len(obj2),
-            "Keys mismatch: %s" % six.text_type(
+            "Keys mismatch: %s" % str(
                 set(obj1.keys()) ^ set(obj2.keys())))
         for key, value in obj1.items():
             self.assertEqual(value, obj2[key])

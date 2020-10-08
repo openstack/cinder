@@ -21,7 +21,6 @@ from unittest import mock
 import uuid
 
 from oslo_db import exception as db_exception
-import six
 
 from cinder import context
 from cinder import db
@@ -36,7 +35,7 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
                      'status': 'creating'}
 
     def _uuid(self):
-        return six.text_type(uuid.uuid4())
+        return str(uuid.uuid4())
 
     def setUp(self):
         super(DBAPIWorkerTestCase, self).setUp()

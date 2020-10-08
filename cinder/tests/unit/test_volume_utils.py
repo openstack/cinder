@@ -25,7 +25,6 @@ import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
-import six
 
 from cinder import context
 from cinder import db
@@ -168,8 +167,8 @@ class NotifyUsageTestCase(test.TestCase):
             'created_at': '2014-12-11T10:10:00+00:00',
             'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
-            'metadata': six.text_type({'fake_snap_meta_key':
-                                      u'fake_snap_meta_value'}),
+            'metadata': str({'fake_snap_meta_key':
+                            u'fake_snap_meta_value'}),
         }
         self.assertDictEqual(expected_snapshot, usage_info)
 
@@ -213,8 +212,8 @@ class NotifyUsageTestCase(test.TestCase):
             'created_at': mock.ANY,
             'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
-            'metadata': six.text_type({'fake_snap_meta_key':
-                                      u'fake_snap_meta_value'}),
+            'metadata': str({'fake_snap_meta_key':
+                            u'fake_snap_meta_value'}),
         }
         self.assertDictEqual(expected_snapshot, usage_info)
 
@@ -1093,7 +1092,7 @@ class VolumeUtilsTestCase(test.TestCase):
                                 image_meta,
                                 vol_size)
         self.assertIn("Volume size 2GB cannot be smaller than the image "
-                      "minDisk size 3GB.", six.text_type(res))
+                      "minDisk size 3GB.", str(res))
 
         image_meta['size'] = 3 * units.Gi
         res = self.assertRaises(exception.InvalidInput,
@@ -1101,14 +1100,14 @@ class VolumeUtilsTestCase(test.TestCase):
                                 image_meta,
                                 vol_size)
         self.assertIn("Size of specified image 3GB is larger than volume "
-                      "size 2GB.", six.text_type(res))
+                      "size 2GB.", str(res))
 
         image_meta['status'] = 'error'
         res = self.assertRaises(exception.InvalidInput,
                                 volume_utils.check_image_metadata,
                                 image_meta,
                                 vol_size)
-        self.assertIn("Image 1 is not active.", six.text_type(res))
+        self.assertIn("Image 1 is not active.", str(res))
 
     def test_enable_volume_bootable(self):
         ctxt = context.get_admin_context()

@@ -15,12 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
+from http import client as http_client
 from unittest import mock
 
 import fixtures
-import six
-from six.moves import http_client
 import webob.util
 
 from cinder import exception
@@ -36,9 +34,8 @@ class CinderExceptionReraiseFormatError(object):
 
     @staticmethod
     def _wrap_log_exception(self):
-        exc_info = sys.exc_info()
         CinderExceptionReraiseFormatError.real_log_exception(self)
-        six.reraise(*exc_info)
+        raise
 
 
 # NOTE(melwitt) This needs to be done at import time in order to also catch
@@ -53,18 +50,17 @@ class CinderExceptionTestCase(test.TestCase):
             message = "default message"
 
         exc = FakeCinderException()
-        self.assertEqual('default message', six.text_type(exc))
+        self.assertEqual('default message', str(exc))
 
     def test_error_msg(self):
-        self.assertEqual('test',
-                         six.text_type(exception.CinderException('test')))
+        self.assertEqual('test', str(exception.CinderException('test')))
 
     def test_default_error_msg_with_kwargs(self):
         class FakeCinderException(exception.CinderException):
             message = "default message: %(code)s"
 
         exc = FakeCinderException(code=int(http_client.INTERNAL_SERVER_ERROR))
-        self.assertEqual('default message: 500', six.text_type(exc))
+        self.assertEqual('default message: 500', str(exc))
 
     def test_error_msg_exception_with_kwargs(self):
         # NOTE(dprince): disable format errors for this test
@@ -76,8 +72,7 @@ class CinderExceptionTestCase(test.TestCase):
             message = "default message: %(misspelled_code)s"
 
         exc = FakeCinderException(code=http_client.INTERNAL_SERVER_ERROR)
-        self.assertEqual('default message: %(misspelled_code)s',
-                         six.text_type(exc))
+        self.assertEqual('default message: %(misspelled_code)s', str(exc))
 
     def test_default_error_code(self):
         class FakeCinderException(exception.CinderException):
@@ -110,7 +105,7 @@ class CinderExceptionTestCase(test.TestCase):
             message = 'FakeCinderException: %(message)s'
 
         exc = FakeCinderException(message='message')
-        self.assertEqual('FakeCinderException: message', six.text_type(exc))
+        self.assertEqual('FakeCinderException: message', str(exc))
 
     def test_message_and_kwarg_in_format_string(self):
         class FakeCinderException(exception.CinderException):
@@ -118,7 +113,7 @@ class CinderExceptionTestCase(test.TestCase):
 
         exc = FakeCinderException(message='message',
                                   code=http_client.NOT_FOUND)
-        self.assertEqual('Error 404: message', six.text_type(exc))
+        self.assertEqual('Error 404: message', str(exc))
 
     def test_message_is_exception_in_format_string(self):
         class FakeCinderException(exception.CinderException):
@@ -127,7 +122,7 @@ class CinderExceptionTestCase(test.TestCase):
         msg = 'test message'
         exc1 = Exception(msg)
         exc2 = FakeCinderException(message=exc1)
-        self.assertEqual('Exception: test message', six.text_type(exc2))
+        self.assertEqual('Exception: test message', str(exc2))
 
 
 class CinderConvertedExceptionTestCase(test.TestCase):

@@ -21,7 +21,6 @@ from unittest import mock
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_utils import timeutils
-import six
 
 from cinder import backup
 from cinder.backup import api as backup_api
@@ -131,7 +130,7 @@ class QuotaIntegrationTestCase(test.TestCase):
                                volume_type=self.volume_type)
         msg = ("Maximum number of volumes allowed (%d) exceeded for"
                " quota 'volumes'." % CONF.quota_volumes)
-        self.assertEqual(msg, six.text_type(ex))
+        self.assertEqual(msg, str(ex))
         for volume_id in volume_ids:
             db.volume_destroy(self.context, volume_id)
 
@@ -150,7 +149,7 @@ class QuotaIntegrationTestCase(test.TestCase):
                                volume_type=self.volume_type)
         msg = ("Maximum number of volumes allowed (1) exceeded for"
                " quota '%s'." % resource)
-        self.assertEqual(msg, six.text_type(ex))
+        self.assertEqual(msg, str(ex))
         vol_ref.destroy()
 
     def test__snapshots_quota_value(self):
