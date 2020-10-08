@@ -13,7 +13,7 @@
 #    under the License.
 
 """The group type & group type specs controller."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_utils import strutils
 import webob
@@ -52,7 +52,7 @@ class GroupTypesController(wsgi.Controller):
         rpc.get_notifier('groupType').info(context, method, payload)
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(group_type.create)
     def create(self, req, body):
         """Creates a new group type."""
@@ -159,7 +159,7 @@ class GroupTypesController(wsgi.Controller):
                 context, 'group_type.delete', err, id=id)
             raise webob.exc.HTTPNotFound(explanation=err.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
     def index(self, req):

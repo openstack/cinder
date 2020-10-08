@@ -14,7 +14,7 @@
 #    under the License.
 
 """The group_snapshots API."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 import webob
@@ -92,7 +92,7 @@ class GroupSnapshotsController(wsgi.Controller):
             LOG.exception(msg)
             raise exc.HTTPBadRequest(explanation=msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     def index(self, req):
@@ -147,7 +147,7 @@ class GroupSnapshotsController(wsgi.Controller):
         return group_snapshots
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(snapshot.create)
     def create(self, req, body):
         """Create a new group_snapshot."""
@@ -218,7 +218,7 @@ class GroupSnapshotsController(wsgi.Controller):
                            {'error_message': error.msg,
                             'id': id})
             raise exc.HTTPBadRequest(explanation=error.msg)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 def create_resource():

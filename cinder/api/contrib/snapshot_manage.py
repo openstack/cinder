@@ -11,7 +11,7 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 
@@ -38,7 +38,7 @@ class SnapshotManageController(wsgi.Controller):
         self.volume_api = cinder_volume.API()
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(snapshot_manage.create)
     def create(self, req, body):
         """Instruct Cinder to manage a storage snapshot object.

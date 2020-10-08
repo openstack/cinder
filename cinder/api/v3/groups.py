@@ -13,7 +13,7 @@
 #    under the License.
 
 """The groups controller."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -104,7 +104,7 @@ class GroupsController(wsgi.Controller):
                            {'error_message': error.msg,
                             'id': id})
             raise exc.HTTPBadRequest(explanation=error.msg)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
     @wsgi.action("delete")
@@ -133,7 +133,7 @@ class GroupsController(wsgi.Controller):
         except exception.InvalidGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
     def index(self, req):
@@ -183,7 +183,7 @@ class GroupsController(wsgi.Controller):
         return groups
 
     @wsgi.Controller.api_version(mv.GROUP_VOLUME)
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(group.create)
     def create(self, req, body):
         """Create a new group."""
@@ -224,7 +224,7 @@ class GroupsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.GROUP_SNAPSHOTS)
     @wsgi.action("create-from-src")
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(group.create_from_source)
     def create_from_src(self, req, body):
         """Create a new group from a source.
@@ -334,7 +334,7 @@ class GroupsController(wsgi.Controller):
         except exception.InvalidGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("enable_replication")
@@ -354,7 +354,7 @@ class GroupsController(wsgi.Controller):
                 exception.InvalidVolume, exception.InvalidVolumeType) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("disable_replication")
@@ -374,7 +374,7 @@ class GroupsController(wsgi.Controller):
                 exception.InvalidVolume, exception.InvalidVolumeType) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("failover_replication")
@@ -401,7 +401,7 @@ class GroupsController(wsgi.Controller):
                 exception.InvalidVolume, exception.InvalidVolumeType) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.Controller.api_version(mv.GROUP_REPLICATION)
     @wsgi.action("list_replication_targets")

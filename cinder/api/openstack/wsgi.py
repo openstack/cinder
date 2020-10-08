@@ -16,7 +16,7 @@
 
 from collections import abc
 import functools
-from http import client as http_client
+from http import HTTPStatus
 import inspect
 import math
 import time
@@ -439,7 +439,7 @@ class ResponseObject(object):
 
         self.obj = obj
         self.serializers = serializers
-        self._default_code = http_client.OK
+        self._default_code = HTTPStatus.OK
         self._code = code
         self._headers = headers or {}
         self.serializer = None
@@ -1284,16 +1284,16 @@ class Controller(object, metaclass=ControllerMetaclass):
 class Fault(webob.exc.HTTPException):
     """Wrap webob.exc.HTTPException to provide API friendly response."""
 
-    _fault_names = {http_client.BAD_REQUEST: "badRequest",
-                    http_client.UNAUTHORIZED: "unauthorized",
-                    http_client.FORBIDDEN: "forbidden",
-                    http_client.NOT_FOUND: "itemNotFound",
-                    http_client.METHOD_NOT_ALLOWED: "badMethod",
-                    http_client.CONFLICT: "conflictingRequest",
-                    http_client.REQUEST_ENTITY_TOO_LARGE: "overLimit",
-                    http_client.UNSUPPORTED_MEDIA_TYPE: "badMediaType",
-                    http_client.NOT_IMPLEMENTED: "notImplemented",
-                    http_client.SERVICE_UNAVAILABLE: "serviceUnavailable"}
+    _fault_names = {HTTPStatus.BAD_REQUEST: "badRequest",
+                    HTTPStatus.UNAUTHORIZED: "unauthorized",
+                    HTTPStatus.FORBIDDEN: "forbidden",
+                    HTTPStatus.NOT_FOUND: "itemNotFound",
+                    HTTPStatus.METHOD_NOT_ALLOWED: "badMethod",
+                    HTTPStatus.CONFLICT: "conflictingRequest",
+                    HTTPStatus.REQUEST_ENTITY_TOO_LARGE: "overLimit",
+                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE: "badMediaType",
+                    HTTPStatus.NOT_IMPLEMENTED: "notImplemented",
+                    HTTPStatus.SERVICE_UNAVAILABLE: "serviceUnavailable"}
 
     def __init__(self, exception):
         """Create a Fault for the given webob.exc.exception."""
@@ -1312,7 +1312,7 @@ class Fault(webob.exc.HTTPException):
             fault_name: {
                 'code': code,
                 'message': i18n.translate(explanation, locale)}}
-        if code == http_client.REQUEST_ENTITY_TOO_LARGE:
+        if code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
             retry = self.wrapped_exc.headers.get('Retry-After', None)
             if retry:
                 fault_data[fault_name]['retryAfter'] = retry

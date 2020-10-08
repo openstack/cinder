@@ -11,7 +11,7 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -81,7 +81,7 @@ class AdminController(wsgi.Controller):
             LOG.debug('Worker entry for %s with id %s has been deleted.',
                       self.collection, id)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
@@ -110,7 +110,7 @@ class AdminController(wsgi.Controller):
 
         self._notify_reset_status(context, id, 'reset_status.end')
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_delete')
     def _force_delete(self, req, id, body):
         """Delete a resource, bypassing the check that it must be available."""
@@ -165,7 +165,7 @@ class VolumeAdminController(AdminController):
 
         return update
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_detach')
     @validation.schema(admin_actions.force_detach)
     def _force_detach(self, req, id, body):
@@ -200,7 +200,7 @@ class VolumeAdminController(AdminController):
                 # 500 error.
                 raise
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-migrate_volume')
     @validation.schema(admin_actions.migrate_volume, mv.V2_BASE_VERSION,
                        mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
@@ -289,7 +289,7 @@ class BackupAdminController(AdminController):
     def _delete(self, *args, **kwargs):
         return self.backup_api.delete(*args, **kwargs)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reset_status')
     @validation.schema(admin_actions.reset_status_backup)
     def _reset_status(self, req, id, body):

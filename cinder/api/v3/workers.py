@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_utils import strutils
 from oslo_utils import timeutils
@@ -38,7 +38,7 @@ class WorkerController(wsgi.Controller):
         self.sch_api = sch_rpc.SchedulerAPI()
 
     @wsgi.Controller.api_version(mv.WORKERS_CLEANUP)
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(workers.cleanup)
     def cleanup(self, req, body=None):
         """Do the cleanup on resources from a specific service/host/node."""

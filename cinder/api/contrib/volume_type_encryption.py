@@ -14,7 +14,7 @@
 #    under the License.
 
 """The volume types encryption extension."""
-from http import client as http_client
+from http import HTTPStatus
 
 import webob
 
@@ -143,7 +143,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             # Not found exception will be handled at the wsgi level
             db.volume_type_encryption_delete(context, type_id)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 class Volume_type_encryption(extensions.ExtensionDescriptor):

@@ -15,7 +15,7 @@
 
 """The volumes api."""
 
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -80,7 +80,7 @@ class VolumeController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
         self.volume_api.delete(context, volume, cascade=cascade)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of volumes."""
@@ -177,7 +177,7 @@ class VolumeController(wsgi.Controller):
                 "access requested image.")
         raise exc.HTTPBadRequest(explanation=msg)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(volumes.create, mv.V2_BASE_VERSION)
     def create(self, req, body):
         """Creates a new volume."""

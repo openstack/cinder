@@ -16,7 +16,7 @@
 """The volume metadata V3 api."""
 
 import hashlib
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_serialization import jsonutils
 import webob
@@ -60,7 +60,7 @@ class Controller(volume_meta_v2.Controller):
         if req_version.matches(mv.ETAGS):
             if not self._validate_etag(req, volume_id):
                 return webob.Response(
-                    status_int=http_client.PRECONDITION_FAILED)
+                    status_int=HTTPStatus.PRECONDITION_FAILED)
         return super(Controller, self).update(req, volume_id,
                                               id, body=body)
 
@@ -71,7 +71,7 @@ class Controller(volume_meta_v2.Controller):
         if req_version.matches(mv.ETAGS):
             if not self._validate_etag(req, volume_id):
                 return webob.Response(
-                    status_int=http_client.PRECONDITION_FAILED)
+                    status_int=HTTPStatus.PRECONDITION_FAILED)
         return super(Controller, self).update_all(req, volume_id,
                                                   body=body)
 

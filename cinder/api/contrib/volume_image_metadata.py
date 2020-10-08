@@ -13,7 +13,7 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 import webob
@@ -142,7 +142,7 @@ class VolumeImageMetadataController(wsgi.Controller):
                 context, vol, key,
                 meta_type=common.METADATA_TYPES.image)
 
-            return webob.Response(status_int=http_client.OK)
+            return webob.Response(status_int=HTTPStatus.OK)
 
 
 class Volume_image_metadata(extensions.ExtensionDescriptor):

@@ -11,7 +11,7 @@
 #    under the License.
 
 """The volumes attachments API."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 import webob
@@ -100,7 +100,7 @@ class AttachmentsController(wsgi.Controller):
                 sort_direction=sort_dirs)
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
-    @wsgi.response(http_client.OK)
+    @wsgi.response(HTTPStatus.OK)
     @validation.schema(attachment.create)
     def create(self, req, body):
         """Create an attachment.
@@ -270,7 +270,7 @@ class AttachmentsController(wsgi.Controller):
         attachments = self.volume_api.attachment_delete(context, attachment)
         return attachment_views.ViewBuilder.list(attachments)
 
-    @wsgi.response(http_client.NO_CONTENT)
+    @wsgi.response(HTTPStatus.NO_CONTENT)
     @wsgi.Controller.api_version(mv.NEW_ATTACH_COMPLETION)
     @wsgi.action('os-complete')
     def complete(self, req, id, body):

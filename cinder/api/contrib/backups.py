@@ -16,7 +16,7 @@
 #    under the License.
 
 """The backups api."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -59,7 +59,7 @@ class BackupsController(wsgi.Controller):
 
         return self._view_builder.detail(req, backup)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     def delete(self, req, id):
         """Delete a backup."""
         context = req.environ['cinder.context']
@@ -144,7 +144,7 @@ class BackupsController(wsgi.Controller):
     # - whether requested volume_id exists so we can return some errors
     #   immediately
     # - maybe also do validation of swift container name
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(backup.create, mv.V2_BASE_VERSION,
                        mv.get_prior_version(mv.BACKUP_METADATA))
     @validation.schema(backup.create_backup_v343, mv.BACKUP_METADATA,
@@ -201,7 +201,7 @@ class BackupsController(wsgi.Controller):
         retval = self._view_builder.summary(req, dict(new_backup))
         return retval
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(backup.restore)
     def restore(self, req, id, body):
         """Restore an existing backup to a volume."""
@@ -252,7 +252,7 @@ class BackupsController(wsgi.Controller):
         LOG.debug('Exported record output: %s.', retval)
         return retval
 
-    @wsgi.response(http_client.CREATED)
+    @wsgi.response(HTTPStatus.CREATED)
     @validation.schema(backup.import_record)
     def import_record(self, req, body):
         """Import a backup."""

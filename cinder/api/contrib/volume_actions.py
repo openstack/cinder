@@ -11,7 +11,7 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from castellan import key_manager
 from oslo_config import cfg
@@ -48,7 +48,7 @@ class VolumeActionsController(wsgi.Controller):
 
         return self._key_mgr
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-attach')
     @validation.schema(volume_action.attach)
     def _attach(self, req, id, body):
@@ -84,7 +84,7 @@ class VolumeActionsController(wsgi.Controller):
                 # to the user and in such cases it should raise 500 error.
                 raise
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-detach')
     @validation.schema(volume_action.detach)
     def _detach(self, req, id, body):
@@ -110,7 +110,7 @@ class VolumeActionsController(wsgi.Controller):
                 # to the user and in such cases it should raise 500 error.
                 raise
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-reserve')
     def _reserve(self, req, id, body):
         """Mark volume as reserved."""
@@ -120,7 +120,7 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.reserve_volume(context, volume)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-unreserve')
     def _unreserve(self, req, id, body):
         """Unmark volume as reserved."""
@@ -130,7 +130,7 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.unreserve_volume(context, volume)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-begin_detaching')
     def _begin_detaching(self, req, id, body):
         """Update volume status to 'detaching'."""
@@ -140,7 +140,7 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.begin_detaching(context, volume)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-roll_detaching')
     def _roll_detaching(self, req, id, body):
         """Roll back volume status to 'in-use'."""
@@ -175,7 +175,7 @@ class VolumeActionsController(wsgi.Controller):
 
         return {'connection_info': info}
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-terminate_connection')
     @validation.schema(volume_action.terminate_connection)
     def _terminate_connection(self, req, id, body):
@@ -190,7 +190,7 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Unable to terminate volume connection from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
     @validation.schema(volume_action.volume_upload_image, mv.V2_BASE_VERSION,
                        mv.get_prior_version(mv.UPLOAD_IMAGE_PARAMS))
@@ -254,7 +254,7 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=str(error))
         return {'os-volume_upload_image': response}
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-extend')
     @validation.schema(volume_action.extend)
     def _extend(self, req, id, body):
@@ -274,7 +274,7 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-update_readonly_flag')
     @validation.schema(volume_action.volume_readonly_update)
     def _volume_readonly_update(self, req, id, body):
@@ -290,7 +290,7 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-retype')
     @validation.schema(volume_action.retype)
     def _retype(self, req, id, body):
@@ -302,7 +302,7 @@ class VolumeActionsController(wsgi.Controller):
 
         self.volume_api.retype(context, volume, new_type, policy)
 
-    @wsgi.response(http_client.OK)
+    @wsgi.response(HTTPStatus.OK)
     @wsgi.action('os-set_bootable')
     @validation.schema(volume_action.set_bootable)
     def _set_bootable(self, req, id, body):

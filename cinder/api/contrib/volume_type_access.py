@@ -12,7 +12,7 @@
 #    under the License.
 
 """The volume type access extension."""
-from http import client as http_client
+from http import HTTPStatus
 
 import webob
 
@@ -106,7 +106,7 @@ class VolumeTypeActionController(wsgi.Controller):
         # Not found exception will be handled at the wsgi level
         except exception.VolumeTypeAccessExists as err:
             raise webob.exc.HTTPConflict(explanation=str(err))
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @wsgi.action('removeProjectAccess')
     @validation.schema(volume_type_access.remove_project_access)
@@ -117,7 +117,7 @@ class VolumeTypeActionController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         volume_types.remove_volume_type_access(context, id, project)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 class Volume_type_access(extensions.ExtensionDescriptor):

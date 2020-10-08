@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 import webob
@@ -78,7 +78,7 @@ class VolumeTransferController(wsgi.Controller):
 
         return transfers
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(volume_transfer.create)
     def create(self, req, body):
         """Create a new volume transfer."""
@@ -107,7 +107,7 @@ class VolumeTransferController(wsgi.Controller):
                                              dict(new_transfer))
         return transfer
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(volume_transfer.accept)
     def accept(self, req, id, body):
         """Accept a new volume transfer."""
@@ -142,7 +142,7 @@ class VolumeTransferController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         self.transfer_api.delete(context, transfer_id=id)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 class Volume_transfer(extensions.ExtensionDescriptor):

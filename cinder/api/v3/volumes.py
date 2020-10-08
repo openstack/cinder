@@ -12,7 +12,7 @@
 #    under the License.
 
 """The volumes V3 api."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_log import versionutils
@@ -78,7 +78,7 @@ class VolumeController(volumes_v2.VolumeController):
                                cascade=cascade,
                                force=force)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @common.process_general_filtering('volume')
     def _process_volume_filtering(self, context=None, filters=None,
@@ -208,7 +208,7 @@ class VolumeController(volumes_v2.VolumeController):
         return view_builder_v3.quick_summary(num_vols, int(sum_size),
                                              all_distinct_metadata)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.Controller.api_version(mv.VOLUME_REVERT)
     @wsgi.action('revert')
     def revert(self, req, id, body):
@@ -268,7 +268,7 @@ class VolumeController(volumes_v2.VolumeController):
                             raise exc.HTTPNotFound(explanation=explanation)
             return image_snapshot
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(volumes.create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.GROUP_VOLUME))
     @validation.schema(volumes.create_volume_v313, mv.GROUP_VOLUME,
