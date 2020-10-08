@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1887885 <https://bugs.launchpad.net/cinder/+bug/1887885>`_:
+    In NEC driver, fix a snapshot detach error.
+
