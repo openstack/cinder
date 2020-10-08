@@ -24,7 +24,6 @@ SHOULD include dedicated exception logging.
 
 from oslo_log import log as logging
 from oslo_versionedobjects import exception as obj_exc
-import six
 import webob.exc
 from webob.util import status_generic_reasons
 from webob.util import status_reasons
@@ -85,7 +84,7 @@ class CinderException(Exception):
                 # NOTE(tommylikehu): If this is a cinder exception it will
                 # return the msg object, so we won't be preventing
                 # translations.
-                self.kwargs[k] = six.text_type(v)
+                self.kwargs[k] = str(v)
 
         if self._should_format():
             try:
@@ -100,7 +99,7 @@ class CinderException(Exception):
             # NOTE(tommylikehu): If this is a cinder exception it will
             # return the msg object, so we won't be preventing
             # translations.
-            message = six.text_type(message)
+            message = str(message)
 
         # NOTE(luisg): We put the actual message in 'msg' so that we can access
         # it, because if we try to access the message via 'message' it will be

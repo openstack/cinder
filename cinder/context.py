@@ -26,7 +26,6 @@ from oslo_context import context
 from oslo_db.sqlalchemy import enginefacade
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -105,7 +104,7 @@ class RequestContext(context.RequestContext):
         self.remote_address = remote_address
         if not timestamp:
             timestamp = timeutils.utcnow()
-        elif isinstance(timestamp, six.string_types):
+        elif isinstance(timestamp, str):
             timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class
