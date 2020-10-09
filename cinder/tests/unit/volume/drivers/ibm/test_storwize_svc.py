@@ -4558,7 +4558,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
             self.driver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
-
         else:
             self._reset_flags()
         self.ctxt = context.get_admin_context()
@@ -6131,16 +6130,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     # Test groups operation ####
     @ddt.data(({'group_replication_enabled': '<is> True'}, {}),
               ({'group_replication_enabled': '<is> True',
-               'consistent_group_snapshot_enabled': '<is> True'}, {}),
+                'consistent_group_snapshot_enabled': '<is> True'}, {}),
               ({'group_snapshot_enabled': '<is> True'}, {}),
               ({'consistent_group_snapshot_enabled': '<is> True'},
                {'replication_enabled': '<is> True',
-                'replication_type': '<in> metro'}),
-              ({'consistent_group_replication_enabled': '<is> True'},
-               {'replication_enabled': '<is> Fasle'}),
-              ({'consistent_group_replication_enabled': '<is> True'},
-               {'replication_enabled': '<is> True',
-                'replication_type': '<in> gmcv'}))
+                'replication_type': '<in> metro'}))
     @ddt.unpack
     def test_storwize_group_create_with_replication(self, grp_sepc, vol_spec):
         """Test group create."""
@@ -6150,7 +6144,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         group = testutils.create_group(self.ctxt,
                                        group_type_id=gr_type.id,
                                        volume_type_ids=[vol_type_ref['id']])
-
         if 'group_snapshot_enabled' in grp_sepc:
             self.assertRaises(NotImplementedError,
                               self.driver.create_group, self.ctxt, group)
@@ -6390,7 +6383,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                          group_type_id=rccg_type_ref.id)
         vol1 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
                                        group_id=group.id)
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidInput,
                           self.driver.create_group_from_src,
                           self.ctxt, group, [vol1])
 
@@ -6403,8 +6396,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                        group_id=group.id)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_group_from_src,
-                          self.ctxt, group, vol1, None, None,
-                          None, None)
+                          self.ctxt, group, [vol1])
 
         group = self._create_group_in_db(volume_type_id=type_ref.id,
                                          group_type_id=cg_type_ref.id)
@@ -7363,26 +7355,25 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         group2 = self._create_group_in_db(volume_type_ids=[type_ref.id],
                                           group_type_id=cg_type_ref.id)
 
-        # Create volume with replication group id will be failed
+        # Create volume with replication group id will be success
         vol1 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       host='openstack@svc#openstack',
                                        group_id=group1.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_volume,
-                          vol1)
+        self.driver.create_volume(vol1)
         # Create volume with cg_snapshot group id will success.
         vol2 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
                                        host='openstack@svc#openstack',
                                        group_id=group2.id)
         self.driver.create_volume(vol2)
 
-        # Create cloned volume with replication group id will be failed
+        # Create cloned volume with replication group id will be success
         vol3 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       host='openstack@svc#openstack',
                                        group_id=group1.id,
                                        source_volid=vol2.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_cloned_volume,
-                          vol3, vol2)
-        # Create cloned volume with cg_snapshot group id will success.
+
+        self.driver.create_cloned_volume(vol3, vol2)
+        # Create cloned volume with cg_snapshot group id will be success.
         vol4 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
                                        group_id=group2.id,
                                        host='openstack@svc#openstack',
@@ -7391,13 +7382,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         snapshot = self._generate_snap_info(vol2.id)
         self.driver.create_snapshot(snapshot)
-        # Create volume from snapshot with replication group id will be failed
+        # Create volume from snapshot with replication group id will be success
         vol5 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
+                                       host='openstack@svc#openstack',
                                        group_id=group1.id,
                                        snapshot_id=snapshot.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_volume_from_snapshot,
-                          vol5, snapshot)
+        self.driver.create_volume_from_snapshot(vol5, snapshot)
         # Create volume from snapshot with cg_snapshot group id will success.
         vol6 = testutils.create_volume(self.ctxt, volume_type_id=type_ref.id,
                                        group_id=group2.id,
@@ -11624,3 +11614,23 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          storwize_const.REPLICA_AUX_VOL_PREFIX + mm_vol.name)
         self.assertEqual(self.driver._aux_backend_helpers, backend_helper)
         self.assertEqual(self.driver._aux_state, node_state)
+
+    @ddt.data(({'consistent_group_replication_enabled': '<is> True'},
+               {'replication_enabled': '<is> False'}),
+              ({'consistent_group_replication_enabled': '<is> True'},
+               {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv'}))
+    @ddt.unpack
+    def test_storwize_group_create_with_replication(self, grp_spec, vol_spec):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        """Test group create."""
+        gr_type_ref = group_types.create(self.ctxt, 'gr_type', grp_spec)
+        gr_type = objects.GroupType.get_by_id(self.ctxt, gr_type_ref['id'])
+        vol_type_ref = volume_types.create(self.ctxt, 'vol_type', vol_spec)
+        group = testutils.create_group(self.ctxt,
+                                       group_type_id=gr_type.id,
+                                       volume_type_ids=[vol_type_ref['id']])
+        model_update = self.driver.create_group(self.ctxt, group)
+        self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])

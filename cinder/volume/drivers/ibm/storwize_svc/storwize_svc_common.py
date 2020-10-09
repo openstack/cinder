@@ -3113,7 +3113,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def _check_if_group_type_cg_snapshot(self, volume):
         if (volume.group_id and
-                not volume_utils.is_group_a_cg_snapshot_type(volume.group)):
+                (not volume_utils.is_group_a_cg_snapshot_type(volume.group) and
+                 not volume_utils.is_group_a_type
+                 (volume.group, "consistent_group_replication_enabled"))):
             msg = _('Create volume with a replication or hyperswap '
                     'group_id is not supported. Please add volume to '
                     'group after volume creation.')
@@ -5319,6 +5321,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         if volume_utils.is_group_a_type(
                 group, "consistent_group_replication_enabled"):
+            self._validate_replication_enabled()
             rccg_type = None
             for vol_type_id in group.volume_type_ids:
                 replication_type = self._get_volume_replicated_type(
@@ -5494,15 +5497,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """
         LOG.debug('Enter: create_group_from_src.')
 
-        if volume_utils.is_group_a_type(
-                group,
-                "consistent_group_replication_enabled"):
-            # An unsupported configuration
-            msg = _('Unable to create replication group: create replication '
-                    'group from a replication group is not supported.')
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
         if volume_utils.is_group_a_type(group, "hyperswap_group_enabled"):
             # An unsupported configuration
             msg = _('Unable to create hyperswap group: create hyperswap '
@@ -5510,7 +5504,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.exception(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        if not volume_utils.is_group_a_cg_snapshot_type(group):
+        if (not volume_utils.is_group_a_cg_snapshot_type(group) and
+                not volume_utils.is_group_a_type
+                (group, "consistent_group_replication_enabled")):
             # we'll rely on the generic volume groups implementation if it is
             # not a consistency group request.
             raise NotImplementedError()
@@ -5531,7 +5527,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                   ' %(sources)s', {'cg_name': cg_name, 'sources': sources})
         self._helpers.create_fc_consistgrp(cg_name)
         timeout = self.configuration.storwize_svc_flashcopy_timeout
-        model_update, snapshots_model = (
+        model_update, volumes_model = (
             self._helpers.create_cg_from_source(group,
                                                 cg_name,
                                                 sources,
@@ -5539,8 +5535,18 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                 self._state,
                                                 self.configuration,
                                                 timeout))
+
+        for vol in volumes:
+            rep_type = self._get_volume_replicated_type(context,
+                                                        vol)
+            if rep_type:
+                replica_obj = self._get_replica_obj(rep_type)
+                replica_obj.volume_replication_setup(context, vol)
+                volumes_model[volumes.index(vol)]['replication_status'] = (
+                    fields.ReplicationStatus.ENABLED)
+
         LOG.debug("Leave: create_group_from_src.")
-        return model_update, snapshots_model
+        return model_update, volumes_model
 
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Creates a group_snapshot.
@@ -5550,11 +5556,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         :param snapshots: a list of Snapshot objects in the group_snapshot.
         :returns: model_update, snapshots_model_update
         """
-        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if (not volume_utils.is_group_a_cg_snapshot_type(group_snapshot) and
+                not volume_utils.is_group_a_type
+                (group_snapshot, "consistent_group_replication_enabled")):
             # we'll rely on the generic group implementation if it is not a
             # consistency group request.
             raise NotImplementedError()
-
         # Use group_snapshot id as cg name
         cg_name = 'cg_snap-' + group_snapshot.id
         # Create new cg as cg_snapshot
@@ -5811,8 +5818,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         LOG.info("Update replication group: %(group)s. ", {'group': group.id})
 
         rccg_name = self._get_rccg_name(group)
-        rccg = self._helpers.get_rccg(rccg_name)
-        if not rccg:
+        # This code block fails during remove of volumes from group
+        try:
+            rccg = self._helpers.get_rccg(rccg_name)
+        except Exception as ex:
+            if len(add_volumes) > 0:
+                LOG.exception("Unable to retrieve "
+                              "replication group information. Failed "
+                              "with exception %(ex)s", ex)
+
+        if not rccg and len(add_volumes) > 0:
             LOG.error("Failed to update group: %(grp)s does not exist in "
                       "backend.", {'grp': group.id})
             model_update['status'] = fields.GroupStatus.ERROR
