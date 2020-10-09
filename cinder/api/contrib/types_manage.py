@@ -14,10 +14,9 @@
 #    under the License.
 
 """The volume types manage extension."""
+from http import client as http_client
 
 from oslo_utils import strutils
-import six
-from six.moves import http_client
 import webob
 
 from cinder.api import extensions
@@ -76,7 +75,7 @@ class VolumeTypesManageController(wsgi.Controller):
         except exception.VolumeTypeExists as err:
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, volume_type=vol_type)
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=str(err))
         except exception.VolumeTypeNotFoundByName as err:
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, name=name)
@@ -128,12 +127,12 @@ class VolumeTypesManageController(wsgi.Controller):
         except exception.VolumeTypeExists as err:
             self._notify_volume_type_error(
                 context, 'volume_type.update', err, volume_type=vol_type)
-            raise webob.exc.HTTPConflict(explanation=six.text_type(err))
+            raise webob.exc.HTTPConflict(explanation=str(err))
         except exception.VolumeTypeUpdateFailed as err:
             self._notify_volume_type_error(
                 context, 'volume_type.update', err, volume_type=vol_type)
             raise webob.exc.HTTPInternalServerError(
-                explanation=six.text_type(err))
+                explanation=str(err))
 
         return self._view_builder.show(req, vol_type)
 

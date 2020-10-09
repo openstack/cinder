@@ -13,11 +13,11 @@
 #    under the License.
 
 """The groups controller."""
+from http import client as http_client
 
 from oslo_log import log as logging
 from oslo_utils import strutils
 from oslo_utils import uuidutils
-from six.moves import http_client
 import webob
 from webob import exc
 

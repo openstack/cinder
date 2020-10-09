@@ -13,10 +13,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from http import client as http_client
 
 from oslo_log import log as logging
-import six
-from six.moves import http_client
 import webob.dec
 import webob.exc
 
@@ -73,7 +72,7 @@ class FaultWrapper(base_wsgi.Middleware):
         # including those that are safe to expose, see bug 1021373
         if safe:
             msg = (inner.msg if isinstance(inner, exception.CinderException)
-                   else six.text_type(inner))
+                   else str(inner))
             params = {'exception': inner.__class__.__name__,
                       'explanation': msg}
             outer.explanation = _('%(exception)s: %(explanation)s') % params

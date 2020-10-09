@@ -15,12 +15,12 @@
 
 """The volumes api."""
 
+from http import client as http_client
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import uuidutils
-from six.moves import http_client
 import webob
 from webob import exc
 

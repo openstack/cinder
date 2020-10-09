@@ -12,10 +12,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from http import client as http_client
 
 from oslo_utils import strutils
 from oslo_utils import timeutils
-from six.moves import http_client
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi

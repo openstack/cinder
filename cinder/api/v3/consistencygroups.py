@@ -12,9 +12,9 @@
 #    under the License.
 
 """The consistencygroups V3 API."""
+from http import client as http_client
 
 from oslo_log import log as logging
-from six.moves import http_client
 import webob
 from webob import exc
 

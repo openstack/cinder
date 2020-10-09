@@ -12,7 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from six.moves import http_client
+from http import client as http_client
 
 from cinder.api.contrib import snapshot_manage as snapshot_manage_v2
 from cinder.api import microversions as mv

@@ -26,7 +26,6 @@ from oslo_serialization import base64
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import six
 import webob.exc
 
 from cinder.api import api_utils
@@ -198,7 +197,7 @@ def _validate_progress(progress):
 @jsonschema.FormatChecker.cls_checks('base64')
 def _validate_base64_format(instance):
     try:
-        if isinstance(instance, six.text_type):
+        if isinstance(instance, str):
             instance = instance.encode('utf-8')
         base64.decode_as_bytes(instance)
     except TypeError:
@@ -479,7 +478,7 @@ class _SchemaValidator(object):
         except TypeError as ex:
             # NOTE: If passing non string value to patternProperties parameter,
             #       TypeError happens. Here is for catching the TypeError.
-            detail = six.text_type(ex)
+            detail = str(ex)
             raise exception.ValidationError(detail=detail)
 
     def _number_from_str(self, param_value):

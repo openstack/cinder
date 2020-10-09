@@ -11,11 +11,11 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
+from http import client as http_client
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import strutils
-from six.moves import http_client
 import webob
 
 from cinder.api import common

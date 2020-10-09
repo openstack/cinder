@@ -15,7 +15,8 @@
 
 """The volume types extra specs extension"""
 
-from six.moves import http_client
+from http import client as http_client
+
 import webob
 
 from cinder.api import extensions

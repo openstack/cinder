@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from cinder.api import common
 from cinder import group as group_api
 from cinder.objects import fields
@@ -83,7 +81,7 @@ class ViewBuilder(common.ViewBuilder):
                 'metadata': self._get_volume_metadata(volume),
                 'links': self._get_links(request, volume['id']),
                 'user_id': volume.get('user_id'),
-                'bootable': six.text_type(volume.get('bootable')).lower(),
+                'bootable': str(volume.get('bootable')).lower(),
                 'encrypted': self._is_volume_encrypted(volume),
                 'replication_status': volume.get('replication_status'),
                 'consistencygroup_id': volume.get('consistencygroup_id'),

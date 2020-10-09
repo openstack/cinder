@@ -12,12 +12,11 @@
 #    under the License.
 
 """The volumes V3 api."""
+from http import client as http_client
 
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import timeutils
-import six
-from six.moves import http_client
 import webob
 from webob import exc
 
@@ -242,7 +241,7 @@ class VolumeController(volumes_v2.VolumeController):
                            's_id': l_snap.id})
             self.volume_api.revert_to_snapshot(context, volume, l_snap)
         except (exception.InvalidVolume, exception.InvalidSnapshot) as e:
-            raise exc.HTTPConflict(explanation=six.text_type(e))
+            raise exc.HTTPConflict(explanation=str(e))
 
     def _get_image_snapshot(self, context, image_uuid):
         image_snapshot = None

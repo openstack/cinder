@@ -22,8 +22,6 @@ import copy
 import re
 import unicodedata
 
-import six
-
 from cinder.common import constants
 
 
@@ -43,7 +41,7 @@ def _is_printable(char):
 
 def _get_all_chars():
     for i in range(0xFFFF):
-        yield six.unichr(i)
+        yield chr(i)
 
 
 # build a regex that matches all printable characters. This allows

@@ -11,9 +11,9 @@
 #    under the License.
 
 """The volumes attachments API."""
+from http import client as http_client
 
 from oslo_log import log as logging
-from six.moves import http_client
 import webob
 
 from cinder.api import api_utils

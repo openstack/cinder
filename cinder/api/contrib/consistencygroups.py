@@ -14,11 +14,11 @@
 #    under the License.
 
 """The consistencygroups api."""
+from http import client as http_client
 
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import strutils
-from six.moves import http_client
 import webob
 from webob import exc
 
