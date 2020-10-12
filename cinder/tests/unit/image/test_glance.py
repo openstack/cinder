@@ -16,6 +16,7 @@
 
 import datetime
 import itertools
+import traceback
 from unittest import mock
 
 import ddt
@@ -720,6 +721,62 @@ class TestGlanceImageService(test.TestCase):
         writer = NullWriter()
         self.assertRaises(exception.ImageNotAuthorized, service.download,
                           self.context, image_id, writer)
+
+    def test_client_translated_exc_includes_original_traceback(self):
+        image_id = 1  # doesn't matter
+        original_exc = glanceclient.exc.Forbidden(image_id)
+
+        class MyGlanceStubClient(glance_stubs.StubGlanceClient):
+            def get(self, image_id):
+                raise original_exc
+
+        client = MyGlanceStubClient()
+        service = self._create_image_service(client)
+        writer = NullWriter()
+
+        exc = self.assertRaises(exception.ImageNotAuthorized,
+                                service.download,
+                                self.context,
+                                image_id,
+                                writer)
+
+        original = traceback.extract_tb(original_exc.__traceback__)
+        original.reverse()
+        received = traceback.extract_tb(exc.__traceback__)
+        received.reverse()
+        # verify that we have the same traceback as original_exc
+        for orig, recd in zip(original, received):
+            self.assertEqual(orig, recd)
+
+        # note that the received exception contains more frames in
+        # its traceback than the original
+        self.assertGreater(len(received), len(original))
+
+    def test_plain_translated_exc_includes_original_traceback(self):
+        original_exc = glanceclient.exc.Forbidden()
+
+        class MyGlanceStubClient(glance_stubs.StubGlanceClient):
+            def list(self):
+                raise original_exc
+
+        client = MyGlanceStubClient()
+        service = self._create_image_service(client)
+
+        exc = self.assertRaises(exception.NotAuthorized,
+                                service.detail,
+                                self.context)
+
+        original = traceback.extract_tb(original_exc.__traceback__)
+        original.reverse()
+        received = traceback.extract_tb(exc.__traceback__)
+        received.reverse()
+        # verify that we have the same traceback as original_exc
+        for orig, recd in zip(original, received):
+            self.assertEqual(orig, recd)
+
+        # note that the received exception contains more frames in
+        # its traceback than the original
+        self.assertGreater(len(received), len(original))
 
     def test_client_httpforbidden_converts_to_imagenotauthed(self):
         class MyGlanceStubClient(glance_stubs.StubGlanceClient):
