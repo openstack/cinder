@@ -19,7 +19,6 @@
 
 from oslo_config import cfg
 from oslo_utils import importutils
-import six
 
 
 db_driver_opt = cfg.StrOpt('db_driver',
@@ -41,7 +40,7 @@ class Base(object):
             db_driver = CONF.db_driver
 
         # pylint: disable=C0103
-        if isinstance(db_driver, six.string_types):
+        if isinstance(db_driver, str):
             self.db = importutils.import_module(db_driver)
         else:
             self.db = db_driver

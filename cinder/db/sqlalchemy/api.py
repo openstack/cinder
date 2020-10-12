@@ -38,7 +38,6 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 osprofiler_sqlalchemy = importutils.try_import('osprofiler.sqlalchemy')
-import six
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
@@ -667,7 +666,7 @@ def cluster_get(context, id=None, is_up=None, get_services=False,
                            read_deleted, name_match_level, id=id, **filters)
     cluster = None if not query else query.first()
     if not cluster:
-        cluster_id = id or six.text_type(filters)
+        cluster_id = id or str(filters)
         raise exception.ClusterNotFound(id=cluster_id)
     return cluster
 
@@ -1688,7 +1687,7 @@ def _include_in_cluster(context, cluster, model, partial_rename, filters):
         # If we want to do a partial rename and we haven't set the cluster
         # already, the value we want to set is a SQL replace of existing field
         # value.
-        if partial_rename and isinstance(cluster, six.string_types):
+        if partial_rename and isinstance(cluster, str):
             cluster = func.replace(getattr(model, field), value, cluster)
 
     query = query.filter_by(**filters)
@@ -1793,7 +1792,7 @@ def _process_model_like_filter(model, query, filters):
         if 'property' == type(column_attr).__name__:
             continue
         value = filters[key]
-        if not (isinstance(value, (six.string_types, int))):
+        if not (isinstance(value, (str, int))):
             continue
         query = query.filter(
             column_attr.op('LIKE')(u'%%%s%%' % value))
@@ -2200,7 +2199,7 @@ def volume_get_all_by_host(context, host, filters=None):
     # now be either form below:
     #     Host
     #     Host#Pool
-    if host and isinstance(host, six.string_types):
+    if host and isinstance(host, str):
         session = get_session()
         with session.begin():
             host_attr = getattr(models.Volume, 'host')
@@ -3158,7 +3157,7 @@ def snapshot_get_all_by_host(context, host, filters=None):
     # now be either form below:
     #     Host
     #     Host#Pool
-    if host and isinstance(host, six.string_types):
+    if host and isinstance(host, str):
         session = get_session()
         with session.begin():
             host_attr = getattr(models.Volume, 'host')
@@ -3477,7 +3476,7 @@ def group_type_create(context, values, projects=None):
     {'group_specs' : {'k1': 'v1', 'k2': 'v2', ...}}
     """
     if not values.get('id'):
-        values['id'] = six.text_type(uuid.uuid4())
+        values['id'] = str(uuid.uuid4())
 
     projects = projects or []
 
@@ -4571,7 +4570,7 @@ def qos_specs_create(context, values):
             consumer = {'key': 'consumer',
                         'value': values['consumer'],
                         'specs_id': specs_id,
-                        'id': six.text_type(uuid.uuid4())}
+                        'id': str(uuid.uuid4())}
             cons_entry = models.QualityOfServiceSpecs()
             cons_entry.update(consumer)
             cons_entry.save(session=session)
@@ -4916,7 +4915,7 @@ def volume_type_encryption_create(context, volume_type_id, values):
             values['volume_type_id'] = volume_type_id
 
         if 'encryption_id' not in values:
-            values['encryption_id'] = six.text_type(uuid.uuid4())
+            values['encryption_id'] = str(uuid.uuid4())
 
         encryption.update(values)
         session.add(encryption)
@@ -5060,7 +5059,7 @@ def volume_glance_metadata_create(context, volume_id, key, value):
         vol_glance_metadata = models.VolumeGlanceMetadata()
         vol_glance_metadata.volume_id = volume_id
         vol_glance_metadata.key = key
-        vol_glance_metadata.value = six.text_type(value)
+        vol_glance_metadata.value = str(value)
         session.add(vol_glance_metadata)
 
     return
@@ -5090,7 +5089,7 @@ def volume_glance_metadata_bulk_create(context, volume_id, metadata):
             vol_glance_metadata = models.VolumeGlanceMetadata()
             vol_glance_metadata.volume_id = volume_id
             vol_glance_metadata.key = key
-            vol_glance_metadata.value = six.text_type(value)
+            vol_glance_metadata.value = str(value)
             session.add(vol_glance_metadata)
 
 
@@ -6126,7 +6125,7 @@ def group_create(context, values, group_snapshot_id=None,
 
     values = values.copy()
     if not values.get('id'):
-        values['id'] = six.text_type(uuid.uuid4())
+        values['id'] = str(uuid.uuid4())
 
     session = get_session()
     with session.begin():
@@ -6512,7 +6511,7 @@ def group_snapshot_get_all_by_project(context, project_id, filters=None,
 @require_context
 def group_snapshot_create(context, values):
     if not values.get('id'):
-        values['id'] = six.text_type(uuid.uuid4())
+        values['id'] = str(uuid.uuid4())
 
     group_id = values.get('group_id')
     session = get_session()
@@ -6622,7 +6621,7 @@ def purge_deleted_rows(context, age_in_days):
             with session.begin():
                 # Delete child records first from quality_of_service_specs
                 # table to avoid FK constraints
-                if six.text_type(table) == "quality_of_service_specs":
+                if str(table) == "quality_of_service_specs":
                     session.query(models.QualityOfServiceSpecs).filter(
                         and_(models.QualityOfServiceSpecs.specs_id.isnot(
                             None), models.QualityOfServiceSpecs.
@@ -7012,7 +7011,7 @@ def _worker_set_updated_at_field(values):
     # TODO(geguileo): Once we drop support for MySQL 5.5 we can simplify this
     # method.
     updated_at = values.get('updated_at', timeutils.utcnow())
-    if isinstance(updated_at, six.string_types):
+    if isinstance(updated_at, str):
         return
     if not DB_SUPPORTS_SUBSECOND_RESOLUTION:
         updated_at = updated_at.replace(microsecond=0)
@@ -7124,7 +7123,7 @@ def resource_exists(context, model, resource_id, session=None):
 
 
 def get_model_for_versioned_object(versioned_object):
-    if isinstance(versioned_object, six.string_types):
+    if isinstance(versioned_object, str):
         model_name = versioned_object
     else:
         model_name = versioned_object.obj_name()
@@ -7179,7 +7178,7 @@ def condition_db_filter(model, field, value):
     orm_field = getattr(model, field)
     # For values that must match and are iterables we use IN
     if (isinstance(value, abc.Iterable) and
-            not isinstance(value, six.string_types)):
+            not isinstance(value, str)):
         # We cannot use in_ when one of the values is None
         if None not in value:
             return orm_field.in_(value)
@@ -7205,7 +7204,7 @@ def condition_not_db_filter(model, field, value, auto_none=True):
 
     if (auto_none
             and ((isinstance(value, abc.Iterable) and
-                  not isinstance(value, six.string_types)
+                  not isinstance(value, str)
                   and None not in value)
                  or (value is not None))):
         orm_field = getattr(model, field)
@@ -7230,7 +7229,7 @@ def _check_is_not_multitable(values, model):
     for field in values:
         if isinstance(field, sqlalchemy.orm.attributes.InstrumentedAttribute):
             used_models.add(field.class_)
-        elif isinstance(field, six.string_types):
+        elif isinstance(field, str):
             used_models.add(model)
         else:
             raise exception.ProgrammingError(

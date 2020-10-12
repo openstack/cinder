@@ -13,7 +13,6 @@
 import uuid
 
 from oslo_utils import timeutils
-import six
 from sqlalchemy import MetaData, Table
 
 from cinder.volume import volume_types
@@ -31,7 +30,7 @@ def upgrade(migrate_engine):
         vtypes.c.name == volume_types.DEFAULT_VOLUME_TYPE and
         vtypes.c.deleted is False).execute())
     if not results:
-        vtype_id = six.text_type(uuid.uuid4())
+        vtype_id = str(uuid.uuid4())
         volume_type_dict = {
             'id': vtype_id,
             'name': volume_types.DEFAULT_VOLUME_TYPE,
