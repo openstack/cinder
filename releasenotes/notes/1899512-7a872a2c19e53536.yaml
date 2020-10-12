@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added revert to snapshot feature in Nimble driver.
