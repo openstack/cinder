@@ -21,7 +21,6 @@ import time
 from unittest import mock
 
 from oslo_concurrency import processutils
-from six.moves import range
 
 from cinder.tests.unit import test
 from cinder.zonemanager.drivers.cisco \

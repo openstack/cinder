@@ -20,7 +20,6 @@ from unittest import mock
 from unittest.mock import patch
 
 from oslo_utils import encodeutils
-import six
 
 from cinder.tests.unit import test
 from cinder.zonemanager.drivers.brocade import (brcd_http_fc_zone_client
@@ -613,7 +612,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         new_ifas = {'fa1': u'20:15:f4:ce:96:ae:68:6c;20:11:f4:ce:46:ae:68:6c'}
         self.assertEqual(type(self.form_zone_string(
             cfgs, active_cfg, zones, new_alias, new_qlps, new_ifas, True)),
-            six.binary_type)
+            bytes)
         self.assertEqual(
             encodeutils.safe_encode(mocked_zone_string),
             self.form_zone_string(

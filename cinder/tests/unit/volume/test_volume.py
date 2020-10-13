@@ -17,6 +17,7 @@
 
 import datetime
 import enum
+import io
 import time
 from unittest import mock
 
@@ -28,7 +29,6 @@ import os_brick.initiator.connectors.iscsi
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import imageutils
-import six
 from taskflow.engines.action_engine import engine
 
 from cinder.api import common
@@ -2011,8 +2011,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ex = self.assertRaises(exception.InvalidVolume,
                                self.volume_api._attachment_reserve,
                                self.context, volume, fake.UUID2)
-        self.assertIn("status must be available or downloading",
-                      six.text_type(ex))
+        self.assertIn("status must be available or downloading", str(ex))
 
     def test_attachment_reserve_with_instance_uuid_error_volume(self):
         # Tests that trying to create an attachment (with an instance_uuid
@@ -2029,8 +2028,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         ex = self.assertRaises(exception.InvalidVolume,
                                self.volume_api._attachment_reserve,
                                self.context, volume, fake.UUID1)
-        self.assertIn("status must be available or downloading",
-                      six.text_type(ex))
+        self.assertIn("status must be available or downloading", str(ex))
 
     def test_unreserve_volume_success_in_use(self):
         volume = tests_utils.create_volume(self.context, status='attaching')
@@ -3354,7 +3352,7 @@ class VolumeTestCaseLocks(base.BaseVolumeTestCase):
         # source volume was deleted while the create was locked. Note that the
         # volume is still in the db since it was created by the test prior to
         # calling manager.create_volume.
-        with mock.patch('sys.stderr', new=six.StringIO()):
+        with mock.patch('sys.stderr', new=io.StringIO()):
             self.assertRaises(exception.VolumeNotFound, gthreads[0].wait)
 
     def test_create_volume_from_snapshot_delete_lock_taken(self):
@@ -3404,7 +3402,7 @@ class VolumeTestCaseLocks(base.BaseVolumeTestCase):
         # snapshot was deleted while the create was locked. Note that the
         # volume is still in the db since it was created by the test prior to
         #  calling manager.create_volume.
-        with mock.patch('sys.stderr', new=six.StringIO()):
+        with mock.patch('sys.stderr', new=io.StringIO()):
             self.assertRaises(exception.SnapshotNotFound, gthreads[0].wait)
         # locked
         self.volume.delete_volume(self.context, src_vol)

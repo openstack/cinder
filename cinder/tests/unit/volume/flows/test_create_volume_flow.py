@@ -22,7 +22,6 @@ from castellan.common import exception as castellan_exc
 from castellan.tests.unit.key_manager import mock_key_manager
 import ddt
 from oslo_utils import imageutils
-import six
 
 from cinder import context
 from cinder import exception
@@ -459,7 +458,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_get_qos,
             fake_is_encrypted):
         fake_image_service = fake_image.FakeImageService()
-        image_id = six.text_type(uuid.uuid4())
+        image_id = str(uuid.uuid4())
         image_meta = {}
         image_meta['id'] = image_id
         image_meta['status'] = 'active'
@@ -513,7 +512,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
     def test__extract_availability_zones_az_not_specified(self, type_azs,
                                                           self_azs, expected):
         fake_image_service = fake_image.FakeImageService()
-        image_id = six.text_type(uuid.uuid4())
+        image_id = str(uuid.uuid4())
         image_meta = {}
         image_meta['id'] = image_id
         image_meta['status'] = 'active'
@@ -539,7 +538,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
     def test__extract_availability_zones_az_not_in_type_azs(self):
         self.override_config('allow_availability_zone_fallback', False)
         fake_image_service = fake_image.FakeImageService()
-        image_id = six.text_type(uuid.uuid4())
+        image_id = str(uuid.uuid4())
         image_meta = {}
         image_meta['id'] = image_id
         image_meta['status'] = 'active'
