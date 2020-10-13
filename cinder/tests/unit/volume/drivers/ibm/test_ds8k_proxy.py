@@ -1628,7 +1628,7 @@ class DS8KProxyTest(test.TestCase):
         lun = ds8kproxy.Lun(volume)
         pool, lss = self.driver._find_pool_lss_pair_from_spec(lun, set())
         # if not specify pool, choose pools set in configuration file.
-        self.assertTrue(pool in self.configuration.san_clustername.split(','))
+        self.assertIn(pool, self.configuration.san_clustername.split(','))
         self.assertEqual(TEST_LSS_ID_1, lss)
 
     def test_create_volume_only_specify_pool(self):
@@ -3582,7 +3582,7 @@ class DS8KProxyTest(test.TestCase):
                 self.ctxt, group_snapshot, [snapshot]))
         location = ast.literal_eval(
             snapshots_model_update[0]['provider_location'])
-        self.assertTrue(location['vol_hex_id'][:2] not in (20, 21, 22, 23))
+        self.assertNotIn(location['vol_hex_id'][:2], (20, 21, 22, 23))
         self.assertEqual('available', snapshots_model_update[0]['status'])
         self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
 

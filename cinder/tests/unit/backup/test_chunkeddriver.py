@@ -202,14 +202,14 @@ class ChunkedDriverTestCase(test.TestCase):
 
     def test_get_compressor_zlib(self):
         for algo in ['zlib', 'gzip']:
-            self.assertTrue('zlib' in str(self.driver._get_compressor(algo)))
+            self.assertIn('zlib', str(self.driver._get_compressor(algo)))
 
     def test_get_compressor_bz(self):
         for algo in ['bz2', 'bzip2']:
-            self.assertTrue('bz' in str(self.driver._get_compressor(algo)))
+            self.assertIn('bz', str(self.driver._get_compressor(algo)))
 
     def test_get_compressor_zstd(self):
-        self.assertTrue('zstd' in str(self.driver._get_compressor('zstd')))
+        self.assertIn('zstd', str(self.driver._get_compressor('zstd')))
 
     def test_get_compressor_invalid(self):
         self.assertRaises(ValueError, self.driver._get_compressor, 'winzip')
@@ -406,12 +406,12 @@ class ChunkedDriverTestCase(test.TestCase):
         object_meta = {}
 
         self.driver._backup_metadata(self.backup, object_meta)
-        self.assertTrue('volume_meta' in object_meta.keys())
+        self.assertIn('volume_meta', object_meta.keys())
 
         # Too much that we mostly don't care about for UT purposes. Just spot
         # check a few things
         metadata = json.loads(object_meta['volume_meta'])
-        self.assertTrue('volume-base-metadata' in metadata.keys())
+        self.assertIn('volume-base-metadata', metadata.keys())
         self.assertEqual(self.volume, metadata['volume-base-metadata']['id'])
         self.assertEqual(1, metadata['volume-base-metadata']['size'])
         self.assertEqual('test_volume',

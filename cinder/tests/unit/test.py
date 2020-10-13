@@ -282,12 +282,6 @@ class TestCase(testtools.TestCase):
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
 
-        # TODO(smcginnis) Python 3 deprecates assertRaisesRegexp to
-        # assertRaisesRegex, but Python 2 does not have the new name. This
-        # can be removed once we stop supporting py2 or the new name is
-        # added.
-        self.assertRaisesRegexp = self.assertRaisesRegex
-
         # Ensure we have the default tpool size value and we don't carry
         # threads from other test runs.
         tpool.killall()

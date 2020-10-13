@@ -1052,11 +1052,12 @@ class PowerFlexDriver(driver.VolumeDriver):
         total_capacity_gb, free_capacity_gb, provisioned_capacity = (
             self._compute_pool_stats(raw_pool_stats)
         )
-        LOG.info("Free capacity of Storage Pool %(pool)s: %(free)s, "
-                 "total capacity: %(total)s, "
+        LOG.info("Free capacity of Storage Pool %(domain)s:%(pool)s: "
+                 "%(free)s, total capacity: %(total)s, "
                  "provisioned capacity: %(prov)s.",
                  {
-                     "pool": "%s:%s" % (domain_name, pool_name),
+                     "domain": domain_name,
+                     "pool": pool_name,
                      "free": free_capacity_gb,
                      "total": total_capacity_gb,
                      "prov": provisioned_capacity,

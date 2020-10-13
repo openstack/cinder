@@ -128,8 +128,8 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         self.fc_driver.adapter.allowed_ports = ["58:cc:f0:98:49:23:07:02"]
         wwns = self.fc_driver.adapter._get_fc_targets()
         self.assertEqual(1, len(wwns))
-        self.assertFalse(
-            utils.fc_wwn_to_string("58:cc:f0:98:49:21:07:02") in wwns
+        self.assertNotIn(
+            utils.fc_wwn_to_string("58:cc:f0:98:49:21:07:02"), wwns
         )
 
     def test_get_fc_targets_filtered_no_matched_ports(self):
