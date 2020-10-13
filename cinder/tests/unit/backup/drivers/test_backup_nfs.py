@@ -30,7 +30,6 @@ from eventlet import tpool
 from os_brick import exception as brick_exception
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
-import six
 import zstd
 
 from cinder.backup.drivers import nfs
@@ -920,13 +919,7 @@ class BackupNFSTestCase(test.TestCase):
 
     def create_buffer(self, size):
         # Set up buffer of zeroed bytes
-        fake_data = bytearray(size)
-        if six.PY2:
-            # On Python 2, zlib.compressor() accepts buffer, but not bytearray
-            # NOTE(jsbryant): Pep8 fails on py3 based installations as buffer()
-            # was removed. 'noqa' used here to avoid that failure.
-            fake_data = buffer(fake_data)  # noqa
-        return fake_data
+        return bytearray(size)
 
     def test_prepare_output_data_effective_compression(self):
         """Test compression works on a native thread."""

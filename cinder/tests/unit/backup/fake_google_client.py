@@ -21,7 +21,6 @@ import zlib
 from googleapiclient import errors
 from oauth2client import client
 from oslo_utils import units
-import six
 
 
 class FakeGoogleObjectInsertExecute(object):
@@ -144,8 +143,7 @@ class FakeGoogleMediaIoBaseDownload(object):
                                'offset': 20}
             }]
             metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
-            if six.PY3:
-                metadata_json = metadata_json.encode('utf-8')
+            metadata_json = metadata_json.encode('utf-8')
             fh.write(metadata_json)
         else:
             fh.write(zlib.compress(os.urandom(units.Mi)))

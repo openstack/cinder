@@ -15,11 +15,11 @@
 #    under the License.
 
 import hashlib
+from http import client as http_client
 import os
 import socket
 import tempfile
 
-from six.moves import http_client
 from swiftclient import client as swift
 
 

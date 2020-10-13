@@ -27,8 +27,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import units
-import six
-from six.moves import range
 
 from cinder.backup import driver
 from cinder.backup.drivers import ceph
@@ -1342,7 +1340,7 @@ class BackupCephTestCase(test.TestCase):
             self.service._restore_metadata(self.backup, self.volume_id)
         except exception.BackupOperationError as exc:
             msg = _("Metadata restore failed due to incompatible version")
-            self.assertEqual(msg, six.text_type(exc))
+            self.assertEqual(msg, str(exc))
         else:
             # Force a test failure
             self.assertFalse(True)
@@ -1368,7 +1366,7 @@ class BackupCephTestCase(test.TestCase):
                 msg = (_("Failed to backup volume metadata - Metadata backup "
                          "object 'backup.%s.meta' already exists") %
                        (self.backup_id))
-                self.assertEqual(msg, six.text_type(e))
+                self.assertEqual(msg, str(e))
             else:
                 # Make the test fail
                 self.assertFalse(True)
