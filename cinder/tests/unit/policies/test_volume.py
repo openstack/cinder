@@ -11,7 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from http import client as http_client
+from http import HTTPStatus
 from unittest import mock
 
 from cinder.tests.unit import fake_constants
@@ -36,7 +36,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         response = self._get_request_response(admin_context, path, 'POST',
                                               body=body)
 
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
 
     def test_nonadmin_user_can_create_volume(self):
         user_context = self.user_context
@@ -48,7 +48,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         response = self._get_request_response(user_context, path, 'POST',
                                               body=body)
 
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
 
     def test_admin_can_create_volume_from_image(self):
         admin_context = self.admin_context
@@ -60,7 +60,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         response = self._get_request_response(admin_context, path, 'POST',
                                               body=body)
 
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
 
     def test_nonadmin_user_can_create_volume_from_image(self):
         user_context = self.user_context
@@ -72,7 +72,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         response = self._get_request_response(user_context, path, 'POST',
                                               body=body)
 
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_admin_can_show_volumes(self, mock_volume):
@@ -87,7 +87,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(admin_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         self.assertEqual(response.json_body['volume']['id'], volume.id)
 
     @mock.patch.object(volume_api.API, 'get_volume')
@@ -103,7 +103,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(user_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         self.assertEqual(response.json_body['volume']['id'], volume.id)
 
     @mock.patch.object(volume_api.API, 'get_volume')
@@ -124,7 +124,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         # volume, because they didn't create it and it lives in a different
         # project. Does cinder return a 404 in cases like this? Or is a 403
         # expected?
-        self.assertEqual(http_client.NOT_FOUND, response.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND, response.status_int)
 
     def test_admin_can_get_all_volumes_detail(self):
         # Make sure administrators are authorized to list volumes
@@ -137,7 +137,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(admin_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_vol = response.json_body['volumes'][0]
 
         self.assertEqual(volume.id, res_vol['id'])
@@ -153,7 +153,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(user_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_vol = response.json_body['volumes'][0]
 
         self.assertEqual(volume.id, res_vol['id'])
@@ -171,7 +171,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"volume": {"name": "update_name"}}
         response = self._get_request_response(admin_context, path, 'PUT',
                                               body=body)
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_can_update_volumes(self, mock_volume):
@@ -186,7 +186,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"volume": {"name": "update_name"}}
         response = self._get_request_response(user_context, path, 'PUT',
                                               body=body)
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_cannot_update_volumes_for_others(self, mock_volume):
@@ -203,7 +203,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"volume": {"name": "update_name"}}
         response = self._get_request_response(non_owner_context, path, 'PUT',
                                               body=body)
-        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_can_delete_volumes(self, mock_volume):
@@ -216,7 +216,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         }
 
         response = self._get_request_response(user_context, path, 'DELETE')
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_admin_can_delete_volumes(self, mock_volume):
@@ -229,7 +229,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         }
 
         response = self._get_request_response(admin_context, path, 'DELETE')
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_cannot_delete_volumes_for_others(self, mock_volume):
@@ -245,7 +245,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(non_owner_context, path,
                                               'DELETE')
-        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get_volume')
     def test_admin_can_show_tenant_id_in_volume(self, mock_volume):
@@ -260,7 +260,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(admin_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_vol = response.json_body['volume']
         self.assertEqual(admin_context.project_id,
                          res_vol['os-vol-tenant-attr:tenant_id'])
@@ -278,7 +278,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(user_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_vol = response.json_body['volume']
         self.assertEqual(user_context.project_id,
                          res_vol['os-vol-tenant-attr:tenant_id'])
@@ -294,7 +294,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(admin_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_vol = response.json_body['volumes'][0]
         # Make sure owners are authorized to show tenant_id
         self.assertEqual(admin_context.project_id,
@@ -311,7 +311,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
 
         response = self._get_request_response(user_context, path, 'GET')
 
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_vol = response.json_body['volumes'][0]
         # Make sure owners are authorized to show tenant_id
         self.assertEqual(user_context.project_id,
@@ -328,7 +328,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"metadata": {"k1": "v1"}}
         response = self._get_request_response(admin_context, path, 'POST',
                                               body=body)
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
 
     def test_admin_can_get_metadata(self):
         admin_context = self.admin_context
@@ -339,7 +339,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         }
 
         response = self._get_request_response(admin_context, path, 'GET')
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_meta = response.json_body['metadata']
         self.assertIn('k', res_meta)
         self.assertEqual('v', res_meta['k'])
@@ -355,7 +355,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"metadata": {"k": "v2"}}
         response = self._get_request_response(admin_context, path, 'PUT',
                                               body=body)
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_meta = response.json_body['metadata']
         self.assertIn('k', res_meta)
         self.assertEqual('v2', res_meta['k'])
@@ -370,7 +370,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
             'key': 'k'
         }
         response = self._get_request_response(admin_context, path, 'DELETE')
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
 
     def test_owner_can_create_metadata(self):
         user_context = self.user_context
@@ -383,7 +383,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"metadata": {"k1": "v1"}}
         response = self._get_request_response(user_context, path, 'POST',
                                               body=body)
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
 
     def test_owner_can_get_metadata(self):
         user_context = self.user_context
@@ -394,7 +394,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         }
 
         response = self._get_request_response(user_context, path, 'GET')
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_meta = response.json_body['metadata']
         self.assertIn('k', res_meta)
         self.assertEqual('v', res_meta['k'])
@@ -410,7 +410,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"metadata": {"k": "v2"}}
         response = self._get_request_response(user_context, path, 'PUT',
                                               body=body)
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
         res_meta = response.json_body['metadata']
         self.assertIn('k', res_meta)
         self.assertEqual('v2', res_meta['k'])
@@ -425,7 +425,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
             'key': 'k'
         }
         response = self._get_request_response(user_context, path, 'DELETE')
-        self.assertEqual(http_client.OK, response.status_int)
+        self.assertEqual(HTTPStatus.OK, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_cannot_create_metadata_for_others(self, mock_volume):
@@ -441,7 +441,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"metadata": {"k1": "v1"}}
         response = self._get_request_response(non_owner_context, path, 'POST',
                                               body=body)
-        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_cannot_get_metadata_for_others(self, mock_volume):
@@ -455,7 +455,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         }
 
         response = self._get_request_response(non_owner_context, path, 'GET')
-        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_cannot_update_metadata_for_others(self, mock_volume):
@@ -471,7 +471,7 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         body = {"metadata": {"k": "v2"}}
         response = self._get_request_response(non_owner_context, path, 'PUT',
                                               body=body)
-        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
 
     @mock.patch.object(volume_api.API, 'get')
     def test_owner_cannot_delete_metadata_for_others(self, mock_volume):
@@ -487,4 +487,4 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         }
         response = self._get_request_response(non_owner_context, path,
                                               'DELETE')
-        self.assertEqual(http_client.FORBIDDEN, response.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
