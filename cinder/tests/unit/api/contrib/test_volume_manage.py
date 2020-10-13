@@ -13,14 +13,14 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from http import HTTPStatus
 from unittest import mock
+from urllib.parse import urlencode
 
 import ddt
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
-from six.moves import http_client
-from six.moves.urllib.parse import urlencode
 import webob
 
 from cinder.api.contrib import volume_manage
@@ -220,7 +220,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref'}}
 
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
         # Check that the manage API was called with the correct arguments.
         self.assertEqual(1, mock_api_manage.call_count)
@@ -238,7 +238,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref'}}
 
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def _get_resp_create(self, body, version=mv.BASE_VERSION):
         url = '/v3/%s/os-volume-manage' % fake.PROJECT_ID
@@ -278,7 +278,7 @@ class VolumeManageTest(test.TestCase):
         """Test correct failure when host is not specified."""
         body = {'volume': {'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @mock.patch('cinder.objects.Service.get_by_args')
     def test_manage_volume_service_not_found_on_host(self, mock_service):
@@ -289,13 +289,13 @@ class VolumeManageTest(test.TestCase):
             service_id='cinder-volume',
             host='host_ok')
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_manage_volume_missing_ref(self):
         """Test correct failure when the ref is not specified."""
         body = {'volume': {'host': 'host_ok'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_manage_volume_with_invalid_bootable(self):
         """Test correct failure when invalid bool value is specified."""
@@ -303,7 +303,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'bootable': 'InvalidBool'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=True,
                 new_callable=mock.PropertyMock)
@@ -311,7 +311,7 @@ class VolumeManageTest(test.TestCase):
         """Test manage volume failure due to disabled service."""
         body = {'volume': {'host': 'host_disabled', 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         mock_is_up.assert_not_called()
@@ -322,7 +322,7 @@ class VolumeManageTest(test.TestCase):
         """Test manage volume failure due to down service."""
         body = {'volume': {'host': 'host_ok', 'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         self.assertTrue(mock_is_up.called)
@@ -339,7 +339,7 @@ class VolumeManageTest(test.TestCase):
                            'volume_type': fake.VOLUME_TYPE_ID,
                            'bootable': True}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
     def test_manage_volume_volume_type_by_name(self):
@@ -352,7 +352,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': 'good_fakevt'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_manage_volume_bad_volume_type_by_uuid(self):
         """Test failure on nonexistent volume type specified by ID."""
@@ -360,7 +360,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': fake.WILL_NOT_BE_FOUND_ID}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_manage_volume_bad_volume_type_by_name(self):
         """Test failure on nonexistent volume type specified by name."""
@@ -368,7 +368,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': 'bad_fakevt'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def _get_resp_get(self, host, detailed, paging, admin=True):
         """Helper to execute a GET os-volume-manage API call."""
@@ -394,10 +394,10 @@ class VolumeManageTest(test.TestCase):
                 wraps=api_get_manageable_volumes)
     def test_get_manageable_volumes_non_admin(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', False, False, admin=False)
-        self.assertEqual(http_client.FORBIDDEN, res.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, res.status_int)
         mock_api_manageable.assert_not_called()
         res = self._get_resp_get('fakehost', True, False, admin=False)
-        self.assertEqual(http_client.FORBIDDEN, res.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, res.status_int)
         mock_api_manageable.assert_not_called()
 
     @mock.patch('cinder.volume.api.API.get_manageable_volumes',
@@ -411,7 +411,7 @@ class VolumeManageTest(test.TestCase):
                  'size': 4, 'safe_to_manage': False},
                 {'reference': {'source-name': 'myvol'},
                  'size': 5, 'safe_to_manage': True}]}
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(exp, jsonutils.loads(res.body))
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', None, limit=10, marker='1234',
@@ -438,7 +438,7 @@ class VolumeManageTest(test.TestCase):
                 {'reference': {'source-name': 'myvol'}, 'cinder_id': None,
                  'size': 5, 'reason_not_safe': None, 'safe_to_manage': True,
                  'extra_info': 'qos_setting:low'}]}
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(exp, jsonutils.loads(res.body))
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', None, limit=CONF.osapi_max_limit,
@@ -464,13 +464,13 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            "metadata": value}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @mock.patch('cinder.objects.service.Service.is_up', return_value=True,
                 new_callable=mock.PropertyMock)
     def test_get_manageable_volumes_disabled(self, mock_is_up):
         res = self._get_resp_get('host_disabled', False, True)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         mock_is_up.assert_not_called()
@@ -479,7 +479,7 @@ class VolumeManageTest(test.TestCase):
                 new_callable=mock.PropertyMock)
     def test_get_manageable_volumes_is_down(self, mock_is_up):
         res = self._get_resp_get('host_ok', False, True)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int, res)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int, res)
         self.assertEqual(exception.ServiceUnavailable.message,
                          res.json['badRequest']['message'])
         self.assertTrue(mock_is_up.called)
@@ -490,7 +490,7 @@ class VolumeManageTest(test.TestCase):
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
         res = self._get_resp_post_v3(body, mv.ETAGS)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(1, mock_api_manage.call_count)
         self.assertEqual('creating',
                          jsonutils.loads(res.body)['volume']['status'])
@@ -502,7 +502,7 @@ class VolumeManageTest(test.TestCase):
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(1, mock_api_manage.call_count)
         self.assertEqual('creating',
                          jsonutils.loads(res.body)['volume']['status'])
@@ -510,4 +510,4 @@ class VolumeManageTest(test.TestCase):
     @ddt.data({'volume': {}}, None)
     def test_manage_volume_with_invalid_body(self, body):
         res = self._get_resp_post(body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)

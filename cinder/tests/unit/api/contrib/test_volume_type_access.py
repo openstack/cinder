@@ -12,9 +12,9 @@
 #    under the License.
 
 import datetime
+from http import HTTPStatus
 from unittest import mock
 
-from six.moves import http_client
 import webob
 
 from cinder.api.contrib import volume_type_access as type_access
@@ -300,7 +300,7 @@ class VolumeTypeAccessTest(test.TestCase):
             use_admin_context=True)
         result = self.type_action_controller._addProjectAccess(
             req, fake.VOLUME_TYPE4_ID, body=body)
-        self.assertEqual(http_client.ACCEPTED, result.status_code)
+        self.assertEqual(HTTPStatus.ACCEPTED, result.status_code)
 
     def test_add_project_access_with_no_admin_user(self):
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (

@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import HTTPStatus
+
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder import context
@@ -85,7 +86,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self._create_type_and_encryption(volume_type)
 
         res = self._get_response(volume_type)
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
 
         expected = fake_volume_type_encryption()
@@ -96,12 +97,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
     def test_index_invalid_type(self):
         volume_type = self._default_volume_type
         res = self._get_response(volume_type)
-        self.assertEqual(http_client.NOT_FOUND, res.status_code)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
         res_dict = jsonutils.loads(res.body)
 
         expected = {
             'itemNotFound': {
-                'code': http_client.NOT_FOUND,
+                'code': HTTPStatus.NOT_FOUND,
                 'message': ('Volume type %s could not be found.'
                             % volume_type['id'])
             }
@@ -115,7 +116,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  url='/v2/%s/types/%s/encryption/key_size')
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         self.assertEqual(256, res_dict['key_size'])
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
@@ -128,7 +129,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  url='/v2/%s/types/%s/encryption/provider')
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         self.assertEqual('fake_provider', res_dict['provider'])
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
@@ -140,10 +141,10 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  url='/v2/%s/types/%s/encryption/fake')
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_code)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
         expected = {
             'itemNotFound': {
-                'code': http_client.NOT_FOUND,
+                'code': HTTPStatus.NOT_FOUND,
                 'message': ('Volume type encryption for type %s does not '
                             'exist.' % volume_type['id'])
             }
@@ -164,7 +165,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(0, len(self.notifier.notifications))
         res = self._get_response(volume_type)
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         # Confirm that volume type has no encryption information
         # before create.
         self.assertEqual(b'{}', res.body)
@@ -207,11 +208,11 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(0, len(self.notifier.notifications))
-        self.assertEqual(http_client.NOT_FOUND, res.status_code)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
 
         expected = {
             'itemNotFound': {
-                'code': http_client.NOT_FOUND,
+                'code': HTTPStatus.NOT_FOUND,
                 'message': ('Volume type %s could not be found.'
                             % volume_type['id'])
             }
@@ -232,7 +233,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         expected = {
             'badRequest': {
-                'code': http_client.BAD_REQUEST,
+                'code': HTTPStatus.BAD_REQUEST,
                 'message': ('Volume type encryption for type '
                             '%s already exists.' % fake.VOLUME_TYPE_ID)
             }
@@ -268,7 +269,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         expected = {
             'badRequest': {
-                'code': http_client.BAD_REQUEST,
+                'code': HTTPStatus.BAD_REQUEST,
                 'message': ('Cannot create encryption specs. '
                             'Volume type in use.')
             }
@@ -287,7 +288,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
@@ -346,7 +347,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         # Test that before create, there's nothing with a get
         res = self._get_response(volume_type)
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
 
@@ -364,7 +365,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption')
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
 
@@ -372,12 +373,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption/provider')
-        self.assertEqual(http_client.ACCEPTED, res.status_code)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
         self.assertEqual(0, len(res.body))
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption')
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
 
@@ -401,7 +402,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption')
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
 
@@ -428,11 +429,11 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption/provider')
-        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         res_dict = jsonutils.loads(res.body)
         expected = {
             'badRequest': {
-                'code': http_client.BAD_REQUEST,
+                'code': HTTPStatus.BAD_REQUEST,
                 'message': 'Cannot delete encryption specs. '
                            'Volume type in use.'
             }
@@ -447,12 +448,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption/provider')
-        self.assertEqual(http_client.ACCEPTED, res.status_code)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
         self.assertEqual(0, len(res.body))
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption')
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
 
@@ -468,12 +469,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
                                  url='/v2/%s/types/%s/encryption/provider')
-        self.assertEqual(http_client.NOT_FOUND, res.status_code)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
         expected = {
             "itemNotFound": {
                 "message": "Volume type encryption for type "
                            "%s does not exist." % fake.VOLUME_TYPE_ID,
-                "code": http_client.NOT_FOUND
+                "code": HTTPStatus.NOT_FOUND
             }
         }
         self.assertEqual(expected, jsonutils.loads(res.body))
@@ -529,7 +530,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         # Confirm Failure
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
@@ -572,7 +573,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         # Get the Encryption
         res = self._get_response(volume_type)
-        self.assertEqual(http_client.OK, res.status_code)
+        self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
 
@@ -585,11 +586,11 @@ class VolumeTypeEncryptionTest(test.TestCase):
                           req_headers='application/json',
                           url='/v2/%s/types/%s/encryption/' +
                               fake.ENCRYPTION_KEY_ID)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_code)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         res_dict = jsonutils.loads(res.body)
         expected = {
             'badRequest': {
-                'code': http_client.BAD_REQUEST,
+                'code': HTTPStatus.BAD_REQUEST,
                 'message': 'Cannot update encryption specs. '
                            'Volume type in use.'
             }

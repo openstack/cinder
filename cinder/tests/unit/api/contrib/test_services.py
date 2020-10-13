@@ -14,12 +14,12 @@
 #    under the License.
 
 import datetime
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 import iso8601
 from oslo_config import cfg
-from six.moves import http_client
 
 from cinder.api.contrib import services
 from cinder.api import extensions
@@ -734,7 +734,7 @@ class ServicesTest(test.TestCase):
                                               'fake_host',
                                               None,
                                               'fake_backend')
-        self.assertEqual(http_client.ACCEPTED, res.status_code)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
 
     @ddt.data(('failover_host', {'host': 'fake_host',
                                  'backend_id': 'fake_backend'}),

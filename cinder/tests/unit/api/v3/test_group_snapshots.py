@@ -15,11 +15,11 @@
 
 """Tests for group_snapshot code."""
 
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 from oslo_policy import policy as oslo_policy
-from six.moves import http_client
 import webob
 
 from cinder.api import microversions as mv
@@ -502,7 +502,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
 
         group_snapshot = objects.GroupSnapshot.get_by_id(self.context,
                                                          group_snapshot.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupSnapshotStatus.DELETING,
                          group_snapshot.status)
 
@@ -627,7 +627,7 @@ class GroupSnapshotsAPITestCase(test.TestCase):
 
         g_snapshot = objects.GroupSnapshot.get_by_id(self.context,
                                                      group_snapshot.id)
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
         self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
                          g_snapshot.status)
         group_snapshot.destroy()

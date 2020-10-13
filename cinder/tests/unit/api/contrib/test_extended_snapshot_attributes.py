@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import HTTPStatus
 from unittest import mock
 
 from oslo_serialization import jsonutils
-from six.moves import http_client
 import webob
 
 from cinder import context
@@ -101,7 +101,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         url = '/v2/%s/snapshots/%s' % (fake.PROJECT_ID, UUID1)
         res = self._make_request(url)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
                                       project_id=fake.PROJECT_ID,
                                       progress='0%')
@@ -115,7 +115,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         res = self._make_request(url)
         mock_authorize.return_value = False
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
                                           project_id=fake.PROJECT_ID,

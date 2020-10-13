@@ -15,17 +15,15 @@
 
 
 import datetime
+from http import HTTPStatus
 import json
 from unittest import mock
+import urllib
 
 import ddt
 import fixtures
 import iso8601
 from oslo_config import cfg
-import six
-from six.moves import http_client
-from six.moves import range
-from six.moves import urllib
 import webob
 
 from cinder.api import common
@@ -1446,7 +1444,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_delete(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         resp = self.controller.delete(req, fake.VOLUME_ID)
-        self.assertEqual(http_client.ACCEPTED, resp.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
 
     def test_volume_delete_attached(self):
         def fake_volume_attached(self, context, volume,
@@ -1460,7 +1458,7 @@ class VolumeApiTest(test.TestCase):
                                 self.controller.delete,
                                 req, 1)
         expect_msg = "Volume 1 is still attached, detach volume first."
-        self.assertEqual(expect_msg, six.text_type(exp))
+        self.assertEqual(expect_msg, str(exp))
 
     def test_volume_delete_no_volume(self):
         self.mock_object(volume_api.API, "get",

@@ -14,10 +14,10 @@
 #    under the License.
 
 import datetime
+from http import HTTPStatus
 
 import ddt
 from oslo_serialization import jsonutils
-from six.moves import http_client
 
 import cinder
 from cinder.api.openstack import wsgi
@@ -58,7 +58,7 @@ class SchedulerHintsTestCase(test.TestCase):
 
     def test_create_server_without_hints(self):
 
-        @wsgi.response(http_client.ACCEPTED)
+        @wsgi.response(HTTPStatus.ACCEPTED)
         def fake_create(*args, **kwargs):
             self.assertNotIn('scheduler_hints', kwargs['body'])
             return self.fake_instance
@@ -74,11 +74,11 @@ class SchedulerHintsTestCase(test.TestCase):
                 'volume_id': fake.VOLUME_ID, }
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_create_server_with_hints(self):
 
-        @wsgi.response(http_client.ACCEPTED)
+        @wsgi.response(HTTPStatus.ACCEPTED)
         def fake_create(*args, **kwargs):
             self.assertIn('scheduler_hints', kwargs['body'])
             self.assertEqual({"a": "b"}, kwargs['body']['scheduler_hints'])
@@ -97,7 +97,7 @@ class SchedulerHintsTestCase(test.TestCase):
 
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_create_server_bad_hints(self):
         req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
@@ -111,7 +111,7 @@ class SchedulerHintsTestCase(test.TestCase):
 
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     @ddt.data({'local_to_instance': UUID},
               {'local_to_instance': None},
@@ -131,7 +131,7 @@ class SchedulerHintsTestCase(test.TestCase):
 
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     @ddt.data({'local_to_instance': 'local_to_instance'},
               {'different_host': 'different_host'},
@@ -152,4 +152,4 @@ class SchedulerHintsTestCase(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)

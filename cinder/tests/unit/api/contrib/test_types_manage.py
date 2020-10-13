@@ -17,7 +17,6 @@ from unittest import mock
 
 import ddt
 from oslo_utils import strutils
-import six
 import webob
 
 from cinder.api.contrib import types_manage
@@ -43,24 +42,24 @@ def fake_volume_type(id):
              "key4": "value4",
              "key5": "value5"}
     return dict(id=id,
-                name='vol_type_%s' % six.text_type(id),
-                description='vol_type_desc_%s' % six.text_type(id),
+                name='vol_type_%s' % id,
+                description='vol_type_desc_%s' % id,
                 extra_specs=specs)
 
 
 def fake_volume_type_updated(id, is_public=True):
     return dict(id=id,
-                name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
+                name='vol_type_%s_%s' % (id, id),
                 is_public=is_public,
                 description='vol_type_desc_%s_%s' % (
-                    six.text_type(id), six.text_type(id)))
+                    id, id))
 
 
 def fake_volume_type_updated_desc_only(id):
     return dict(id=id,
-                name='vol_type_%s' % six.text_type(id),
+                name='vol_type_%s' % id,
                 description='vol_type_desc_%s_%s' % (
-                    six.text_type(id), six.text_type(id)))
+                    id, id))
 
 
 def return_volume_types_get_volume_type(context, id):
@@ -99,14 +98,14 @@ def return_volume_types_create_duplicate_type(context,
 
 def fake_volume_type_updated_name_only(id):
     return dict(id=id,
-                name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
-                description='vol_type_desc_%s' % six.text_type(id))
+                name='vol_type_%s_%s' % (id, id),
+                description='vol_type_desc_%s' % id)
 
 
 def fake_volume_type_updated_name_after_delete(id):
     return dict(id=id,
-                name='vol_type_%s' % six.text_type(id),
-                description='vol_type_desc_%s' % six.text_type(id))
+                name='vol_type_%s' % id,
+                description='vol_type_desc_%s' % id)
 
 
 def return_volume_types_get_volume_type_updated(id, is_public=True):

@@ -15,10 +15,10 @@
 
 """Tests for group code."""
 
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
-from six.moves import http_client
 import webob
 
 from cinder.api import microversions as mv
@@ -527,7 +527,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
     def test_delete_group_available_no_delete_volumes(self):
@@ -542,7 +542,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING,
                          group.status)
 
@@ -577,7 +577,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
     def test_delete_group_no_host(self):
@@ -592,7 +592,7 @@ class GroupsAPITestCase(test.TestCase):
         res_dict = self.controller.delete_group(
             req, self.group1.id, body=body)
 
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         group = objects.Group.get_by_id(
             context.get_admin_context(read_deleted='yes'),
             self.group1.id)
@@ -646,7 +646,7 @@ class GroupsAPITestCase(test.TestCase):
         ex = self.assertRaises(exception.GroupLimitExceeded,
                                self.controller.create,
                                req, body=body)
-        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE, ex.code)
+        self.assertEqual(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, ex.code)
 
     def test_delete_group_with_invalid_body(self):
         self.group1.status = fields.GroupStatus.AVAILABLE
@@ -701,7 +701,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
     def test_delete_group_delete_volumes(self):
@@ -717,7 +717,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
         vol.destroy()
@@ -768,7 +768,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.DELETING, group.status)
 
         vol.destroy()
@@ -867,7 +867,7 @@ class GroupsAPITestCase(test.TestCase):
 
         group = objects.Group.get_by_id(
             self.ctxt, self.group1.id)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
         self.assertEqual(fields.GroupStatus.UPDATING,
                          group.status)
 
@@ -890,7 +890,7 @@ class GroupsAPITestCase(test.TestCase):
 
         res_dict = self.controller.update(
             req, self.group1.id, body=body)
-        self.assertEqual(http_client.ACCEPTED, res_dict.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res_dict.status_int)
 
         group = objects.Group.get_by_id(self.ctxt, self.group1.id)
         self.assertEqual("new name", group.name)
@@ -1081,7 +1081,7 @@ class GroupsAPITestCase(test.TestCase):
                                                 self.group2.id, body=body)
 
         group = objects.Group.get_by_id(self.ctxt, self.group2.id)
-        self.assertEqual(http_client.ACCEPTED, response.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, response.status_int)
         self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
 
     @ddt.data(True, False)

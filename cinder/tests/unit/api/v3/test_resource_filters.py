@@ -15,7 +15,6 @@
 from unittest import mock
 
 import ddt
-import six
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import resource_filters as v3_filters
@@ -55,9 +54,5 @@ class ResourceFiltersAPITestCase(test.TestCase):
 
         with mock.patch('cinder.api.common._FILTERS_COLLECTION', filters):
             result = self.controller.index(req)
-            six.assertCountEqual(self,
-                                 list(six.viewkeys(result)),
-                                 ['resource_filters'])
-            six.assertCountEqual(self,
-                                 expected_filters,
-                                 result['resource_filters'])
+            self.assertCountEqual(list(result), ['resource_filters'])
+            self.assertCountEqual(expected_filters, result['resource_filters'])

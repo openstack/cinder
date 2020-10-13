@@ -15,13 +15,12 @@
 
 """Tests for Backup code."""
 
+from http import HTTPStatus
 from unittest import mock
 
 import ddt
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
-import six
-from six.moves import http_client
 import webob
 
 from cinder.api.contrib import backups
@@ -90,7 +89,7 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual('az1', res_dict['backup']['availability_zone'])
         self.assertEqual('volumebackups', res_dict['backup']['container'])
         self.assertEqual('This is a test backup',
@@ -139,8 +138,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Backup %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -158,7 +157,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(3, len(res_dict['backups'][0]))
         self.assertEqual(backup3.id, res_dict['backups'][0]['id'])
         self.assertEqual('test_backup', res_dict['backups'][0]['name'])
@@ -185,7 +184,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
         self.assertEqual(3, len(res_dict['backups'][0]))
         self.assertEqual(backup3.id, res_dict['backups'][0]['id'])
@@ -205,7 +204,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_list_backups_with_marker(self):
         backup1 = utils.create_backup(self.context)
@@ -219,7 +218,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
         self.assertEqual(3, len(res_dict['backups'][0]))
         self.assertEqual(backup2.id, res_dict['backups'][0]['id'])
@@ -246,7 +245,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(1, len(res_dict['backups']))
         self.assertEqual(3, len(res_dict['backups'][0]))
         self.assertEqual(backup2.id, res_dict['backups'][0]['id'])
@@ -273,7 +272,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][1]))
         self.assertEqual(2, len(res_dict['backups']))
@@ -311,7 +310,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual('az1', res_dict['backups'][0]['availability_zone'])
         self.assertEqual('volumebackups',
@@ -406,7 +405,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(1, len(res_dict['backups']))
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(backup1.id, res_dict['backups'][0]['id'])
 
         req = webob.Request.blank('/v2/%s/backups/detail?status=available' %
@@ -419,7 +418,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(1, len(res_dict['backups']))
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(backup2.id, res_dict['backups'][0]['id'])
 
         req = webob.Request.blank('/v2/%s/backups/detail?volume_id=%s' % (
@@ -432,7 +431,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(1, len(res_dict['backups']))
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(backup3.id, res_dict['backups'][0]['id'])
 
         backup3.destroy()
@@ -452,7 +451,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(backup3.id, res_dict['backups'][0]['id'])
@@ -477,7 +476,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(backup2.id, res_dict['backups'][0]['id'])
@@ -502,7 +501,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(1, len(res_dict['backups']))
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(backup2.id, res_dict['backups'][0]['id'])
@@ -519,7 +518,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def test_create_backup_json(self):
         volume = utils.create_volume(self.context, size=5)
@@ -540,7 +539,7 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
 
         volume.destroy()
@@ -678,8 +677,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -708,7 +707,7 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
 
         backup.destroy()
@@ -732,7 +731,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
 
         volume.destroy()
@@ -759,7 +758,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
         snapshot.destroy()
@@ -786,8 +785,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
@@ -811,8 +810,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertIsNotNone(res_dict['itemNotFound']['message'])
 
@@ -877,7 +876,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
 
         backup.destroy()
@@ -914,7 +913,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: The parent backup must be '
                          'available for incremental backup.',
@@ -934,8 +933,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual("None is not of type 'object'",
                          res_dict['badRequest']['message'])
@@ -956,8 +955,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertIn("'volume_id' is a required property",
                       res_dict['badRequest']['message'])
@@ -978,8 +977,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Volume %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -1000,7 +999,7 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
         self.assertIn("'not a uuid' is not a 'uuid'",
                       res_dict['badRequest']['message'])
 
@@ -1022,8 +1021,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
     @mock.patch('cinder.db.service_get_all')
@@ -1049,7 +1048,7 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual('available', volume.status)
 
     @mock.patch('cinder.db.service_get_all')
@@ -1078,7 +1077,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: No backups available to do '
                          'an incremental backup.',
@@ -1105,7 +1104,7 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
 
         volume.destroy()
@@ -1135,7 +1134,7 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertIn('id', res_dict['backup'])
         volume.destroy()
 
@@ -1274,7 +1273,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         backup.refresh()
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(fields.BackupStatus.DELETING,
                          backup.status)
 
@@ -1302,7 +1301,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         delta.refresh()
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(fields.BackupStatus.DELETING,
                          delta.status)
 
@@ -1327,7 +1326,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
 
         backup.refresh()
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(fields.BackupStatus.DELETING,
                          backup.status)
 
@@ -1342,8 +1341,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Backup %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -1359,8 +1358,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup status must be '
                          'available or error',
@@ -1390,8 +1389,8 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Incremental backups '
                          'exist for this backup.',
@@ -1416,7 +1415,7 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
 
         backup.destroy()
 
@@ -1439,7 +1438,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     def test_restore_backup_volume_id_specified_json(
@@ -1463,7 +1462,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
         self.assertEqual(volume.id, res_dict['restore']['volume_id'])
         self.assertEqual(volume_name, res_dict['restore']['volume_name'])
@@ -1483,8 +1482,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual("None is not of type 'object'",
                          res_dict['badRequest']['message'])
@@ -1508,8 +1507,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
 
         self.assertIn("Additional properties are not allowed ",
@@ -1547,7 +1546,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
 
     @mock.patch('cinder.db.service_get_all')
@@ -1590,7 +1589,7 @@ class BackupsAPITestCase(test.TestCase):
             body['restore']['name'],
             description)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
 
     @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
@@ -1612,7 +1611,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
         self.assertEqual(volume.id, res_dict['restore']['volume_id'])
         restored_vol = db.volume_get(self.context,
@@ -1640,7 +1639,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
 
     @mock.patch('cinder.backup.api.API.restore')
@@ -1666,8 +1665,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid input received: Invalid input',
                          res_dict['badRequest']['message'])
@@ -1688,8 +1687,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid volume: Volume to be restored to must '
                          'be available',
@@ -1714,8 +1713,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup status must be available',
                          res_dict['badRequest']['message'])
@@ -1737,8 +1736,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Backup %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -1760,8 +1759,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Volume %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
@@ -1795,8 +1794,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE, res.status_int)
-        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE,
+        self.assertEqual(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, res.status_int)
+        self.assertEqual(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                          res_dict['overLimit']['code'])
         self.assertEqual('Requested volume or snapshot exceeds allowed '
                          'gigabytes quota. Requested 2G, quota is 3G and '
@@ -1826,8 +1825,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE, res.status_int)
-        self.assertEqual(http_client.REQUEST_ENTITY_TOO_LARGE,
+        self.assertEqual(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, res.status_int)
+        self.assertEqual(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                          res_dict['overLimit']['code'])
         self.assertEqual("Maximum number of volumes allowed (1) exceeded for"
                          " quota 'volumes'.", res_dict['overLimit']['message'])
@@ -1851,8 +1850,8 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid volume: volume size %d is too '
                          'small to restore backup of size %d.'
@@ -1883,7 +1882,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
         self.assertEqual(volume.id, res_dict['restore']['volume_id'])
         self.assertEqual(volume_name, res_dict['restore']['volume_name'])
@@ -1914,7 +1913,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.ACCEPTED, res.status_int)
+        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
         self.assertEqual(volume.id, res_dict['restore']['volume_id'])
         self.assertEqual(volume_name, res_dict['restore']['volume_name'])
@@ -1938,7 +1937,7 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         # request is not authorized
-        self.assertEqual(http_client.FORBIDDEN, res.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, res.status_int)
 
     @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.export_record')
@@ -1964,7 +1963,7 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
         # verify that request is successful
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(backup_service,
                          res_dict['backup-record']['backup_service'])
         self.assertEqual(backup_url,
@@ -1983,8 +1982,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.NOT_FOUND, res.status_int)
-        self.assertEqual(http_client.NOT_FOUND,
+        self.assertEqual(HTTPStatus.NOT_FOUND, res.status_int)
+        self.assertEqual(HTTPStatus.NOT_FOUND,
                          res_dict['itemNotFound']['code'])
         self.assertEqual('Backup %s could not be found.' % backup_id,
                          res_dict['itemNotFound']['message'])
@@ -2002,8 +2001,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup status must be available '
                          'and not restoring.',
@@ -2031,8 +2030,8 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: %s' % msg,
                          res_dict['badRequest']['message'])
@@ -2052,7 +2051,7 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(
             fake_auth_context=self.user_context))
         # request is not authorized
-        self.assertEqual(http_client.FORBIDDEN, res.status_int)
+        self.assertEqual(HTTPStatus.FORBIDDEN, res.status_int)
 
     @mock.patch.object(quota.QUOTAS, 'commit')
     @mock.patch.object(quota.QUOTAS, 'rollback')
@@ -2090,7 +2089,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         # verify that request is successful
-        self.assertEqual(http_client.CREATED, res.status_int)
+        self.assertEqual(HTTPStatus.CREATED, res.status_int)
         self.assertIn('id', res_dict['backup'])
         self.assertEqual(fake.BACKUP_ID, res_dict['backup']['id'])
 
@@ -2147,7 +2146,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
 
         # verify that request is successful
-        self.assertEqual(http_client.CREATED, res.status_int)
+        self.assertEqual(HTTPStatus.CREATED, res.status_int)
         self.assertIn('id', res_dict['backup'])
         self.assertEqual(fake.BACKUP_ID, res_dict['backup']['id'])
 
@@ -2181,8 +2180,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.SERVICE_UNAVAILABLE, res.status_int)
-        self.assertEqual(http_client.SERVICE_UNAVAILABLE,
+        self.assertEqual(HTTPStatus.SERVICE_UNAVAILABLE, res.status_int)
+        self.assertEqual(HTTPStatus.SERVICE_UNAVAILABLE,
                          res_dict['serviceUnavailable']['code'])
         self.assertEqual('Service %s could not be found.'
                          % backup_service,
@@ -2205,8 +2204,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual("Invalid input received: Can't parse backup record.",
                          res_dict['badRequest']['message'])
@@ -2237,8 +2236,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup already exists in database.',
                          res_dict['badRequest']['message'])
@@ -2277,8 +2276,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.SERVICE_UNAVAILABLE, res.status_int)
-        self.assertEqual(http_client.SERVICE_UNAVAILABLE,
+        self.assertEqual(HTTPStatus.SERVICE_UNAVAILABLE, res.status_int)
+        self.assertEqual(HTTPStatus.SERVICE_UNAVAILABLE,
                          res_dict['serviceUnavailable']['code'])
         self.assertEqual('Service %s could not be found.' % backup_service,
                          res_dict['serviceUnavailable']['message'])
@@ -2300,21 +2299,14 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['content-type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        if six.PY3:
-            self.assertEqual(
-                "Invalid input for field/attribute backup-record. "
-                "Value: {'backup_url': 'fake'}. 'backup_service' "
-                "is a required property",
-                res_dict['badRequest']['message'])
-        else:
-            self.assertEqual(
-                "Invalid input for field/attribute backup-record. "
-                "Value: {u'backup_url': u'fake'}. 'backup_service' "
-                "is a required property",
-                res_dict['badRequest']['message'])
+        self.assertEqual(
+            "Invalid input for field/attribute backup-record. "
+            "Value: {'backup_url': 'fake'}. 'backup_service' "
+            "is a required property",
+            res_dict['badRequest']['message'])
 
         # test with no backup_url
         req = webob.Request.blank('/v2/%s/backups/import_record' %
@@ -2326,21 +2318,14 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
-        if six.PY3:
-            self.assertEqual(
-                "Invalid input for field/attribute backup-record. "
-                "Value: {'backup_service': 'fake'}. 'backup_url' "
-                "is a required property",
-                res_dict['badRequest']['message'])
-        else:
-            self.assertEqual(
-                "Invalid input for field/attribute backup-record. "
-                "Value: {u'backup_service': u'fake'}. 'backup_url' "
-                "is a required property",
-                res_dict['badRequest']['message'])
+        self.assertEqual(
+            "Invalid input for field/attribute backup-record. "
+            "Value: {'backup_service': 'fake'}. 'backup_url' "
+            "is a required property",
+            res_dict['badRequest']['message'])
 
         # test with no backup_url and backup_url
         req = webob.Request.blank('/v2/%s/backups/import_record' %
@@ -2352,8 +2337,8 @@ class BackupsAPITestCase(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual(
             "Invalid input for field/attribute backup-record. "
@@ -2373,8 +2358,8 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
         res_dict = jsonutils.loads(res.body)
         # verify that request is successful
-        self.assertEqual(http_client.BAD_REQUEST, res.status_int)
-        self.assertEqual(http_client.BAD_REQUEST,
+        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
+        self.assertEqual(HTTPStatus.BAD_REQUEST,
                          res_dict['badRequest']['code'])
         self.assertEqual("None is not of type 'object'",
                          res_dict['badRequest']['message'])
@@ -2417,7 +2402,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertTrue(res_dict['backup']['is_incremental'])
         self.assertTrue(res_dict['backup']['has_dependent_backups'])
         self.assertIsNone(res_dict['backup']['snapshot_id'])
@@ -2430,7 +2415,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertFalse(res_dict['backup']['is_incremental'])
         self.assertTrue(res_dict['backup']['has_dependent_backups'])
         self.assertIsNone(res_dict['backup']['snapshot_id'])
@@ -2443,7 +2428,7 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         res_dict = jsonutils.loads(res.body)
 
-        self.assertEqual(http_client.OK, res.status_int)
+        self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertTrue(res_dict['backup']['is_incremental'])
         self.assertFalse(res_dict['backup']['has_dependent_backups'])
         self.assertEqual(snapshot_id, res_dict['backup']['snapshot_id'])
