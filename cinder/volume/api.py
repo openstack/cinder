@@ -27,7 +27,6 @@ from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import versionutils
-import six
 
 from cinder.api import common
 from cinder.common import constants
@@ -619,7 +618,7 @@ class API(base.Base):
             filters['no_migration_targets'] = True
 
         if filters:
-            LOG.debug("Searching by: %s.", six.text_type(filters))
+            LOG.debug("Searching by: %s.", filters)
 
         if context.is_admin and allTenants:
             # Need to remove all_tenants to pass the filtering below.
@@ -1407,7 +1406,7 @@ class API(base.Base):
                      "to extend, currently %(status)s.")
                    % {'vol_id': volume.id,
                       'status': volume.status,
-                      'expected': six.text_type(expected)})
+                      'expected': str(expected)})
             raise exception.InvalidVolume(reason=msg)
 
         rollback = True
@@ -1626,7 +1625,7 @@ class API(base.Base):
                                           'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
         self.update_volume_admin_metadata(context.elevated(), volume,
-                                          {'readonly': six.text_type(flag)})
+                                          {'readonly': str(flag)})
         LOG.info("Update readonly setting on volume "
                  "completed successfully.",
                  resource=volume)
@@ -1934,7 +1933,7 @@ class API(base.Base):
     def _replication_db_change(self, ctxt, field, expected_value, new_value,
                                host, cluster_name, check_up=False):
         def _error_msg(service):
-            expected = utils.build_or_str(six.text_type(expected_value))
+            expected = utils.build_or_str(str(expected_value))
             up_msg = 'and must be up ' if check_up else ''
             msg = (_('%(field)s in %(service)s must be %(expected)s '
                      '%(up_msg)sto failover.')
