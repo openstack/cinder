@@ -75,10 +75,9 @@ class FakeSSHClient(object):
 
 class SSHPoolTestCase(test.TestCase):
     """Unit test for SSH Connection Pool."""
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
-    def test_sshpool_remove(self, mock_isfile, mock_sshclient, mock_open):
+    def test_sshpool_remove(self, mock_isfile, mock_sshclient):
         ssh_to_remove = mock.MagicMock()
         mock_sshclient.side_effect = [mock.MagicMock(),
                                       ssh_to_remove, mock.MagicMock()]
@@ -92,11 +91,10 @@ class SSHPoolTestCase(test.TestCase):
         sshpool.remove(ssh_to_remove)
         self.assertNotIn(ssh_to_remove, list(sshpool.free_items))
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_sshpool_remove_object_not_in_pool(self, mock_isfile,
-                                               mock_sshclient, mock_open):
+                                               mock_sshclient):
         # create an SSH Client that is not a part of sshpool.
         ssh_to_remove = mock.MagicMock()
         mock_sshclient.side_effect = [mock.MagicMock(), mock.MagicMock()]
@@ -112,11 +110,9 @@ class SSHPoolTestCase(test.TestCase):
         sshpool.remove(ssh_to_remove)
         self.assertEqual(listBefore, list(sshpool.free_items))
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
-    def test_ssh_default_hosts_key_file(self, mock_isfile, mock_sshclient,
-                                        mock_open):
+    def test_ssh_default_hosts_key_file(self, mock_isfile, mock_sshclient):
         mock_ssh = mock.MagicMock()
         mock_sshclient.return_value = mock_ssh
         self.override_config('ssh_hosts_key_file',
@@ -136,11 +132,9 @@ class SSHPoolTestCase(test.TestCase):
         mock_ssh.load_host_keys.assert_called_once_with(
             '/var/lib/cinder/ssh_known_hosts')
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
-    def test_ssh_host_key_file_kwargs(self, mock_isfile, mock_sshclient,
-                                      mock_open):
+    def test_ssh_host_key_file_kwargs(self, mock_isfile, mock_sshclient):
         mock_ssh = mock.MagicMock()
         mock_sshclient.return_value = mock_ssh
         self.override_config('ssh_hosts_key_file',
@@ -165,12 +159,10 @@ class SSHPoolTestCase(test.TestCase):
 
         mock_ssh.assert_has_calls(expected, any_order=True)
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')
-    def test_single_ssh_connect(self, mock_sshclient, mock_pkey, mock_isfile,
-                                mock_open):
+    def test_single_ssh_connect(self, mock_sshclient, mock_pkey, mock_isfile):
         self.override_config(
             'ssh_hosts_key_file', '/var/lib/cinder/ssh_known_hosts')
 
@@ -205,9 +197,10 @@ class SSHPoolTestCase(test.TestCase):
                           min_size=1,
                           max_size=1)
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.SSHClient')
-    def test_closed_reopened_ssh_connections(self, mock_sshclient, mock_open):
+    def test_closed_reopened_ssh_connections(self, mock_sshclient,
+                                             mock_open):
         mock_sshclient.return_value = FakeSSHClient()
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
                                     "test",
@@ -232,9 +225,8 @@ class SSHPoolTestCase(test.TestCase):
 
         self.assertNotEqual(first_id, third_id)
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
-    def test_missing_ssh_hosts_key_config(self, mock_sshclient, mock_open):
+    def test_missing_ssh_hosts_key_config(self, mock_sshclient):
         mock_sshclient.return_value = FakeSSHClient()
         self.override_config('ssh_hosts_key_file', None)
         # create with password
@@ -246,7 +238,7 @@ class SSHPoolTestCase(test.TestCase):
                           min_size=1,
                           max_size=1)
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('cinder.ssh_utils.open', new_callable=mock.mock_open)
     @mock.patch('paramiko.SSHClient')
     def test_create_default_known_hosts_file(self, mock_sshclient,
                                              mock_open):
@@ -268,9 +260,8 @@ class SSHPoolTestCase(test.TestCase):
             ssh_pool.remove(ssh)
 
     @mock.patch('os.path.isfile', return_value=False)
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
-    def test_ssh_missing_hosts_key_file(self, mock_sshclient, mock_open,
+    def test_ssh_missing_hosts_key_file(self, mock_sshclient,
                                         mock_isfile):
         mock_sshclient.return_value = FakeSSHClient()
 
@@ -285,11 +276,9 @@ class SSHPoolTestCase(test.TestCase):
                           min_size=1,
                           max_size=1)
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
-    def test_ssh_strict_host_key_policy(self, mock_isfile, mock_sshclient,
-                                        mock_open):
+    def test_ssh_strict_host_key_policy(self, mock_isfile, mock_sshclient):
         mock_sshclient.return_value = FakeSSHClient()
 
         self.flags(strict_ssh_host_key_policy=True,
@@ -306,11 +295,9 @@ class SSHPoolTestCase(test.TestCase):
             self.assertIsInstance(ssh.get_policy(),
                                   paramiko.RejectPolicy)
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
-    def test_ssh_not_strict_host_key_policy(self, mock_isfile, mock_sshclient,
-                                            mock_open):
+    def test_ssh_not_strict_host_key_policy(self, mock_isfile, mock_sshclient):
         mock_sshclient.return_value = FakeSSHClient()
 
         self.override_config('strict_ssh_host_key_policy', False)
@@ -327,14 +314,19 @@ class SSHPoolTestCase(test.TestCase):
                                   paramiko.AutoAddPolicy)
 
     @mock.patch('paramiko.SSHClient')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('cinder.ssh_utils.open', new_callable=mock.mock_open)
     @mock.patch('os.path.isfile', return_value=False)
     def test_ssh_timeout(self, mock_isfile, mock_open, mock_sshclient):
+        self.flags(state_path='/var/lib/cinder',
+                   ssh_hosts_key_file='/var/lib/cinder/ssh_known_hosts')
+        default_file = '/var/lib/cinder/ssh_known_hosts'
+
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
                                     "test",
                                     password="test",
                                     min_size=1,
                                     max_size=1)
+        mock_open.assert_called_once_with(default_file, 'a')
         self.assertEqual(1, sshpool.current_size)
         conn = sshpool.get()
         conn.connect = mock.MagicMock()
@@ -349,12 +341,10 @@ class SSHPoolTestCase(test.TestCase):
                           sshpool.get)
         self.assertEqual(0, sshpool.current_size)
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')
-    def test_ssh_put(self, mock_sshclient, mock_pkey, mock_isfile,
-                     mock_open):
+    def test_ssh_put(self, mock_sshclient, mock_pkey, mock_isfile):
         self.override_config(
             'ssh_hosts_key_file', '/var/lib/cinder/ssh_known_hosts')
 
@@ -384,12 +374,10 @@ class SSHPoolTestCase(test.TestCase):
         self.assertEqual(3, sshpool.current_size)
         fake_close.assert_called_once_with()
 
-    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')
-    def test_ssh_destructor(self, mock_sshclient, mock_pkey, mock_isfile,
-                            mock_open):
+    def test_ssh_destructor(self, mock_sshclient, mock_pkey, mock_isfile):
         self.override_config(
             'ssh_hosts_key_file', '/var/lib/cinder/ssh_known_hosts')
 
