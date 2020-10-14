@@ -12,11 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from http import client as http_client
+import urllib
+
 from oslo_serialization import jsonutils
 from oslo_utils import netutils
 import requests
-from six.moves import http_client
-from six.moves import urllib
 
 from cinder.i18n import _
 from cinder.tests.unit import fake_constants as fake

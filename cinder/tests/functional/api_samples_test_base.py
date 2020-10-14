@@ -15,7 +15,6 @@ import pprint
 import re
 
 from oslo_serialization import jsonutils
-import six
 
 from cinder.tests.functional import functional_helpers
 from cinder.tests.unit import test
@@ -89,7 +88,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
         non_strings =  \
             {k: v for k, v in value.items() if
              (not k == 'volume_host') and
-             (not isinstance(v, six.string_types))}
+             (not isinstance(v, str))}
         if len(non_strings) > 0:
             raise TypeError("subs can't contain non-string values:"
                             "\n%(non_strings)s" %
@@ -269,7 +268,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
             matched_value = self._compare_list(
                 expected, result, result_str, matched_value)
         # template string
-        elif isinstance(expected, six.string_types) and '%' in expected:
+        elif isinstance(expected, str) and '%' in expected:
             if expected[-1] == '%':
                 if result != expected:
                     raise NoMatch(
@@ -282,11 +281,11 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
                 matched_value = self._compare_template(
                     expected, result, result_str, matched_value)
         # string
-        elif isinstance(expected, six.string_types):
+        elif isinstance(expected, str):
 
             # Ignore whitespace in this comparison
             expected = expected.strip()
-            if isinstance(result, six.string_types):
+            if isinstance(result, str):
                 result = result.strip()
 
             if expected != result:
@@ -297,7 +296,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
                                     'result_str': result_str,
                                     'result': result})
         # int
-        elif isinstance(expected, (six.integer_types, float)):
+        elif isinstance(expected, (int, float)):
             if expected != result:
                 raise NoMatch(
                     'Values do not match:\n'
