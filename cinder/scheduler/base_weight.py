@@ -20,7 +20,6 @@ Pluggable Weighing support
 import abc
 
 from oslo_log import log as logging
-import six
 
 from cinder.scheduler import base_handler
 
@@ -67,8 +66,7 @@ class WeighedObject(object):
         return "<WeighedObject '%s': %s>" % (self.obj, self.weight)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseWeigher(object):
+class BaseWeigher(object, metaclass=abc.ABCMeta):
     """Base class for pluggable weighers.
 
     The attributes maxval and minval can be specified to set up the maximum

@@ -13,7 +13,6 @@
 # under the License.
 
 from oslo_log import log as logging
-import six
 
 from cinder.scheduler.evaluator import evaluator
 from cinder.scheduler import weights
@@ -124,7 +123,7 @@ class GoodnessWeigher(weights.BaseHostWeigher):
 
         if ('goodness_function' in host_caps and
                 host_caps['goodness_function'] is not None):
-            goodness_function = six.text_type(host_caps['goodness_function'])
+            goodness_function = str(host_caps['goodness_function'])
 
         qos_specs = weight_properties.get('qos_specs', {}) or {}
 
