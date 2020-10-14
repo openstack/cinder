@@ -23,6 +23,7 @@ import shutil
 import sys
 import textwrap
 import time
+import urllib
 
 import glanceclient.exc
 from keystoneauth1.loading import session as ks_session
@@ -30,9 +31,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
-import six
-from six.moves import range
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
@@ -547,13 +545,13 @@ def _convert_timestamps_to_datetimes(image_meta):
 # NOTE(bcwaldon): used to store non-string data in glance metadata
 def _json_loads(properties, attr):
     prop = properties[attr]
-    if isinstance(prop, six.string_types):
+    if isinstance(prop, str):
         properties[attr] = jsonutils.loads(prop)
 
 
 def _json_dumps(properties, attr):
     prop = properties[attr]
-    if not isinstance(prop, six.string_types):
+    if not isinstance(prop, str):
         properties[attr] = jsonutils.dumps(prop)
 
 
@@ -621,14 +619,14 @@ def _reraise_translated_image_exception(image_id):
     """Transform the exception for the image but keep its traceback intact."""
     _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_image_exception(image_id, exc_value)
-    six.reraise(type(new_exc), new_exc, exc_trace)
+    raise new_exc.with_traceback(exc_trace)
 
 
 def _reraise_translated_exception():
     """Transform the exception but keep its traceback intact."""
     _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_plain_exception(exc_value)
-    six.reraise(type(new_exc), new_exc, exc_trace)
+    raise new_exc.with_traceback(exc_trace)
 
 
 def _translate_image_exception(image_id, exc_value):
