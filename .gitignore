@@ -27,6 +27,7 @@ instances
 keeper
 keys
 local_settings.py
+mypy-report
 tools/lintstack.head.py
 tools/pylint_exceptions
 tags
