@@ -46,12 +46,10 @@ from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import six
 import tenacity
 
 from cinder import exception
@@ -309,7 +307,7 @@ def monkey_patch():
             if isinstance(module_data[key], pyclbr.Class):
                 clz = importutils.import_class("%s.%s" % (module, key))
                 # On Python 3, unbound methods are regular functions
-                predicate = inspect.isfunction if six.PY3 else inspect.ismethod
+                predicate = inspect.isfunction
                 for method, func in inspect.getmembers(clz, predicate):
                     setattr(
                         clz, method,
@@ -415,8 +413,7 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug('Could not remove tmpdir: %s',
-                      six.text_type(e))
+            LOG.debug('Could not remove tmpdir: %s', str(e))
 
 
 def get_root_helper():
@@ -670,7 +667,7 @@ def retry(exceptions, interval=1, retries=3, backoff_rate=2,
 
     def _decorator(f):
 
-        @six.wraps(f)
+        @functools.wraps(f)
         def _wrapper(*args, **kwargs):
             r = tenacity.Retrying(
                 sleep=tenacity.nap.sleep,
@@ -696,13 +693,10 @@ def convert_str(text):
       encode Unicode using encodeutils.safe_encode()
     * convert to Unicode on Python 3: decode bytes from UTF-8
     """
-    if six.PY2:
-        return encodeutils.to_utf8(text)
+    if isinstance(text, bytes):
+        return text.decode('utf-8')
     else:
-        if isinstance(text, bytes):
-            return text.decode('utf-8')
-        else:
-            return text
+        return text
 
 
 def trace_method(f):
@@ -778,7 +772,7 @@ def trace(*dec_args, **dec_kwargs):
                 logger.debug('==> %(func)s: call %(all_args)r',
                              {'func': func_name,
                               'all_args': strutils.mask_password(
-                                  six.text_type(all_args))})
+                                  str(all_args))})
 
             start_time = time.time() * 1000
             try:
@@ -794,7 +788,7 @@ def trace(*dec_args, **dec_kwargs):
 
             if isinstance(result, dict):
                 mask_result = strutils.mask_dict_password(result)
-            elif isinstance(result, six.string_types):
+            elif isinstance(result, str):
                 mask_result = strutils.mask_password(result)
             else:
                 mask_result = result
@@ -822,8 +816,7 @@ class TraceWrapperMetaclass(type):
     decorated with the trace_method decorator.
 
     To use the metaclass you define a class like so:
-    @six.add_metaclass(utils.TraceWrapperMetaclass)
-    class MyClass(object):
+    class MyClass(object, metaclass=utils.TraceWrapperMetaclass):
     """
     def __new__(meta, classname, bases, classDict):
         newClassDict = {}
@@ -877,7 +870,7 @@ def build_or_str(elements, str_format=None):
     if not elements:
         return ''
 
-    if not isinstance(elements, six.string_types):
+    if not isinstance(elements, str):
         elements = _(' or ').join(elements)
 
     if str_format:

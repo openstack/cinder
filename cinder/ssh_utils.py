@@ -25,7 +25,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 import paramiko
-import six
 
 from cinder import exception
 from cinder.i18n import _
@@ -159,7 +158,7 @@ class SSHPool(pools.Pool):
                 transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
-            msg = _("Error connecting via ssh: %s") % six.text_type(e)
+            msg = _("Error connecting via ssh: %s") % str(e)
             LOG.error(msg)
             raise paramiko.SSHException(msg)
 

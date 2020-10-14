@@ -25,13 +25,14 @@ __all__ = [
     'get_notifier',
 ]
 
+import functools
+
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_messaging.rpc import dispatcher
 from oslo_utils import importutils
 profiler = importutils.try_import('osprofiler.profiler')
-import six
 
 import cinder.context
 import cinder.exception
@@ -177,7 +178,7 @@ def assert_min_rpc_version(min_ver, exc=None):
         exc = cinder.exception.ServiceTooOld
 
     def decorator(f):
-        @six.wraps(f)
+        @functools.wraps(f)
         def _wrapper(self, *args, **kwargs):
             if not self.client.can_send_version(min_ver):
                 msg = _('One of %(binary)s services is too old to accept '
