@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1895510 <https://bugs.launchpad.net/cinder/+bug/1895510>`_:
+    IBM DS8K: Fixed compatability issue when using the IBM DS8K driver
+    with storage version R9 and later.
