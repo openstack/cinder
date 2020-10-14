@@ -44,7 +44,6 @@ from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
-import six
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
@@ -408,7 +407,7 @@ class BackupManager(manager.SchedulerDependentManager):
                         context, volume_id,
                         {'status': previous_status,
                          'previous_status': 'error_backing-up'})
-                volume_utils.update_backup_error(backup, six.text_type(err))
+                volume_utils.update_backup_error(backup, str(err))
 
         # Restore the original status.
         if snapshot_id:
@@ -471,7 +470,7 @@ class BackupManager(manager.SchedulerDependentManager):
                                               backup_device.is_snapshot)
             try:
                 device_path = attach_info['device']['path']
-                if (isinstance(device_path, six.string_types) and
+                if (isinstance(device_path, str) and
                         not os.path.isdir(device_path)):
                     if backup_device.secure_enabled:
                         with open(device_path, 'rb') as device_file:
@@ -501,7 +500,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
     def _is_our_backup(self, backup):
         # Accept strings and Service OVO
-        if not isinstance(backup, six.string_types):
+        if not isinstance(backup, str):
             backup = backup.service
 
         if not backup:
@@ -644,7 +643,7 @@ class BackupManager(manager.SchedulerDependentManager):
         try:
             device_path = attach_info['device']['path']
             open_mode = 'rb+' if os.name == 'nt' else 'wb'
-            if (isinstance(device_path, six.string_types) and
+            if (isinstance(device_path, str) and
                     not os.path.isdir(device_path)):
                 if secure_enabled:
                     with open(device_path, open_mode) as device_file:
@@ -750,8 +749,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 backup_service.delete_backup(backup)
             except Exception as err:
                 with excutils.save_and_reraise_exception():
-                    volume_utils.update_backup_error(backup,
-                                                     six.text_type(err))
+                    volume_utils.update_backup_error(backup, str(err))
 
         # Get reservations
         try:
@@ -841,7 +839,7 @@ class BackupManager(manager.SchedulerDependentManager):
             backup_url = backup.encode_record(driver_info=driver_info)
             backup_record['backup_url'] = backup_url
         except Exception as err:
-            msg = six.text_type(err)
+            msg = str(err)
             raise exception.InvalidBackup(reason=msg)
 
         LOG.info('Export record finished, backup %s exported.', backup.id)
@@ -895,7 +893,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 backup_service = self.service(context)
                 backup_service.import_record(backup, driver_options)
             except Exception as err:
-                msg = six.text_type(err)
+                msg = str(err)
                 volume_utils.update_backup_error(backup, msg)
                 raise exception.InvalidBackup(reason=msg)
 

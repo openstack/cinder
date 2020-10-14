@@ -20,7 +20,6 @@ import abc
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
-import six
 
 from cinder.db import base
 from cinder import exception
@@ -346,8 +345,7 @@ class BackupMetadataAPI(base.Base):
                 LOG.debug("No metadata of type '%s' to restore", type)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BackupDriver(base.Base):
+class BackupDriver(base.Base, metaclass=abc.ABCMeta):
 
     def __init__(self, context, db=None):
         super(BackupDriver, self).__init__(db)
