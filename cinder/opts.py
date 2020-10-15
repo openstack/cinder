@@ -139,6 +139,8 @@ from cinder.volume.drivers.nexenta import options as \
     cinder_volume_drivers_nexenta_options
 from cinder.volume.drivers import nfs as cinder_volume_drivers_nfs
 from cinder.volume.drivers import nimble as cinder_volume_drivers_nimble
+from cinder.volume.drivers.open_e import options as \
+    cinder_volume_drivers_open_e_options
 from cinder.volume.drivers.prophetstor import options as \
     cinder_volume_drivers_prophetstor_options
 from cinder.volume.drivers import pure as cinder_volume_drivers_pure
@@ -268,6 +270,9 @@ def list_opts():
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.
                 instorage_mcs_iscsi_opts,
+                cinder_volume_drivers_open_e_options.jdss_connection_opts,
+                cinder_volume_drivers_open_e_options.jdss_iscsi_opts,
+                cinder_volume_drivers_open_e_options.jdss_volume_opts,
                 cinder_volume_drivers_sandstone_sdsdriver.sds_opts,
                 cinder_volume_drivers_veritas_access_veritasiscsi.VA_VOL_OPTS,
                 cinder_volume_manager.volume_manager_opts,
