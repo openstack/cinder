@@ -5203,7 +5203,7 @@ class PowerMaxCommon(object):
         :param secondary_id: the target backend
         :param groups: replication groups
         :returns: secondary_id, volume_update_list, group_update_list
-        :raises: VolumeBackendAPIException
+        :raises: InvalidReplicationTarget
         """
         volume_update_list = list()
         group_update_list = list()
