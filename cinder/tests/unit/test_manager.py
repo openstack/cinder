@@ -15,8 +15,6 @@
 
 from unittest import mock
 
-import six
-
 from cinder import manager
 from cinder import objects
 from cinder.tests.unit import test
@@ -54,5 +52,5 @@ class TestManager(test.TestCase):
         expected = (objects.LogLevel(prefix='cinder', level='DEBUG'),
                     objects.LogLevel(prefix='cinder.api', level='ERROR'))
 
-        self.assertEqual(set(six.text_type(r) for r in result.objects),
-                         set(six.text_type(e) for e in expected))
+        self.assertEqual(set(str(r) for r in result.objects),
+                         set(str(e) for e in expected))

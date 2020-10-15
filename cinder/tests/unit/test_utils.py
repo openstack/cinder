@@ -22,7 +22,6 @@ from unittest import mock
 
 import ddt
 from oslo_utils import timeutils
-import six
 import webob.exc
 
 import cinder
@@ -1308,8 +1307,7 @@ class LogTracingTestCase(test.TestCase):
 
         utils.setup_tracing(['method'])
 
-        @six.add_metaclass(utils.TraceWrapperMetaclass)
-        class MyClass(object):
+        class MyClass(object, metaclass=utils.TraceWrapperMetaclass):
             def trace_test_method(self):
                 return 'OK'
 

@@ -20,7 +20,6 @@ from unittest import mock
 
 from oslo_db import exception as db_exc
 from oslo_utils import timeutils
-import six
 
 from cinder import context
 from cinder import db
@@ -42,7 +41,7 @@ def fake_db_qos_specs_create(context, values):
 
 
 def fake_db_get_vol_type(vol_type_number=1):
-    return {'name': 'type-' + six.text_type(vol_type_number),
+    return {'name': 'type-' + str(vol_type_number),
             'id': fake.QOS_SPEC_ID,
             'updated_at': None,
             'created_at': None,

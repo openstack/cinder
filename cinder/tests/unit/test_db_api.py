@@ -22,7 +22,6 @@ import ddt
 from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import six
 from sqlalchemy.sql import operators
 
 from cinder.api import common
@@ -1731,7 +1730,7 @@ class DBAPISnapshotTestCase(BaseTest):
 
         snapshot = db.snapshot_get_latest_for_volume(self.ctxt, 1)
 
-        self.assertEqual(six.text_type(latest), snapshot['id'])
+        self.assertEqual(str(latest), snapshot['id'])
 
     def test_snapshot_get_latest_for_volume_not_found(self):
 
