@@ -13,11 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-try:
-    import collections.abc as collections
-except ImportError:
-    import collections
-
+import collections.abc as collections
 import inspect
 
 import decorator

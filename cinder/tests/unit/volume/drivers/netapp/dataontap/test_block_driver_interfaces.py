@@ -13,10 +13,7 @@
 #    under the License.
 """Mock unit tests for the NetApp block storage driver interfaces"""
 
-try:
-    from collections.abc import Callable
-except ImportError:
-    from collections import Callable
+from collections import abc
 
 from cinder.tests.unit import test
 from cinder.volume.drivers.netapp.dataontap import block_cmode
@@ -56,4 +53,4 @@ class NetAppBlockStorageDriverInterfaceTestCase(test.TestCase):
     def _get_local_functions(self, obj):
         """Get function names of an object without superclass functions."""
         return set([key for key, value in type(obj).__dict__.items()
-                    if isinstance(value, Callable)])
+                    if isinstance(value, abc.Callable)])
