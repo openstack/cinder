@@ -122,7 +122,7 @@ class JovianRESTProxy(object):
                     continue
             time.sleep(self.delay)
 
-        msg = (_('%(times) faild in a row') % {'times': j})
+        msg = (_('%(times)s faild in a row') % {'times': j})
 
         raise jexc.JDSSRESTProxyException(host=url, reason=msg)
 
@@ -164,7 +164,7 @@ class JovianRESTProxy(object):
                     continue
             time.sleep(int(self.delay))
 
-        msg = (_('%(times) faild in a row') % {'times': j})
+        msg = (_('%(times)s faild in a row') % {'times': j})
 
         raise jexc.JDSSRESTProxyException(host=url, reason=msg)
 

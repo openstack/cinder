@@ -343,7 +343,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
                     vol = self.ra.get_lun(opvname)
 
                 except jexc.JDSSResourceNotFoundException:
-                    LOG.debug('volume %s does not exist, it was already'
+                    LOG.debug('volume %s does not exist, it was already '
                               'deleted.', opvname)
                     return
                 except jexc.JDSSException as err:
@@ -360,7 +360,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
                                            recursively_dependents=True,
                                            force_umount=True)
                     except jexc.JDSSResourceNotFoundException:
-                        LOG.debug('volume %s does not exist, it was already'
+                        LOG.debug('volume %s does not exist, it was already '
                                   'deleted.', opvname)
                         return
                     except jexc.JDSSException as err:
@@ -594,7 +594,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         try:
             snapshots = self.ra.get_snapshots(sname)
         except jexc.JDSSResourceNotFoundException:
-            LOG.debug('physical volume %s dne, it was already'
+            LOG.debug('physical volume %s dne, it was already '
                       'deleted.', sname)
             return
         except jexc.JDSSException as err:
