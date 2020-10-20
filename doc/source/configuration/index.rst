@@ -13,7 +13,6 @@ Cinder Service Configuration
    block-storage/policy.rst
    block-storage/policy-config-HOWTO.rst
    block-storage/fc-zoning.rst
-   block-storage/nested-quota.rst
    block-storage/volume-encryption.rst
    block-storage/service-token.rst
    block-storage/config-options.rst

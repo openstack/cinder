@@ -15,7 +15,6 @@
 
 from unittest import mock
 
-from keystoneclient import exceptions
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 
@@ -185,23 +184,6 @@ class QuotaUtilsTest(test.TestCase):
             self.context, self.context.project_id, parents_as_ids=True)
         self.assertIsNone(project.parent_id)
         self.assertIsNone(project.parents)
-
-    @mock.patch('cinder.quota_utils._keystone_client')
-    def test_validate_nested_projects_with_keystone_v2(self, _keystone_client):
-        _keystone_client.side_effect = exceptions.VersionNotAvailable
-
-        self.assertRaises(exception.CinderException,
-                          quota_utils.validate_setup_for_nested_quota_use,
-                          self.context, [], None)
-
-    @mock.patch('cinder.quota_utils._keystone_client')
-    def test_validate_nested_projects_non_cloud_admin(self, _keystone_client):
-        # Covers not cloud admin or using old policy.json
-        _keystone_client.side_effect = exceptions.Forbidden
-
-        self.assertRaises(exception.CinderException,
-                          quota_utils.validate_setup_for_nested_quota_use,
-                          self.context, [], None)
 
     def _process_reserve_over_quota(self, overs, usages, quotas,
                                     expected_ex,

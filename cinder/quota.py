@@ -16,7 +16,6 @@
 
 """Quotas for volumes."""
 
-from collections import deque
 import datetime
 
 from oslo_config import cfg
@@ -30,7 +29,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder import quota_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -452,212 +450,6 @@ class DbQuotaDriver(object):
         db.reservation_expire(context)
 
 
-class NestedDbQuotaDriver(DbQuotaDriver):
-
-    def __init__(self, *args, **kwargs):
-        super(NestedDbQuotaDriver, self).__init__(*args, **kwargs)
-        LOG.warning('The NestedDbQuotaDriver is deprecated and will be '
-                    'removed in the "U" release.')
-
-    def validate_nested_setup(self, ctxt, resources, project_tree,
-                              fix_allocated_quotas=False):
-        """Ensures project_tree has quotas that make sense as nested quotas.
-
-        Validates the following:
-          * No parent project has child_projects who have more combined quota
-            than the parent's quota limit
-          * No child quota has a larger in-use value than it's current limit
-            (could happen before because child default values weren't enforced)
-          * All parent projects' "allocated" quotas match the sum of the limits
-            of its children projects
-
-        TODO(mc_nair): need a better way to "flip the switch" to use nested
-                       quotas to make this less race-ee
-        """
-        self._allocated = {}
-        project_queue = deque(project_tree.items())
-        borked_allocated_quotas = {}
-
-        while project_queue:
-            # Tuple of (current root node, subtree)
-            cur_proj_id, project_subtree = project_queue.popleft()
-
-            # If we're on a leaf node, no need to do validation on it, and in
-            # order to avoid complication trying to get its children, skip it.
-            if not project_subtree:
-                continue
-
-            cur_project_quotas = self.get_project_quotas(
-                ctxt, resources, cur_proj_id)
-
-            # Validate each resource when compared to it's child quotas
-            for resource in cur_project_quotas:
-                parent_quota = cur_project_quotas[resource]
-                parent_limit = parent_quota['limit']
-                parent_usage = (parent_quota['in_use'] +
-                                parent_quota['reserved'])
-
-                cur_parent_allocated = parent_quota.get('allocated', 0)
-                calc_parent_allocated = self._get_cur_project_allocated(
-                    ctxt, resources[resource], {cur_proj_id: project_subtree})
-
-                if parent_limit > 0:
-                    parent_free_quota = parent_limit - parent_usage
-                    if parent_free_quota < calc_parent_allocated:
-                        msg = _("Sum of child usage '%(sum)s' is greater "
-                                "than free quota of '%(free)s' for project "
-                                "'%(proj)s' for resource '%(res)s'. Please "
-                                "lower the limit or usage for one or more of "
-                                "the following projects: '%(child_ids)s'") % {
-                            'sum': calc_parent_allocated,
-                            'free': parent_free_quota,
-                            'proj': cur_proj_id, 'res': resource,
-                            'child_ids': ', '.join(project_subtree.keys())
-                        }
-                        raise exception.InvalidNestedQuotaSetup(reason=msg)
-
-                # If "allocated" value wasn't right either err or fix DB
-                if calc_parent_allocated != cur_parent_allocated:
-                    if fix_allocated_quotas:
-                        try:
-                            db.quota_allocated_update(ctxt, cur_proj_id,
-                                                      resource,
-                                                      calc_parent_allocated)
-                        except exception.ProjectQuotaNotFound:
-                            # If it was default quota create DB entry for it
-                            db.quota_create(
-                                ctxt, cur_proj_id, resource,
-                                parent_limit, allocated=calc_parent_allocated)
-                    else:
-                        if cur_proj_id not in borked_allocated_quotas:
-                            borked_allocated_quotas[cur_proj_id] = {}
-
-                        borked_allocated_quotas[cur_proj_id][resource] = {
-                            'db_allocated_quota': cur_parent_allocated,
-                            'expected_allocated_quota': calc_parent_allocated}
-
-            project_queue.extend(project_subtree.items())
-
-        if borked_allocated_quotas:
-            msg = _("Invalid allocated quotas defined for the following "
-                    "project quotas: %s") % borked_allocated_quotas
-            raise exception.InvalidNestedQuotaSetup(message=msg)
-
-    def _get_cur_project_allocated(self, ctxt, resource, project_tree):
-        """Recursively calculates the allocated value of a project
-
-        :param ctxt: context used to retrieve DB values
-        :param resource: the resource to calculate allocated value for
-        :param project_tree: the project tree used to calculate allocated
-                e.g. {'A': {'B': {'D': None}, 'C': None}}
-
-        A project's "allocated" value depends on:
-            1) the quota limits which have been "given" to it's children, in
-               the case those limits are not unlimited (-1)
-            2) the current quota being used by a child plus whatever the child
-               has given to it's children, in the case of unlimited (-1) limits
-
-        Scenario #2 requires recursively calculating allocated, and in order
-        to efficiently calculate things we will save off any previously
-        calculated allocated values.
-
-        NOTE: this currently leaves a race condition when a project's allocated
-        value has been calculated (with a -1 limit), but then a child project
-        gets a volume created, thus changing the in-use value and messing up
-        the child's allocated value. We should look into updating the allocated
-        values as we're going along and switching to NestedQuotaDriver with
-        flip of a switch.
-        """
-        # Grab the current node
-        cur_project_id = list(project_tree)[0]
-        project_subtree = project_tree[cur_project_id]
-        res_name = resource.name
-
-        if cur_project_id not in self._allocated:
-            self._allocated[cur_project_id] = {}
-
-        if res_name not in self._allocated[cur_project_id]:
-            # Calculate the allocated value for this resource since haven't yet
-            cur_project_allocated = 0
-            child_proj_ids = project_subtree.keys() if project_subtree else {}
-            res_dict = {res_name: resource}
-            child_project_quotas = {child_id: self.get_project_quotas(
-                ctxt, res_dict, child_id) for child_id in child_proj_ids}
-
-            for child_id, child_quota in child_project_quotas.items():
-                child_limit = child_quota[res_name]['limit']
-                # Non-unlimited quota is easy, anything explicitly given to a
-                # child project gets added into allocated value
-                if child_limit != -1:
-                    if child_quota[res_name].get('in_use', 0) > child_limit:
-                        msg = _("Quota limit invalid for project '%(proj)s' "
-                                "for resource '%(res)s': limit of %(limit)d "
-                                "is less than in-use value of %(used)d") % {
-                            'proj': child_id, 'res': res_name,
-                            'limit': child_limit,
-                            'used': child_quota[res_name]['in_use']
-                        }
-                        raise exception.InvalidNestedQuotaSetup(reason=msg)
-
-                    cur_project_allocated += child_limit
-                # For -1, take any quota being eaten up by child, as well as
-                # what the child itself has given up to its children
-                else:
-                    child_in_use = child_quota[res_name].get('in_use', 0)
-                    # Recursively calculate child's allocated
-                    child_alloc = self._get_cur_project_allocated(
-                        ctxt, resource, {child_id: project_subtree[child_id]})
-                    cur_project_allocated += child_in_use + child_alloc
-
-            self._allocated[cur_project_id][res_name] = cur_project_allocated
-
-        return self._allocated[cur_project_id][res_name]
-
-    def get_default(self, context, resource, project_id):
-        """Get a specific default quota for a resource."""
-        resource = super(NestedDbQuotaDriver, self).get_default(
-            context, resource, project_id)
-
-        return 0 if quota_utils.get_parent_project_id(
-            context, project_id) else resource.default
-
-    def get_defaults(self, context, resources, project_id=None):
-        defaults = super(NestedDbQuotaDriver, self).get_defaults(
-            context, resources, project_id)
-        # All defaults are 0 for child project
-        if quota_utils.get_parent_project_id(context, project_id):
-            for key in defaults:
-                defaults[key] = 0
-        return defaults
-
-    def _reserve(self, context, resources, quotas, deltas, expire, project_id):
-        reserved = []
-        # As to not change the exception behavior, flag every res that would
-        # be over instead of failing on first OverQuota
-        resources_failed_to_update = []
-        failed_usages = {}
-        for res in deltas.keys():
-            try:
-                reserved += db.quota_reserve(
-                    context, resources, quotas, {res: deltas[res]},
-                    expire, CONF.until_refresh, CONF.max_age, project_id)
-                if quotas[res] == -1:
-                    reserved += quota_utils.update_alloc_to_next_hard_limit(
-                        context, resources, deltas, res, expire, project_id)
-            except exception.OverQuota as e:
-                resources_failed_to_update.append(res)
-                failed_usages.update(e.kwargs['usages'])
-
-        if resources_failed_to_update:
-            db.reservation_rollback(context, reserved, project_id)
-            # We change OverQuota to OverVolumeLimit in other places and expect
-            # to find all of the OverQuota kwargs
-            raise exception.OverQuota(overs=sorted(resources_failed_to_update),
-                                      quotas=quotas, usages=failed_usages)
-
-        return reserved
-
-
 class BaseResource(object):
     """Describe a single resource for quota checking."""
 
@@ -853,10 +645,6 @@ class QuotaEngine(object):
 
         self._driver_class = self._quota_driver_class
         return self._driver_class
-
-    def using_nested_quotas(self):
-        """Returns true if nested quotas are being used"""
-        return isinstance(self._driver, NestedDbQuotaDriver)
 
     def __contains__(self, resource):
         return resource in self.resources

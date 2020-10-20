@@ -250,33 +250,3 @@ Response Example
 
 .. literalinclude:: ./samples/quota_sets/quotas-show-defaults-response.json
    :language: javascript
-
-
-Validate setup for nested quota
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. rest_method::
-   GET /v3/{admin_project_id}/os-quota-sets/validate_setup_for_nested_quota_use
-
-Validate setup for nested quota, administrator should ensure that Keystone v3
-or greater is being used.
-
-Response codes
---------------
-
-.. rest_status_code:: success ../status.yaml
-
-   - 200
-
-.. rest_status_code:: error ../status.yaml
-
-   - 400
-
-
-Request
--------
-
-.. rest_parameters:: parameters.yaml
-
-   - admin_project_id: admin_project_id
-   - fix_allocated_quotas: fix_allocated_quotas

@@ -15,13 +15,10 @@
 from keystoneauth1 import identity
 from keystoneauth1 import loading as ka_loading
 from keystoneclient import client
-from keystoneclient import exceptions
 from oslo_config import cfg
 from oslo_log import log as logging
 
-from cinder import db
 from cinder import exception
-from cinder.i18n import _
 
 CONF = cfg.CONF
 CONF.import_group('keystone_authtoken',
@@ -96,9 +93,7 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
 
     Along with hierarchical multitenancy in keystone API v3, projects can be
     hierarchically organized. Therefore, we need to know the project
-    hierarchy, if any, in order to do nested quota operations properly.
-    If the domain is being used as the top most parent, it is filtered out from
-    the parent tree and parent_id.
+    hierarchy, if any, in order to do default volume type operations properly.
     """
     keystone = _keystone_client(context)
     generic_project = GenericProjectInfo(project_id, keystone.version)
@@ -123,102 +118,6 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
         generic_project.is_admin_project = is_admin_project
 
     return generic_project
-
-
-def get_parent_project_id(context, project_id):
-    return get_project_hierarchy(context, project_id).parent_id
-
-
-def get_all_projects(context):
-    # Right now this would have to be done as cloud admin with Keystone v3
-    return _keystone_client(context, (3, 0)).projects.list()
-
-
-def get_all_root_project_ids(context):
-    project_list = get_all_projects(context)
-
-    # Find every project which does not have a parent, meaning it is the
-    # root of the tree
-    project_roots = [project.id for project in project_list
-                     if not project.parent_id]
-
-    return project_roots
-
-
-def update_alloc_to_next_hard_limit(context, resources, deltas, res,
-                                    expire, project_id):
-    from cinder import quota
-    QUOTAS = quota.QUOTAS
-    GROUP_QUOTAS = quota.GROUP_QUOTAS
-    reservations = []
-    projects = get_project_hierarchy(context, project_id,
-                                     parents_as_ids=True).parents
-    hard_limit_found = False
-    # Update allocated values up the chain til we hit a hard limit or run out
-    # of parents
-    while projects and not hard_limit_found:
-        cur_proj_id = list(projects)[0]
-        projects = projects[cur_proj_id]
-        if res == 'groups':
-            cur_quota_lim = GROUP_QUOTAS.get_by_project_or_default(
-                context, cur_proj_id, res)
-        else:
-            cur_quota_lim = QUOTAS.get_by_project_or_default(
-                context, cur_proj_id, res)
-        hard_limit_found = (cur_quota_lim != -1)
-        cur_quota = {res: cur_quota_lim}
-        cur_delta = {res: deltas[res]}
-        try:
-            reservations += db.quota_reserve(
-                context, resources, cur_quota, cur_delta, expire,
-                CONF.until_refresh, CONF.max_age, cur_proj_id,
-                is_allocated_reserve=True)
-        except exception.OverQuota:
-            db.reservation_rollback(context, reservations)
-            raise
-    return reservations
-
-
-def validate_setup_for_nested_quota_use(ctxt, resources,
-                                        nested_quota_driver,
-                                        fix_allocated_quotas=False):
-    """Validates the setup supports using nested quotas.
-
-    Ensures that Keystone v3 or greater is being used, that the current
-    user is of the cloud admin role, and that the existing quotas make sense to
-    nest in the current hierarchy (e.g. that no child quota would be larger
-    than it's parent).
-
-    :param resources: the quota resources to validate
-    :param nested_quota_driver: nested quota driver used to validate each tree
-    :param fix_allocated_quotas: if True, parent projects "allocated" total
-        will be calculated based on the existing child limits and the DB will
-        be updated. If False, an exception is raised reporting any parent
-        allocated quotas are currently incorrect.
-    """
-    try:
-        project_roots = get_all_root_project_ids(ctxt)
-
-        # Now that we've got the roots of each tree, validate the trees
-        # to ensure that each is setup logically for nested quotas
-        for root in project_roots:
-            root_proj = get_project_hierarchy(ctxt, root,
-                                              subtree_as_ids=True)
-            nested_quota_driver.validate_nested_setup(
-                ctxt,
-                resources,
-                {root_proj.id: root_proj.subtree},
-                fix_allocated_quotas=fix_allocated_quotas
-            )
-    except exceptions.VersionNotAvailable:
-        msg = _("Keystone version 3 or greater must be used to get nested "
-                "quota support.")
-        raise exception.CinderException(message=msg)
-    except exceptions.Forbidden:
-        msg = _("Must run this command as cloud admin using "
-                "a Keystone policy.json which allows cloud "
-                "admin to list and get any project.")
-        raise exception.CinderException(message=msg)
 
 
 def _keystone_client(context, version=(3, 0)):
