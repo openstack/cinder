@@ -38,7 +38,7 @@ Supported operations
 * Retype a volume
 * Create a Thinly Provisioned Volume
 * Attach a volume to multiple servers simultaneously (multiattach)
-
+* Volume Revert to Snapshot
 
 Nimble Storage driver configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

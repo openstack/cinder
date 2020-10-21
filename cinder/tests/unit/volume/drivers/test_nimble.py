@@ -154,6 +154,13 @@ FAKE_IGROUP_LIST_RESPONSE_FC = [
                        {'wwpn': '10:00:00:00:00:00:00:01'}],
      'name': 'test-igrp2'}]
 
+FAKE_GET_VOL_INFO_REVERT = {'name': 'testvolume',
+                            'id': fake.VOLUME_ID,
+                            'clone': False,
+                            'target_name': 'iqn.test',
+                            'online': True,
+                            'agent_type': 'openstack',
+                            'last_snap': {'snap_id': fake.SNAPSHOT_ID}}
 
 FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE = exception.VolumeBackendAPIException(
     "Volume testvolume not found")
@@ -172,6 +179,9 @@ FAKE_CREATE_VOLUME_NEGATIVE_DEDUPE = exception.VolumeBackendAPIException(
 
 FAKE_CREATE_VOLUME_NEGATIVE_QOS = exception.VolumeBackendAPIException(
     "Please set valid IOPS limitin the range [256, 4294967294]")
+
+FAKE_VOLUME_RESTORE_NEGATIVE_RESPONSE = exception.VolumeBackendAPIException(
+    "No recent Snapshot found")
 
 FAKE_POSITIVE_GROUP_INFO_RESPONSE = {
     'version_current': '3.0.0.0',
@@ -1188,6 +1198,55 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
                                          'reserve': 0,
                                          'limit': 100}})]
         self.mock_client_service.assert_has_calls(expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_revert_to_snapshot(self):
+        self.mock_client_service.online_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.volume_restore.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_REVERT)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
+        ctx = context.get_admin_context()
+        self.driver.revert_to_snapshot(ctx,
+                                       {'id': fake.VOLUME_ID,
+                                        'size': 1,
+                                        'name': 'testvolume'},
+                                       {'id': fake.SNAPSHOT_ID,
+                                        'volume_id': fake.VOLUME_ID})
+        expected_calls = [mock.call.online_vol('testvolume', False),
+                          mock.call.volume_restore('testvolume',
+                          {'data': {'id': fake.VOLUME_ID,
+                           'base_snap_id': fake.SNAPSHOT_ID}}),
+                          mock.call.online_vol('testvolume', True)]
+        self.mock_client_service.assert_has_calls(expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_revert_to_snapshot_negative(self):
+        self.mock_client_service.online_vol.return_value = (
+            FAKE_GENERIC_POSITIVE_RESPONSE)
+        self.mock_client_service.volume_restore.side_effect = (
+            FAKE_VOLUME_RESTORE_NEGATIVE_RESPONSE)
+        self.mock_client_service.get_vol_info.return_value = (
+            FAKE_GET_VOL_INFO_REVERT)
+        self.mock_client_service.get_netconfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
+        ctx = context.get_admin_context()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.revert_to_snapshot, ctx,
+                          {'id': fake.VOLUME_ID,
+                           'size': 1,
+                           'name': 'testvolume'},
+                          {'id': fake.SNAPSHOT_ID,
+                           'volume_id': fake.VOLUME_ID})
 
 
 class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
