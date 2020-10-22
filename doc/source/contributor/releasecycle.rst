@@ -148,6 +148,11 @@ Post-Final Release
 #. Make sure at least three SQLAlchemy-Migrate migrations are reserved
    for potential backports (https://review.openstack.org/#/c/649436/).
 
+#. Update the ``cinder/api/openstack/rest_api_version_history.rst`` file to
+   denote the maximum API microversion so the new cycle docs reflect what
+   version was the last one available in the previous release. See
+   https://review.opendev.org/#/c/724137/ for an example.
+
 #. Unblock any new driver submission patches that missed the previous
    release cycle's deadline.
 
