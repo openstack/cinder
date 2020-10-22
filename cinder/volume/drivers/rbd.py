@@ -1604,7 +1604,13 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             if encrypted:
                 self._encrypt_image(context, volume, tmp_dir, tmp.name)
 
-            self.delete_volume(volume)
+            @utils.retry(exception.VolumeIsBusy,
+                         self.configuration.rados_connection_interval,
+                         self.configuration.rados_connection_retries)
+            def _delete_volume(volume):
+                self.delete_volume(volume)
+
+            _delete_volume(volume)
 
             chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
             order = int(math.log(chunk_size, 2))
