@@ -20,7 +20,6 @@ import json
 import socket
 
 from oslo_config import cfg
-from oslo_log import log
 
 from cinder import exception
 from cinder.i18n import _
@@ -30,7 +29,6 @@ from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp import options as na_opts
 
-LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 

@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from oslo_utils import strutils
 import webob
 
@@ -28,8 +27,6 @@ from cinder.policies import quotas as policy
 from cinder import quota
 from cinder import quota_utils
 from cinder import utils
-
-LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 GROUP_QUOTAS = quota.GROUP_QUOTAS
