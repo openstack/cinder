@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1901241
+    <https://bugs.launchpad.net/cinder/+bug/1901241>`_:
+    Fixed an issue where decreasing the ``rbd_max_clone_depth`` configuration
+    option would prevent volumes that had already exceeded that depth from
+    being cloned.
