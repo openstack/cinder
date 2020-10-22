@@ -23,8 +23,10 @@ from cinder.volume.drivers.dell_emc.powerstore import client
 
 class TestVolumeCreateDeleteExtend(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_appliance_id_by_name")
-    def setUp(self, mock_appliance):
+    def setUp(self, mock_appliance, mock_chap):
         super(TestVolumeCreateDeleteExtend, self).setUp()
         mock_appliance.return_value = "A1"
         self.driver.check_for_setup_error()

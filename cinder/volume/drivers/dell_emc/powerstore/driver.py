@@ -37,9 +37,10 @@ class PowerStoreDriver(driver.VolumeDriver):
 
       Version history:
         1.0.0 - Initial version
+        1.0.1 - Add CHAP support
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page

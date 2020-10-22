@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1900979 <https://bugs.launchpad.net/cinder/+bug/1900979>`_:
+    Fix bug with using PowerStore with enabled CHAP as a storage backend.

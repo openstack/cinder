@@ -16,6 +16,7 @@
 """Adapter for Dell EMC PowerStore Cinder driver."""
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 
 from cinder import coordination
 from cinder import exception
@@ -30,6 +31,7 @@ from cinder.volume import volume_utils
 LOG = logging.getLogger(__name__)
 PROTOCOL_FC = "FC"
 PROTOCOL_ISCSI = "iSCSI"
+CHAP_MODE_SINGLE = "Single"
 
 
 class CommonAdapter(object):
@@ -41,6 +43,7 @@ class CommonAdapter(object):
         self.configuration = configuration
         self.storage_protocol = None
         self.allowed_ports = None
+        self.use_chap_auth = None
 
     @staticmethod
     def initiators(connector):
@@ -83,13 +86,20 @@ class CommonAdapter(object):
             self.appliances_to_ids_map[appliance_name] = (
                 self.client.get_appliance_id_by_name(appliance_name)
             )
+        self.use_chap_auth = False
+        if self.storage_protocol == PROTOCOL_ISCSI:
+            chap_config = self.client.get_chap_config()
+            if chap_config.get("mode") == CHAP_MODE_SINGLE:
+                self.use_chap_auth = True
         LOG.debug("Successfully initialized PowerStore %(protocol)s adapter. "
                   "PowerStore appliances: %(appliances)s. "
-                  "Allowed ports: %(allowed_ports)s.",
+                  "Allowed ports: %(allowed_ports)s. "
+                  "Use CHAP authentication: %(use_chap_auth)s.",
                   {
                       "protocol": self.storage_protocol,
                       "appliances": self.appliances,
                       "allowed_ports": self.allowed_ports,
+                      "use_chap_auth": self.use_chap_auth,
                   })
 
     def create_volume(self, volume):
@@ -314,7 +324,9 @@ class CommonAdapter(object):
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
-                      "connection_properties": connection_properties,
+                      "connection_properties": strutils.mask_password(
+                          connection_properties
+                      ),
                   })
         return connection_properties
 
@@ -429,13 +441,17 @@ class CommonAdapter(object):
         """Create PowerStore host if it does not exist.
 
         :param connector: connection properties
-        :return: PowerStore host object
+        :return: PowerStore host object, iSCSI CHAP credentials
         """
 
         initiators = self.initiators(connector)
         host = self._filter_hosts_by_initiators(initiators)
+        if self.use_chap_auth:
+            chap_credentials = utils.get_chap_credentials()
+        else:
+            chap_credentials = {}
         if host:
-            self._modify_host_initiators(host, initiators)
+            self._modify_host_initiators(host, chap_credentials, initiators)
         else:
             host_name = utils.powerstore_host_name(
                 connector,
@@ -451,6 +467,7 @@ class CommonAdapter(object):
                 {
                     "port_name": initiator,
                     "port_type": self.storage_protocol,
+                    **chap_credentials,
                 } for initiator in initiators
             ]
             host = self.client.create_host(host_name, ports)
@@ -463,12 +480,13 @@ class CommonAdapter(object):
                           "initiators": initiators,
                           "host_provider_id": host["id"],
                       })
-        return host
+        return host, chap_credentials
 
-    def _modify_host_initiators(self, host, initiators):
+    def _modify_host_initiators(self, host, chap_credentials, initiators):
         """Update PowerStore host initiators if needed.
 
         :param host: PowerStore host object
+        :param chap_credentials: iSCSI CHAP credentials
         :param initiators: list of initiators
         :return: None
         """
@@ -476,17 +494,22 @@ class CommonAdapter(object):
         initiators_added = [
             initiator["port_name"] for initiator in host["host_initiators"]
         ]
+        initiators_to_add = []
+        initiators_to_modify = []
         initiators_to_remove = [
             initiator for initiator in initiators_added
             if initiator not in initiators
         ]
-        initiators_to_add = [
-            {
+        for initiator in initiators:
+            initiator_add_modify = {
                 "port_name": initiator,
-                "port_type": self.storage_protocol,
-            } for initiator in initiators
-            if initiator not in initiators_added
-        ]
+                **chap_credentials,
+            }
+            if initiator not in initiators_added:
+                initiator_add_modify["port_type"] = self.storage_protocol
+                initiators_to_add.append(initiator_add_modify)
+            elif self.use_chap_auth:
+                initiators_to_modify.append(initiator_add_modify)
         if initiators_to_remove:
             LOG.debug("Remove initiators from PowerStore host %(host_name)s. "
                       "Initiators: %(initiators_to_remove)s. "
@@ -514,7 +537,9 @@ class CommonAdapter(object):
                       "%(host_provider_id)s.",
                       {
                           "host_name": host["name"],
-                          "initiators_to_add": initiators_to_add,
+                          "initiators_to_add": strutils.mask_password(
+                              initiators_to_add
+                          ),
                           "host_provider_id": host["id"],
                       })
             self.client.modify_host_initiators(
@@ -526,7 +551,34 @@ class CommonAdapter(object):
                       "PowerStore host id: %(host_provider_id)s.",
                       {
                           "host_name": host["name"],
-                          "initiators_to_add": initiators_to_add,
+                          "initiators_to_add": strutils.mask_password(
+                              initiators_to_add
+                          ),
+                          "host_provider_id": host["id"],
+                      })
+        if initiators_to_modify:
+            LOG.debug("Modify initiators of PowerStore host %(host_name)s. "
+                      "Initiators: %(initiators_to_modify)s. "
+                      "PowerStore host id: %(host_provider_id)s.",
+                      {
+                          "host_name": host["name"],
+                          "initiators_to_modify": strutils.mask_password(
+                              initiators_to_modify
+                          ),
+                          "host_provider_id": host["id"],
+                      })
+            self.client.modify_host_initiators(
+                host["id"],
+                modify_initiators=initiators_to_modify
+            )
+            LOG.debug("Successfully modified initiators of PowerStore host "
+                      "%(host_name)s. Initiators: %(initiators_to_modify)s. "
+                      "PowerStore host id: %(host_provider_id)s.",
+                      {
+                          "host_name": host["name"],
+                          "initiators_to_modify": strutils.mask_password(
+                              initiators_to_modify
+                          ),
                           "host_provider_id": host["id"],
                       })
 
@@ -572,11 +624,11 @@ class CommonAdapter(object):
 
         :param connector: connection properties
         :param volume: OpenStack volume object
-        :return: attached volume logical number
+        :return: iSCSI CHAP credentials, volume logical number
         """
 
-        host = self._create_host_if_not_exist(connector)
-        return self._attach_volume_to_host(host, volume)
+        host, chap_credentials = self._create_host_if_not_exist(connector)
+        return chap_credentials, self._attach_volume_to_host(host, volume)
 
     def _connect_volume(self, volume, connector):
         """Attach PowerStore volume and return it's connection properties.
@@ -588,12 +640,21 @@ class CommonAdapter(object):
 
         appliance_name = volume_utils.extract_host(volume.host, "pool")
         appliance_id = self.appliances_to_ids_map[appliance_name]
-        volume_lun = self._create_host_and_attach(
+        chap_credentials, volume_lun = self._create_host_and_attach(
             connector,
             volume
         )
-        return self._get_connection_properties(appliance_id,
-                                               volume_lun)
+        connection_properties = self._get_connection_properties(appliance_id,
+                                                                volume_lun)
+        if self.use_chap_auth:
+            connection_properties["data"]["auth_method"] = "CHAP"
+            connection_properties["data"]["auth_username"] = (
+                chap_credentials.get("chap_single_username")
+            )
+            connection_properties["data"]["auth_password"] = (
+                chap_credentials.get("chap_single_password")
+            )
+        return connection_properties
 
     def _detach_volume_from_hosts(self, volume, hosts_to_detach=None):
         """Detach volume from PowerStore hosts.
@@ -731,7 +792,7 @@ class FibreChannelAdapter(CommonAdapter):
         return {
             "driver_volume_type": self.driver_volume_type,
             "data": {
-                "target_discovered": True,
+                "target_discovered": False,
                 "target_lun": volume_lun,
                 "target_wwn": target_wwns,
             }
@@ -782,7 +843,10 @@ class iSCSIAdapter(CommonAdapter):
         return {
             "driver_volume_type": self.driver_volume_type,
             "data": {
-                "target_discovered": True,
+                "target_discovered": False,
+                "target_portal": portals[0],
+                "target_iqn": iqns[0],
+                "target_lun": volume_lun,
                 "target_portals": portals,
                 "target_iqns": iqns,
                 "target_luns": [volume_lun] * len(portals),
