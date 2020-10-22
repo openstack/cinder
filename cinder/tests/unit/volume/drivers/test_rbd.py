@@ -1308,17 +1308,29 @@ class RBDTestCase(test.TestCase):
                     self.driver._is_cloneable(location, {'disk_format': f}))
             self.assertTrue(mock_get_fsid.called)
 
-    def _copy_image(self):
+    def _copy_image(self, volume_busy=False):
         with mock.patch.object(tempfile, 'NamedTemporaryFile'):
             with mock.patch.object(os.path, 'exists') as mock_exists:
                 mock_exists.return_value = True
                 with mock.patch.object(image_utils, 'fetch_to_raw'):
-                    with mock.patch.object(self.driver, 'delete_volume'):
+                    with mock.patch.object(self.driver, 'delete_volume') \
+                            as mock_dv:
                         with mock.patch.object(self.driver, '_resize'):
                             mock_image_service = mock.MagicMock()
                             args = [None, self.volume_a,
                                     mock_image_service, None]
-                            self.driver.copy_image_to_volume(*args)
+                            if volume_busy:
+                                mock_dv.side_effect = (
+                                    exception.VolumeIsBusy("doh"))
+                                self.assertRaises(
+                                    exception.VolumeIsBusy,
+                                    self.driver.copy_image_to_volume,
+                                    *args)
+                                self.assertEqual(
+                                    self.cfg.rados_connection_retries,
+                                    mock_dv.call_count)
+                            else:
+                                self.driver.copy_image_to_volume(*args)
 
     @mock.patch('cinder.volume.drivers.rbd.fileutils.delete_if_exists')
     @mock.patch('cinder.volume.volume_utils.check_encryption_provider',
@@ -1367,6 +1379,11 @@ class RBDTestCase(test.TestCase):
     def test_copy_image_volume_tmp_encrypted(self):
         self.cfg.image_conversion_dir = '/var/run/cinder/tmp'
         self._copy_image_encrypted()
+
+    @common_mocks
+    def test_copy_image_busy_volume(self):
+        self.cfg.image_conversion_dir = '/var/run/cinder/tmp'
+        self._copy_image(volume_busy=True)
 
     @ddt.data(True, False)
     @common_mocks
