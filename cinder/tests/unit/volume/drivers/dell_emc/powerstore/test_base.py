@@ -21,8 +21,10 @@ from cinder.tests.unit.volume.drivers.dell_emc import powerstore
 
 class TestBase(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_appliance_id_by_name")
-    def test_configuration(self, mock_appliance):
+    def test_configuration(self, mock_appliance, mock_chap):
         mock_appliance.return_value = "A1"
         self.driver.check_for_setup_error()
 
@@ -51,10 +53,15 @@ class TestBase(powerstore.TestPowerStoreDriver):
         self.assertIn("Failed to query PowerStore appliances.", error.msg)
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_appliance_id_by_name")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_appliance_metrics")
-    def test_update_volume_stats(self, mock_metrics, mock_appliance):
+    def test_update_volume_stats(self,
+                                 mock_metrics,
+                                 mock_appliance,
+                                 mock_chap):
         mock_appliance.return_value = "A1"
         mock_metrics.return_value = {
             "physical_total": 2147483648,
@@ -64,11 +71,14 @@ class TestBase(powerstore.TestPowerStoreDriver):
         self.driver._update_volume_stats()
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_appliance_id_by_name")
     @mock.patch("requests.request")
     def test_update_volume_stats_bad_status(self,
                                             mock_metrics,
-                                            mock_appliance):
+                                            mock_appliance,
+                                            mock_chap):
         mock_appliance.return_value = "A1"
         mock_metrics.return_value = powerstore.MockResponse(rc=400)
         self.driver.check_for_setup_error()
