@@ -83,7 +83,9 @@ RBD_OPTS = [
                default=5,
                help='Maximum number of nested volume clones that are '
                     'taken before a flatten occurs. Set to 0 to disable '
-                    'cloning.'),
+                    'cloning. Note: lowering this value will not affect '
+                    'existing volumes whose clone depth exceeds the new '
+                    'value.'),
     cfg.IntOpt('rbd_store_chunk_size', default=4,
                help='Volumes will be chunked into objects of this size '
                     '(in megabytes).'),
@@ -640,12 +642,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         if not parent:
             return depth
 
-        # If clone depth was reached, flatten should have occurred so if it has
-        # been exceeded then something has gone wrong.
-        if depth > self.configuration.rbd_max_clone_depth:
-            raise Exception(_("clone depth exceeds limit of %s") %
-                            (self.configuration.rbd_max_clone_depth))
-
         return self._get_clone_depth(client, parent, depth + 1)
 
     def _extend_if_required(self, volume, src_vref):
@@ -715,7 +711,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             depth = self._get_clone_depth(client, src_name)
             # If dest volume is a clone and rbd_max_clone_depth reached,
             # flatten the dest after cloning. Zero rbd_max_clone_depth means
-            # infinite is allowed.
+            # volumes are always flattened.
             if depth >= self.configuration.rbd_max_clone_depth:
                 LOG.info("maximum clone depth (%d) has been reached - "
                          "flattening dest volume",
