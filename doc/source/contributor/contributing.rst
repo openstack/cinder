@@ -74,9 +74,17 @@ weekly meeting
     Wednesdays at 14:00 UTC in ``#openstack-meeting-alt`` on Freenode.
     Meetings are logged: http://eavesdrop.openstack.org/meetings/cinder/
 
-    More information (including a link to the Agenda, some pointers on
-    meeting etiquette, and an ICS file to put the meeting on your calendar)
-    can be found at: http://eavesdrop.openstack.org/#Cinder_Team_Meeting
+    More information (including some pointers on meeting etiquette and an
+    ICS file to put the meeting on your calendar) can be found at:
+    http://eavesdrop.openstack.org/#Cinder_Team_Meeting
+
+    The meeting agenda for a particular development cycle is kept on an
+    etherpad.  You can find a link to the current agenda from the Cinder
+    Meetings wiki page:
+    https://wiki.openstack.org/wiki/CinderMeetings
+
+    The last meeting of each month is held simultaneously in videoconference
+    and IRC.  Connection information is posted on the meeting agenda.
 
 mailing list
     We use the openstack-discuss@lists.openstack.org mailing list for
@@ -180,6 +188,7 @@ https://releases.openstack.org/
 * new driver merge deadline
 * new target driver merge deadline
 * new feature status checkpoint
+* driver features declaration
 * third-party CI compliance checkpoint
 
 Additionally, the Cinder project observes the OpenStack-wide deadlines,
