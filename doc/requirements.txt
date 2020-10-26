@@ -6,4 +6,4 @@ reno>=3.1.0 # Apache-2.0
 sphinx>=2.0.0,!=2.1.0 # BSD
 os-api-ref>=1.5.0 # Apache-2.0
 sphinxcontrib-apidoc>=0.2.0  # BSD
-sphinx-feature-classification>=0.1.0 # Apache 2.0
+sphinx-feature-classification>=1.1.0 # Apache 2.0
