@@ -51,7 +51,11 @@ Review Checklist
       class.
     * Support :ref:`minimum driver features <drivers_minimum_features>`.
     * Meet release deadline(s)
-      (https://releases.openstack.org/train/schedule.html#t-cinder-driver-deadline )
+
+      * By Milestone 2 of the current development cycle, the driver should
+        have working third party CI and no code review issues.
+      * You can find the exact date on the current release schedule, which
+        you can find from https://releases.openstack.org/index.html
 
   * Driver does not add unnecessary new config options
 
