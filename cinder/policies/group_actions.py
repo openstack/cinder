@@ -25,17 +25,48 @@ FAILOVER_REP = 'group:failover_replication'
 LIST_REP = 'group:list_replication_targets'
 DELETE_POLICY = 'group:delete'
 
+
+deprecated_delete_group = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_enable_replication = base.CinderDeprecatedRule(
+    name=ENABLE_REP,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_disable_replication = base.CinderDeprecatedRule(
+    name=DISABLE_REP,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_failover_replication = base.CinderDeprecatedRule(
+    name=FAILOVER_REP,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_list_replication = base.CinderDeprecatedRule(
+    name=LIST_REP,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+# TODO(enriquetaso): update the following in Yoga.
+# We're not deprecating the reset rule in Xena.
+# deprecated_reset_status = base.CinderDeprecatedRule(
+#     name=RESET_STATUS,
+#     check_str=base.RULE_ADMIN_API
+# )
+
+
 group_actions_policies = [
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete group.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/groups/{group_id}/action (delete)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_group,
+    ),
     policy.DocumentedRuleDefault(
         name=RESET_STATUS,
         check_str=base.RULE_ADMIN_API,
@@ -45,47 +76,56 @@ group_actions_policies = [
                 'method': 'POST',
                 'path': '/groups/{group_id}/action (reset_status)'
             }
-        ]),
+        ]
+    ),
     policy.DocumentedRuleDefault(
         name=ENABLE_REP,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Enable replication.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/groups/{group_id}/action (enable_replication)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_enable_replication,
+    ),
     policy.DocumentedRuleDefault(
         name=DISABLE_REP,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Disable replication.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/groups/{group_id}/action (disable_replication)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_disable_replication,
+    ),
     policy.DocumentedRuleDefault(
         name=FAILOVER_REP,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Fail over replication.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/groups/{group_id}/action (failover_replication)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_failover_replication,
+    ),
     policy.DocumentedRuleDefault(
         name=LIST_REP,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="List failover replication.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/groups/{group_id}/action (list_replication_targets)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_list_replication,
+    ),
 ]
 
 
