@@ -19,23 +19,6 @@
 # DELETE  /snapshots/{snapshot_id}/metadata/{key}
 "volume:delete_snapshot_metadata": ""
 
-# List group snapshots.
-# GET  /group_snapshots
-# GET  /group_snapshots/detail
-"group:get_all_group_snapshots": ""
-
-# Show group snapshot.
-# GET  /group_snapshots/{group_snapshot_id}
-"group:get_group_snapshot": ""
-
-# Delete group snapshot.
-# DELETE  /group_snapshots/{group_snapshot_id}
-"group:delete_group_snapshot": ""
-
-# Update group snapshot.
-# PUT  /group_snapshots/{group_snapshot_id}
-"group:update_group_snapshot": ""
-
 # Reset status of group snapshot.
 # POST  /group_snapshots/{g_snapshot_id}/action (reset_status)
 "group:reset_group_snapshot_status": ""
@@ -54,14 +37,6 @@
 # PUT  /types
 # DELETE  /types
 "volume_extension:types_manage": ""
-
-# Revert a volume to a snapshot.
-# POST  /volumes/{volume_id}/action (revert)
-"volume:revert_to_snapshot": ""
-
-# Upload a volume to image.
-# POST  /volumes/{volume_id}/action (os-volume_upload_image)
-"volume_extension:volume_actions:upload_image": ""
 
 # List type extra specs.
 # GET  /types/{type_id}/extra_specs

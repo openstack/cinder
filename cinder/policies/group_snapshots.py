@@ -26,10 +26,32 @@ GET_ALL_POLICY = 'group:get_all_group_snapshots'
 GROUP_SNAPSHOT_ATTRIBUTES_POLICY = 'group:group_snapshot_project_attribute'
 
 
+deprecated_get_all_group_snapshots = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_create_group_snapshot = base.CinderDeprecatedRule(
+    name=CREATE_POLICY,
+    check_str=""
+)
+deprecated_get_group_snapshot = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_delete_group_snapshot = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_update_group_snapshot = base.CinderDeprecatedRule(
+    name=UPDATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
+
 group_snapshots_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List group snapshots.",
         operations=[
             {
@@ -40,47 +62,57 @@ group_snapshots_policies = [
                 'method': 'GET',
                 'path': '/group_snapshots/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_group_snapshots,
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create group snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/group_snapshots'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_group_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show group snapshot.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/group_snapshots/{group_snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_group_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete group snapshot.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/group_snapshots/{group_snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_group_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update group snapshot.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/group_snapshots/{group_snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_group_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=GROUP_SNAPSHOT_ATTRIBUTES_POLICY,
         check_str=base.RULE_ADMIN_API,
