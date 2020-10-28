@@ -19,137 +19,142 @@ from cinder.policies import base
 
 
 MANAGE_POLICY = "volume_extension:types_manage"
+CREATE_POLICY = "volume_extension:type_create"
+UPDATE_POLICY = "volume_extension:type_update"
+DELETE_POLICY = "volume_extension:type_delete"
+GET_POLICY = "volume_extension:type_get"
+GET_ALL_POLICY = "volume_extension:type_get_all"
+QOS_POLICY = "volume_extension:access_types_qos_specs_id"
+EXTRA_SPEC_POLICY = "volume_extension:access_types_extra_specs"
+# TODO: remove the next 2 in Yoga
 ENCRYPTION_POLICY = "volume_extension:volume_type_encryption"
 ENCRYPTION_BASE_POLICY_RULE = 'rule:%s' % ENCRYPTION_POLICY
 CREATE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:create"
 GET_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:get"
 UPDATE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:update"
 DELETE_ENCRYPTION_POLICY = "volume_extension:volume_type_encryption:delete"
-QOS_POLICY = "volume_extension:access_types_qos_specs_id"
-EXTRA_SPEC_POLICY = "volume_extension:access_types_extra_specs"
-GET_POLICY = "volume_extension:type_get"
-GET_ALL_POLICY = "volume_extension:type_get_all"
+
+GENERAL_ENCRYPTION_POLICY_REASON = (
+    f"Reason: '{ENCRYPTION_POLICY}' was a convenience policy that allowed you "
+    'to set all volume encryption type policies to the same value.  We are '
+    'deprecating this rule to prepare for a future release in which the '
+    'default values for policies that read, create/update, and delete '
+    'encryption types will be different from each other.')
+
+
+# TODO: remove in Yoga
+deprecated_manage_policy = base.CinderDeprecatedRule(
+    name=MANAGE_POLICY,
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=(f'{MANAGE_POLICY} has been replaced by more granular '
+                       'policies that separately govern POST, PUT, and DELETE '
+                       'operations.'),
+)
+deprecated_encryption_create_policy = base.CinderDeprecatedRule(
+    name=CREATE_ENCRYPTION_POLICY,
+    # TODO: change to base.RULE_ADMIN_API in Yoga & remove dep_reason
+    check_str=ENCRYPTION_BASE_POLICY_RULE,
+    deprecated_reason=GENERAL_ENCRYPTION_POLICY_REASON,
+)
+deprecated_encryption_get_policy = base.CinderDeprecatedRule(
+    name=GET_ENCRYPTION_POLICY,
+    # TODO: change to base.RULE_ADMIN_API in Yoga & remove dep_reason
+    check_str=ENCRYPTION_BASE_POLICY_RULE,
+    deprecated_reason=GENERAL_ENCRYPTION_POLICY_REASON,
+)
+deprecated_encryption_update_policy = base.CinderDeprecatedRule(
+    name=UPDATE_ENCRYPTION_POLICY,
+    # TODO: change to base.RULE_ADMIN_API in Yoga & remove dep_reason
+    check_str=ENCRYPTION_BASE_POLICY_RULE,
+    deprecated_reason=GENERAL_ENCRYPTION_POLICY_REASON,
+)
+deprecated_encryption_delete_policy = base.CinderDeprecatedRule(
+    name=DELETE_ENCRYPTION_POLICY,
+    # TODO: change to base.RULE_ADMIN_API in Yoga & remove dep_reason
+    check_str=ENCRYPTION_BASE_POLICY_RULE,
+    deprecated_reason=GENERAL_ENCRYPTION_POLICY_REASON,
+)
+deprecated_get_volume_type = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=""
+)
+deprecated_get_all_volume_type = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=""
+)
+
 
 volume_type_policies = [
     policy.DocumentedRuleDefault(
-        name=MANAGE_POLICY,
+        name=CREATE_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="Create, update and delete volume type.",
+        description="Create volume type.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/types'
             },
+        ],
+        # TODO: will need its own deprecated rule in Yoga
+        deprecated_rule=deprecated_manage_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=UPDATE_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Update volume type.",
+        operations=[
             {
                 'method': 'PUT',
                 'path': '/types'
             },
+        ],
+        # TODO: will need its own deprecated rule in Yoga
+        deprecated_rule=deprecated_manage_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=DELETE_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Delete volume type.",
+        operations=[
             {
                 'method': 'DELETE',
                 'path': '/types'
             }
-        ]),
+        ],
+        # TODO: will need its own deprecated rule in Yoga
+        deprecated_rule=deprecated_manage_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Get one specific volume type.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/types/{type_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_volume_type,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List volume types.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/types/'
             }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=ENCRYPTION_POLICY,
-        check_str=base.RULE_ADMIN_API,
-        description="Base policy for all volume type encryption type "
-                    "operations.  This can be used to set the policies "
-                    "for a volume type's encryption type create, show, "
-                    "update, and delete actions in one place, or any of "
-                    "those may be set individually using the following "
-                    "policy targets for finer grained control.",
-        operations=[
-            {
-                'method': 'POST',
-                'path': '/types/{type_id}/encryption'
-            },
-            {
-                'method': 'PUT',
-                'path': '/types/{type_id}/encryption/{encryption_id}'
-            },
-            {
-                'method': 'GET',
-                'path': '/types/{type_id}/encryption'
-            },
-            {
-                'method': 'GET',
-                'path': '/types/{type_id}/encryption/{key}'
-            },
-            {
-                'method': 'DELETE',
-                'path': '/types/{type_id}/encryption/{encryption_id}'
-            }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=CREATE_ENCRYPTION_POLICY,
-        check_str=ENCRYPTION_BASE_POLICY_RULE,
-        description="Create volume type encryption.",
-        operations=[
-            {
-                'method': 'POST',
-                'path': '/types/{type_id}/encryption'
-            }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=GET_ENCRYPTION_POLICY,
-        check_str=ENCRYPTION_BASE_POLICY_RULE,
-        description="Show a volume type's encryption type, "
-                    "show an encryption specs item.",
-        operations=[
-            {
-                'method': 'GET',
-                'path': '/types/{type_id}/encryption'
-            },
-            {
-                'method': 'GET',
-                'path': '/types/{type_id}/encryption/{key}'
-            }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=UPDATE_ENCRYPTION_POLICY,
-        check_str=ENCRYPTION_BASE_POLICY_RULE,
-        description="Update volume type encryption.",
-        operations=[
-            {
-                'method': 'PUT',
-                'path': '/types/{type_id}/encryption/{encryption_id}'
-            }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=DELETE_ENCRYPTION_POLICY,
-        check_str=ENCRYPTION_BASE_POLICY_RULE,
-        description="Delete volume type encryption.",
-        operations=[
-            {
-                'method': 'DELETE',
-                'path': '/types/{type_id}/encryption/{encryption_id}'
-            }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_volume_type,
+    ),
     policy.DocumentedRuleDefault(
         name=EXTRA_SPEC_POLICY,
-        check_str="",
-        description="List or show volume type with access type extra "
-                    "specs attribute.",
+        check_str=base.RULE_ADMIN_API,
+        description=(
+            "Include the volume type's extra_specs attribute in the volume "
+            "type list or show requests.  The ability to make these calls "
+            "is governed by other policies."),
         operations=[
             {
                 'method': 'GET',
@@ -163,8 +168,10 @@ volume_type_policies = [
     policy.DocumentedRuleDefault(
         name=QOS_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="List or show volume type with access type qos specs "
-                    "id attribute.",
+        description=(
+            "Include the volume type's QoS specifications ID attribute in "
+            "the volume type list or show requests.  The ability to make "
+            "these calls is governed by other policies."),
         operations=[
             {
                 'method': 'GET',
@@ -175,6 +182,66 @@ volume_type_policies = [
                 'path': '/types'
             }
         ]),
+    # TODO: remove in Yoga
+    policy.RuleDefault(
+        name=ENCRYPTION_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description=('DEPRECATED: This rule will be removed in the Yoga '
+                     'release.')
+    ),
+    policy.DocumentedRuleDefault(
+        name=CREATE_ENCRYPTION_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Create volume type encryption.",
+        operations=[
+            {
+                'method': 'POST',
+                'path': '/types/{type_id}/encryption'
+            }
+        ],
+        deprecated_rule=deprecated_encryption_create_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=GET_ENCRYPTION_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Show a volume type's encryption type, "
+                    "show an encryption specs item.",
+        operations=[
+            {
+                'method': 'GET',
+                'path': '/types/{type_id}/encryption'
+            },
+            {
+                'method': 'GET',
+                'path': '/types/{type_id}/encryption/{key}'
+            }
+        ],
+        deprecated_rule=deprecated_encryption_get_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=UPDATE_ENCRYPTION_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Update volume type encryption.",
+        operations=[
+            {
+                'method': 'PUT',
+                'path': '/types/{type_id}/encryption/{encryption_id}'
+            }
+        ],
+        deprecated_rule=deprecated_encryption_update_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=DELETE_ENCRYPTION_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Delete volume type encryption.",
+        operations=[
+            {
+                'method': 'DELETE',
+                'path': '/types/{type_id}/encryption/{encryption_id}'
+            }
+        ],
+        deprecated_rule=deprecated_encryption_delete_policy,
+    ),
 ]
 
 

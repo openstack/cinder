@@ -54,7 +54,7 @@ class VolumeTypesManageController(wsgi.Controller):
     def _create(self, req, body):
         """Creates a new volume type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.CREATE_POLICY)
         vol_type = body['volume_type']
         name = vol_type['name']
         description = vol_type.get('description')
@@ -89,7 +89,7 @@ class VolumeTypesManageController(wsgi.Controller):
     def _update(self, req, id, body):
         # Update description for a given volume type.
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.UPDATE_POLICY)
         vol_type = body['volume_type']
         description = vol_type.get('description')
         name = vol_type.get('name')
@@ -140,7 +140,7 @@ class VolumeTypesManageController(wsgi.Controller):
     def _delete(self, req, id):
         """Deletes an existing volume type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.DELETE_POLICY)
 
         try:
             vol_type = volume_types.get_volume_type(context, id)
