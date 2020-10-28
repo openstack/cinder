@@ -11,7 +11,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-09-12 13:35+0000\n"
+"POT-Creation-Date: 2020-10-26 22:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1666,9 +1666,6 @@ msgstr "Не удалось получить информацию о карте 
 
 msgid "Failed to get migration task."
 msgstr "Не удалось получить задачу переноса."
-
-msgid "Failed to get model update from clone"
-msgstr "Не удалось получить обновление модели из копии"
 
 msgid "Failed to get name server info."
 msgstr "Не удалось получить информацию о серверах имен."
