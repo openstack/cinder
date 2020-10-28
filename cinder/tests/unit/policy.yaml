@@ -139,13 +139,6 @@
 # DELETE  /types
 "volume_extension:types_manage": ""
 
-# Volume type access related APIs.
-# GET  /types
-# GET  /types/detail
-# GET  /types/{type_id}
-# POST  /types
-"volume_extension:volume_type_access": ""
-
 # Revert a volume to a snapshot.
 # POST  /volumes/{volume_id}/action (revert)
 "volume:revert_to_snapshot": ""
