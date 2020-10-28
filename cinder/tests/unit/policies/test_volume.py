@@ -14,16 +14,24 @@
 from http import HTTPStatus
 from unittest import mock
 
+import ddt
+
+from cinder.api.contrib import volume_encryption_metadata
+from cinder.api.contrib import volume_tenant_attribute
+from cinder.api.v3 import volumes
+from cinder import exception
+from cinder.policies import volumes as volume_policies
+from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit import fake_constants
+from cinder.tests.unit.policies import base
 from cinder.tests.unit.policies import test_base
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
 
 
 # TODO(yikun): The below policy test cases should be added:
 # * HOST_ATTRIBUTE_POLICY
 # * MIG_ATTRIBUTE_POLICY
-# * ENCRYPTION_METADATA_POLICY
-# * MULTIATTACH_POLICY
 class VolumePolicyTests(test_base.CinderPolicyTests):
 
     def test_admin_can_create_volume(self):
@@ -488,3 +496,333 @@ class VolumePolicyTests(test_base.CinderPolicyTests):
         response = self._get_request_response(non_owner_context, path,
                                               'DELETE')
         self.assertEqual(HTTPStatus.FORBIDDEN, response.status_int)
+
+
+@ddt.ddt
+class VolumesPolicyTest(base.BasePolicyTest):
+
+    authorized_readers = [
+        'legacy_admin',
+        'legacy_owner',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+        'project_foo',
+    ]
+    unauthorized_readers = [
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+    authorized_members = [
+        'legacy_admin',
+        'legacy_owner',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+        'project_foo',
+    ]
+    unauthorized_members = [
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    create_authorized_users = [
+        'legacy_admin',
+        'legacy_owner',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+        'project_foo',
+        # The other_* users are allowed because we don't have any check
+        # mechanism in the code to validate this, these are validated on
+        # the WSGI layer
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    create_unauthorized_users = [
+        'system_member',
+        'system_reader',
+        'system_foo',
+    ]
+
+    # Basic policy test is without enforcing scope (which cinder doesn't
+    # yet support) and deprecated rules enabled.
+    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+              *args, **kwargs):
+        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        self.controller = volumes.VolumeController(mock.MagicMock())
+        self.api_path = '/v3/%s/volumes' % (self.project_id)
+
+    def _create_volume(self):
+        vol_type = test_utils.create_volume_type(self.project_admin_context,
+                                                 name='fake_vol_type',
+                                                 testcase_instance=self)
+        volume = test_utils.create_volume(self.project_member_context,
+                                          volume_type_id=vol_type.id,
+                                          testcase_instance=self)
+        return volume
+
+    @ddt.data(*base.all_users)
+    def test_create_volume_policy(self, user_id):
+        rule_name = volume_policies.CREATE_POLICY
+        url = self.api_path
+        req = fake_api.HTTPRequest.blank(url)
+        req.method = 'POST'
+        body = {"volume": {"size": 1}}
+        unauthorized_exceptions = []
+        self.common_policy_check(user_id, self.create_authorized_users,
+                                 self.create_unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller.create, req,
+                                 body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.api.v3.volumes.VolumeController._image_uuid_from_ref',
+                return_value=fake_constants.IMAGE_ID)
+    @mock.patch('cinder.api.v3.volumes.VolumeController._get_image_snapshot',
+                return_value=None)
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask._get_image_metadata',
+                return_value=None)
+    def test_create_volume_from_image_policy(
+            self, user_id, mock_image_from_ref, mock_image_snap,
+            mock_img_meta):
+        rule_name = volume_policies.CREATE_FROM_IMAGE_POLICY
+        url = self.api_path
+        req = fake_api.HTTPRequest.blank(url)
+        req.method = 'POST'
+        body = {"volume": {"size": 1, "image_id": fake_constants.IMAGE_ID}}
+        unauthorized_exceptions = []
+        self.common_policy_check(user_id, self.create_authorized_users,
+                                 self.create_unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller.create, req,
+                                 body=body)
+
+    @ddt.data(*base.all_users)
+    def test_create_multiattach_volume_policy(self, user_id):
+        vol_type = test_utils.create_volume_type(
+            self.project_admin_context, name='multiattach_type',
+            extra_specs={'multiattach': '<is> True'})
+        rule_name = volume_policies.MULTIATTACH_POLICY
+        url = self.api_path
+        req = fake_api.HTTPRequest.blank(url)
+        req.method = 'POST'
+        body = {"volume": {"size": 1, "volume_type": vol_type.id}}
+
+        # Relax the CREATE_POLICY in order to get past that check.
+        self.policy.set_rules({volume_policies.CREATE_POLICY: ""},
+                              overwrite=False)
+
+        unauthorized_exceptions = []
+        self.common_policy_check(user_id, self.create_authorized_users,
+                                 self.create_unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller.create, req,
+                                 body=body)
+
+    @ddt.data(*base.all_users)
+    def test_get_volume_policy(self, user_id):
+        volume = self._create_volume()
+        rule_name = volume_policies.GET_POLICY
+        url = '%s/%s' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url)
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+        self.common_policy_check(user_id,
+                                 self.authorized_readers,
+                                 self.unauthorized_readers,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller.show, req,
+                                 id=volume.id)
+
+    @ddt.data(*base.all_users)
+    def test_get_all_volumes_policy(self, user_id):
+        self._create_volume()
+        rule_name = volume_policies.GET_ALL_POLICY
+        url = self.api_path
+        req = fake_api.HTTPRequest.blank(url)
+        # Generally, any logged in user can list all volumes.
+        authorized_users = [user_id]
+        unauthorized_users = []
+        # The exception is when deprecated rules are disabled, in which case
+        # roles are enforced. Users without the 'reader' role should be
+        # blocked.
+        if self.enforce_new_defaults:
+            context = self.create_context(user_id)
+            if 'reader' not in context.roles:
+                authorized_users = []
+                unauthorized_users = [user_id]
+        response = self.common_policy_check(user_id, authorized_users,
+                                            unauthorized_users, [],
+                                            rule_name,
+                                            self.controller.index, req)
+        # For some users, even if they're authorized, the list of volumes
+        # will be empty if they are not in the volume's project.
+        empty_response_users = [
+            *self.unauthorized_readers,
+            # legacy_admin and system_admin do not have a project_id, and
+            # so the list of volumes returned will be empty.
+            'legacy_admin',
+            'system_admin',
+        ]
+        volumes = response['volumes'] if response else []
+        volume_count = 0 if user_id in empty_response_users else 1
+        self.assertEqual(volume_count, len(volumes))
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.db.volume_encryption_metadata_get')
+    def test_get_volume_encryption_meta_policy(self, user_id,
+                                               mock_encrypt_meta):
+        encryption_key_id = fake_constants.ENCRYPTION_KEY_ID
+        mock_encrypt_meta.return_value = (
+            {'encryption_key_id': encryption_key_id})
+        controller = (
+            volume_encryption_metadata.VolumeEncryptionMetadataController())
+        volume = self._create_volume()
+        rule_name = volume_policies.ENCRYPTION_METADATA_POLICY
+        url = '%s/%s/encryption' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url)
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+        resp = self.common_policy_check(
+            user_id, self.authorized_readers,
+            self.unauthorized_readers,
+            unauthorized_exceptions,
+            rule_name, controller.index, req,
+            volume.id)
+        if user_id in self.authorized_readers:
+            self.assertEqual(encryption_key_id, resp['encryption_key_id'])
+
+    @ddt.data(*base.all_users)
+    def test_get_volume_tenant_attr_policy(self, user_id):
+        controller = volume_tenant_attribute.VolumeTenantAttributeController()
+        volume = self._create_volume()
+        volume = volume.obj_to_primitive()['versioned_object.data']
+        rule_name = volume_policies.TENANT_ATTRIBUTE_POLICY
+        url = '%s/%s' % (self.api_path, volume['id'])
+        req = fake_api.HTTPRequest.blank(url)
+        req.get_db_volume = mock.MagicMock()
+        req.get_db_volume.return_value = volume
+        resp_obj = mock.MagicMock(obj={'volume': volume})
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+        self.assertNotIn('os-vol-tenant-attr:tenant_id', volume.keys())
+
+        self.common_policy_check(
+            user_id, self.authorized_readers,
+            self.unauthorized_readers,
+            unauthorized_exceptions,
+            rule_name, controller.show, req,
+            resp_obj, volume['id'], fatal=False)
+
+        if user_id in self.authorized_readers:
+            self.assertIn('os-vol-tenant-attr:tenant_id', volume.keys())
+
+    @ddt.data(*base.all_users)
+    def test_update_volume_policy(self, user_id):
+        volume = self._create_volume()
+        rule_name = volume_policies.UPDATE_POLICY
+        url = '%s/%s' % (self.api_path, volume.id)
+        body = {"volume": {"name": "update_name"}}
+        req = fake_api.HTTPRequest.blank(url)
+        req.method = 'PUT'
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+        self.common_policy_check(
+            user_id, self.authorized_members,
+            self.unauthorized_members,
+            unauthorized_exceptions,
+            rule_name, self.controller.update, req,
+            id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_delete_volume_policy(self, user_id):
+        volume = self._create_volume()
+        rule_name = volume_policies.DELETE_POLICY
+        url = '%s/%s' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url)
+        req.method = 'DELETE'
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+        self.common_policy_check(
+            user_id, self.authorized_members,
+            self.unauthorized_members,
+            unauthorized_exceptions,
+            rule_name, self.controller.delete, req,
+            id=volume.id)
+
+
+class VolumesPolicySecureRbacTest(VolumesPolicyTest):
+    create_authorized_users = [
+        'legacy_admin',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'other_project_member',
+    ]
+
+    create_unauthorized_users = [
+        'legacy_owner',
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'other_project_reader',
+        'project_foo',
+        'project_reader',
+    ]
+
+    authorized_readers = [
+        'legacy_admin',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+    ]
+    unauthorized_readers = [
+        'legacy_owner',
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'project_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    authorized_members = [
+        'legacy_admin',
+        'system_admin',
+        'project_admin',
+        'project_member',
+    ]
+    unauthorized_members = [
+        'legacy_owner',
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'project_reader',
+        'project_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    def setUp(self, *args, **kwargs):
+        # Test secure RBAC by disabling deprecated policy rules (scope
+        # is still not enabled).
+        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+                      *args, **kwargs)
