@@ -4099,7 +4099,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         mock_get_sf_volume.assert_called_with(vol.id, vol_params)
 
         mock_do_intercluster_volume_migration_complete_data_sync\
-            .asert_called_with(fake_dst_sf_volid, fake_dst_cluster_ref)
+            .assert_called_with(fake_dst_sf_volid, fake_dst_cluster_ref)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalWithTimeoutLoopingCall')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
