@@ -4464,3 +4464,52 @@ class DS8KProxyTest(test.TestCase):
                                            pprc_pairs_3]
         self.driver.failover_replication(self.ctxt, group, [volume], 'default')
         self.assertTrue(mock_get_pprc_pairs.called)
+
+    @mock.patch('cinder.volume.volume_utils.CONF')
+    def test_create_volume_with_template(self, mock_conf):
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+        mock_conf.volume_name_template = 'volume-%s'
+        vol_id = 'd403b4d9-473a-42d0-94c5-be45a1268928'
+        vol_name = mock_conf.volume_name_template % vol_id
+        volume = self._create_volume(id=vol_id)
+        lun = ds8kproxy.Lun(volume)
+        exp_vol_name = helper.filter_alnum(vol_name)[:16]
+        self.assertEqual(lun.ds_name, exp_vol_name)
+
+    @mock.patch.object(eventlet, 'sleep')
+    @mock.patch.object(helper.DS8KCommonHelper, 'get_flashcopy')
+    def test_create_snapshot_with_tmpt(self, mock_get_flashcopy, mock_sleep):
+        """test a successful creation of snapshot."""
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', {})
+        location = six.text_type({'vol_hex_id': '0002'})
+        volume = self._create_volume(volume_type_id=vol_type.id,
+                                     provider_location=location)
+        snapshot = self._create_snapshot(volume_id=volume.id)
+        mock_get_flashcopy.side_effect = [[TEST_FLASHCOPY], {}]
+        snapshot_update = self.driver.create_snapshot(snapshot)
+        location = ast.literal_eval(snapshot_update['provider_location'])
+        self.assertEqual(TEST_VOLUME_ID, location['vol_hex_id'])
+        lun = ds8kproxy.Lun(snapshot, is_snapshot=True)
+        exp_snap_name = helper.filter_alnum(snapshot.name)[:16]
+        self.assertIn(lun.ds_name, exp_snap_name)
+
+    @mock.patch.object(eventlet, 'sleep')
+    def test_create_fb_replicated_volume_with_tmpt(self, mock_sleep):
+        """create FB volume when enable replication."""
+        self.configuration.replication_device = [TEST_REPLICATION_DEVICE]
+        self.driver = FakeDS8KProxy(self.storage_info, self.logger,
+                                    self.exception, self)
+        self.driver.setup(self.ctxt)
+
+        extra_spec = {'replication_enabled': '<is> True'}
+        vol_type = volume_types.create(self.ctxt, 'VOL_TYPE', extra_spec)
+        volume = self._create_volume(volume_type_id=vol_type.id)
+        lun = ds8kproxy.Lun(volume)
+        exp_repl_name = helper.filter_alnum(volume.name)[:16]
+        self.assertEqual(lun.replica_ds_name, exp_repl_name)

@@ -222,7 +222,7 @@ class Lun(object):
             self.ds_id = provider_location['vol_hex_id']
         else:
             self.ds_id = None
-        self.cinder_name = volume.display_name
+        self.cinder_name = volume.name
         self.pool_lss_pair = {}
         self.is_snapshot = is_snapshot
         if self.is_snapshot:
@@ -230,20 +230,14 @@ class Lun(object):
                           if volume.group_snapshot else None)
             self.size = volume.volume_size
             # ds8k supports at most 16 chars
-            self.ds_name = (
-                "OS%s:%s" % ('snap', helper.filter_alnum(self.cinder_name))
-            )[:16]
+            self.ds_name = helper.filter_alnum(self.cinder_name)[:16]
             self.metadata = self._get_snapshot_metadata(volume)
             self.source_volid = volume.volume_id
         else:
             self.group = Group(volume.group) if volume.group else None
             self.size = volume.size
-            self.ds_name = (
-                "OS%s:%s" % ('vol', helper.filter_alnum(self.cinder_name))
-            )[:16]
-            self.replica_ds_name = (
-                "OS%s:%s" % ('Replica', helper.filter_alnum(self.cinder_name))
-            )[:16]
+            self.ds_name = helper.filter_alnum(self.cinder_name)[:16]
+            self.replica_ds_name = helper.filter_alnum(self.cinder_name)[:16]
             self.previous_status = volume.previous_status
             self.replication_status = volume.replication_status
             self.replication_driver_data = (
