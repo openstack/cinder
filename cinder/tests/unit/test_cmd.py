@@ -950,6 +950,19 @@ class TestCinderManageCmd(test.TestCase):
             self.assertDictEqual(expected,
                                  cinder_manage.fetch_func_args(my_func))
 
+    def test_args_decorator(self):
+        @cinder_manage.args('host-name')
+        @cinder_manage.args('cluster-name', metavar='cluster')
+        @cinder_manage.args('--debug')
+        def my_func():
+            pass
+
+        expected = [
+            (['host_name'], {'metavar': 'host-name'}),
+            (['cluster_name'], {'metavar': 'cluster'}),
+            (['--debug'], {})]
+        self.assertEqual(expected, my_func.args)
+
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.db.cluster_get_all')
     def tests_cluster_commands_list(self, get_all_mock, get_admin_mock,
@@ -1106,6 +1119,30 @@ class TestCinderManageCmd(test.TestCase):
         cluster_commands = cinder_manage.ClusterCommands()
         exit = cluster_commands.rename(False, 'cluster', 'new_cluster')
         self.assertEqual(2, exit)
+
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_main_remove_cluster(self, get_admin_mock, get_cluster_mock):
+        script_name = 'cinder-manage'
+        sys.argv = [script_name, 'cluster', 'remove', 'abinary', 'acluster']
+
+        cinder_manage.CONF = cfg.ConfigOpts()
+        cinder_manage.main()
+
+        expected_argument = (['cluster_name'],
+                             {'type': str,
+                              'help': 'Cluster to delete.',
+                              'metavar': 'cluster-name'})
+        self.assertTrue(expected_argument in
+                        cinder_manage.CONF.category.action_fn.args)
+        self.assertTrue(hasattr(cinder_manage.CONF.category, 'cluster_name'))
+        get_admin_mock.assert_called_with()
+        get_cluster_mock.assert_called_with(get_admin_mock.return_value,
+                                            None, name='acluster',
+                                            binary='abinary',
+                                            get_services=False)
+        cluster = get_cluster_mock.return_value
+        cluster.destroy.assert_called()
 
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_argv_lt_2(self, register_cli_opt):

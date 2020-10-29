@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1894381 <https://bugs.launchpad.net/cinder/+bug/1894381>`_:
+    Fix the bug that cinder-manage cluster remove
+    does not work and an error NoSuchOptError occurs.
