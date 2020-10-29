@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1901188 <https://bugs.launchpad.net/cinder/+bug/1901188>`_: Fix
+    unnecessary migration on retype when QoS has the same elements in both
+    types.

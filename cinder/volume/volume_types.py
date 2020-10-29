@@ -36,8 +36,9 @@ from cinder import utils
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
-ENCRYPTION_IGNORED_FIELDS = ['volume_type_id', 'created_at', 'updated_at',
-                             'deleted_at', 'encryption_id']
+ENCRYPTION_IGNORED_FIELDS = ('volume_type_id', 'created_at', 'updated_at',
+                             'deleted_at', 'encryption_id')
+QOS_IGNORED_FIELDS = ('id', 'name', 'created_at', 'updated_at', 'deleted_at')
 DEFAULT_VOLUME_TYPE = "__DEFAULT__"
 
 MIN_SIZE_KEY = "provisioning:min_vol_size"
@@ -360,8 +361,8 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
     """
     def _fix_qos_specs(qos_specs):
         if qos_specs:
-            qos_specs.pop('id', None)
-            qos_specs.pop('name', None)
+            for key in QOS_IGNORED_FIELDS:
+                qos_specs.pop(key, None)
             qos_specs.update(qos_specs.pop('specs', {}))
 
     def _fix_encryption_specs(encryption):
