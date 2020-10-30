@@ -21,7 +21,7 @@ from webob import exc
 
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.schemas import default_types as default_types
+from cinder.api.schemas import default_types
 from cinder.api.v3.views import default_types as default_types_view
 from cinder.api import validation
 from cinder import db
