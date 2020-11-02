@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Support for the ``cinder.database.migration_backend`` entrypoint, which
+    provided for configurable database migration backends, has been removed.
+    This was never exercised and was a source of unnecessary complexity.
