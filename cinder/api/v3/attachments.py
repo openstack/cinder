@@ -23,6 +23,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.schemas import attachments as attachment
 from cinder.api.v3.views import attachments as attachment_views
 from cinder.api import validation
+from cinder import context as cinder_context
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -53,6 +54,11 @@ class AttachmentsController(wsgi.Controller):
         """Return data about the given attachment."""
         context = req.environ['cinder.context']
         attachment = objects.VolumeAttachment.get_by_id(context, id)
+        volume = objects.Volume.get_by_id(cinder_context.get_admin_context(),
+                                          attachment.volume_id)
+        if volume.admin_metadata and 'format' in volume.admin_metadata:
+            attachment.connection_info['format'] = (
+                volume.admin_metadata['format'])
         return attachment_views.ViewBuilder.detail(attachment)
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)

@@ -767,6 +767,97 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 [mock.call(src_vref), mock.call(volume_ref)])
             mock_extend_volume.assert_called_once_with(volume_ref, volume.size)
 
+    @ddt.data(None, 'raw', 'qcow2')
+    @mock.patch.object(sys.modules['cinder.objects'], "Snapshot")
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, 'local_path')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_snapshots_exist')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_copy_volume_image')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_extend_volume')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_validate_state')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_create_snapshot')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver, '_delete_snapshot')
+    @mock.patch.object(remotefs.RemoteFSSnapDriver,
+                       '_copy_volume_from_snapshot')
+    def test_create_cloned_volume_with_format(
+            self, file_format, mock_copy_volume_from_snapshot,
+            mock_delete_snapshot, mock_create_snapshot,
+            mock_validate_state, mock_extend_volume,
+            mock_copy_volume_image, mock_snapshots_exist,
+            mock_local_path, mock_obj_snap):
+        drv = self._driver
+
+        # prepare test
+        volume = fake_volume.fake_volume_obj(self.context)
+        src_vref_id = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
+        src_vref = fake_volume.fake_volume_obj(
+            self.context,
+            id=src_vref_id,
+            name='volume-%s' % src_vref_id,
+            obj_context=self.context)
+        src_vref.context = self.context
+        if file_format:
+            src_vref.admin_metadata = {'format': file_format}
+
+        mock_snapshots_exist.return_value = False
+        drv._always_use_temp_snap_when_cloning = False
+
+        vol_attrs = ['provider_location', 'size', 'id', 'name', 'status',
+                     'volume_type', 'metadata', 'obj_context']
+        Volume = collections.namedtuple('Volume', vol_attrs)
+
+        volume_ref = Volume(id=volume.id,
+                            metadata=volume.metadata,
+                            name=volume.name,
+                            provider_location=volume.provider_location,
+                            status=volume.status,
+                            size=volume.size,
+                            volume_type=volume.volume_type,
+                            obj_context=self.context,)
+
+        snap_args_creation = {
+            'volume_id': src_vref.id,
+            'user_id': None,
+            'project_id': None,
+            'status': fields.SnapshotStatus.CREATING,
+            'progress': '0%',
+            'volume_size': src_vref.size,
+            'display_name': 'tmp-snap-%s' % volume.id,
+            'display_description': None,
+            'volume_type_id': src_vref.volume_type_id,
+            'encryption_key_id': None,
+        }
+        snap_args_deletion = snap_args_creation.copy()
+        snap_args_deletion["status"] = fields.SnapshotStatus.DELETED
+        snap_args_deletion["deleted"] = True
+
+        mock_obj_snap.return_value = mock.Mock()
+        mock_obj_snap.return_value.create = mock.Mock()
+        # end of prepare test
+
+        # run test
+        drv.create_cloned_volume(volume, src_vref)
+
+        # evaluate test
+        exp_acceptable_states = ['available', 'backing-up', 'downloading']
+        mock_validate_state.assert_called_once_with(
+            src_vref.status,
+            exp_acceptable_states,
+            obj_description='source volume')
+
+        self.assertFalse(mock_create_snapshot.called)
+
+        mock_snapshots_exist.assert_called_once_with(src_vref)
+
+        mock_copy_volume_image.assert_called_once_with(
+            mock_local_path.return_value,
+            mock_local_path.return_value)
+        mock_local_path.assert_has_calls(
+            [mock.call(src_vref), mock.call(volume_ref)])
+        mock_extend_volume.assert_called_once_with(volume_ref, volume.size)
+        if file_format:
+            self.assertEqual(file_format,
+                             volume.admin_metadata['format'])
+
     @mock.patch('tempfile.NamedTemporaryFile')
     @mock.patch('cinder.volume.volume_utils.check_encryption_provider',
                 return_value={'encryption_key_id': fake.ENCRYPTION_KEY_ID})

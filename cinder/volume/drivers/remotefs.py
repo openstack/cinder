@@ -172,6 +172,7 @@ class RemoteFSDriver(driver.BaseVD):
         self._execute_as_root = True
         self._is_voldb_empty_at_startup = kwargs.pop('is_vol_db_empty', None)
         self._supports_encryption = False
+        self.format = 'raw'
 
         if self.configuration:
             self.configuration.append_config_values(nas_opts)
@@ -316,6 +317,7 @@ class RemoteFSDriver(driver.BaseVD):
             # QCOW2 volumes are inherently sparse, so this setting
             # will override the _sparsed_volumes setting.
             self._create_qcow2_file(volume_path, volume_size)
+            self.format = 'qcow2'
         elif getattr(self.configuration,
                      self.driver_prefix + '_sparsed_volumes', False):
             self._create_sparsed_file(volume_path, volume_size)
@@ -323,6 +325,11 @@ class RemoteFSDriver(driver.BaseVD):
             self._create_regular_file(volume_path, volume_size)
 
         self._set_rw_permissions(volume_path)
+        volume.admin_metadata['format'] = self.format
+        # This is done here because when creating a volume from image,
+        # while encountering other volume.save() method fails for non-admins
+        with volume.obj_as_admin():
+            volume.save()
 
     def _ensure_shares_mounted(self):
         """Look for remote shares in the flags and mount them locally."""
@@ -1169,6 +1176,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                                     self.local_path(volume_info))
             self._extend_volume(volume_info, volume.size)
 
+        if src_vref.admin_metadata and 'format' in src_vref.admin_metadata:
+            volume.admin_metadata['format'] = (
+                src_vref.admin_metadata['format'])
         return {'provider_location': src_vref.provider_location}
 
     def _copy_volume_image(self, src_path, dest_path):
@@ -1725,6 +1735,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         # active file never changes
         info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
+        update_format = False
 
         if utils.paths_normcase_equal(info['active_file'],
                                       info['snapshot_file']):
@@ -1746,6 +1757,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                            'volume_id': snapshot.volume.id}
 
             del(snap_info[snapshot.id])
+            update_format = True
         else:
             # blockCommit snapshot into base
             # info['base'] <= snapshot_file
@@ -1760,6 +1772,11 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
             del(snap_info[snapshot.id])
 
         self._nova_assisted_vol_snap_delete(context, snapshot, delete_info)
+
+        if update_format:
+            snapshot.volume.admin_metadata['format'] = 'qcow2'
+            with snapshot.volume.obj_as_admin():
+                snapshot.volume.save()
 
         # Write info file updated above
         self._write_info_file(info_path, snap_info)

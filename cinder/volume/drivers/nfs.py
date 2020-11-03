@@ -28,11 +28,13 @@ from oslo_log import log as logging
 from oslo_utils import units
 import six
 
+from cinder import context
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
+from cinder import objects
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import remotefs
@@ -383,9 +385,16 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
                                               % (volume.id, new_size))
         path = self.local_path(volume)
         LOG.info('Resizing file to %sG...', new_size)
+        file_format = None
+        admin_metadata = objects.Volume.get_by_id(
+            context.get_admin_context(), volume.id).admin_metadata
+        if admin_metadata and 'format' in admin_metadata:
+            file_format = admin_metadata['format']
         image_utils.resize_image(path, new_size,
-                                 run_as_root=self._execute_as_root)
-        if not self._is_file_size_equal(path, new_size):
+                                 run_as_root=self._execute_as_root,
+                                 file_format=file_format)
+        if file_format == 'qcow2' and not self._is_file_size_equal(
+                path, new_size):
             raise exception.ExtendVolumeError(
                 reason='Resizing image file failed.')
 

@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Cinder now stores the format of the backing file (raw or qcow2), for FS
+    backends, in the volume admin metadata and includes the format in the
+    connection_info returned in the Attachments API.
+    Previously cinder tried to introspect the format, and under some
+    circumstances, an incorrect format would be deduced. This will still be the
+    case for legacy volumes. Explicitly storing the format will avoid this issue
+    for newly created volumes.
+    `See spec for more info <https://review.opendev.org/c/openstack/cinder-specs/+/760999>`_.

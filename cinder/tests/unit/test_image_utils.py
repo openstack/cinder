@@ -346,24 +346,41 @@ class TestConvertImage(test.TestCase):
                                     ' image conversion.')
 
 
+@ddt.ddt
 class TestResizeImage(test.TestCase):
     @mock.patch('cinder.utils.execute')
-    def test_defaults(self, mock_exec):
+    @ddt.data(None, 'raw', 'qcow2')
+    def test_defaults(self, file_format, mock_exec):
         source = mock.sentinel.source
         size = mock.sentinel.size
-        output = image_utils.resize_image(source, size)
+        output = image_utils.resize_image(source, size,
+                                          file_format=file_format)
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with('qemu-img', 'resize', source,
-                                          'sentinel.sizeG', run_as_root=False)
+        if file_format:
+            mock_exec.assert_called_once_with(
+                'qemu-img', 'resize', '-f', file_format, source,
+                'sentinel.sizeG', run_as_root=False)
+        else:
+            mock_exec.assert_called_once_with('qemu-img', 'resize',
+                                              source, 'sentinel.sizeG',
+                                              run_as_root=False)
 
     @mock.patch('cinder.utils.execute')
-    def test_run_as_root(self, mock_exec):
+    @ddt.data(None, 'raw', 'qcow2')
+    def test_run_as_root(self, file_format, mock_exec):
         source = mock.sentinel.source
         size = mock.sentinel.size
-        output = image_utils.resize_image(source, size, run_as_root=True)
+        output = image_utils.resize_image(source, size, run_as_root=True,
+                                          file_format=file_format)
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with('qemu-img', 'resize', source,
-                                          'sentinel.sizeG', run_as_root=True)
+        if file_format:
+            mock_exec.assert_called_once_with(
+                'qemu-img', 'resize', '-f', file_format, source,
+                'sentinel.sizeG', run_as_root=True)
+        else:
+            mock_exec.assert_called_once_with('qemu-img', 'resize',
+                                              source, 'sentinel.sizeG',
+                                              run_as_root=True)
 
 
 class TestFetch(test.TestCase):

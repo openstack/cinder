@@ -774,7 +774,8 @@ class NfsDriverTestCase(test.TestCase):
 
             self.assertEqual(ret, 0.14)
 
-    def test_create_sparsed_volume(self):
+    @mock.patch('cinder.objects.volume.Volume.save')
+    def test_create_sparsed_volume(self, mock_save):
         self._set_driver()
         drv = self._driver
         volume = self._simple_volume()
@@ -791,7 +792,8 @@ class NfsDriverTestCase(test.TestCase):
                                                                  mock.ANY)
                 mock_set_rw_permissions.assert_called_once_with(mock.ANY)
 
-    def test_create_nonsparsed_volume(self):
+    @mock.patch('cinder.objects.volume.Volume.save')
+    def test_create_nonsparsed_volume(self, mock_save):
         self._set_driver()
         drv = self._driver
         self.configuration.nfs_sparsed_volumes = False
@@ -1040,7 +1042,9 @@ class NfsDriverTestCase(test.TestCase):
                                                        total_allocated,
                                                        requested_volume_size))
 
-    def test_extend_volume(self):
+    @ddt.data(None, 'raw', 'qcow2')
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_extend_volume(self, file_format, mock_get):
         """Extend a volume by 1."""
         self._set_driver()
         drv = self._driver
@@ -1049,6 +1053,9 @@ class NfsDriverTestCase(test.TestCase):
             id='80ee16b6-75d2-4d54-9539-ffc1b4b0fb10',
             size=1,
             provider_location='nfs_share')
+        if file_format:
+            volume.admin_metadata = {'format': file_format}
+        mock_get.return_value = volume
         path = 'path'
         newSize = volume['size'] + 1
 
@@ -1061,7 +1068,8 @@ class NfsDriverTestCase(test.TestCase):
                         drv.extend_volume(volume, newSize)
 
                         resize.assert_called_once_with(path, newSize,
-                                                       run_as_root=True)
+                                                       run_as_root=True,
+                                                       file_format=file_format)
 
     def test_extend_volume_attached_fail(self):
         """Extend a volume by 1."""
@@ -1085,7 +1093,8 @@ class NfsDriverTestCase(test.TestCase):
                         self.assertRaises(exception.ExtendVolumeError,
                                           drv.extend_volume, volume, newSize)
 
-    def test_extend_volume_failure(self):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_extend_volume_failure(self, mock_get):
         """Error during extend operation."""
         self._set_driver()
         drv = self._driver
@@ -1094,6 +1103,8 @@ class NfsDriverTestCase(test.TestCase):
             id='80ee16b6-75d2-4d54-9539-ffc1b4b0fb10',
             size=1,
             provider_location='nfs_share')
+        volume.admin_metadata = {'format': 'qcow2'}
+        mock_get.return_value = volume
 
         with mock.patch.object(image_utils, 'resize_image'):
             with mock.patch.object(drv, 'local_path', return_value='path'):
@@ -1359,8 +1370,9 @@ class NfsDriverTestCase(test.TestCase):
               [NFS_CONFIG3, QEMU_IMG_INFO_OUT3, 'available'],
               [NFS_CONFIG4, QEMU_IMG_INFO_OUT4, 'backing-up'])
     @ddt.unpack
+    @mock.patch('cinder.objects.volume.Volume.save')
     def test_create_volume_from_snapshot(self, nfs_conf, qemu_img_info,
-                                         snap_status):
+                                         snap_status, mock_save):
         self._set_driver(extra_confs=nfs_conf)
         drv = self._driver
 
