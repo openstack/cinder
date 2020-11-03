@@ -62,9 +62,9 @@ Linux Systems
 
 Install the prerequisite packages.
 
-On Ubuntu16.04-64::
+On Ubuntu20.04-64::
 
-  sudo apt-get install python-dev libssl-dev python-pip git-core libmysqlclient-dev libpq-dev libffi-dev libxslt-dev
+  sudo apt-get install libssl-dev python3-pip libmysqlclient-dev libpq-dev libffi-dev
 
 To get a full python3 development environment, the two python3 packages need to
 be added to the list above::
