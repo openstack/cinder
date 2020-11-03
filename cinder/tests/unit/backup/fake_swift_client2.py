@@ -46,7 +46,7 @@ class FakeSwiftConnection2(object):
         elif container == 'socket_error_on_head':
             raise socket.error(111, 'ECONNREFUSED')
 
-    def put_container(self, container):
+    def put_container(self, container, headers=None):
         pass
 
     def get_container(self, container, **kwargs):

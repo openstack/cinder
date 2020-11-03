@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Swift backup driver: Added new configuration option ``backup_swift_create_storage_policy``
+    for the Swift backup driver. If specified it will be used as the storage policy when
+    creating the Swift Container, default value is None meaning it will not be used and Swift
+    will use the system default. Please note that this only applies if a container doesn't exist
+    as we cannot update the storage policy on an already existing container.

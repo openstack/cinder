@@ -51,6 +51,7 @@ from oslo_log import log as logging
 from oslo_utils import secretutils
 from oslo_utils import timeutils
 from swiftclient import client as swift
+from swiftclient import exceptions as swift_exc
 
 from cinder.backup import chunkeddriver
 from cinder import exception
@@ -108,6 +109,11 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_container',
                default='volumebackups',
                help='The default Swift container to use'),
+    cfg.StrOpt('backup_swift_create_storage_policy',
+               default=None,
+               help='The storage policy to use when creating the Swift '
+                    'container. If the container already exists the '
+                    'storage policy cannot be enforced'),
     cfg.IntOpt('backup_swift_object_size',
                default=52428800,
                help='The size in bytes of Swift backup objects'),
@@ -318,12 +324,31 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             return body
 
     def put_container(self, container):
-        """Create the container if needed. No failure if it pre-exists."""
+        """Create the container if needed.
+
+        Check if the container exist by issuing a HEAD request, if
+        the container does not exist we create it.
+
+        We cannot enforce a new storage policy on an
+        existing container.
+        """
         try:
-            self.conn.put_container(container)
+            self.conn.head_container(container)
+        except swift_exc.ClientException as e:
+            if e.http_status == 404:
+                try:
+                    storage_policy = CONF.backup_swift_create_storage_policy
+                    headers = ({'X-Storage-Policy': storage_policy}
+                               if storage_policy else None)
+                    self.conn.put_container(container, headers=headers)
+                except socket.error as err:
+                    raise exception.SwiftConnectionFailed(reason=err)
+                return
+            LOG.warning("Failed to HEAD container to determine if it "
+                        "exists and should be created.")
+            raise exception.SwiftConnectionFailed(reason=e)
         except socket.error as err:
             raise exception.SwiftConnectionFailed(reason=err)
-        return
 
     def get_container_entries(self, container, prefix):
         """Get container entry names"""

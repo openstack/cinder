@@ -38,7 +38,8 @@ class FakeSwiftConnection(object):
         pass
 
     def head_container(self, container):
-        if container == 'missing_container':
+        if container in ['missing_container',
+                         'missing_container_socket_error_on_put']:
             raise swift.ClientException('fake exception',
                                         http_status=http_client.NOT_FOUND)
         elif container == 'unauthorized_container':
@@ -48,8 +49,9 @@ class FakeSwiftConnection(object):
             raise socket.error(111, 'ECONNREFUSED')
         pass
 
-    def put_container(self, container):
-        pass
+    def put_container(self, container, headers=None):
+        if container == 'missing_container_socket_error_on_put':
+            raise socket.error(111, 'ECONNREFUSED')
 
     def get_container(self, container, **kwargs):
         fake_header = None

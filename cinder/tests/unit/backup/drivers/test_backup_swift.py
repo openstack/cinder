@@ -299,6 +299,54 @@ class BackupSwiftTestCase(test.TestCase):
                                                 starting_backoff=ANY,
                                                 cacert=ANY)
 
+    @mock.patch.object(fake_swift_client.FakeSwiftConnection, 'put_container')
+    def test_default_backup_swift_create_storage_policy(self, mock_put):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        service.put_container('missing_container')
+        mock_put.assert_called_once_with('missing_container', headers=None)
+
+    @mock.patch.object(fake_swift_client.FakeSwiftConnection, 'put_container')
+    def test_backup_swift_create_storage_policy(self, mock_put):
+        self.override_config('backup_swift_create_storage_policy',
+                             'mypolicy')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        service.put_container('missing_container')
+        mock_put.assert_called_once_with(
+            'missing_container',
+            headers={'X-Storage-Policy': 'mypolicy'}
+        )
+
+    def test_default_backup_swift_create_storage_policy_put_socket_error(self):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.put_container,
+                          'missing_container_socket_error_on_put')
+
+    def test_default_backup_swift_create_storage_policy_head_error(self):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.put_container, 'unauthorized_container')
+
+    def test_backup_swift_create_storage_policy_head_error(self):
+        self.override_config('backup_swift_create_storage_policy',
+                             'mypolicy')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.put_container,
+                          'unauthorized_container')
+
+    def test_default_backup_swift_create_storage_policy_head_sockerr(self):
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.put_container, 'socket_error_on_head')
+
+    def test_backup_swift_create_storage_policy_head_socket_error(self):
+        self.override_config('backup_swift_create_storage_policy',
+                             'mypolicy')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.assertRaises(exception.SwiftConnectionFailed,
+                          service.put_container, 'socket_error_on_head')
+
     def test_backup_uncompressed(self):
         volume_id = '2b9f10a3-42b4-4fdf-b316-000000ceb039'
         self._create_backup_db_entry(volume_id=volume_id)
