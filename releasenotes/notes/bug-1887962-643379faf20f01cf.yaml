@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1887962 <https://bugs.launchpad.net/cinder/+bug/1887962>`_:
+    PowerMax driver fix to rectify incorrectly deleted non-temporary
+    snapshots when calling do_sync_check used in multiple operations due
+    to missing check for temporary snapshot name.

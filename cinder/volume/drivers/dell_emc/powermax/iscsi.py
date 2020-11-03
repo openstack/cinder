@@ -135,9 +135,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
               - Fix to enable legacy volumes to live migrate (#1867163)
               - Use of snap id instead of generation (bp powermax-snapset-ids)
               - Support for Failover Abilities (bp/powermax-failover-abilities)
+        4.3.1 - Fix non-temporary snapshot delete (#1887962)
     """
 
-    VERSION = "4.3.0"
+    VERSION = "4.3.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
