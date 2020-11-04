@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    TSM backup driver is removed. Please, migrate your backups before upgrade.
