@@ -1749,6 +1749,13 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         name_id = None
         provider_location = None
 
+        if original_volume_status == 'in-use':
+            # The back-end will not be renamed.
+            name_id = new_volume['_name_id'] or new_volume['id']
+            provider_location = new_volume['provider_location']
+            return {'_name_id': name_id,
+                    'provider_location': provider_location}
+
         existing_name = CONF.volume_name_template % new_volume.id
         wanted_name = CONF.volume_name_template % volume.id
         with RADOSClient(self) as client:
@@ -1764,7 +1771,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 # one from the new volume as well.
                 name_id = new_volume._name_id or new_volume.id
                 provider_location = new_volume['provider_location']
-        return {'_name_id': name_id, 'provider_location': provider_location}
+        return {'_name_id': name_id,
+                'provider_location': provider_location}
 
     def migrate_volume(self, context, volume, host):
 
