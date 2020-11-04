@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1902852
+    <https://bugs.launchpad.net/python-cinderclient/+bug/1902852>`_:
+    Fixed throwing Python traceback message when using ``cinder-manage
+    <category>`` without an action for the category.
