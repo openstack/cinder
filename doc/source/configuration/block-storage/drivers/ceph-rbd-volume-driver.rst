@@ -81,6 +81,37 @@ Ceph exposes RADOS; you can access it through the following interfaces:
  Linux kernel and QEMU block devices that stripe
  data across multiple objects.
 
+RBD pool
+~~~~~~~~
+
+The RBD pool used by the Cinder backend is configured with option ``rbd_pool``,
+and by default the driver expects exclusive management access to that pool, as
+in being the only system creating and deleting resources in it, since that's
+the recommended deployment choice.
+
+Pool sharing is strongly discouraged, and if we were to share the pool with
+other services, within OpenStack (Nova, Glance, another Cinder backend) or
+outside of OpenStack (oVirt), then the stats returned by the driver to the
+scheduler would not be entirely accurate.
+
+The inaccuracy would be that the actual size in use by the cinder volumes would
+be lower than the reported one, since it would be also including the used space
+by the other services.
+
+We can set the ``rbd_exclusive_cinder_pool`` configuration option to ``false``
+to fix this inaccuracy, but this has a performance impact.
+
+.. warning::
+
+   Setting ``rbd_exclusive_cinder_pool`` to ``false`` will increase the burden
+   on the Cinder driver and the Ceph cluster, since a request will be made for
+   each existing image, to retrieve its size, during the stats gathering
+   process.
+
+   For deployments with large amount of volumes it is recommended to leave the
+   default value of ``true``, and accept the inaccuracy, as it should not be
+   particularly problematic.
+
 Driver options
 ~~~~~~~~~~~~~~
 
