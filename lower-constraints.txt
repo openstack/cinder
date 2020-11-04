@@ -67,7 +67,7 @@ oslo.config==6.11.0
 oslo.context==2.23.0
 oslo.db==6.0.0
 oslo.i18n==3.24.0
-oslo.log==3.44.0
+oslo.log==4.3.0
 oslo.messaging==6.4.0
 oslo.middleware==3.31.0
 oslo.policy==1.44.1
