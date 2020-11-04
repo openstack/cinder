@@ -102,13 +102,16 @@ RBD_OPTS = [
                      'dynamic value (used + current free) and to False to '
                      'report a static value (quota max bytes if defined and '
                      'global size of cluster if not).'),
-    cfg.BoolOpt('rbd_exclusive_cinder_pool', default=False,
-                help="Set to True if the pool is used exclusively by Cinder. "
+    cfg.BoolOpt('rbd_exclusive_cinder_pool', default=True,
+                help="Set to False if the pool is shared with other usages. "
                      "On exclusive use driver won't query images' provisioned "
                      "size as they will match the value calculated by the "
                      "Cinder core code for allocated_capacity_gb. This "
                      "reduces the load on the Ceph cluster as well as on the "
-                     "volume service."),
+                     "volume service. On non exclusive use driver will query "
+                     "the Ceph cluster for per image used disk, this is an "
+                     "intensive operation having an independent request for "
+                     "each image."),
     cfg.BoolOpt('enable_deferred_deletion', default=False,
                 help='Enable deferred deletion. Upon deletion, volumes are '
                      'tagged for deletion but will only be removed '

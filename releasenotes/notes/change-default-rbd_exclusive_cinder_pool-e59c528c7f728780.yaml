@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    Ceph/RBD volume backends will now assume exclusive cinder pools, as if they
+    had ``rbd_exclusive_cinder_pool = true`` in their configuration.
+
+    This helps deployments with a large number of volumes and prevent issues on
+    deployments with a growing number of volumes at the small cost of a
+    slightly less accurate stats being reported to the scheduler.
+fixes:
+  - |
+    Ceph/RBD: Fix cinder taking a long time to start for Ceph/RBD backends.
+    (`Related-Bug #1704106 <https://bugs.launchpad.net/cinder/+bug/1704106>`_)
+  - |
+    Ceph/RBD: Fix Cinder becoming non-responsive and stats gathering taking
+    longer that its period. (`Related-Bug #1704106
+    <https://bugs.launchpad.net/cinder/+bug/1704106>`_)
