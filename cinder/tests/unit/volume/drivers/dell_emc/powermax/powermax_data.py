@@ -1645,3 +1645,36 @@ class PowerMaxData(object):
                          'SourceDeviceID': device_id,
                          'SourceDeviceLabel': device_label,
                          'SnapIdList': [snap_id]}
+
+    port_info = {
+        "symmetrixPort": {
+            "director_status": "Online",
+            "maskingview": [
+                "Test_MV",
+            ],
+            "port_status": "ON",
+            "symmetrixPortKey": {
+                "directorId": "FA-1D",
+                "portId": "4"
+            },
+            "portgroup": [
+                "Test_PG"
+            ]
+        }
+    }
+
+    port_info_off = deepcopy(port_info)
+    port_info_off.update({"symmetrixPort": {
+        "director_status": "Offline",
+        "port_status": "OFF"}})
+
+    port_info_no_status = deepcopy(port_info)
+    port_info_no_status.update({"symmetrixPort": {
+        "symmetrixPortKey": {
+            "directorId": "FA-1D",
+            "portId": "4"
+        }
+    }})
+
+    port_info_no_details = deepcopy(port_info)
+    port_info_no_details.pop("symmetrixPort")

@@ -80,9 +80,11 @@ class PowerMaxMaskingTest(test.TestCase):
             self.driver.masking._sanity_port_group_check,
             None, self.data.array)
 
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_check_director_and_port_status')
     @mock.patch.object(rest.PowerMaxRest, 'get_portgroup',
                        return_value=tpd.PowerMaxData.portgroup)
-    def test_sanity_port_group_check(self, mock_pg):
+    def test_sanity_port_group_check(self, mock_pg, mock_check):
         self.driver.masking._sanity_port_group_check(
             self.data.port_group_name_f, self.data.array)
 
@@ -196,6 +198,8 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.storagegroup_name_i, self.data.storagegroup_name_f,
             self.data.extra_specs, True)
 
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_check_director_and_port_status')
     @mock.patch.object(rest.PowerMaxRest, 'get_masking_view',
                        side_effect=[tpd.PowerMaxData.maskingview,
                                     tpd.PowerMaxData.maskingview, None])
@@ -206,7 +210,7 @@ class PowerMaxMaskingTest(test.TestCase):
     @mock.patch.object(masking.PowerMaxMasking, '_create_new_masking_view',
                        return_value=None)
     def test_get_or_create_masking_view(self, mock_create_mv, mock_validate_mv,
-                                        mock_get_mv):
+                                        mock_get_mv, mock_check):
         for x in range(0, 3):
             self.driver.masking._get_or_create_masking_view(
                 self.data.array, self.maskingviewdict,
@@ -359,10 +363,12 @@ class PowerMaxMaskingTest(test.TestCase):
         self.assertEqual(1, mock_move.call_count)
 
     @mock.patch.object(
+        masking.PowerMaxMasking, '_check_director_and_port_status')
+    @mock.patch.object(
         rest.PowerMaxRest, 'get_portgroup',
         side_effect=([tpd.PowerMaxData.port_group_name_i, None]))
     def test_check_port_group(
-            self, mock_get_pg):
+            self, mock_get_pg, mock_check):
         for x in range(0, 2):
             _, msg = self.driver.masking._check_port_group(
                 self.data.array, self.maskingviewdict['maskingview_name'])
@@ -1230,3 +1236,58 @@ class PowerMaxMaskingTest(test.TestCase):
             self.data.parent_sg_i)
         mock_create.assert_not_called
         mock_add.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_port',
+                       return_value=tpd.PowerMaxData.port_info)
+    @mock.patch.object(rest.PowerMaxRest, 'get_port_ids',
+                       return_value=['FA-1D:4'])
+    def test_check_director_and_port_status(self, mock_port_ids, mock_port):
+        self.mask._check_director_and_port_status(
+            self.data.array, self.data.port_group_name_f)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_port',
+                       return_value=tpd.PowerMaxData.port_info_off)
+    @mock.patch.object(rest.PowerMaxRest, 'get_port_ids',
+                       return_value=['FA-1D:4'])
+    def test_check_director_and_port_status_invalid_status(
+            self, mock_port_ids, mock_port):
+        exception_message = (
+            r"The director status is Offline and the port status is OFF for "
+            r"dir:port FA-1D:4.")
+
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                exception_message):
+            self.mask._check_director_and_port_status(
+                self.data.array, self.data.port_group_name_f)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_port',
+                       return_value=tpd.PowerMaxData.port_info_no_status)
+    @mock.patch.object(rest.PowerMaxRest, 'get_port_ids',
+                       return_value=['FA-1D:4'])
+    def test_check_director_and_port_status_no_status(
+            self, mock_port_ids, mock_port):
+        exception_message = (
+            r"Unable to get the director or port status for dir:port "
+            r"FA-1D:4.")
+
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                exception_message):
+            self.mask._check_director_and_port_status(
+                self.data.array, self.data.port_group_name_f)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_port',
+                       return_value=tpd.PowerMaxData.port_info_no_details)
+    @mock.patch.object(rest.PowerMaxRest, 'get_port_ids',
+                       return_value=['FA-1D:4'])
+    def test_check_director_and_port_status_no_details(
+            self, mock_port_ids, mock_port):
+        exception_message = (
+            r"Unable to get port information for dir:port FA-1D:4.")
+
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                exception_message):
+            self.mask._check_director_and_port_status(
+                self.data.array, self.data.port_group_name_f)

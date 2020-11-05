@@ -199,9 +199,11 @@ class PowerMaxReplicationTest(test.TestCase):
                           self.data.test_volume, self.data.connector)
 
     @mock.patch.object(
+        masking.PowerMaxMasking, '_check_director_and_port_status')
+    @mock.patch.object(
         masking.PowerMaxMasking, 'pre_multiattach',
         return_value=tpd.PowerMaxData.masking_view_dict_multiattach)
-    def test_attach_metro_volume(self, mock_pre):
+    def test_attach_metro_volume(self, mock_pre, mock_check):
         rep_extra_specs = deepcopy(tpd.PowerMaxData.rep_extra_specs)
         rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
         hostlunid, remote_port_group = self.common._attach_metro_volume(
