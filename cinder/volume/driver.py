@@ -615,6 +615,10 @@ class BaseVD(object, metaclass=abc.ABCMeta):
 
         If volume_type extra specs includes 'replication: <is> True'
         then the driver needs to delete the volume replica too.
+
+        It is imperative that this operation ensures that the data from the
+        deleted volume cannot leak into new volumes when they are created, as
+        new volumes are likely to belong to a different tenant/project.
         """
         return
 

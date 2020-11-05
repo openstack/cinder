@@ -1,3 +1,5 @@
+.. _volume-drivers:
+
 ==============
 Volume drivers
 ==============

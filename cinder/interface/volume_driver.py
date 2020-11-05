@@ -168,6 +168,10 @@ class VolumeDriverCore(base.CinderInterface):
         longer present, this call should succeed and allow Cinder to complete
         the process of deleting the volume.
 
+        It is imperative that this operation ensures that the data from the
+        deleted volume cannot leak into new volumes when they are created, as
+        new volumes are likely to belong to a different tenant/project.
+
         :param volume: The volume to delete.
         :raises VolumeIsBusy: if the volume is still attached or has snapshots.
                  VolumeBackendAPIException on error.

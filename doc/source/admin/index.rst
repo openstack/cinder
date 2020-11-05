@@ -24,6 +24,7 @@ Amazon EC2 Elastic Block Storage (EBS) offering.
 .. toctree::
    :maxdepth: 1
 
+   blockstorage-security.rst
    blockstorage-accelerate-image-compression.rst
    blockstorage-api-throughput.rst
    blockstorage-manage-volumes.rst
