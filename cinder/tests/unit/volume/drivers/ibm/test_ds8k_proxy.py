@@ -535,7 +535,7 @@ FAKE_GET_SYSTEM_RESPONSE_1 = {
                 "name": "",
                 "state": "online",
                 "release": "7.5.1",
-                "bundle": "87.51.9.0",
+                "bundle": "87.51.63.0",
                 "MTM": "2421-961",
                 "sn": "1300741",
                 "wwnn": TEST_SOURCE_WWNN,
@@ -563,7 +563,7 @@ FAKE_GET_SYSTEM_RESPONSE_2 = {
                 "name": "",
                 "state": "online",
                 "release": "7.5.1",
-                "bundle": "87.51.9.0",
+                "bundle": "87.51.63.0",
                 "MTM": "2421-962",
                 "sn": "1300742",
                 "wwnn": TEST_TARGET_WWNN,
@@ -989,7 +989,7 @@ class FakeDS8KCommonHelper(helper.DS8KCommonHelper):
                                          self._get_value('san_login'),
                                          self._get_value('san_password'),
                                          None, True)
-        self.backend['rest_version'] = self._get_version()['bundle_version']
+        self.backend['rest_version'] = self._get_version()['bundle']
 
 
 class FakeDS8KECKDHelper(FakeDS8KCommonHelper, helper.DS8KECKDHelper):
@@ -1167,7 +1167,7 @@ class DS8KProxyTest(test.TestCase):
     def test_verify_rest_version_for_5_7_fb(self, mock_get_version):
         """test the min version of REST for fb volume in 7.x."""
         mock_get_version.return_value = {
-            "bundle_version": "5.7.50.0"
+            "bundle": "87.50.38.0"
         }
         self.assertRaises(exception.VolumeDriverException,
                           FakeDS8KCommonHelper, self.configuration, None)
@@ -1176,7 +1176,7 @@ class DS8KProxyTest(test.TestCase):
     def test_verify_rest_version_for_5_8_fb(self, mock_get_version):
         """test the min version of REST for fb volume in 8.1."""
         mock_get_version.return_value = {
-            "bundle_version": "5.8.10.0"
+            "bundle": "88.10.112.0"
         }
         FakeDS8KCommonHelper(self.configuration, None)
 
@@ -1189,7 +1189,7 @@ class DS8KProxyTest(test.TestCase):
         self.configuration.ds8k_ssid_prefix = 'FF'
         self.configuration.san_clustername = TEST_ECKD_POOL_ID
         mock_get_version.return_value = {
-            "bundle_version": "5.7.50.0"
+            "bundle": "87.50.22.0"
         }
         self.assertRaises(exception.VolumeDriverException,
                           FakeDS8KECKDHelper, self.configuration, None)
@@ -1203,7 +1203,7 @@ class DS8KProxyTest(test.TestCase):
         self.configuration.ds8k_ssid_prefix = 'FF'
         self.configuration.san_clustername = TEST_ECKD_POOL_ID
         mock_get_version.return_value = {
-            "bundle_version": "5.8.10.0"
+            "bundle": "88.10.112.0"
         }
         self.assertRaises(exception.VolumeDriverException,
                           FakeDS8KECKDHelper, self.configuration, None)
@@ -1217,7 +1217,7 @@ class DS8KProxyTest(test.TestCase):
         self.configuration.ds8k_ssid_prefix = 'FF'
         self.configuration.san_clustername = TEST_ECKD_POOL_ID
         mock_get_version.return_value = {
-            "bundle_version": "5.8.20.0"
+            "bundle": "88.20.40.0"
         }
         self.assertRaises(exception.VolumeDriverException,
                           FakeDS8KECKDHelper, self.configuration, None)
@@ -3214,8 +3214,8 @@ class DS8KProxyTest(test.TestCase):
                           self.driver.create_group,
                           self.ctxt, group)
 
-    @ddt.data({'bundle_version': "5.7.51.1067"},
-              {'bundle_version': "5.8.20.1058"})
+    @ddt.data({'bundle': "87.51.60.0"},
+              {'bundle': "88.20.47.0"})
     @mock.patch.object(helper.DS8KCommonHelper, '_get_version')
     def test_create_replication_consisgroup_should_verify_rest_version(
             self, rest_version, mock_get_version):
