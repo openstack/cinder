@@ -627,15 +627,23 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_debug_log = self.mock_object(nfs_cmode.LOG, 'debug')
         mock_cleanup = self.mock_object(self.driver,
                                         '_cleanup_volume_on_failure')
+        mock_is_qos_min_supported = self.mock_object(self.driver.ssc_library,
+                                                     'is_qos_min_supported',
+                                                     return_value=True)
+        mock_extract_host = self.mock_object(volume_utils, 'extract_host',
+                                             return_value=fake.POOL_NAME)
 
         self.driver._do_qos_for_volume(fake.NFS_VOLUME, fake.EXTRA_SPECS)
 
         mock_get_info.assert_has_calls([
             mock.call(fake.NFS_VOLUME, fake.EXTRA_SPECS)])
         mock_provision_qos.assert_has_calls([
-            mock.call(fake.QOS_POLICY_GROUP_INFO)])
+            mock.call(fake.QOS_POLICY_GROUP_INFO, True)])
         mock_set_policy.assert_has_calls([
             mock.call(fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO, False)])
+        mock_is_qos_min_supported.assert_called_once_with(fake.POOL_NAME)
+        mock_extract_host.assert_called_once_with(fake.NFS_VOLUME['host'],
+                                                  level='pool')
         self.assertEqual(0, mock_error_log.call_count)
         self.assertEqual(0, mock_debug_log.call_count)
         self.assertEqual(0, mock_cleanup.call_count)
@@ -652,6 +660,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_debug_log = self.mock_object(nfs_cmode.LOG, 'debug')
         mock_cleanup = self.mock_object(self.driver,
                                         '_cleanup_volume_on_failure')
+        mock_is_qos_min_supported = self.mock_object(self.driver.ssc_library,
+                                                     'is_qos_min_supported',
+                                                     return_value=True)
+        mock_extract_host = self.mock_object(volume_utils, 'extract_host',
+                                             return_value=fake.POOL_NAME)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.driver._do_qos_for_volume,
@@ -661,9 +674,12 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_info.assert_has_calls([
             mock.call(fake.NFS_VOLUME, fake.EXTRA_SPECS)])
         mock_provision_qos.assert_has_calls([
-            mock.call(fake.QOS_POLICY_GROUP_INFO)])
+            mock.call(fake.QOS_POLICY_GROUP_INFO, True)])
         mock_set_policy.assert_has_calls([
             mock.call(fake.NFS_VOLUME, fake.QOS_POLICY_GROUP_INFO, False)])
+        mock_is_qos_min_supported.assert_called_once_with(fake.POOL_NAME)
+        mock_extract_host.assert_called_once_with(fake.NFS_VOLUME['host'],
+                                                  level='pool')
         self.assertEqual(1, mock_error_log.call_count)
         self.assertEqual(1, mock_debug_log.call_count)
         mock_cleanup.assert_has_calls([

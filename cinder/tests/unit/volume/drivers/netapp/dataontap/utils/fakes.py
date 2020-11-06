@@ -42,6 +42,7 @@ SSC = {
         'netapp_disk_type': ['SSD'],
         'netapp_hybrid_aggregate': 'false',
         'netapp_flexvol_encryption': 'true',
+        'netapp_qos_min_support': 'true',
         'pool_name': 'volume1',
     },
     'volume2': {
@@ -56,6 +57,7 @@ SSC = {
         'netapp_disk_type': ['FCAL', 'SSD'],
         'netapp_hybrid_aggregate': 'true',
         'netapp_flexvol_encryption': 'false',
+        'netapp_qos_min_support': 'false',
         'pool_name': 'volume2',
     },
 }
@@ -95,6 +97,15 @@ SSC_ENCRYPTION_INFO = {
     },
 }
 
+SSC_QOS_MIN_INFO = {
+    'volume1': {
+        'netapp_qos_min_support': 'true',
+    },
+    'volume2': {
+        'netapp_qos_min_support': 'false',
+    },
+}
+
 SSC_MIRROR_INFO = {
     'volume1': {
         'netapp_mirrored': 'false',
@@ -109,11 +120,13 @@ SSC_AGGREGATE_INFO = {
         'netapp_disk_type': ['SSD'],
         'netapp_raid_type': 'raid_dp',
         'netapp_hybrid_aggregate': 'false',
+        'netapp_node_name': 'node1',
     },
     'volume2': {
         'netapp_disk_type': ['FCAL', 'SSD'],
         'netapp_raid_type': 'raid_dp',
         'netapp_hybrid_aggregate': 'true',
+        'netapp_node_name': 'node2',
     },
 }
 

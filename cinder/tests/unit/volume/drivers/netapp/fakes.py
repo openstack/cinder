@@ -94,7 +94,7 @@ QOS_SPECS = {}
 
 EXTRA_SPECS = {}
 
-MAX_THROUGHPUT = '21734278B/s'
+MAX_THROUGHPUT_BPS = '21734278B/s'
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 LEGACY_EXTRA_SPECS = {'netapp:qos_policy_group': QOS_POLICY_GROUP_NAME}
 
@@ -103,7 +103,7 @@ LEGACY_QOS = {
 }
 
 QOS_POLICY_GROUP_SPEC = {
-    'max_throughput': MAX_THROUGHPUT,
+    'max_throughput': MAX_THROUGHPUT_BPS,
     'policy_name': 'openstack-%s' % VOLUME_ID,
 }
 

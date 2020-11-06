@@ -31,6 +31,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
@@ -82,6 +83,11 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         config.netapp_api_trace_pattern = 'fake_regex'
         return config
 
+    @ddt.data(fake.AFF_SYSTEM_NODES_INFO,
+              fake.FAS_SYSTEM_NODES_INFO,
+              fake.HYBRID_SYSTEM_NODES_INFO)
+    @mock.patch.object(client_base.Client, 'get_ontap_version',
+                       return_value='9.6')
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
@@ -91,11 +97,14 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                        'check_api_permissions')
     @mock.patch.object(na_utils, 'check_flags')
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
-    @mock.patch.object(client_base.Client, 'get_ontap_version',
-                       mock.MagicMock(return_value='9.6'))
-    def test_do_setup(self, super_do_setup, mock_check_flags,
-                      mock_check_api_permissions, mock_cluster_user_supported):
+    def test_do_setup(self, cluster_nodes_info,
+                      super_do_setup, mock_check_flags,
+                      mock_check_api_permissions, mock_cluster_user_supported,
+                      mock_get_ontap_version):
         self.mock_object(client_base.Client, '_init_ssh_client')
+        mock_get_cluster_nodes_info = self.mock_object(
+            client_cmode.Client, '_get_cluster_nodes_info',
+            return_value=cluster_nodes_info)
         self.mock_object(
             dot_utils, 'get_backend_configuration',
             return_value=self.get_config_cmode())
@@ -107,6 +116,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual(1, mock_check_flags.call_count)
         mock_check_api_permissions.assert_called_once_with()
         mock_cluster_user_supported.assert_called_once_with()
+        mock_get_ontap_version.assert_called_once_with(cached=False)
+        mock_get_cluster_nodes_info.assert_called_once_with()
 
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
@@ -559,13 +570,21 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
                          return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.zapi_client, 'provision_qos_policy_group')
+        mock_is_qos_min_supported = self.mock_object(self.library.ssc_library,
+                                                     'is_qos_min_supported',
+                                                     return_value=True)
+        mock_extract_host = self.mock_object(volume_utils, 'extract_host',
+                                             return_value=fake.POOL_NAME)
 
         result = self.library._setup_qos_for_volume(fake.VOLUME,
                                                     fake.EXTRA_SPECS)
 
         self.assertEqual(fake.QOS_POLICY_GROUP_INFO, result)
         self.zapi_client.provision_qos_policy_group.\
-            assert_called_once_with(fake.QOS_POLICY_GROUP_INFO)
+            assert_called_once_with(fake.QOS_POLICY_GROUP_INFO, True)
+        mock_is_qos_min_supported.assert_called_once_with(fake.POOL_NAME)
+        mock_extract_host.assert_called_once_with(fake.VOLUME['host'],
+                                                  level='pool')
 
     def test_setup_qos_for_volume_exception_path(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
@@ -653,6 +672,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(na_utils, 'log_extra_spec_warnings')
         self.library._check_volume_type_for_lun = mock.Mock()
+        self.library._setup_qos_for_volume = mock.Mock()
+        self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
+                         return_value=None)
         self.library._add_lun_to_table = mock.Mock()
         self.zapi_client.move_lun = mock.Mock()
 

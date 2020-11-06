@@ -245,20 +245,41 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         na_utils.validate_qos_spec(qos_spec)
 
     def test_validate_qos_spec_keys_weirdly_cased(self):
-        qos_spec = {'mAxIopS': 33000}
+        qos_spec = {'mAxIopS': 33000, 'mInIopS': 0}
 
         # Just return without raising an exception.
         na_utils.validate_qos_spec(qos_spec)
 
-    def test_validate_qos_spec_bad_key(self):
+    def test_validate_qos_spec_bad_key_max_flops(self):
         qos_spec = {'maxFlops': 33000}
 
         self.assertRaises(exception.Invalid,
                           na_utils.validate_qos_spec,
                           qos_spec)
 
-    def test_validate_qos_spec_bad_key_combination(self):
+    def test_validate_qos_spec_bad_key_min_bps(self):
+        qos_spec = {'minBps': 33000}
+
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_bad_key_min_bps_per_gib(self):
+        qos_spec = {'minBPSperGiB': 33000}
+
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_bad_key_combination_max_iops_max_bps(self):
         qos_spec = {'maxIOPS': 33000, 'maxBPS': 10000000}
+
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_bad_key_combination_miniops_miniopspergib(self):
+        qos_spec = {'minIOPS': 33000, 'minIOPSperGiB': 10000000}
 
         self.assertRaises(exception.Invalid,
                           na_utils.validate_qos_spec,
@@ -270,6 +291,30 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
 
         self.assertIsNone(result)
+
+    def test_map_qos_spec_bad_key_combination_miniops_maxbpspergib(self):
+        qos_spec = {'minIOPS': 33000, 'maxBPSperGiB': 10000000}
+
+        self.assertRaises(exception.Invalid,
+                          na_utils.map_qos_spec,
+                          qos_spec,
+                          fake.VOLUME)
+
+    def test_map_qos_spec_bad_key_combination_min_iops_max_bps(self):
+        qos_spec = {'minIOPS': 33000, 'maxBPS': 10000000}
+
+        self.assertRaises(exception.Invalid,
+                          na_utils.map_qos_spec,
+                          qos_spec,
+                          fake.VOLUME)
+
+    def test_map_qos_spec_miniops_greater_than_maxiops(self):
+        qos_spec = {'minIOPS': 33001, 'maxIOPS': 33000}
+
+        self.assertRaises(exception.Invalid,
+                          na_utils.map_qos_spec,
+                          qos_spec,
+                          fake.VOLUME)
 
     def test_map_qos_spec_maxiops(self):
         qos_spec = {'maxIOPs': 33000}
@@ -290,6 +335,20 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         mock_get_name.return_value = 'fake_qos_policy'
         expected = {
             'policy_name': 'fake_qos_policy',
+            'max_throughput': '42000iops',
+        }
+
+        result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
+
+        self.assertEqual(expected, result)
+
+    def test_map_qos_spec_miniopspergib_maxiopspergib(self):
+        qos_spec = {'minIOPSperGiB': 1000, 'maxIOPSperGiB': 1000}
+        mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
+        mock_get_name.return_value = 'fake_qos_policy'
+        expected = {
+            'policy_name': 'fake_qos_policy',
+            'min_throughput': '42000iops',
             'max_throughput': '42000iops',
         }
 
@@ -329,7 +388,20 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         mock_get_name.return_value = 'fake_qos_policy'
         expected = {
             'policy_name': 'fake_qos_policy',
-            'max_throughput': None,
+        }
+
+        result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
+
+        self.assertEqual(expected, result)
+
+    def test_map_qos_spec_miniops_maxiops(self):
+        qos_spec = {'minIOPs': 25000, 'maxIOPs': 33000}
+        mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
+        mock_get_name.return_value = 'fake_qos_policy'
+        expected = {
+            'policy_name': 'fake_qos_policy',
+            'min_throughput': '25000iops',
+            'max_throughput': '33000iops',
         }
 
         result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
@@ -585,6 +657,16 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertRaises(na_utils.NetAppDriverException,
                           na_utils.get_export_host_junction_path,
                           share)
+
+    @ddt.data(True, False)
+    def test_qos_min_feature_name(self, is_nfs):
+        name = 'node'
+        feature_name = na_utils.qos_min_feature_name(is_nfs, name)
+
+        if is_nfs:
+            self.assertEqual('QOS_MIN_NFS_' + name, feature_name)
+        else:
+            self.assertEqual('QOS_MIN_BLOCK_' + name, feature_name)
 
 
 class OpenStackInfoTestCase(test.TestCase):

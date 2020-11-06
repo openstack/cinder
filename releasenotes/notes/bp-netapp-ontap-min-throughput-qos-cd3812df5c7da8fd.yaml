@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added support for QoS Min (floor) throughput specs.
+    The driver now accepts ``minIOPS`` and ``minIOPSperGiB`` specs, which can
+    be set either individually or along with Max (ceiling) throughput specs.
+    The feature requires storage ONTAP All Flash FAS (AFF) with version equal
+    or greater than 9.3 for NFS and 9.2 for iSCSI and FCP. It also works with
+    Select Premium with SSD and C190 storages with at least ONTAP 9.6.
+  - |
+    NetApp ONTAP driver: Added a new driver specific capability called
+    `netapp_qos_min_support`. It is used to filter the pools that has support
+    to the Qos minimum (floor) specs during the scheduler phase.

@@ -260,6 +260,8 @@ IGROUP1 = {'initiator-group-os-type': 'linux',
 QOS_SPECS = {}
 EXTRA_SPECS = {}
 MAX_THROUGHPUT = '21734278B/s'
+MIN_IOPS = '256IOPS'
+MAX_IOPS = '512IOPS'
 QOS_POLICY_GROUP_NAME = 'fake_qos_policy_group_name'
 
 QOS_POLICY_GROUP_INFO_LEGACY = {
@@ -268,11 +270,18 @@ QOS_POLICY_GROUP_INFO_LEGACY = {
 }
 
 QOS_POLICY_GROUP_SPEC = {
+    'min_throughput': MIN_IOPS,
+    'max_throughput': MAX_IOPS,
+    'policy_name': QOS_POLICY_GROUP_NAME,
+}
+
+QOS_POLICY_GROUP_SPEC_MAX = {
     'max_throughput': MAX_THROUGHPUT,
     'policy_name': QOS_POLICY_GROUP_NAME,
 }
 
 QOS_POLICY_GROUP_INFO = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC}
+QOS_POLICY_GROUP_INFO_MAX = {'legacy': None, 'spec': QOS_POLICY_GROUP_SPEC_MAX}
 
 CLONE_SOURCE_NAME = 'fake_clone_source_name'
 CLONE_SOURCE_ID = 'fake_clone_source_id'
@@ -420,6 +429,103 @@ CG_VOLUME_SNAPSHOT = {
     'status': 'fake_status',
     'volume_id': CG_VOLUME_ID,
 }
+
+AFF_SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <node-details-info>
+        <node-model>AFFA400</node-model>
+        <node>aff-node1</node>
+        <is-all-flash-optimized>true</is-all-flash-optimized>
+        <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
+      </node-details-info>
+      <node-details-info>
+        <node-model>AFFA400</node-model>
+        <node>aff-node2</node>
+        <is-all-flash-optimized>true</is-all-flash-optimized>
+        <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
+      </node-details-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""")
+
+FAS_SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <node-details-info>
+        <node-model>FAS2554</node-model>
+        <node>fas-node1</node>
+        <is-all-flash-optimized>false</is-all-flash-optimized>
+        <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
+      </node-details-info>
+      <node-details-info>
+        <node-model>FAS2554</node-model>
+        <node>fas-node2</node>
+        <is-all-flash-optimized>false</is-all-flash-optimized>
+        <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
+      </node-details-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""")
+
+HYBRID_SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <node-details-info>
+        <node>select-node</node>
+        <is-all-flash-optimized>false</is-all-flash-optimized>
+        <is-all-flash-select-optimized>true</is-all-flash-select-optimized>
+        <node-model>FDvM300</node-model>
+      </node-details-info>
+      <node-details-info>
+        <node>c190-node</node>
+        <is-all-flash-optimized>true</is-all-flash-optimized>
+        <is-all-flash-select-optimized>false</is-all-flash-select-optimized>
+        <node-model>AFF-C190</node-model>
+      </node-details-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""")
+
+AFF_NODE = {
+    'model': 'AFFA400',
+    'is_all_flash': True,
+    'is_all_flash_select': False,
+}
+AFF_NODE_1 = AFF_NODE.copy()
+AFF_NODE_1['name'] = 'aff-node1'
+AFF_NODE_2 = AFF_NODE.copy()
+AFF_NODE_2['name'] = 'aff-node2'
+
+FAS_NODE = {
+    'model': 'FAS2554',
+    'is_all_flash': False,
+    'is_all_flash_select': False,
+}
+FAS_NODE_1 = FAS_NODE.copy()
+FAS_NODE_1['name'] = 'fas-node1'
+FAS_NODE_2 = FAS_NODE.copy()
+FAS_NODE_2['name'] = 'fas-node2'
+
+SELECT_NODE = {
+    'model': 'FDvM300',
+    'is_all_flash': False,
+    'is_all_flash_select': True,
+    'name': 'select-node',
+}
+C190_NODE = {
+    'model': 'AFF-C190',
+    'is_all_flash': True,
+    'is_all_flash_select': False,
+    'name': 'c190-node',
+}
+
+AFF_SYSTEM_NODES_INFO = [AFF_NODE_1, AFF_NODE_2]
+FAS_SYSTEM_NODES_INFO = [FAS_NODE_1, FAS_NODE_2]
+HYBRID_SYSTEM_NODES_INFO = [SELECT_NODE, C190_NODE]
 
 SYSTEM_GET_VERSION_RESPONSE = etree.XML("""
   <results status="passed">

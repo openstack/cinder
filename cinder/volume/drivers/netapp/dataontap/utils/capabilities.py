@@ -117,6 +117,15 @@ class CapabilitiesLibrary(object):
                 aggregates.add(flexvol_info['netapp_aggregate'])
         return list(aggregates)
 
+    def is_qos_min_supported(self, pool_name):
+        for __, flexvol_info in self.ssc.items():
+            if ('netapp_qos_min_support' in flexvol_info and
+                    'pool_name' in flexvol_info and
+                    flexvol_info['pool_name'] == pool_name):
+                return flexvol_info['netapp_qos_min_support'] == 'true'
+
+        return False
+
     def update_ssc(self, flexvol_map):
         """Periodically runs to update Storage Service Catalog data.
 
@@ -143,7 +152,11 @@ class CapabilitiesLibrary(object):
 
             # Get aggregate info
             aggregate_name = ssc_volume.get('netapp_aggregate')
-            ssc_volume.update(self._get_ssc_aggregate_info(aggregate_name))
+            aggr_info = self._get_ssc_aggregate_info(aggregate_name)
+            node_name = aggr_info.pop('netapp_node_name')
+            ssc_volume.update(aggr_info)
+
+            ssc_volume.update(self._get_ssc_qos_min_info(node_name))
 
             ssc[flexvol_name] = ssc_volume
 
@@ -212,6 +225,13 @@ class CapabilitiesLibrary(object):
 
         return {'netapp_flexvol_encryption': six.text_type(encrypted).lower()}
 
+    def _get_ssc_qos_min_info(self, node_name):
+        """Gather Qos minimum info and recast into SSC-style stats."""
+        supported = self.zapi_client.is_qos_min_supported(
+            self.protocol == 'nfs', node_name)
+
+        return {'netapp_qos_min_support': six.text_type(supported).lower()}
+
     def _get_ssc_mirror_info(self, flexvol_name):
         """Gather SnapMirror info and recast into SSC-style volume stats."""
 
@@ -227,8 +247,10 @@ class CapabilitiesLibrary(object):
             raid_type = None
             hybrid = None
             disk_types = None
+            node_name = None
         else:
             aggregate = self.zapi_client.get_aggregate(aggregate_name)
+            node_name = aggregate.get('node-name')
             raid_type = aggregate.get('raid-type')
             hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
                       if 'is-hybrid' in aggregate else None)
@@ -239,6 +261,7 @@ class CapabilitiesLibrary(object):
             'netapp_raid_type': raid_type,
             'netapp_hybrid_aggregate': hybrid,
             'netapp_disk_type': disk_types,
+            'netapp_node_name': node_name,
         }
 
     def get_matching_flexvols_for_extra_specs(self, extra_specs):
