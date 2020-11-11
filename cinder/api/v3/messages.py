@@ -12,7 +12,7 @@
 
 """The messages API."""
 
-from http import client as http_client
+from http import HTTPStatus
 
 import webob
 
@@ -72,7 +72,7 @@ class MessagesController(wsgi.Controller):
         context.authorize(policy.DELETE_POLICY, target_obj=message)
         self.message_api.delete(context, message)
 
-        return webob.Response(status_int=http_client.NO_CONTENT)
+        return webob.Response(status_int=HTTPStatus.NO_CONTENT)
 
     @wsgi.Controller.api_version(mv.MESSAGES)
     def index(self, req):

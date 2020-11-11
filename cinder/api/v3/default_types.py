@@ -14,7 +14,7 @@
 #    under the License.
 
 """The resource filters api."""
-from http import client as http_client
+from http import HTTPStatus
 
 from keystoneauth1 import exceptions as ks_exc
 from webob import exc
@@ -53,7 +53,7 @@ class DefaultTypesController(wsgi.Controller):
                             "operation.")
             raise exc.HTTPForbidden(explanation=explanation)
 
-    @wsgi.response(http_client.OK)
+    @wsgi.response(HTTPStatus.OK)
     @wsgi.Controller.api_version(mv.DEFAULT_TYPE_OVERRIDES)
     @validation.schema(default_types.create_or_update)
     def create_update(self, req, id, body):
@@ -77,7 +77,7 @@ class DefaultTypesController(wsgi.Controller):
 
         return self._view_builder.create(default_type)
 
-    @wsgi.response(http_client.OK)
+    @wsgi.response(HTTPStatus.OK)
     @wsgi.Controller.api_version(mv.DEFAULT_TYPE_OVERRIDES)
     def detail(self, req, id):
         """Return detail of a default type."""
@@ -93,7 +93,7 @@ class DefaultTypesController(wsgi.Controller):
                 project_id=project_id)
         return self._view_builder.detail(default_type)
 
-    @wsgi.response(http_client.OK)
+    @wsgi.response(HTTPStatus.OK)
     @wsgi.Controller.api_version(mv.DEFAULT_TYPE_OVERRIDES)
     def index(self, req):
         """Return a list of default types."""
@@ -109,7 +109,7 @@ class DefaultTypesController(wsgi.Controller):
         default_types = db.project_default_volume_type_get(context)
         return self._view_builder.index(default_types)
 
-    @wsgi.response(http_client.NO_CONTENT)
+    @wsgi.response(HTTPStatus.NO_CONTENT)
     @wsgi.Controller.api_version(mv.DEFAULT_TYPE_OVERRIDES)
     def delete(self, req, id):
         """Unset a default volume type for a project."""

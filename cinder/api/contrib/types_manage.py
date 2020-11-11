@@ -14,7 +14,7 @@
 #    under the License.
 
 """The volume types manage extension."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_utils import strutils
 import webob
@@ -167,7 +167,7 @@ class VolumeTypesManageController(wsgi.Controller):
                 context, 'volume_type.delete', err, volume_type=vol_type)
             raise webob.exc.HTTPInternalServerError(explanation=err.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 class Types_manage(extensions.ExtensionDescriptor):

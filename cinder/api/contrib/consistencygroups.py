@@ -14,7 +14,7 @@
 #    under the License.
 
 """The consistencygroups api."""
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_log import versionutils
@@ -85,7 +85,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     def index(self, req):
         """Returns a summary list of consistency groups."""
@@ -133,7 +133,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         return groups
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     def create(self, req, body):
         """Create a new consistency group."""
         versionutils.report_deprecated_feature(LOG, DEPRECATE_CG_API_MSG)
@@ -179,7 +179,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     def create_from_src(self, req, body):
         """Create a new consistency group from a source.
 
@@ -297,7 +297,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                                       remove_volumes)
         self._update(context, group, name, description, add_volumes,
                      remove_volumes)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 class Consistencygroups(extensions.ExtensionDescriptor):

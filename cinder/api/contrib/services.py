@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -151,7 +151,7 @@ class ServiceController(wsgi.Controller):
         cluster_name, host = common.get_cluster_host(req, body, version)
         self._volume_api_proxy(self.volume_api.failover, context, host,
                                cluster_name, body.get('backend_id'))
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     def _log_params_binaries_services(self, context, body):
         """Get binaries and services referred by given log set/get request."""
@@ -189,7 +189,7 @@ class ServiceController(wsgi.Controller):
             self.rpc_apis[service.binary].set_log_levels(context,
                                                          service, log_req)
 
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
     @validation.schema(os_services.get_log)
     def _get_log(self, req, context, body):

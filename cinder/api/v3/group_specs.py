@@ -13,7 +13,7 @@
 #    under the License.
 
 """The group types specs controller"""
-from http import client as http_client
+from http import HTTPStatus
 
 import webob
 
@@ -54,7 +54,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         return self._get_group_specs(context, group_type_id)
 
     @wsgi.Controller.api_version(mv.GROUP_TYPE)
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(group_specs.create)
     def create(self, req, group_type_id, body):
         context = req.environ['cinder.context']
@@ -125,7 +125,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         notifier.info(context,
                       'group_type_specs.delete',
                       notifier_info)
-        return webob.Response(status_int=http_client.ACCEPTED)
+        return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
 
 def create_resource():

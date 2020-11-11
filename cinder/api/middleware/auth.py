@@ -17,7 +17,7 @@ Common Auth Middleware.
 
 """
 
-from http import client as http_client
+from http import HTTPStatus
 import os
 
 from oslo_config import cfg
@@ -141,7 +141,7 @@ class NoAuthMiddleware(base_wsgi.Middleware):
             res.headers['X-Auth-Token'] = '%s:%s' % (user_id, project_id)
             res.headers['X-Server-Management-Url'] = os_url
             res.content_type = 'text/plain'
-            res.status_int = http_client.NO_CONTENT
+            res.status_int = HTTPStatus.NO_CONTENT
             return res
 
         token = req.headers['X-Auth-Token']

@@ -12,7 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from http import client as http_client
+from http import HTTPStatus
 
 from cinder.api.contrib import volume_manage as volume_manage_v2
 from cinder.api import microversions as mv
@@ -26,7 +26,7 @@ class VolumeManageController(common.ManageResource,
         super(VolumeManageController, self).__init__(*args, **kwargs)
         self._set_resource_type('volume')
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     def create(self, req, body):
         self._ensure_min_version(req, mv.MANAGE_EXISTING_LIST)
         return super(VolumeManageController, self).create(req, body=body)

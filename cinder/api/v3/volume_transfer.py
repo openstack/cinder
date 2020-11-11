@@ -11,7 +11,7 @@
 #   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #   License for the specific language governing permissions and limitations
 #   under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_utils import strutils
@@ -76,7 +76,7 @@ class VolumeTransferController(volume_transfer_v2.VolumeTransferController):
         """Returns a detailed list of transfers."""
         return self._get_transfers(req, is_detail=True)
 
-    @wsgi.response(http_client.ACCEPTED)
+    @wsgi.response(HTTPStatus.ACCEPTED)
     @validation.schema(volume_transfer.create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.TRANSFER_WITH_SNAPSHOTS))
     @validation.schema(volume_transfer.create_v355, mv.TRANSFER_WITH_SNAPSHOTS)

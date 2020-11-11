@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-from http import client as http_client
+from http import HTTPStatus
 
 import webob
 from webob import exc
@@ -131,7 +131,7 @@ class Controller(wsgi.Controller):
                                                      metadata_key=id)
 
         self.volume_api.delete_snapshot_metadata(context, snapshot, id)
-        return webob.Response(status_int=http_client.OK)
+        return webob.Response(status_int=HTTPStatus.OK)
 
 
 def create_resource():
