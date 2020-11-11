@@ -262,9 +262,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                     - Enable Active/Active support flag
                     - Implement Active/Active replication support
           2.2.0  - Add storage assisted volume migration support
+          2.2.1  - Fix bug #1891914 fix error on cluster workload rebalancing
+                   by adding xNotPrimary to the retryable exception list
     """
 
-    VERSION = '2.2.0'
+    VERSION = '2.2.1'
 
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -302,7 +304,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                         'xMaxSnapshotsPerNodeExceeded',
                         'xMaxClonesPerNodeExceeded',
                         'xSliceNotRegistered',
-                        'xNotReadyForIO']
+                        'xNotReadyForIO',
+                        'xNotPrimary']
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)

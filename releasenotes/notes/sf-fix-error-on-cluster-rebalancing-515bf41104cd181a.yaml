@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    NetApp SolidFire driver `Bug #1891914
+    <https://bugs.launchpad.net/cinder/+bug/1891914>`_:
+    Fix an error that might occur on cluster workload rebalancing or
+    system upgrade, when an operation is made to a volume at the same
+    time its connection is being moved to a secondary node.
