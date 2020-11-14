@@ -19,8 +19,20 @@ RULE_ADMIN_OR_OWNER = 'rule:admin_or_owner'
 RULE_ADMIN_API = 'rule:admin_api'
 
 SYSTEM_ADMIN = 'role:admin and system_scope:all'
+SYSTEM_MEMBER = 'role:member and system_scope:all'
+SYSTEM_READER = 'role:reader and system_scope:all'
+
+PROJECT_ADMIN = 'role:admin and project_id:%(project_id)s'
+PROJECT_MEMBER = 'role:member and project_id:%(project_id)s'
+PROJECT_READER = 'role:reader and project_id:%(project_id)s'
 
 SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN = 'rule:system_or_domain_or_project_admin'
+SYSTEM_OR_PROJECT_MEMBER = (
+    '(' + SYSTEM_MEMBER + ') or (' + PROJECT_MEMBER + ')'
+)
+SYSTEM_OR_PROJECT_READER = (
+    '(' + SYSTEM_READER + ') or (' + PROJECT_READER + ')'
+)
 
 rules = [
     policy.RuleDefault('context_is_admin', 'role:admin',
