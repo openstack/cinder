@@ -13,6 +13,7 @@
 """Unit Tests for volume transfers."""
 
 
+import ddt
 import mock
 from oslo_utils import timeutils
 
@@ -33,6 +34,7 @@ from cinder.transfer import api as transfer_api
 QUOTAS = quota.QUOTAS
 
 
+@ddt.ddt
 class VolumeTransferTestCase(test.TestCase):
     """Test cases for volume transfer code."""
     def setUp(self):
@@ -288,6 +290,38 @@ class VolumeTransferTestCase(test.TestCase):
 
         ts = tx_api.get_all(nctxt)
         self.assertEqual(0, len(ts), 'Unexpected transfers listed.')
+
+    @ddt.data({'all_tenants': '1', 'name': 'transfer1'},
+              {'all_tenants': 'true', 'name': 'transfer1'},
+              {'all_tenants': 'false', 'name': 'transfer1'},
+              {'all_tenants': '0', 'name': 'transfer1'},
+              {'name': 'transfer1'})
+    @mock.patch.object(context.RequestContext, 'authorize')
+    @mock.patch('cinder.db.transfer_get_all')
+    @mock.patch('cinder.db.transfer_get_all_by_project')
+    def test_get_all_transfers_non_admin(self, search_opts, get_all_by_project,
+                                         get_all, auth_mock):
+        ctxt = context.RequestContext(user_id=None, is_admin=False,
+                                      project_id=mock.sentinel.project_id,
+                                      read_deleted='no', overwrite=False)
+        tx_api = transfer_api.API()
+        res = tx_api.get_all(ctxt, mock.sentinel.marker,
+                             mock.sentinel.limit, mock.sentinel.sort_keys,
+                             mock.sentinel.sort_dirs,
+                             search_opts, mock.sentinel.offset)
+
+        auth_mock.assert_called_once_with(transfer_api.policy.GET_ALL_POLICY)
+        get_all.assert_not_called()
+        get_all_by_project.assert_called_once_with(
+            ctxt,
+            mock.sentinel.project_id,
+            filters={'name': 'transfer1'},
+            limit=mock.sentinel.limit,
+            marker=mock.sentinel.marker,
+            offset=mock.sentinel.offset,
+            sort_dirs=mock.sentinel.sort_dirs,
+            sort_keys=mock.sentinel.sort_keys)
+        self.assertEqual(get_all_by_project.return_value, res)
 
     @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
     def test_delete_transfer_with_deleted_volume(self, mock_notify):

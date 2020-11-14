@@ -25,6 +25,7 @@ import os
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import strutils
 import six
 
 from cinder.db import base
@@ -84,8 +85,9 @@ class API(base.Base):
                 sort_dirs=None, filters=None, offset=None):
         filters = filters or {}
         context.authorize(policy.GET_ALL_POLICY)
-        if context.is_admin and 'all_tenants' in filters:
-            del filters['all_tenants']
+        all_tenants = strutils.bool_from_string(filters.pop('all_tenants',
+                                                            'false'))
+        if context.is_admin and all_tenants:
             transfers = self.db.transfer_get_all(context, marker=marker,
                                                  limit=limit,
                                                  sort_keys=sort_keys,
