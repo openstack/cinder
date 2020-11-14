@@ -3122,19 +3122,6 @@ class PowerMaxCommonTest(test.TestCase):
         port = self.common._get_unisphere_port()
         self.assertEqual(ref_port, port)
 
-    @mock.patch.object(common.PowerMaxCommon,
-                       '_do_sync_check')
-    def test_sync_check_no_source_device_on_array(self, mock_check):
-        with mock.patch.object(self.rest, 'get_volume',
-                               side_effect=exception.VolumeBackendAPIException(
-                                   "404 00123 does not exist")):
-            array = self.data.array
-            device_id = self.data.device_id
-            extra_specs = self.data.extra_specs
-            self.common._sync_check(array, device_id, extra_specs,
-                                    source_device_id='00123')
-            mock_check.assert_not_called()
-
     def test_sync_check(self):
         array = self.data.array
         device_id = self.data.device_id
@@ -3143,13 +3130,13 @@ class PowerMaxCommonTest(test.TestCase):
         with mock.patch.object(self.common, '_do_sync_check') as mck_sync:
             self.common._sync_check(array, device_id, extra_specs, False,
                                     self.data.device_id2)
-            mck_sync.assert_called_with(array, self.data.device_id2,
+            mck_sync.assert_called_with(array, self.data.device_id,
                                         extra_specs, False)
             mck_sync.reset_mock()
             with mock.patch.object(self.common, '_get_target_source_device',
                                    return_value=self.data.device_id3):
                 self.common._sync_check(array, device_id, extra_specs, True)
-                mck_sync.assert_called_with(array, self.data.device_id3,
+                mck_sync.assert_called_with(array, self.data.device_id,
                                             extra_specs, True)
             mck_sync.reset_mock()
             self.common._sync_check(array, device_id, extra_specs)
@@ -3172,30 +3159,64 @@ class PowerMaxCommonTest(test.TestCase):
 
     @mock.patch.object(provision.PowerMaxProvision, 'delete_temp_volume_snap')
     @mock.patch.object(provision.PowerMaxProvision, 'unlink_snapvx_tgt_volume')
-    def test_unlink_targets_and_delete_temp_snapvx(self, mck_break, mck_del):
+    def test_unlink_targets_and_delete_temp_snapvx_legacy(
+            self, mck_break, mck_del):
         array = self.data.array
         extra_specs = self.data.extra_specs
-        session = self.data.snap_tgt_session_cm_enabled
+        session = deepcopy(self.data.snap_tgt_session_cm_enabled)
+        legacy_snap_name = 'EMC_SMI'
+        session['snap_name'] = legacy_snap_name
+        source = session['source_vol_id']
+        generation = session['generation']
+        target = session['target_vol_id']
+        self.common._unlink_targets_and_delete_temp_snapvx(
+            session, array, extra_specs)
+        mck_break.assert_called_with(array, target, source, legacy_snap_name,
+                                     extra_specs, generation, True)
+        mck_del.assert_called_once_with(
+            array, legacy_snap_name, source, generation)
+
+    @mock.patch.object(provision.PowerMaxProvision, 'delete_temp_volume_snap')
+    @mock.patch.object(provision.PowerMaxProvision, 'unlink_snapvx_tgt_volume')
+    def test_unlink_targets_and_delete_temp_snapvx_is_temp(
+            self, mck_break, mck_del):
+        array = self.data.array
+        extra_specs = self.data.extra_specs
+        session = deepcopy(self.data.snap_tgt_session_cm_enabled)
         snap_name = session['snap_name']
         source = session['source_vol_id']
         generation = session['generation']
         target = session['target_vol_id']
-
         self.common._unlink_targets_and_delete_temp_snapvx(
             session, array, extra_specs)
         mck_break.assert_called_with(array, target, source, snap_name,
                                      extra_specs, generation, True)
         mck_del.assert_called_once_with(array, snap_name, source, generation)
 
-        mck_break.reset_mock()
-        mck_del.reset_mock()
+    def test_unlink_targets_and_delete_temp_snapvx_no_snap_name_found(self):
+        array = self.data.array
+        extra_specs = self.data.extra_specs
+        session = dict()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common._unlink_targets_and_delete_temp_snapvx,
+                          session, array, extra_specs)
 
-        session['copy_mode'] = False
-        session['expired'] = True
+    @mock.patch.object(provision.PowerMaxProvision, 'delete_temp_volume_snap')
+    @mock.patch.object(provision.PowerMaxProvision, 'unlink_snapvx_tgt_volume')
+    def test_unlink_targets_and_delete_temp_snapvx_not_legacy_not_temp(
+            self, mck_break, mck_del):
+        array = self.data.array
+        extra_specs = self.data.extra_specs
+        session = deepcopy(self.data.snap_tgt_session_cm_enabled)
+        session['snap_name'] = 'not_leg_or_tmp'
+        snap_name = session['snap_name']
+        source = session['source_vol_id']
+        generation = session['generation']
+        target = session['target_vol_id']
         self.common._unlink_targets_and_delete_temp_snapvx(
             session, array, extra_specs)
         mck_break.assert_called_with(array, target, source, snap_name,
-                                     extra_specs, generation, False)
+                                     extra_specs, generation, True)
         mck_del.assert_not_called()
 
     @mock.patch.object(rest.PowerMaxRest, 'find_snap_vx_sessions',

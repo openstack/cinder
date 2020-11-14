@@ -2793,16 +2793,10 @@ class PowerMaxCommon(object):
         if source_device_id:
             @coordination.synchronized("emc-source-{src_device_id}")
             def do_unlink_and_delete_snap(src_device_id):
-                # Check if source device exists on the array
-                try:
-                    self.rest.get_volume(array, src_device_id)
-                except exception.VolumeBackendAPIException:
-                    LOG.debug("Device %(device_id)s not found on array, no "
-                              "sync check required.",
-                              {'device_id': src_device_id})
-                    return
+                LOG.debug("Locking on source device %(device_id)s.",
+                          {'device_id': src_device_id})
                 self._do_sync_check(
-                    array, src_device_id, extra_specs, tgt_only)
+                    array, device_id, extra_specs, tgt_only)
 
             do_unlink_and_delete_snap(source_device_id)
         else:
@@ -2843,10 +2837,16 @@ class PowerMaxCommon(object):
         :param array: the array serial number
         :param extra_specs: extra specifications
         """
-        snap_name = session['snap_name']
-        source = session['source_vol_id']
+        snap_name = session.get('snap_name')
+        if not snap_name:
+            msg = _("Snap_name not present in volume's snapvx session. "
+                    "Unable to perform unlink and cleanup.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(msg)
+        source = session.get('source_vol_id')
         generation = session['generation']
-        expired = session['expired']
+        is_legacy = 'EMC_SMI' in snap_name
+        is_temp = utils.CLONE_SNAPSHOT_NAME in snap_name
 
         target, cm_enabled = None, False
         if session.get('target_vol_id'):
@@ -2865,10 +2865,13 @@ class PowerMaxCommon(object):
 
         # Candidates for deletion:
         # 1. If legacy snapshot with 'EMC_SMI' in snapshot name
-        # 2. If snapVX snapshot with copy mode enabled
-        # 3. If snapVX snapshot with copy mode disabled and not expired
-        if ('EMC_SMI' in snap_name or cm_enabled or (
-                not cm_enabled and not expired)):
+        # 2. If snapVX snapshot is temporary
+        # If a target is present in the snap session it will be unlinked by
+        # the provision.unlink_snapvx_tgt_volume call above. This accounts
+        # for both CM enabled and disabled, as such by this point there will
+        # either be no target or it would have been unlinked, therefore
+        # delete if it is legacy or temp.
+        if is_legacy or is_temp:
             LOG.debug(
                 "Deleting temporary snapshot. Source: %(vol)s, snap name: "
                 "%(name)s, generation: %(gen)s.", {
