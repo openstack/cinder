@@ -2432,7 +2432,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
         device_changes = None
         if volume['size']:
-            new_size_in_kb = volume['size'] * units.Gi / units.Ki
+            new_size_in_kb = int(volume['size'] * units.Gi / units.Ki)
             disk_device = self.volumeops._get_disk_device(template)
             if new_size_in_kb > disk_device.capacityInKB:
                 device_changes = self.volumeops._create_spec_for_disk_expand(
