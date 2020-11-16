@@ -498,7 +498,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         new_key_id = volume_utils.create_encryption_key(context,
                                                         keymgr,
                                                         volume.volume_type_id)
-        new_key = keymgr.get(context, encryption['encryption_key_id'])
+        new_key = keymgr.get(context, new_key_id)
         new_pass = binascii.hexlify(new_key.get_encoded()).decode('utf-8')
 
         return (source_pass, new_pass, new_key_id)
