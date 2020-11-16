@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-11-02 05:05+0000\n"
+"POT-Creation-Date: 2020-11-14 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -105,16 +105,6 @@ msgstr ""
 #, python-format
 msgid "%(name)s cannot be all spaces."
 msgstr "%(name)s no puede estar vacío."
-
-#, python-format
-msgid ""
-"%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
-"unexpected mode. Image or file backups supported, actual mode is "
-"%(vol_mode)s."
-msgstr ""
-"%(op)s: copia de seguridad %(bck_id)s, volumen %(vol_id)s ha fallado. El "
-"objeto de copia de seguridad tiene una modalidad inesperada. Se soportan las "
-"copias de seguridad de imagen o archivo, la modalidad real es %(vol_mode)s."
 
 #, python-format
 msgid ""
@@ -4822,13 +4812,6 @@ msgstr "El volumen no está disponible."
 msgid "Volume is not local to this node."
 msgstr "El volumen no es local para este nodo."
 
-msgid ""
-"Volume metadata backup requested but this driver does not yet support this "
-"feature."
-msgstr ""
-"Se ha solicitado copia de seguridad de metadatos de volumen pero este "
-"controlador no soporta aún esta característica."
-
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "Ha fallado la migración en volumen: %(reason)s"
@@ -5401,60 +5384,6 @@ msgstr "already_created"
 msgid "attribute %s not lazy-loadable"
 msgstr "el atributo %s no es de carga diferida"
 
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to create device hardlink from %(vpath)s to "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"copia de seguridad: %(vol_id)s no ha podido crear enlace fijo de dispositivo "
-"de %(vpath)s a %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to obtain backup success notification from "
-"server.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"copia de seguridad: %(vol_id)s no ha podido obtener notificación de éxito de "
-"copia de seguridad de servidor.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"copia de seguridad: %(vol_id)s no ha podido ejecutar dsmc en %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid "backup: %(vol_id)s failed. %(path)s is not a file."
-msgstr "copia de seguridad: %(vol_id)s ha fallado. %(path)s no es un archivo."
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed. %(path)s is unexpected file type. Block or "
-"regular files supported, actual file mode is %(vol_mode)s."
-msgstr ""
-"copia de seguridad: %(vol_id)s ha fallado. %(path)s es de un tipo de archivo "
-"inesperado. Se soportan archivos de bloque o normales, la modalidad de "
-"archivo real es %(vol_mode)s."
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed. Cannot obtain real path to volume at %(path)s."
-msgstr ""
-"copia de seguridad: %(vol_id)s ha fallado. No se puede obtener vía de acceso "
-"real al volumen en %(path)s."
-
 msgid "being attached by different mode"
 msgstr "conectado por medio de un modo diferente"
 
@@ -5645,15 +5574,6 @@ msgstr ""
 
 msgid "data not found"
 msgstr "No se han encontrado datos"
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc with stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"suprimir: %(vol_id)s no ha podido ejecutar dsmc sin salida estándar: "
-"%(out)s\n"
-" stderr: %(err)s"
 
 msgid "delete_hypermetro error."
 msgstr "Error de delete_hypermetro."
@@ -5898,26 +5818,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "replication_failover ha fallado. No se ha configurado un programa de fondo "
 "para la migración tras error"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"restaurar: %(vol_id)s no ha podido ejecutar dsmc en %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s."
-msgstr ""
-"restaurar: %(vol_id)s ha fallado.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s."
 
 msgid ""
 "restore_backup aborted, actual object list does not match object list stored "

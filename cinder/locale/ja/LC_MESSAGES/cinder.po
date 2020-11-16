@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-11-02 05:05+0000\n"
+"POT-Creation-Date: 2020-11-14 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -113,16 +113,6 @@ msgstr "%(name)s は全て空白にはできません。"
 #, python-format
 msgid "%(new_size)s < current size %(size)s"
 msgstr "%(new_size)s < 現在のサイズ %(size)s"
-
-#, python-format
-msgid ""
-"%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
-"unexpected mode. Image or file backups supported, actual mode is "
-"%(vol_mode)s."
-msgstr ""
-"%(op)s: バックアップ %(bck_id)s、ボリューム %(vol_id)s が失敗しました。バック"
-"アップオブジェクトが予期しないモードです。イメージまたはファイルのバックアッ"
-"プがサポートされています。実際のモードは %(vol_mode)s です。"
 
 #, python-format
 msgid "%(reason)s"
@@ -5577,13 +5567,6 @@ msgstr ""
 "source-id を含むボリューム管理識別子は、クラスタリングされた Data ONTAP での"
 "みサポートされています。"
 
-msgid ""
-"Volume metadata backup requested but this driver does not yet support this "
-"feature."
-msgstr ""
-"ボリュームメタデータバックアップが要求されましたが、このドライバーではまだこ"
-"の機能はサポートされていません。"
-
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "ボリュームマイグレーションが失敗しました: %(reason)s"
@@ -6170,62 +6153,6 @@ msgstr "already_created"
 msgid "attribute %s not lazy-loadable"
 msgstr "属性 %s は遅延ロードできません"
 
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to create device hardlink from %(vpath)s to "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"バックアップ: %(vol_id)s での %(vpath)s から %(bpath)s へのデバイスハードリン"
-"クの作成に失敗しました。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to obtain backup success notification from "
-"server.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"バックアップ: %(vol_id)s サーバーからバックアップ成功通知を取得できませんでし"
-"た。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"バックアップ: %(vol_id)s  %(bpath)s で dsmc を実行できませんでした。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid "backup: %(vol_id)s failed. %(path)s is not a file."
-msgstr ""
-"バックアップ: %(vol_id)s に障害が発生しました。%(path)s はファイルではありま"
-"せん。"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed. %(path)s is unexpected file type. Block or "
-"regular files supported, actual file mode is %(vol_mode)s."
-msgstr ""
-"バックアップ: %(vol_id)s に障害が発生しました。%(path)s は予期されていない"
-"ファイルタイプです。ブロック化または通常のファイルがサポートされています。実"
-"際のファイルモードは %(vol_mode)s です。"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed. Cannot obtain real path to volume at %(path)s."
-msgstr ""
-"バックアップ: %(vol_id)s に障害が発生しました。ボリュームへの実際のパス "
-"%(path)s を取得できません。"
-
 msgid "being attached by different mode"
 msgstr "別のモードで接続しています。"
 
@@ -6445,14 +6372,6 @@ msgstr ""
 
 msgid "data not found"
 msgstr "データが見つかりません。"
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc with stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"削除: %(vol_id)s dsmc を実行できませんでした。stdout: %(out)s\n"
-" stderr: %(err)s"
 
 msgid "delete_hypermetro error."
 msgstr "delete_hypermetro エラー。"
@@ -6768,26 +6687,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "replication_failover が失敗しました。バックエンドがフェイルオーバーのために設"
 "定されていません。"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"復元: %(vol_id)s %(bpath)s で dsmc を実行できませんでした。\n"
-" stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s."
-msgstr ""
-"復元: %(vol_id)s 失敗しました。\n"
-" stdout: %(out)s\n"
-"stderr: %(err)s."
 
 msgid ""
 "restore_backup aborted, actual object list does not match object list stored "

@@ -16,7 +16,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-11-02 05:05+0000\n"
+"POT-Creation-Date: 2020-11-14 22:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -108,16 +108,6 @@ msgstr ""
 #, python-format
 msgid "%(name)s '%(value)s' not found"
 msgstr "%(name)s '%(value)s' 값을 찾지 못함"
-
-#, python-format
-msgid ""
-"%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
-"unexpected mode. Image or file backups supported, actual mode is "
-"%(vol_mode)s."
-msgstr ""
-"%(op)s: 백업 %(bck_id)s, 볼륨 %(vol_id)s에 실패했습니다. 백업 오브젝트가 예상"
-"치 못한 모드에 있습니다. 이미지 또는 파일 백업이 지원되었습니다. 실제 모드는 "
-"%(vol_mode)s입니다."
 
 #, python-format
 msgid ""
@@ -4653,13 +4643,6 @@ msgstr "볼륨을 사용할 수 없습니다. "
 msgid "Volume is not local to this node."
 msgstr "볼륨이 이 노드의 로컬이 아닙니다. "
 
-msgid ""
-"Volume metadata backup requested but this driver does not yet support this "
-"feature."
-msgstr ""
-"볼륨 메타데이터 백업이 요청되었으나 이 드라이버는 아직 이 기능을 설정하십시"
-"오."
-
 #, python-format
 msgid "Volume migration failed: %(reason)s"
 msgstr "볼륨 마이그레이션 실패: %(reason)s"
@@ -5206,58 +5189,6 @@ msgstr "already_created"
 msgid "attribute %s not lazy-loadable"
 msgstr "속성 %s이(가) lazy-loadable 속성이 아님"
 
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to create device hardlink from %(vpath)s to "
-"%(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"백업: %(vol_id)s이(가) %(vpath)s에서 %(bpath)s으로 백업 하드 링크를 제거하지 "
-"못했습니다.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to obtain backup success notification from "
-"server.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"백업: %(vol_id)s이(가) 서버에서 백업 성공 알림을 얻지 못했습니다.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"백업: %(vol_id)s이(가) %(bpath)s에서 dsmc를 실행하는 데 실패했습니다. \n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid "backup: %(vol_id)s failed. %(path)s is not a file."
-msgstr "백업: %(vol_id)s이(가) 실패했습니다. %(path)s이(가) 파일이 아닙니다. "
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed. %(path)s is unexpected file type. Block or "
-"regular files supported, actual file mode is %(vol_mode)s."
-msgstr ""
-"백업: %(vol_id)s이(가) 실패했습니다. %(path)s이(가) 예상치 못한 파일 유형입니"
-"다. 블록 또는 일반 파일이 지원되며 실제 파일 모드는 %(vol_mode)s입니다."
-
-#, python-format
-msgid ""
-"backup: %(vol_id)s failed. Cannot obtain real path to volume at %(path)s."
-msgstr ""
-"백업: %(vol_id)s이(가) 실패했습니다. %(path)s에서 볼륨에 대한 실제 경로를 가"
-"져올 수 없습니다."
-
 msgid "being attached by different mode"
 msgstr "다른 모드로 접속하는 중 "
 
@@ -5436,14 +5367,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: 볼륨 작성에 스냅샷 상태가 \"사용 가능\"해야 합니"
 "다. 올바르지 않은 상태는 %s입니다."
-
-#, python-format
-msgid ""
-"delete: %(vol_id)s failed to run dsmc with stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"삭제: %(vol_id)s이(가) dsmc를 실행하는 데 실패함. stdout: %(out)s\n"
-" stderr: %(err)s"
 
 msgid "delete_hypermetro error."
 msgstr "delete_hypermetro 오류."
@@ -5674,26 +5597,6 @@ msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 "replication_failover에 실패했습니다. 백엔드를 장애 복구하도록 구성되지 않았습"
 "니다."
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed to run dsmc on %(bpath)s.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-msgstr ""
-"복원: %(vol_id)s이(가) %(bpath)s에서 dsmc를 실행하는 데 실패했습니다.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s"
-
-#, python-format
-msgid ""
-"restore: %(vol_id)s failed.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s."
-msgstr ""
-"복원: %(vol_id)s이(가) 실패했습니다.\n"
-"stdout: %(out)s\n"
-" stderr: %(err)s."
 
 msgid ""
 "restore_backup aborted, actual object list does not match object list stored "
