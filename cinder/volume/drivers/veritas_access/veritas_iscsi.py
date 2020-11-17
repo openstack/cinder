@@ -16,7 +16,6 @@ Veritas Access Driver for ISCSI.
 
 """
 import ast
-import hashlib
 import json
 from random import randint
 from xml.dom import minidom
@@ -25,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import netutils
+from oslo_utils.secretutils import md5
 from oslo_utils import strutils
 from oslo_utils import units
 import requests
@@ -164,8 +164,10 @@ class ACCESSIscsiDriver(driver.ISCSIDriver):
         index = int(length / 2)
         name1 = name[:index]
         name2 = name[index:]
-        crc1 = hashlib.md5(name1.encode('utf-8')).hexdigest()[:5]
-        crc2 = hashlib.md5(name2.encode('utf-8')).hexdigest()[:5]
+        crc1 = md5(name1.encode('utf-8'),
+                   usedforsecurity=False).hexdigest()[:5]
+        crc2 = md5(name2.encode('utf-8'),
+                   usedforsecurity=False).hexdigest()[:5]
         return 'cinder' + '-' + crc1 + '-' + crc2
 
     def check_for_setup_error(self):

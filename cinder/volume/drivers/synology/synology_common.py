@@ -15,7 +15,6 @@
 
 import base64
 import functools
-import hashlib
 import json
 import math
 from os import urandom
@@ -32,6 +31,7 @@ import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils.secretutils import md5
 from oslo_utils import units
 import requests
 from six.moves import urllib
@@ -112,11 +112,13 @@ class AESCipher(object):
         bs = self._bs
         return (s + (bs - len(s) % bs) * chr(bs - len(s) % bs)).encode('utf-8')
 
+    # TODO(alee): This probably needs to be replaced with a version that
+    # does not use md5, as this will be disallowed on a FIPS enabled system
     def _derive_key_and_iv(self, password, salt, key_length, iv_length):
         d = d_i = b''
         while len(d) < key_length + iv_length:
             md5_str = d_i + password + salt
-            d_i = hashlib.md5(md5_str).digest()
+            d_i = md5(md5_str, usedforsecurity=True).digest()
             d += d_i
         return d[:key_length], d[key_length:key_length + iv_length]
 

@@ -14,12 +14,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import hashlib
 from http import client as http_client
 import os
 import socket
 import tempfile
 
+from oslo_utils.secretutils import md5
 from swiftclient import client as swift
 
 
@@ -78,7 +78,7 @@ class FakeSwiftConnection2(object):
         object_path = tempfile.gettempdir() + '/' + container + '/' + name
         with open(object_path, 'wb') as object_file:
             object_file.write(reader.read())
-        return hashlib.md5(reader.read()).hexdigest()
+        return md5(reader.read(), usedforsecurity=False).hexdigest()
 
     def delete_object(self, container, name):
         pass

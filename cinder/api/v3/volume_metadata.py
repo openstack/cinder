@@ -15,10 +15,10 @@
 
 """The volume metadata V3 api."""
 
-import hashlib
 from http import HTTPStatus
 
 from oslo_serialization import jsonutils
+from oslo_utils.secretutils import md5
 import webob
 
 from cinder.api import microversions as mv
@@ -37,7 +37,7 @@ class Controller(volume_meta_v2.Controller):
         metadata = self._get_metadata(context, volume_id)
         data = jsonutils.dumps({"metadata": metadata})
         data = data.encode('utf-8')
-        checksum = hashlib.md5(data).hexdigest()
+        checksum = md5(data, usedforsecurity=False).hexdigest()
         return checksum in req.if_match.etags
 
     @wsgi.extends
@@ -48,7 +48,7 @@ class Controller(volume_meta_v2.Controller):
             data = jsonutils.dumps(metadata)
             data = data.encode('utf-8')
             resp = webob.Response()
-            resp.headers['Etag'] = hashlib.md5(data).hexdigest()
+            resp.headers['Etag'] = md5(data, usedforsecurity=False).hexdigest()
             resp.body = data
             return resp
         return metadata
