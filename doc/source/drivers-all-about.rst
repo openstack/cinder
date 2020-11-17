@@ -106,6 +106,31 @@ If the issue is not corrected before the next release, the driver will be
 eligible for removal from the Cinder code repository per the standard
 OpenStack deprecation policy.
 
+If the issue *is* corrected before the next release and the team maintaining
+the driver in question submits a patch marking the driver as 'supported',
+that patch is eligible (at the discretion of the cinder stable maintenance
+team) for backport to the *most recent stable branch*.
+
+.. note::
+   The idea behind backporting 'supported' status is that reinstatement
+   should happen very early in the next development cycle after the driver has
+   been marked 'unsupported'.  For example, a driver is marked 'unsupported'
+   in the Victoria release but CI issues are addressed early in the Wallaby
+   development cycle; the patch marking the driver may then be proposed to
+   ``stable/victoria``.  Thus the patch will be included in the first stable
+   release of Victoria, and operators upgrading from Ussuri to this release
+   will not have to change their configuration files.
+
+   Note the "at the discretion of the cinder stable maintenance team"
+   qualification.  One reason for this is that the third party CI systems
+   typically run only on changes to the development branch.  Thus if a
+   driver's CI is restored early in the development cycle when there have
+   not been many code changes yet, the CI passing in the development branch
+   can be interpreted as a proxy for CI in the most recent stable branch.
+   Obviously, this interpretation becomes increasingly invalid as the
+   development cycle progresses.  Further, this interpretation does not
+   extend to older stable branches.
+
 Driver Removal
 --------------
 **(Added January 2020**)
