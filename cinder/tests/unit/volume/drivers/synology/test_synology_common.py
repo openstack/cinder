@@ -23,6 +23,7 @@ from unittest import mock
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric import rsa
+import ddt
 from oslo_utils import units
 import requests
 from six.moves import http_client
@@ -323,6 +324,7 @@ class SynoSessionTestCase(test.TestCase):
         )
 
 
+@ddt.ddt
 class SynoAPIRequestTestCase(test.TestCase):
     @mock.patch('requests.post')
     def setUp(self, _mock_post):
@@ -427,7 +429,8 @@ class SynoAPIRequestTestCase(test.TestCase):
             {'http_status': http_client.INTERNAL_SERVER_ERROR}, result)
 
     @mock.patch.object(common.LOG, 'debug')
-    def test_request_auth_error(self, _log):
+    @ddt.data(105, 119)
+    def test_request_auth_error(self, _code, _log):
         version = 1
 
         self.request._start = mock.Mock(return_value='fake.cgi')
@@ -435,7 +438,7 @@ class SynoAPIRequestTestCase(test.TestCase):
         self.request.new_session = mock.Mock()
         requests.post = mock.Mock(return_value=
                                   MockResponse({
-                                      'error': {'code': 105},
+                                      'error': {'code': _code},
                                       'success': False
                                   }, http_client.OK))
 
