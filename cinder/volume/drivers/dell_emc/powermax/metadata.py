@@ -642,6 +642,15 @@ class PowerMaxVolumeMetadata(object):
             is_rep_enabled=('yes' if is_rep_enabled else 'no'),
             rep_mode=rep_mode, is_compression_disabled=(
                 True if is_compression_disabled else False))
+        if not is_rep_enabled:
+            delete_list = ['rdf_group_no', 'rep_mode', 'target_array_model',
+                           'service_level', 'remote_array', 'target_device_id',
+                           'replication_status', 'rdf_group_label']
+            self.utils.delete_values_from_dict(datadict, delete_list)
+            update_list = [('default_sg_name', 'source_sg_name'),
+                           ('service_level', 'source_service_level')]
+            self.utils.update_values_in_dict(datadict, update_list)
+
         volume_metadata = self.update_volume_info_metadata(
             datadict, self.version_dict)
         self.print_pretty_table(volume_metadata)

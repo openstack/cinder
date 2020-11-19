@@ -1415,6 +1415,8 @@ class PowerMaxCommonTest(test.TestCase):
                                    new_type, host)
                 mock_retype.assert_called_once()
 
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_attached_hostname',
+                       return_value='HostX')
     @mock.patch.object(
         rest.PowerMaxRest, 'get_volume',
         return_value=tpd.PowerMaxData.volume_details_attached)
@@ -1431,13 +1433,16 @@ class PowerMaxCommonTest(test.TestCase):
     def test_retype_inuse_volume_tgt_sg_exist(self, mck_vol_in_sg, mck_sg_move,
                                               mck_child_sg_in_sg,
                                               mck_get_sg_name,
-                                              mck_get_sg, mck_get_vol):
+                                              mck_get_sg, mck_get_vol,
+                                              mock_host):
         array = self.data.array
         srp = self.data.srp
         slo = self.data.slo
         workload = self.data.workload
         device_id = self.data.device_id
-        volume = self.data.test_attached_volume
+        attached_volume = deepcopy(self.data.test_volume)
+        attached_volume.volume_attachment.objects = [
+            self.data.test_volume_attachment]
         rep_mode = 'Synchronous'
         src_extra_specs = self.data.extra_specs_migrate
         interval = src_extra_specs['interval']
@@ -1447,12 +1452,14 @@ class PowerMaxCommonTest(test.TestCase):
             'interval': interval, 'retries': retries, 'rep_mode': rep_mode}
 
         success = self.common._retype_inuse_volume(
-            array, srp, volume, device_id, src_extra_specs, slo, workload,
-            tgt_extra_specs, False)[0]
+            array, srp, attached_volume, device_id, src_extra_specs, slo,
+            workload, tgt_extra_specs, False)[0]
         self.assertTrue(success)
         mck_sg_move.assert_called()
         mck_vol_in_sg.assert_called()
 
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_attached_hostname',
+                       return_value='HostX')
     @mock.patch.object(
         rest.PowerMaxRest, 'get_volume',
         return_value=tpd.PowerMaxData.volume_details_attached)
@@ -1469,7 +1476,7 @@ class PowerMaxCommonTest(test.TestCase):
     def test_retype_inuse_volume_no_tgt_sg(self, mck_vol_in_sg, mck_move_vol,
                                            mck_sg_in_sg, mck_add_sg_to_sg,
                                            mck_create_sg, mck_get_csg_name,
-                                           mck_get_vol):
+                                           mck_get_vol, mock_host):
         array = self.data.array
         srp = self.data.srp
         slo = self.data.slo
@@ -1746,17 +1753,8 @@ class PowerMaxCommonTest(test.TestCase):
             mck_setup_specs = src_extra_specs
             mck_setup_specs[utils.METROBIAS] = self.common.rep_config[
                 'metro_use_bias']
-            mck_setup.assert_called_once_with(
-                self.data.array, volume, device_id, mck_setup_specs)
-            mck_retype.assert_called_once_with(
-                array, srp, volume, device_id, src_extra_specs, slo,
-                workload, tgt_extra_specs, False)
-            mck_add_vol.assert_called_once()
-            mck_get_sg.assert_called_once()
-            mck_get_rdf_name.assert_called_once()
-            mck_cleanup.assert_not_called()
-            mck_remote_retype.assert_not_called()
-            self.assertTrue(success)
+            mck_setup.assert_not_called()
+            self.assertFalse(success)
             _reset_mocks()
 
         # Scenario 4: rep => rep

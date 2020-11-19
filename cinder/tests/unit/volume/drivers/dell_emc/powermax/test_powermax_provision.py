@@ -118,7 +118,7 @@ class PowerMaxProvisionTest(test.TestCase):
                     snap_name, extra_specs, create_snap=True)
                 mock_modify.assert_called_once_with(
                     array, source_device_id, target_device_id, snap_name,
-                    extra_specs, link=True)
+                    extra_specs, link=True, copy_mode=False)
                 mock_create_snapvx.assert_called_once_with(
                     array, source_device_id, snap_name, extra_specs, ttl=ttl)
 
@@ -134,10 +134,10 @@ class PowerMaxProvisionTest(test.TestCase):
                     self.provision.rest, 'modify_volume_snap') as mock_modify:
                 self.provision.create_volume_replica(
                     array, source_device_id, target_device_id,
-                    snap_name, extra_specs, create_snap=False)
+                    snap_name, extra_specs, create_snap=False, copy_mode=True)
                 mock_modify.assert_called_once_with(
                     array, source_device_id, target_device_id, snap_name,
-                    extra_specs, link=True)
+                    extra_specs, link=True, copy_mode=True)
                 mock_create_snapvx.assert_not_called()
 
     def test_break_replication_relationship(self):
