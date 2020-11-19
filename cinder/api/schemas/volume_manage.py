@@ -33,7 +33,7 @@ volume_manage_create = {
                 "bootable": parameter_types.boolean,
                 "volume_type": parameter_types.name_allow_zero_min_length,
                 "name": parameter_types.name_allow_zero_min_length,
-                "host": parameter_types.hostname,
+                "host": parameter_types.cinder_host,
                 "ref": {'type': ['object', 'string']},
                 "metadata": parameter_types.metadata_allows_null,
             },

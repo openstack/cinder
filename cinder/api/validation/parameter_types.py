@@ -232,6 +232,18 @@ hostname = {
     'pattern': '^[a-zA-Z0-9-._#@:/+]*$'
 }
 
+cinder_host = {
+    # A string that represents a cinder host.
+    # Examples:
+    #   hostname
+    #   hostname.domain
+    #   hostname.domain@backend
+    #   hostname.domain@backend#pool
+    #   hostname.domain@backend#[dead:beef::cafe]:/complex_ipv6_pool_w_share
+    'type': ['string', 'null'], 'minLength': 1, 'maxLength': 255,
+    'pattern': r'^[a-zA-Z0-9-._#@:/+\[\]]*$'   # hostname plus brackets
+}
+
 
 resource_type = {'type': ['string', 'null'], 'minLength': 0, 'maxLength': 40}
 

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1904892 <https://bugs.launchpad.net/cinder/+bug/1904892>`_:
+    Fix cinder manage operations for NFS backends using IPv6 addresses
+    in the NFS server address.  These were previously rejected by the
+    Cinder API.
