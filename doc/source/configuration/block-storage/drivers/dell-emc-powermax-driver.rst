@@ -2422,17 +2422,12 @@ Upgrading from SMI-S based driver to RESTAPI based driver
 Seamless upgrades from an SMI-S based driver to RESTAPI based driver,
 following the setup instructions above, are supported with a few exceptions:
 
-#. OpenStack's ``live migration`` functionality will not work on already
-   attached/in-use legacy volumes without first migrating the volumes to
-   the new REST masking view structure.  This can be done by running the
-   migrate.py script in PyU4V.  Please refer to the Tools Guide in PyU4V_.
-
-   .. code-block:: text
-
-      $ pip install PyU4V
-
+#. Seamless upgrade from SMI-S(Ocata and earlier) to REST(Pike and later)
+   is now available on all functionality including Live Migration. Please
+   see 1867163_ for more details.
 
 #. Consistency groups are deprecated in Pike. Generic Volume Groups are
    supported from Pike onwards.
 
 .. _PyU4V: https://pyu4v.readthedocs.io/en/latest/
+.. _1867163: https://bugs.launchpad.net/cinder/+bug/1867163
