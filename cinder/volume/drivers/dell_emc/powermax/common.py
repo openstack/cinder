@@ -3797,7 +3797,7 @@ class PowerMaxCommon(object):
                                               new_type['extra_specs'],
                                               self.rep_configs):
             src_mode = extra_specs.get('rep_mode', 'non-replicated')
-            LOG.error("It is not possible to perform host-assisted retype "
+            LOG.error("It is not possible to perform storage-assisted retype "
                       "from %(src_mode)s to Metro replication type whilst the "
                       "volume is attached to a host. To perform this "
                       "operation please first detach the volume.",
@@ -4293,7 +4293,8 @@ class PowerMaxCommon(object):
 
     def _retype_volume(
             self, array, srp, device_id, volume, volume_name, extra_specs,
-            target_slo, target_workload, target_extra_specs, remote=False):
+            target_slo, target_workload, target_extra_specs, remote=False,
+            metro_attach=False):
         """Retype a volume from one volume type to another.
 
         The target storage group ID is returned so the next phase in the
@@ -4310,6 +4311,7 @@ class PowerMaxCommon(object):
         :param target_extra_specs: target extra specs
         :param remote: if the volume being retyped is on a remote replication
                        target
+        :param metro_attach: is it metro attached -- bool
         :returns: retype success, target storage group -- bool, str
         """
         is_re, rep_mode, mgmt_sg_name = False, None, None
@@ -4342,7 +4344,27 @@ class PowerMaxCommon(object):
         try:
             # If volume is attached set up the parent/child SGs if not already
             # present on array
-            if volume.attach_status == 'attached' and not remote:
+            is_attached_vol = False
+            if volume.attach_status == 'attached' and remote and metro_attach:
+                is_attached_vol = True
+                rep_config = target_extra_specs.get('rep_config')
+                if rep_config:
+                    port_group_name = rep_config.get('portgroup')
+                if port_group_name:
+                    port_group_label = self.utils.get_port_name_label(
+                        port_group_name,
+                        self.powermax_port_group_name_template)
+                else:
+                    LOG.error("Unable to get the port group name from "
+                              "replication configuration.")
+                    return False, None
+
+            elif volume.attach_status == 'attached' and not remote:
+                is_attached_vol = True
+                port_group_label = self.utils.get_port_name_label(
+                    target_extra_specs[utils.PORTGROUPNAME],
+                    self.powermax_port_group_name_template)
+            if is_attached_vol:
                 attached_host = self.utils.get_volume_attached_hostname(
                     volume)
                 if not attached_host:
@@ -4351,10 +4373,6 @@ class PowerMaxCommon(object):
                         "volume %(volume_name)s, aborting storage-assisted "
                         "migration.", {'volume_name': device_id})
                     return False, None
-
-                port_group_label = self.utils.get_port_name_label(
-                    target_extra_specs[utils.PORTGROUPNAME],
-                    self.powermax_port_group_name_template)
 
                 target_sg_name, __, __ = self.utils.get_child_sg_name(
                     attached_host, target_extra_specs, port_group_label)
@@ -4377,7 +4395,8 @@ class PowerMaxCommon(object):
                             target_extra_specs)
                         add_sg_to_parent = True
 
-            # Else volume is not attached or is remote volume, use default SGs
+            # Else volume is not attached or is remote (not attached) volume,
+            # use default SGs
             else:
                 target_sg_name = (
                     self.masking.get_or_create_default_storage_group(
@@ -4585,12 +4604,18 @@ class PowerMaxCommon(object):
         remote_array = rep_extra_specs['array']
         rep_compr_disabled = self.utils.is_compression_disabled(
             rep_extra_specs)
-
-        remote_sg_name = self.masking.get_or_create_default_storage_group(
-            remote_array, rep_extra_specs[utils.SRP],
-            rep_extra_specs[utils.SLO], rep_extra_specs[utils.WORKLOAD],
-            rep_extra_specs, rep_compr_disabled,
-            is_re=is_re, rep_mode=rep_mode)
+        remote_sg_name = None
+        metro_attach = False
+        if volume.attach_status == 'detached' or (
+                rep_mode in [utils.REP_SYNC, utils.REP_ASYNC]):
+            remote_sg_name = self.masking.get_or_create_default_storage_group(
+                remote_array, rep_extra_specs[utils.SRP],
+                rep_extra_specs[utils.SLO], rep_extra_specs[utils.WORKLOAD],
+                rep_extra_specs, rep_compr_disabled,
+                is_re=is_re, rep_mode=rep_mode)
+        elif volume.attach_status == 'attached' and (
+                rep_mode in [utils.REP_METRO]):
+            metro_attach = True
 
         found_storage_group_list = self.rest.get_storage_groups_from_volume(
             remote_array, target_device_id)
@@ -4606,7 +4631,7 @@ class PowerMaxCommon(object):
                     remote_array, rep_extra_specs[utils.SRP],
                     target_device_id, volume, volume_name, rep_extra_specs,
                     extra_specs[utils.SLO], extra_specs[utils.WORKLOAD],
-                    extra_specs, remote=True)
+                    extra_specs, remote=True, metro_attach=metro_attach)
             except Exception as e:
                 try:
                     volumes = self.rest.get_volumes_in_storage_group(
