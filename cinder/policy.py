@@ -51,7 +51,8 @@ def init(use_conf=True):
     if not _ENFORCER:
         _ENFORCER = policy.Enforcer(
             CONF,
-            use_conf=use_conf)
+            use_conf=use_conf,
+            fallback_to_json_file=False)
         register_rules(_ENFORCER)
         _ENFORCER.load_rules()
 

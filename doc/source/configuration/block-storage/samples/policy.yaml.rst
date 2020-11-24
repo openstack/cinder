@@ -1,3 +1,5 @@
+.. _policy-file:
+
 ===========
 policy.yaml
 ===========
@@ -12,10 +14,17 @@ run Cinder.  From the Queens release onward, the following hold:
   default values are defined in the code.
 
 * If you wish to run Cinder with policies different from the default, you may
-  write a policy file in either JSON or YAML.
+  write a policy file.
 
   * Given that JSON does not allow comments, we recommend using YAML to write
-    a custom policy file.
+    a custom policy file.  (Also, see next item.)
+
+  * OpenStack has deprecated the use of a JSON policy file since the Wallaby
+    release (Cinder 18.0.0).  If you are still using the JSON format, there
+    is a `oslopolicy-convert-json-to-yaml`__ tool that will migrate your
+    existing JSON-formatted policy file to YAML in a backward-compatible way.
+
+    .. __: https://docs.openstack.org/oslo.policy/latest/cli/oslopolicy-convert-json-to-yaml.html
 
 * If you supply a custom policy file, you only need to supply entries for the
   policies you wish to change from their default values.  For instance, if you
@@ -26,6 +35,12 @@ run Cinder.  From the Queens release onward, the following hold:
   override this by specifying a different file location as the value of the
   ``policy_file`` configuration option in the ``[oslo_policy]`` section of the
   the Cinder configuration file.
+
+* Instructions for generating a sample ``policy.yaml`` file directly from the
+  Cinder source code can be found in the file ``README-policy.generate.md``
+  in the ``etc/cinder`` directory in the Cinder `source code repository
+  <https://opendev.org/openstack/cinder>`_ (or its `github mirror
+  <https://github.com/openstack/cinder>`_).
 
 The following provides a listing of the default policies. It is not recommended
 to copy this file into ``/etc/cinder`` unless you are planning on providing a

@@ -1,0 +1,198 @@
+# Default rule for most non-Admin APIs.
+"admin_or_owner": "is_admin:True or project_id:%(project_id)s"
+
+# Default rule for most Admin APIs.
+"admin_api": "is_admin:True"
+
+# Show snapshot's metadata or one specified metadata with a given key.
+# GET  /snapshots/{snapshot_id}/metadata
+# GET  /snapshots/{snapshot_id}/metadata/{key}
+"volume:get_snapshot_metadata": ""
+
+# Update snapshot's metadata or one specified metadata with a given
+# key.
+# PUT  /snapshots/{snapshot_id}/metadata
+# PUT  /snapshots/{snapshot_id}/metadata/{key}
+"volume:update_snapshot_metadata": ""
+
+# Delete snapshot's specified metadata with a given key.
+# DELETE  /snapshots/{snapshot_id}/metadata/{key}
+"volume:delete_snapshot_metadata": ""
+
+# List snapshots.
+# GET  /snapshots
+# GET  /snapshots/detail
+"volume:get_all_snapshots": ""
+
+# List or show snapshots with extended attributes.
+# GET  /snapshots/{snapshot_id}
+# GET  /snapshots/detail
+"volume_extension:extended_snapshot_attributes": ""
+
+# Create snapshot.
+# POST  /snapshots
+"volume:create_snapshot": ""
+
+# Show snapshot.
+# GET  /snapshots/{snapshot_id}
+"volume:get_snapshot": ""
+
+# Update snapshot.
+# PUT  /snapshots/{snapshot_id}
+"volume:update_snapshot": ""
+
+# Delete snapshot.
+# DELETE  /snapshots/{snapshot_id}
+"volume:delete_snapshot": ""
+
+# List backups.
+# GET  /backups
+# GET  /backups/detail
+"backup:get_all": ""
+
+# Show backup.
+# GET  /backups/{backup_id}
+"backup:get": ""
+
+# Delete backup.
+# DELETE  /backups/{backup_id}
+"backup:delete": ""
+
+# Restore backup.
+# POST  /backups/{backup_id}/restore
+"backup:restore": ""
+
+# List groups.
+# GET  /groups
+# GET  /groups/detail
+"group:get_all": ""
+
+# Show group.
+# GET  /groups/{group_id}
+"group:get": ""
+
+# Update group.
+# PUT  /groups/{group_id}
+"group:update": ""
+
+# List group snapshots.
+# GET  /group_snapshots
+# GET  /group_snapshots/detail
+"group:get_all_group_snapshots": ""
+
+# Show group snapshot.
+# GET  /group_snapshots/{group_snapshot_id}
+"group:get_group_snapshot": ""
+
+# Delete group snapshot.
+# DELETE  /group_snapshots/{group_snapshot_id}
+"group:delete_group_snapshot": ""
+
+# Update group snapshot.
+# PUT  /group_snapshots/{group_snapshot_id}
+"group:update_group_snapshot": ""
+
+# Reset status of group snapshot.
+# POST  /group_snapshots/{g_snapshot_id}/action (reset_status)
+"group:reset_group_snapshot_status": ""
+
+# Delete group.
+# POST  /groups/{group_id}/action (delete)
+"group:delete": ""
+
+# Reset status of group.
+# POST  /groups/{group_id}/action (reset_status)
+"group:reset_status": ""
+
+# Enable replication.
+# POST  /groups/{group_id}/action (enable_replication)
+"group:enable_replication": ""
+
+# Disable replication.
+# POST  /groups/{group_id}/action (disable_replication)
+"group:disable_replication": ""
+
+# Fail over replication.
+# POST  /groups/{group_id}/action (failover_replication)
+"group:failover_replication": ""
+
+# List failover replication.
+# POST  /groups/{group_id}/action (list_replication_targets)
+"group:list_replication_targets": ""
+
+# List all services.
+# GET  /os-services
+"volume_extension:services:index": ""
+
+# Update service, including failover_host, thaw, freeze, disable,
+# enable, set-log and get-log actions.
+# PUT  /os-services/{action}
+#"volume_extension:services:update": "rule:admin_api"
+
+# Show limits with used limit attributes.
+# GET  /limits
+"limits_extension:used_limits": ""
+
+# Create, update and delete volume type.
+# POST  /types
+# PUT  /types
+# DELETE  /types
+"volume_extension:types_manage": ""
+
+# Volume type access related APIs.
+# GET  /types
+# GET  /types/detail
+# GET  /types/{type_id}
+# POST  /types
+"volume_extension:volume_type_access": ""
+
+# Revert a volume to a snapshot.
+# POST  /volumes/{volume_id}/action (revert)
+"volume:revert_to_snapshot": ""
+
+# Upload a volume to image.
+# POST  /volumes/{volume_id}/action (os-volume_upload_image)
+"volume_extension:volume_actions:upload_image": ""
+
+# List volume transfer.
+# GET  /os-volume-transfer
+# GET  /os-volume-transfer/detail
+# GET  /volume_transfers
+# GET  /volume-transfers/detail
+"volume:get_all_transfers": ""
+
+# Create a volume transfer.
+# POST  /os-volume-transfer
+# POST  /volume_transfers
+"volume:create_transfer": ""
+
+# Show one specified volume transfer.
+# GET  /os-volume-transfer/{transfer_id}
+# GET  /volume-transfers/{transfer_id}
+"volume:get_transfer": ""
+
+# Delete volume transfer.
+# DELETE  /os-volume-transfer/{transfer_id}
+# DELETE  /volume-transfers/{transfer_id}
+"volume:delete_transfer": ""
+
+# List type extra specs.
+# GET  /types/{type_id}/extra_specs
+"volume_extension:types_extra_specs:index": ""
+
+# Create type extra specs.
+# POST  /types/{type_id}/extra_specs
+"volume_extension:types_extra_specs:create": ""
+
+# Show one specified type extra specs.
+# GET  /types/{type_id}/extra_specs/{extra_spec_key}
+"volume_extension:types_extra_specs:show": ""
+
+# Update type extra specs.
+# PUT  /types/{type_id}/extra_specs/{extra_spec_key}
+"volume_extension:types_extra_specs:update": ""
+
+# Delete type extra specs.
+# DELETE  /types/{type_id}/extra_specs/{extra_spec_key}
+"volume_extension:types_extra_specs:delete": ""
+

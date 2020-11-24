@@ -44,6 +44,13 @@ model Cinder employs and how it can be modified by adjusting policies.
   <https://opendev.org/openstack/cinder>`_ (or its `github mirror
   <https://github.com/openstack/cinder>`_).
 
+* OpenStack has deprecated the use of a JSON policy file since the Wallaby
+  release (Cinder 18.0.0).  If you are still using the JSON format, there
+  is a `oslopolicy-convert-json-to-yaml`__ tool that will migrate your
+  existing JSON-formatted policy file to YAML in a backward-compatible way.
+
+  .. __: https://docs.openstack.org/oslo.policy/latest/cli/oslopolicy-convert-json-to-yaml.html
+
 Vocabulary Note
 ~~~~~~~~~~~~~~~
 
