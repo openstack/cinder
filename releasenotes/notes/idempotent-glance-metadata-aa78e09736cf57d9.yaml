@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug 1823445 <https://bugs.launchpad.net/cinder/+bug/1823445>`_: Fix
+    an issue with bulk updates of volume Glance metadata when keys exist
+    but are unchanged.

@@ -1660,6 +1660,67 @@ class DBAPIVolumeTestCase(BaseTest):
                 image_name = meta_entry.value
         self.assertEqual(u'\xe4\xbd\xa0\xe5\xa5\xbd', image_name)
 
+    def test_volume_glance_metadata_create_idempotency(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_glance_metadata_create(self.ctxt, volume['id'],
+                                         'image_name',
+                                         u'\xe4\xbd\xa0\xe5\xa5\xbd')
+        db.volume_glance_metadata_create(self.ctxt, volume['id'],
+                                         'image_name',
+                                         u'\xe4\xbd\xa0\xe5\xa5\xbd')
+        glance_meta = db.volume_glance_metadata_get(self.ctxt, volume['id'])
+        self.assertEqual(1, len(glance_meta))
+
+    def test_volume_glance_metadata_create_immutability(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        db.volume_glance_metadata_create(self.ctxt, volume['id'],
+                                         'image_name',
+                                         u'\xe4\xbd\xa0\xe5\xa5\xbd')
+        self.assertRaises(exception.GlanceMetadataExists,
+                          db.volume_glance_metadata_create,
+                          self.ctxt, volume['id'], 'image_name', 'new_meta')
+
+    def test_volume_glance_metadata_bulk_create(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        metadata = {'foo': 'bar', 'baz': 'qux'}
+        db.volume_glance_metadata_bulk_create(self.ctxt, volume['id'],
+                                              metadata)
+        glance_meta = db.volume_glance_metadata_get(self.ctxt, volume['id'])
+        glance_meta = {m.key: m.value for m in glance_meta}
+        self.assertEqual(metadata, glance_meta)
+
+    def test_volume_glance_metadata_bulk_create_idempotency(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        metadata = {'foo': 'bar', 'baz': 'qux'}
+        db.volume_glance_metadata_bulk_create(self.ctxt, volume['id'],
+                                              metadata)
+        db.volume_glance_metadata_bulk_create(self.ctxt, volume['id'],
+                                              metadata)
+        glance_meta = db.volume_glance_metadata_get(self.ctxt, volume['id'])
+        glance_meta = {m.key: m.value for m in glance_meta}
+        self.assertEqual(metadata, glance_meta)
+        self.assertEqual(2, len(glance_meta))
+
+    def test_volume_glance_metadata_bulk_create_immutability(self):
+        volume = db.volume_create(self.ctxt,
+                                  {'host': 'h1',
+                                   'volume_type_id': fake.VOLUME_TYPE_ID})
+        metadata = {'foo': 'bar', 'baz': 'qux'}
+        db.volume_glance_metadata_bulk_create(self.ctxt, volume['id'],
+                                              metadata)
+        metadata['foo'] = 'new_meta'
+        self.assertRaises(exception.GlanceMetadataExists,
+                          db.volume_glance_metadata_bulk_create,
+                          self.ctxt, volume['id'], metadata)
+
     def test_volume_glance_metadata_list_get(self):
         """Test volume_glance_metadata_list_get in DB API."""
         db.volume_create(self.ctxt, {'id': 'fake1', 'status': 'available',
