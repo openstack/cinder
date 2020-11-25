@@ -4086,7 +4086,9 @@ class PowerMaxCommon(object):
                     previous_host = volume.get('host')
                     host_details = previous_host.split('+')
                     array_index = len(host_details) - 1
+                    srp_index = len(host_details) - 2
                     host_details[array_index] = array
+                    host_details[srp_index] = srp
                     updated_host = '+'.join(host_details)
                     model_update['host'] = updated_host
 

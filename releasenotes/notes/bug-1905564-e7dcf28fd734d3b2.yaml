@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    PowerMax Driver `bug #1905564
+    <https://bugs.launchpad.net/cinder/+bug/1905564>`_: Fix
+    Fix remote SRP not being assigned to volume's Host when
+    performing retype during failover-promotion.
