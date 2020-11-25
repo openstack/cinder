@@ -1,0 +1,32 @@
+---
+upgrade:
+  - |
+    RBD driver: Prior to this release, the Cinder project did not have a
+    statement concerning what versions of Ceph are supported by Cinder.
+    We hereby announce that:
+
+    * For a given OpenStack release, Cinder supports the current Ceph
+      active stable releases plus the two prior releases.
+    * For any OpenStack release, it is expected that the versions of
+      the Ceph client and server are in alignment.
+
+    The `Ceph RADOS Block Device (RBD)
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/ceph-rbd-volume-driver.html>`__
+    driver documentation has been updated to reflect
+    this policy and explains it in more detail.
+other:
+  - |
+    **Supported Ceph versions**
+
+    The Cinder project wishes to clarify its policy concerning what versions
+    of Ceph are supported by Cinder.
+
+    * For a given OpenStack release, Cinder supports the current Ceph
+      active stable releases plus the two prior releases.
+    * For any OpenStack release, it is expected that the versions of
+      the Ceph client and server are in alignment.
+
+    The `Ceph RADOS Block Device (RBD)
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/drivers/ceph-rbd-volume-driver.html>`__
+    driver documentation has been updated to reflect
+    this policy and explains it in more detail.

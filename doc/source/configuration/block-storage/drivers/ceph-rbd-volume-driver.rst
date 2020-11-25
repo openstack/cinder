@@ -18,6 +18,27 @@ public or private clouds.
 
     Ceph architecture
 
+.. note::
+   **Supported Ceph versions**
+
+   The current `release cycle model for Ceph
+   <https://docs.ceph.com/en/latest/releases/general/>`_
+   targets a new release yearly on 1 March, with there being at most
+   two active stable releases at any time.
+
+   For a given OpenStack release, *Cinder supports the current Ceph
+   active stable releases plus the two prior releases.*
+
+   For example, at the time of the OpenStack Wallaby release in
+   April 2021, the Ceph active supported releases are Pacific and
+   Octopus.  The Cinder Wallaby release therefore supports Ceph
+   Pacific, Octopus, Nautilus, and Mimic.
+
+   Additionally, it is expected that the version of the Ceph client
+   available to Cinder or any of its associated libraries (os-brick,
+   cinderlib) is aligned with the Ceph server version.  Mixing server
+   and client versions is *unsupported* and may lead to anomalous behavior.
+
 RADOS
 ~~~~~
 
