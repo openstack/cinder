@@ -645,19 +645,17 @@ class PowerMaxMasking(object):
         msg = None
         ig_from_mv = self.rest.get_element_from_masking_view(
             serial_number, maskingview_name, host=True)
-        check_ig = masking_view_dict[utils.INITIATOR_CHECK]
 
-        if check_ig:
-            # First verify that the initiator group matches the initiators.
-            check, found_ig = self._verify_initiator_group_from_masking_view(
+        # First verify that the initiator group matches the initiators.
+        if not self._verify_initiator_group_from_masking_view(
                 serial_number, maskingview_name, masking_view_dict, ig_from_mv,
-                storagegroup_name, portgroup_name, extra_specs)
-            if not check:
-                msg = ("Unable to verify initiator group: %(ig_name)s "
-                       "in masking view %(maskingview_name)s."
-                       % {'ig_name': ig_from_mv,
-                          'maskingview_name': maskingview_name})
-                LOG.error(msg)
+                storagegroup_name, portgroup_name, extra_specs):
+            msg = ("Unable to verify initiator group: %(ig_name)s "
+                   "in masking view %(maskingview_name)s."
+                   % {'ig_name': ig_from_mv,
+                      'maskingview_name': maskingview_name})
+            LOG.error(msg)
+
         return ig_from_mv, msg
 
     def _check_adding_volume_to_storage_group(
@@ -964,80 +962,116 @@ class PowerMaxMasking(object):
             raise exception.VolumeBackendAPIException(message=error_message)
 
     def _verify_initiator_group_from_masking_view(
-            self, serial_number, maskingview_name, maskingview_dict,
-            ig_from_mv, storagegroup_name, portgroup_name, extra_specs):
+            self, serial_number, masking_view_name, masking_view_dict,
+            ig_from_mv, storage_group_name, port_group_name, extra_specs):
         """Check that the initiator group contains the correct initiators.
+
+        :param serial_number: the array serial number
+        :param masking_view_name: name of the masking view
+        :param masking_view_dict: the masking view dict
+        :param ig_from_mv: the initiator group name
+        :param storage_group_name: the storage group
+        :param port_group_name: the port group
+        :param extra_specs: extra specifications
+        :returns: boolean
+        """
+        connector = masking_view_dict['connector']
+        initiator_names = self.find_initiator_names(connector)
+        found_ig_from_connector = self._find_initiator_group(
+            serial_number, initiator_names)
+        if found_ig_from_connector != ig_from_mv:
+            check_ig_flag = masking_view_dict[utils.INITIATOR_CHECK]
+            if check_ig_flag:
+                return self._recreate_masking_view(
+                    serial_number, found_ig_from_connector, ig_from_mv,
+                    masking_view_dict['init_group_name'], masking_view_name,
+                    initiator_names, storage_group_name, port_group_name,
+                    extra_specs)
+            else:
+                msg = (_(
+                    "Initiator group %(ig_conn)s contains initiators "
+                    "%(init_list)s and does not match IG %(ig_mv)s "
+                    "contained in masking view %(mv_name)s."
+                    "Please delete the masking view or set 'initiator_check' "
+                    "to True in the extra specs to let the driver do it for "
+                    "you.")
+                    % {'ig_conn': found_ig_from_connector,
+                       'init_list': initiator_names,
+                       'ig_mv': ig_from_mv,
+                       'mv_name': masking_view_name})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(message=msg)
+
+        return True
+
+    def _recreate_masking_view(
+            self, serial_number, ig_from_conn, ig_from_mv, ig_name, mv_name,
+            initiator_names, sg_name, pg_name, extra_specs):
+        """Recreate a masking view if the initiators do not match.
 
         If using an existing masking view check that the initiator group
         contains the correct initiators.  If it does not contain the correct
         initiators then we delete the initiator group from the masking view,
         re-create it with the correct initiators and add it to the masking view
         NOTE:  PowerMax/VMAX does not support ModifyMaskingView so we must
-               first delete the masking view and recreate it.
-        :param serial_number: the array serial number
-        :param maskingview_name: name of the masking view
-        :param maskingview_dict: the masking view dict
-        :param ig_from_mv: the initiator group name
-        :param storagegroup_name: the storage group
-        :param portgroup_name: the port group
-        :param extra_specs: extra specifications
-        :returns: bool, found_ig_from_connector
-        """
-        connector = maskingview_dict['connector']
-        initiator_names = self.find_initiator_names(connector)
-        found_ig_from_connector = self._find_initiator_group(
-            serial_number, initiator_names)
+        first delete the masking view and recreate it.
 
-        if found_ig_from_connector != ig_from_mv:
-            check_ig = self.rest.get_initiator_group(
-                serial_number, initiator_group=ig_from_mv)
-            if check_ig:
-                if found_ig_from_connector is None:
-                    # If the name of the current initiator group from the
-                    # masking view matches the igGroupName supplied for the
-                    # new group, the existing ig needs to be deleted before
-                    # the new one with the correct initiators can be created.
-                    if maskingview_dict['init_group_name'] == ig_from_mv:
-                        # Masking view needs to be deleted before IG
-                        # can be deleted.
-                        self.rest.delete_masking_view(
-                            serial_number, maskingview_name)
-                        self.rest.delete_initiator_group(
-                            serial_number, ig_from_mv)
-                        found_ig_from_connector = (
-                            self._create_initiator_group(
-                                serial_number, ig_from_mv, initiator_names,
-                                extra_specs))
-                if (found_ig_from_connector is not None and
-                        storagegroup_name is not None and
-                        portgroup_name is not None):
-                    # Existing masking view (if still on the array) needs
-                    # to be deleted before a new one can be created.
-                    try:
-                        self.rest.delete_masking_view(
-                            serial_number, maskingview_name)
-                    except Exception:
-                        pass
-                    error_message = (
-                        self.create_masking_view(
-                            serial_number, maskingview_name, storagegroup_name,
-                            portgroup_name,
-                            maskingview_dict['init_group_name'],
+        :param serial_number: the array serial number
+        :param ig_from_conn: initiator group from initiators in connector
+        :param ig_from_mv: initiator group from masking view
+        :param ig_name: drivers initiator group name by convention
+        :param mv_name: masking view
+        :param initiator_names: initiator(s) in the connector object
+        :param sg_name: storage group name
+        :param pg_name: port group name
+        :param extra_specs: extra specifications
+        :returns: boolean
+        """
+        check_ig = self.rest.get_initiator_group(
+            serial_number, initiator_group=ig_from_mv)
+        if check_ig:
+            if not ig_from_conn:
+                # If the name of the current initiator group from the
+                # masking view matches the igGroupName supplied for the
+                # new group, the existing ig needs to be deleted before
+                # the new one with the correct initiators can be created.
+                if ig_name == ig_from_mv:
+                    # Masking view needs to be deleted before IG
+                    # can be deleted.
+                    self.rest.delete_masking_view(
+                        serial_number, mv_name)
+                    self.rest.delete_initiator_group(
+                        serial_number, ig_from_mv)
+                    ig_from_conn = (
+                        self._create_initiator_group(
+                            serial_number, ig_from_mv, initiator_names,
                             extra_specs))
-                    if not error_message:
-                        LOG.debug(
-                            "The old masking view has been replaced: "
-                            "%(maskingview_name)s.",
-                            {'maskingview_name': maskingview_name})
-                else:
-                    LOG.error(
-                        "One of the components of the original masking view "
-                        "%(maskingview_name)s cannot be retrieved so "
-                        "please contact your system administrator to check "
-                        "that the correct initiator(s) are part of masking.",
-                        {'maskingview_name': maskingview_name})
-                    return False
-        return True, found_ig_from_connector
+            if ig_from_conn and sg_name and pg_name:
+                # Existing masking view (if still on the array) needs
+                # to be deleted before a new one can be created.
+                try:
+                    self.rest.delete_masking_view(
+                        serial_number, mv_name)
+                except Exception:
+                    pass
+                error_message = (
+                    self.create_masking_view(
+                        serial_number, mv_name, sg_name, pg_name, ig_name,
+                        extra_specs))
+                if not error_message:
+                    LOG.debug(
+                        "The old masking view has been replaced: "
+                        "%(maskingview_name)s.",
+                        {'maskingview_name': mv_name})
+            else:
+                LOG.error(
+                    "One of the components of the original masking view "
+                    "%(maskingview_name)s cannot be retrieved so "
+                    "please contact your system administrator to check "
+                    "that the correct initiator(s) are part of masking.",
+                    {'maskingview_name': mv_name})
+                return False
+        return True
 
     def _create_initiator_group(
             self, serial_number, init_group_name, initiator_names,

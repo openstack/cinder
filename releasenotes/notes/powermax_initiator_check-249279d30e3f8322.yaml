@@ -1,0 +1,6 @@
+fixes:
+  - |
+    PowerMax driver: Checking that the contents of the initiator group
+    match the contents of the connector regardless of the initiator_check
+    option being enabled.  This will ensure an exception is raised if
+    there is a mismatch, in all scenarios.
