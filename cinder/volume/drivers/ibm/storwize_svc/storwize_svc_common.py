@@ -743,14 +743,22 @@ class StorwizeSSH(object):
 class StorwizeHelpers(object):
 
     # All the supported QoS key are saved in this dict. When a new
-    # key is going to add, three values MUST be set:
+    # key is going to add, four values MUST be set:
     # 'default': to indicate the value, when the parameter is disabled.
     # 'param': to indicate the corresponding parameter in the command.
     # 'type': to indicate the type of this value.
+    # 'unit': to indicate the string, a supported QoS parameter.
     WAIT_TIME = 5
-    svc_qos_keys = {'IOThrottling': {'default': '0',
-                                     'param': 'rate',
-                                     'type': int}}
+    svc_qos = {'IOThrottling': {'default': '0',
+                                'param': 'rate',
+                                'type': float,
+                                'unit': 'IOThrottling_unit'},
+               'IOThrottling_unit': {'default': 'iops',
+                                     'enum': ['iops', 'mbps', 'iops_per_gb'],
+                                     'type': str,
+                                     'mbps': 'unitmb',
+                                     'iops': 'rate',
+                                     'iops_per_gb': 'rate'}}
 
     def __init__(self, run_ssh):
         self.ssh = StorwizeSSH(run_ssh)
@@ -1394,7 +1402,6 @@ class StorwizeHelpers(object):
             else:
                 scope = key_split[0]
                 key = key_split[1]
-
             # We generally do not look at capabilities in the driver, but
             # replication is a special case where the user asks for
             # a volume to be replicated, and we want both the scheduler and
@@ -1412,9 +1419,9 @@ class StorwizeHelpers(object):
 
             # Add the QoS.
             if scope and scope == 'qos':
-                if key in self.svc_qos_keys.keys():
+                if key in self.svc_qos:
                     try:
-                        type_fn = self.svc_qos_keys[key]['type']
+                        type_fn = self.svc_qos[key]['type']
                         value = type_fn(value)
                         qos[key] = value
                     except ValueError:
@@ -1432,8 +1439,43 @@ class StorwizeHelpers(object):
                 elif this_type == 'bool':
                     value = strutils.bool_from_string(value)
                 opts[key] = value
-        if len(qos) != 0:
+        if len(qos):
             opts['qos'] = qos
+            opts = self._validate_qos_opts(opts)
+        return opts
+
+    def _validate_qos_opts(self, opts):
+        """Override to add IOThrottling_unit to qos from extra_specs"""
+        qos = {}
+        for key, value in opts['qos'].items():
+            # Validate IOThrottle rate value
+            if key in self.svc_qos and key == "IOThrottling":
+                if int(value) >= 0:
+                    qos[key] = value
+                else:
+                    msg = (_("I/O Throttle rate cannot be negative or Zero. "
+                             "So skipping setting of I/O Throttle rate on "
+                             "volumes."))
+                    LOG.warning(msg)
+                    continue
+
+            # Validate IOThrottle Unit
+            if key in self.svc_qos and key == 'IOThrottling_unit':
+                if value:
+                    enum_values = self.svc_qos[key]['enum']
+                    if value in enum_values:
+                        qos[key] = value
+                    else:
+                        msg = (_("An invalid '%(actual)s' unit was configured "
+                                 "for IOThrottling_unit on Storage Template. "
+                                 "It should be one of the values: "
+                                 "%(expected)s. So skipping setting of I/O "
+                                 "Throttle rate on volumes.") %
+                               dict(actual=value, expected=enum_values))
+                        LOG.warning(msg)
+                        continue
+        if len(qos) != 2:
+            opts['qos'] = {}
         return opts
 
     def _get_qos_from_volume_metadata(self, volume_metadata):
@@ -1451,9 +1493,9 @@ class StorwizeHelpers(object):
                 key = key_split[1]
             # Add the QoS.
             if scope and scope == 'qos':
-                if key in self.svc_qos_keys.keys():
+                if key in self.svc_qos:
                     try:
-                        type_fn = self.svc_qos_keys[key]['type']
+                        type_fn = self.svc_qos[key]['type']
                         value = type_fn(value)
                         qos[key] = value
                     except ValueError:
@@ -1520,8 +1562,8 @@ class StorwizeHelpers(object):
                 # the same key.
                 specs.update(kvs)
             opts = self._get_opts_from_specs(opts, specs)
-        if (opts['qos'] is None and config.storwize_svc_allow_tenant_qos
-                and volume_metadata):
+        if (opts['qos'] is None and config.storwize_svc_allow_tenant_qos and
+                volume_metadata):
             qos = self._get_qos_from_volume_metadata(volume_metadata)
             if len(qos) != 0:
                 opts['qos'] = qos
@@ -2056,7 +2098,8 @@ class StorwizeHelpers(object):
             opts['iogrp'] = src_attrs['IO_group_id']
         self.create_vdisk(target, src_size, 'b', pool, opts)
         if opts['qos']:
-            self.add_vdisk_qos(target, opts['qos'])
+            vdisk_size = int(float(src_size) / (1 << 30))
+            self.add_vdisk_qos(target, opts['qos'], vdisk_size)
         self.check_flashcopy_rate(opts['flashcopy_rate'])
         self.ssh.mkfcmap(source, target, full_copy,
                          opts['flashcopy_rate'],
@@ -2523,40 +2566,91 @@ class StorwizeHelpers(object):
             return None
         return dest_pool
 
-    def add_vdisk_qos(self, vdisk, qos):
+    def add_vdisk_qos(self, vdisk, qos, vdisk_size):
         """Add the QoS configuration to the volume."""
         for key, value in qos.items():
-            if key in self.svc_qos_keys.keys():
-                param = self.svc_qos_keys[key]['param']
-                self.ssh.chvdisk(vdisk, ['-' + param, str(value)])
+            if key in self.svc_qos and key == "IOThrottling":
+                param = self.svc_qos[key]['param']
+                if storwize_const.IOPS_PER_GB in qos.values():
+                    value = value * vdisk_size
+                    if not int(value):
+                        value = 1
+                vdisk_params = ['-' + param, str(int(value))]
+                # Add -unitmb param to the chvdisk if qos:IOThrottling_unit
+                # is added in extra specs
+                key_unit = self.svc_qos[key].get('unit', None)
+                if key_unit in qos:
+                    key_unit_param = qos.get(key_unit)
+                    if (key_unit_param and
+                            key_unit_param == storwize_const.MBPS):
+                        t_val = '-' + self.svc_qos[key_unit][key_unit_param]
+                        vdisk_params.append(t_val)
+                self.ssh.chvdisk(vdisk, vdisk_params)
 
-    def update_vdisk_qos(self, vdisk, qos):
+    def update_vdisk_qos(self, vdisk, qos, vdisk_size):
         """Update all the QoS in terms of a key and value.
 
-        svc_qos_keys saves all the supported QoS parameters. Going through
+        svc_qos saves all the supported QoS parameters. Going through
         this dict, we set the new values to all the parameters. If QoS is
         available in the QoS configuration, the value is taken from it;
         if not, the value will be set to default.
         """
-        for key, value in self.svc_qos_keys.items():
-            param = value['param']
-            if key in qos.keys():
-                # If the value is set in QoS, take the value from
-                # the QoS configuration.
-                v = qos[key]
-            else:
-                # If not, set the value to default.
-                v = value['default']
-            self.ssh.chvdisk(vdisk, ['-' + param, str(v)])
+        iothrottling = 'IOThrottling'
+        if iothrottling in qos:
+            throttling_value = qos[iothrottling]
+            key_unit = self.svc_qos[iothrottling]['unit']
+            throttling_unit = qos[key_unit]
+
+            # check if throttling unit specified is in allowed units
+            # if not allowed - we will go with default unit - iops
+            param = self.svc_qos[iothrottling]['param']
+            unit_param = self.svc_qos[key_unit][storwize_const.MBPS]
+            default_throttling_value = self.svc_qos[iothrottling]['default']
+            if throttling_unit in self.svc_qos[key_unit]:
+                # check if specified throttling unit is not the default unit
+                # if not default unit - specify the parameter for the
+                # special unit
+                if throttling_unit == storwize_const.MBPS:
+                    # Uppdating vdisk_params to disable iops limit and
+                    # enable only bandwidth limit - in mbps
+                    # disable iops
+                    disable_vdisk_params = ['-' + param,
+                                            default_throttling_value]
+                    # enable mbps
+                    enable_vdisk_params = ['-' + param,
+                                           str(int(throttling_value)),
+                                           '-' + unit_param]
+                else:
+                    # This means that we have to disable mbps limit (bandwidth)
+                    # and enable iops limit
+                    if throttling_unit == storwize_const.IOPS_PER_GB:
+                        throttling_value = throttling_value * vdisk_size
+                    # disable mbps
+                    disable_vdisk_params = ['-' + param,
+                                            default_throttling_value,
+                                            '-' + unit_param]
+                    # enable iops
+                    enable_vdisk_params = ['-' + param,
+                                           str(int(throttling_value))]
+            # Disable conditional vdisk_params
+            self.ssh.chvdisk(vdisk, disable_vdisk_params)
+            # Enable conditional vdisk_params
+            self.ssh.chvdisk(vdisk, enable_vdisk_params)
 
     def disable_vdisk_qos(self, vdisk, qos):
         """Disable the QoS."""
         for key, value in qos.items():
-            if key in self.svc_qos_keys.keys():
-                param = self.svc_qos_keys[key]['param']
-                # Take the default value.
-                value = self.svc_qos_keys[key]['default']
-                self.ssh.chvdisk(vdisk, ['-' + param, value])
+            if key in self.svc_qos and key == 'IOThrottling':
+                # qos of previous volume type is in format:
+                # qos - {'IOThrottling': 1000, 'IOThrottling_unit': 'iops'}
+                param = self.svc_qos[key]['param']
+                vdisk_params = ['-' + param, self.svc_qos[key]['default']]
+                # clear out iops limit
+                self.ssh.chvdisk(vdisk, vdisk_params)
+                vdisk_params.append(
+                    '-' + self.svc_qos['IOThrottling_unit']['mbps'])
+                # clear out mbps limit
+                self.ssh.chvdisk(vdisk, vdisk_params)
 
     def change_vdisk_options(self, vdisk, changes, opts, state):
         change_value = {'warning': '', 'easytier': '', 'autoexpand': ''}
@@ -3197,9 +3291,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             raise exception.VolumeDriverException(reason=msg)
 
     def _update_replication_properties(self, ctxt, volume, model_update):
-        metadata = self.db.volume_admin_metadata_get(ctxt.elevated(),
-                                                     volume['id'])
-        model_update['metadata'] = metadata
+        model_update = model_update or dict()
+        vol_metadata = model_update.get('metadata', {})
+
+        db_metadata = self.db.volume_metadata_get(ctxt.elevated(),
+                                                  volume['id'])
+        model_update['metadata'] = db_metadata if db_metadata else dict()
+        if (('IOThrottle_rate' not in vol_metadata) and
+                ('IOThrottle_rate' in model_update['metadata'])):
+            del model_update['metadata']['IOThrottle_rate']
+        model_update['metadata'].update(vol_metadata)
+
         rel_info = self._helpers.get_relationship_info(volume.name)
         rep_properties = {
             'Id': 'id',
@@ -3231,7 +3333,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         }
         # Update model for replication
         if not rel_info:
-            for key in rep_properties.keys():
+            for key in rep_properties:
                 if key in model_update['metadata']:
                     del model_update['metadata'][key]
         else:
@@ -3286,7 +3388,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._helpers.create_vdisk(volume['name'], str(volume['size']),
                                        'gb', pool, opts)
         if opts['qos']:
-            self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
+            self._helpers.add_vdisk_qos(volume['name'], opts['qos'],
+                                        volume['size'])
+            model_update = self._qos_model_update(model_update, volume)
 
         model_update[
             'replication_status'] = fields.ReplicationStatus.NOT_CAPABLE
@@ -3410,6 +3514,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def create_volume_from_snapshot(self, volume, snapshot):
         # Create volume from snapshot with a replication or hyperswap group_id
         # is not allowed.
+        model_update = dict()
         self._check_if_group_type_cg_snapshot(volume)
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
@@ -3430,19 +3535,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._extend_volume_op(volume, volume['size'],
                                    snapshot['volume_size'])
         if opts['qos']:
-            self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
+            self._helpers.add_vdisk_qos(volume['name'], opts['qos'],
+                                        volume['size'])
+            model_update = self._qos_model_update(model_update, volume)
 
         ctxt = context.get_admin_context()
-        model_update = {'replication_status':
-                        fields.ReplicationStatus.NOT_CAPABLE}
+        model_update[
+            'replication_status'] = fields.ReplicationStatus.NOT_CAPABLE
         rep_type = self._get_volume_replicated_type(ctxt, volume)
 
         if rep_type:
             self._validate_replication_enabled()
             replica_obj = self._get_replica_obj(rep_type)
             replica_obj.volume_replication_setup(ctxt, volume)
-            model_update = {'replication_status':
-                            fields.ReplicationStatus.ENABLED}
+            model_update[
+                'replication_status'] = fields.ReplicationStatus.ENABLED
             # Updating replication properties for a volume with replication
             # enabled.
             model_update = self._update_replication_properties(ctxt, volume,
@@ -3451,9 +3558,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         """Creates a clone of the specified volume."""
-        model_update = dict()
         # Create a cloned volume with a replication or hyperswap group_id is
         # not allowed.
+        model_update = dict()
         self._check_if_group_type_cg_snapshot(tgt_volume)
         opts = self._get_vdisk_params(tgt_volume['volume_type_id'],
                                       volume_metadata=
@@ -3477,7 +3584,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                    src_volume['size'])
 
         if opts['qos']:
-            self._helpers.add_vdisk_qos(tgt_volume['name'], opts['qos'])
+            self._helpers.add_vdisk_qos(tgt_volume['name'], opts['qos'],
+                                        tgt_volume['size'])
+            model_update = self._qos_model_update(model_update, tgt_volume)
 
         if opts['volume_topology'] == 'hyperswap':
             LOG.debug('The source volume %s to be cloned is a hyperswap '
@@ -3498,6 +3607,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         model_update[
             'replication_status'] = fields.ReplicationStatus.NOT_CAPABLE
+        ctxt = context.get_admin_context()
         rep_type = self._get_volume_replicated_type(ctxt, tgt_volume)
 
         if rep_type:
@@ -3588,6 +3698,53 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         else:
             self._helpers.extend_vdisk(volume_name, extend_amt)
         LOG.debug('leave: _extend_volume_op: volume %s', volume.id)
+
+        # Update the QoS IOThrottling value to the volume properties
+        opts = self._get_vdisk_params(volume['volume_type_id'],
+                                      volume_metadata=
+                                      volume.get('volume_matadata'))
+        if opts['qos'] and opts['qos']['IOThrottling_unit']:
+            unit = opts['qos']['IOThrottling_unit']
+            if storwize_const.IOPS_PER_GB in unit:
+                self._helpers.update_vdisk_qos(volume_name,
+                                               opts['qos'],
+                                               new_size)
+                # Add the QoS IOThrottling value to Volume Metadata
+                model_update = self._qos_model_update(dict(), volume)
+                # Update the Volume Metadata in the DB
+                self.db.volume_metadata_update(
+                    context.get_admin_context(),
+                    volume['id'], model_update['metadata'], False)
+
+    def _qos_model_update(self, model_update, volume):
+        """add volume wwn and IOThrottle_rate to the metadata of the volume"""
+        model_update = model_update or dict()
+        vol_metadata = model_update.get('metadata', {})
+
+        db_meta = self.db.volume_metadata_get(context.get_admin_context(),
+                                              volume['id'])
+        model_update['metadata'] = db_meta if db_meta else dict()
+        model_update['metadata'].update(vol_metadata)
+
+        attrs = self._helpers.get_vdisk_attributes(volume['name'])
+        model_update['metadata']['volume_wwn'] = attrs['vdisk_UID']
+        iops_limit = attrs.get('IOPs_limit')
+        bw_limit_mbps = attrs.get('bandwidth_limit_MB')
+        if iops_limit:
+            model_update['metadata']['IOThrottle_rate'] = (
+                "%s IOps" % iops_limit)
+        elif bw_limit_mbps:
+            model_update['metadata']['IOThrottle_rate'] = (
+                "%s MBps" % bw_limit_mbps)
+        else:
+            # there is no IOThrottle_rate defined - remove it from metadata
+            # This case is seen during retype from a storage template
+            # with qos to storage template without qos (the qos rate
+            # was leftover in the volume details on UI).
+            if 'IOThrottle_rate' in model_update['metadata']:
+                del model_update['metadata']['IOThrottle_rate']
+        model_update['host'] = volume['host']
+        return(model_update)
 
     def add_vdisk_copy(self, volume, dest_pool, vol_type, auto_delete=False):
         return self._helpers.add_vdisk_copy(volume, dest_pool,
@@ -5034,10 +5191,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if new_opts['qos']:
             # Add the new QoS setting to the volume. If the volume has an
             # old QoS setting, it will be overwritten.
-            self._helpers.update_vdisk_qos(volume['name'], new_opts['qos'])
+            self._helpers.update_vdisk_qos(volume['name'], new_opts['qos'],
+                                           volume['size'])
+            model_update = self._qos_model_update(model_update, volume)
         elif old_opts['qos']:
             # If the old_opts contain QoS keys, disable them.
             self._helpers.disable_vdisk_qos(volume['name'], old_opts['qos'])
+            model_update = self._qos_model_update(model_update, volume)
 
         if new_opts['flashcopy_rate'] != old_opts['flashcopy_rate']:
             self._helpers.update_flashcopy_rate(volume.name,
@@ -5060,10 +5220,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 self._helpers.delete_vdisk(
                     storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'],
                     force_unmap=force_unmap, force_delete=False)
-            model_update = {'replication_status':
-                            fields.ReplicationStatus.DISABLED,
-                            'replication_driver_data': None,
-                            'replication_extended_status': None}
+            model_update['replication_status'] = (
+                fields.ReplicationStatus.DISABLED)
+            model_update['replication_driver_data'] = None
+            model_update['replication_extended_status'] = None
             # Updating replication properties for a volume with replication
             # enabled.
             model_update = self._update_replication_properties(ctxt, volume,
@@ -5077,8 +5237,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 self._helpers.change_relationship_cycleperiod(
                     volume['name'],
                     new_opts.get('cycle_period_seconds'))
-            model_update = {'replication_status':
-                            fields.ReplicationStatus.ENABLED}
+            model_update['replication_status'] = (
+                fields.ReplicationStatus.ENABLED)
             # Updating replication properties for a volume with replication
             # enabled.
             model_update = self._update_replication_properties(ctxt, volume,
@@ -5648,6 +5808,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 volumes_model[volumes.index(vol)] = (
                     self._update_replication_properties(
                         context, vol, volumes_model[volumes.index(vol)]))
+
+            opts = self._get_vdisk_params(vol['volume_type_id'],
+                                          volume_metadata=
+                                          vol.get('volume_metadata'))
+            if opts['qos']:
+                # Updating QoS properties for a volume
+                self._helpers.add_vdisk_qos(vol['name'], opts['qos'],
+                                            vol['size'])
+                volumes_model[volumes.index(vol)] = (
+                    self._qos_model_update(
+                        volumes_model[volumes.index(vol)], vol))
 
         LOG.debug("Leave: create_group_from_src.")
         return model_update, volumes_model

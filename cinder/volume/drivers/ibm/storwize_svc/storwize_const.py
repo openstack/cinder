@@ -57,3 +57,8 @@ REP_SYNC = 'synchronized'
 REP_IDL = 'idling'
 REP_IDL_DISC = 'idling_disconnected'
 REP_STATUS_ON_LINE = 'online'
+
+# IOThrottling types
+MBPS = 'mbps'
+IOPS = 'iops'
+IOPS_PER_GB = 'iops_per_gb'

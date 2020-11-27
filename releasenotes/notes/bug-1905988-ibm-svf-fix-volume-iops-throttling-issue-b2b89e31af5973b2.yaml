@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family `Bug #1905988
+    <https://bugs.launchpad.net/cinder/+bug/1905988>`_:
+    Fixed volume IOPS throttling issue with a new option
+    to set volume IOPS based on volume size.
