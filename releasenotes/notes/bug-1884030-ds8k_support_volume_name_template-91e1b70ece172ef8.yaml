@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    IBM DS8000 Driver `Bug #1884030
+    <https://bugs.launchpad.net/cinder/+bug/1884030>`_:
+    Support for volume_name_template configuration option.
