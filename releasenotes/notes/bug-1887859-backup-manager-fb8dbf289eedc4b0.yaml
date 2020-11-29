@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1887859 <https://bugs.launchpad.net/cinder/+bug/1887859>`_:
+    Fix for a race in Cinder Backup Manager with double initialization
+    of backup driver.
