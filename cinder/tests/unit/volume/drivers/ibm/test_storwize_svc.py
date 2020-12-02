@@ -11505,10 +11505,6 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                           self.driver.failover_replication, self.ctxt, group,
                           vols, self.fake_target['backend_id'])
 
-        self.assertRaises(exception.UnableToFailOver,
-                          self.driver.failover_replication, self.ctxt, group,
-                          vols, storwize_const.FAILBACK_VALUE)
-
         with mock.patch.object(storwize_svc_common.StorwizeSSH,
                                'stoprcconsistgrp') as stoprccg:
             stoprccg.side_effect = exception.VolumeBackendAPIException(
