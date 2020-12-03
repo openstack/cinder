@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # A wrapper around mypy that allows us to specify what files to run 'mypy' type
 # checks on. Intended to be invoked via tox:
