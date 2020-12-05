@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1904440 <https://bugs.launchpad.net/cinder/+bug/1904440>`_:
+    When an iSCSI/FC encrypted volume was cloned, the rekey operation would
+    stamp the wrong encryption key on the newly cloned volume.  This resulted
+    in a volume that could not be attached.  It does not present a security
+    problem.
