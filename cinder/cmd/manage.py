@@ -50,11 +50,7 @@
 
 """CLI interface for cinder management."""
 
-try:
-    import collections.abc as collections
-except ImportError:
-    import collections
-
+import collections.abc as collections
 import logging as python_logging
 import sys
 import time
