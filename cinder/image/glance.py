@@ -23,11 +23,12 @@ import shutil
 import sys
 import textwrap
 import time
-import typing
-from typing import Any, Dict, Tuple  # noqa: H301
+from typing import (Any, Callable, Dict, Iterable, List,  # noqa: H301
+                    NoReturn, Optional, Tuple)            # noqa: H301
 import urllib
 import urllib.parse
 
+import glanceclient
 import glanceclient.exc
 from keystoneauth1.loading import session as ks_session
 from oslo_config import cfg
@@ -38,6 +39,7 @@ from oslo_utils import timeutils
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import image_utils
 from cinder import service_auth
 
 
@@ -91,7 +93,7 @@ _SESSION = None
 LOG = logging.getLogger(__name__)
 
 
-def _parse_image_ref(image_href):
+def _parse_image_ref(image_href: str) -> Tuple[str, str, bool]:
     """Parse an image href into composite parts.
 
     :param image_href: href of an image
@@ -106,7 +108,9 @@ def _parse_image_ref(image_href):
     return (image_id, netloc, use_ssl)
 
 
-def _create_glance_client(context, netloc, use_ssl):
+def _create_glance_client(context: context.RequestContext,
+                          netloc: str,
+                          use_ssl: bool) -> glanceclient.Client:
     """Instantiate a new glanceclient.Client object."""
     params = {'global_request_id': context.global_id}
 
@@ -137,7 +141,7 @@ def _create_glance_client(context, netloc, use_ssl):
     return glanceclient.Client('2', endpoint, **params)
 
 
-def get_api_servers(context):
+def get_api_servers(context: context.RequestContext) -> Iterable:
     """Return Iterable over shuffled api servers.
 
     Shuffle a list of glance_api_servers and return an iterator
@@ -180,16 +184,24 @@ def get_api_servers(context):
 class GlanceClientWrapper(object):
     """Glance client wrapper class that implements retries."""
 
-    def __init__(self, context=None, netloc=None, use_ssl=False):
+    def __init__(self,
+                 context: Optional[context.RequestContext] = None,
+                 netloc: Optional[str] = None,
+                 use_ssl: bool = False):
+        self.client: Optional[glanceclient.Client]
         if netloc is not None:
+            assert context is not None
             self.client = self._create_static_client(context,
                                                      netloc,
                                                      use_ssl)
         else:
             self.client = None
-        self.api_servers = None
+        self.api_servers: Optional[Iterable] = None
 
-    def _create_static_client(self, context, netloc, use_ssl):
+    def _create_static_client(self,
+                              context: context.RequestContext,
+                              netloc: str,
+                              use_ssl: bool) -> glanceclient.Client:
         """Create a client that we'll use for every call."""
         self.netloc = netloc
         self.use_ssl = use_ssl
@@ -197,16 +209,22 @@ class GlanceClientWrapper(object):
                                      self.netloc,
                                      self.use_ssl)
 
-    def _create_onetime_client(self, context):
+    def _create_onetime_client(
+            self,
+            context: context.RequestContext) -> glanceclient.Client:
         """Create a client that will be used for one call."""
         if self.api_servers is None:
             self.api_servers = get_api_servers(context)
-        self.netloc, self.use_ssl = next(self.api_servers)
+        self.netloc, self.use_ssl = next(self.api_servers)  # type: ignore
         return _create_glance_client(context,
                                      self.netloc,
                                      self.use_ssl)
 
-    def call(self, context, method, *args, **kwargs):
+    def call(self,
+             context: context.RequestContext,
+             method: str,
+             *args: Any,
+             **kwargs: str) -> Any:
         """Call a glance client method.
 
         If we get a connection error,
@@ -258,12 +276,14 @@ class GlanceClientWrapper(object):
 class GlanceImageService(object):
     """Provides storage and retrieval of disk image objects within Glance."""
 
-    def __init__(self, client=None):
+    def __init__(self, client: Optional[Any] = None):
         self._client = client or GlanceClientWrapper()
-        self._image_schema = None
-        self.temp_images = None
+        self._image_schema: Optional[glanceclient.v2.schemas.Schema] = None
+        self.temp_images: Optional[image_utils.TemporaryImages] = None
 
-    def detail(self, context, **kwargs):
+    def detail(self,
+               context: context.RequestContext,
+               **kwargs: str) -> List[dict]:
         """Calls out to Glance for a list of detailed image information."""
         params = self._extract_query_params(kwargs)
         try:
@@ -278,7 +298,7 @@ class GlanceImageService(object):
 
         return _images
 
-    def _extract_query_params(self, params):
+    def _extract_query_params(self, params: dict) -> Dict[str, Any]:
         _params = {}
         accepted_params = ('filters', 'marker', 'limit',
                            'sort_key', 'sort_dir')
@@ -288,7 +308,9 @@ class GlanceImageService(object):
 
         return _params
 
-    def list_members(self, context, image_id):
+    def list_members(self,
+                     context: context.RequestContext,
+                     image_id: str) -> List[dict]:
         """Returns a list of dicts with image member data."""
         try:
             return self._client.call(context,
@@ -298,7 +320,7 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
 
-    def get_stores(self, context):
+    def get_stores(self, context: context.RequestContext):
         """Returns a list of dicts with stores information."""
         try:
             return self._client.call(context,
@@ -321,7 +343,9 @@ class GlanceImageService(object):
         base_image_meta = self._translate_from_glance(context, image)
         return base_image_meta
 
-    def get_location(self, context, image_id):
+    def get_location(self,
+                     context: context.RequestContext,
+                     image_id: str) -> Tuple[Optional[str], Any]:
         """Get backend storage location url.
 
         Returns a tuple containing the direct url and locations representing
@@ -344,7 +368,11 @@ class GlanceImageService(object):
         return (getattr(image_meta, 'direct_url', None),
                 getattr(image_meta, 'locations', None))
 
-    def add_location(self, context, image_id, url, metadata):
+    def add_location(self,
+                     context: context.RequestContext,
+                     image_id: str,
+                     url: str,
+                     metadata: dict) -> dict:
         """Add a backend location url to an image.
 
         Returns a dict containing image metadata on success.
@@ -356,8 +384,10 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
 
-    @typing.no_type_check
-    def download(self, context, image_id, data=None):
+    def download(self,
+                 context: context.RequestContext,
+                 image_id: str,
+                 data=None):
         """Calls out to Glance for data and writes data."""
         if data and 'file' in CONF.allowed_direct_url_schemes:
             direct_url, locations = self.get_location(context, image_id)
@@ -389,7 +419,10 @@ class GlanceImageService(object):
             for chunk in image_chunks:
                 data.write(chunk)
 
-    def create(self, context, image_meta, data=None):
+    def create(self,
+               context: context.RequestContext,
+               image_meta: Dict[str, Any],
+               data=None) -> Dict[str, Any]:
         """Store the image data and return the new image object."""
         sent_service_image_meta = self._translate_to_glance(image_meta)
 
@@ -401,9 +434,14 @@ class GlanceImageService(object):
 
         return self._translate_from_glance(context, recv_service_image_meta)
 
-    def update(self, context, image_id,
-               image_meta, data=None, purge_props=True,
-               store_id=None, base_image_ref=None):
+    def update(self,
+               context: context.RequestContext,
+               image_id: str,
+               image_meta: dict,
+               data=None,
+               purge_props: bool = True,
+               store_id: Optional[str] = None,
+               base_image_ref: Optional[str] = None) -> dict:
         """Modify the given image with the new data."""
         # For v2, _translate_to_glance stores custom properties in image meta
         # directly. We need the custom properties to identify properties to
@@ -444,7 +482,7 @@ class GlanceImageService(object):
         else:
             return self._translate_from_glance(context, image_meta)
 
-    def delete(self, context, image_id):
+    def delete(self, context: context.RequestContext, image_id: str) -> bool:
         """Delete the given image.
 
         :raises ImageNotFound: if the image does not exist.
@@ -457,7 +495,9 @@ class GlanceImageService(object):
             raise exception.ImageNotFound(image_id=image_id)
         return True
 
-    def _translate_from_glance(self, context, image) -> dict:
+    def _translate_from_glance(self,
+                               context: context.RequestContext,
+                               image: Dict[str, Any]) -> dict:
         """Get image metadata from glance image.
 
         Extract metadata from image and convert it's properties
@@ -470,12 +510,14 @@ class GlanceImageService(object):
             self._image_schema = self._client.call(context, 'get',
                                                    controller='schemas',
                                                    schema_name='image')
+        assert self._image_schema is not None
         # NOTE(aarefiev): get base image property, store image 'schema'
         #                 is redundant, so ignore it.
-        image_meta = {key: getattr(image, key)
-                      for key in image.keys()
-                      if self._image_schema.is_base_property(key) is True and
-                      key != 'schema'}
+        image_meta: dict = {
+            key: getattr(image, key)
+            for key in image.keys()
+            if self._image_schema.is_base_property(key) is True and
+            key != 'schema'}
 
         # Process 'cinder_encryption_key_id' as a metadata key
         if 'cinder_encryption_key_id' in image.keys():
@@ -494,7 +536,7 @@ class GlanceImageService(object):
         return image_meta
 
     @staticmethod
-    def _translate_to_glance(image_meta):
+    def _translate_to_glance(image_meta: Dict[str, Any]) -> Dict[str, Any]:
         image_meta = _convert_to_string(image_meta)
         image_meta = _remove_read_only(image_meta)
 
@@ -507,7 +549,9 @@ class GlanceImageService(object):
 
         return image_meta
 
-    def _is_image_available(self, context, image):
+    def _is_image_available(self,
+                            context: context.RequestContext,
+                            image) -> bool:
         """Check image availability.
 
         This check is needed in case Nova and Glance are deployed
@@ -547,7 +591,7 @@ class GlanceImageService(object):
         return str(user_id) == str(context.user_id)
 
 
-def _convert_timestamps_to_datetimes(image_meta):
+def _convert_timestamps_to_datetimes(image_meta: dict) -> dict:
     """Returns image with timestamp fields converted to datetime objects."""
     for attr in ['created_at', 'updated_at', 'deleted_at']:
         if image_meta.get(attr):
@@ -556,13 +600,13 @@ def _convert_timestamps_to_datetimes(image_meta):
 
 
 # NOTE(bcwaldon): used to store non-string data in glance metadata
-def _json_loads(properties, attr):
+def _json_loads(properties: dict, attr: str) -> None:
     prop = properties[attr]
     if isinstance(prop, str):
         properties[attr] = jsonutils.loads(prop)
 
 
-def _json_dumps(properties, attr):
+def _json_dumps(properties: dict, attr: str) -> None:
     prop = properties[attr]
     if not isinstance(prop, str):
         properties[attr] = jsonutils.dumps(prop)
@@ -571,7 +615,8 @@ def _json_dumps(properties, attr):
 _CONVERT_PROPS = ('block_device_mapping', 'mappings')
 
 
-def _convert(method, metadata):
+def _convert(method: Callable[[dict, str], Optional[dict]],
+             metadata: dict) -> dict:
     metadata = copy.deepcopy(metadata)
     properties = metadata.get('properties')
     if properties:
@@ -582,11 +627,11 @@ def _convert(method, metadata):
     return metadata
 
 
-def _convert_from_string(metadata):
+def _convert_from_string(metadata: dict) -> dict:
     return _convert(_json_loads, metadata)
 
 
-def _convert_to_string(metadata):
+def _convert_to_string(metadata: dict) -> dict:
     return _convert(_json_dumps, metadata)
 
 
@@ -596,13 +641,13 @@ def _extract_attributes(image):
     # therefore sorted, with dependent attributes as the end
     # 'deleted_at' depends on 'deleted'
     # 'checksum' depends on 'status' == 'active'
-    IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
+    IMAGE_ATTRIBUTES = ('size', 'disk_format', 'owner',
                         'container_format', 'status', 'id',
                         'name', 'created_at', 'updated_at',
                         'deleted', 'deleted_at', 'checksum',
                         'min_disk', 'min_ram', 'protected',
                         'visibility',
-                        'cinder_encryption_key_id']
+                        'cinder_encryption_key_id')
 
     output: Dict[str, Any] = {}
 
@@ -619,7 +664,7 @@ def _extract_attributes(image):
     return output
 
 
-def _remove_read_only(image_meta):
+def _remove_read_only(image_meta: dict) -> dict:
     IMAGE_ATTRIBUTES = ['status', 'updated_at', 'created_at', 'deleted_at']
     output = copy.deepcopy(image_meta)
     for attr in IMAGE_ATTRIBUTES:
@@ -628,21 +673,24 @@ def _remove_read_only(image_meta):
     return output
 
 
-def _reraise_translated_image_exception(image_id):
+def _reraise_translated_image_exception(image_id: str) -> NoReturn:
     """Transform the exception for the image but keep its traceback intact."""
     _exc_type, exc_value, exc_trace = sys.exc_info()
+    assert exc_value is not None
     new_exc = _translate_image_exception(image_id, exc_value)
     raise new_exc.with_traceback(exc_trace)
 
 
-def _reraise_translated_exception():
+def _reraise_translated_exception() -> NoReturn:
     """Transform the exception but keep its traceback intact."""
     _exc_type, exc_value, exc_trace = sys.exc_info()
+    assert exc_value is not None
     new_exc = _translate_plain_exception(exc_value)
     raise new_exc.with_traceback(exc_trace)
 
 
-def _translate_image_exception(image_id, exc_value):
+def _translate_image_exception(image_id: str,
+                               exc_value: BaseException) -> BaseException:
     if isinstance(exc_value, (glanceclient.exc.Forbidden,
                               glanceclient.exc.Unauthorized)):
         return exception.ImageNotAuthorized(image_id=image_id)
@@ -653,7 +701,7 @@ def _translate_image_exception(image_id, exc_value):
     return exc_value
 
 
-def _translate_plain_exception(exc_value):
+def _translate_plain_exception(exc_value: BaseException) -> BaseException:
     if isinstance(exc_value, (glanceclient.exc.Forbidden,
                               glanceclient.exc.Unauthorized)):
         return exception.NotAuthorized(exc_value)
@@ -695,5 +743,5 @@ def get_remote_image_service(context: context.RequestContext,
     return image_service, image_id
 
 
-def get_default_image_service():
+def get_default_image_service() -> GlanceImageService:
     return GlanceImageService()
