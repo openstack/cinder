@@ -1068,3 +1068,10 @@ class NetAppNfsDriver(driver.ManageableVD,
         vol_path = os.path.join(volume['provider_location'], vol_str)
         LOG.info('Cinder NFS volume with current path "%(cr)s" is '
                  'no longer being managed.', {'cr': vol_path})
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        # Implemented to prevent NFSDriver's implementation renaming the file
+        # and breaking volume's backend QoS.
+        msg = _("The method update_migrated_volume is not implemented.")
+        raise NotImplementedError(msg)
