@@ -266,7 +266,7 @@ def map_dict_to_lower(input_dict):
 def get_qos_policy_group_name(volume):
     """Return the name of backend QOS policy group based on its volume id."""
     if 'id' in volume:
-        return OPENSTACK_PREFIX + volume['id']
+        return OPENSTACK_PREFIX + volume.name_id
     return None
 
 
@@ -313,7 +313,7 @@ def get_valid_qos_policy_group_info(volume, extra_specs=None):
     info = dict(legacy=None, spec=None)
     try:
         volume_type = get_volume_type_from_volume(volume)
-    except KeyError:
+    except (KeyError, exception.NotFound):
         LOG.exception('Cannot get QoS spec for volume %s.', volume['id'])
         return info
     if volume_type is None:

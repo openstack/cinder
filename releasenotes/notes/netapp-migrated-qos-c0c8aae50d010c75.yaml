@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp ONTAP `bug #1906291
+    <https://bugs.launchpad.net/cinder/+bug/1906291>`_: Fix volume losing its
+    QoS policy on the backend after moving it (migrate or retype with migrate)
+    to a NetApp NFS backend.
