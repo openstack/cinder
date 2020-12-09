@@ -352,12 +352,23 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_get_qos_policy_group_name_no_id(self):
-        volume = copy.deepcopy(fake.VOLUME)
-        del(volume['id'])
-
-        result = na_utils.get_qos_policy_group_name(volume)
+        delattr(fake.VOLUME, '_obj_id')
+        try:
+            result = na_utils.get_qos_policy_group_name(fake.VOLUME)
+        finally:
+            fake.VOLUME._obj_id = fake.VOLUME_ID
 
         self.assertIsNone(result)
+
+    def test_get_qos_policy_group_name_migrated_volume(self):
+        fake.VOLUME._name_id = 'asdf'
+        try:
+            expected = 'openstack-' + fake.VOLUME.name_id
+            result = na_utils.get_qos_policy_group_name(fake.VOLUME)
+        finally:
+            fake.VOLUME._name_id = None
+
+        self.assertEqual(expected, result)
 
     def test_get_qos_policy_group_name_from_info(self):
         expected = 'openstack-%s' % fake.VOLUME_ID
