@@ -1161,3 +1161,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test__is_flexgroup_clone_file_supported(self):
         self.assertRaises(NotImplementedError,
                           self.driver._is_flexgroup_clone_file_supported)
+
+    def test_update_migrated_volume(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver.update_migrated_volume, self.ctxt,
+                          fake.test_volume, mock.sentinel.new_volume,
+                          mock.sentinel.original_status)
