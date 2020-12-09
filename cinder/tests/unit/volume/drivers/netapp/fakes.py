@@ -16,6 +16,7 @@
 #    under the License.
 
 
+from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.netapp.options as na_opts
 
@@ -71,13 +72,12 @@ VOLUME_NAME = 'fake_volume_name'
 VOLUME_ID = 'fake_volume_id'
 VOLUME_TYPE_ID = 'fake_volume_type_id'
 
-VOLUME = {
-    'name': VOLUME_NAME,
-    'size': 42,
-    'id': VOLUME_ID,
-    'host': 'fake_host@fake_backend#fake_pool',
-    'volume_type_id': VOLUME_TYPE_ID,
-}
+VOLUME = fake_volume.fake_volume_obj(None,
+                                     name=VOLUME_NAME,
+                                     size=42,
+                                     id=VOLUME_ID,
+                                     host='fake_host@fake_backend#fake_pool',
+                                     volume_type_id=VOLUME_TYPE_ID)
 
 SNAPSHOT_NAME = 'fake_snapshot_name'
 SNAPSHOT_ID = 'fake_snapshot_id'

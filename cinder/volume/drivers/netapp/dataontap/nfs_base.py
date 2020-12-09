@@ -1223,3 +1223,10 @@ class NetAppNfsDriver(driver.ManageableVD,
     def _is_flexgroup_clone_file_supported(self):
         """Check whether storage can perform clone file for FlexGroup"""
         raise NotImplementedError()
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        # Implemented to prevent NFSDriver's implementation renaming the file
+        # and breaking volume's backend QoS.
+        msg = _("The method update_migrated_volume is not implemented.")
+        raise NotImplementedError(msg)
