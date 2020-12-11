@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Log a warning from the volume service when a volume driver's
+    get_volume_stats() call takes a long time to return.  This can help
+    deployers troubleshoot a cinder-volume service misbehaving due to a
+    driver/backend performance issue.
