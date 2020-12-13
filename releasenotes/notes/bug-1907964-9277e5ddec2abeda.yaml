@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1907964
+    <https://bugs.launchpad.net/cinder/+bug/1907964>`_: Add support
+    for fast-diff on backup images stored in Ceph.
+    Provided fast-diff is supported by the backend it will automatically be
+    enabled and used.
+    With fast-diff enabled, the generation of diffs between images and
+    snapshots as well as determining the actual data usage of a snapshot
+    is speed up significantly.
