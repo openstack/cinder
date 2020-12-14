@@ -428,7 +428,8 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._smbfs_driver._do_create_volume(self.volume)
             fake_create.assert_called_once_with(
                 fake_vol_path, mock_get_vhd_type.return_value,
-                max_internal_size=self.volume.size << 30)
+                max_internal_size=self.volume.size << 30,
+                guid=self.volume.id)
 
     def test_create_volume(self):
         self._test_create_volume()
@@ -820,6 +821,9 @@ class WindowsSmbFsTestCase(test.TestCase):
                 self._FAKE_VOLUME_PATH,
                 self.volume.size * units.Gi,
                 is_file_max_size=False)
+            drv._vhdutils.set_vhd_guid.assert_called_once_with(
+                self._FAKE_VOLUME_PATH,
+                self.volume.id)
 
     @mock.patch.object(smbfs.WindowsSmbfsDriver, '_get_vhd_type')
     def test_copy_volume_from_snapshot(self, mock_get_vhd_type):
@@ -842,6 +846,9 @@ class WindowsSmbFsTestCase(test.TestCase):
             self._FAKE_VOLUME_PATH,
             mock.sentinel.new_volume_path,
             vhd_type=mock_get_vhd_type.return_value)
+        drv._vhdutils.set_vhd_guid.assert_called_once_with(
+            mock.sentinel.new_volume_path,
+            self.volume.id)
         drv._vhdutils.resize_vhd.assert_called_once_with(
             mock.sentinel.new_volume_path,
             self.volume.size * units.Gi,
@@ -921,3 +928,27 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         self._vhdutils.get_vhd_format.assert_called_once_with(
             mock.sentinel.image_path)
+
+    @mock.patch.object(remotefs.RemoteFSManageableVolumesMixin,
+                       'manage_existing')
+    def test_manage_existing(self, remotefs_manage):
+        model_update = dict(provider_location=self._FAKE_SHARE)
+        remotefs_manage.return_value = model_update
+        self._smbfs_driver.local_path = mock.Mock(
+            return_value=mock.sentinel.vol_path)
+
+        # Let's make sure that the provider location gets set.
+        # It's needed by self.local_path.
+        self.volume.provider_location = None
+
+        ret_val = self._smbfs_driver.manage_existing(
+            self.volume, mock.sentinel.ref)
+
+        self.assertEqual(model_update, ret_val)
+        self.assertEqual(self._FAKE_SHARE, self.volume.provider_location)
+
+        self._vhdutils.set_vhd_guid.assert_called_once_with(
+            mock.sentinel.vol_path,
+            self.volume.id)
+        self._smbfs_driver.local_path.assert_called_once_with(self.volume)
+        remotefs_manage.assert_called_once_with(self.volume, mock.sentinel.ref)

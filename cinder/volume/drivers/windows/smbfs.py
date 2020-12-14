@@ -335,7 +335,8 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         vhd_type = self._get_vhd_type()
 
         self._vhdutils.create_vhd(volume_path, vhd_type,
-                                  max_internal_size=volume_size_bytes)
+                                  max_internal_size=volume_size_bytes,
+                                  guid=volume.id)
 
     def _ensure_share_mounted(self, smbfs_share):
         mnt_flags = None
@@ -602,7 +603,9 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
             self.configuration.volume_dd_blocksize,
             volume_subformat)
 
-        self._vhdutils.resize_vhd(self.local_path(volume),
+        volume_path = self.local_path(volume)
+        self._vhdutils.set_vhd_guid(volume_path, volume.id)
+        self._vhdutils.resize_vhd(volume_path,
                                   volume.size * units.Gi,
                                   is_file_max_size=False)
 
@@ -637,6 +640,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         self._vhdutils.convert_vhd(snapshot_path,
                                    volume_path,
                                    vhd_type=vhd_type)
+        self._vhdutils.set_vhd_guid(volume_path, volume.id)
         self._vhdutils.resize_vhd(volume_path, volume_size * units.Gi,
                                   is_file_max_size=False)
 
@@ -676,6 +680,17 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
         fmt = self._vhdutils.get_vhd_format(volume_location['vol_local_path'])
         return os.path.join(volume_location['mountpoint'],
                             volume.name + ".%s" % fmt).lower()
+
+    def manage_existing(self, volume, existing_ref):
+        model_update = super(WindowsSmbfsDriver, self).manage_existing(
+            volume, existing_ref)
+
+        volume.provider_location = model_update['provider_location']
+        volume_path = self.local_path(volume)
+
+        self._vhdutils.set_vhd_guid(volume_path, volume.id)
+
+        return model_update
 
     def _set_rw_permissions(self, path):
         # The SMBFS driver does not manage file permissions. We chose
