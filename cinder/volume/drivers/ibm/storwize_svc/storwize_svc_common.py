@@ -2511,8 +2511,17 @@ class StorwizeHelpers(object):
                       '%(code_level)s, below the required 6.4.0.0.',
                       {'code_level': state['code_level']})
         else:
-            self.ssh.movevdisk(vdisk, str(iogrp[0]))
             self.ssh.addvdiskaccess(vdisk, str(iogrp[0]))
+            try:
+                self.ssh.movevdisk(vdisk, str(iogrp[0]))
+            except exception.VolumeBackendAPIException as e:
+                self.ssh.rmvdiskaccess(vdisk, str(iogrp[0]))
+                msg = (_('movevdisk command failed for %(vdisk),'
+                         'performing rmdiskaccess for %(iogrp)s.'
+                         'Exception: %(err)s.'),
+                       {'vdisk': vdisk, 'iogrp': iogrp[0], 'err': e})
+                LOG.exception(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
             self.ssh.rmvdiskaccess(vdisk, str(iogrp[1]))
 
     def vdisk_by_uid(self, vdisk_uid):

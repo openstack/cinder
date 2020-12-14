@@ -8360,6 +8360,92 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         delete_vdisk.assert_has_calls(calls, any_order=True)
 
+    def test_storwize_svc_retype_between_iogrps(self):
+        self.driver.do_setup(None)
+        ctxt = context.get_admin_context()
+
+        key_specs_old = {'iogrp': 0}
+        key_specs_new = {'iogrp': 1}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                      new_type_ref['id'])
+
+        old_type = objects.VolumeType.get_by_id(ctxt,
+                                                old_type_ref['id'])
+        volume = self._generate_vol_info(old_type)
+        new_type = objects.VolumeType.get_by_id(ctxt,
+                                                new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        conn = {'initiator': u'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                'ip': '10.10.10.12',
+                'host': u'openstack@svc#openstack'}
+        self.driver.initialize_connection(volume, conn)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack2')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        host_name = self.driver._helpers.get_host_from_connector(
+            conn, iscsi=True)
+        self.assertIsNotNone(host_name)
+        host = {'host': host_name, 'capabilities': cap}
+        volume['host'] = host['host']
+
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertEqual('1', attrs['IO_group_id'], 'Volume retype '
+                         'failed')
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'addvdiskaccess')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'rmvdiskaccess')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'movevdisk')
+    def test_storwize_svc_retype_between_iogrps_invalid(
+            self, movevdisk, rmvdiskaccess, addvdiskaccess):
+        self.driver.do_setup(None)
+        ctxt = context.get_admin_context()
+
+        key_specs_old = {'iogrp': 0}
+        key_specs_new = {'iogrp': 1}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+
+        diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                      new_type_ref['id'])
+
+        old_type = objects.VolumeType.get_by_id(ctxt,
+                                                old_type_ref['id'])
+        volume = self._generate_vol_info(old_type)
+        new_type = objects.VolumeType.get_by_id(ctxt,
+                                                new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        conn = {'initiator': u'iqn.1993-08.org.debian:01:eac5ccc1aaa',
+                'ip': '10.10.10.12',
+                'host': u'openstack@svc#openstack'}
+        self.driver.initialize_connection(volume, conn)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack2')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        host_name = self.driver._helpers.get_host_from_connector(
+            conn, iscsi=True)
+        self.assertIsNotNone(host_name)
+        host = {'host': host_name, 'capabilities': cap}
+        volume['host'] = host['host']
+        ex = exception.VolumeBackendAPIException(data='CMMVC5879E')
+        movevdisk.side_effect = ex
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.retype, ctxt,
+                          volume, new_type, diff, host)
+        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertEqual(int(key_specs_old['iogrp']),
+                         int(attrs['IO_group_id']), 'Volume retype failed')
+        addvdiskaccess.assert_called()
+        movevdisk.assert_called()
+        rmvdiskaccess.assert_called_with(
+            volume['name'], str(key_specs_new['iogrp']))
+
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
