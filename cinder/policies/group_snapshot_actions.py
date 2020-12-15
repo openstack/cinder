@@ -24,7 +24,7 @@ RESET_STATUS = 'group:reset_group_snapshot_status'
 group_snapshot_actions_policies = [
     policy.DocumentedRuleDefault(
         name=RESET_STATUS,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.RULE_ADMIN_API,
         description="Reset status of group snapshot.",
         operations=[
             {

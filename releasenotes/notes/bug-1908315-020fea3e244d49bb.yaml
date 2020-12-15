@@ -1,0 +1,38 @@
+---
+upgrade:
+  - |
+    This release contains a fix for `Bug #1908315
+    <https://bugs.launchpad.net/cinder/+bug/1908315>`_, which changes the
+    default value of the policy governing the Block Storage API action
+    `Reset group snapshot status
+    <https://docs.openstack.org/api-ref/block-storage/v3/#reset-group-snapshot-status>`_
+    to make the action administrator-only.  This policy was inadvertently
+    changed to be admin-or-owner during the Queens development cycle.
+
+    The policy is named ``group:reset_group_snapshot_status``.
+
+    * If you have a custom value for this policy in your cinder policy
+      configuration file, this change to the default value will not affect
+      you.
+    * If you have been aware of this regression and like the current
+      (incorrect) behavior, you may add the following line to your cinder
+      policy configuration file to restore that behavior::
+
+          "group:reset_group_snapshot_status": "rule:admin_or_owner"
+
+      This setting is *not recommended* by the Cinder project team, as it
+      may allow end users to put a group snapshot into an invalid status with
+      indeterminate consequences.
+
+    For more information about the cinder policy configuration file, see the
+    `policy.yaml
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/samples/policy.yaml.html>`_
+    section of the Cinder Configuration Guide.
+fixes:
+  - |
+    `Bug #1908315 <https://bugs.launchpad.net/cinder/+bug/1908315>`_: Corrected
+    the default checkstring for the ``group:reset_group_snapshot_status``
+    policy to make it admin-only.  This policy governs the Block Storage API
+    action `Reset group snapshot status
+    <https://docs.openstack.org/api-ref/block-storage/v3/#reset-group-snapshot-status>`_,
+    which by default is supposed to be an adminstrator-only action.
