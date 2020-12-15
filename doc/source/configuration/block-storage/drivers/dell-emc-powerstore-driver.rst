@@ -77,3 +77,19 @@ Thin provisioning and compression
 
 The driver creates thin provisioned compressed volumes by default.
 Thick provisioning is not supported.
+
+CHAP authentication support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The driver supports one-way (Single mode) CHAP authentication.
+To use CHAP authentication CHAP Single mode has to be enabled on the storage
+side.
+
+.. note:: When enabling CHAP, any previously added hosts will need to be updated
+          with CHAP configuration since there will be I/O disruption for those hosts.
+          It is recommended that before adding hosts to the cluster,
+          decide what type of CHAP configuration is required, if any.
+
+CHAP configuration is retrieved from the storage during driver initialization,
+no additional configuration is needed.
+Secrets are generated automatically.

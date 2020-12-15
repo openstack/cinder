@@ -19,6 +19,7 @@ import functools
 import json
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 import requests
 
 from cinder import exception
@@ -83,7 +84,12 @@ class PowerStoreClient(object):
                       "verify_cert": self._verify_cert,
                   })
 
-    def _send_request(self, method, url, payload=None, params=None):
+    def _send_request(self,
+                      method,
+                      url,
+                      payload=None,
+                      params=None,
+                      log_response_data=True):
         if not payload:
             payload = {}
         if not params:
@@ -106,11 +112,12 @@ class PowerStoreClient(object):
                 "REST Request: %s %s with body %s",
                 r.request.method,
                 r.request.url,
-                r.request.body)
-        LOG.log(log_level,
-                "REST Response: %s with data %s",
-                r.status_code,
-                r.text)
+                strutils.mask_password(r.request.body))
+        if log_response_data or log_level == logging.ERROR:
+            msg = "REST Response: %s with data %s" % (r.status_code, r.text)
+        else:
+            msg = "REST Response: %s" % r.status_code
+        LOG.log(log_level, msg)
 
         try:
             response = r.json()
@@ -122,6 +129,19 @@ class PowerStoreClient(object):
     _send_post_request = functools.partialmethod(_send_request, "POST")
     _send_patch_request = functools.partialmethod(_send_request, "PATCH")
     _send_delete_request = functools.partialmethod(_send_request, "DELETE")
+
+    def get_chap_config(self):
+        r, response = self._send_get_request(
+            "/chap_config/0",
+            params={
+                "select": "mode"
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore CHAP configuration.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response
 
     def get_appliance_id_by_name(self, appliance_name):
         r, response = self._send_get_request(
@@ -148,7 +168,8 @@ class PowerStoreClient(object):
             payload={
                 "entity": "space_metrics_by_appliance",
                 "entity_id": appliance_id,
-            }
+            },
+            log_response_data=False
         )
         if r.status_code not in self.ok_codes:
             msg = (_("Failed to query metrics for "
