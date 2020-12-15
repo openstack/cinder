@@ -29,6 +29,11 @@
           set -x
           cat << 'EOF' >>"/tmp/dg-local.conf"
           [[local|localrc]]
+          # to avoid https://bugs.launchpad.net/neutron/+bug/1914037
+          # as we couldn't backport the fix to stein release
+          IPV6_PUBLIC_RANGE=2001:db8:0:10::/64
+          IPV6_PUBLIC_NETWORK_GATEWAY=2001:db8:0:10::2
+          IPV6_ROUTER_GW_IP=2001:db8:0:10::1
           CINDER_ISCSI_HELPER=lioadm
           CINDER_LVM_TYPE=thin
           enable_service barbican
