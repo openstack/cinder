@@ -1511,7 +1511,7 @@ class PowerMaxData(object):
             'expandStorageGroupParam': {
                 'addVolumeParam': {
                     'emulation': 'FBA',
-                    'create_new_volumes': 'False',
+                    'create_new_volumes': 'True',
                     'volumeAttributes': [
                         {'num_of_vols': 1,
                          'volumeIdentifier': {

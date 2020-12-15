@@ -1781,6 +1781,9 @@ class PowerMaxUtils(object):
         :param storage_group_name: the storage group name -- str
         :returns: updated payload -- dict
         """
+        create_new_vol = {"create_new_volumes": "True"}
+        payload["editStorageGroupActionParam"]["expandStorageGroupParam"][
+            "addVolumeParam"].update(create_new_vol)
         remote_dict = {"remoteSymmSGInfoParam": {
             "remote_symmetrix_1_id": remote_array_id,
             "remote_symmetrix_1_sgs": [storage_group_name],

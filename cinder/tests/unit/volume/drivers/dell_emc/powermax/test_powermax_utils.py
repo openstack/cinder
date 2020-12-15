@@ -1229,7 +1229,7 @@ class PowerMaxUtilsTest(test.TestCase):
             'array': self.data.array,
             'editStorageGroupActionParam': {
                 'expandStorageGroupParam': {
-                    'addVolumeParam': {}}}}
+                    'addVolumeParam': {'create_new_volumes': 'False'}}}}
 
         updated_payload = self.utils.update_payload_for_rdf_vol_create(
             payload, self.data.remote_array, self.data.storagegroup_name_f)
@@ -1238,6 +1238,7 @@ class PowerMaxUtilsTest(test.TestCase):
             'editStorageGroupActionParam': {
                 'expandStorageGroupParam': {
                     'addVolumeParam': {
+                        'create_new_volumes': 'True',
                         'remoteSymmSGInfoParam': {
                             'force': 'true',
                             'remote_symmetrix_1_id': self.data.remote_array,
