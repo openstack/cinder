@@ -58,8 +58,10 @@ volume type the following way:
 
 .. note::
 
-   Creating a new volume type is an admin-only operation by default, you can
-   change the settings in the 'policy.json' configuration file if needed.
+   Creating a new volume type is an admin-only operation by default.  You can
+   change the settings in the cinder policy file if needed.  For more
+   information about configuring cinder policies, see
+   :ref:`policy-configuration`.
 
 To create the volume you need to use the volume type you created earlier, like
 this:
@@ -101,9 +103,10 @@ information on which back end provides the functionality.
 Policy rules
 ~~~~~~~~~~~~
 
-You can control the availability of volume multi-attach through policies. We
-describe the default values in this documentation, you need to modify the
-'policy.json' configuration file if you would like to changes these settings.
+You can control the availability of volume multi-attach through policies that
+you can configure in the cinder policy file.  For more information about the
+cinder policy file, including how to generate a sample file so you can view
+the default policy settings, see :ref:`policy-configuration`.
 
 Multiattach policy
 ------------------
@@ -111,16 +114,12 @@ Multiattach policy
 The general policy rule to allow the creation or retyping of multiattach
 volumes is named  ``volume:multiattach``.
 
-The default setting of this policy is ``rule:admin_or_owner``.
-
 Multiattach policy for bootable volumes
 ---------------------------------------
 
 This is a policy to disallow the ability to create multiple attachments on a
 volume that is marked as bootable with the name
 ``volume:multiattach_bootable_volume``.
-
-This is an attachment policy with a default setting of ``rule:admin_or_owner``.
 
 Known issues and limitations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

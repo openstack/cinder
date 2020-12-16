@@ -106,7 +106,7 @@ class TestCase(testtools.TestCase):
             os.path.dirname(__file__),
             '../../../'))
     POLICY_PATH = os.path.join(SOURCE_TREE_ROOT,
-                               'cinder/tests/unit/policy.json')
+                               'cinder/tests/unit/policy.yaml')
     RESOURCE_FILTER_FILENAME = 'etc/cinder/resource_filters.json'
     RESOURCE_FILTER_PATH = os.path.join(SOURCE_TREE_ROOT,
                                         RESOURCE_FILTER_FILENAME)

@@ -11,9 +11,12 @@ group operations can be performed using the Block Storage command line.
 
 .. note::
 
-   Block Storage API supports consistency groups since V2 version. You can
-   specify ``--os-volume-api-version 2`` when using Block Storage
-   command line for consistency group operations.
+   The Consistency Group APIs have been deprecated since the Queens release.
+   Use the Generic Volume Group APIs instead.
+
+   The Consistency Group APIs are governed by the same policies as the
+   Generic Volume Group APIs.  For information about configuring cinder
+   policies, see :ref:`policy-configuration`.
 
 Before using consistency groups, make sure the Block Storage driver that
 you are running has consistency group support by reading the Block
@@ -21,46 +24,6 @@ Storage manual or consulting the driver maintainer. There are a small
 number of drivers that have implemented this feature. The default LVM
 driver does not support consistency groups yet because the consistency
 technology is not available at the storage level.
-
-Before using consistency groups, you must change policies for the
-consistency group APIs in the ``/etc/cinder/policy.json`` file.
-By default, the consistency group APIs are disabled.
-Enable them before running consistency group operations.
-
-Here are existing policy entries for consistency groups:
-
-.. code-block:: json
-
-   {
-   "consistencygroup:create": "group:nobody",
-   "consistencygroup:delete": "group:nobody",
-   "consistencygroup:update": "group:nobody",
-   "consistencygroup:get": "group:nobody",
-   "consistencygroup:get_all": "group:nobody",
-   "consistencygroup:create_cgsnapshot" : "group:nobody",
-   "consistencygroup:delete_cgsnapshot": "group:nobody",
-   "consistencygroup:get_cgsnapshot": "group:nobody",
-   "consistencygroup:get_all_cgsnapshots": "group:nobody",
-   }
-
-Remove ``group:nobody`` to enable these APIs:
-
-.. code-block:: json
-
-   {
-   "consistencygroup:create": "",
-   "consistencygroup:delete": "",
-   "consistencygroup:update": "",
-   "consistencygroup:get": "",
-   "consistencygroup:get_all": "",
-   "consistencygroup:create_cgsnapshot" : "",
-   "consistencygroup:delete_cgsnapshot": "",
-   "consistencygroup:get_cgsnapshot": "",
-   "consistencygroup:get_all_cgsnapshots": "",
-   }
-
-
-Restart Block Storage API service after changing policies.
 
 The following consistency group operations are supported:
 

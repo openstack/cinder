@@ -51,11 +51,16 @@ The Block Storage service contains the following components:
    Roles control the actions that a user is allowed to perform. In the
    default configuration, most actions do not require a particular role,
    but this can be configured by the system administrator in the
-   appropriate ``policy.json`` file that maintains the rules. A user's
-   access to particular volumes is limited by tenant, but the user name
-   and password are assigned per user. Key pairs granting access to a
-   volume are enabled per user, but quotas to control resource
-   consumption across available hardware resources are per tenant.
+   cinder policy file that maintains the rules.
+
+   .. note::
+      For more information about configuring cinder policies, see
+      :ref:`policy-configuration`.
+
+   A user's access to particular volumes is limited by tenant, but the user
+   name and password are assigned per user. Key pairs granting access to a
+   volume are enabled per user, but quotas to control resource consumption
+   across available hardware resources are per tenant.
 
    For tenants, quota controls are available to limit:
 

@@ -1,0 +1,12 @@
+---
+deprecations:
+  - |
+    Use of JSON formatted policy files was deprecated by the ``oslo.policy``
+    library during the Victoria development cycle. As a result, this
+    deprecation is being noted in the Wallaby cycle with an anticipated future
+    removal of JSON formatted file support by ``oslo.policy``. As such
+    operators will need to convert to YAML policy files.
+    Use the `oslopolicy-convert-json-to-yaml
+    <https://docs.openstack.org/oslo.policy/latest/cli/oslopolicy-convert-json-to-yaml.html>`_
+    tool to convert the existing JSON formatted policy file to YAML in a backward
+    compatible way.
