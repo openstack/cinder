@@ -33,6 +33,14 @@ This page provides guidance on how to provide documentation for those
 who may not have previously been active writing documentation for
 OpenStack.
 
+Documentation Content
+---------------------
+
+To keep the documentation consistent across projects, and to maintain
+quality, please follow the OpenStack `Writing style
+<https://docs.openstack.org/doc-contrib-guide/writing-style.html>`_
+guide.
+
 Using RST
 ---------
 
@@ -62,26 +70,28 @@ To build documentation the following command should be used:
    tox -e docs,pep8
 
 When building documentation it is important to also run pep8 as it is easy
-to introduce pep8 failures when adding documentation.  Currently, we do not
-have the build configured to treat warnings as errors, so it is also important
-to check the build output to ensure that no warnings are produced by Sphinx.
+to introduce pep8 failures when adding documentation.  (The tox pep8 job also
+runs doc8, but currently we do not run doc8 as part of the tox docs job.)
 
 .. note::
 
-   Many Sphinx warnings result in improperly formatted pages being generated.
+   The tox documentation jobs (docs, releasenotes, api-ref) are set up to
+   treat Sphinx warnings as errors.  This is because many Sphinx warnings
+   result in improperly formatted pages being generated, so we prefer to
+   fix those right now, instead of waiting for someone to report a docs bug.
 
 During the documentation build a number of things happen:
 
-   * All of the RST files under ``doc/source`` are processed and built.
+* All of the RST files under ``doc/source`` are processed and built.
 
-      * The openstackdocs theme is applied to all of the files so that they
-        will look consistent with all the other OpenStack documentation.
-      * The resulting HTML is put into ``doc/build/html``.
+  * The openstackdocs theme is applied to all of the files so that they
+    will look consistent with all the other OpenStack documentation.
+  * The resulting HTML is put into ``doc/build/html``.
 
-   * Sample files like cinder.conf.sample are generated and put into
-     ``doc/source/_static``.
-   * All of Cinder's ``.py`` files are processed and the docstrings are used to
-     generate the files under ``doc/source/contributor/api``
+* Sample files like cinder.conf.sample are generated and put into
+  ``doc/source/_static``.
+* All of Cinder's ``.py`` files are processed and the docstrings are used to
+  generate the files under ``doc/source/contributor/api``
 
 After the build completes the results may be accessed via a web browser in
 the ``doc/build/html`` directory structure.
@@ -93,13 +103,17 @@ Documentation changes go through the same review process as all other changes.
 .. note::
 
    Reviewers can see the resulting web page output by clicking on
-   ``gate-cinder-docs-ubuntu-xenial``!
+   ``openstack-tox-docs`` in the "Zuul check" table on the review,
+   and then look for "Artifacts" > "Docs preview site".
+
+   This is also true for the ``build-openstack-api-ref`` and
+   ``build-openstack-releasenotes`` check jobs.
 
 Once a patch is approved it is immediately released to the docs.openstack.org
 website and can be seen under Cinder's Documentation Page at
-https://docs.openstack.org/cinder/latest .  When a new release is cut a
+https://docs.openstack.org/cinder/latest\ .  When a new release is cut a
 snapshot of that documentation will be kept at
-https://docs.openstack.org/cinder/<release> .  Changes from master can be
+``https://docs.openstack.org/cinder/<release>``.  Changes from master can be
 backported to previous branches if necessary.
 
 
@@ -127,3 +141,22 @@ as is documented in the ``README`` in each directory:
 
 .. _https://docs.openstack/org/cinder/latest: https://docs.openstack/org/cinder/latest
 
+Finding something to contribute
+-------------------------------
+
+If you are reading the documentation and notice something incorrect or
+undocumented, you can directly submit a patch following the advice set
+out below.
+
+There are also documentation bugs that other people have noticed that
+you could address:
+
+* https://bugs.launchpad.net/cinder/+bugs?field.tag=doc
+* https://bugs.launchpad.net/python-cinderclient/+bugs?field.tag=doc
+* https://bugs.launchpad.net/os-brick/+bugs?field.tag=doc
+* https://bugs.launchpad.net/cinderlib/+bugs?field.tag=doc
+
+.. note::
+   If you don't see a bug listed, you can also try the tag 'docs' or
+   'documentation'.  We tend to use 'doc' as the appropriate tag, but
+   occasionally a bug gets tagged with a variant.
