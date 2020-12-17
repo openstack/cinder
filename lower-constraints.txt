@@ -1,6 +1,6 @@
 alabaster==0.7.10
 alembic==1.0.0
-amqp==2.2.2
+amqp==2.6.0
 appdirs==1.4.3
 asn1crypto==0.24.0
 automaton==1.17.0
@@ -14,7 +14,7 @@ cliff==2.15.0
 cmd2==0.8.1
 contextlib2==0.5.5
 coverage==4.1
-cryptography==2.1.4
+cryptography==2.5
 cursive==0.2.1
 ddt==1.2.1
 debtcollector==1.22.0
@@ -51,7 +51,7 @@ lxml==4.2.0
 Mako==1.0.7
 MarkupSafe==1.1.0
 mock==2.0.0
-msgpack==0.5.6
+msgpack==0.6.0
 netaddr==0.7.19
 netifaces==0.10.7
 networkx==2.1.0
@@ -73,7 +73,7 @@ oslo.policy==1.44.1
 oslo.privsep==2.3.0
 oslo.reports==1.18.0
 oslo.rootwrap==5.8.0
-oslo.serialization==2.25.0
+oslo.serialization==2.29.0
 oslo.service==2.0.0
 oslo.utils==3.40.2
 oslo.versionedobjects==1.31.2
