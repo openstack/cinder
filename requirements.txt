@@ -18,7 +18,7 @@ lxml!=3.7.0,>=3.4.1 # BSD
 oauth2client!=4.0.0,>=1.5.0 # Apache-2.0
 oslo.config>=5.2.0 # Apache-2.0
 oslo.concurrency>=3.26.0 # Apache-2.0
-oslo.context>=2.19.2 # Apache-2.0
+oslo.context>=2.22.0 # Apache-2.0
 oslo.db>=4.27.0 # Apache-2.0
 oslo.log>=3.36.0 # Apache-2.0
 oslo.messaging>=6.4.0 # Apache-2.0
@@ -28,7 +28,7 @@ oslo.privsep>=1.32.0 # Apache-2.0
 oslo.reports>=1.18.0 # Apache-2.0
 oslo.rootwrap>=5.8.0 # Apache-2.0
 oslo.serialization!=2.19.1,>=2.18.0 # Apache-2.0
-oslo.service!=1.28.1,>=1.24.0 # Apache-2.0
+oslo.service>=1.31.0 # Apache-2.0
 oslo.upgradecheck>=0.1.0 # Apache-2.0
 oslo.utils>=3.34.0 # Apache-2.0
 oslo.versionedobjects>=1.31.2 # Apache-2.0
@@ -44,7 +44,7 @@ python-glanceclient>=2.15.0 # Apache-2.0
 python-keystoneclient>=3.15.0 # Apache-2.0
 python-novaclient>=9.1.0 # Apache-2.0
 python-swiftclient>=3.2.0 # Apache-2.0
-pytz>=2013.6 # MIT
+pytz>=2015.7 # MIT
 requests>=2.14.2,!=2.20.0 # Apache-2.0
 retrying!=1.3.0,>=1.2.3 # Apache-2.0
 Routes>=2.3.1 # MIT
@@ -59,9 +59,9 @@ WebOb>=1.7.1 # MIT
 oslo.i18n>=3.15.3 # Apache-2.0
 oslo.vmware>=2.17.0 # Apache-2.0
 os-brick>=2.10.5 # Apache-2.0
-os-win>=3.0.0 # Apache-2.0
+os-win>=4.1.0 # Apache-2.0
 tooz>=1.58.0 # Apache-2.0
 google-api-python-client>=1.4.2 # Apache-2.0
 castellan>=0.16.0 # Apache-2.0
-cryptography>=2.1 # BSD/Apache-2.0
+cryptography>=2.1.4 # BSD/Apache-2.0
 cursive>=0.2.1 # Apache-2.0
