@@ -4264,7 +4264,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                               }
                      }
 
-        self.assertItemsEqual(term_data, term_ret)
+        self.assertCountEqual(term_data, term_ret)
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_conn_fc_wwpns')
@@ -4293,7 +4293,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                                '5005076801A96CFE',
                                '5005076801996CFE',
                                '5005076801991806']
-        self.assertItemsEqual(expected_target_wwn, conn_info[
+        self.assertCountEqual(expected_target_wwn, conn_info[
             'data']['target_wwn'])
 
         # Terminate connection
@@ -4312,8 +4312,8 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                               '5005076801996CFE',
                               '5005076801206CFE',
                               '5005076801106CFE']
-        self.assertItemsEqual(expected_term_data, target_wwn1)
-        self.assertItemsEqual(expected_term_data, target_wwn2)
+        self.assertCountEqual(expected_term_data, target_wwn1)
+        self.assertCountEqual(expected_term_data, target_wwn2)
 
     def test_storwize_svc_fc_host_maps(self):
         # Create two volumes to be used in mappings
