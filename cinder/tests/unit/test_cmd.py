@@ -1155,6 +1155,19 @@ class TestCinderManageCmd(test.TestCase):
             self.assertTrue(register_cli_opt.called)
             self.assertEqual(2, exit.code)
 
+    def test_main_missing_action(self):
+        sys.argv = ['cinder-manage', 'backup']
+        cinder_manage.CONF = cfg.ConfigOpts()
+
+        stdout = io.StringIO()
+        with mock.patch('sys.stdout', new=stdout):
+            exit = self.assertRaises(SystemExit, cinder_manage.main)
+            self.assertEqual(2, exit.code)
+
+        stdout.seek(0)
+        output = stdout.read()
+        self.assertTrue(output.startswith('usage: '))
+
     @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
     @mock.patch('oslo_log.log.setup')
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')

@@ -687,12 +687,20 @@ def methods_of(obj):
     return result
 
 
+def missing_action(help_func):
+    def wrapped():
+        help_func()
+        exit(2)
+    return wrapped
+
+
 def add_command_parsers(subparsers):
     for category in sorted(CATEGORIES):
         command_object = CATEGORIES[category]()
 
         parser = subparsers.add_parser(category)
         parser.set_defaults(command_object=command_object)
+        parser.set_defaults(action_fn=missing_action(parser.print_help))
 
         category_subparsers = parser.add_subparsers(dest='action')
 
