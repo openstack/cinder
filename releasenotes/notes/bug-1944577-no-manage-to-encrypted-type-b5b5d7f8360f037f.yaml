@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1944577 <https://bugs.launchpad.net/cinder/+bug/1944577>`_:
+    Managing a volume to an encrypted type was never a good idea because
+    there was no way to specify an encryption key ID so that the volume
+    could be used.  Requests to manage a volume to an encrypted volume
+    type now result in an invalid request response.
