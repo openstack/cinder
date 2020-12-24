@@ -15,6 +15,7 @@ from http import HTTPStatus
 
 from oslo_log import log as logging
 from oslo_utils import strutils
+import webob
 
 from cinder.api import api_utils
 from cinder.api import common
@@ -146,6 +147,8 @@ class VolumeManageController(wsgi.Controller):
                 'name': 'Host' if host else 'Cluster',
                 'value': host or cluster_name}
             raise exception.ServiceUnavailable(message=msg)
+        except exception.VolumeTypeDefaultMisconfiguredError as err:
+            raise webob.exc.HTTPInternalServerError(explanation=err.msg)
 
         api_utils.add_visible_admin_metadata(new_volume)
 

@@ -1794,6 +1794,23 @@ class API(base.Base):
                 raise exception.InvalidVolume(
                     _("Unable to manage existing volume."
                       " The volume is already managed"))
+        if not volume_type:
+            try:
+                volume_type = volume_types.get_default_volume_type(context)
+            except exception.VolumeTypeDefaultMisconfiguredError:
+                LOG.error('Default volume type not found. This must be '
+                          'corrected immediately or all volume-create '
+                          'requests that do not specify a volume type '
+                          'will fail.')
+                raise
+        is_encrypted = False
+        if volume_type:
+            is_encrypted = volume_types.is_encrypted(context,
+                                                     volume_type['id'])
+        if is_encrypted:
+            msg = _("Managing to an encrypted volume type is not supported.")
+            LOG.error(msg)
+            raise exception.InvalidVolumeType(msg)
 
         if volume_type and 'extra_specs' not in volume_type:
             extra_specs = volume_types.get_volume_type_extra_specs(
