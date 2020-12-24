@@ -205,6 +205,18 @@ GET_SNAPSHOTS_RESULT = {
     ],
 }
 
+GET_SNAPSHOTS_RESULT_BUSY = {
+    "data": [
+        {
+            "primaryOrSecondary": "P-VOL",
+            "status": "PSUP",
+            "pvolLdevId": 0,
+            "muNumber": 1,
+            "svolLdevId": 1,
+        },
+    ],
+}
+
 GET_POOLS_RESULT = {
     "data": [
         {
@@ -284,6 +296,8 @@ def reduce_retrying_time(func):
         backup_exec_retry_interval = hbsd_rest_api._EXEC_RETRY_INTERVAL
         backup_rest_server_restart_timeout = (
             hbsd_rest_api._REST_SERVER_RESTART_TIMEOUT)
+        backup_default_process_waittime = (
+            hbsd_utils.DEFAULT_PROCESS_WAITTIME)
         hbsd_rest_api._LOCK_WAITTIME = 0.01
         hbsd_rest_api._EXEC_MAX_WAITTIME = 0.01
         hbsd_rest_api._JOB_API_RESPONSE_TIMEOUT = 0.01
@@ -291,6 +305,7 @@ def reduce_retrying_time(func):
         hbsd_rest_api._EXTEND_WAITTIME = 0.01
         hbsd_rest_api._EXEC_RETRY_INTERVAL = 0.004
         hbsd_rest_api._REST_SERVER_RESTART_TIMEOUT = 0.02
+        hbsd_utils.DEFAULT_PROCESS_WAITTIME = 0.01
         func(*args, **kwargs)
         hbsd_rest_api._LOCK_WAITTIME = backup_lock_waittime
         hbsd_rest_api._EXEC_MAX_WAITTIME = backup_exec_max_waittime
@@ -302,6 +317,8 @@ def reduce_retrying_time(func):
         hbsd_rest_api._EXEC_RETRY_INTERVAL = backup_exec_retry_interval
         hbsd_rest_api._REST_SERVER_RESTART_TIMEOUT = (
             backup_rest_server_restart_timeout)
+        hbsd_utils.DEFAULT_PROCESS_WAITTIME = (
+            backup_default_process_waittime)
     return wrapper
 
 
@@ -543,6 +560,31 @@ class HBSDRESTFCDriverTest(test.TestCase):
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
         self.driver.delete_volume(TEST_VOLUME[0])
         self.assertEqual(4, request.call_count)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_temporary_busy(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_BUSY),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        self.driver.delete_volume(TEST_VOLUME[0])
+        self.assertEqual(7, request.call_count)
+
+    @reduce_retrying_time
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_volume_busy_timeout(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_BUSY),
+                               FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, GET_LDEV_RESULT_PAIR)]
+        self.assertRaises(hbsd_utils.HBSDError,
+                          self.driver.delete_volume,
+                          TEST_VOLUME[0])
+        self.assertGreater(request.call_count, 2)
 
     @mock.patch.object(requests.Session, "request")
     def test_extend_volume(self, request):

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Hitachi driver `bug #1908792
+    <https://bugs.launchpad.net/cinder/+bug/1908792>`_: Fix for Hitachi driver
+    allowing delete_volume after create_cloned_volume.
