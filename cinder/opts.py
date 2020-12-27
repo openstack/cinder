@@ -125,6 +125,8 @@ from cinder.volume.drivers.inspur.instorage import instorage_iscsi as \
     cinder_volume_drivers_inspur_instorage_instorageiscsi
 from cinder.volume.drivers.kaminario import kaminario_common as \
     cinder_volume_drivers_kaminario_kaminariocommon
+from cinder.volume.drivers.kioxia import kumoscale as \
+    cinder_volume_drivers_kioxia_kumoscale
 from cinder.volume.drivers.lenovo import lenovo_common as \
     cinder_volume_drivers_lenovo_lenovocommon
 from cinder.volume.drivers import linstordrv as \
@@ -268,6 +270,7 @@ def list_opts():
                 instorage_mcs_opts,
                 cinder_volume_drivers_inspur_instorage_instorageiscsi.
                 instorage_mcs_iscsi_opts,
+                cinder_volume_drivers_kioxia_kumoscale.KUMOSCALE_OPTS,
                 cinder_volume_drivers_open_e_options.jdss_connection_opts,
                 cinder_volume_drivers_open_e_options.jdss_iscsi_opts,
                 cinder_volume_drivers_open_e_options.jdss_volume_opts,
