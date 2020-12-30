@@ -132,10 +132,6 @@ xVolumeAccessGroupIDDoesNotExist = 'xVolumeAccessGroupIDDoesNotExist'
 xNotInVolumeAccessGroup = 'xNotInVolumeAccessGroup'
 
 
-class DuplicateSfVolumeNames(exception.Duplicate):
-    message = _("Detected more than one volume with name %(vol_name)s")
-
-
 class SolidFireAPIException(exception.VolumeBackendAPIException):
     message = _("Bad response from SolidFire API")
 
@@ -168,6 +164,11 @@ class SolidFireReplicationPairingError(exception.VolumeBackendAPIException):
 
 class SolidFireDataSyncTimeoutError(exception.VolumeBackendAPIException):
     message = _("Data sync volumes timed out")
+
+
+class SolidFireDuplicateVolumeNames(SolidFireDriverException):
+    message = _("Volume name [%(vol_name)s] already exists "
+                "in the SolidFire backend.")
 
 
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
@@ -1049,10 +1050,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         sf_volume_name = params['name']
         volumes_found = self._list_volumes_by_name(sf_volume_name)
         if volumes_found:
-            msg = ('Volume name [%s] already exists '
-                   'in SolidFire backend.') % sf_volume_name
-            LOG.error(msg)
-            raise DuplicateSfVolumeNames(message=msg)
+            raise SolidFireDuplicateVolumeNames(vol_name=sf_volume_name)
 
         sf_volid = None
         try:
@@ -1222,7 +1220,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             LOG.error("Found %(count)s volumes mapped to id: %(uuid)s.",
                       {'count': found_count,
                        'uuid': uuid})
-            raise DuplicateSfVolumeNames(vol_name=uuid)
+            raise SolidFireDuplicateVolumeNames(vol_name=uuid)
 
         return sf_volref
 
