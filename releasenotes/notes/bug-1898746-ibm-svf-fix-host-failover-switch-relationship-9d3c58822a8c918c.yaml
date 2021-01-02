@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family `Bug #1898746
+    <https://bugs.launchpad.net/cinder/+bug/1898746>`_:
+    Fixed issue regarding host-failover and group-failover
+    which impacts storage back-end performance.

@@ -36,8 +36,24 @@ class StorwizeSVCReplication(object):
         self.driver = driver
         self.target = replication_target or {}
 
+    @utils.trace
     def failover_volume_host(self, context, vref):
-        pass
+        # Make the aux volume writeable.
+        try:
+            tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + vref.name
+            self.target_helpers.stop_relationship(tgt_volume, access=True)
+            try:
+                self.target_helpers.start_relationship(tgt_volume, 'aux')
+            except exception.VolumeBackendAPIException as e:
+                LOG.error('Error running startrcrelationship due to %(err)s.',
+                          {'err': e})
+            return
+        except Exception as e:
+            msg = (_('Unable to fail-over the volume %(id)s to the '
+                   'secondary back-end, error: %(error)s') %
+                   {"id": vref['id'], "error": six.text_type(e)})
+            LOG.exception(msg)
+            raise exception.VolumeDriverException(message=msg)
 
     def replication_failback(self, volume):
         pass
@@ -90,40 +106,6 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])
-
-    def failover_volume_host(self, context, vref):
-        LOG.debug('enter: failover_volume_host: vref=%(vref)s',
-                  {'vref': vref['name']})
-        target_vol = storwize_const.REPLICA_AUX_VOL_PREFIX + vref['name']
-
-        try:
-            rel_info = self.target_helpers.get_relationship_info(target_vol)
-            # Reverse the role of the primary and secondary volumes
-            self.target_helpers.switch_relationship(rel_info['name'])
-            return
-        except Exception as e:
-            LOG.exception('Unable to fail-over the volume %(id)s to the '
-                          'secondary back-end by switchrcrelationship '
-                          'command, error: %(error)s',
-                          {"id": vref['id'], "error": e})
-            # If the switch command fail, try to make the aux volume
-            # writeable again.
-            try:
-                self.target_helpers.stop_relationship(target_vol,
-                                                      access=True)
-                try:
-                    self.target_helpers.start_relationship(target_vol, 'aux')
-                except exception.VolumeBackendAPIException as e:
-                    LOG.error(
-                        'Error running startrcrelationship due to %(err)s.',
-                        {'err': e})
-                return
-            except Exception as e:
-                msg = (_('Unable to fail-over the volume %(id)s to the '
-                         'secondary back-end, error: %(error)s') %
-                       {"id": vref['id'], "error": e})
-                LOG.exception(msg)
-                raise exception.VolumeDriverException(message=msg)
 
     def replication_failback(self, volume):
         tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
@@ -248,26 +230,6 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])
-
-    def failover_volume_host(self, context, vref):
-        LOG.debug('enter: failover_volume_host: vref=%(vref)s',
-                  {'vref': vref['name']})
-        # Make the aux volume writeable.
-        try:
-            tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + vref.name
-            self.target_helpers.stop_relationship(tgt_volume, access=True)
-            try:
-                self.target_helpers.start_relationship(tgt_volume, 'aux')
-            except exception.VolumeBackendAPIException as e:
-                LOG.error('Error running startrcrelationship due to %(err)s.',
-                          {'err': e})
-            return
-        except Exception as e:
-            msg = (_('Unable to fail-over the volume %(id)s to the '
-                   'secondary back-end, error: %(error)s') %
-                   {"id": vref['id'], "error": six.text_type(e)})
-            LOG.exception(msg)
-            raise exception.VolumeDriverException(message=msg)
 
     def replication_failback(self, volume):
         LOG.debug('enter: replication_failback: volume=%(volume)s',
