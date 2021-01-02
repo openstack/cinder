@@ -535,6 +535,10 @@ class HPE3PARCommon(object):
                 self.client_logout()
         else:
             self.client.id = stats['array_id']
+        # TODO: This duplicate call is to see SSH logs. Remove it when issue
+        # https://github.com/hpe-storage/python-3parclient/pull/77 is fixed.
+        if self.config.hpe3par_debug:
+            self.client.debug_rest(True)
 
     def check_for_setup_error(self):
         """Verify that requirements are in place to use HPE driver."""
