@@ -368,7 +368,7 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
         result_list = []
         key, value = search_tuple
-        for child_object in objects.getchildren():
+        for child_object in list(objects):
             found_value = child_object.findtext(key)
             if found_value and (found_value == value or value is None):
                 if first:
