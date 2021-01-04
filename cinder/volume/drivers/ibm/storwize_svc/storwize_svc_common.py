@@ -5633,9 +5633,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          'size is not equal to the snapshot size.'))
 
         rep_type = self._get_volume_replicated_type(context, volume)
+
         if rep_type:
-            raise exception.InvalidInput(
-                reason=_('Reverting replication volume is not supported.'))
+            try:
+                self._helpers.stop_relationship(volume.name, access=False)
+            except Exception as err:
+                msg = (_("Stop RC relationship has failed for %(vol)s"
+                         "due to: %(err)s.")
+                       % {"vol": volume.name, "err": err})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
         try:
             self._helpers.pretreatment_before_revert(volume.name)
         except Exception as err:
@@ -5650,6 +5657,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 snapshot.name, volume.name,
                 self.configuration.storwize_svc_flashcopy_timeout,
                 opts['flashcopy_rate'], True, True)
+            if rep_type:
+                self._helpers.start_relationship(volume.name, primary=None)
         except Exception as err:
             msg = (_("Reverting volume %(vol)s to snapshot %(snap)s failed "
                      "due to: %(err)s.")
