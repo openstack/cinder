@@ -125,6 +125,8 @@ ERR_MSG_ALREADY_IN_USE = "already in use"
 EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 EXTRA_SPECS_REPL_TYPE = "replication_type"
 
+MAX_VOL_LENGTH = 63
+MAX_SNAP_LENGTH = 96
 UNMANAGED_SUFFIX = '-unmanaged'
 SYNC_REPLICATION_REQUIRED_API_VERSIONS = ['1.13', '1.14']
 ASYNC_REPLICATION_REQUIRED_API_VERSIONS = [
@@ -1271,7 +1273,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
 
         vol_name = self._get_vol_name(volume)
-        unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
+        if len(vol_name + UNMANAGED_SUFFIX) > MAX_VOL_LENGTH:
+            unmanaged_vol_name = vol_name[:-len(UNMANAGED_SUFFIX)] + \
+                UNMANAGED_SUFFIX
+        else:
+            unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
         LOG.info("Renaming existing volume %(ref_name)s to %(new_name)s",
                  {"ref_name": vol_name, "new_name": unmanaged_vol_name})
         self._rename_volume_object(vol_name, unmanaged_vol_name)
@@ -1328,7 +1334,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         self._verify_manage_snap_api_requirements()
         snap_name = self._get_snap_name(snapshot)
-        unmanaged_snap_name = snap_name + UNMANAGED_SUFFIX
+        if len(snap_name + UNMANAGED_SUFFIX) > MAX_SNAP_LENGTH:
+            unmanaged_snap_name = snap_name[:-len(UNMANAGED_SUFFIX)] + \
+                UNMANAGED_SUFFIX
+        else:
+            unmanaged_snap_name = snap_name + UNMANAGED_SUFFIX
         LOG.info("Renaming existing snapshot %(ref_name)s to "
                  "%(new_name)s", {"ref_name": snap_name,
                                   "new_name": unmanaged_snap_name})
@@ -1557,13 +1567,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         base_name = volume.name
 
         # Some OpenStack deployments, eg PowerVC, create a volume.name that
-        # when appended with out '-cinder' string will exceed the maximum
+        # when appended with our '-cinder' string will exceed the maximum
         # volume name length for Pure, so here we left truncate the true volume
         # name before the opennstack volume_name_template affected it and
         # then put back the template format
         if len(base_name) > 56:
-            actual_name = base_name[7:]
-            base_name = "volume-" + actual_name[-52:]
+            actual_name = base_name[(len(CONF.volume_name_template) - 2):]
+            base_name = CONF.volume_name_template % \
+                actual_name[-(56 - len(CONF.volume_name_template)):]
 
         repl_type = self._get_replication_type_from_vol_type(
             volume.volume_type)

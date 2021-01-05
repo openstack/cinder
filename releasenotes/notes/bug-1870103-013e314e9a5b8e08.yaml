@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage driver `bug 1870103
+    <https://bugs.launchpad.net/cinder/+bug/1870103>`_:
+    Ensure that unmanaged volumes do not exceed maximum
+    character length on FlashArray.
