@@ -52,6 +52,7 @@ BASE_DRIVER_OBJ = DRIVER_PATH + ".PureBaseVolumeDriver"
 ISCSI_DRIVER_OBJ = DRIVER_PATH + ".PureISCSIDriver"
 FC_DRIVER_OBJ = DRIVER_PATH + ".PureFCDriver"
 ARRAY_OBJ = DRIVER_PATH + ".FlashArray"
+UNMANAGED_SUFFIX = "-unmanaged"
 
 GET_ARRAY_PRIMARY = {"version": "99.9.9",
                      "revision": "201411230504+8a400f7",
@@ -495,6 +496,7 @@ MANAGEABLE_PURE_SNAP_REFS = [
         'source_reference': {'name': MANAGEABLE_PURE_SNAPS[2]['source']},
     }
 ]
+MAX_SNAP_LENGTH = 96
 
 
 class FakePureStorageHTTPError(Exception):
@@ -2042,7 +2044,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_unmanage(self):
         vol, vol_name = self.new_fake_vol()
-        unmanaged_vol_name = vol_name + "-unmanaged"
+        unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
 
         self.driver.unmanage(vol)
 
@@ -2057,7 +2059,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_unmanage_with_deleted_volume(self):
         vol, vol_name = self.new_fake_vol()
-        unmanaged_vol_name = vol_name + "-unmanaged"
+        unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
         self.array.rename_volume.side_effect = \
             self.purestorage_module.PureHTTPError(
                 text="Volume does not exist.",
@@ -2206,12 +2208,23 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                           self.driver.manage_existing_snapshot_get_size,
                           snap, {'name': PURE_SNAPSHOT['name']})
 
-    def test_unmanage_snapshot(self):
-        snap, snap_name = self.new_fake_snap()
-        unmanaged_snap_name = snap_name + "-unmanaged"
+    @ddt.data(
+        # 96 chars, will exceed allowable length
+        'volume-1e5177e7-95e5-4a0f-b170-e45f4b469f6a-cinder.'
+        'snapshot-253b2878-ec60-4793-ad19-e65496ec7aab',
+        # short_name that will require no adjustment
+        'volume-1e5177e7-cinder.snapshot-e65496ec7aab')
+    @mock.patch(BASE_DRIVER_OBJ + "._get_snap_name")
+    def test_unmanage_snapshot(self, fake_name, mock_get_snap_name):
+        snap, _ = self.new_fake_snap()
+        mock_get_snap_name.return_value = fake_name
         self.driver.unmanage_snapshot(snap)
-        self.array.rename_volume.assert_called_with(snap_name,
-                                                    unmanaged_snap_name)
+        self.array.rename_volume.assert_called_once()
+        old_name = self.array.rename_volume.call_args[0][0]
+        new_name = self.array.rename_volume.call_args[0][1]
+        self.assertEqual(fake_name, old_name)
+        self.assertLessEqual(len(new_name), MAX_SNAP_LENGTH)
+        self.assertTrue(new_name.endswith(UNMANAGED_SUFFIX))
 
     def test_unmanage_snapshot_error_propagates(self):
         snap, _ = self.new_fake_snap()
@@ -2221,7 +2234,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_unmanage_snapshot_with_deleted_snapshot(self):
         snap, snap_name = self.new_fake_snap()
-        unmanaged_snap_name = snap_name + "-unmanaged"
+        if len(snap_name + UNMANAGED_SUFFIX) > MAX_SNAP_LENGTH:
+            unmanaged_snap_name = snap_name[:-len(UNMANAGED_SUFFIX)] + \
+                UNMANAGED_SUFFIX
+        else:
+            unmanaged_snap_name = snap_name
         self.array.rename_volume.side_effect = \
             self.purestorage_module.PureHTTPError(
                 text="Snapshot does not exist.",
