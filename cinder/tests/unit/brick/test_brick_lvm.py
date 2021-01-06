@@ -58,27 +58,27 @@ class BrickLvmTestCase(test.TestCase):
 
     def fake_execute(obj, *cmd, **kwargs):  # noqa
         if obj.configuration.lvm_suppress_fd_warnings:
-            _lvm_prefix = 'env, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=1, '
+            _lvm_prefix = 'env LC_ALL=C LVM_SUPPRESS_FD_WARNINGS=1 '
         else:
-            _lvm_prefix = 'env, LC_ALL=C, '
+            _lvm_prefix = 'env LC_ALL=C '
 
-        cmd_string = ', '.join(cmd)
+        cmd_string = ' '.join(cmd)
         data = "\n"
-        if (_lvm_prefix + 'vgs, --noheadings, --unit=g, -o, name' ==
+        if (_lvm_prefix + 'vgs --noheadings --unit=g -o name' ==
                 cmd_string):
             data = "  fake-vg\n"
             data += "  some-other-vg\n"
-        elif (_lvm_prefix + 'vgs, --noheadings, -o, name, fake-vg' ==
+        elif (_lvm_prefix + 'vgs --noheadings -o name fake-vg' ==
                 cmd_string):
             data = "  fake-vg\n"
-        elif _lvm_prefix + 'vgs, --version' in cmd_string:
+        elif _lvm_prefix + 'vgs --version' in cmd_string:
             data = "  LVM version:     2.02.103(2) (2012-03-06)\n"
-        elif(_lvm_prefix + 'vgs, --noheadings, -o, uuid, fake-vg' in
+        elif(_lvm_prefix + 'vgs --noheadings -o uuid fake-vg' in
              cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
-        elif(_lvm_prefix + 'vgs, --noheadings, --unit=g, '
-             '-o, name,size,free,lv_count,uuid, '
-             '--separator, :, --nosuffix' in cmd_string):
+        elif(_lvm_prefix + 'vgs --noheadings --unit=g '
+             '-o name,size,free,lv_count,uuid '
+             '--separator : --nosuffix' in cmd_string):
             data = ("  test-prov-cap-vg-unit:10.00:10.00:0:"
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z4\n")
             if 'test-prov-cap-vg-unit' in cmd_string:
@@ -95,18 +95,18 @@ class BrickLvmTestCase(test.TestCase):
                     "lWyauW-dKpG-Rz7E-xtKY-jeju-QsYU-SLG7Z2\n"
             data += "  fake-vg-3:10.00:10.00:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
-        elif (_lvm_prefix + 'lvs, --noheadings, '
-              '--unit=g, -o, vg_name,name,size, --nosuffix, --readonly, '
+        elif (_lvm_prefix + 'lvs --noheadings '
+              '--unit=g -o vg_name,name,size --nosuffix --readonly '
               'fake-vg/lv-nothere' in cmd_string):
             raise processutils.ProcessExecutionError(
                 stderr="One or more specified logical volume(s) not found.")
-        elif (_lvm_prefix + 'lvs, --noheadings, '
-              '--unit=g, -o, vg_name,name,size, --nosuffix, --readonly, '
+        elif (_lvm_prefix + 'lvs --noheadings '
+              '--unit=g -o vg_name,name,size --nosuffix --readonly '
               'fake-vg/lv-newerror' in cmd_string):
             raise processutils.ProcessExecutionError(
                 stderr="Failed to find logical volume \"fake-vg/lv-newerror\"")
-        elif (_lvm_prefix + 'lvs, --noheadings, '
-              '--unit=g, -o, vg_name,name,size' in cmd_string):
+        elif (_lvm_prefix + 'lvs --noheadings '
+              '--unit=g -o vg_name,name,size' in cmd_string):
             if 'fake-unknown' in cmd_string:
                 raise processutils.ProcessExecutionError(
                     stderr="One or more volume(s) not found."
@@ -124,7 +124,7 @@ class BrickLvmTestCase(test.TestCase):
             else:
                 data = "  fake-vg fake-1 1.00g\n"
                 data += "  fake-vg fake-2 1.00g\n"
-        elif (_lvm_prefix + 'lvdisplay, --noheading, -C, -o, Attr' in
+        elif (_lvm_prefix + 'lvdisplay --noheading -C -o Attr' in
               cmd_string):
             if 'test-volumes' in cmd_string:
                 data = '  wi-a-'
@@ -134,13 +134,13 @@ class BrickLvmTestCase(test.TestCase):
                 data = '  -wi-ao---'
             else:
                 data = '  owi-a-'
-        elif (_lvm_prefix + 'lvdisplay, --noheading, -C, -o, Origin' in
+        elif (_lvm_prefix + 'lvdisplay --noheading -C -o Origin' in
               cmd_string):
             if 'snapshot' in cmd_string:
                 data = '  fake-volume-1'
             else:
                 data = '       '
-        elif _lvm_prefix + 'pvs, --noheadings' in cmd_string:
+        elif _lvm_prefix + 'pvs --noheadings' in cmd_string:
             data = "  fake-vg|/dev/sda|10.00|1.00\n"
             data += "  fake-vg|/dev/sdb|10.00|1.00\n"
             data += "  fake-vg|/dev/sdc|10.00|8.99\n"
@@ -151,21 +151,21 @@ class BrickLvmTestCase(test.TestCase):
                     stdout=data,
                     exit_code=5
                 )
-        elif _lvm_prefix + 'lvs, --noheadings, --unit=g' \
-                ', -o, size,data_percent, --separator, :' in cmd_string:
+        elif _lvm_prefix + 'lvs --noheadings --unit=g' \
+                ' -o size,data_percent --separator :' in cmd_string:
             if 'test-prov-cap-pool' in cmd_string:
                 data = "  9.5:20\n"
             else:
                 data = "  9:12\n"
-        elif 'lvcreate, -T, -L, ' in cmd_string:
+        elif 'lvcreate -T -L ' in cmd_string:
             pass
-        elif 'lvcreate, -T, -V, ' in cmd_string:
+        elif 'lvcreate -T -V ' in cmd_string:
             pass
-        elif 'lvcreate, -n, ' in cmd_string:
+        elif 'lvcreate -n ' in cmd_string:
             pass
-        elif 'lvcreate, --name, ' in cmd_string:
+        elif 'lvcreate --name ' in cmd_string:
             pass
-        elif 'lvextend, -L, ' in cmd_string:
+        elif 'lvextend -L ' in cmd_string:
             pass
         else:
             raise AssertionError('unexpected command called: %s' % cmd_string)
