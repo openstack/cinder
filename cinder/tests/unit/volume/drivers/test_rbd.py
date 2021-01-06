@@ -1657,7 +1657,8 @@ class RBDTestCase(test.TestCase):
         # OpenStack usage doesn't have the rbd_keyring_conf Oslo Config option
         cfg_file = '/etc/ceph/ceph.client.admin.keyring'
         self.driver.configuration.rbd_keyring_conf = cfg_file
-        self.driver._set_keyring_attributes()
+        with mock.patch('os.path.isfile', return_value=False):
+            self.driver._set_keyring_attributes()
         self.assertEqual(cfg_file, self.driver.keyring_file)
         self.assertIsNone(self.driver.keyring_data)
 
