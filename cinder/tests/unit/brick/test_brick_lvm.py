@@ -95,12 +95,12 @@ class BrickLvmTestCase(test.TestCase):
             data += "  fake-vg-3:10.00:10.00:0:"\
                     "mXzbuX-dKpG-Rz7E-xtKY-jeju-QsYU-SLG8Z3\n"
         elif (_lvm_prefix + 'lvs, --noheadings, '
-              '--unit=g, -o, vg_name,name,size, --nosuffix, '
+              '--unit=g, -o, vg_name,name,size, --nosuffix, --readonly, '
               'fake-vg/lv-nothere' in cmd_string):
             raise processutils.ProcessExecutionError(
                 stderr="One or more specified logical volume(s) not found.")
         elif (_lvm_prefix + 'lvs, --noheadings, '
-              '--unit=g, -o, vg_name,name,size, --nosuffix, '
+              '--unit=g, -o, vg_name,name,size, --nosuffix, --readonly, '
               'fake-vg/lv-newerror' in cmd_string):
             raise processutils.ProcessExecutionError(
                 stderr="Failed to find logical volume \"fake-vg/lv-newerror\"")

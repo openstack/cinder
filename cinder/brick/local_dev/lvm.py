@@ -297,7 +297,8 @@ class LVM(executor.Executor):
         """
 
         cmd = LVM.LVM_CMD_PREFIX + ['lvs', '--noheadings', '--unit=g',
-                                    '-o', 'vg_name,name,size', '--nosuffix']
+                                    '-o', 'vg_name,name,size', '--nosuffix',
+                                    '--readonly']
         if lv_name is not None and vg_name is not None:
             cmd.append("%s/%s" % (vg_name, lv_name))
         elif vg_name is not None:
