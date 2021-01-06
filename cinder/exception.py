@@ -123,13 +123,6 @@ class CinderException(Exception):
     def _should_format(self):
         return self.kwargs['message'] is None or '%(message)' in self.message
 
-    # NOTE(tommylikehu): self.msg is already an unicode compatible object
-    # as the __init__ method ensures of it, and we should not be modifying
-    # it in any way with str(), unicode(), or six.text_type() as we would
-    # be preventing translations from happening.
-    def __unicode__(self):
-        return self.msg
-
 
 class VolumeBackendAPIException(CinderException):
     message = _("Bad or unexpected response from the storage volume "
