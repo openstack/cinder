@@ -47,6 +47,9 @@ class ShardFilter(filters.BaseBackendFilter):
     Every project has tags assigned, which define the vCenter the project is
     in. This filter filters out any backend that's not configured for the shard
     of a project.
+
+    Alternatively the project may have the "sharding_enabled" tag set, which
+    enables the project for backends in all shards.
     """
 
     # project shards do not change within a request
@@ -56,6 +59,7 @@ class ShardFilter(filters.BaseBackendFilter):
     _PROJECT_SHARD_CACHE_RETENTION_TIME = 10 * 60
     _SHARD_PREFIX = 'vc-'
     _CAPABILITY_NAME = 'vcenter-shard'
+    _ALL_SHARDS = "sharding_enabled"
 
     def _get_keystone_adapter(self):
         """Return a keystone adapter
@@ -117,7 +121,8 @@ class ShardFilter(filters.BaseBackendFilter):
             for project in data['projects']:
                 project_id = project['id']
                 shards = [t for t in project['tags']
-                          if t.startswith(self._SHARD_PREFIX)]
+                          if t.startswith(self._SHARD_PREFIX)
+                          or t == self._ALL_SHARDS]
                 self._PROJECT_SHARD_CACHE[project_id] = shards
 
             url = data['links']['next']
@@ -190,7 +195,11 @@ class ShardFilter(filters.BaseBackendFilter):
                        'shard_prefix': self._SHARD_PREFIX})
             return False
 
-        if configured_shards_set & set(shards):
+        if self._ALL_SHARDS in shards:
+            LOG.debug('project enabled for all shards %(project_shards)s.',
+                      {'project_shards': shards})
+            return True
+        elif configured_shards_set & set(shards):
             LOG.debug('%(backend)s shard %(backend_shards)s found in project '
                       'shards %(project_shards)s.',
                       {'backend': backend_state,

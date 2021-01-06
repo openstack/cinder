@@ -135,3 +135,29 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         host = fakes.FakeBackendState('host1', {'capabilities': caps})
         self.props['scheduler_hints'] = {'vcenter-shard': None}
         self.assertFalse(self.filt_cls.backend_passes(host, self.props))
+
+    def test_sharding_enabled_any_backend_match(self):
+        self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['sharding_enabled']
+        self.props['request_spec']['volume_properties']['project_id'] = 'baz'
+        caps = {'vcenter-shard': 'vc-a-0'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.assertTrue(self.filt_cls.backend_passes(host, self.props))
+
+    def test_sharding_enabled_and_single_shard_any_backend_match(self):
+        self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['sharding_enabled',
+                                                     'vc-a-1']
+        self.props['request_spec']['volume_properties']['project_id'] = 'baz'
+        caps = {'vcenter-shard': 'vc-a-0'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.assertTrue(self.filt_cls.backend_passes(host, self.props))
+
+    def test_scheduler_hints_override_sharding_enabled(self):
+        self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['sharding_enabled']
+        self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
+        self.props['request_spec']['volume_properties']['project_id'] = 'baz'
+        caps0 = {'vcenter-shard': 'vc-a-0'}
+        host0 = fakes.FakeBackendState('host0', {'capabilities': caps0})
+        self.assertFalse(self.filt_cls.backend_passes(host0, self.props))
+        caps1 = {'vcenter-shard': 'vc-a-1'}
+        host1 = fakes.FakeBackendState('host1', {'capabilities': caps1})
+        self.assertTrue(self.filt_cls.backend_passes(host1, self.props))
