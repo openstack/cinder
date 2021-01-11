@@ -1847,8 +1847,8 @@ class ISCSIAdapterTest(test.TestCase):
         self.assertListEqual([hlu, hlu], info['target_luns'])
         self.assertListEqual(target_portals, info['target_portals'])
         self.assertEqual(hlu, info['target_lun'])
-        self.assertTrue(info['target_portal'] in target_portals)
-        self.assertTrue(info['target_iqn'] in target_iqns)
+        self.assertIn(info['target_portal'], target_portals)
+        self.assertIn(info['target_iqn'], target_iqns)
 
     @patch_for_iscsi_adapter
     def test_initialize_connection_volume(self):

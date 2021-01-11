@@ -1599,7 +1599,7 @@ class PowerMaxCommonTest(test.TestCase):
         srp_record = self.common.get_attributes_from_cinder_config()
         extra_specs = self.common._set_vmax_extra_specs(
             self.data.vol_type_extra_specs, srp_record)
-        self.assertTrue('storagetype:storagegrouptags' not in extra_specs)
+        self.assertNotIn('storagetype:storagegrouptags', extra_specs)
 
     def test_set_vmax_extra_specs_tags_set_correctly(self):
         srp_record = self.common.get_attributes_from_cinder_config()

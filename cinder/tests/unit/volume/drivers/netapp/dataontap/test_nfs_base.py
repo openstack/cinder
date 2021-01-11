@@ -742,7 +742,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
             self.assertEqual(model_update['replication_status'],
                              actual_model_update['replication_status'])
         else:
-            self.assertFalse('replication_status' in actual_model_update)
+            self.assertNotIn('replication_status', actual_model_update)
         self.driver._check_volume_type.assert_called_once_with(
             volume, self.fake_nfs_export_1, test_file, {})
 

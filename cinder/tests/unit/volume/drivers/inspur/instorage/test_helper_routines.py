@@ -155,28 +155,28 @@ class InStorageAssistantTestCase(test.TestCase):
         state['available_iogrps'] = [0, 1, 2, 3]
 
         iog = self.instorage_mcs_common.select_io_group(state, opts)
-        self.assertTrue(iog in state['available_iogrps'])
+        self.assertIn(iog, state['available_iogrps'])
         self.assertEqual(2, iog)
 
         opts['iogrp'] = '0'
         state['available_iogrps'] = [0, 1, 2]
 
         iog = self.instorage_mcs_common.select_io_group(state, opts)
-        self.assertTrue(iog in state['available_iogrps'])
+        self.assertIn(iog, state['available_iogrps'])
         self.assertEqual(0, iog)
 
         opts['iogrp'] = '1,2'
         state['available_iogrps'] = [0, 2]
 
         iog = self.instorage_mcs_common.select_io_group(state, opts)
-        self.assertTrue(iog in state['available_iogrps'])
+        self.assertIn(iog, state['available_iogrps'])
         self.assertEqual(2, iog)
 
         opts['iogrp'] = ' 0, 1, 2 '
         state['available_iogrps'] = [0, 1, 2, 3]
 
         iog = self.instorage_mcs_common.select_io_group(state, opts)
-        self.assertTrue(iog in state['available_iogrps'])
+        self.assertIn(iog, state['available_iogrps'])
         # since vdisk count in all iogroups is same, it will pick the first
         self.assertEqual(0, iog)
 
@@ -184,7 +184,7 @@ class InStorageAssistantTestCase(test.TestCase):
         state['available_iogrps'] = [0, 1, 2, 3]
 
         iog = self.instorage_mcs_common.select_io_group(state, opts)
-        self.assertTrue(iog in state['available_iogrps'])
+        self.assertIn(iog, state['available_iogrps'])
         self.assertEqual(1, iog)
 
 

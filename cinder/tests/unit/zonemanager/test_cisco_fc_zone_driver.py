@@ -147,7 +147,7 @@ class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
                                                'session': 'none'}
         get_active_zone_set_mock.return_value = _active_cfg_default
         self.driver.add_connection('CISCO_FAB_1', _initiator_target_map)
-        self.assertTrue(_zone_name in GlobalVars._zone_state)
+        self.assertIn(_zone_name, GlobalVars._zone_state)
 
     @mock.patch.object(driver.CiscoFCZoneDriver, 'get_zoning_status')
     @mock.patch.object(driver.CiscoFCZoneDriver, 'get_active_zone_set')
@@ -161,7 +161,7 @@ class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
                                                'session': 'none'}
         get_active_zone_set_mock.return_value = {}
         self.driver.add_connection('CISCO_FAB_1', _initiator_target_map)
-        self.assertTrue(_zone_name in GlobalVars._zone_state)
+        self.assertIn(_zone_name, GlobalVars._zone_state)
 
     def test_add_connection_for_invalid_fabric(self):
         """Test abnormal flows."""

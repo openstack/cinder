@@ -1133,8 +1133,8 @@ class TestCinderManageCmd(test.TestCase):
                              {'type': str,
                               'help': 'Cluster to delete.',
                               'metavar': 'cluster-name'})
-        self.assertTrue(expected_argument in
-                        cinder_manage.CONF.category.action_fn.args)
+        self.assertIn(expected_argument,
+                      cinder_manage.CONF.category.action_fn.args)
         self.assertTrue(hasattr(cinder_manage.CONF.category, 'cluster_name'))
         get_admin_mock.assert_called_with()
         get_cluster_mock.assert_called_with(get_admin_mock.return_value,
