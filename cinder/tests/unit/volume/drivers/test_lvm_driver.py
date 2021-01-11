@@ -301,6 +301,9 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
                 return_value=False)
     def test_lvm_type_auto_no_thin_support(self, *_unused_mocks):
+        self.mock_object(cinder.brick.local_dev.lvm.LVM, 'get_lvm_version',
+                         return_value=(2, 2, 107))
+
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.lvm_type = 'auto'
 
@@ -322,6 +325,9 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
                 return_value=False)
     def test_lvm_type_auto_no_thin_pool(self, *_unused_mocks):
+        self.mock_object(cinder.brick.local_dev.lvm.LVM, 'get_lvm_version',
+                         return_value=(2, 2, 107))
+
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.lvm_type = 'auto'
 
@@ -421,7 +427,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     def test_lvm_migrate_volume_volume_copy_error(self, vgs, copy_volume,
                                                   mock_delete, mock_pvs,
                                                   mock_create):
-
+        self.mock_object(cinder.brick.local_dev.lvm.LVM, 'get_lvm_version',
+                         return_value=(2, 2, 107))
         hostname = socket.gethostname()
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
                         'cinder-volumes:default:0' % hostname}
@@ -454,6 +461,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.assertIsNone(model_update)
 
     def test_lvm_migrate_volume_proceed(self):
+        self.mock_object(cinder.brick.local_dev.lvm.LVM, 'get_lvm_version',
+                         return_value=(2, 2, 107))
         hostname = socket.gethostname()
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
                         'cinder-volumes-2:default:0' % hostname}
@@ -498,6 +507,9 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                 sparse=False)
 
     def test_lvm_migrate_volume_proceed_with_thin(self):
+        self.mock_object(cinder.brick.local_dev.lvm.LVM, 'get_lvm_version',
+                         return_value=(2, 2, 107))
+
         hostname = socket.gethostname()
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
                         'cinder-volumes-2:default:0' % hostname}

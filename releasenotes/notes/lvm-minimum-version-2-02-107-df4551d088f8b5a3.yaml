@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Cinder now requires LVM version 2.02.107 or newer.
