@@ -45,7 +45,7 @@ class HPMSAFCDriver(fc.STXFCDriver):
 
     @staticmethod
     def get_driver_options():
-        return hpmsa_common.common_opts
+        return hpmsa_common.HPMSACommon.get_driver_options()
 
     def _init_common(self):
         return hpmsa_common.HPMSACommon(self.configuration)

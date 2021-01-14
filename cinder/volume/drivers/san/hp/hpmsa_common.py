@@ -17,6 +17,7 @@
 from oslo_config import cfg
 
 from cinder.volume import configuration
+from cinder.volume import driver
 import cinder.volume.drivers.san.hp.hpmsa_client as hpmsa_client
 import cinder.volume.drivers.stx.common as common
 
@@ -83,3 +84,10 @@ class HPMSACommon(common.STXCommon):
                                                self.config.san_password,
                                                self.api_protocol,
                                                ssl_verify)
+
+    @staticmethod
+    def get_driver_options():
+        additional_opts = driver.BaseVD._get_oslo_driver_opts(
+            'san_ip', 'san_login', 'san_password', 'driver_use_ssl',
+            'driver_ssl_cert_verify', 'driver_ssl_cert_path')
+        return common_opts + additional_opts
