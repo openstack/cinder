@@ -32,6 +32,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit.api.v3.test_volumes import ENCRYPTION_KEY_ID_IN_DETAILS
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
@@ -285,6 +286,25 @@ class BackupsControllerAPITestCase(test.TestCase):
             self.assertNotIn('metadata', backup_get)
         else:
             self.assertIn('metadata', backup_get)
+
+    @ddt.data(*ENCRYPTION_KEY_ID_IN_DETAILS)
+    @ddt.unpack
+    def test_backup_show_with_encryption_key_id(self,
+                                                expected_in_details,
+                                                encryption_key_id,
+                                                version):
+        backup = test_utils.create_backup(self.ctxt,
+                                          encryption_key_id=encryption_key_id)
+        self.addCleanup(backup.destroy)
+
+        url = '/v3/%s/backups/%s' % (fake.PROJECT_ID, backup.id)
+        req = fakes.HTTPRequest.blank(url, version=version)
+        backup_details = self.controller.show(req, backup.id)['backup']
+
+        if expected_in_details:
+            self.assertIn('encryption_key_id', backup_details)
+        else:
+            self.assertNotIn('encryption_key_id', backup_details)
 
     def test_backup_update_with_null_validate(self):
         backup = test_utils.create_backup(

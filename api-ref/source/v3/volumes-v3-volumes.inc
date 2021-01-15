@@ -109,6 +109,7 @@ Response Parameters
    - availability_zone: availability_zone
    - os-vol-host-attr:host: os-vol-host-attr:host
    - encrypted: encrypted
+   - encryption_key_id: encryption_key_id
    - updated_at: updated_at
    - replication_status: replication_status
    - snapshot_id: snapshot_id
@@ -355,6 +356,7 @@ Response Parameters
    - availability_zone: availability_zone
    - os-vol-host-attr:host: os-vol-host-attr:host
    - encrypted: encrypted
+   - encryption_key_id: encryption_key_id
    - updated_at: updated_at
    - replication_status: replication_status
    - snapshot_id: snapshot_id

@@ -485,3 +485,8 @@ value.
 Includes volume type ID in the volume-show and volume-detail-list JSON
 responses. Before this microversion, Cinder returns only the volume type name
 in the volume details.
+
+3.64
+----
+Include the ``encryption_key_id`` in volume and backup details when the
+associated volume is encrypted.

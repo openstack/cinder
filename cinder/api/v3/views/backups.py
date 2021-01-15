@@ -15,6 +15,7 @@
 
 from cinder.api import microversions as mv
 from cinder.api.views import backups as views_v2
+from cinder.common import constants as cinder_constants
 
 
 class ViewBuilder(views_v2.ViewBuilder):
@@ -29,4 +30,11 @@ class ViewBuilder(views_v2.ViewBuilder):
         req_version = request.api_version_request
         if req_version.matches(mv.BACKUP_METADATA):
             backup_ref['backup']['metadata'] = backup.metadata
+
+        if req_version.matches(mv.ENCRYPTION_KEY_ID_IN_DETAILS, None):
+            encryption_key_id = backup.get('encryption_key_id', None)
+            if (encryption_key_id and
+                    encryption_key_id != cinder_constants.FIXED_KEY_ID):
+                backup_ref['backup']['encryption_key_id'] = encryption_key_id
+
         return backup_ref

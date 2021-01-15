@@ -31,6 +31,7 @@ from cinder.api import microversions as mv
 from cinder.api.v2.views.volumes import ViewBuilder
 from cinder.api.v3 import volumes
 from cinder.backup import api as backup_api
+from cinder.common import constants as cinder_constants
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -49,6 +50,29 @@ from cinder.volume import api as volume_api
 from cinder.volume import api as vol_get
 
 DEFAULT_AZ = "zone1:host1"
+
+# DDT data for testing whether an 'encryption_key_id' should appear in a
+# volume's or backup's details (also used by test_backups.py).
+ENCRYPTION_KEY_ID_IN_DETAILS = {
+    'expected_in_details': True,
+    'encryption_key_id': fake.ENCRYPTION_KEY_ID,
+    'version': mv.ENCRYPTION_KEY_ID_IN_DETAILS,
+}, {
+    # No encryption ID to display
+    'expected_in_details': False,
+    'encryption_key_id': None,
+    'version': mv.ENCRYPTION_KEY_ID_IN_DETAILS,
+}, {
+    # Fixed key ID should not be displayed
+    'expected_in_details': False,
+    'encryption_key_id': cinder_constants.FIXED_KEY_ID,
+    'version': mv.ENCRYPTION_KEY_ID_IN_DETAILS,
+}, {
+    # Unsupported microversion
+    'expected_in_details': False,
+    'encryption_key_id': fake.ENCRYPTION_KEY_ID,
+    'version': mv.get_prior_version(mv.ENCRYPTION_KEY_ID_IN_DETAILS),
+}
 
 
 @ddt.ddt
@@ -855,6 +879,26 @@ class VolumeApiTest(test.TestCase):
             self.assertIn('provider_id', res_dict['volume'])
         else:
             self.assertNotIn('provider_id', res_dict['volume'])
+
+    @ddt.data(*ENCRYPTION_KEY_ID_IN_DETAILS)
+    @ddt.unpack
+    def test_volume_show_with_encryption_key_id(self,
+                                                expected_in_details,
+                                                encryption_key_id,
+                                                version):
+        volume = test_utils.create_volume(self.ctxt,
+                                          testcase_instance=self,
+                                          volume_type_id=None,
+                                          encryption_key_id=encryption_key_id)
+
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % volume.id,
+                                      version=version)
+        volume_details = self.controller.show(req, volume.id)['volume']
+
+        if expected_in_details:
+            self.assertIn('encryption_key_id', volume_details)
+        else:
+            self.assertNotIn('encryption_key_id', volume_details)
 
     def _fake_create_volume(self, size=1):
         vol = {

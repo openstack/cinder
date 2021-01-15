@@ -1140,6 +1140,12 @@ encryption_id_body:
   in: body
   required: true
   type: string
+encryption_key_id:
+  description: |
+    The UUID of the encryption key.
+  in: body
+  required: false
+  type: string
 event_id:
   description: |
     The id of the event to this message, this id could

@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Starting with API microversion 3.64, an ``encryption_key_id`` attribute
+    is included in the response body of volume and backup details when the
+    associated volume is encrypted.
