@@ -723,13 +723,13 @@ class AuditPeriodTest(test.TestCase):
 class BrickUtils(test.TestCase):
     """Unit test to test the brick utility wrapper functions."""
 
-    @mock.patch('cinder.utils.CONF')
+    @mock.patch('cinder.volume.volume_utils.CONF')
     @mock.patch('os_brick.initiator.connector.get_connector_properties')
     @mock.patch('cinder.utils.get_root_helper')
     def test_brick_get_connector_properties(self, mock_helper, mock_get,
                                             mock_conf):
         mock_conf.my_ip = '1.2.3.4'
-        output = utils.brick_get_connector_properties()
+        output = volume_utils.brick_get_connector_properties()
         mock_helper.assert_called_once_with()
         mock_get.assert_called_once_with(mock_helper.return_value, '1.2.3.4',
                                          False, False)
@@ -738,7 +738,7 @@ class BrickUtils(test.TestCase):
     @mock.patch('os_brick.initiator.connector.InitiatorConnector.factory')
     @mock.patch('cinder.utils.get_root_helper')
     def test_brick_get_connector(self, mock_helper, mock_factory):
-        output = utils.brick_get_connector('protocol')
+        output = volume_utils.brick_get_connector('protocol')
         mock_helper.assert_called_once_with()
         self.assertEqual(mock_factory.return_value, output)
         mock_factory.assert_called_once_with(
@@ -756,7 +756,9 @@ class BrickUtils(test.TestCase):
         ctxt = mock.Mock(name='context')
         mock_encryptor = mock.Mock()
         mock_get_encryptor.return_value = mock_encryptor
-        utils.brick_attach_volume_encryptor(ctxt, attach_info, encryption)
+        volume_utils.brick_attach_volume_encryptor(ctxt,
+                                                   attach_info,
+                                                   encryption)
 
         connection_info = attach_info['conn']
         connection_info['data']['device_path'] = attach_info['device']['path']
@@ -779,7 +781,7 @@ class BrickUtils(test.TestCase):
         encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
         mock_encryptor = mock.Mock()
         mock_get_encryptor.return_value = mock_encryptor
-        utils.brick_detach_volume_encryptor(attach_info, encryption)
+        volume_utils.brick_detach_volume_encryptor(attach_info, encryption)
 
         mock_helper.assert_called_once_with()
         connection_info = attach_info['conn']

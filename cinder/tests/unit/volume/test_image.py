@@ -629,8 +629,8 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
         self.assertRaises(exception.ImageTooBig,
                           self._create_volume_from_image)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
-    @mock.patch('cinder.utils.brick_get_connector')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector')
     @mock.patch('cinder.volume.driver.BaseVD.secure_file_operations_enabled')
     @mock.patch('cinder.volume.driver.BaseVD._detach_volume')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
@@ -656,8 +656,8 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
         # We must have called detach method.
         self.assertEqual(1, mock_detach.call_count)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
-    @mock.patch('cinder.utils.brick_get_connector')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector')
     @mock.patch('cinder.volume.driver.BaseVD._connect_device')
     @mock.patch('cinder.volume.driver.BaseVD._detach_volume')
     @mock.patch('cinder.image.image_utils.qemu_img_info')

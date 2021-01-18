@@ -31,7 +31,6 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder import utils
 import cinder.volume.drivers.datera.datera_common as datc
 from cinder.volume import volume_types
 from cinder.volume import volume_utils as volutils
@@ -935,7 +934,7 @@ class DateraApi(object):
             # export (ACL, IP-Pools, etc)
             conn = self._initialize_connection_2_2(
                 vol, {'multipath': False})
-            connector = utils.brick_get_connector(
+            connector = volutils.brick_get_connector(
                 conn['driver_volume_type'],
                 use_multipath=False,
                 device_scan_attempts=10,

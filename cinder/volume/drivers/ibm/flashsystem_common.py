@@ -219,7 +219,7 @@ class FlashSystemDriver(san.SanDriver,
         LOG.debug('enter: _copy_vdisk_data: %(src)s -> %(dest)s.',
                   {'src': src_vdisk_name, 'dest': dest_vdisk_name})
 
-        connector = utils.brick_get_connector_properties()
+        connector = volume_utils.brick_get_connector_properties()
         (src_map, src_lun_id) = self._is_vdisk_map(
             src_vdisk_name, connector)
         (dest_map, dest_lun_id) = self._is_vdisk_map(
@@ -852,11 +852,12 @@ class FlashSystemDriver(san.SanDriver,
         use_multipath = self.configuration.use_multipath_for_image_xfer
         device_scan_attempts = self.configuration.num_volume_device_scan_tries
         protocol = properties['driver_volume_type']
-        connector = utils.brick_get_connector(protocol,
-                                              use_multipath=use_multipath,
-                                              device_scan_attempts=
-                                              device_scan_attempts,
-                                              conn=properties)
+        connector = volume_utils.brick_get_connector(
+            protocol,
+            use_multipath=use_multipath,
+            device_scan_attempts=
+            device_scan_attempts,
+            conn=properties)
 
         connector.disconnect_volume(properties['data'], device)
 
@@ -888,11 +889,12 @@ class FlashSystemDriver(san.SanDriver,
         use_multipath = self.configuration.use_multipath_for_image_xfer
         device_scan_attempts = self.configuration.num_volume_device_scan_tries
         protocol = properties['driver_volume_type']
-        connector = utils.brick_get_connector(protocol,
-                                              use_multipath=use_multipath,
-                                              device_scan_attempts=
-                                              device_scan_attempts,
-                                              conn=properties)
+        connector = volume_utils.brick_get_connector(
+            protocol,
+            use_multipath=use_multipath,
+            device_scan_attempts=
+            device_scan_attempts,
+            conn=properties)
         device = connector.connect_volume(properties['data'])
         host_device = device['path']
 

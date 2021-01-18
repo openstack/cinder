@@ -352,8 +352,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.create_snapshot, test_snapshot)
 
     @mock.patch("cinder.volume.volume_utils.copy_volume")
-    @mock.patch("cinder.utils.brick_get_connector")
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector")
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume_from_snapshot(self, *mocks):
@@ -371,7 +371,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.create_volume_from_snapshot,
                           test_clone, test_snapshot)
 
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_volume_from_snapshot_map_fails(self, *mocks):
@@ -381,8 +381,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           test_clone, test_snapshot)
 
     @mock.patch("cinder.volume.volume_utils.copy_volume")
-    @mock.patch("cinder.utils.brick_get_connector")
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector")
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     def test_create_volume_from_snapshot_delete_clone_fails(self, *mocks):
         self._mock_volume.delete.side_effect = self._raise_infinisdk
@@ -404,8 +404,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.delete_snapshot, test_snapshot)
 
     @mock.patch("cinder.volume.volume_utils.copy_volume")
-    @mock.patch("cinder.utils.brick_get_connector")
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector")
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_cloned_volume(self, *mocks):
@@ -425,7 +425,7 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           self.driver.create_cloned_volume,
                           test_clone, test_volume)
 
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     @mock.patch("cinder.volume.volume_types.get_volume_type_qos_specs")
     def test_create_cloned_volume_map_fails(self, *mocks):
@@ -494,8 +494,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                           [test_volume], [test_volume])
 
     @mock.patch("cinder.volume.volume_utils.copy_volume")
-    @mock.patch("cinder.utils.brick_get_connector")
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector")
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)
@@ -506,8 +506,8 @@ class InfiniboxDriverTestCase(InfiniboxDriverTestCaseBase):
                                           None, None)
 
     @mock.patch("cinder.volume.volume_utils.copy_volume")
-    @mock.patch("cinder.utils.brick_get_connector")
-    @mock.patch("cinder.utils.brick_get_connector_properties",
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector")
+    @mock.patch("cinder.volume.volume_utils.brick_get_connector_properties",
                 return_value=test_connector)
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type',
                 return_value=True)

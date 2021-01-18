@@ -1685,7 +1685,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.volume.driver.VolumeDriver._detach_volume')
     @mock.patch('cinder.volume.driver.VolumeDriver._attach_volume')
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.execute')
     def test_create_volume_from_volume_with_enc(
             self, mock_execute, mock_brick_gcp, mock_at, mock_det,

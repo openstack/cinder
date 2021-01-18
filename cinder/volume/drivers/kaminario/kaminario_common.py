@@ -553,7 +553,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         vol_name = self.get_volume_name(volume.id)
         cview = src_attach_info = dest_attach_info = None
         rpolicy = self.get_policy()
-        properties = utils.brick_get_connector_properties()
+        properties = volume_utils.brick_get_connector_properties()
         LOG.debug("Searching for snapshot: %s in K2.", snap_name)
         snap_rs = self.client.search("snapshots", short_name=snap_name)
         if hasattr(snap_rs, 'hits') and snap_rs.total != 0:
@@ -624,7 +624,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.error(msg)
             raise KaminarioCinderDriverException(reason=msg)
         try:
-            properties = utils.brick_get_connector_properties()
+            properties = volume_utils.brick_get_connector_properties()
             conn = self.initialize_connection(src_vref, properties)
             src_attach_info = self._connect_device(conn)
             self.create_volume(volume)

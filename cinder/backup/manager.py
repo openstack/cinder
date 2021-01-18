@@ -455,7 +455,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         backup_service = self.service(context)
 
-        properties = utils.brick_get_connector_properties()
+        properties = volume_utils.brick_get_connector_properties()
 
         # NOTE(geguileo): Not all I/O disk operations properly do greenthread
         # context switching and may end up blocking the greenthread, so we go
@@ -631,7 +631,7 @@ class BackupManager(manager.SchedulerDependentManager):
         orig_key_id = volume.encryption_key_id
         backup_service = self.service(context)
 
-        properties = utils.brick_get_connector_properties()
+        properties = volume_utils.brick_get_connector_properties()
         secure_enabled = (
             self.volume_rpcapi.secure_file_operations_enabled(context,
                                                               volume))
@@ -1046,7 +1046,7 @@ class BackupManager(manager.SchedulerDependentManager):
         use_multipath = CONF.use_multipath_for_image_xfer
         device_scan_attempts = CONF.num_volume_device_scan_tries
         protocol = conn['driver_volume_type']
-        connector = utils.brick_get_connector(
+        connector = volume_utils.brick_get_connector(
             protocol,
             use_multipath=use_multipath,
             device_scan_attempts=device_scan_attempts,

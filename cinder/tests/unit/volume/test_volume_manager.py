@@ -213,7 +213,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
             ctxt, None, vol, mock.sentinel.properties, force=True,
             remote=mock.sentinel.remote)
 
-    @mock.patch('cinder.utils.brick_attach_volume_encryptor')
+    @mock.patch('cinder.volume.volume_utils.brick_attach_volume_encryptor')
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI')
     def test_attach_volume_fail_decrypt(self, mock_api, mock_is_encrypted,
