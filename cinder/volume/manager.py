@@ -881,7 +881,7 @@ class VolumeManager(manager.CleanableManager,
                                                                     volume.id)
                 for s in snapshots:
                     if s.status != fields.SnapshotStatus.DELETING:
-                        self._clear_db(context, is_migrating_dest, volume,
+                        self._clear_db(is_migrating_dest, volume,
                                        'error_deleting')
 
                         msg = (_("Snapshot %(id)s was found in state "
@@ -901,8 +901,7 @@ class VolumeManager(manager.CleanableManager,
                       resource=volume)
             # If this is a destination volume, we have to clear the database
             # record to avoid user confusion.
-            self._clear_db(context, is_migrating_dest, volume,
-                           'available')
+            self._clear_db(is_migrating_dest, volume, 'available')
             return
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -912,8 +911,7 @@ class VolumeManager(manager.CleanableManager,
                 if unmanage_only is True:
                     new_status = 'error_unmanaging'
 
-                self._clear_db(context, is_migrating_dest, volume,
-                               new_status)
+                self._clear_db(is_migrating_dest, volume, new_status)
 
         # If deleting source/destination volume in a migration or a temp
         # volume for backup, we should skip quotas.
@@ -957,7 +955,7 @@ class VolumeManager(manager.CleanableManager,
             msg = "Unmanaged volume successfully."
         LOG.info(msg, resource=volume)
 
-    def _clear_db(self, context, is_migrating_dest, volume_ref, status):
+    def _clear_db(self, is_migrating_dest, volume_ref, status):
         # This method is called when driver.unmanage() or
         # driver.delete_volume() fails in delete_volume(), so it is already
         # in the exception handling part.
