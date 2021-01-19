@@ -888,7 +888,7 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
             mountpoint = "/dev/sd" + chr((ord('b') + index))
             instance_uuid = '12345678-1234-5678-1234-567812345678'
             db.volume_attached(self.context, vol_ref['id'], instance_uuid,
-                               mountpoint)
+                               'host', mountpoint)
             volume_id_list.append(vol_ref['id'])
 
         return volume_id_list
