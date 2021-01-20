@@ -59,8 +59,9 @@ PURE_OPTS = [
                      "this calculated value will override the "
                      "max_over_subscription_ratio config option."),
     cfg.StrOpt("pure_host_personality",
+               default=None,
                choices=['aix', 'esxi', 'hitachi-vsp', 'hpux',
-                        'oracle-vm-server', 'solaris', 'vms'],
+                        'oracle-vm-server', 'solaris', 'vms', None],
                help="Determines how the Purity system tunes the protocol used "
                     "between the array and the initiator."),
     # These are used as default settings.  In future these can be overridden
