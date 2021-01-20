@@ -116,7 +116,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                        'name': 'testvol',
                        'size': 1,
                        'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                       'volume_type_id': 'fast',
+                       'volume_type_id':
+                           '3332b568-96fd-475e-afd7-b7a867bc5255',
                        'created_at': timeutils.utcnow(),
                        'attributes':
                            {'uuid': '262b9ce2-a71a-4fbe-830c-c20c5596caea'}}
@@ -462,7 +463,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': 'fast',
+                   'volume_type_id': '3332b568-96fd-475e-afd7-b7a867bc5255',
                    'created_at': timeutils.utcnow()}
 
         fake_sfaccounts = [{'accountID': 5,
@@ -1217,7 +1218,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         ctx = context.get_admin_context()
         utc_now = timeutils.utcnow().isoformat()
         vol_fields = {
-            'id': f_uuid,
+            'id': f_uuid[0],
             'created_at': utc_now
         }
         vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
@@ -3197,7 +3198,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         ctx = context.get_admin_context()
         utc_now = timeutils.utcnow().isoformat()
         vol_fields = {
-            'id': f_uuid,
+            'id': f_uuid[0],
             'created_at': utc_now
         }
         vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
@@ -3228,7 +3229,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         ctx = context.get_admin_context()
         utc_now = timeutils.utcnow().isoformat()
         vol_fields = {
-            'id': f_uuid,
+            'id': f_uuid[0],
             'created_at': utc_now
         }
         vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
