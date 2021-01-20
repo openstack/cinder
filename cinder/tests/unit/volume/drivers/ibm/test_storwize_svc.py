@@ -9475,7 +9475,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertEqual(
                 storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'],
                 rel_info['aux_vdisk_name'])
-            self.assertEqual('inconsistent_copying', rel_info['state'])
+            self.assertIn(rel_info['state'], ['consistent_copying'])
             self.assertEqual(
                 storwize_const.REPLICA_CHG_VOL_PREFIX + volume['name'],
                 rel_info['master_change_vdisk_name'])
@@ -9483,7 +9483,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                 storwize_const.REPLICA_CHG_VOL_PREFIX +
                 storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'],
                 rel_info['aux_change_vdisk_name'])
-            self.assertEqual('inconsistent_copying', rel_info['state'])
+            self.assertIn(rel_info['state'], ['consistent_copying'])
             self.sim._rc_state_transition('wait', rel_info)
             self.assertEqual('consistent_copying', rel_info['state'])
         else:
@@ -9497,7 +9497,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.assertEqual(
                 storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name'],
                 rel_info['aux_vdisk_name'])
-            self.assertEqual('inconsistent_copying', rel_info['state'])
+            self.assertIn(rel_info['state'],
+                          ['consistent_synchronized', 'inconsistent_copying'])
 
             self.sim._rc_state_transition('wait', rel_info)
             self.assertEqual('consistent_synchronized', rel_info['state'])

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1912451 <https://bugs.launchpad.net/cinder/+bug/1912451>`_:
+    IBM Spectrum Virtualize Family driver: Updated replication
+    properties for HyperSwap volumes and volumes with replication
+    enabled that were missing from volume metadata.
