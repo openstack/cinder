@@ -2170,6 +2170,7 @@ class StorwizeHelpers(object):
         """FlashCopy mapping check helper."""
         # if this is a remove disk we need to be down to one fc clone
         mapping_ids = self._get_vdisk_fc_mappings(name)
+        Rc_mapping_ids = []
         if len(mapping_ids) > 1 and allow_fctgt:
             LOG.debug('Loopcall: vdisk %s has '
                       'more than one fc map. Waiting.', name)
@@ -2177,6 +2178,10 @@ class StorwizeHelpers(object):
                 attrs = self._get_flashcopy_mapping_attributes(map_id)
                 if not attrs:
                     continue
+                if 'yes' == attrs.get('rc_controlled', None):
+                    Rc_mapping_ids.append(map_id)
+                    continue
+
                 source = attrs['source_vdisk_name']
                 target = attrs['target_vdisk_name']
                 copy_rate = attrs['copy_rate']
@@ -2200,7 +2205,8 @@ class StorwizeHelpers(object):
                     # next attempts in case of any cli exception.
                     except exception.VolumeBackendAPIException as ex:
                         LOG.warning(ex)
-            return
+            if len(mapping_ids) - len(Rc_mapping_ids) > 1:
+                return
         return self._check_delete_vdisk_fc_mappings(
             name, allow_snaps=allow_snaps, allow_fctgt=allow_fctgt)
 

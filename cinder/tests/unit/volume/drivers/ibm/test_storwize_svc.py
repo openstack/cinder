@@ -8659,6 +8659,77 @@ class StorwizeHelpersTestCase(test.TestCase):
         self.assertEqual(0, rmfcmap.call_count)
         self.assertEqual(0, chfcmap.call_count)
 
+    @ddt.data(([{'cp_rate': '0', 'prgs': '0', 'status': 'idle_or_copied',
+                 'trg_vdisk': 'vdisk', 'src_vdisk': 'Hyp_vol'},
+                {'cp_rate': '50', 'prgs': '0', 'status': 'idle_or_copied',
+                 'trg_vdisk': 'Hyp_vol', 'src_vdisk': 'vdisk'},
+                {'cp_rate': '50', 'prgs': '3', 'status': 'copying',
+                 'trg_vdisk': 'Snap_vol', 'src_vdisk': 'Hyp_vol'},
+                {'cp_rate': '50', 'prgs': '0', 'status': 'copying',
+                 'trg_vdisk': 'Snap_vol_1', 'src_vdisk': 'Hyp_vol'}], 0),
+              ([{'cp_rate': '0', 'prgs': '0', 'status': 'idle_or_copied',
+                 'trg_vdisk': 'vdisk', 'src_vdisk': 'Hyp_vol'},
+                {'cp_rate': '50', 'prgs': '0', 'status': 'idle_or_copied',
+                 'trg_vdisk': 'Hyp_vol', 'src_vdisk': 'vdisk'},
+                {'cp_rate': '50', 'prgs': '100', 'status': 'copying',
+                 'trg_vdisk': 'Snap_vol', 'src_vdisk': 'Hyp_vol'},
+                {'cp_rate': '50', 'prgs': '0', 'status': 'copying',
+                 'trg_vdisk': 'Snap_vol_1', 'src_vdisk': 'Hyp_vol'}], 1))
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'chfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'stopfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'rmfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_flashcopy_mapping_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_vdisk_fc_mappings')
+    @ddt.unpack
+    def test_check_vdisk_fc_mappings_rc_cont(self,
+                                             fc_data, stopfc_count,
+                                             get_vdisk_fc_mappings,
+                                             get_fc_mapping_attributes,
+                                             rmfcmap, stopfcmap, chfcmap):
+        vol = 'Hyp_vol'
+        get_vdisk_fc_mappings.return_value = ['4', '5', '7', '9']
+        get_fc_mapping_attributes.side_effect = [
+            {
+                'copy_rate': fc_data[0]['cp_rate'],
+                'progress': fc_data[0]['prgs'],
+                'status': fc_data[0]['status'],
+                'target_vdisk_name': fc_data[0]['trg_vdisk'],
+                'rc_controlled': 'yes',
+                'source_vdisk_name': fc_data[0]['src_vdisk']},
+            {
+                'copy_rate': fc_data[1]['cp_rate'],
+                'progress': fc_data[1]['prgs'],
+                'status': fc_data[1]['status'],
+                'target_vdisk_name': fc_data[1]['trg_vdisk'],
+                'rc_controlled': 'yes',
+                'source_vdisk_name': fc_data[1]['src_vdisk']},
+            {
+                'copy_rate': fc_data[2]['cp_rate'],
+                'progress': fc_data[2]['prgs'],
+                'status': fc_data[2]['status'],
+                'target_vdisk_name': fc_data[2]['trg_vdisk'],
+                'rc_controlled': 'no',
+                'source_vdisk_name': fc_data[2]['src_vdisk']},
+            {
+                'copy_rate': fc_data[3]['cp_rate'],
+                'progress': fc_data[3]['prgs'],
+                'status': fc_data[3]['status'],
+                'target_vdisk_name': fc_data[3]['trg_vdisk'],
+                'rc_controlled': 'no',
+                'source_vdisk_name': fc_data[3]['src_vdisk']}]
+
+        self.storwize_svc_common._check_vdisk_fc_mappings(vol, True, True)
+        get_vdisk_fc_mappings.assert_called()
+        get_fc_mapping_attributes.assert_called()
+        rmfcmap.assert_not_called()
+        chfcmap.assert_not_called()
+        self.assertEqual(4, get_fc_mapping_attributes.call_count)
+        self.assertEqual(stopfc_count, stopfcmap.call_count)
+        self.assertEqual(0, rmfcmap.call_count)
+        self.assertEqual(0, chfcmap.call_count)
+
     def test_storwize_check_flashcopy_rate_invalid1(self):
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
