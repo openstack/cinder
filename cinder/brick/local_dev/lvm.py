@@ -780,7 +780,8 @@ class LVM(executor.Executor):
 
     def lv_has_snapshot(self, name):
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
-                                    'Attr', '%s/%s' % (self.vg_name, name)]
+                                    'Attr', '--readonly',
+                                    '%s/%s' % (self.vg_name, name)]
         out, _err = self._execute(*cmd,
                                   root_helper=self._root_helper,
                                   run_as_root=True)
