@@ -373,6 +373,18 @@ class PowerMaxUtils(object):
         return element_name
 
     @staticmethod
+    def check_uuid_regex(volume_id):
+        """Check the uuid regex
+
+        :param volume_id: the unique volume identifier
+        :returns: bool
+        """
+        uuid_regex = (re.compile(
+            r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+            re.I))
+        return uuid_regex.search(volume_id)
+
+    @staticmethod
     def modify_snapshot_prefix(snapshot_name, manage=False, unmanage=False):
         """Modify a Snapshot prefix on PowerMax/VMAX backend.
 
@@ -498,6 +510,17 @@ class PowerMaxUtils(object):
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
         return array, device_id.upper()
+
+    @staticmethod
+    def get_array_from_host(volume):
+        """Get the array from the host string
+
+        :param volume: volume object
+        :returns: array -- str
+        """
+        host = volume.host
+        host_list = host.split('+')
+        return host_list[-1]
 
     def is_compression_disabled(self, extra_specs):
         """Check is compression is to be disabled.
@@ -1896,7 +1919,7 @@ class PowerMaxUtils(object):
         :param primary_array: configured primary array SID -- string
         :param arrays_list: list of U4P symmetrix IDs -- list
         :param is_promoted: current promotion state -- bool
-        :return: (bool, str) is valid, reason on invalid
+        :returns: (bool, str) is valid, reason on invalid
         """
         is_valid = True
         msg = ""
@@ -2003,7 +2026,7 @@ class PowerMaxUtils(object):
         replication enabled.
 
         :param extra_specs_list: list of Volume Type extra specs
-        :return: bool replication enabled found in any extra specs
+        :returns: bool replication enabled found in any extra specs
         """
         for extra_specs in extra_specs_list:
             if extra_specs.get(IS_RE) == '<is> True':

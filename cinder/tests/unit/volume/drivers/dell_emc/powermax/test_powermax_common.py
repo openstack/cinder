@@ -22,6 +22,7 @@ import six
 
 from cinder import exception
 from cinder.objects import fields
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
@@ -2009,6 +2010,65 @@ class PowerMaxCommonTest(test.TestCase):
             model_update = self.common.manage_existing(volume, external_ref)
             self.assertEqual(ref_update, model_update)
 
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_volume_metadata', return_value='')
+    @mock.patch.object(
+        common.PowerMaxCommon, '_check_lun_valid_for_cinder_management',
+        return_value=('vol1', 'test_sg'))
+    def test_manage_existing_no_fall_through(self, mock_check, mock_get):
+        external_ref = {u'source-name': self.data.device_id}
+        volume = deepcopy(self.data.test_volume)
+        with mock.patch.object(
+                self.common, '_manage_volume_with_uuid',
+                return_value=(
+                    self.data.array, self.data.device_id2)) as mock_uuid:
+            self.common.manage_existing(volume, external_ref)
+            mock_uuid.assert_not_called()
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_volume_metadata', return_value='')
+    @mock.patch.object(
+        common.PowerMaxCommon, '_check_lun_valid_for_cinder_management',
+        return_value=('vol1', 'test_sg'))
+    def test_manage_existing_fall_through(self, mock_check, mock_get):
+        external_ref = {u'source-name': self.data.volume_id}
+        volume = deepcopy(self.data.test_volume)
+        with mock.patch.object(
+                self.common, '_manage_volume_with_uuid',
+                return_value=(
+                    self.data.array, self.data.device_id2)) as mock_uuid:
+            self.common.manage_existing(volume, external_ref)
+            mock_uuid.assert_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id2)
+    def test_manage_volume_with_uuid_success(self, mock_dev):
+        external_ref = {u'source-name': self.data.volume_id}
+        volume = deepcopy(self.data.test_volume)
+        array, device_id = self.common._manage_volume_with_uuid(
+            external_ref, volume)
+        self.assertEqual(array, self.data.array)
+        self.assertEqual(device_id, self.data.device_id2)
+
+    @mock.patch.object(rest.PowerMaxRest, 'find_volume_device_id',
+                       return_value=tpd.PowerMaxData.device_id2)
+    def test_manage_volume_with_prefix_and_uuid_success(self, mock_dev):
+        source_name = 'OS-' + self.data.volume_id
+        external_ref = {u'source-name': source_name}
+        volume = deepcopy(self.data.test_volume)
+        array, device_id = self.common._manage_volume_with_uuid(
+            external_ref, volume)
+        self.assertEqual(array, self.data.array)
+        self.assertEqual(device_id, self.data.device_id2)
+
+    def test_manage_volume_with_uuid_exception(self):
+        external_ref = {u'source-name': u'non_compliant_string'}
+        volume = deepcopy(self.data.test_volume)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common._manage_volume_with_uuid,
+            external_ref, volume)
+
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_list',
                        return_value=[tpd.PowerMaxData.device_id3])
     @mock.patch.object(
@@ -2092,6 +2152,25 @@ class PowerMaxCommonTest(test.TestCase):
         size = self.common.manage_existing_get_size(
             self.data.test_volume, external_ref)
         self.assertEqual(2, size)
+
+    def test_manage_existing_get_size_uuid(self):
+        external_ref = {u'source-name': self.data.volume_id}
+        size = self.common.manage_existing_get_size(
+            self.data.test_volume, external_ref)
+        self.assertEqual(2, size)
+
+    def test_manage_existing_get_size_prefix_and_uuid(self):
+        source_name = 'volume-' + self.data.volume_id
+        external_ref = {u'source-name': source_name}
+        size = self.common.manage_existing_get_size(
+            self.data.test_volume, external_ref)
+        self.assertEqual(2, size)
+
+    def test_manage_existing_get_size_invalid_input(self):
+        external_ref = {u'source-name': u'invalid_input'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.common.manage_existing_get_size,
+                          self.data.test_volume, external_ref)
 
     def test_manage_existing_get_size_exception(self):
         external_ref = {u'source-name': u'00001'}
@@ -3255,6 +3334,56 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snaps',
+                       return_value=[{'snap_name': 'snap_name',
+                                      'snap_id': tpd.PowerMaxData.snap_id}])
+    def test_get_snap_id_with_uuid_success(self, mock_get_snaps):
+        snap_uuid = '_snapshot-' + fake.SNAPSHOT_ID
+        snap_id, snap_name = self.common._get_snap_id_with_uuid(
+            self.data.array, self.data.device_id, snap_uuid)
+        self.assertEqual(self.data.snap_id, snap_id)
+        self.assertEqual('253b28496ec7aab', snap_name)
+        snap_uuid = fake.SNAPSHOT_ID
+        snap_id, snap_name = self.common._get_snap_id_with_uuid(
+            self.data.array, self.data.device_id, snap_uuid)
+        self.assertEqual(self.data.snap_id, snap_id)
+        self.assertEqual('253b28496ec7aab', snap_name)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_snapshot_metadata',
+        return_value={'snap-meta-key-1': 'snap-meta-value-1',
+                      'snap-meta-key-2': 'snap-meta-value-2'})
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volume_snaps',
+        return_value=[{'snap_name': tpd.PowerMaxData.test_snapshot_snap_name,
+                       'snap_id': tpd.PowerMaxData.snap_id}])
+    def test_manage_existing_snapshot_no_fall_through(
+            self, mock_get_snaps, mock_meta):
+        external_ref = {u'source-name': u'test_snap'}
+        snapshot = deepcopy(self.data.test_snapshot)
+        with mock.patch.object(
+                self.common, '_get_snap_id_with_uuid',
+                return_value=(
+                    self.data.snap_id,
+                    self.data.test_snapshot_snap_name)) as mock_uuid:
+            self.common.manage_existing_snapshot(snapshot, external_ref)
+            mock_uuid.assert_not_called()
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'get_snapshot_metadata',
+        return_value={'snap-meta-key-1': 'snap-meta-value-1',
+                      'snap-meta-key-2': 'snap-meta-value-2'})
+    def test_manage_existing_snapshot_fall_through(self, mock_meta):
+        external_ref = {u'source-name': fake.SNAPSHOT_ID}
+        snapshot = deepcopy(self.data.test_snapshot)
+        with mock.patch.object(
+                self.common, '_get_snap_id_with_uuid',
+                return_value=(
+                    self.data.snap_id,
+                    self.data.test_snapshot_snap_name)) as mock_uuid:
+            self.common.manage_existing_snapshot(snapshot, external_ref)
+            mock_uuid.assert_called()
 
     @mock.patch.object(rest.PowerMaxRest, 'modify_volume_snap')
     def test_unmanage_snapshot_success(self, mock_mod, ):
