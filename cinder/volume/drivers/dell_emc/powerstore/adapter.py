@@ -21,11 +21,11 @@ from oslo_utils import strutils
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder.objects.snapshot import Snapshot
 from cinder.volume.drivers.dell_emc.powerstore import client
-from cinder.volume.drivers.dell_emc.powerstore import options
 from cinder.volume.drivers.dell_emc.powerstore import utils
-from cinder.volume import volume_utils
+from cinder.volume import manager
 
 
 LOG = logging.getLogger(__name__)
@@ -35,15 +35,19 @@ CHAP_MODE_SINGLE = "Single"
 
 
 class CommonAdapter(object):
-    def __init__(self, active_backend_id, configuration):
-        self.active_backend_id = active_backend_id
-        self.appliances = None
-        self.appliances_to_ids_map = {}
-        self.client = None
-        self.configuration = configuration
+    def __init__(self,
+                 backend_id,
+                 backend_name,
+                 ports,
+                 **client_config):
+        if isinstance(ports, str):
+            ports = ports.split(",")
+        self.allowed_ports = [port.strip().lower() for port in ports]
+        self.backend_id = backend_id
+        self.backend_name = backend_name
+        self.client = client.PowerStoreClient(**client_config)
         self.storage_protocol = None
-        self.allowed_ports = None
-        self.use_chap_auth = None
+        self.use_chap_auth = False
 
     @staticmethod
     def initiators(connector):
@@ -62,79 +66,71 @@ class CommonAdapter(object):
             return True
         return port.lower() in self.allowed_ports
 
-    def _get_connection_properties(self, appliance_id, volume_lun):
+    def _get_connection_properties(self, volume_lun):
         raise NotImplementedError
-
-    def do_setup(self):
-        self.appliances = (
-            self.configuration.safe_get(options.POWERSTORE_APPLIANCES)
-        )
-        self.allowed_ports = [
-            port.strip().lower() for port in
-            self.configuration.safe_get(options.POWERSTORE_PORTS)
-        ]
-        self.client = client.PowerStoreClient(configuration=self.configuration)
-        self.client.do_setup()
 
     def check_for_setup_error(self):
         self.client.check_for_setup_error()
-        if not self.appliances:
-            msg = _("PowerStore appliances must be set.")
-            raise exception.VolumeBackendAPIException(data=msg)
-        self.appliances_to_ids_map = {}
-        for appliance_name in self.appliances:
-            self.appliances_to_ids_map[appliance_name] = (
-                self.client.get_appliance_id_by_name(appliance_name)
-            )
-        self.use_chap_auth = False
         if self.storage_protocol == PROTOCOL_ISCSI:
             chap_config = self.client.get_chap_config()
             if chap_config.get("mode") == CHAP_MODE_SINGLE:
                 self.use_chap_auth = True
-        LOG.debug("Successfully initialized PowerStore %(protocol)s adapter. "
-                  "PowerStore appliances: %(appliances)s. "
+        LOG.debug("Successfully initialized PowerStore %(protocol)s adapter "
+                  "for %(backend_id)s %(backend_name)s backend. "
                   "Allowed ports: %(allowed_ports)s. "
                   "Use CHAP authentication: %(use_chap_auth)s.",
                   {
                       "protocol": self.storage_protocol,
-                      "appliances": self.appliances,
+                      "backend_id": self.backend_id,
+                      "backend_name": self.backend_name,
                       "allowed_ports": self.allowed_ports,
                       "use_chap_auth": self.use_chap_auth,
                   })
 
     def create_volume(self, volume):
-        appliance_name = volume_utils.extract_host(volume.host, "pool")
-        appliance_id = self.appliances_to_ids_map[appliance_name]
+        if volume.is_replicated():
+            pp_name = utils.get_protection_policy_from_volume(volume)
+            pp_id = self.client.get_protection_policy_id_by_name(pp_name)
+            replication_status = fields.ReplicationStatus.ENABLED
+        else:
+            pp_name = None
+            pp_id = None
+            replication_status = fields.ReplicationStatus.DISABLED
         LOG.debug("Create PowerStore volume %(volume_name)s of size "
-                  "%(volume_size)s GiB with id %(volume_id)s on appliance "
-                  "%(appliance_name)s.",
+                  "%(volume_size)s GiB with id %(volume_id)s. "
+                  "Protection policy: %(pp_name)s.",
                   {
                       "volume_name": volume.name,
                       "volume_size": volume.size,
                       "volume_id": volume.id,
-                      "appliance_name": appliance_name,
+                      "pp_name": pp_name,
                   })
         size_in_bytes = utils.gib_to_bytes(volume.size)
-        provider_id = self.client.create_volume(appliance_id,
-                                                volume.name,
-                                                size_in_bytes)
+        provider_id = self.client.create_volume(volume.name,
+                                                size_in_bytes,
+                                                pp_id)
         LOG.debug("Successfully created PowerStore volume %(volume_name)s of "
                   "size %(volume_size)s GiB with id %(volume_id)s on "
-                  "appliance %(appliance_name)s. "
+                  "Protection policy: %(pp_name)s."
                   "PowerStore volume id: %(volume_provider_id)s.",
                   {
                       "volume_name": volume.name,
                       "volume_size": volume.size,
                       "volume_id": volume.id,
-                      "appliance_name": appliance_name,
+                      "pp_name": pp_name,
                       "volume_provider_id": provider_id,
                   })
         return {
             "provider_id": provider_id,
+            "replication_status": replication_status,
         }
 
     def delete_volume(self, volume):
-        if not volume.provider_id:
+        try:
+            provider_id = self._get_volume_provider_id(volume)
+        except exception.VolumeBackendAPIException:
+            provider_id = None
+        if not provider_id:
             LOG.warning("Volume %(volume_name)s with id %(volume_id)s "
                         "does not have provider_id thus does not "
                         "map to PowerStore volume.",
@@ -149,20 +145,21 @@ class CommonAdapter(object):
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                   })
         self._detach_volume_from_hosts(volume)
-        self.client.delete_volume_or_snapshot(volume.provider_id)
+        self.client.delete_volume_or_snapshot(provider_id)
         LOG.debug("Successfully deleted PowerStore volume %(volume_name)s "
                   "with id %(volume_id)s. PowerStore volume id: "
                   "%(volume_provider_id)s.",
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                   })
 
     def extend_volume(self, volume, new_size):
+        provider_id = self._get_volume_provider_id(volume)
         LOG.debug("Extend PowerStore volume %(volume_name)s of size "
                   "%(volume_size)s GiB with id %(volume_id)s to "
                   "%(volume_new_size)s GiB. "
@@ -172,10 +169,10 @@ class CommonAdapter(object):
                       "volume_size": volume.size,
                       "volume_id": volume.id,
                       "volume_new_size": new_size,
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                   })
         size_in_bytes = utils.gib_to_bytes(new_size)
-        self.client.extend_volume(volume.provider_id, size_in_bytes)
+        self.client.extend_volume(provider_id, size_in_bytes)
         LOG.debug("Successfully extended PowerStore volume %(volume_name)s "
                   "of size %(volume_size)s GiB with id "
                   "%(volume_id)s to %(volume_new_size)s GiB. "
@@ -185,10 +182,11 @@ class CommonAdapter(object):
                       "volume_size": volume.size,
                       "volume_id": volume.id,
                       "volume_new_size": new_size,
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                   })
 
     def create_snapshot(self, snapshot):
+        volume_provider_id = self._get_volume_provider_id(snapshot.volume)
         LOG.debug("Create PowerStore snapshot %(snapshot_name)s with id "
                   "%(snapshot_id)s of volume %(volume_name)s with id "
                   "%(volume_id)s. PowerStore volume id: "
@@ -198,124 +196,57 @@ class CommonAdapter(object):
                       "snapshot_id": snapshot.id,
                       "volume_name": snapshot.volume.name,
                       "volume_id": snapshot.volume.id,
-                      "volume_provider_id": snapshot.volume.provider_id,
+                      "volume_provider_id": volume_provider_id,
                   })
-        snapshot_provider_id = self.client.create_snapshot(
-            snapshot.volume.provider_id,
-            snapshot.name)
+        self.client.create_snapshot(volume_provider_id, snapshot.name)
         LOG.debug("Successfully created PowerStore snapshot %(snapshot_name)s "
                   "with id %(snapshot_id)s of volume %(volume_name)s with "
-                  "id %(volume_id)s. PowerStore snapshot id: "
-                  "%(snapshot_provider_id)s, volume id: "
+                  "id %(volume_id)s. PowerStore volume id: "
                   "%(volume_provider_id)s.",
                   {
                       "snapshot_name": snapshot.name,
                       "snapshot_id": snapshot.id,
                       "volume_name": snapshot.volume.name,
                       "volume_id": snapshot.volume.id,
-                      "snapshot_provider_id": snapshot_provider_id,
-                      "volume_provider_id": snapshot.volume.provider_id,
+                      "volume_provider_id": volume_provider_id,
                   })
-        return {
-            "provider_id": snapshot_provider_id,
-        }
 
     def delete_snapshot(self, snapshot):
+        try:
+            volume_provider_id = self._get_volume_provider_id(snapshot.volume)
+        except exception.VolumeBackendAPIException:
+            return
         LOG.debug("Delete PowerStore snapshot %(snapshot_name)s with id "
                   "%(snapshot_id)s of volume %(volume_name)s with "
-                  "id %(volume_id)s. PowerStore snapshot id: "
-                  "%(snapshot_provider_id)s, volume id: "
+                  "id %(volume_id)s. PowerStore volume id: "
                   "%(volume_provider_id)s.",
                   {
                       "snapshot_name": snapshot.name,
                       "snapshot_id": snapshot.id,
                       "volume_name": snapshot.volume.name,
                       "volume_id": snapshot.volume.id,
-                      "snapshot_provider_id": snapshot.provider_id,
-                      "volume_provider_id": snapshot.volume.provider_id,
+                      "volume_provider_id": volume_provider_id,
                   })
-        self.client.delete_volume_or_snapshot(snapshot.provider_id,
+        try:
+            snapshot_provider_id = self.client.get_snapshot_id_by_name(
+                volume_provider_id,
+                snapshot.name
+            )
+        except exception.VolumeBackendAPIException:
+            return
+        self.client.delete_volume_or_snapshot(snapshot_provider_id,
                                               entity="snapshot")
         LOG.debug("Successfully deleted PowerStore snapshot %(snapshot_name)s "
                   "with id %(snapshot_id)s of volume %(volume_name)s with "
-                  "id %(volume_id)s. PowerStore snapshot id: "
-                  "%(snapshot_provider_id)s, volume id: "
+                  "id %(volume_id)s. PowerStore volume id: "
                   "%(volume_provider_id)s.",
                   {
                       "snapshot_name": snapshot.name,
                       "snapshot_id": snapshot.id,
                       "volume_name": snapshot.volume.name,
                       "volume_id": snapshot.volume.id,
-                      "snapshot_provider_id": snapshot.provider_id,
-                      "volume_provider_id": snapshot.volume.provider_id,
-                  })
-
-    def create_cloned_volume(self, volume, src_vref):
-        LOG.debug("Clone PowerStore volume %(source_volume_name)s with id "
-                  "%(source_volume_id)s to volume %(cloned_volume_name)s of "
-                  "size %(cloned_volume_size)s GiB with id "
-                  "%(cloned_volume_id)s. PowerStore source volume id: "
-                  "%(source_volume_provider_id)s.",
-                  {
-                      "source_volume_name": src_vref.name,
-                      "source_volume_id": src_vref.id,
-                      "cloned_volume_name": volume.name,
-                      "cloned_volume_size": volume.size,
-                      "cloned_volume_id": volume.id,
-                      "source_volume_provider_id": src_vref.provider_id,
-                  })
-        cloned_provider_id = self._create_volume_from_source(volume, src_vref)
-        LOG.debug("Successfully cloned PowerStore volume "
-                  "%(source_volume_name)s with id %(source_volume_id)s to "
-                  "volume %(cloned_volume_name)s of size "
-                  "%(cloned_volume_size)s GiB with id %(cloned_volume_id)s. "
-                  "PowerStore source volume id: "
-                  "%(source_volume_provider_id)s, "
-                  "cloned volume id: %(cloned_volume_provider_id)s.",
-                  {
-                      "source_volume_name": src_vref.name,
-                      "source_volume_id": src_vref.id,
-                      "cloned_volume_name": volume.name,
-                      "cloned_volume_size": volume.size,
-                      "cloned_volume_id": volume.id,
-                      "source_volume_provider_id": src_vref.provider_id,
-                      "cloned_volume_provider_id": cloned_provider_id,
-                  })
-        return {
-            "provider_id": cloned_provider_id,
-        }
-
-    def create_volume_from_snapshot(self, volume, snapshot):
-        LOG.debug("Create PowerStore volume %(volume_name)s of size "
-                  "%(volume_size)s GiB with id %(volume_id)s from snapshot "
-                  "%(snapshot_name)s with id %(snapshot_id)s. PowerStore "
-                  "snapshot id: %(snapshot_provider_id)s.",
-                  {
-                      "volume_name": volume.name,
-                      "volume_id": volume.id,
-                      "volume_size": volume.size,
-                      "snapshot_name": snapshot.name,
-                      "snapshot_id": snapshot.id,
-                      "snapshot_provider_id": snapshot.provider_id,
-                  })
-        volume_provider_id = self._create_volume_from_source(volume, snapshot)
-        LOG.debug("Successfully created PowerStore volume %(volume_name)s "
-                  "of size %(volume_size)s GiB with id %(volume_id)s from "
-                  "snapshot %(snapshot_name)s with id %(snapshot_id)s. "
-                  "PowerStore volume id: %(volume_provider_id)s, "
-                  "snapshot id: %(snapshot_provider_id)s.",
-                  {
-                      "volume_name": volume.name,
-                      "volume_id": volume.id,
-                      "volume_size": volume.size,
-                      "snapshot_name": snapshot.name,
-                      "snapshot_id": snapshot.id,
                       "volume_provider_id": volume_provider_id,
-                      "snapshot_provider_id": snapshot.provider_id,
                   })
-        return {
-            "provider_id": volume_provider_id,
-        }
 
     def initialize_connection(self, volume, connector, **kwargs):
         connection_properties = self._connect_volume(volume, connector)
@@ -336,76 +267,96 @@ class CommonAdapter(object):
 
     def update_volume_stats(self):
         stats = {
-            "volume_backend_name": (
-                self.configuration.safe_get("volume_backend_name") or
-                "powerstore"
-            ),
+            "volume_backend_name": self.backend_name,
             "storage_protocol": self.storage_protocol,
             "thick_provisioning_support": False,
             "thin_provisioning_support": True,
             "compression_support": True,
             "multiattach": True,
-            "pools": [],
         }
-        backend_total_capacity = 0
-        backend_free_capacity = 0
-        for appliance_name in self.appliances:
-            appliance_stats = self.client.get_appliance_metrics(
-                self.appliances_to_ids_map[appliance_name]
-            )
-            appliance_total_capacity = utils.bytes_to_gib(
-                appliance_stats["physical_total"]
-            )
-            appliance_free_capacity = (
-                appliance_total_capacity -
-                utils.bytes_to_gib(appliance_stats["physical_used"])
-            )
-            pool = {
-                "pool_name": appliance_name,
-                "total_capacity_gb": appliance_total_capacity,
-                "free_capacity_gb": appliance_free_capacity,
-                "thick_provisioning_support": False,
-                "thin_provisioning_support": True,
-                "compression_support": True,
-                "multiattach": True,
-            }
-            backend_total_capacity += appliance_total_capacity
-            backend_free_capacity += appliance_free_capacity
-            stats["pools"].append(pool)
+        backend_stats = self.client.get_metrics()
+        backend_total_capacity = utils.bytes_to_gib(
+            backend_stats["physical_total"]
+        )
+        backend_free_capacity = (
+            backend_total_capacity -
+            utils.bytes_to_gib(backend_stats["physical_used"])
+        )
         stats["total_capacity_gb"] = backend_total_capacity
         stats["free_capacity_gb"] = backend_free_capacity
         LOG.debug("Free capacity for backend '%(backend)s': "
                   "%(free)s GiB, total capacity: %(total)s GiB.",
                   {
-                      "backend": stats["volume_backend_name"],
+                      "backend": self.backend_name,
                       "free": backend_free_capacity,
                       "total": backend_total_capacity,
                   })
         return stats
 
-    def _create_volume_from_source(self, volume, source):
-        """Create PowerStore volume from source (snapshot or another volume).
-
-        :param volume: OpenStack volume object
-        :param source: OpenStack source snapshot or volume
-        :return: newly created PowerStore volume id
-        """
-
+    def create_volume_from_source(self, volume, source):
         if isinstance(source, Snapshot):
             entity = "snapshot"
             source_size = source.volume_size
+            source_volume_provider_id = self._get_volume_provider_id(
+                source.volume
+            )
+            source_provider_id = self.client.get_snapshot_id_by_name(
+                source_volume_provider_id,
+                source.name
+            )
         else:
             entity = "volume"
             source_size = source.size
+            source_provider_id = self._get_volume_provider_id(source)
+        if volume.is_replicated():
+            pp_name = utils.get_protection_policy_from_volume(volume)
+            pp_id = self.client.get_protection_policy_id_by_name(pp_name)
+            replication_status = fields.ReplicationStatus.ENABLED
+        else:
+            pp_name = None
+            pp_id = None
+            replication_status = fields.ReplicationStatus.DISABLED
+        LOG.debug("Create PowerStore volume %(volume_name)s of size "
+                  "%(volume_size)s GiB with id %(volume_id)s from %(entity)s "
+                  "%(entity_name)s with id %(entity_id)s. "
+                  "Protection policy: %(pp_name)s.",
+                  {
+                      "volume_name": volume.name,
+                      "volume_id": volume.id,
+                      "volume_size": volume.size,
+                      "entity": entity,
+                      "entity_name": source.name,
+                      "entity_id": source.id,
+                      "pp_name": pp_name,
+                  })
         volume_provider_id = self.client.clone_volume_or_snapshot(
             volume.name,
-            source.provider_id,
+            source_provider_id,
+            pp_id,
             entity
         )
         if volume.size > source_size:
             size_in_bytes = utils.gib_to_bytes(volume.size)
             self.client.extend_volume(volume_provider_id, size_in_bytes)
-        return volume_provider_id
+        LOG.debug("Successfully created PowerStore volume %(volume_name)s "
+                  "of size %(volume_size)s GiB with id %(volume_id)s from "
+                  "%(entity)s %(entity_name)s with id %(entity_id)s. "
+                  "Protection policy %(pp_name)s. "
+                  "PowerStore volume id: %(volume_provider_id)s.",
+                  {
+                      "volume_name": volume.name,
+                      "volume_id": volume.id,
+                      "volume_size": volume.size,
+                      "entity": entity,
+                      "entity_name": source.name,
+                      "entity_id": source.id,
+                      "pp_name": pp_name,
+                      "volume_provider_id": volume_provider_id,
+                  })
+        return {
+            "provider_id": volume_provider_id,
+            "replication_status": replication_status,
+        }
 
     def _filter_hosts_by_initiators(self, initiators):
         """Filter hosts by given list of initiators.
@@ -590,6 +541,7 @@ class CommonAdapter(object):
         :return: attached volume logical number
         """
 
+        provider_id = self._get_volume_provider_id(volume)
         LOG.debug("Attach PowerStore volume %(volume_name)s with id "
                   "%(volume_id)s to host %(host_name)s. PowerStore volume id: "
                   "%(volume_provider_id)s, host id: %(host_provider_id)s.",
@@ -597,13 +549,11 @@ class CommonAdapter(object):
                       "volume_name": volume.name,
                       "volume_id": volume.id,
                       "host_name": host["name"],
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                       "host_provider_id": host["id"],
                   })
-        self.client.attach_volume_to_host(host["id"], volume.provider_id)
-        volume_lun = self.client.get_volume_lun(
-            host["id"], volume.provider_id
-        )
+        self.client.attach_volume_to_host(host["id"], provider_id)
+        volume_lun = self.client.get_volume_lun(host["id"], provider_id)
         LOG.debug("Successfully attached PowerStore volume %(volume_name)s "
                   "with id %(volume_id)s to host %(host_name)s. "
                   "PowerStore volume id: %(volume_provider_id)s, "
@@ -613,7 +563,7 @@ class CommonAdapter(object):
                       "volume_name": volume.name,
                       "volume_id": volume.id,
                       "host_name": host["name"],
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                       "host_provider_id": host["id"],
                       "volume_lun": volume_lun,
                   })
@@ -638,14 +588,11 @@ class CommonAdapter(object):
         :return: volume connection properties
         """
 
-        appliance_name = volume_utils.extract_host(volume.host, "pool")
-        appliance_id = self.appliances_to_ids_map[appliance_name]
         chap_credentials, volume_lun = self._create_host_and_attach(
             connector,
             volume
         )
-        connection_properties = self._get_connection_properties(appliance_id,
-                                                                volume_lun)
+        connection_properties = self._get_connection_properties(volume_lun)
         if self.use_chap_auth:
             connection_properties["data"]["auth_method"] = "CHAP"
             connection_properties["data"]["auth_username"] = (
@@ -666,11 +613,10 @@ class CommonAdapter(object):
         :return: None
         """
 
+        provider_id = self._get_volume_provider_id(volume)
         if hosts_to_detach is None:
             # Force detach. Get all mapped hosts and detach.
-            hosts_to_detach = self.client.get_volume_mapped_hosts(
-                volume.provider_id
-            )
+            hosts_to_detach = self.client.get_volume_mapped_hosts(provider_id)
         if not hosts_to_detach:
             # Volume is not attached to any host.
             return
@@ -680,11 +626,11 @@ class CommonAdapter(object):
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                       "hosts_provider_ids": hosts_to_detach,
                   })
         for host_id in hosts_to_detach:
-            self.client.detach_volume_from_host(host_id, volume.provider_id)
+            self.client.detach_volume_from_host(host_id, provider_id)
         LOG.debug("Successfully detached PowerStore volume "
                   "%(volume_name)s with id %(volume_id)s from hosts. "
                   "PowerStore volume id: %(volume_provider_id)s, "
@@ -692,7 +638,7 @@ class CommonAdapter(object):
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
-                      "volume_provider_id": volume.provider_id,
+                      "volume_provider_id": provider_id,
                       "hosts_provider_ids": hosts_to_detach,
                   })
 
@@ -721,40 +667,130 @@ class CommonAdapter(object):
                 self._detach_volume_from_hosts(volume, [host["id"]])
 
     def revert_to_snapshot(self, volume, snapshot):
+        volume_provider_id = self._get_volume_provider_id(volume)
+        snapshot_volume_provider_id = self._get_volume_provider_id(
+            snapshot.volume
+        )
         LOG.debug("Restore PowerStore volume %(volume_name)s with id "
                   "%(volume_id)s from snapshot %(snapshot_name)s with id "
                   "%(snapshot_id)s. PowerStore volume id: "
-                  "%(volume_provider_id)s, snapshot id: "
-                  "%(snapshot_provider_id)s.",
+                  "%(volume_provider_id)s.",
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
                       "snapshot_name": snapshot.name,
                       "snapshot_id": snapshot.id,
-                      "volume_provider_id": volume.provider_id,
-                      "snapshot_provider_id": snapshot.provider_id,
+                      "volume_provider_id": volume_provider_id,
                   })
-        self.client.restore_from_snapshot(volume.provider_id,
-                                          snapshot.provider_id)
+        snapshot_provider_id = self.client.get_snapshot_id_by_name(
+            snapshot_volume_provider_id,
+            snapshot.name
+        )
+        self.client.restore_from_snapshot(volume_provider_id,
+                                          snapshot_provider_id)
         LOG.debug("Successfully restored PowerStore volume %(volume_name)s "
                   "with id %(volume_id)s from snapshot %(snapshot_name)s "
                   "with id %(snapshot_id)s. PowerStore volume id: "
-                  "%(volume_provider_id)s, snapshot id: "
-                  "%(snapshot_provider_id)s.",
+                  "%(volume_provider_id)s.",
                   {
                       "volume_name": volume.name,
                       "volume_id": volume.id,
                       "snapshot_name": snapshot.name,
                       "snapshot_id": snapshot.id,
-                      "volume_provider_id": volume.provider_id,
-                      "snapshot_provider_id": snapshot.provider_id,
+                      "volume_provider_id": volume_provider_id,
                   })
+
+    def _get_volume_provider_id(self, volume):
+        """Get provider_id for volume.
+
+        If the secondary backend is used after failover operation try to get
+        volume provider_id from PowerStore API.
+
+        :param volume: OpenStack volume object
+        :return: volume provider_id
+        """
+
+        if (
+                self.backend_id == manager.VolumeManager.FAILBACK_SENTINEL or
+                not volume.is_replicated()
+        ):
+            return volume.provider_id
+        else:
+            return self.client.get_volume_id_by_name(volume.name)
+
+    def teardown_volume_replication(self, volume):
+        """Teardown replication for volume so it can be deleted.
+
+        :param volume: OpenStack volume object
+        :return: None
+        """
+
+        LOG.debug("Teardown replication for volume %(volume_name)s "
+                  "with id %(volume_id)s.",
+                  {
+                      "volume_name": volume.name,
+                      "volume_id": volume.id,
+                  })
+        try:
+            provider_id = self._get_volume_provider_id(volume)
+            rep_session_id = self.client.get_volume_replication_session_id(
+                provider_id
+            )
+        except exception.VolumeBackendAPIException:
+            LOG.warning("Replication session for volume %(volume_name)s with "
+                        "id %(volume_id)s is not found. Replication for "
+                        "volume was not configured or was modified from "
+                        "storage side.",
+                        {
+                            "volume_name": volume.name,
+                            "volume_id": volume.id,
+                        })
+            return
+        self.client.unassign_volume_protection_policy(provider_id)
+        self.client.wait_for_replication_session_deletion(rep_session_id)
+
+    def failover_host(self, volumes, groups, is_failback):
+        volumes_updates = []
+        groups_updates = []
+        for volume in volumes:
+            updates = self.failover_volume(volume, is_failback)
+            if updates:
+                volumes_updates.append(updates)
+        return volumes_updates, groups_updates
+
+    def failover_volume(self, volume, is_failback):
+        error_status = (fields.ReplicationStatus.ERROR if is_failback else
+                        fields.ReplicationStatus.FAILOVER_ERROR)
+        try:
+            provider_id = self._get_volume_provider_id(volume)
+            rep_session_id = self.client.get_volume_replication_session_id(
+                provider_id
+            )
+            failover_job_id = self.client.failover_volume_replication_session(
+                rep_session_id,
+                is_failback
+            )
+            failover_success = self.client.wait_for_failover_completion(
+                failover_job_id
+            )
+            if is_failback:
+                self.client.reprotect_volume_replication_session(
+                    rep_session_id
+                )
+        except exception.VolumeBackendAPIException:
+            failover_success = False
+        if not failover_success:
+            return {
+                "volume_id": volume.id,
+                "updates": {
+                    "replication_status": error_status,
+                },
+            }
 
 
 class FibreChannelAdapter(CommonAdapter):
-    def __init__(self, active_backend_id, configuration):
-        super(FibreChannelAdapter, self).__init__(active_backend_id,
-                                                  configuration)
+    def __init__(self, **kwargs):
+        super(FibreChannelAdapter, self).__init__(**kwargs)
         self.storage_protocol = PROTOCOL_FC
         self.driver_volume_type = "fibre_channel"
 
@@ -762,15 +798,14 @@ class FibreChannelAdapter(CommonAdapter):
     def initiators(connector):
         return utils.extract_fc_wwpns(connector)
 
-    def _get_fc_targets(self, appliance_id):
-        """Get available FC WWNs for PowerStore appliance.
+    def _get_fc_targets(self):
+        """Get available FC WWNs.
 
-        :param appliance_id: PowerStore appliance id
         :return: list of FC WWNs
         """
 
         wwns = []
-        fc_ports = self.client.get_fc_port(appliance_id)
+        fc_ports = self.client.get_fc_port()
         for port in fc_ports:
             if self._port_is_allowed(port["wwn"]):
                 wwns.append(utils.fc_wwn_to_string(port["wwn"]))
@@ -780,15 +815,14 @@ class FibreChannelAdapter(CommonAdapter):
             raise exception.VolumeBackendAPIException(data=msg)
         return wwns
 
-    def _get_connection_properties(self, appliance_id, volume_lun):
+    def _get_connection_properties(self, volume_lun):
         """Fill connection properties dict with data to attach volume.
 
-        :param appliance_id: PowerStore appliance id
         :param volume_lun: attached volume logical unit number
         :return: connection properties
         """
 
-        target_wwns = self._get_fc_targets(appliance_id)
+        target_wwns = self._get_fc_targets()
         return {
             "driver_volume_type": self.driver_volume_type,
             "data": {
@@ -800,8 +834,8 @@ class FibreChannelAdapter(CommonAdapter):
 
 
 class iSCSIAdapter(CommonAdapter):
-    def __init__(self, active_backend_id, configuration):
-        super(iSCSIAdapter, self).__init__(active_backend_id, configuration)
+    def __init__(self, **kwargs):
+        super(iSCSIAdapter, self).__init__(**kwargs)
         self.storage_protocol = PROTOCOL_ISCSI
         self.driver_volume_type = "iscsi"
 
@@ -809,16 +843,15 @@ class iSCSIAdapter(CommonAdapter):
     def initiators(connector):
         return [connector["initiator"]]
 
-    def _get_iscsi_targets(self, appliance_id):
-        """Get available iSCSI portals and IQNs for PowerStore appliance.
+    def _get_iscsi_targets(self):
+        """Get available iSCSI portals and IQNs.
 
-        :param appliance_id: PowerStore appliance id
         :return: iSCSI portals and IQNs
         """
 
         iqns = []
         portals = []
-        ip_pool_addresses = self.client.get_ip_pool_address(appliance_id)
+        ip_pool_addresses = self.client.get_ip_pool_address()
         for address in ip_pool_addresses:
             if self._port_is_allowed(address["address"]):
                 portals.append(
@@ -831,15 +864,14 @@ class iSCSIAdapter(CommonAdapter):
             raise exception.VolumeBackendAPIException(data=msg)
         return iqns, portals
 
-    def _get_connection_properties(self, appliance_id, volume_lun):
+    def _get_connection_properties(self, volume_lun):
         """Fill connection properties dict with data to attach volume.
 
-        :param appliance_id: PowerStore appliance id
         :param volume_lun: attached volume logical unit number
         :return: connection properties
         """
 
-        iqns, portals = self._get_iscsi_targets(appliance_id)
+        iqns, portals = self._get_iscsi_targets()
         return {
             "driver_volume_type": self.driver_volume_type,
             "data": {

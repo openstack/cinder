@@ -24,7 +24,12 @@ POWERSTORE_OPTS = [
     cfg.ListOpt(POWERSTORE_APPLIANCES,
                 default=[],
                 help="Appliances names. Comma separated list of PowerStore "
-                     "appliances names used to provision volumes. Required."),
+                     "appliances names used to provision volumes.",
+                deprecated_for_removal=True,
+                deprecated_reason="Is not used anymore. "
+                                  "PowerStore Load Balancer is used to "
+                                  "provision volumes instead.",
+                deprecated_since="Wallaby"),
     cfg.ListOpt(POWERSTORE_PORTS,
                 default=[],
                 help="Allowed ports. Comma separated list of PowerStore "

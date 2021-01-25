@@ -24,29 +24,29 @@ from cinder.tests.unit.volume.drivers.dell_emc import powerstore
 class TestVolumeCreateFromSource(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_id_by_name")
-    def setUp(self, mock_appliance, mock_chap):
+    def setUp(self, mock_chap):
         super(TestVolumeCreateFromSource, self).setUp()
-        mock_appliance.return_value = "A1"
         self.driver.check_for_setup_error()
         self.volume = fake_volume.fake_volume_obj(
-            {},
-            host="host@backend#test-appliance",
+            self.context,
+            host="host@backend",
             provider_id="fake_id",
             size=8
         )
         self.source_volume = fake_volume.fake_volume_obj(
-            {},
-            host="host@backend#test-appliance",
+            self.context,
+            host="host@backend",
             provider_id="fake_id_1",
             size=8
         )
         self.source_snapshot = fake_snapshot.fake_snapshot_obj(
-            {},
-            provider_id="fake_id_2",
+            self.context,
+            volume=self.source_volume,
             volume_size=8
         )
+        self.mock_object(self.driver.adapter.client,
+                         "get_snapshot_id_by_name",
+                         return_value="fake_id_1")
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.clone_volume_or_snapshot")
@@ -91,7 +91,7 @@ class TestVolumeCreateFromSource(powerstore.TestPowerStoreDriver):
         mock_create_request.return_value = powerstore.MockResponse(rc=400)
         error = self.assertRaises(
             exception.VolumeBackendAPIException,
-            self.driver.adapter._create_volume_from_source,
+            self.driver.adapter.create_volume_from_source,
             self.volume,
             self.source_volume
         )
@@ -109,7 +109,7 @@ class TestVolumeCreateFromSource(powerstore.TestPowerStoreDriver):
         self.volume.size = 16
         error = self.assertRaises(
             exception.VolumeBackendAPIException,
-            self.driver.adapter._create_volume_from_source,
+            self.driver.adapter.create_volume_from_source,
             self.volume,
             self.source_volume
         )

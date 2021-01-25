@@ -26,17 +26,14 @@ from cinder.volume.drivers.dell_emc.powerstore import utils
 class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_id_by_name")
-    def setUp(self, mock_appliance, mock_chap):
+    def setUp(self, mock_chap):
         super(TestVolumeAttachDetach, self).setUp()
-        mock_appliance.return_value = "A1"
         mock_chap.return_value = {"mode": "Single"}
         self.iscsi_driver.check_for_setup_error()
         self.fc_driver.check_for_setup_error()
         self.volume = fake_volume.fake_volume_obj(
-            {},
-            host="host@backend#test-appliance",
+            self.context,
+            host="host@backend",
             provider_id="fake_id",
             size=8
         )
@@ -124,12 +121,12 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
             self.assertNotIn("auth_password", connection_properties["data"])
 
     def test_get_fc_targets(self):
-        wwns = self.fc_driver.adapter._get_fc_targets("A1")
+        wwns = self.fc_driver.adapter._get_fc_targets()
         self.assertEqual(2, len(wwns))
 
     def test_get_fc_targets_filtered(self):
         self.fc_driver.adapter.allowed_ports = ["58:cc:f0:98:49:23:07:02"]
-        wwns = self.fc_driver.adapter._get_fc_targets("A1")
+        wwns = self.fc_driver.adapter._get_fc_targets()
         self.assertEqual(1, len(wwns))
         self.assertFalse(
             utils.fc_wwn_to_string("58:cc:f0:98:49:21:07:02") in wwns
@@ -138,19 +135,18 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
     def test_get_fc_targets_filtered_no_matched_ports(self):
         self.fc_driver.adapter.allowed_ports = ["fc_wwn_1", "fc_wwn_2"]
         error = self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.fc_driver.adapter._get_fc_targets,
-                                  "A1")
+                                  self.fc_driver.adapter._get_fc_targets)
         self.assertIn("There are no accessible Fibre Channel targets on the "
                       "system.", error.msg)
 
     def test_get_iscsi_targets(self):
-        iqns, portals = self.iscsi_driver.adapter._get_iscsi_targets("A1")
+        iqns, portals = self.iscsi_driver.adapter._get_iscsi_targets()
         self.assertTrue(len(iqns) == len(portals))
         self.assertEqual(2, len(portals))
 
     def test_get_iscsi_targets_filtered(self):
         self.iscsi_driver.adapter.allowed_ports = ["1.2.3.4"]
-        iqns, portals = self.iscsi_driver.adapter._get_iscsi_targets("A1")
+        iqns, portals = self.iscsi_driver.adapter._get_iscsi_targets()
         self.assertTrue(len(iqns) == len(portals))
         self.assertEqual(1, len(portals))
         self.assertFalse(
@@ -160,8 +156,7 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
     def test_get_iscsi_targets_filtered_no_matched_ports(self):
         self.iscsi_driver.adapter.allowed_ports = ["1.1.1.1", "2.2.2.2"]
         error = self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.iscsi_driver.adapter._get_iscsi_targets,
-                                  "A1")
+                                  self.iscsi_driver.adapter._get_iscsi_targets)
         self.assertIn("There are no accessible iSCSI targets on the system.",
                       error.msg)
 

@@ -18,6 +18,7 @@ Supported operations
 - Get volume statistics.
 - Attach a volume to multiple servers simultaneously (multiattach).
 - Revert a volume to a snapshot.
+- OpenStack replication v2.1 support.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -41,8 +42,6 @@ Add the following content into ``/etc/cinder/cinder.conf``:
   volume_driver = cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver
   # Backend name
   volume_backend_name = <Backend name>
-  # PowerStore appliances
-  powerstore_appliances = <Appliances names> # Ex. Appliance-1,Appliance-2
   # PowerStore allowed ports
   powerstore_ports = <Allowed ports> # Ex. 58:cc:f0:98:49:22:07:02,58:cc:f0:98:49:23:07:02
 
@@ -93,3 +92,72 @@ side.
 CHAP configuration is retrieved from the storage during driver initialization,
 no additional configuration is needed.
 Secrets are generated automatically.
+
+Replication support
+~~~~~~~~~~~~~~~~~~~
+
+Configure replication
+^^^^^^^^^^^^^^^^^^^^^
+
+#. Pair source and destination PowerStore systems.
+
+#. Create Protection policy and Replication rule with desired RPO.
+
+#. Enable replication in ``cinder.conf`` file.
+
+   To enable replication feature for storage backend set ``replication_device``
+   as below:
+
+   .. code-block:: ini
+
+     ...
+     replication_device = backend_id:powerstore_repl_1,
+                          san_ip: <Replication system San ip>,
+                          san_login: <Replication system San username>,
+                          san_password: <Replication system San password>
+
+   * Only one replication device is supported for storage backend.
+
+   * Replication device supports the same options as the main storage backend.
+
+#. Create volume type for volumes with replication enabled.
+
+   .. code-block:: console
+
+     $ openstack volume type create powerstore_replicated
+     $ openstack volume type set --property replication_enabled='<is> True' powerstore_replicated
+
+#. Set Protection policy name for volume type.
+
+   .. code-block:: console
+
+     $ openstack volume type set --property powerstore:protection_policy=<protection policy name> \
+         powerstore_replicated
+
+Failover host
+^^^^^^^^^^^^^
+
+In the event of a disaster, or where there is a required downtime the
+administrator can issue the failover host command:
+
+.. code-block:: console
+
+   $ cinder failover-host cinder_host@powerstore --backend_id powerstore_repl_1
+
+After issuing Cinder failover-host command Cinder will switch to configured
+replication device, however to get existing instances to use this target and
+new paths to volumes it is necessary to first shelve Nova instances and then
+unshelve them, this will effectively restart the Nova instance and
+re-establish data paths between Nova instances and the volumes.
+
+.. code-block:: console
+
+   $ nova shelve <server>
+   $ nova unshelve [--availability-zone <availability_zone>] <server>
+
+If the primary system becomes available, the administrator can initiate
+failback operation using ``--backend_id default``:
+
+.. code-block:: console
+
+   $ cinder failover-host cinder_host@powerstore --backend_id default

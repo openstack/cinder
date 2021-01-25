@@ -23,6 +23,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume.drivers.dell_emc.powerstore import driver
 from cinder.volume import volume_utils
 
 
@@ -151,3 +152,13 @@ def get_chap_credentials():
             CHAP_DEFAULT_SECRET_LENGTH
         )
     }
+
+
+def get_protection_policy_from_volume(volume):
+    """Get PowerStore Protection policy name from volume type.
+
+    :param volume: OpenStack Volume object
+    :return: Protection policy name
+    """
+
+    return volume.volume_type.extra_specs.get(driver.POWERSTORE_PP_KEY)
