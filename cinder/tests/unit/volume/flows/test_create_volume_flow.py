@@ -268,6 +268,33 @@ class CreateVolumeFlowTestCase(test.TestCase):
                               multiattach=None)
         self.assertEqual(bootable, result['volume_properties']['bootable'])
 
+    @mock.patch('cinder.db.volume_create')
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @ddt.unpack
+    def test_create_from_source_volid_encrypted(self,
+                                                volume_get_by_id,
+                                                volume_create):
+
+        volume_db = {'encryption_key_id': fakes.ENCRYPTION_KEY_ID}
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt, **volume_db)
+        volume_get_by_id.return_value = volume_obj
+        volume_create.return_value = {'id': fakes.VOLUME2_ID}
+        task = create_volume.EntryCreateTask()
+
+        result = task.execute(self.ctxt,
+                              optional_args=None,
+                              source_volid=volume_obj.id,
+                              snapshot_id=None,
+                              availability_zones=['nova'],
+                              size=1,
+                              encryption_key_id=volume_obj.encryption_key_id,
+                              description='123',
+                              name='123',
+                              multiattach=None)
+        self.assertEqual(
+            fakes.ENCRYPTION_KEY_ID,
+            result['volume_properties']['encryption_key_id'])
+
     @ddt.data(('enabled', {'replication_enabled': '<is> True'}),
               ('disabled', {'replication_enabled': '<is> False'}),
               ('disabled', {}))
@@ -1015,6 +1042,31 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     def setUp(self):
         super(CreateVolumeFlowManagerTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
+
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_cleanup_cg_in_volume')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.'
+                '_rekey_volume')
+    @mock.patch('cinder.objects.Volume.update')
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_create_from_source_volume_encrypted_update_volume(
+            self, volume_get_by_id, vol_update, rekey_vol, cleanup_cg):
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_volume_manager = mock.MagicMock()
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_volume_manager, fake_db, fake_driver)
+        volume_db = {'encryption_key_id': fakes.ENCRYPTION_KEY_ID}
+        volume_obj = fake_volume.fake_volume_obj(self.ctxt, **volume_db)
+        volume_get_by_id.return_value = volume_obj
+        source_volume_id = fakes.VOLUME2_ID
+
+        fake_manager._create_from_source_volume(
+            self.ctxt, volume_obj, source_volume_id)
+        # Check if volume object is updated.
+        self.assertTrue(vol_update.called)
 
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
