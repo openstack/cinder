@@ -25,11 +25,11 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder import utils
 import cinder.volume.drivers.datera.datera_api21 as api21
 import cinder.volume.drivers.datera.datera_api22 as api22
 import cinder.volume.drivers.datera.datera_common as datc
 from cinder.volume.drivers.san import san
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ CONF.import_opt('driver_use_ssl', 'cinder.volume.driver')
 CONF.register_opts(d_opts)
 
 
-@six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
 @interface.volumedriver
 class DateraDriver(san.SanISCSIDriver, api21.DateraApi, api22.DateraApi):
     """The OpenStack Datera iSCSI volume driver.
@@ -211,7 +211,7 @@ class DateraDriver(san.SanISCSIDriver, api21.DateraApi, api22.DateraApi):
         self.datera_debug = self.configuration.datera_debug
 
         if self.datera_debug:
-            utils.setup_tracing(['method'])
+            volume_utils.setup_tracing(['method'])
         self.tenant_id = self.configuration.datera_tenant_id
         if self.tenant_id is None:
             self.tenant_id = ''

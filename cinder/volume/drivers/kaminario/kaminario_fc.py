@@ -18,8 +18,8 @@ from oslo_log import log as logging
 from cinder import coordination
 from cinder.i18n import _
 from cinder.objects import fields
-from cinder import utils
 from cinder.volume.drivers.kaminario import kaminario_common as common
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 K2_REP_FAILED_OVER = fields.ReplicationStatus.FAILED_OVER
@@ -42,13 +42,13 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
     # ThirdPartySystems wiki page name
     CI_WIKI_NAME = "Kaminario_K2_CI"
 
-    @utils.trace
+    @volume_utils.trace
     def __init__(self, *args, **kwargs):
         super(KaminarioFCDriver, self).__init__(*args, **kwargs)
         self._protocol = 'FC'
         self.lookup_service = fczm_utils.create_lookup_service()
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
@@ -98,7 +98,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                         init_pwwn.append((port.pwwn).replace(':', ''))
         return init_host_name, init_pwwn
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):
         if connector is None:
@@ -147,7 +147,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
             raise common.KaminarioCinderDriverException(reason=msg)
         return target_wwpns
 
-    @utils.trace
+    @volume_utils.trace
     def _get_host_object(self, connector):
         host_name = self.get_initiator_host_name(connector)
         LOG.debug("Searching initiator hostname: %s in K2.", host_name)

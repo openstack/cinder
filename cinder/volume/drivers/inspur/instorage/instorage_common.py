@@ -170,7 +170,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
     def get_driver_options():
         return instorage_mcs_opts
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
         # InStorage has the limitation that can not burst more than 3 new ssh
@@ -239,7 +239,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                 msg = _('Failed getting details for pool %s.') % pool
                 raise exception.InvalidInput(reason=msg)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
 
@@ -411,7 +411,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
             volume_type=volume_type,
             volume_metadata=volume_metadata)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         opts = self._get_vdisk_params(
             volume.volume_type_id,
@@ -527,7 +527,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
     def extend_volume(self, volume, new_size):
         self._extend_volume_op(volume, new_size)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _extend_volume_op(self, volume, new_size, old_size=None):
         volume_name = self._get_target_vol(volume)
         ret = self._assistant.ensure_vdisk_no_lc_mappings(volume_name,
@@ -568,7 +568,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         else:
             self._assistant.extend_vdisk(volume_name, extend_amt)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         ctxt = context.get_admin_context()
 
@@ -688,7 +688,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                                                copy_op[1])
         LOG.debug("Exit: update volume copy status.")
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage.
 
@@ -719,7 +719,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         self._add_vdisk_copy_op(ctxt, volume, new_op)
         return (True, None)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
@@ -1270,7 +1270,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         return vdisk
 
     # #### V2.1 replication methods #### #
-    @cinder_utils.trace
+    @volume_utils.trace
     def failover_host(self, context, volumes, secondary_id=None):
         if not self._replica_enabled:
             msg = _("Replication is not properly enabled on backend.")
@@ -1329,7 +1329,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         self._update_volume_stats()
         return instorage_const.FAILBACK_VALUE, volumes_update
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _failback_replica_volumes(self, ctxt, rep_volumes):
         volumes_update = []
 
@@ -1389,7 +1389,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                              'replication_driver_data': ''}})
         return volumes_update
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _sync_with_aux(self, ctxt, volumes):
         try:
             rep_mgr = self._get_replica_mgr()
@@ -1443,7 +1443,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
                           'error:%(err)s.', {'volume': tgt_volume,
                                              'err': ex})
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _wait_replica_vol_ready(self, ctxt, volume):
         def _replica_vol_ready():
             rep_info = self._assistant.get_relationship_info(volume)
@@ -1509,7 +1509,7 @@ class InStorageMCSCommonDriver(driver.VolumeDriver, san.SanDriver):
         self._update_volume_stats()
         return self._active_backend_id, volumes_update
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _failover_replica_volumes(self, ctxt, rep_volumes):
         volumes_update = []
 

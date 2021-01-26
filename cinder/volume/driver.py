@@ -414,7 +414,8 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             self.configuration.append_config_values(backup_opts)
             self.configuration.append_config_values(image_opts)
             self.configuration.append_config_values(fqdn_opts)
-            utils.setup_tracing(self.configuration.safe_get('trace_flags'))
+            volume_utils.setup_tracing(
+                self.configuration.safe_get('trace_flags'))
 
             # NOTE(geguileo): Don't allow to start if we are enabling
             # replication on a cluster service with a backend that doesn't

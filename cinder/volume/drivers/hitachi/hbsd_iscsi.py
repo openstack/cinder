@@ -15,10 +15,10 @@
 """iSCSI module for Hitachi HBSD Driver."""
 
 from cinder import interface
-from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common as common
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
+from cinder.volume import volume_utils
 
 MSG = utils.HBSDMsg
 
@@ -71,32 +71,32 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
     def check_for_setup_error(self):
         pass
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         """Create a volume and return its properties."""
         return self.common.create_volume(volume)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot and return its properties."""
         return self.common.create_volume_from_snapshot(volume, snapshot)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume and return its properties."""
         return self.common.create_cloned_volume(volume, src_vref)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         """Delete the specified volume."""
         self.common.delete_volume(volume)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def create_snapshot(self, snapshot):
         """Create a snapshot from a volume and return its properties."""
         return self.common.create_snapshot(snapshot)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot."""
         self.common.delete_snapshot(snapshot)
@@ -113,7 +113,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
                 self.get_goodness_function())
         return data
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def update_migrated_volume(
             self, ctxt, volume, new_volume, original_volume_status):
         """Do any remaining jobs after migration."""
@@ -121,34 +121,34 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         super(HBSDISCSIDriver, self).update_migrated_volume(
             ctxt, volume, new_volume, original_volume_status)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         super(HBSDISCSIDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
         self.common.discard_zero_page(volume)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def extend_volume(self, volume, new_size):
         """Extend the specified volume to the specified size."""
         self.common.extend_volume(volume, new_size)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def manage_existing(self, volume, existing_ref):
         """Return volume properties which Cinder needs to manage the volume."""
         return self.common.manage_existing(volume, existing_ref)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         """Return the size[GB] of the specified volume."""
         return self.common.manage_existing_get_size(existing_ref)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def unmanage(self, volume):
         """Prepare the volume for removing it from Cinder management."""
         self.common.unmanage(volume)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def do_setup(self, context):
         """Prepare for the startup of the driver."""
         self.common.do_setup(context)
@@ -171,12 +171,12 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
     def remove_export_snapshot(self, context, snapshot):
         pass
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         """Initialize connection between the server and the volume."""
         return self.common.initialize_connection(volume, connector)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection between the server and the volume."""
         if connector is None:
@@ -185,22 +185,22 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
             return
         self.common.terminate_connection(volume, connector)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         """Initialize connection between the server and the snapshot."""
         return self.common.initialize_connection(snapshot, connector)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         """Terminate connection between the server and the snapshot."""
         self.common.terminate_connection(snapshot, connector)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def unmanage_snapshot(self, snapshot):
         """Prepare the snapshot for removing it from Cinder management."""
         return self.common.unmanage_snapshot(snapshot)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def retype(self, ctxt, volume, new_type, diff, host):
         """Retype the specified volume."""
         return self.common.retype()
@@ -208,7 +208,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
     def backup_use_temp_snapshot(self):
         return True
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def revert_to_snapshot(self, context, volume, snapshot):
         """Rollback the specified snapshot"""
         return self.common.revert_to_snapshot(volume, snapshot)

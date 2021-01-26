@@ -25,9 +25,9 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.inspur.instorage import instorage_common
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
 
         return i_t_map
 
-    @cinder_utils.trace
+    @volume_utils.trace
     @coordination.synchronized('instorage-host'
                                '{self._state[system_id]}'
                                '{connector[host]}')
@@ -185,7 +185,7 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
                                                  **kwargs)
         return _do_terminate_connection_locked()
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _do_terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an FC connection has been terminated.
 

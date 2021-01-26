@@ -19,13 +19,12 @@ from cinder import coordination
 from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
-from cinder import utils
 from cinder.volume.drivers.kaminario import kaminario_common as common
+from cinder.volume import volume_utils
 
 ISCSI_TCP_PORT = "3260"
 K2_REP_FAILED_OVER = fields.ReplicationStatus.FAILED_OVER
 LOG = logging.getLogger(__name__)
-utils.trace = common.utils.trace
 
 
 @interface.volumedriver
@@ -48,12 +47,12 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     # ThirdPartySystems wiki page name
     CI_WIKI_NAME = "Kaminario_K2_CI"
 
-    @utils.trace
+    @volume_utils.trace
     def __init__(self, *args, **kwargs):
         super(KaminarioISCSIDriver, self).__init__(*args, **kwargs)
         self._protocol = 'iSCSI'
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
@@ -83,7 +82,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                                   target_luns=[lun] * len(target_iqns))
         return result
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):
         # To support replication failback
@@ -122,7 +121,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
             raise common.KaminarioCinderDriverException(reason=msg)
         return iscsi_portals, target_iqns
 
-    @utils.trace
+    @volume_utils.trace
     def _get_host_object(self, connector):
         host_name = self.get_initiator_host_name(connector)
         LOG.debug("Searching initiator hostname: %s in K2.", host_name)

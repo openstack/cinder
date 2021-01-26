@@ -42,7 +42,6 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder import utils
 from cinder.volume.drivers.hpe import hpe_3par_base as hpebasedriver
 from cinder.volume import volume_utils
 
@@ -284,7 +283,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
                             "hpe3par_iscsi_ips list defined in "
                             "cinder.conf.", iscsi_ip)
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('3par-{volume.id}')
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
@@ -460,7 +459,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('3par-{volume.id}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to detach a volume from an instance."""
@@ -743,7 +742,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
 
         return model_update
 
-    @utils.trace
+    @volume_utils.trace
     def create_export(self, context, volume, connector):
         common = self._login()
         try:
@@ -751,7 +750,7 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def ensure_export(self, context, volume):
         """Ensure the volume still exists on the 3PAR.
 

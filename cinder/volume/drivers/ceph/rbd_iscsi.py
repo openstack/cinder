@@ -20,7 +20,6 @@ from oslo_utils import netutils
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers import rbd
 from cinder.volume import volume_utils
@@ -243,7 +242,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
         resp, disks = self.client.get_disks()
         return disks['disks']
 
-    @utils.trace
+    @volume_utils.trace
     def create_disk(self, volume_name):
         """Register the volume with the iscsi gateways.
 
@@ -265,7 +264,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
                 raise exception.VolumeBackendAPIException(
                     data=ex.get_description())
 
-    @utils.trace
+    @volume_utils.trace
     def register_disk(self, target_iqn, volume_name):
         """Register the disk with the target_iqn."""
         lun_name = self._lun_name(volume_name)
@@ -288,7 +287,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
             raise exception.VolumeBackendAPIException(
                 data=ex.get_description())
 
-    @utils.trace
+    @volume_utils.trace
     def unregister_disk(self, target_iqn, volume_name):
         """Unregister the volume from the gateway."""
         lun_name = self._lun_name(volume_name)
@@ -300,7 +299,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
             raise exception.VolumeBackendAPIException(
                 data=ex.get_description())
 
-    @utils.trace
+    @volume_utils.trace
     def export_disk(self, initiator_iqn, volume_name, iscsi_config):
         """Export a volume to an initiator."""
         lun_name = self._lun_name(volume_name)
@@ -323,7 +322,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
             raise exception.VolumeBackendAPIException(
                 data=ex.get_description())
 
-    @utils.trace
+    @volume_utils.trace
     def unexport_disk(self, initiator_iqn, volume_name, iscsi_config):
         """Remove a volume from an initiator."""
         lun_name = self._lun_name(volume_name)
@@ -354,7 +353,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
                     luns = client['luns']
                     return luns
 
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         """Export a volume to a host."""
         # create client
@@ -480,7 +479,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
 
         self._delete_disk(volume)
 
-    @utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Unexport the volume from the gateway."""
         iscsi_config = self._get_config()

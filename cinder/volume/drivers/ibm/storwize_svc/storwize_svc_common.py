@@ -1213,7 +1213,7 @@ class StorwizeHelpers(object):
 
         return result_lun
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def map_vol_to_host(self, volume_name, host_name, multihostmap):
         """Create a mapping between a volume to a host."""
 
@@ -2100,7 +2100,7 @@ class StorwizeHelpers(object):
             return None
         return resp[0]
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _check_delete_vdisk_fc_mappings(self, name, allow_snaps=True,
                                         allow_fctgt=False):
         """FlashCopy mapping check helper."""
@@ -2188,7 +2188,7 @@ class StorwizeHelpers(object):
         if not wait_for_copy or not len(mapping_ids):
             raise loopingcall.LoopingCallDone(retvalue=True)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _check_vdisk_fc_mappings(self, name, allow_snaps=True,
                                  allow_fctgt=False):
         """FlashCopy mapping check helper."""
@@ -3636,7 +3636,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         LOG.debug("Exit: update volume copy status.")
 
     # #### V2.1 replication methods #### #
-    @cinder_utils.trace
+    @volume_utils.trace
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         if not self._replica_enabled:
             msg = _("Replication is not properly enabled on backend.")
@@ -4199,7 +4199,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._update_storwize_state(self._aux_state, self._aux_backend_helpers)
 
     # Replication Group (Tiramisu)
-    @cinder_utils.trace
+    @volume_utils.trace
     def enable_replication(self, context, group, volumes):
         """Enables replication for a group and volumes in the group."""
         model_update = {'replication_status': fields.ReplicationStatus.ENABLED}
@@ -4233,7 +4233,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                  'replication_status': model_update['replication_status']})
         return model_update, volumes_update
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def disable_replication(self, context, group, volumes):
         """Disables replication for a group and volumes in the group."""
         model_update = {
@@ -4265,7 +4265,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                  'replication_status': model_update['replication_status']})
         return model_update, volumes_update
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def failover_replication(self, context, group, volumes,
                              secondary_backend_id=None):
         """Fails over replication for a group and volumes in the group."""
@@ -4356,7 +4356,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 raise exception.UnableToFailOver(reason=msg)
         return model_update
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _rep_grp_failover(self, ctxt, group):
         """Fail over all the volume in the replication group."""
         model_update = {
@@ -4374,7 +4374,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.exception(msg)
             raise exception.UnableToFailOver(reason=msg)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _sync_with_aux_grp(self, ctxt, rccg_name):
         try:
             rccg = self._helpers.get_rccg(rccg_name)
@@ -5624,7 +5624,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         return model_update, snapshots_model
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def revert_to_snapshot(self, context, volume, snapshot):
         """Revert volume to snapshot."""
         if snapshot.volume_size != volume.size:

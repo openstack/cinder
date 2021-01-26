@@ -355,7 +355,7 @@ class Acs5000CommonDriver(san.SanDriver,
                        'code_level': None,
                        'version': None}
 
-    @cinder_utils.trace_method
+    @volume_utils.trace_method
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
         self._validate_pools_exist()
@@ -383,7 +383,7 @@ class Acs5000CommonDriver(san.SanDriver,
                 raise exception.InvalidInput(reason=msg)
         return True
 
-    @cinder_utils.trace_method
+    @volume_utils.trace_method
     def check_for_setup_error(self):
         """Ensure that the params are set properly."""
         if self._state['system_name'] is None:

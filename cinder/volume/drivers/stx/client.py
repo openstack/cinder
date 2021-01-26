@@ -29,13 +29,13 @@ import six
 
 from cinder import coordination
 from cinder.i18n import _
-from cinder import utils
 import cinder.volume.drivers.stx.exception as stx_exception
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
 
-@six.add_metaclass(utils.TraceWrapperMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class STXClient(object):
     def __init__(self, host, login, password, protocol, ssl_verify):
         self._mgmt_ip_addrs = list(map(str.strip, host.split(',')))

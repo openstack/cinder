@@ -530,7 +530,7 @@ class CommonAdapter(object):
         }
         return conn_info
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
         return self._initialize_connection(lun, connector, volume.id)
@@ -578,7 +578,7 @@ class CommonAdapter(object):
             'data': data,
         }
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector):
         lun = self.client.get_lun(lun_id=self.get_lun_id(volume))
         # None `connector` indicates force detach, then detach all even the
@@ -952,17 +952,17 @@ class CommonAdapter(object):
     def get_pool_id_by_name(self, name):
         return self.client.get_pool_id_by_name(name=name)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def initialize_connection_snapshot(self, snapshot, connector):
         snap = self.client.get_snap(snapshot.name)
         return self._initialize_connection(snap, connector, snapshot.id)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def terminate_connection_snapshot(self, snapshot, connector):
         snap = self.client.get_snap(snapshot.name)
         return self._terminate_connection(snap, connector)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def restore_snapshot(self, volume, snapshot):
         return self.client.restore_snapshot(snapshot.name)
 
@@ -1265,7 +1265,7 @@ class CommonAdapter(object):
         """The failover only happens manually, no need to update the status."""
         return [], []
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def failover(self, volumes, secondary_id=None, groups=None):
         # TODO(ryan) support group failover after group bp merges
         # https://review.opendev.org/#/c/574119/

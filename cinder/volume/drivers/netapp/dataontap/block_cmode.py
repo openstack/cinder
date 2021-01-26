@@ -31,7 +31,6 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
-from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
@@ -46,7 +45,7 @@ from cinder.volume import volume_utils
 LOG = logging.getLogger(__name__)
 
 
-@six.add_metaclass(utils.TraceWrapperMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
                                      data_motion.DataMotionMixin):
     """NetApp block storage library for Data ONTAP (Cluster-mode)."""

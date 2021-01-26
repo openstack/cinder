@@ -181,7 +181,7 @@ class RemoteFSDriver(driver.BaseVD):
         """Just to override parent behavior."""
         pass
 
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
@@ -268,7 +268,7 @@ class RemoteFSDriver(driver.BaseVD):
                      acceptable_states=acceptable_states,
                      current_state=current_state))
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         """Creates a volume.
 
@@ -343,7 +343,7 @@ class RemoteFSDriver(driver.BaseVD):
 
         LOG.debug('Available shares %s', self._mounted_shares)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         """Deletes a logical volume.
 

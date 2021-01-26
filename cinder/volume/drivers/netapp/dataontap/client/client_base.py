@@ -26,6 +26,7 @@ from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ DELETED_PREFIX = 'deleted_cinder_'
 MAX_SIZE_FOR_A_LUN = '17555678822400'
 
 
-@six.add_metaclass(utils.TraceWrapperMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class Client(object):
 
     def __init__(self, **kwargs):

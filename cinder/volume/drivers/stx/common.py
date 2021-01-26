@@ -26,10 +26,10 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
-from cinder import utils
 from cinder.volume import configuration
 import cinder.volume.drivers.stx.client as client
 import cinder.volume.drivers.stx.exception as stx_exception
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ CONF.register_opts(common_opts, group=configuration.SHARED_CONF_GROUP)
 CONF.register_opts(iscsi_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-@six.add_metaclass(utils.TraceWrapperMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class STXCommon(object):
     VERSION = "2.0"
 

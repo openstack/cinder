@@ -38,7 +38,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import options as na_opts
@@ -71,7 +70,7 @@ class NetAppLun(object):
                self.handle, self.name, self.size, self.metadata)
 
 
-@six.add_metaclass(utils.TraceWrapperMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class NetAppBlockStorageLibrary(object):
     """NetApp block storage library for Data ONTAP."""
 

@@ -28,6 +28,7 @@ from cinder.objects import fields
 from cinder import ssh_utils
 from cinder import utils as cinder_utils
 from cinder.volume.drivers.inspur.instorage import instorage_const
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ class InStorageMCSReplication(object):
         self.target = replication_target or {}
         self.target_assistant = target_assistant
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def volume_replication_setup(self, context, vref):
         target_vol_name = instorage_const.REPLICA_AUX_VOL_PREFIX + vref.name
         try:
@@ -167,7 +168,7 @@ class InStorageMCSReplication(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def failover_volume_host(self, context, vref):
         target_vol = instorage_const.REPLICA_AUX_VOL_PREFIX + vref.name
 

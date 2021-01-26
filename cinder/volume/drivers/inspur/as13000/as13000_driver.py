@@ -89,7 +89,7 @@ class RestAPIExecutor(object):
             raise
 
     @staticmethod
-    @utils.trace_method
+    @volume_utils.trace_method
     def do_request(cmd, url, header, data):
         """Send request to the storage and handle the response."""
         if cmd in ['post', 'get', 'put', 'delete']:
@@ -113,7 +113,7 @@ class RestAPIExecutor(object):
 
         return response
 
-    @utils.trace
+    @volume_utils.trace
     def send_api(self, method, params=None, request_type='post'):
         if params:
             params = json.dumps(params)
@@ -205,7 +205,7 @@ class AS13000Driver(san.SanISCSIDriver):
     def get_driver_options():
         return inspur_as13000_opts
 
-    @utils.trace
+    @volume_utils.trace
     def do_setup(self, context):
         # get tokens for the driver
         self._rest.login()
@@ -231,7 +231,7 @@ class AS13000Driver(san.SanISCSIDriver):
 
         self._check_meta_pool()
 
-    @utils.trace
+    @volume_utils.trace
     def check_for_setup_error(self):
         """Do check to make sure service is available."""
         # check the required flags in conf
@@ -276,7 +276,7 @@ class AS13000Driver(san.SanISCSIDriver):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         """Create volume in the backend."""
         pool = volume_utils.extract_host(volume.host, level='pool')
@@ -295,7 +295,7 @@ class AS13000Driver(san.SanISCSIDriver):
         self._rest.send_rest_api(method=method, params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a new volume base on a specific snapshot."""
         if snapshot.volume_size > volume.size:
@@ -343,7 +343,7 @@ class AS13000Driver(san.SanISCSIDriver):
         if volume.size > snapshot.volume_size:
             self.extend_volume(volume, volume.size)
 
-    @utils.trace
+    @volume_utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Clone a volume."""
         if src_vref.size > volume.size:
@@ -374,7 +374,7 @@ class AS13000Driver(san.SanISCSIDriver):
         if volume.size > src_vref.size:
             self.extend_volume(volume, volume.size)
 
-    @utils.trace
+    @volume_utils.trace
     def extend_volume(self, volume, new_size):
         """Extend volume to new size."""
         name = self._trans_name_down(volume.name)
@@ -395,7 +395,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         """Delete volume from AS13000."""
         name = self._trans_name_down(volume.name)
@@ -412,7 +412,7 @@ class AS13000Driver(san.SanISCSIDriver):
         request_type = 'delete'
         self._rest.send_rest_api(method=method, request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def create_snapshot(self, snapshot):
         """Create snapshot of volume in backend.
 
@@ -438,7 +438,7 @@ class AS13000Driver(san.SanISCSIDriver):
         self._rest.send_rest_api(method=method, params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_snapshot(self, snapshot):
         """Delete snapshot of volume."""
         source_volume = snapshot.volume
@@ -457,7 +457,7 @@ class AS13000Driver(san.SanISCSIDriver):
         request_type = 'delete'
         self._rest.send_rest_api(method=method, request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _update_volume_stats(self):
         """Update the backend stats including driver info and pools info."""
 
@@ -490,7 +490,7 @@ class AS13000Driver(san.SanISCSIDriver):
             ipaddr = '[%s]' % ip
         return '%(ip)s:%(port)s' % {'ip': ipaddr, 'port': port}
 
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector, **kwargs):
         """Initialize connection steps:
 
@@ -567,7 +567,7 @@ class AS13000Driver(san.SanISCSIDriver):
 
         return {'driver_volume_type': 'iscsi', 'data': connection_data}
 
-    @utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete lun from target.
 
@@ -613,7 +613,7 @@ class AS13000Driver(san.SanISCSIDriver):
 
         return pools_info
 
-    @utils.trace
+    @volume_utils.trace
     def _get_pools_stats(self):
         """Generate the pool stat information."""
         pools_info = self._get_pools_info(self.pools)
@@ -637,7 +637,7 @@ class AS13000Driver(san.SanISCSIDriver):
 
         return pools
 
-    @utils.trace
+    @volume_utils.trace
     def _get_target_from_conn(self, host_ip):
         """Get target information base on the host ip."""
         host_exist = False
@@ -654,7 +654,7 @@ class AS13000Driver(san.SanISCSIDriver):
 
         return host_exist, target_name, node
 
-    @utils.trace
+    @volume_utils.trace
     def _get_target_list(self):
         """Get a list of all targets in the backend."""
         method = 'block/target/detail'
@@ -663,7 +663,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                         request_type=request_type)
         return data
 
-    @utils.trace
+    @volume_utils.trace
     def _create_target(self, target_name, target_node):
         """Create a target on the specified node."""
         method = 'block/target'
@@ -673,7 +673,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _delete_target(self, target_name):
         """Delete all target of all the node."""
         method = 'block/target?name=%s' % target_name
@@ -681,7 +681,7 @@ class AS13000Driver(san.SanISCSIDriver):
         self._rest.send_rest_api(method=method,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _add_chap_to_target(self, target_name, chap_username, chap_password):
         """Add CHAP to target."""
         method = 'block/chap/bond'
@@ -693,7 +693,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _add_host_to_target(self, host_ip, target_name):
         """Add the authority of host to target."""
         method = 'block/host'
@@ -703,7 +703,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     @utils.retry(exceptions=exception.VolumeDriverException,
                  interval=1,
                  retries=3)
@@ -721,14 +721,14 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _delete_lun_from_target(self, target_name, lun_id):
         """Delete lun from target_name."""
         method = 'block/lun?name=%s&id=%s&force=1' % (target_name, lun_id)
         request_type = 'delete'
         self._rest.send_rest_api(method=method, request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _get_lun_list(self, target_name):
         """Get all lun list of the target."""
         method = 'block/lun?name=%s' % target_name
@@ -736,7 +736,7 @@ class AS13000Driver(san.SanISCSIDriver):
         return self._rest.send_rest_api(method=method,
                                         request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _snapshot_lock_op(self, op, vol_name, snap_name, pool_name):
         """Lock or unlock a snapshot to protect the snapshot.
 
@@ -751,7 +751,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                  params=params,
                                  request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _filling_volume(self, name, pool):
         """Filling a volume so that make it independently."""
         method = 'block/lvm/filling'
@@ -774,7 +774,7 @@ class AS13000Driver(san.SanISCSIDriver):
         msg = (_('Volume %s is not filled.') % name)
         raise exception.VolumeDriverException(msg)
 
-    @utils.trace
+    @volume_utils.trace
     def _check_volume(self, volume):
         """Check if the volume exists in the backend."""
         pool = volume_utils.extract_host(volume.host, 'pool')
@@ -789,7 +789,7 @@ class AS13000Driver(san.SanISCSIDriver):
             eventlet.sleep(1)
         return False
 
-    @utils.trace
+    @volume_utils.trace
     def _get_volumes(self, pool):
         """Get all the volumes in the pool."""
         method = 'block/lvm?pool=%s' % pool
@@ -797,7 +797,7 @@ class AS13000Driver(san.SanISCSIDriver):
         return self._rest.send_rest_api(method=method,
                                         request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _get_cluster_status(self):
         """Get all nodes of the backend."""
         method = 'cluster/node'
@@ -805,7 +805,7 @@ class AS13000Driver(san.SanISCSIDriver):
         return self._rest.send_rest_api(method=method,
                                         request_type=request_type)
 
-    @utils.trace
+    @volume_utils.trace
     def _get_lun_id(self, volume, target_name):
         """Get lun id of the voluem in a target."""
         pool = volume_utils.extract_host(volume.host, level='pool')
@@ -827,7 +827,7 @@ class AS13000Driver(san.SanISCSIDriver):
         """
         return name.replace('-', '_')
 
-    @utils.trace
+    @volume_utils.trace
     def _unit_convert(self, capacity):
         """Convert all units to GB.
 

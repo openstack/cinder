@@ -411,7 +411,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         """Create a volume."""
         name = volume['name']
@@ -466,7 +466,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         """Delete a volume."""
         name = self._volume_name(volume)
@@ -525,7 +525,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def create_snapshot(self, snapshot):
         """Create a snapshot."""
         volume = snapshot['volume']
@@ -554,7 +554,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
         volume = snapshot['volume']
@@ -606,7 +606,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
         snapshot_volume = snapshot['volume']
@@ -647,7 +647,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
             self._delete_snapshot(snp_name, src_vol_name, pointid)
 
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume."""
         vol_name = volume['id']
@@ -687,7 +687,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
         name = self._volume_name(volume)
@@ -747,7 +747,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
         self._stats = data
 
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status=None):
         """Return model update for migrated volume."""
@@ -772,7 +772,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
         volume = snapshot['volume']
         provider = snapshot['provider_location']
@@ -811,7 +811,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def manage_existing(self, volume, external_ref):
         vol_params = self._parse_volume_params(volume)
         self._check_volume_params(vol_params)
@@ -901,7 +901,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
         volume = snapshot['volume']
         src_name = self._get_existing_snapname(existing_ref).lstrip('_')
@@ -948,7 +948,7 @@ class MacroSANBaseDriver(driver.VolumeDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def migrate_volume(self, ctxt, volume, host):
         if not self.migration_valid(volume, host):
             return False, None
@@ -1148,7 +1148,7 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -1184,7 +1184,7 @@ class MacroSANISCSIDriver(MacroSANBaseDriver, driver.ISCSIDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
 
@@ -1433,7 +1433,7 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -1496,7 +1496,7 @@ class MacroSANFCDriver(MacroSANBaseDriver, driver.FibreChannelDriver):
 
     @synchronized(lock_name)
     @record_request_id
-    @utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
 

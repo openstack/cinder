@@ -33,7 +33,6 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import interface
 from cinder.objects import fields
-from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
@@ -49,7 +48,7 @@ LOG = logging.getLogger(__name__)
 
 
 @interface.volumedriver
-@six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
 class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                            data_motion.DataMotionMixin):
     """NetApp NFS driver for Data ONTAP (Cluster-mode)."""

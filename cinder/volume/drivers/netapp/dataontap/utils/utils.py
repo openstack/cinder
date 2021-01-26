@@ -23,11 +23,11 @@ from oslo_config import cfg
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp import options as na_opts
+from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 
@@ -71,7 +71,7 @@ def get_client_for_backend(backend_name, vserver_name=None):
         hostname=config.netapp_server_hostname,
         port=config.netapp_server_port,
         vserver=vserver_name or config.netapp_vserver,
-        trace=utils.TRACE_API,
+        trace=volume_utils.TRACE_API,
         api_trace_pattern=config.netapp_api_trace_pattern)
 
     return client

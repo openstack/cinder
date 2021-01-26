@@ -24,7 +24,6 @@ from oslo_utils import units
 from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.volume.drivers.nec import cli
 from cinder.volume.drivers.nec import volume_common
 from cinder.volume import volume_utils
@@ -1322,7 +1321,7 @@ class MStorageDriver(volume_common.MStorageVolumeCommon):
                             '(%(msgparm)s) (%(exception)s)',
                             {'msgparm': msgparm, 'exception': e})
 
-    @utils.trace
+    @volume_utils.trace
     def _fc_terminate_connection(self, vol_or_snap, connector,
                                  is_snapshot=False):
         """Disallow connection from connector."""

@@ -39,8 +39,8 @@ from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import coordination
 from cinder import interface
-from cinder import utils
 from cinder.volume.drivers.hpe import hpe_3par_base as hpebasedriver
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -164,7 +164,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
 
         return info_backend
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('3par-{volume.id}')
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
@@ -292,7 +292,7 @@ class HPE3PARFCDriver(hpebasedriver.HPE3PARDriverBase):
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     @coordination.synchronized('3par-{volume.id}')
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to detach a volume from an instance."""

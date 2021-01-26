@@ -27,6 +27,7 @@ from cinder.i18n import _
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume.drivers.ibm.storwize_svc import storwize_const
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class StorwizeSVCReplication(object):
         self.driver = driver
         self.target = replication_target or {}
 
-    @utils.trace
+    @volume_utils.trace
     def failover_volume_host(self, context, vref):
         # Make the aux volume writeable.
         try:

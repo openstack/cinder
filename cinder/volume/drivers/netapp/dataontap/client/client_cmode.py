@@ -27,7 +27,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -37,7 +36,7 @@ LOG = logging.getLogger(__name__)
 DEFAULT_MAX_PAGE_LENGTH = 50
 
 
-@six.add_metaclass(utils.TraceWrapperMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class Client(client_base.Client):
 
     def __init__(self, **kwargs):
@@ -1334,7 +1333,7 @@ class Client(client_base.Client):
         }
         self.connection.send_request('sis-set-config', api_args)
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def delete_file(self, path_to_file):
         """Delete file at path."""
 

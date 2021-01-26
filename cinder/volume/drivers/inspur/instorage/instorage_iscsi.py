@@ -50,9 +50,9 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
-from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.inspur.instorage import instorage_common
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class InStorageMCSISCSIDriver(instorage_common.InStorageMCSCommonDriver,
         self.configuration.append_config_values(
             instorage_mcs_iscsi_opts)
 
-    @cinder_utils.trace
+    @volume_utils.trace
     @coordination.synchronized('instorage-host'
                                '{self._state[system_id]}'
                                '{connector[host]}')
@@ -132,7 +132,7 @@ class InStorageMCSISCSIDriver(instorage_common.InStorageMCSCommonDriver,
 
         return {'driver_volume_type': 'iscsi', 'data': properties}
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _get_single_iscsi_data(self, volume, connector, lun_id, chap_secret):
         volume_name = self._get_target_vol(volume)
         volume_attributes = self._assistant.get_vdisk_attributes(volume_name)
@@ -200,7 +200,7 @@ class InStorageMCSISCSIDriver(instorage_common.InStorageMCSCommonDriver,
                               discovery_auth_password=chap_secret)
         return properties
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _get_multi_iscsi_data(self, volume, connector, lun_id, properties):
         try:
             resp = self._assistant.ssh.lsportip()
@@ -256,7 +256,7 @@ class InStorageMCSISCSIDriver(instorage_common.InStorageMCSCommonDriver,
             return self._do_terminate_connection(volume, connector, **kwargs)
         return _do_terminate_connection_locked()
 
-    @cinder_utils.trace
+    @volume_utils.trace
     def _do_terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after an iSCSI connection has been terminated.
 

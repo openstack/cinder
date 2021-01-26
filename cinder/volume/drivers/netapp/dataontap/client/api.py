@@ -32,8 +32,8 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _
 from cinder import ssh_utils
-from cinder import utils
 from cinder.volume.drivers.netapp import utils as na_utils
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ class NaServer(object):
         """Set the vserver to use if tunneling gets enabled."""
         self._vserver = vserver
 
-    @utils.trace_api(filter_function=na_utils.trace_filter_func_api)
+    @volume_utils.trace_api(filter_function=na_utils.trace_filter_func_api)
     def send_http_request(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
         if not na_element or not isinstance(na_element, NaElement):

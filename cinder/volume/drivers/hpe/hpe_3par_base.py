@@ -34,10 +34,10 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _
-from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
             return int(volume.get("replication_driver_data"))
         return None
 
-    @utils.trace
+    @volume_utils.trace
     def get_volume_stats(self, refresh=False):
         # NOTE(geguileo): We don't need to login to the backed if we are not
         # going to refresh the stats, furthermore if we login, then we'll
@@ -146,7 +146,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         """Setup errors are already checked for in do_setup so return pass."""
         pass
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         common = self._login()
         try:
@@ -154,7 +154,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Clone an existing volume."""
         common = self._login()
@@ -163,7 +163,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         common = self._login()
         try:
@@ -171,7 +171,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -183,7 +183,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def create_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -191,7 +191,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -199,7 +199,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def extend_volume(self, volume, new_size):
         common = self._login()
         try:
@@ -207,7 +207,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def create_group(self, context, group):
         common = self._login()
         try:
@@ -215,7 +215,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def create_group_from_src(self, context, group, volumes,
                               group_snapshot=None, snapshots=None,
                               source_group=None, source_vols=None):
@@ -227,7 +227,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_group(self, context, group, volumes):
         common = self._login()
         try:
@@ -235,7 +235,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def update_group(self, context, group, add_volumes=None,
                      remove_volumes=None):
         common = self._login()
@@ -245,7 +245,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         common = self._login()
         try:
@@ -254,7 +254,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def delete_group_snapshot(self, context, group_snapshot, snapshots):
         common = self._login()
         try:
@@ -263,7 +263,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def manage_existing(self, volume, existing_ref):
         common = self._login()
         try:
@@ -271,7 +271,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -279,7 +279,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         common = self._login()
         try:
@@ -287,7 +287,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -296,7 +296,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def unmanage(self, volume):
         common = self._login()
         try:
@@ -304,7 +304,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def unmanage_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -312,7 +312,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
         common = self._login()
@@ -321,7 +321,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def migrate_volume(self, context, volume, host):
         if volume['status'] == 'in-use':
             protocol = host['capabilities']['storage_protocol']
@@ -339,7 +339,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Update the name of the migrated volume to it's new ID."""
@@ -350,7 +350,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def get_pool(self, volume):
         common = self._login()
         try:
@@ -362,7 +362,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def revert_to_snapshot(self, context, volume, snapshot):
         """Revert volume to snapshot."""
         common = self._login()
@@ -371,7 +371,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
         finally:
             self._logout(common)
 
-    @utils.trace
+    @volume_utils.trace
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
@@ -455,7 +455,7 @@ class HPE3PARDriverBase(driver.ManageableVD,
     def initialize_connection(self, volume, connector):
         pass
 
-    @utils.trace
+    @volume_utils.trace
     def _init_vendor_properties(self):
         """Create a dictionary of vendor unique properties.
 

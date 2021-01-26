@@ -54,7 +54,7 @@ CONF = cfg.CONF
 HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
 
-@six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
+@six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
 class NetAppNfsDriver(driver.ManageableVD,
                       driver.CloneableImageVD,
                       nfs.NfsDriver):

@@ -18,7 +18,6 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit.brick import fake_lvm
-from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
 from cinder.volume import volume_utils
@@ -38,12 +37,12 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
                                         None, 'default',
                                         self.fake_execute)
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def check_for_setup_error(self):
         """No setup necessary in fake mode."""
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_volume(self, volume):
         """Creates a volume."""
         super(FakeLoggingVolumeDriver, self).create_volume(volume)
@@ -60,51 +59,51 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         if model_update:
             return model_update
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def delete_volume(self, volume):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_snapshot(self, snapshot):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def delete_snapshot(self, snapshot):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def ensure_export(self, context, volume):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_export(self, context, volume, connector):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def remove_export(self, context, volume):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_export_snapshot(self, context, snapshot):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def remove_export_snapshot(self, context, snapshot):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def terminate_connection_snapshot(self, snapshot, connector):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_cloned_volume(self, volume, src_vol):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_volume_from_snapshot(self, volume, snapshot):
         pass
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def initialize_connection(self, volume, connector):
         # NOTE(thangp): There are several places in the core cinder code where
         # the volume passed through is a dict and not an oslo_versionedobject.
@@ -126,18 +125,18 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         return {'driver_volume_type': 'iscsi',
                 'data': {'access_mode': access_mode}}
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def initialize_connection_snapshot(self, snapshot, connector):
         return {
             'driver_volume_type': 'iscsi',
         }
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
     # Replication Group (Tiramisu)
-    @utils.trace_method
+    @volume_utils.trace_method
     def enable_replication(self, context, group, volumes):
         """Enables replication for a group and volumes in the group."""
         model_update = {
@@ -152,7 +151,7 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         return model_update, volume_model_updates
 
     # Replication Group (Tiramisu)
-    @utils.trace_method
+    @volume_utils.trace_method
     def disable_replication(self, context, group, volumes):
         """Disables replication for a group and volumes in the group."""
         model_update = {
@@ -167,7 +166,7 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         return model_update, volume_model_updates
 
     # Replication Group (Tiramisu)
-    @utils.trace_method
+    @volume_utils.trace_method
     def failover_replication(self, context, group, volumes,
                              secondary_backend_id=None):
         """Fails over replication for a group and volumes in the group."""
@@ -183,7 +182,7 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
         return model_update, volume_model_updates
 
     # Replication Group (Tiramisu)
-    @utils.trace_method
+    @volume_utils.trace_method
     def create_group(self, context, group):
         """Creates a group."""
         model_update = super(FakeLoggingVolumeDriver, self).create_group(
@@ -424,6 +423,6 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
 class FakeHAReplicatedLoggingVolumeDriver(FakeLoggingVolumeDriver):
     SUPPORTS_ACTIVE_ACTIVE = True
 
-    @utils.trace_method
+    @volume_utils.trace_method
     def failover_completed(self, context, active_backend_id=None):
         pass

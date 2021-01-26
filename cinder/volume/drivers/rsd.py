@@ -31,6 +31,7 @@ from cinder.i18n import _
 from cinder import interface
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -539,7 +540,7 @@ class RSDDriver(driver.VolumeDriver):
     def get_driver_options():
         return RSD_OPTS
 
-    @utils.trace
+    @volume_utils.trace
     def do_setup(self, context):
         self.rsdClient = RSDClient.initialize(
             self.configuration.podm_url,
@@ -550,13 +551,13 @@ class RSDDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         pass
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume(self, volume):
         size_in_gb = int(volume['size'])
         volume_url = self.rsdClient.create_volume(size_in_gb)
         return {'provider_location': volume_url}
 
-    @utils.trace
+    @volume_utils.trace
     def delete_volume(self, volume):
         volume_url = volume['provider_location']
         if not volume_url:
@@ -570,7 +571,7 @@ class RSDDriver(driver.VolumeDriver):
                                               volume_name=volume.name,
                                               ignore_non_exist=True)
 
-    @utils.trace
+    @volume_utils.trace
     def _update_volume_stats(self):
         backend_name = (
             self.configuration.safe_get('volume_backend_name') or 'RSD')
@@ -597,7 +598,7 @@ class RSDDriver(driver.VolumeDriver):
         # SinglePool
         self._stats['pools'] = [spool]
 
-    @utils.trace
+    @volume_utils.trace
     def initialize_connection(self, volume, connector, **kwargs):
         uuid = connector.get("system uuid")
         if not uuid:
@@ -626,7 +627,7 @@ class RSDDriver(driver.VolumeDriver):
         }
         return conn_info
 
-    @utils.trace
+    @volume_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         if connector is None:
             # None connector means force-detach
@@ -658,7 +659,7 @@ class RSDDriver(driver.VolumeDriver):
     def remove_export(self, context, volume):
         pass
 
-    @utils.trace
+    @volume_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         snap_url = snapshot.provider_location
         old_size_in_gb = snapshot.volume_size
@@ -673,14 +674,14 @@ class RSDDriver(driver.VolumeDriver):
                 raise
         return {'provider_location': volume_url}
 
-    @utils.trace
+    @volume_utils.trace
     def create_snapshot(self, snapshot):
         volume_url = snapshot.volume.provider_location
         snap_url = self.rsdClient.create_snap(volume_url)
         snapshot.provider_location = snap_url
         snapshot.save()
 
-    @utils.trace
+    @volume_utils.trace
     def delete_snapshot(self, snapshot):
         snap_url = snapshot.provider_location
         if not snap_url:
@@ -689,7 +690,7 @@ class RSDDriver(driver.VolumeDriver):
                                           volume_name=snapshot.name,
                                           ignore_non_exist=True)
 
-    @utils.trace
+    @volume_utils.trace
     def extend_volume(self, volume, new_size):
         volume_url = volume.provider_location
         self.rsdClient.extend_volume(volume_url, new_size)
@@ -699,7 +700,7 @@ class RSDDriver(driver.VolumeDriver):
                     image_service):
         return None, False
 
-    @utils.trace
+    @volume_utils.trace
     def create_cloned_volume(self, volume, src_vref):
         volume_url = src_vref.provider_location
         old_size_in_gb = src_vref.size
