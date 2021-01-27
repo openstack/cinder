@@ -176,6 +176,9 @@ class StorwizeSVCManagementSimulator(object):
             'CMMVC8783E': ('', 'CMMVC8783E The volume copy was not deleted '
                                'because the volume is part of a consistency '
                                'group.'),
+            'CMMVC6578E': ('', 'CMMVC6578E The command has failed because '
+                               'the iSCSI name is already assigned or is '
+                               'not valid.'),
         }
         self._fc_transitions = {'begin': {'make': 'idle_or_copied'},
                                 'idle_or_copied': {'prepare': 'preparing',
@@ -1207,7 +1210,10 @@ port_speed!N/A
                 continue
             for port in v[added_key]:
                 if port == added_val:
-                    return self._errors['CMMVC6581E']
+                    error = 'CMMVC6035E'
+                    if 'iscsiname' in kwargs:
+                        error = 'CMMVC6578E'
+                    return self._errors[error]
         return ('', '')
 
     # Make a host
@@ -3262,7 +3268,10 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                                   snapshot,
                                   connector)
 
-    def test_storwize_initialize_iscsi_connection_with_host_site(self):
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    def test_storwize_initialize_iscsi_connection_with_host_site(self,
+                                                                 init_host):
         connector = {'host': 'storwize-svc-host',
                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
@@ -3277,6 +3286,8 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         volume_iSCSI_2 = self._create_volume()
         volume_iSCSI_2['volume_type_id'] = vol_type_iSCSI['id']
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+        init_host.assert_called()
+        self.assertEqual(1, init_host.call_count)
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
             connector, iscsi=True)
         host_info = self.iscsi_driver._helpers.ssh.lshost(host=host_name)
@@ -3335,7 +3346,10 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                           volume_iSCSI, connector)
         term_conn.assert_called_once_with(volume_iSCSI, connector)
 
-    def test_storwize_terminate_iscsi_connection_multi_attach(self):
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    def test_storwize_terminate_iscsi_connection_multi_attach(self,
+                                                              init_host_info):
         # create an iSCSI volume
         volume_iSCSI = self._create_volume()
         extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
@@ -3353,6 +3367,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         # map and unmap the volume to two hosts normal case
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+        init_host_info.assert_called()
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector2)
         for conn in [connector, connector2]:
             host = self.iscsi_driver._helpers.get_host_from_connector(
@@ -3380,6 +3395,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             rmmap.side_effect = Exception('boom')
             self.iscsi_driver.terminate_connection(volume_iSCSI,
                                                    connector2)
+            init_host_info.assert_called()
         host_name = self.iscsi_driver._helpers.get_host_from_connector(
             connector2, iscsi=True)
         self.assertIsNone(host_name)
@@ -4399,12 +4415,6 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         # Check bad output from lsfabric for the 2nd volume
         if protocol == 'FC' and self.USESIM:
-            for error in ['remove_field', 'header_mismatch']:
-                self.sim.error_injection('lsfabric', error)
-                self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.fc_driver.initialize_connection,
-                                  volume2, self._connector)
-
             with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                    'get_conn_fc_wwpns') as conn_fc_wwpns:
                 conn_fc_wwpns.return_value = []
@@ -9714,17 +9724,17 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                        access=access)
             startrcrelationship.assert_called_once_with(opts['RC_name'], None)
 
-    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsfabric')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_host_from_host_info')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lshost')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
     def test_get_host_from_connector_with_vol(self,
                                               lsvdishosmap,
                                               lshost,
-                                              lsfabric):
+                                              get_host_from_host_info):
         vol = 'testvol'
         connector = {"wwpns": ["10000090fa3870d7", "C050760825191B00"]}
-        lsfabric.return_value = [{"remote_wwpn": "10000090fa3870d7",
-                                  "name": "test_host"}]
+        get_host_from_host_info.return_value = "test_host", []
         raw = "id!name!host_id!host_name!vdisk_UID\n2594!testvol!315!"\
               "test_host!60050768028110A4700000000001168E"
         ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', '"%s"' % vol]
@@ -9735,23 +9745,23 @@ class StorwizeHelpersTestCase(test.TestCase):
         host = self.storwize_svc_common.get_host_from_connector(connector,
                                                                 vol)
         self.assertEqual(host, "test_host")
-        lsfabric.assert_called_with(wwpn='10000090fa3870d7')
-        self.assertEqual(1, lsfabric.call_count)
+        get_host_from_host_info.assert_called_with(connector, False)
+        self.assertEqual(1, get_host_from_host_info.call_count)
         lsvdishosmap.assert_called_with(vol)
         self.assertEqual(1, lsvdishosmap.call_count)
         lshost.assert_not_called()
 
-    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsfabric')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_host_from_host_info')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lshost')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
     def test_get_host_from_connector_wo_vol(self,
                                             lsvdishosmap,
                                             lshost,
-                                            lsfabric):
+                                            get_host_from_host_info):
         vol = 'testvol'
         connector = {"wwpns": ["10000090fa3870d7", "C050760825191B00"]}
-        lsfabric.return_value = [{"remote_wwpn": "10000090fa3870d7",
-                                  "name": "test_host"}]
+        get_host_from_host_info.return_value = "test_host", []
         raw = "id!name!host_id!host_name!vdisk_UID\n2594!testvol!315!"\
               "test_host!60050768028110A4700000000001168E"
         ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', '"%s"' % vol]
@@ -9761,8 +9771,8 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                                     True)
         host = self.storwize_svc_common.get_host_from_connector(connector)
         self.assertEqual(host, "test_host")
-        lsfabric.assert_called_with(wwpn='10000090fa3870d7')
-        self.assertEqual(1, lsfabric.call_count)
+        get_host_from_host_info.assert_called_with(connector, False)
+        self.assertEqual(1, get_host_from_host_info.call_count)
         lsvdishosmap.assert_not_called()
         self.assertEqual(0, lsvdishosmap.call_count)
         lshost.assert_not_called()
@@ -12554,10 +12564,13 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         startrccg.assert_called_with(rccg_name, 'aux')
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_host_from_connector')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'check_vol_mapped_to_host')
-    def test_get_map_info_from_connector(self, is_mapped, get_host_from_conn):
+    def test_get_map_info_from_connector(self, is_mapped, get_host_from_conn,
+                                         initialize_host_info):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
@@ -12584,6 +12597,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          backend_helper)
         self.assertEqual(self.driver._master_state,
                          node_state)
+        initialize_host_info.assert_called()
+        self.assertEqual(1, initialize_host_info.call_count)
 
         connector = {'host': 'storwize-svc-host',
                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],

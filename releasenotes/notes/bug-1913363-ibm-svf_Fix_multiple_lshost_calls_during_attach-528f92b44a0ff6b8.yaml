@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1913363
+    <https://bugs.launchpad.net/cinder/+bug/1913363>`_: Fixed
+    issue in get_host_from_connector by caching the host
+    information during attach or detach operations and using
+    host details from cached information.

@@ -166,6 +166,8 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             volume_name, backend_helper, node_state = self._get_vol_sys_info(
                 volume)
 
+        backend_helper.initialize_host_info()
+
         host_site = self._get_volume_host_site_from_conf(volume,
                                                          connector,
                                                          iscsi=True)
@@ -176,14 +178,26 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        # Check if a host object is defined for this host name
-        host_name = backend_helper.get_host_from_connector(connector,
-                                                           iscsi=True)
-        if host_name is None:
-            # Host does not exist - add a new host to Storwize/SVC
+        # Try creating the host, if host creation is successfull continue
+        # with intialization flow, else search for host object defined for
+        # this connector info.
+        host_name = None
+        try:
             host_name = backend_helper.create_host(connector, iscsi=True,
                                                    site=host_site)
-        elif is_hyper_volume:
+        except exception.VolumeBackendAPIException as excp:
+            if "CMMVC6578E" in excp.msg:
+                msg = (_('Host already exists for connector '
+                         '%(conn)s'), {'conn': connector})
+                LOG.info(msg)
+                host_name = backend_helper.get_host_from_connector(connector,
+                                                                   iscsi=True)
+            else:
+                msg = (_('Error creating host %(ex)s'), {'ex': excp.msg})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+        if is_hyper_volume:
             self._update_host_site_for_hyperswap_volume(host_name, host_site)
 
         chap_secret = backend_helper.get_chap_secret_for_host(host_name)
