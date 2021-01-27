@@ -23,9 +23,12 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
+CHAP_DEFAULT_USERNAME = "PowerStore_iSCSI_CHAP_Username"
+CHAP_DEFAULT_SECRET_LENGTH = 60
 
 
 def bytes_to_gib(size_in_bytes):
@@ -134,3 +137,17 @@ def is_multiattached_to_host(volume_attachment, host_name):
             attachment.attached_host == host_name)
     ]
     return len(attachments) > 1
+
+
+def get_chap_credentials():
+    """Generate CHAP credentials.
+
+    :return: CHAP username and secret
+    """
+
+    return {
+        "chap_single_username": CHAP_DEFAULT_USERNAME,
+        "chap_single_password": volume_utils.generate_password(
+            CHAP_DEFAULT_SECRET_LENGTH
+        )
+    }
