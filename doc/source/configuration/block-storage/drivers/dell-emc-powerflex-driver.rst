@@ -228,16 +228,16 @@ Before using attach/detach volume operations PowerFlex connector must be
 properly configured. On each node where PowerFlex SDC is installed do the
 following:
 
-#. Create ``/opt/dellemc/powerflex/openstack/connector.conf`` if it does not
+#. Create ``/opt/emc/scaleio/openstack/connector.conf`` if it does not
    exist.
 
    .. code-block:: console
 
-     $ mkdir -p /opt/dellemc/powerflex/openstack
-     $ touch /opt/dellemc/powerflex/openstack/connector.conf
+     $ mkdir -p /opt/emc/scaleio/openstack
+     $ touch /opt/emc/scaleio/openstack/connector.conf
 
 #. For each PowerFlex section in the ``cinder.conf`` create the same section in
-   the ``/opt/dellemc/powerflex/openstack/connector.conf`` and populate it with
+   the ``/opt/emc/scaleio/openstack/connector.conf`` and populate it with
    passwords. Example:
 
    .. code-block:: ini
@@ -540,11 +540,11 @@ Using PowerFlex Storage with a containerized overcloud
 
       parameter_defaults:
         NovaComputeOptVolumes:
-          - /opt/dellemc/powerflex:/opt/dellemc/powerflex
+          - /opt/emc/scaleio:/opt/emc/scaleio
         CinderVolumeOptVolumes:
-          - /opt/dellemc/powerflex:/opt/dellemc/powerflex
+          - /opt/emc/scaleio:/opt/emc/scaleio
         GlanceApiOptVolumes:
-          - /opt/dellemc/powerflex:/opt/dellemc/powerflex
+          - /opt/emc/scaleio:/opt/emc/scaleio
 
 
    Name it whatever you like, e.g. ``powerflex_volumes.yml``.
