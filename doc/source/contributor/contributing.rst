@@ -46,6 +46,13 @@ cinderlib
     | docs: https://docs.openstack.org/cinderlib
     | Launchpad: https://launchpad.net/cinderlib
 
+rbd-iscsi-client
+    | Library that provides a REST client that talks to ceph-isci's
+      rbd-target-api to export rbd images/volumes to an iSCSI initiator.
+    | code: https://opendev.org/openstack/rbd-iscsi-client
+    | docs: https://docs.openstack.org/rbd-iscsi-client
+    | Launchpad: https://launchpad.net/rbd-iscsi-client
+
 cinder-tempest-plugin
     | Contains additional Cinder tempest-based tests beyond those in the
       main OpenStack Integration Test Suite (tempest).
