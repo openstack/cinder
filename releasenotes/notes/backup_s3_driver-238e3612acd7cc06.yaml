@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added new backup driver to enable backing up cinder volumes to S3-compatible storage.
+    See the reference `S3 backup driver
+    <https://docs.openstack.org/cinder/latest/configuration/block-storage/backup/s3-backup-driver.html>`_
+    for more information.
