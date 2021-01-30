@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-11-14 22:35+0000\n"
+"POT-Creation-Date: 2021-01-29 17:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1099,10 +1099,6 @@ msgstr ""
 
 msgid "Detach volume from instance and then try again."
 msgstr "Scollegare il volume dall'istanza e riprovare."
-
-#, python-format
-msgid "Detected more than one volume with name %(vol_name)s"
-msgstr "È stato rilevato più di un volume con il nome %(vol_name)s"
 
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s."

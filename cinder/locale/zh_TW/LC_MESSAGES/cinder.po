@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2020-11-14 22:35+0000\n"
+"POT-Creation-Date: 2021-01-29 17:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1005,10 +1005,6 @@ msgstr "分離磁區失敗：存在多個連接，但卻未提供attachment_id�
 
 msgid "Detach volume from instance and then try again."
 msgstr "請從實例分離磁區，然後再試一次。"
-
-#, python-format
-msgid "Detected more than one volume with name %(vol_name)s"
-msgstr "已偵測到多個名稱為 %(vol_name)s 的磁區"
 
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s."
