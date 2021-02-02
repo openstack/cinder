@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug 1913449 <https://bugs.launchpad.net/cinder/+bug/1913449>`_:
+    Fix RBD driver _update_volume_stats() failing when using Ceph
+    Pacific python rados libraries.  This failed because we
+    were passing a str instead of bytes to cluster.mon_command()
