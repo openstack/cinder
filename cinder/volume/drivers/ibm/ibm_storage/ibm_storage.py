@@ -241,6 +241,10 @@ class IBMStorageDriver(san.SanDriver,
 
         return self.proxy.retype(ctxt, volume, new_type, diff, host)
 
+    def revert_to_snapshot(self, ctxt, volume, snapshot):
+        """Revert volume to snapshot."""
+        return self.proxy.revert_to_snapshot(ctxt, volume, snapshot)
+
     def create_group(self, context, group):
         """Creates a group."""
 
