@@ -132,10 +132,6 @@ class VolumeAdminController(AdminController):
                                                message)
 
     def _update(self, *args, **kwargs):
-        context = args[0]
-        volume_id = args[1]
-        volume = objects.Volume.get_by_id(context, volume_id)
-        self.authorize(context, 'reset_status', target_obj=volume)
         db.volume_update(*args, **kwargs)
 
     def _get(self, *args, **kwargs):
@@ -164,6 +160,53 @@ class VolumeAdminController(AdminController):
                 update['migration_status'] = None
 
         return update
+
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @wsgi.action('os-reset_status')
+    def _reset_status(self, req, id, body):
+        """Reset status on the volume."""
+
+        def _clean_volume_attachment(context, id):
+            attachments = (
+                db.volume_attachment_get_all_by_volume_id(context, id))
+            for attachment in attachments:
+                db.volume_detached(context.elevated(), id, attachment.id)
+            db.volume_admin_metadata_delete(context.elevated(), id,
+                                            'attached_mode')
+
+        # any exceptions raised will be handled at the wsgi level
+        update = self.validate_update(req, body=body)
+        context = req.environ['cinder.context']
+        volume = objects.Volume.get_by_id(context, id)
+        self.authorize(context, 'reset_status', target_obj=volume)
+
+        # at this point, we still don't know if we're going to
+        # reset the volume's state.  Need to check what the caller
+        # is requesting first.
+        if update.get('status') in ('deleting', 'error_deleting'
+                                    'detaching'):
+            msg = _("Cannot reset-state to %s"
+                    % update.get('status'))
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        if update.get('status') == 'in-use':
+            attachments = (
+                db.volume_attachment_get_all_by_volume_id(context, id))
+            if not attachments:
+                msg = _("Cannot reset-state to in-use "
+                        "because volume does not have any attachments.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
+        LOG.debug(msg, {'resource': self.resource_name, 'id': id,
+                  'update': update})
+        self._notify_reset_status(context, id, 'reset_status.start')
+
+        self._update(context, id, update)
+        self._remove_worker(context, id)
+        if update.get('attach_status') == 'detached':
+            _clean_volume_attachment(context, id)
+
+        self._notify_reset_status(context, id, 'reset_status.end')
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-force_detach')
