@@ -68,7 +68,5 @@ storage cinder driver.
        san_password = clipassword
        # The Pool used to allocated volumes
        acs5000_volpool_name = pool01
-       # Lun map target,support 0 - 127
-       acs5000_target = 0
        # Backend name
        volume_backend_name = ACS5000
