@@ -12,6 +12,7 @@
 
 from oslo_serialization import jsonutils
 
+from cinder.api.microversions import VOLUME_TYPE_ID_IN_VOLUME_DETAIL
 from cinder.tests.functional import api_samples_test_base
 
 
@@ -40,10 +41,15 @@ class VolumesSampleJsonTest(VolumesSampleBase):
         self.response = self._create_volume()
 
     def test_volume_list_detail(self):
+        original_api_version = self.api.api_version
 
-        response = self._do_get('volumes/detail')
-        self._verify_response('volumes-list-detailed-response',
-                              {}, response, 200)
+        try:
+            self.api.api_version = VOLUME_TYPE_ID_IN_VOLUME_DETAIL
+            response = self._do_get('volumes/detail')
+            self._verify_response('volumes-list-detailed-response',
+                                  {}, response, 200)
+        finally:
+            self.api.api_version = original_api_version
 
     def test_volume_create(self):
 

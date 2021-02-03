@@ -165,6 +165,8 @@ VOLUME_CLUSTER_NAME = '3.61'
 
 DEFAULT_TYPE_OVERRIDES = '3.62'
 
+VOLUME_TYPE_ID_IN_VOLUME_DETAIL = '3.63'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

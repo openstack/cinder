@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Introduces microversion (MV) 3.63, which includes volume type ID in the
+    volume details JSON response. This MV affects the volume detail list
+    (``GET /v3/{project_id}/volumes/detail``), and volume-show
+    (``GET /v3/{project_id}/volumes/{volume_id}``) calls.
