@@ -382,7 +382,8 @@ Delete a volume
 Resize a volume
 ~~~~~~~~~~~~~~~
 
-#. To resize your volume, you must first detach it from the server.
+#. To resize your volume, you must first detach it from the server if the
+   volume driver does not support in-use extend. (See Extend_attached_volume_.)
    To detach the volume from your server, pass the server ID and volume ID
    to the following command:
 
@@ -414,6 +415,7 @@ Resize a volume
       $ openstack volume set 573e024d-5235-49ce-8332-be1576d323f8 --size 10
 
    This command does not provide any output.
+   Note: The volume status ``reserved`` is not a valid state for an extend operation.
 
    .. note::
 
@@ -421,6 +423,25 @@ Resize a volume
       deactivated. The reactivation is automatic unless
       ``auto_activation_volume_list`` is defined in ``lvm.conf``. See
       ``lvm.conf`` for more information.
+
+.. _Extend_attached_volume:
+
+Extend attached volume
+~~~~~~~~~~~~~~~~~~~~~~
+
+Starting from microversion 3.42, it is also possible to extend an
+attached volume with status ``in-use``, depending upon policy
+settings and the capabilities of the backend storage.
+Sufficient amount of storage must exist to extend the volume.
+
+#. Resize the volume by passing the microversion,the volume ID, and the new size (a value
+   greater than the old one) as parameters:
+
+   .. code-block:: console
+
+      $ openstack --os-volume-api-version 3.42 volume set 573e024d-5235-49ce-8332-be1576d323f8 --size 10
+
+   This command does not provide any output.
 
 Migrate a volume
 ~~~~~~~~~~~~~~~~
@@ -772,7 +793,6 @@ To get a listing of all Cinder services and their states, run the command:
 .. code-block:: console
 
    $ openstack volume service list
-
    +------------------+-------------------+------+---------+-------+----------------------------+
    | Binary           | Host              | Zone | Status  | State | Updated At                 |
    +------------------+-------------------+------+---------+-------+----------------------------+
