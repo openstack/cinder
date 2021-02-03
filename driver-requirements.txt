@@ -49,3 +49,6 @@ dfs_sdk>=1.2.25 # Apache-2.0
 
 # DataCore SANsymphony
 websocket-client>=1.3.2 # LGPLv2+
+
+# LINSTOR
+python-linstor>=1.7.0 # LGPLv3
