@@ -601,7 +601,7 @@ class SSHUtil(object):
         stdin, stdout, stderr = client.exec_command(command)
         self._wait_on_stdout(stdout, timeout)
         response = stdout.channel.recv(999)
-        if response.strip() != expected_prompt_text:
+        if expected_prompt_text not in response.strip().decode():
             msg = _("Unexpected output. Expected [%(expected)s] but "
                     "received [%(output)s]") % {
                 'expected': expected_prompt_text,
