@@ -23,6 +23,7 @@ import ipaddress
 import math
 import platform
 import re
+import sys
 import uuid
 
 from distutils import version
@@ -88,7 +89,13 @@ PURE_OPTS = [
     cfg.StrOpt("pure_iscsi_cidr", default="0.0.0.0/0",
                help="CIDR of FlashArray iSCSI targets hosts are allowed to "
                     "connect to. Default will allow connection to any "
-                    "IP address."),
+                    "IPv4 address. This parameter now supports IPv6 subnets. "
+                    "Ignored when pure_iscsi_cidr_list is set."),
+    cfg.ListOpt("pure_iscsi_cidr_list", default=None,
+                help="Comma-separated list of CIDR of FlashArray iSCSI "
+                     "targets hosts are allowed to connect to. It supports "
+                     "IPv4 and IPv6 subnets. This parameter supersedes "
+                     "pure_iscsi_cidr."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
@@ -2410,12 +2417,19 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             },
         }
 
-        # Convert CIDR to the expected type
-        if not isinstance(self.configuration.pure_iscsi_cidr, six.text_type):
-            cidr = self.configuration.pure_iscsi_cidr.decode('utf8')
+        if self.configuration.pure_iscsi_cidr_list:
+            cidrs = self.configuration.pure_iscsi_cidr_list
+            if self.configuration.pure_iscsi_cidr != "0.0.0.0/0":
+                LOG.warning("pure_iscsi_cidr was ignored as "
+                            "pure_iscsi_cidr_list is set")
         else:
-            cidr = self.configuration.pure_iscsi_cidr
-        check_cidr = ipaddress.IPv4Network(cidr)
+            cidrs = [self.configuration.pure_iscsi_cidr]
+
+        if sys.version_info[0] >= 3:
+            check_cidrs = [ipaddress.ip_network(item) for item in cidrs]
+        else:
+            check_cidrs = \
+                [ipaddress.ip_network(item.decode('utf8')) for item in cidrs]
 
         target_luns = []
         target_iqns = []
@@ -2430,15 +2444,17 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 # Check to ensure that the portal IP is in the iSCSI target
                 # CIDR before adding it
                 target_portal = port["portal"]
-                if not isinstance(target_portal.split(":")[0], six.text_type):
-                    portal = (target_portal.split(":")[0]).decode('utf8')
+                portal, p_sep, p_port = target_portal.rpartition(':')
+                portal = portal.strip('[]')
+                if sys.version_info[0] >= 3:
+                    check_ip = ipaddress.ip_address(portal)
                 else:
-                    portal = target_portal.split(":")[0]
-                check_ip = ipaddress.IPv4Address(portal)
-                if check_ip in check_cidr:
-                    target_luns.append(target["connection"]["lun"])
-                    target_iqns.append(port["iqn"])
-                    target_portals.append(target_portal)
+                    check_ip = ipaddress.ip_address(portal.decode('utf8'))
+                for check_cidr in check_cidrs:
+                    if check_ip in check_cidr:
+                        target_luns.append(target["connection"]["lun"])
+                        target_iqns.append(port["iqn"])
+                        target_portals.append(target_portal)
 
         LOG.info("iSCSI target portals that match CIDR range: '%s'",
                  target_portals)
