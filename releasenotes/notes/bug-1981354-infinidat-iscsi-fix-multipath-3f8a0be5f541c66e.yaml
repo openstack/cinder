@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Infinidat Driver `bug #1981354
+    <https://bugs.launchpad.net/cinder/+bug/1981354>`_:
+    Fixed Infinidat driver to return all configured and
+    enabled iSCSI portals for a given network space.
