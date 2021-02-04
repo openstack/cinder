@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Pure Storage FlashArray driver `bug 1910143
+    <https://bugs.launchpad.net/cinder/+bug/1910143>`_: Parameter
+    ``pure_iscsi_cidr`` is now IPv4/v6 agnostic.
+features:
+  - |
+    Pure Storage FlashArray driver: added configuration option
+    ``pure_iscsi_cidr_list`` for setting several network CIDRs for iSCSI target
+    connection. Both IPv4 and IPv6 is supported. The default still allows all
+    IPv4 targets.
