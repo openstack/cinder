@@ -86,6 +86,10 @@ PURE_OPTS = [
                help="CIDR of FlashArray iSCSI targets hosts are allowed to "
                     "connect to. Default will allow connection to any "
                     "IP address."),
+    cfg.ListOpt("pure_iscsi_cidrs", default=[],
+               help="CIDRs of FlashArray iSCSI targets hosts are allowed to "
+                    "connect to. Default will allow connection to any "
+                    "IP address."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
@@ -2423,7 +2427,13 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             cidr = self.configuration.pure_iscsi_cidr.decode('utf8')
         else:
             cidr = self.configuration.pure_iscsi_cidr
-        check_cidr = ipaddress.IPv4Network(cidr)
+#        check_cidr = ipaddress.IPv4Network(cidr)
+
+        cidrs = self.configuration.pure_iscsi_cidrs
+
+        if not cidrs:
+            cidrs.append(cidr)
+        check_cidrs = [ipaddress.ip_network(item) for item in cidrs]
 
         target_luns = []
         target_iqns = []
@@ -2442,11 +2452,12 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                     portal = (target_portal.split(":")[0]).decode('utf8')
                 else:
                     portal = target_portal.split(":")[0]
-                check_ip = ipaddress.IPv4Address(portal)
-                if check_ip in check_cidr:
-                    target_luns.append(target["connection"]["lun"])
-                    target_iqns.append(port["iqn"])
-                    target_portals.append(target_portal)
+                check_ip = ipaddress.ip_address(portal)
+                for check_cidr in check_cidrs:
+                    if check_ip in check_cidr:
+                        target_luns.append(target["connection"]["lun"])
+                        target_iqns.append(port["iqn"])
+                        target_portals.append(target_portal)
 
         LOG.info("iSCSI target portals that match CIDR range: '%s'",
                  target_portals)
