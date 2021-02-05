@@ -85,11 +85,10 @@ PURE_OPTS = [
     cfg.StrOpt("pure_iscsi_cidr", default="0.0.0.0/0",
                help="CIDR of FlashArray iSCSI targets hosts are allowed to "
                     "connect to. Default will allow connection to any "
-                    "IP address."),
+                    "IP address. Ignored when pure_iscsi_cidrs is set."),
     cfg.ListOpt("pure_iscsi_cidrs", default=[],
                help="CIDRs of FlashArray iSCSI targets hosts are allowed to "
-                    "connect to. Default will allow connection to any "
-                    "IP address."),
+                    "connect to. This parameter superceeds pure_iscsi_cidr."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
