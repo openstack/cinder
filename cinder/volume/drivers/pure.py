@@ -2427,12 +2427,14 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             cidr = self.configuration.pure_iscsi_cidr.decode('utf8')
         else:
             cidr = self.configuration.pure_iscsi_cidr
-#        check_cidr = ipaddress.IPv4Network(cidr)
 
         cidrs = self.configuration.pure_iscsi_cidrs
 
         if not cidrs:
             cidrs.append(cidr)
+        else:
+            LOG.warning("pure_iscsi_cidr was ignored as pure_iscsi_cidrs is set")
+
         check_cidrs = [ipaddress.ip_network(item) for item in cidrs]
 
         target_luns = []
