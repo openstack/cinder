@@ -582,6 +582,7 @@ class VolumeManager(manager.CleanableManager,
 
         # Keep the image tmp file clean when init host.
         backend_name = volume_utils.extract_host(self.service_topic_queue)
+        assert backend_name is not None
         image_utils.cleanup_temporary_file(backend_name)
 
         # Migrate any ConfKeyManager keys based on fixed_key to the currently

@@ -113,7 +113,7 @@ def check_exclusive_options(**kwargs: dict) -> None:
         raise exception.InvalidInput(reason=msg)
 
 
-def execute(*cmd: str, **kwargs) -> Tuple[str, str]:
+def execute(*cmd: str, **kwargs: Union[bool, str]) -> Tuple[str, str]:
     """Convenience wrapper around oslo's execute() method."""
     if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
         kwargs['root_helper'] = get_root_helper()
