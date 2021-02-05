@@ -1782,6 +1782,14 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.array, self.data.port_group_name_i)
         self.assertEqual(ref_ip_iqn, ip_iqn_list)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_portgroup',
+                       return_value=None)
+    def test_find_ip_and_iqns_no_port_group(self, mock_port):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.common._find_ip_and_iqns, self.data.array,
+            self.data.port_group_name_i)
+
     def test_create_replica_snap_name(self):
         array = self.data.array
         clone_volume = self.data.test_clone_volume
