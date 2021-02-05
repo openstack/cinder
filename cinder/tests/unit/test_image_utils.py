@@ -606,18 +606,13 @@ class TestVerifyImage(test.TestCase):
         image_service = FakeImageService()
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
-        user_id = mock.sentinel.user_id
-        project_id = mock.sentinel.project_id
-        size = 2
-        run_as_root = mock.sentinel.run_as_root
         mock_data = mock_info.return_value
         mock_data.file_format = 'test_format'
         mock_data.backing_file = None
         mock_data.virtual_size = 1
 
         output = image_utils.fetch_verify_image(
-            ctxt, image_service, image_id, dest, user_id=user_id,
-            project_id=project_id, size=size, run_as_root=run_as_root)
+            ctxt, image_service, image_id, dest)
         self.assertIsNone(output)
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            dest, None, None)
@@ -626,8 +621,6 @@ class TestVerifyImage(test.TestCase):
             .assert_called_once_with())
         (mock_fileutils.remove_path_on_error.return_value.__exit__
             .assert_called_once_with(None, None, None))
-        mock_check_size.assert_called_once_with(mock_data.virtual_size,
-                                                size, image_id)
 
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.fileutils')
@@ -660,29 +653,6 @@ class TestVerifyImage(test.TestCase):
         self.assertRaises(exception.ImageUnacceptable,
                           image_utils.fetch_verify_image,
                           ctxt, image_service, image_id, dest)
-
-    @mock.patch('cinder.image.image_utils.check_virtual_size')
-    @mock.patch('cinder.image.image_utils.qemu_img_info')
-    @mock.patch('cinder.image.image_utils.fileutils')
-    @mock.patch('cinder.image.image_utils.fetch')
-    def test_size_error(self, mock_fetch, mock_fileutils, mock_info,
-                        mock_check_size):
-        ctxt = mock.sentinel.context
-        image_service = mock.Mock()
-        image_id = mock.sentinel.image_id
-        dest = mock.sentinel.dest
-        size = 1
-        mock_data = mock_info.return_value
-        mock_data.file_format = 'test_format'
-        mock_data.backing_file = None
-        mock_data.virtual_size = 2 * units.Gi
-
-        mock_check_size.side_effect = exception.ImageUnacceptable(
-            image_id='fake_image_id', reason='test')
-
-        self.assertRaises(exception.ImageUnacceptable,
-                          image_utils.fetch_verify_image,
-                          ctxt, image_service, image_id, dest, size=size)
 
 
 class TestTemporaryDir(test.TestCase):
@@ -1726,23 +1696,18 @@ class TestFetchToVolumeFormat(test.TestCase):
         image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
-        ctxt.user_id = user_id = mock.sentinel.user_id
-        project_id = mock.sentinel.project_id
-        size = 4321
-        run_as_root = mock.sentinel.run_as_root
+        ctxt.user_id = mock.sentinel.user_id
 
         image_service.show.return_value = {'disk_format': 'raw',
                                            'size': 41126400}
 
         image_utils.fetch_verify_image(
-            ctxt, image_service, image_id, dest,
-            user_id=user_id, project_id=project_id, size=size,
-            run_as_root=run_as_root)
+            ctxt, image_service, image_id, dest)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
         mock_info.assert_called_once_with(dest,
                                           force_share=False,
-                                          run_as_root=run_as_root)
+                                          run_as_root=True)
         mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
                                            dest, None, None)
 
