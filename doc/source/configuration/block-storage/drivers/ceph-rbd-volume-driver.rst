@@ -2,8 +2,8 @@
 Ceph RADOS Block Device (RBD)
 =============================
 
-If you use KVM or QEMU as your hypervisor, you can configure the Compute
-service to use `Ceph RADOS block devices
+If you use KVM, QEMU or Hyper-V as your hypervisor, you can configure the
+Compute service to use `Ceph RADOS block devices
 (RBD) <https://ceph.com/ceph-storage/block-storage/>`__ for volumes.
 
 Ceph is a massively scalable, open source, distributed storage system.
@@ -38,6 +38,9 @@ public or private clouds.
    available to Cinder or any of its associated libraries (os-brick,
    cinderlib) is aligned with the Ceph server version.  Mixing server
    and client versions is *unsupported* and may lead to anomalous behavior.
+
+   The minimum requirements for using Ceph with Hyper-V are Ceph Pacific and
+   Windows Server 2016.
 
 RADOS
 ~~~~~
