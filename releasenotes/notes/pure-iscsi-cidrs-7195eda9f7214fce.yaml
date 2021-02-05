@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Pure Storage FlashArray driver: added configuration option
+    ``pure_iscsi_cidrs`` for setting several network CIDRs for iSCSI target
+    connection. The default still allows all targets.
