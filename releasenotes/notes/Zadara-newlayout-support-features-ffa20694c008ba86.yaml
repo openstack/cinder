@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Zadara VPSA Driver: Added support for cinder features volume manage,
+    snapshot manage, list manageable volumes, manageable snapshots, multiattach
+    and ipv6 support.
+
+upgrade:
+  - |
+    The Zadara VPSA Driver has been updated to support json format
+    and reorganized with new code layout. The module path
+    ``cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver`` should now be
+    updated to ``cinder.volume.drivers.zadara.zadara.ZadaraVPSAISCSIDriver``
+    in ``cinder.conf``.

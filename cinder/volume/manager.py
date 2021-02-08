@@ -178,6 +178,8 @@ MAPPING = {
         'FJDXISCSIDriver',
     'cinder.volume.drivers.dell_emc.vxflexos.driver.VxFlexOSDriver':
         'cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver',
+    'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver':
+        'cinder.volume.drivers.zadara.zadara.ZadaraVPSAISCSIDriver',
 }
 
 

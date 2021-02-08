@@ -30,6 +30,9 @@ Supported operations
 - Clone a volume
 - Extend a volume
 - Migrate a volume with back end assistance
+- Manage and unmanage a volume
+- Manage and unmanage volume snapshots
+- Multiattach a volume
 
 Configuration
 ~~~~~~~~~~~~~
@@ -64,7 +67,7 @@ Sample minimum back end configuration
    zadara_password = mysecretpassword
    zadara_use_iser = false
    zadara_vpsa_poolname = pool-00000001
-   volume_driver = cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver
+   volume_driver = cinder.volume.drivers.zadara.zadara.ZadaraVPSAISCSIDriver
    volume_backend_name = vpsa
 
 Driver-specific options
@@ -76,7 +79,8 @@ to the Zadara Storage VPSA driver.
 .. config-table::
    :config-target: Zadara
 
-   cinder.volume.drivers.zadara
+   cinder.volume.drivers.zadara.common
+   cinder.volume.drivers.zadara.zadara
 
 .. note::
 
