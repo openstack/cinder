@@ -896,8 +896,9 @@ class RBDTestCase(test.TestCase):
 
             self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
 
-            mock_log.info.assert_called_once_with(mock.ANY)
-            self.assertTrue(self.driver._clone_v2_api_checked)
+            mock_log.info.assert_called_with('Using v2 Clone API')
+
+        self.assertTrue(self.driver._clone_v2_api_checked)
 
     @common_mocks
     @mock.patch('cinder.objects.Volume.get_by_id')
@@ -917,8 +918,10 @@ class RBDTestCase(test.TestCase):
 
             self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
 
-            mock_log.warning.assert_called_once_with(mock.ANY)
-            self.assertTrue(self.driver._clone_v2_api_checked)
+            self.assertTrue(any(m for m in mock_log.warning.call_args_list
+                                if 'Not using v2 clone API' in m[0][0]))
+
+        self.assertTrue(self.driver._clone_v2_api_checked)
 
     @common_mocks
     @mock.patch('cinder.objects.Volume.get_by_id')
