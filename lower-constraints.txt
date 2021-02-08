@@ -68,7 +68,7 @@ oslo.policy==3.6.0
 oslo.privsep==2.4.0
 oslo.reports==2.2.0
 oslo.rootwrap==6.2.0
-oslo.serialization==4.0.1
+oslo.serialization==4.1.0
 oslo.service==2.4.0
 oslo.upgradecheck==1.1.1
 oslo.utils==4.7.0
