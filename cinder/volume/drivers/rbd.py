@@ -576,14 +576,14 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         with RADOSClient(self) as client:
             ret, df_outbuf, __ = client.cluster.mon_command(
-                '{"prefix":"df", "format":"json"}', '')
+                '{"prefix":"df", "format":"json"}', b'')
             if ret:
                 LOG.warning('Unable to get rados pool stats.')
                 return 'unknown', 'unknown'
 
             ret, quota_outbuf, __ = client.cluster.mon_command(
                 '{"prefix":"osd pool get-quota", "pool": "%s",'
-                ' "format":"json"}' % pool_name, '')
+                ' "format":"json"}' % pool_name, b'')
             if ret:
                 LOG.warning('Unable to get rados pool quotas.')
                 return 'unknown', 'unknown'

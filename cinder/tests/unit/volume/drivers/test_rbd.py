@@ -1609,9 +1609,9 @@ class RBDTestCase(test.TestCase):
                                return_value=dynamic_total):
             result = self.driver._get_pool_stats()
         client.cluster.mon_command.assert_has_calls([
-            mock.call('{"prefix":"df", "format":"json"}', ''),
+            mock.call('{"prefix":"df", "format":"json"}', b''),
             mock.call('{"prefix":"osd pool get-quota", "pool": "rbd",'
-                      ' "format":"json"}', ''),
+                      ' "format":"json"}', b''),
         ])
         self.assertEqual((free_capacity, total_capacity), result)
 
@@ -1632,9 +1632,9 @@ class RBDTestCase(test.TestCase):
         ]
         result = self.driver._get_pool_stats()
         client.cluster.mon_command.assert_has_calls([
-            mock.call('{"prefix":"df", "format":"json"}', ''),
+            mock.call('{"prefix":"df", "format":"json"}', b''),
             mock.call('{"prefix":"osd pool get-quota", "pool": "rbd",'
-                      ' "format":"json"}', ''),
+                      ' "format":"json"}', b''),
         ])
         free_capacity = 1.56
         total_capacity = 3.0
