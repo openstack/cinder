@@ -1680,7 +1680,8 @@ class StorwizeHelpers(object):
                 params.append('-compressed')
             else:
                 params.append('-thin')
-                params.extend(['-grainsize', six.text_type(opts['grainsize'])])
+                params.extend(['-grainsize',
+                               six.text_type(opts['grainsize'])])
         return params
 
     def create_hyperswap_volume(self, vol_name, size, units, pool, opts):
@@ -1712,11 +1713,32 @@ class StorwizeHelpers(object):
             pool = attr['mdisk_grp_name']
             self.check_hyperswap_pool(pool, opts['peer_pool'])
             hyper_pool = '%s' % opts['peer_pool']
-            is_dr_pool = self.is_volume_type_dr_pools(pool, opts)
-            if is_dr_pool and opts['rsize'] != -1:
+            params = []
+            if opts['rsize'] != -1:
+                is_dr_pool = self.is_volume_type_dr_pools(pool, opts)
+                if is_dr_pool:
+                    self.check_data_reduction_pool_params(opts)
+                params = self._get_hyperswap_volume_create_params(opts,
+                                                                  is_dr_pool)
+            self.ssh.addvolumecopy(vol_name, hyper_pool, params)
+
+    def convert_extended_volume_to_hyperswap(self, vol_name, opts, state):
+        vol_name = '%s' % vol_name
+        attr = self.get_vdisk_attributes(vol_name)
+        if attr is None:
+            msg = (_('convert_volume_to_hyperswap: Failed to get '
+                     'attributes for volume %s.') % vol_name)
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        hyper_pool = '%s' % opts['peer_pool']
+        params = []
+        if opts['rsize'] != -1:
+            is_dr_pool = self.is_volume_type_dr_pools(attr['mdisk_grp_name'],
+                                                      opts)
+            if is_dr_pool:
                 self.check_data_reduction_pool_params(opts)
             params = self._get_hyperswap_volume_create_params(opts, is_dr_pool)
-            self.ssh.addvolumecopy(vol_name, hyper_pool, params)
+        self.ssh.addvolumecopy(vol_name, hyper_pool, params)
 
     def convert_hyperswap_volume_to_normal(self, vol_name, peer_pool):
         vol_name = '%s' % vol_name
@@ -3519,11 +3541,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def _extend_volume_op(self, volume, new_size, old_size=None):
         LOG.debug('enter: _extend_volume_op: volume %s', volume['id'])
         volume_name = self._get_target_vol(volume)
-        if self.is_volume_hyperswap(volume):
-            msg = _('_extend_volume_op: Extending a hyperswap volume is '
-                    'not supported.')
-            LOG.error(msg)
-            raise exception.InvalidInput(message=msg)
 
         ret = self._helpers.ensure_vdisk_no_fc_mappings(volume_name,
                                                         allow_snaps=False)
@@ -3540,51 +3557,84 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         rel_info = self._helpers.get_relationship_info(volume_name)
         if rel_info:
             LOG.warning('_extend_volume_op: Extending a volume with '
-                        'remote copy is not recommended.')
-            try:
-                rep_type = rel_info['copy_type']
-                cyclingmode = rel_info['cycling_mode']
-                self._master_backend_helpers.delete_relationship(
-                    volume.name)
-                tgt_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX +
-                           volume.name)
-                self._master_backend_helpers.extend_vdisk(volume.name,
-                                                          extend_amt)
-                self._aux_backend_helpers.extend_vdisk(tgt_vol, extend_amt)
-                tgt_sys = self._aux_backend_helpers.get_system_info()
-                if storwize_const.GMCV_MULTI == cyclingmode:
-                    tgt_change_vol = (
-                        storwize_const.REPLICA_CHG_VOL_PREFIX +
-                        tgt_vol)
-                    source_change_vol = (
-                        storwize_const.REPLICA_CHG_VOL_PREFIX +
-                        volume.name)
-                    self._master_backend_helpers.extend_vdisk(
-                        source_change_vol, extend_amt)
-                    self._aux_backend_helpers.extend_vdisk(
-                        tgt_change_vol, extend_amt)
-                    src_change_opts = self._get_vdisk_params(
-                        volume.volume_type_id)
-                    cycle_period_seconds = src_change_opts.get(
-                        'cycle_period_seconds')
-                    self._master_backend_helpers.create_relationship(
-                        volume.name, tgt_vol, tgt_sys.get('system_name'),
-                        True, True, source_change_vol, cycle_period_seconds)
-                    self._aux_backend_helpers.change_relationship_changevolume(
-                        tgt_vol, tgt_change_vol, False)
-                    self._master_backend_helpers.start_relationship(
-                        volume.name)
-                else:
-                    self._master_backend_helpers.create_relationship(
-                        volume.name, tgt_vol, tgt_sys.get('system_name'),
-                        True if storwize_const.GLOBAL == rep_type else False)
-            except Exception as e:
-                msg = (_('Failed to extend a volume with remote copy '
-                         '%(volume)s. Exception: '
-                         '%(err)s.') % {'volume': volume.id,
-                                        'err': e})
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
+                        'remote copy or with "active-active" relationship is '
+                        'not recommended.')
+            rep_type = rel_info['copy_type']
+            cyclingmode = rel_info['cycling_mode']
+            master_helper = self._master_backend_helpers
+            target_helper = self._aux_backend_helpers
+            if rep_type == 'activeactive':
+                hs_opts = self._get_vdisk_params(volume['volume_type_id'],
+                                                 volume_metadata=
+                                                 volume.get(
+                                                     'volume_matadata'))
+                try:
+                    master_helper.convert_hyperswap_volume_to_normal(
+                        volume_name, hs_opts['peer_pool'])
+                except Exception as e:
+                    msg = (_('_extend_volume_op: Failed to convert hyperswap '
+                             'volume to normal volume %(volume)s. Exception: '
+                             '%(err)s.') % {'volume': volume.id, 'err': e})
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+                try:
+                    master_helper.extend_vdisk(volume_name, extend_amt)
+                except Exception as e:
+                    msg = (_('_extend_volume_op: Failed to extend a hyperswap '
+                             'volume %(volume)s. Exception: '
+                             '%(err)s.') % {'volume': volume.id, 'err': e})
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                finally:
+                    try:
+                        master_helper.convert_extended_volume_to_hyperswap(
+                            volume_name, hs_opts, self._state)
+                    except Exception as e:
+                        msg = (_('_extend_volume_op: Failed to convert volume '
+                                 'to hyperswap volume %(volume)s. Exception: '
+                                 '%(err)s.') % {'volume': volume.id, 'err': e})
+                        LOG.error(msg)
+                        raise exception.VolumeDriverException(message=msg)
+            else:
+                try:
+                    master_helper.delete_relationship(volume.name)
+                    tgt_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               volume.name)
+                    master_helper.extend_vdisk(volume.name, extend_amt)
+                    target_helper.extend_vdisk(tgt_vol, extend_amt)
+                    tgt_sys = target_helper.get_system_info()
+                    if storwize_const.GMCV_MULTI == cyclingmode:
+                        tgt_change_vol = (
+                            storwize_const.REPLICA_CHG_VOL_PREFIX +
+                            tgt_vol)
+                        source_change_vol = (
+                            storwize_const.REPLICA_CHG_VOL_PREFIX +
+                            volume.name)
+                        master_helper.extend_vdisk(source_change_vol,
+                                                   extend_amt)
+                        target_helper.extend_vdisk(tgt_change_vol, extend_amt)
+                        src_change_opts = self._get_vdisk_params(
+                            volume.volume_type_id)
+                        cycle_period_seconds = src_change_opts.get(
+                            'cycle_period_seconds')
+                        master_helper.create_relationship(
+                            volume.name, tgt_vol, tgt_sys.get('system_name'),
+                            True, True, source_change_vol,
+                            cycle_period_seconds)
+                        target_helper.change_relationship_changevolume(
+                            tgt_vol, tgt_change_vol, False)
+                        master_helper.start_relationship(volume.name)
+                    else:
+                        master_helper.create_relationship(
+                            volume.name, tgt_vol, tgt_sys.get('system_name'),
+                            True if cyclingmode == 'none' else False)
+                except Exception as e:
+                    msg = (_('Failed to extend a volume with remote copy '
+                             '%(volume)s. Exception: '
+                             '%(err)s.') % {'volume': volume.id, 'err': e})
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
         else:
             self._helpers.extend_vdisk(volume_name, extend_amt)
         LOG.debug('leave: _extend_volume_op: volume %s', volume.id)
