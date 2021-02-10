@@ -990,7 +990,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         port = self.configuration.vmware_host_port
         ca_file = self.configuration.vmware_ca_file
         insecure = self.configuration.vmware_insecure
-        cookies = self.session.vim.client.options.transport.cookiejar
+        cookies = self.session.vim.client.cookiejar
         dc_name = self.volumeops.get_entity_name(dc_ref)
 
         LOG.debug("Copying image: %(image_id)s to %(path)s.",

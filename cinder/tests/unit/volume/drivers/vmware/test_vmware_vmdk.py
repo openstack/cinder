@@ -2685,7 +2685,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             ds_name, upload_file_path)
 
         vops.get_entity_name.assert_called_once_with(dc_ref)
-        cookies = session.vim.client.options.transport.cookiejar
+        cookies = session.vim.client.cookiejar
         if use_temp_image:
             mock_open.assert_called_once_with('/tmp/foo', 'rb')
             download_file.assert_called_once_with(
