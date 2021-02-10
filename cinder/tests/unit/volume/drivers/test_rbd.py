@@ -897,7 +897,6 @@ class RBDTestCase(test.TestCase):
             self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
 
             mock_log.info.assert_called_once_with(mock.ANY)
-            mock_log.warning.assert_not_called()
             self.assertTrue(self.driver._clone_v2_api_checked)
 
     @common_mocks
@@ -905,28 +904,6 @@ class RBDTestCase(test.TestCase):
     @mock.patch.object(driver.RBDDriver, '_resize', mock.Mock())
     def test_log_create_vol_from_snap_without_v2_clone_api(self,
                                                            volume_get_by_id):
-        volume_get_by_id.return_value = self.volume_a
-
-        self.mock_proxy().__enter__().volume.op_features.return_value = 0
-        self.mock_rbd.RBD_OPERATION_FEATURE_CLONE_PARENT = 0
-
-        snapshot = mock.Mock()
-        self.cfg.rbd_flatten_volume_from_snapshot = False
-
-        with mock.patch.object(driver, 'LOG') as \
-                mock_log:
-
-            self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
-
-            mock_log.warning.assert_called_once_with(mock.ANY)
-            mock_log.info.assert_not_called()
-            self.assertTrue(self.driver._clone_v2_api_checked)
-
-    @common_mocks
-    @mock.patch('cinder.objects.Volume.get_by_id')
-    @mock.patch.object(driver.RBDDriver, '_resize', mock.Mock())
-    def test_log_create_vol_from_snap_without_v2_clone_api_2(self,
-                                                             volume_get_by_id):
         volume_get_by_id.return_value = self.volume_a
 
         self.mock_proxy().__enter__().volume.op_features.return_value = 0
@@ -941,7 +918,6 @@ class RBDTestCase(test.TestCase):
             self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
 
             mock_log.warning.assert_called_once_with(mock.ANY)
-            mock_log.info.assert_not_called()
             self.assertTrue(self.driver._clone_v2_api_checked)
 
     @common_mocks
