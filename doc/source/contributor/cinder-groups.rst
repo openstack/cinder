@@ -59,6 +59,10 @@ The Cinder project has total control over the membership of these groups.
      - +2 powers on the cinder-tempest-plugin repository
      - cinder-core plus other appropriate people
      - https://review.opendev.org/#/admin/groups/2088,members
+   * - rbd-iscsi-client-core
+     - +2 powers on the rbd-iscsi-client repository
+     - cinder-core (plus others if appropriate; currently only cinder-core)
+     - https://review.opendev.org/admin/groups/b25813f5baef62b9449371c91f7dbacbcf7bc6d6,members
 
 The Cinder project shares control over the membership of these groups.  If you
 want to add someone to one of these groups who doesn't already have membership
