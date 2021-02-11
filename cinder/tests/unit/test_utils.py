@@ -108,16 +108,6 @@ class GenericUtilsTestCase(test.TestCase):
                           unit=False,
                           pretty_keys=False)
 
-    def test_require_driver_intialized(self):
-        driver = mock.Mock()
-        driver.initialized = True
-        utils.require_driver_initialized(driver)
-
-        driver.initialized = False
-        self.assertRaises(exception.DriverNotInitialized,
-                          utils.require_driver_initialized,
-                          driver)
-
     def test_hostname_unicode_sanitization(self):
         hostname = u"\u7684.test.example.com"
         self.assertEqual("test.example.com",

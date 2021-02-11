@@ -27,7 +27,7 @@ from cinder.volume import manager as vol_manager
 class VolumeManagerTestCase(base.BaseVolumeTestCase):
 
     @mock.patch('cinder.message.api.API.create')
-    @mock.patch('cinder.utils.require_driver_initialized')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 '_notify_about_snapshot_usage')
     def test_create_snapshot_driver_not_initialized_generates_user_message(
@@ -54,7 +54,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
             detail=message_field.Detail.SNAPSHOT_CREATE_ERROR)
 
     @mock.patch('cinder.message.api.API.create')
-    @mock.patch('cinder.utils.require_driver_initialized')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 '_notify_about_snapshot_usage')
     def test_create_snapshot_metadata_update_failure_generates_user_message(
@@ -92,7 +92,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
             detail=message_field.Detail.SNAPSHOT_UPDATE_METADATA_FAILED)
 
     @mock.patch('cinder.message.api.API.create')
-    @mock.patch('cinder.utils.require_driver_initialized')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 '_notify_about_snapshot_usage')
     def test_delete_snapshot_when_busy_generates_user_message(
@@ -116,7 +116,7 @@ class VolumeManagerTestCase(base.BaseVolumeTestCase):
             exception=fake_exp)
 
     @mock.patch('cinder.message.api.API.create')
-    @mock.patch('cinder.utils.require_driver_initialized')
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 '_notify_about_snapshot_usage')
     def test_delete_snapshot_general_exception_generates_user_message(

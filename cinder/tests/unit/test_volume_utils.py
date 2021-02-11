@@ -1232,6 +1232,16 @@ class VolumeUtilsTestCase(test.TestCase):
         mock_configuration.assert_called_with(driver.volume_opts,
                                               config_group='backendA')
 
+    def test_require_driver_initialized(self):
+        driver = mock.Mock()
+        driver.initialized = True
+        volume_utils.require_driver_initialized(driver)
+
+        driver.initialized = False
+        self.assertRaises(exception.DriverNotInitialized,
+                          volume_utils.require_driver_initialized,
+                          driver)
+
 
 @ddt.ddt
 class LogTracingTestCase(test.TestCase):
