@@ -420,7 +420,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
             args = {'snapshot': coname,
                     'object': oname,
                     'err': err}
-            msg = (_('Failed to create tmp snapshot %(snapshot)s'
+            msg = (_('Failed to create tmp snapshot %(snapshot)s '
                      'for object %(object)s: %(err)s') % args)
             raise exception.VolumeBackendAPIException(msg)
 
