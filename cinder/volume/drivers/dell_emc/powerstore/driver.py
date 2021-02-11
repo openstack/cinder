@@ -46,9 +46,10 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.0.0 - Initial version
         1.0.1 - Add CHAP support
         1.1.0 - Add volume replication v2.1 support
+        1.1.1 - Add Consistency Groups support
     """
 
-    VERSION = "1.1.0"
+    VERSION = "1.1.1"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page
@@ -186,6 +187,32 @@ class PowerStoreDriver(driver.VolumeDriver):
             is_failback
         )
         return secondary_id, volumes_updates, groups_updates
+
+    def create_group(self, context, group):
+        return self.adapter.create_group(group)
+
+    def delete_group(self, context, group, volumes):
+        return self.adapter.delete_group(group)
+
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        return self.adapter.update_group(group, add_volumes, remove_volumes)
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        return self.adapter.create_group_snapshot(group_snapshot)
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        return self.adapter.delete_group_snapshot(group_snapshot)
+
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        source = group_snapshot or source_group
+        return self.adapter.create_group_from_source(group,
+                                                     volumes,
+                                                     source,
+                                                     snapshots,
+                                                     source_vols)
 
     @property
     def adapter(self):

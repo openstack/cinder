@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    PowerStore driver: Add Consistency Groups support.

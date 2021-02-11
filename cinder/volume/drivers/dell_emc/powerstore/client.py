@@ -158,13 +158,14 @@ class PowerStoreClient(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def create_volume(self, name, size, pp_id):
+    def create_volume(self, name, size, pp_id, group_id):
         r, response = self._send_post_request(
             "/volume",
             payload={
                 "name": name,
                 "size": size,
                 "protection_policy_id": pp_id,
+                "volume_group_id": group_id,
             }
         )
         if r.status_code not in self.ok_codes:
@@ -174,7 +175,15 @@ class PowerStoreClient(object):
         return response["id"]
 
     def delete_volume_or_snapshot(self, entity_id, entity="volume"):
-        r, response = self._send_delete_request("/volume/%s" % entity_id)
+        if entity in ["volume group", "volume group snapshot"]:
+            r, response = self._send_delete_request(
+                "/volume_group/%s" % entity_id,
+                payload={
+                    "delete_members": True,
+                },
+            )
+        else:
+            r, response = self._send_delete_request("/volume/%s" % entity_id)
         if r.status_code not in self.ok_codes:
             if r.status_code == requests.codes.not_found:
                 LOG.warning("PowerStore %(entity)s with id %(entity_id)s is "
@@ -597,5 +606,140 @@ class PowerStoreClient(object):
         if r.status_code not in self.ok_codes:
             msg = (_("Failed to reprotect PowerStore replication session "
                      "with id %s.") % rep_session_id)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def create_vg(self, name):
+        r, response = self._send_post_request(
+            "/volume_group",
+            payload={
+                "name": name,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to create PowerStore volume group %s.") % name
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    def get_vg_id_by_name(self, name):
+        r, response = self._send_get_request(
+            "/volume_group",
+            params={
+                "name": "eq.%s" % name,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore volume groups.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            group_id = response[0].get("id")
+            return group_id
+        except IndexError:
+            msg = _("PowerStore volume group %s is not found.") % name
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def add_volumes_to_vg(self, group_id, volume_ids):
+        r, response = self._send_post_request(
+            "/volume_group/%s/add_members" % group_id,
+            payload={
+                "volume_ids": volume_ids,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to add volumes to PowerStore volume group "
+                     "with id %(group_id)s. Volumes: %(volume_ids)s.")
+                   % {"group_id": group_id,
+                      "volume_ids": volume_ids, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def remove_volumes_from_vg(self, group_id, volume_ids):
+        r, response = self._send_post_request(
+            "/volume_group/%s/remove_members" % group_id,
+            payload={
+                "volume_ids": volume_ids,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to remove volumes from PowerStore volume group "
+                     "with id %(group_id)s. Volumes: %(volume_ids)s.")
+                   % {"group_id": group_id,
+                      "volume_ids": volume_ids, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def create_vg_snapshot(self, group_id, name):
+        r, response = self._send_post_request(
+            "/volume_group/%s/snapshot" % group_id,
+            payload={
+                "name": name,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to create snapshot %(snapshot_name)s for "
+                     "PowerStore volume group with id %(group_id)s.")
+                   % {"snapshot_name": name,
+                      "group_id": group_id, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    def get_vg_snapshot_id_by_name(self, group_id, name):
+        r, response = self._send_get_request(
+            "/volume_group",
+            params={
+                "name": "eq.%s" % name,
+                "protection_data->>source_id": "eq.%s" % group_id,
+                "type": "eq.Snapshot",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore volume groups snapshots.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            vg_snap_id = response[0].get("id")
+            return vg_snap_id
+        except IndexError:
+            msg = (_("PowerStore snapshot %(snapshot_name)s for volume group"
+                     "with id %(group_id)s is not found.")
+                   % {"snapshot_name": name,
+                      "group_id": group_id, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def clone_vg_or_vg_snapshot(self,
+                                name,
+                                entity_id,
+                                entity="volume group"):
+        r, response = self._send_post_request(
+            "/volume_group/%s/clone" % entity_id,
+            payload={
+                "name": name,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to create clone %(clone_name)s for "
+                     "PowerStore %(entity)s with id %(entity_id)s.")
+                   % {"clone_name": name,
+                      "entity": entity,
+                      "entity_id": entity_id, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    def rename_volume(self, volume_id, name):
+        r, response = self._send_patch_request(
+            "/volume/%s" % volume_id,
+            payload={
+                "name": name,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to rename PowerStore volume with id %s.")
+                   % volume_id)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)

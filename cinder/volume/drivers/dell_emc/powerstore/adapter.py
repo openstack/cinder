@@ -22,10 +22,12 @@ from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
+from cinder.objects.group_snapshot import GroupSnapshot
 from cinder.objects.snapshot import Snapshot
 from cinder.volume.drivers.dell_emc.powerstore import client
 from cinder.volume.drivers.dell_emc.powerstore import utils
 from cinder.volume import manager
+from cinder.volume import volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -88,6 +90,19 @@ class CommonAdapter(object):
                   })
 
     def create_volume(self, volume):
+        group_provider_id = None
+        if (
+                volume.group_id and
+                volume_utils.is_group_a_cg_snapshot_type(volume.group)
+        ):
+            if volume.is_replicated():
+                msg = _("Volume with enabled replication can not be added to "
+                        "PowerStore volume group.")
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+            group_provider_id = self.client.get_vg_id_by_name(
+                volume.group_id
+            )
         if volume.is_replicated():
             pp_name = utils.get_protection_policy_from_volume(volume)
             pp_id = self.client.get_protection_policy_id_by_name(pp_name)
@@ -98,26 +113,31 @@ class CommonAdapter(object):
             replication_status = fields.ReplicationStatus.DISABLED
         LOG.debug("Create PowerStore volume %(volume_name)s of size "
                   "%(volume_size)s GiB with id %(volume_id)s. "
-                  "Protection policy: %(pp_name)s.",
+                  "Protection policy: %(pp_name)s. "
+                  "Volume group id: %(group_id)s. ",
                   {
                       "volume_name": volume.name,
                       "volume_size": volume.size,
                       "volume_id": volume.id,
                       "pp_name": pp_name,
+                      "group_id": volume.group_id,
                   })
         size_in_bytes = utils.gib_to_bytes(volume.size)
         provider_id = self.client.create_volume(volume.name,
                                                 size_in_bytes,
-                                                pp_id)
+                                                pp_id,
+                                                group_provider_id)
         LOG.debug("Successfully created PowerStore volume %(volume_name)s of "
                   "size %(volume_size)s GiB with id %(volume_id)s on "
-                  "Protection policy: %(pp_name)s."
+                  "Protection policy: %(pp_name)s. "
+                  "Volume group id: %(group_id)s. "
                   "PowerStore volume id: %(volume_provider_id)s.",
                   {
                       "volume_name": volume.name,
                       "volume_size": volume.size,
                       "volume_id": volume.id,
                       "pp_name": pp_name,
+                      "group_id": volume.group_id,
                       "volume_provider_id": provider_id,
                   })
         return {
@@ -273,6 +293,7 @@ class CommonAdapter(object):
             "thin_provisioning_support": True,
             "compression_support": True,
             "multiattach": True,
+            "consistent_group_snapshot_enabled": True,
         }
         backend_stats = self.client.get_metrics()
         backend_total_capacity = utils.bytes_to_gib(
@@ -786,6 +807,212 @@ class CommonAdapter(object):
                     "replication_status": error_status,
                 },
             }
+
+    @utils.is_group_a_cg_snapshot_type
+    def create_group(self, group):
+        LOG.debug("Create PowerStore volume group %(group_name)s with id "
+                  "%(group_id)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                  })
+        self.client.create_vg(group.id)
+        LOG.debug("Successfully created PowerStore volume group "
+                  "%(group_name)s with id %(group_id)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                  })
+
+    @utils.is_group_a_cg_snapshot_type
+    def delete_group(self, group):
+        LOG.debug("Delete PowerStore volume group %(group_name)s with id "
+                  "%(group_id)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                  })
+        try:
+            group_provider_id = self.client.get_vg_id_by_name(
+                group.id
+            )
+        except exception.VolumeBackendAPIException:
+            return None, None
+        self.client.delete_volume_or_snapshot(group_provider_id,
+                                              entity="volume group")
+        LOG.debug("Successfully deleted PowerStore volume group "
+                  "%(group_name)s with id %(group_id)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                  })
+        return None, None
+
+    @utils.is_group_a_cg_snapshot_type
+    def update_group(self, group, add_volumes, remove_volumes):
+        volumes_to_add = []
+        for volume in add_volumes:
+            if volume.is_replicated():
+                msg = _("Volume with enabled replication can not be added to "
+                        "PowerStore volume group.")
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+            volumes_to_add.append(self._get_volume_provider_id(volume))
+        volumes_to_remove = [
+            self._get_volume_provider_id(volume) for volume in remove_volumes
+        ]
+        LOG.debug("Update PowerStore volume group %(group_name)s with id "
+                  "%(group_id)s. Add PowerStore volumes with ids: "
+                  "%(volumes_to_add)s, remove PowerStore volumes with ids: "
+                  "%(volumes_to_remove)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                      "volumes_to_add": volumes_to_add,
+                      "volumes_to_remove": volumes_to_remove,
+                  })
+        group_provider_id = self.client.get_vg_id_by_name(group.id)
+        if volumes_to_add:
+            self.client.add_volumes_to_vg(group_provider_id,
+                                          volumes_to_add)
+        if volumes_to_remove:
+            self.client.remove_volumes_from_vg(group_provider_id,
+                                               volumes_to_remove)
+        LOG.debug("Successfully updated PowerStore volume group "
+                  "%(group_name)s with id %(group_id)s. "
+                  "Add PowerStore volumes with ids: %(volumes_to_add)s, "
+                  "remove PowerStore volumes with ids: %(volumes_to_remove)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                      "volumes_to_add": volumes_to_add,
+                      "volumes_to_remove": volumes_to_remove,
+                  })
+        return None, None, None
+
+    @utils.is_group_a_cg_snapshot_type
+    def create_group_snapshot(self, group_snapshot):
+        LOG.debug("Create PowerStore snapshot %(snapshot_name)s with id "
+                  "%(snapshot_id)s of volume group %(group_name)s with id "
+                  "%(group_id)s.",
+                  {
+                      "snapshot_name": group_snapshot.name,
+                      "snapshot_id": group_snapshot.id,
+                      "group_name": group_snapshot.group.name,
+                      "group_id": group_snapshot.group.id,
+                  })
+        group_provider_id = self.client.get_vg_id_by_name(
+            group_snapshot.group.id
+        )
+        self.client.create_vg_snapshot(
+            group_provider_id,
+            group_snapshot.id
+        )
+        LOG.debug("Successfully created PowerStore snapshot %(snapshot_name)s "
+                  "with id %(snapshot_id)s of volume group %(group_name)s "
+                  "with id %(group_id)s.",
+                  {
+                      "snapshot_name": group_snapshot.name,
+                      "snapshot_id": group_snapshot.id,
+                      "group_name": group_snapshot.group.name,
+                      "group_id": group_snapshot.group.id,
+                  })
+        return None, None
+
+    @utils.is_group_a_cg_snapshot_type
+    def delete_group_snapshot(self, group_snapshot):
+        LOG.debug("Delete PowerStore snapshot %(snapshot_name)s with id "
+                  "%(snapshot_id)s of volume group %(group_name)s with "
+                  "id %(group_id)s.",
+                  {
+                      "snapshot_name": group_snapshot.name,
+                      "snapshot_id": group_snapshot.id,
+                      "group_name": group_snapshot.group.name,
+                      "group_id": group_snapshot.group.id,
+                  })
+        try:
+            group_provider_id = self.client.get_vg_id_by_name(
+                group_snapshot.group.id
+            )
+            group_snapshot_provider_id = (
+                self.client.get_vg_snapshot_id_by_name(
+                    group_provider_id,
+                    group_snapshot.id
+                ))
+        except exception.VolumeBackendAPIException:
+            return None, None
+        self.client.delete_volume_or_snapshot(group_snapshot_provider_id,
+                                              entity="volume group snapshot")
+        LOG.debug("Successfully deleted PowerStore snapshot %(snapshot_name)s "
+                  "with id %(snapshot_id)s of volume group %(group_name)s "
+                  "with id %(group_id)s.",
+                  {
+                      "snapshot_name": group_snapshot.name,
+                      "snapshot_id": group_snapshot.id,
+                      "group_name": group_snapshot.group.name,
+                      "group_id": group_snapshot.group.id,
+                  })
+        return None, None
+
+    @utils.is_group_a_cg_snapshot_type
+    def create_group_from_source(self,
+                                 group,
+                                 volumes,
+                                 source,
+                                 snapshots,
+                                 source_vols):
+        if isinstance(source, GroupSnapshot):
+            entity = "volume group snapshot"
+            group_provider_id = self.client.get_vg_id_by_name(
+                source.group.id
+            )
+            source_provider_id = self.client.get_vg_snapshot_id_by_name(
+                group_provider_id,
+                source.id
+            )
+            source_vols = [snapshot.volume for snapshot in snapshots]
+            base_clone_name = "%s.%s" % (group.id, source.id)
+        else:
+            entity = "volume group"
+            source_provider_id = self.client.get_vg_id_by_name(source.id)
+            base_clone_name = group.id
+        LOG.debug("Create PowerStore volume group %(group_name)s with id "
+                  "%(group_id)s from %(entity)s %(entity_name)s with id "
+                  "%(entity_id)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                      "entity": entity,
+                      "entity_name": source.name,
+                      "entity_id": source.id,
+                  })
+        self.client.clone_vg_or_vg_snapshot(
+            group.id,
+            source_provider_id,
+            entity
+        )
+        LOG.debug("Successfully created PowerStore volume group "
+                  "%(group_name)s with id %(group_id)s from %(entity)s "
+                  "%(entity_name)s with id %(entity_id)s.",
+                  {
+                      "group_name": group.name,
+                      "group_id": group.id,
+                      "entity": entity,
+                      "entity_name": source.name,
+                      "entity_id": source.id,
+                  })
+        updates = []
+        for volume, source_vol in zip(volumes, source_vols):
+            volume_name = "%s.%s" % (base_clone_name, source_vol.name)
+            volume_provider_id = self.client.get_volume_id_by_name(volume_name)
+            self.client.rename_volume(volume_provider_id, volume.name)
+            volume_updates = {
+                "id": volume.id,
+                "provider_id": volume_provider_id,
+                "replication_status": group.replication_status,
+            }
+            updates.append(volume_updates)
+        return None, updates
 
 
 class FibreChannelAdapter(CommonAdapter):

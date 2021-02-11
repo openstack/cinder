@@ -19,6 +19,10 @@ Supported operations
 - Attach a volume to multiple servers simultaneously (multiattach).
 - Revert a volume to a snapshot.
 - OpenStack replication v2.1 support.
+- Create, delete, update Consistency Groups.
+- Create, delete Consistency Groups snapshots.
+- Clone a Consistency Group.
+- Create a Consistency Group from a Consistency Group snapshot.
 
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
@@ -161,3 +165,18 @@ failback operation using ``--backend_id default``:
 .. code-block:: console
 
    $ cinder failover-host cinder_host@powerstore --backend_id default
+
+Consistency Groups support
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To use PowerStore Volume Groups create Group Type with consistent group
+snapshot enabled.
+
+.. code-block:: console
+
+  $ cinder --os-volume-api-version 3.11 group-type-create powerstore_vg
+  $ cinder --os-volume-api-version 3.11 group-type-key powerstore_vg set consistent_group_snapshot_enabled="<is> True"
+
+.. note:: Currently driver does not support Consistency Groups replication.
+          Adding volume to Consistency Group and creating volume in Consistency Group
+          will fail if volume is replicated.

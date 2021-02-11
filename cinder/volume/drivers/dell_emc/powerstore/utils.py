@@ -15,6 +15,7 @@
 
 """Utilities for Dell EMC PowerStore Cinder driver."""
 
+import functools
 import re
 
 from oslo_log import log as logging
@@ -162,3 +163,18 @@ def get_protection_policy_from_volume(volume):
     """
 
     return volume.volume_type.extra_specs.get(driver.POWERSTORE_PP_KEY)
+
+
+def is_group_a_cg_snapshot_type(func):
+    """Check if group is a consistent snapshot group.
+
+    Fallback to generic volume group implementation if consistent group
+    snapshot is not enabled.
+    """
+
+    @functools.wraps(func)
+    def inner(self, *args, **kwargs):
+        if not volume_utils.is_group_a_cg_snapshot_type(args[0]):
+            raise NotImplementedError
+        return func(self, *args, **kwargs)
+    return inner

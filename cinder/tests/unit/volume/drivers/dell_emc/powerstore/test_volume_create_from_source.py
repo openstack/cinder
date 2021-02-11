@@ -100,7 +100,7 @@ class TestVolumeCreateFromSource(powerstore.TestPowerStoreDriver):
     @mock.patch("requests.request")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.clone_volume_or_snapshot")
-    def test_create_volume_from_source_extende_bad_status(
+    def test_create_volume_from_source_extended_bad_status(
             self,
             mock_create_from_source,
             mock_extend_request
