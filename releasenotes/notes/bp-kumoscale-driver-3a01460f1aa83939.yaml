@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    New Cinder volume driver for KIOXIA Kumoscale storage systems.
+    The driver storage system supports NVMeOF.
