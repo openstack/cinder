@@ -169,6 +169,7 @@ class BaseBackupTest(test.TestCase):
         kwargs['volume_size'] = size
         kwargs['metadata'] = {}
         kwargs['provider_location'] = provider_location
+        kwargs['volume_type_id'] = fake.VOLUME_TYPE_ID
         snapshot_obj = objects.Snapshot(context=self.ctxt, **kwargs)
         snapshot_obj.create()
         return snapshot_obj
