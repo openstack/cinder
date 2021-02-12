@@ -509,7 +509,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         LOG.debug('rekey volume %s', volume.name)
 
-        properties = utils.brick_get_connector_properties(False, False)
+        properties = volume_utils.brick_get_connector_properties(False, False)
         LOG.debug("properties: %s", properties)
         attach_info = None
         model_update = {}

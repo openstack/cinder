@@ -2038,7 +2038,7 @@ class VolumeManager(manager.CleanableManager,
         use_multipath = self.configuration.use_multipath_for_image_xfer
         device_scan_attempts = self.configuration.num_volume_device_scan_tries
         protocol = conn['driver_volume_type']
-        connector = utils.brick_get_connector(
+        connector = volume_utils.brick_get_connector(
             protocol,
             use_multipath=use_multipath,
             device_scan_attempts=device_scan_attempts,
@@ -2088,9 +2088,9 @@ class VolumeManager(manager.CleanableManager,
                 encryption = self.db.volume_encryption_metadata_get(
                     ctxt.elevated(), volume.id)
                 if encryption:
-                    utils.brick_attach_volume_encryptor(ctxt,
-                                                        attach_info,
-                                                        encryption)
+                    volume_utils.brick_attach_volume_encryptor(ctxt,
+                                                               attach_info,
+                                                               encryption)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error("Failed to attach volume encryptor"
@@ -2110,8 +2110,8 @@ class VolumeManager(manager.CleanableManager,
                 encryption = self.db.volume_encryption_metadata_get(
                     ctxt.elevated(), volume.id)
                 if encryption:
-                    utils.brick_detach_volume_encryptor(attach_info,
-                                                        encryption)
+                    volume_utils.brick_detach_volume_encryptor(attach_info,
+                                                               encryption)
             connector.disconnect_volume(attach_info['conn']['data'],
                                         attach_info['device'], force=force)
 
@@ -2144,8 +2144,9 @@ class VolumeManager(manager.CleanableManager,
             attach_encryptor = True
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
-        properties = utils.brick_get_connector_properties(use_multipath,
-                                                          enforce_multipath)
+        properties = volume_utils.brick_get_connector_properties(
+            use_multipath,
+            enforce_multipath)
 
         dest_remote = remote in ['dest', 'both']
         dest_attach_info = self._attach_volume(

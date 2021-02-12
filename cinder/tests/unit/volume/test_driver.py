@@ -37,7 +37,6 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
-from cinder import utils
 import cinder.volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
@@ -272,7 +271,7 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
             self.assertEqual('fakezone', temp_vol.availability_zone)
             self.assertEqual('fakecluster', temp_vol.cluster_name)
 
-    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_attach_volume')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_detach_volume')
     @mock.patch.object(volume_utils, 'copy_volume')
@@ -392,8 +391,10 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
     @mock.patch.object(image_utils, 'fetch_to_raw')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
-    @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
-    @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'brick_attach_volume_encryptor')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'brick_detach_volume_encryptor')
     def test_copy_image_to_encrypted_volume(self,
                                             mock_detach_encryptor,
                                             mock_attach_encryptor,
@@ -438,8 +439,10 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
     @mock.patch.object(image_utils, 'fetch_to_raw')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
-    @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
-    @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'brick_attach_volume_encryptor')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'brick_detach_volume_encryptor')
     def test_copy_image_to_encrypted_volume_failed_attach_encryptor(
             self,
             mock_detach_encryptor,
@@ -486,8 +489,10 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
     @mock.patch.object(image_utils, 'fetch_to_raw')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
-    @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
-    @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'brick_attach_volume_encryptor')
+    @mock.patch.object(cinder.volume.volume_utils,
+                       'brick_detach_volume_encryptor')
     @ddt.data(exception.ImageUnacceptable(
               reason='fake', image_id=fake.IMAGE_ID),
               exception.ImageTooBig(

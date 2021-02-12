@@ -1107,7 +1107,7 @@ class FlashSystemDriverTestCase(test.TestCase):
     @mock.patch.object(volume_utils, 'copy_volume')
     @mock.patch.object(flashsystem_fc.FlashSystemFCDriver, '_scan_device')
     @mock.patch.object(flashsystem_fc.FlashSystemFCDriver, '_remove_device')
-    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     def test_flashsystem_copy_vdisk_data(self,
                                          _connector,
                                          _remove_device,

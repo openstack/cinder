@@ -21,7 +21,6 @@ from six.moves import UserDict
 
 from cinder import exception
 from cinder.tests.unit import test
-from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.macrosan import devop_client
 from cinder.volume.drivers.macrosan import driver
@@ -458,7 +457,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -478,7 +477,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -565,7 +564,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -586,7 +585,7 @@ class MacroSANISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -697,7 +696,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -718,7 +717,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -739,7 +738,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)
@@ -761,7 +760,7 @@ class MacroSANFCDriverTestCase(test.TestCase):
     @mock.patch.object(qos_specs, 'get_qos_specs',
                        return_value={'specs': {'qos-strategy': 'QoS-1'}})
     @mock.patch.object(socket, 'gethostname', return_value='controller')
-    @mock.patch.object(utils, 'brick_get_connector',
+    @mock.patch.object(volume_utils, 'brick_get_connector',
                        return_value=DummyBrickGetConnector())
     @mock.patch.object(volume_utils, 'copy_volume', return_value=None)
     @mock.patch.object(os.path, 'realpath', return_value=None)

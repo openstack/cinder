@@ -28,7 +28,6 @@ from cinder.objects import fields
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
-from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.kaminario import kaminario_common
 from cinder.volume.drivers.kaminario import kaminario_fc
@@ -207,7 +206,7 @@ class TestKaminarioCommon(test.TestCase):
         self.assertRaises(kaminario_common.KaminarioCinderDriverException,
                           self.driver.delete_snapshot, self.snap)
 
-    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     @mock.patch.object(volume_utils, 'copy_volume')
     def test_create_volume_from_snapshot(self, mock_copy_volume,
                                          mock_brick_get):
@@ -218,7 +217,7 @@ class TestKaminarioCommon(test.TestCase):
         result = self.driver.create_volume_from_snapshot(self.vol, self.snap)
         self.assertIsNone(result)
 
-    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     @mock.patch.object(volume_utils, 'copy_volume')
     def test_create_volume_from_snapshot_with_exception(self, mock_copy_volume,
                                                         mock_brick_get):
@@ -230,7 +229,7 @@ class TestKaminarioCommon(test.TestCase):
                           self.driver.create_volume_from_snapshot, self.vol,
                           self.snap)
 
-    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     @mock.patch.object(volume_utils, 'copy_volume')
     def test_create_cloned_volume(self, mock_copy_volume, mock_brick_get):
         """Test create_cloned_volume."""
@@ -240,7 +239,7 @@ class TestKaminarioCommon(test.TestCase):
         result = self.driver.create_cloned_volume(self.vol, self.vol)
         self.assertIsNone(result)
 
-    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     @mock.patch.object(volume_utils, 'copy_volume')
     def test_create_cloned_volume_with_exception(self, mock_copy_volume,
                                                  mock_brick_get):

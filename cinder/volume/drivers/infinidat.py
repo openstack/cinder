@@ -29,7 +29,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import interface
 from cinder.objects import fields
-from cinder import utils
 from cinder import version
 from cinder.volume import configuration
 from cinder.volume.drivers.san import san
@@ -569,8 +568,9 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
     def _connection_context(self, volume):
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
-        connector = utils.brick_get_connector_properties(use_multipath,
-                                                         enforce_multipath)
+        connector = volume_utils.brick_get_connector_properties(
+            use_multipath,
+            enforce_multipath)
         connection = self.initialize_connection(volume, connector)
         try:
             yield connection
@@ -582,7 +582,7 @@ class InfiniboxVolumeDriver(san.SanISCSIDriver):
         use_multipath = self.configuration.use_multipath_for_image_xfer
         device_scan_attempts = self.configuration.num_volume_device_scan_tries
         protocol = connection['driver_volume_type']
-        connector = utils.brick_get_connector(
+        connector = volume_utils.brick_get_connector(
             protocol,
             use_multipath=use_multipath,
             device_scan_attempts=device_scan_attempts,

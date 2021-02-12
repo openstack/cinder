@@ -685,7 +685,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.ERROR, backup.status)
         self.assertTrue(mock_run_backup.called)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open', wraps=open)
@@ -735,7 +735,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(vol_size, backup['size'])
         self.assertIsNone(backup.encryption_key_id)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open')
@@ -771,7 +771,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(vol_size, backup.size)
         self.assertIsNone(backup.parent_id)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open')
@@ -806,7 +806,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(vol_size, backup.size)
         self.assertEqual(parent_backup.id, backup.parent_id)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open')
@@ -843,7 +843,7 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.ERROR, backup.status)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open')
@@ -901,7 +901,7 @@ class BackupTestCase(BaseBackupTest):
             self.assertRaises(exception.InvalidSnapshot,
                               self.backup_mgr.create_backup, self.ctxt, backup)
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open')
@@ -1026,7 +1026,7 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     def test_create_backup_encrypted_volume(self,
                                             mock_connector_properties,
                                             mock_clone_encryption_key,
@@ -1054,7 +1054,7 @@ class BackupTestCase(BaseBackupTest):
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     def test_create_backup_encrypted_volume_again(self,
                                                   mock_connector_properties,
                                                   mock_clone_encryption_key,
@@ -1217,7 +1217,7 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
@@ -1267,7 +1267,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertNotEqual(backup.id, vol.metadata.get('src_backup_id'))
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('builtins.open', wraps=open)
     @mock.patch.object(os.path, 'isdir', return_value=False)
@@ -1355,7 +1355,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch(
         'cinder.tests.unit.backup.fake_service.FakeBackupService.restore')
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     def test_restore_backup_encrypted_volume(self,
                                              mock_connector_properties,
                                              mock_backup_driver_restore,
@@ -1388,7 +1388,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch(
         'cinder.tests.unit.backup.fake_service.FakeBackupService.restore')
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     def test_restore_backup_new_encrypted_volume(self,
                                                  mock_connector_properties,
                                                  mock_backup_driver_restore,
@@ -1449,7 +1449,7 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.volume.volume_utils.delete_encryption_key')
     @mock.patch(
         'cinder.tests.unit.backup.fake_service.FakeBackupService.restore')
-    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     def test_restore_backup_glean_key_id(self,
                                          mock_connector_properties,
                                          mock_backup_driver_restore,

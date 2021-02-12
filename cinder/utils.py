@@ -37,11 +37,8 @@ import tempfile
 import time
 import types
 
-from castellan import key_manager
 import eventlet
 from eventlet import tpool
-from os_brick import encryptors
-from os_brick.initiator import connector
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -418,73 +415,6 @@ def tempdir(**kwargs):
 
 def get_root_helper():
     return 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
-
-
-def brick_get_connector_properties(multipath=False, enforce_multipath=False):
-    """Wrapper to automatically set root_helper in brick calls.
-
-    :param multipath: A boolean indicating whether the connector can
-                      support multipath.
-    :param enforce_multipath: If True, it raises exception when multipath=True
-                              is specified but multipathd is not running.
-                              If False, it falls back to multipath=False
-                              when multipathd is not running.
-    """
-
-    root_helper = get_root_helper()
-    return connector.get_connector_properties(root_helper,
-                                              CONF.my_ip,
-                                              multipath,
-                                              enforce_multipath)
-
-
-def brick_get_connector(protocol, driver=None,
-                        use_multipath=False,
-                        device_scan_attempts=3,
-                        *args, **kwargs):
-    """Wrapper to get a brick connector object.
-
-    This automatically populates the required protocol as well
-    as the root_helper needed to execute commands.
-    """
-
-    root_helper = get_root_helper()
-    return connector.InitiatorConnector.factory(protocol, root_helper,
-                                                driver=driver,
-                                                use_multipath=use_multipath,
-                                                device_scan_attempts=
-                                                device_scan_attempts,
-                                                *args, **kwargs)
-
-
-def brick_get_encryptor(connection_info, *args, **kwargs):
-    """Wrapper to get a brick encryptor object."""
-
-    root_helper = get_root_helper()
-    km = key_manager.API(CONF)
-    return encryptors.get_volume_encryptor(root_helper=root_helper,
-                                           connection_info=connection_info,
-                                           keymgr=km,
-                                           *args, **kwargs)
-
-
-def brick_attach_volume_encryptor(context, attach_info, encryption):
-    """Attach encryption layer."""
-    connection_info = attach_info['conn']
-    connection_info['data']['device_path'] = attach_info['device']['path']
-    encryptor = brick_get_encryptor(connection_info,
-                                    **encryption)
-    encryptor.attach_volume(context, **encryption)
-
-
-def brick_detach_volume_encryptor(attach_info, encryption):
-    """Detach encryption layer."""
-    connection_info = attach_info['conn']
-    connection_info['data']['device_path'] = attach_info['device']['path']
-
-    encryptor = brick_get_encryptor(connection_info,
-                                    **encryption)
-    encryptor.detach_volume(**encryption)
 
 
 def require_driver_initialized(driver):

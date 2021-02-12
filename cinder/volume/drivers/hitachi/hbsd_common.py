@@ -22,7 +22,6 @@ from oslo_utils import excutils
 
 from cinder import coordination
 from cinder import exception
-from cinder import utils as cinder_utils
 from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
@@ -582,7 +581,7 @@ class HBSDCommon():
         """Initialize server-storage connection."""
         targets = kwargs.pop(
             'targets', {'info': {}, 'list': [], 'iqns': {}, 'target_map': {}})
-        connector = cinder_utils.brick_get_connector_properties(
+        connector = volume_utils.brick_get_connector_properties(
             multipath=self.conf.use_multipath_for_image_xfer,
             enforce_multipath=self.conf.enforce_multipath_for_image_xfer)
         target_ports = self.storage_info['controller_ports']

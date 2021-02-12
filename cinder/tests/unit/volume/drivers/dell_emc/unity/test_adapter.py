@@ -470,7 +470,7 @@ def patch_for_unity_adapter(func):
     @mock.patch('cinder.volume.drivers.dell_emc.unity.utils.'
                 'group_is_cg',
                 new=group_is_cg)
-    @mock.patch('cinder.utils.brick_get_connector_properties',
+    @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties',
                 new=get_connector_properties)
     def func_wrapper(*args, **kwargs):
         return func(*args, **kwargs)
