@@ -281,6 +281,23 @@ class VolumeApiTest(test.TestCase):
         else:
             self.assertNotIn('count', res_dict)
 
+    def test_list_volume_with_multiple_filters(self):
+        metadata = {'key_X': 'value_X'}
+        self._create_multiple_volumes_with_different_project()
+        test_utils.create_volume(self.ctxt, metadata=metadata)
+
+        self.mock_object(ViewBuilder, '_get_volume_type',
+                         v2_fakes.fake_volume_type_name_get)
+        # Request with 'all_tenants' and 'metadata'
+        req = fakes.HTTPRequest.blank(
+            "/v3/volumes/detail?all_tenants=1"
+            "&metadata=%7B%27key_X%27%3A+%27value_X%27%7D")
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req.environ['cinder.context'] = ctxt
+        res_dict = self.controller._get_volumes(req, is_detail=True)
+        self.assertEqual(1, len(res_dict['volumes']))
+        self.assertEqual(metadata, res_dict['volumes'][0]['metadata'])
+
     def test_volume_index_filter_by_group_id_in_unsupport_version(self):
         self._create_volume_with_group()
         req = fakes.HTTPRequest.blank(("/v3/volumes?group_id=%s") %
