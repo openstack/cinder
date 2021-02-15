@@ -1224,12 +1224,13 @@ class NfsDriverTestCase(test.TestCase):
             run_as_root=True)
         mock_permission.assert_called_once_with(dest_vol_path)
 
-    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3],
-              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4],
-              [NFS_CONFIG3, QEMU_IMG_INFO_OUT3],
-              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4])
+    @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3, 'available'],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4, 'backing-up'],
+              [NFS_CONFIG3, QEMU_IMG_INFO_OUT3, 'available'],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4, 'backing-up'])
     @ddt.unpack
-    def test_create_volume_from_snapshot(self, nfs_conf, qemu_img_info):
+    def test_create_volume_from_snapshot(self, nfs_conf, qemu_img_info,
+                                         snap_status):
         self._set_driver(extra_confs=nfs_conf)
         drv = self._driver
 
@@ -1246,7 +1247,7 @@ class NfsDriverTestCase(test.TestCase):
         # Fake snapshot based in the previous created volume
         snap_file = src_volume.name + '.' + fake_snap.id
         fake_snap.volume = src_volume
-        fake_snap.status = 'available'
+        fake_snap.status = snap_status
         fake_snap.size = 10
 
         # New fake volume where the snap will be copied
@@ -1289,7 +1290,9 @@ class NfsDriverTestCase(test.TestCase):
         mock_ensure.assert_called_once()
         mock_find_share.assert_called_once_with(new_volume)
 
-    def test_create_volume_from_snapshot_status_not_available(self):
+    @ddt.data('error', 'creating', 'deleting', 'deleted', 'updating',
+              'error_deleting', 'unmanaging', 'restoring')
+    def test_create_volume_from_snapshot_invalid_status(self, snap_status):
         """Expect an error when the snapshot's status is not 'available'."""
         self._set_driver()
         drv = self._driver
@@ -1298,6 +1301,7 @@ class NfsDriverTestCase(test.TestCase):
 
         fake_snap = fake_snapshot.fake_snapshot_obj(self.context)
         fake_snap.volume = src_volume
+        fake_snap.status = snap_status
 
         new_volume = self._simple_volume()
         new_volume['size'] = fake_snap['volume_size']

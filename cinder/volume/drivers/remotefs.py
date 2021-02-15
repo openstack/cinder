@@ -1260,11 +1260,11 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         LOG.debug('Creating volume %(vol)s from snapshot %(snap)s',
                   {'vol': volume.id, 'snap': snapshot.id})
 
-        if snapshot.status != 'available':
-            msg = _('Snapshot status must be "available" to clone. '
-                    'But is: %(status)s') % {'status': snapshot.status}
-
-            raise exception.InvalidSnapshot(msg)
+        status = snapshot.status
+        acceptable_states = ['available', 'backing-up']
+        self._validate_state(status, acceptable_states,
+                             obj_description='snapshot',
+                             invalid_exc=exception.InvalidSnapshot)
 
         self._ensure_shares_mounted()
 
