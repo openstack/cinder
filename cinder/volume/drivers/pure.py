@@ -1892,6 +1892,38 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return secondary_array.backend_id, model_updates, []
 
+    @pure_driver_debug_trace
+    def get_check_personality(self, array):
+        personality = self.configuration.safe_get('pure_host_personality')
+        if personality:
+            api_version = array.get_rest_version()
+            if api_version not in PERSONALITY_REQUIRED_API_VERSIONS:
+                # Continuing here would mean creating a host not according
+                # to specificiations, possibly leading to unexpected
+                # behavior later on.
+                msg = _('Unable to set host personality with Purity REST '
+                        'API version %(api_version)s, requires '
+                        '%(required_versions)s.') % {
+                    'api_version': api_version,
+                    'required_versions': PERSONALITY_REQUIRED_API_VERSIONS
+                }
+                raise PureDriverException(reason=msg)
+        return personality
+
+    @pure_driver_debug_trace
+    def set_personality(self, array, host_name, personality):
+        try:
+            array.set_host(host_name, personality=personality)
+        except purestorage.PureHTTPError as err:
+            if (err.code == 400 and
+                    ERR_MSG_HOST_NOT_EXIST in err.text):
+                # If the host disappeared out from under us that's
+                # ok, we will just retry and snag a new host.
+                LOG.debug('Unable to set host personality: %s',
+                          err.text)
+                raise PureRetryableException()
+        return
+
     def _swap_replication_state(self, current_array, secondary_array,
                                 failback=False):
         # After failover we want our current array to be swapped for the
@@ -2527,21 +2559,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         reason=_("Unable to re-use host with unknown CHAP "
                                  "credentials configured."))
         else:
-            personality = self.configuration.safe_get('pure_host_personality')
-            if personality:
-                api_version = array.get_rest_version()
-                if api_version not in PERSONALITY_REQUIRED_API_VERSIONS:
-                    # Continuing here would mean creating a host not according
-                    # to specificiations, possibly leading to unexpected
-                    # behavior later on.
-                    msg = _('Unable to set host personality with Purity REST '
-                            'API version %(api_version)s, requires '
-                            '%(required_versions)s.') % {
-                        'api_version': api_version,
-                        'required_versions': PERSONALITY_REQUIRED_API_VERSIONS
-                    }
-                    raise PureDriverException(reason=msg)
-
+            personality = self.get_check_personality(array)
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with IQN:"
                      " %(iqn)s.", {"host_name": host_name, "iqn": iqn})
@@ -2557,16 +2575,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                     raise PureRetryableException()
 
             if personality:
-                try:
-                    array.set_host(host_name, personality=personality)
-                except purestorage.PureHTTPError as err:
-                    if (err.code == 400 and
-                            ERR_MSG_HOST_NOT_EXIST in err.text):
-                        # If the host disappeared out from under us that's
-                        # ok, we will just retry and snag a new host.
-                        LOG.debug('Unable to set host personality: %s',
-                                  err.text)
-                        raise PureRetryableException()
+                self.set_personality(array, host_name, personality)
 
             if self.configuration.use_chap_auth:
                 try:
@@ -2682,6 +2691,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             LOG.info("Re-using existing purity host %(host_name)r",
                      {"host_name": host_name})
         else:
+            personality = self.get_check_personality(array)
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with WWN:"
                      " %(wwn)s.", {"host_name": host_name, "wwn": wwns})
@@ -2695,6 +2705,9 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                     # pick up the new host.
                     LOG.debug('Unable to create host: %s', err.text)
                     raise PureRetryableException()
+
+            if personality:
+                self.set_personality(array, host_name, personality)
 
         # TODO(patrickeast): Ensure that the host has the correct preferred
         # arrays configured for it.
