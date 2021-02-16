@@ -161,7 +161,7 @@ class TestCinderStatus(testtools.TestCase):
         if should_pass:
             expected = uc.Code.SUCCESS
         else:
-            expected = uc.Code.WARNING
+            expected = uc.Code.FAILURE
         self.assertEqual(expected, result.code)
 
     def test_check_legacy_win_conf(self):

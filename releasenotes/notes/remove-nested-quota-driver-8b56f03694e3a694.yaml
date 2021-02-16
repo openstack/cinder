@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The ``cinder.quota.NestedDbQuotaDriver`` quota driver was marked as
+    deprecated in Train release and is eligible for removal since Ussuri
+    release. This release removes the NestedQuotaDriver support.

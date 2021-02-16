@@ -21,8 +21,6 @@ from cinder.policies import base
 SHOW_POLICY = 'volume_extension:quotas:show'
 UPDATE_POLICY = 'volume_extension:quotas:update'
 DELETE_POLICY = 'volume_extension:quotas:delete'
-VALIDATE_NESTED_QUOTA_POLICY = \
-    'volume_extension:quota_classes:validate_setup_for_nested_quota_use'
 
 
 quota_policies = [
@@ -62,16 +60,6 @@ quota_policies = [
             {
                 'method': 'DELETE',
                 'path': '/os-quota-sets/{project_id}'
-            }
-        ]),
-    policy.DocumentedRuleDefault(
-        name=VALIDATE_NESTED_QUOTA_POLICY,
-        check_str=base.RULE_ADMIN_API,
-        description="Validate setup for nested quota.",
-        operations=[
-            {
-                'method': 'GET',
-                'path': '/os-quota-sets/validate_setup_for_nested_quota_use'
             }
         ]),
 ]

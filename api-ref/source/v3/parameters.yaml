@@ -234,14 +234,6 @@ filter_updated_at:
   required: false
   type: string
   min_version: 3.60
-fix_allocated_quotas:
-  description: |
-    Whether to fix all the non-leaf projects' ``allocation``
-    attribute or raise 400 error if ``allocation`` doesn't match
-    the current quota usage information. Default is ``false``.
-  in: query
-  required: false
-  type: boolean
 force_del_qos:
   description: |
     To delete a QoS specification even if it is in-
@@ -649,8 +641,7 @@ backup_gigabytes:
 backup_gigabytes_usage:
   description: |
     The size (GB) usage information of backup for this project, including ``in_use``,
-    ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
@@ -695,8 +686,7 @@ backups_number:
 backups_number_usage:
   description: |
     The backup usage information for this project, including ``in_use``,
-    ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
@@ -1222,17 +1212,15 @@ gigabytes_for_type:
 gigabytes_for_type_usage:
   description: |
     The size (GB) usage information of volumes and snapshots for this project
-    and this volume type, including ``in_use``, ``limit``, ``reserved`` and
-    ``allocated`` attributes. Note: ``allocated`` attribute is available only
-    when nested quota is enabled.
+    and this volume type, including ``in_use``, ``limit`` and ``reserved``
+    attributes.
   in: body
   required: true
   type: object
 gigabytes_usage:
   description: |
     The size (GB) usage information of volumes and snapshots for this project,
-    including ``in_use``, ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    including ``in_use``, ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
@@ -1337,8 +1325,7 @@ groups_number:
 groups_number_usage:
   description: |
     The group usage information for this project, including ``in_use``,
-    ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
@@ -2218,9 +2205,7 @@ per_volume_gigabytes:
 per_volume_gigabytes_usage:
   description: |
     The size (GB) usage information for each volume, including ``in_use``,
-    ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota
-    is enabled and only ``limit`` is meaningful here.
+    ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
@@ -2672,16 +2657,14 @@ snapshots_number_for_type:
 snapshots_number_for_type_usage:
   description: |
     The snapshot usage information for this project and this volume type,
-    including ``in_use``, ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    including ``in_use``, ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
 snapshots_number_usage:
   description: |
     The snapshot usage information for this project, including ``in_use``,
-    ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
@@ -3186,16 +3169,14 @@ volumes_number_for_type:
 volumes_number_for_type_usage:
   description: |
     The volume usage information for this project and this volume type,
-    including ``in_use``, ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    including ``in_use``, ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object
 volumes_number_usage:
   description: |
     The volume usage information for this project, including ``in_use``,
-    ``limit``, ``reserved`` and ``allocated`` attributes.
-    Note: ``allocated`` attribute is available only when nested quota is enabled.
+    ``limit`` and ``reserved`` attributes.
   in: body
   required: true
   type: object

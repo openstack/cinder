@@ -170,21 +170,19 @@ class Checks(uc.UpgradeCommands):
     def _check_nested_quota(self):
         """Checks for the use of the nested quota driver.
 
-        The NestedDbQuotaDriver is deprecated in the Train release to prepare
-        for upcoming unified limits changes.
+        The NestedDbQuotaDriver is deprecated in the Train release and is
+        removed in Wallaby release to prepare for upcoming unified limits
+        changes.
         """
         # We import here to avoid conf loading order issues with cinder.service
         # above.
         import cinder.quota  # noqa
-
         quota_driver = CONF.quota_driver
         if quota_driver == 'cinder.quota.NestedDbQuotaDriver':
             return uc.Result(
-                WARNING,
-                'The NestedDbQuotaDriver has been deprecated. It will '
-                'continue to work in the 15.0.0 (Train) release, but will be '
-                'removed in 16.0.0')
-
+                FAILURE,
+                'The NestedDbQuotaDriver was deprecated in Train release '
+                'and is removed in Wallaby release.')
         return uc.Result(SUCCESS)
 
     def _check_legacy_windows_config(self):
@@ -272,9 +270,10 @@ class Checks(uc.UpgradeCommands):
         ('Removed Drivers', _check_removed_drivers),
         # added in Train
         ('Periodic Interval Use', _check_periodic_interval),
-        ('Use of Nest Quota Driver', _check_nested_quota),
         ('Service UUIDs', _check_service_uuid),
         ('Attachment specs', _check_attachment_specs),
+        # added in Wallaby
+        ('Use of Nested Quota Driver', _check_nested_quota),
     )
 
 
