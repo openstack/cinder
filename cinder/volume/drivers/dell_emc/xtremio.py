@@ -31,6 +31,7 @@ Supports XtremIO version 2.4 and up.
   1.0.9 - performance improvements, support force detach, support for X2
   1.0.10 - option to clean unused IGs
   1.0.11 - add support for multiattach
+  1.0.12 - add support for ports filtering
 """
 
 import json
@@ -82,7 +83,13 @@ XTREMIO_OPTS = [
                      'the IG be, we default to False (not deleting IGs '
                      'without connected volumes); setting this parameter '
                      'to True will remove any IG after terminating its '
-                     'connection to the last volume.')]
+                     'connection to the last volume.'),
+    cfg.ListOpt('xtremio_ports',
+                default=[],
+                help='Allowed ports. Comma separated list of XtremIO '
+                     'iSCSI IPs or FC WWNs (ex. 58:cc:f0:98:49:22:07:02) '
+                     'to be used. If option is not set all ports are allowed.')
+]
 
 CONF.register_opts(XTREMIO_OPTS, group=configuration.SHARED_CONF_GROUP)
 
@@ -420,7 +427,7 @@ class XtremIOClient42(XtremIOClient4):
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.11'
+    VERSION = '1.0.12'
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_XIO_CI"
@@ -444,6 +451,10 @@ class XtremIOVolumeDriver(san.SanDriver):
         self.clean_ig = (self.configuration.safe_get('xtremio_clean_unused_ig')
                          or False)
         self._stats = {}
+        self.allowed_ports = [
+            port.strip().lower() for port in
+            self.configuration.safe_get('xtremio_ports')
+        ]
         self.client = XtremIOClient3(self.configuration, self.cluster_id)
 
     @classmethod
@@ -1054,6 +1065,19 @@ class XtremIOVolumeDriver(san.SanDriver):
             raise (exception.VolumeBackendAPIException
                    (data=_("Failed to create IG, %s") % name))
 
+    def _port_is_allowed(self, port):
+        """Check if port is in allowed ports list.
+
+        If allowed ports are empty then all ports are allowed.
+
+        :param port: iSCSI IP/FC WWN to check
+        :return: is port allowed
+        """
+
+        if not self.allowed_ports:
+            return True
+        return port.lower() in self.allowed_ports
+
 
 @interface.volumedriver
 class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
@@ -1171,26 +1195,33 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
         multiple values. The main portal information is also returned in
         :target_iqn, :target_portal, :target_lun for backward compatibility.
         """
-        portals = self.client.get_iscsi_portals()
-        if not portals:
-            msg = _("XtremIO not configured correctly, no iscsi portals found")
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-        portal = RANDOM.choice(portals)
+        iscsi_portals = self.client.get_iscsi_portals()
+        allowed_portals = []
+        for iscsi_portal in iscsi_portals:
+            iscsi_portal['ip-addr'] = iscsi_portal['ip-addr'].split('/')[0]
+            if self._port_is_allowed(iscsi_portal['ip-addr']):
+                allowed_portals.append(iscsi_portal)
+        if not allowed_portals:
+            msg = _("There are no accessible iSCSI targets on the "
+                    "system.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        portal = RANDOM.choice(allowed_portals)
         portal_addr = ('%(ip)s:%(port)d' %
-                       {'ip': portal['ip-addr'].split('/')[0],
+                       {'ip': portal['ip-addr'],
                         'port': portal['ip-port']})
 
-        tg_portals = ['%(ip)s:%(port)d' % {'ip': p['ip-addr'].split('/')[0],
+        tg_portals = ['%(ip)s:%(port)d' % {'ip': p['ip-addr'],
                                            'port': p['ip-port']}
-                      for p in portals]
+                      for p in allowed_portals]
         properties = {'target_discovered': False,
                       'target_iqn': portal['port-address'],
                       'target_lun': lunmap['lun'],
                       'target_portal': portal_addr,
-                      'target_iqns': [p['port-address'] for p in portals],
+                      'target_iqns': [
+                          p['port-address'] for p in allowed_portals
+                      ],
                       'target_portals': tg_portals,
-                      'target_luns': [lunmap['lun']] * len(portals)}
+                      'target_luns': [lunmap['lun']] * len(allowed_portals)}
         return properties
 
     def _get_initiator_names(self, connector):
@@ -1213,8 +1244,17 @@ class XtremIOFCDriver(XtremIOVolumeDriver,
         if not self._targets:
             try:
                 targets = self.client.get_fc_up_ports()
-                self._targets = [target['port-address'].replace(':', '')
-                                 for target in targets]
+                allowed_targets = []
+                for target in targets:
+                    if self._port_is_allowed(target['port-address']):
+                        allowed_targets.append(
+                            target['port-address'].replace(':', '')
+                        )
+                if not allowed_targets:
+                    msg = _("There are no accessible Fibre Channel targets "
+                            "on the system.")
+                    raise exception.VolumeBackendAPIException(data=msg)
+                self._targets = allowed_targets
             except exception.NotFound:
                 raise (exception.VolumeBackendAPIException
                        (data=_("Failed to get targets")))
