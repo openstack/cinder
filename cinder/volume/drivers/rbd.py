@@ -254,6 +254,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         self._is_replication_enabled = False
         self._replication_targets = []
         self._target_names = []
+        self._clone_v2_api_checked = False
 
         if self.rbd is not None:
             self.RBD_FEATURE_LAYERING = self.rbd.RBD_FEATURE_LAYERING
@@ -272,6 +273,22 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     @staticmethod
     def get_driver_options():
         return RBD_OPTS
+
+    def _show_msg_check_clone_v2_api(self, volume_name):
+        if not self._clone_v2_api_checked:
+            self._clone_v2_api_checked = True
+            with RBDVolumeProxy(self, volume_name) as volume:
+                try:
+                    if (volume.volume.op_features() &
+                            self.rbd.RBD_OPERATION_FEATURE_CLONE_PARENT):
+                        LOG.info('Using v2 Clone API')
+                        return
+                except AttributeError:
+                    pass
+                LOG.warning('Not using v2 clone API, please upgrade to'
+                            ' mimic+ and set the OSD minimum client'
+                            ' compat version to mimic for better'
+                            ' performance, fewer deletion issues')
 
     def _get_target_config(self, target_id):
         """Get a replication target from known replication targets."""
@@ -1008,6 +1025,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             self._flatten(self.configuration.rbd_pool, volume.name)
         if int(volume.size):
             self._resize(volume)
+
+        self._show_msg_check_clone_v2_api(snapshot.volume_name)
         return volume_update
 
     def _delete_backup_snaps(self, rbd_image):
