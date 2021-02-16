@@ -818,30 +818,30 @@ class VolumeImageActionsTest(test.TestCase):
 
     def fake_image_service_create(self, *args):
         ret = {
-            'status': u'queued',
-            'name': u'image_name',
+            'status': 'queued',
+            'name': 'image_name',
             'deleted': False,
-            'container_format': u'bare',
+            'container_format': 'bare',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-            'disk_format': u'raw',
+            'disk_format': 'raw',
             'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'id': fake.IMAGE_ID,
             'min_ram': 0,
             'checksum': None,
             'min_disk': 0,
             'deleted_at': None,
-            'properties': {u'x_billing_code_license': u'246254365'},
+            'properties': {'x_billing_code_license': '246254365'},
             'size': 0}
         return ret
 
     def fake_image_service_create_with_params(self, *args):
         ret = {
-            'status': u'queued',
-            'name': u'image_name',
+            'status': 'queued',
+            'name': 'image_name',
             'deleted': False,
-            'container_format': u'bare',
+            'container_format': 'bare',
             'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-            'disk_format': u'raw',
+            'disk_format': 'raw',
             'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
             'id': fake.IMAGE_ID,
             'min_ram': 0,
@@ -850,7 +850,7 @@ class VolumeImageActionsTest(test.TestCase):
             'visibility': 'public',
             'protected': True,
             'deleted_at': None,
-            'properties': {u'x_billing_code_license': u'246254365'},
+            'properties': {'x_billing_code_license': '246254365'},
             'size': 0}
         return ret
 

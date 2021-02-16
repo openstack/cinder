@@ -1917,7 +1917,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(backup.id, res_dict['restore']['backup_id'])
         self.assertEqual(volume.id, res_dict['restore']['volume_id'])
         self.assertEqual(volume_name, res_dict['restore']['volume_name'])
-        mock_restore_backup.assert_called_once_with(mock.ANY, u'testhost',
+        mock_restore_backup.assert_called_once_with(mock.ANY, 'testhost',
                                                     mock.ANY, volume.id)
         # Manually check if restore_backup was called with appropriate backup.
         self.assertEqual(backup.id, mock_restore_backup.call_args[0][2].id)

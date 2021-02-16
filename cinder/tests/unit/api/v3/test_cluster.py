@@ -243,7 +243,7 @@ class ClustersTestCase(test.TestCase):
                 return_value=CLUSTERS_ORM[1])
     def test_update_enable(self, get_mock, update_mock):
         req = FakeRequest()
-        expected = {'cluster': {'name': u'cluster2',
+        expected = {'cluster': {'name': 'cluster2',
                                 'binary': 'cinder-volume',
                                 'state': 'down',
                                 'status': 'enabled',
@@ -266,7 +266,7 @@ class ClustersTestCase(test.TestCase):
     def test_update_disable(self, get_mock, update_mock):
         req = FakeRequest()
         disabled_reason = 'For testing'
-        expected = {'cluster': {'name': u'cluster_name',
+        expected = {'cluster': {'name': 'cluster_name',
                                 'state': 'up',
                                 'binary': 'cinder-volume',
                                 'status': 'disabled',

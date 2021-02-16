@@ -191,8 +191,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         mock_get.return_value = \
             {'extra_specs': {"key1": "value1"},
              'id': DEFAULT_VOLUME_TYPE,
-             'name': u'vol_type_1',
-             'description': u'vol_type_desc_%s' % DEFAULT_VOLUME_TYPE}
+             'name': 'vol_type_1',
+             'description': 'vol_type_desc_%s' % DEFAULT_VOLUME_TYPE}
         mock_destroy.side_effect = return_volume_types_destroy
 
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' %
@@ -235,8 +235,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         mock_get_volume_type_by_name.return_value = \
             {'extra_specs': {"key1": "value1"},
              'id': DEFAULT_VOLUME_TYPE,
-             'name': u'vol_type_1',
-             'description': u''}
+             'name': 'vol_type_1',
+             'description': ''}
 
         type_description = ""
         body = {"volume_type": {"name": "vol_type_1",
@@ -338,8 +338,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         mock_get_volume_type_by_name.return_value = \
             {'extra_specs': {"key1": "value1"},
              'id': DEFAULT_VOLUME_TYPE,
-             'name': u'vol_type_1',
-             'description': u'vol_type_desc_1'}
+             'name': 'vol_type_1',
+             'description': 'vol_type_desc_1'}
 
         body = {"volume_type": {"name": "vol_type_1",
                                 "os-volume-type-access:is_public": True,
@@ -424,8 +424,8 @@ class VolumeTypesManageApiTest(test.TestCase):
             self, mock_get_volume_type, mock_type_update):
 
         mock_get_volume_type.return_value = \
-            {'id': DEFAULT_VOLUME_TYPE, 'name': u'vol_type_1',
-             'description': u''}
+            {'id': DEFAULT_VOLUME_TYPE, 'name': 'vol_type_1',
+             'description': ''}
 
         type_description = ""
         body = {"volume_type": {"description": type_description}}

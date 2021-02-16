@@ -148,7 +148,7 @@ class SnapshotManageTest(test.TestCase):
         # correct arguments.
         self.assertEqual(1, mock_rpcapi.call_count)
         args = mock_rpcapi.call_args[0]
-        self.assertEqual({u'fake_key': u'fake_ref'}, args[3])
+        self.assertEqual({'fake_key': 'fake_ref'}, args[3])
 
     @mock.patch(
         'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
