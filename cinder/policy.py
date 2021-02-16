@@ -79,7 +79,7 @@ def enforce(context, action, target):
     try:
         return _ENFORCER.enforce(action,
                                  target,
-                                 context.to_policy_values(),
+                                 context,
                                  do_raise=True,
                                  exc=exception.PolicyNotAuthorized,
                                  action=action)
