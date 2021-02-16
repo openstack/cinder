@@ -54,6 +54,9 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             'pool3': {
                 'netapp_aggregate': 'aggr2',
             },
+            'pool4': {
+                'netapp_aggregate': ['aggr1', 'aggr2'],
+            }
         }
 
         self.fake_aggrs = set(['aggr1', 'aggr2', 'aggr3'])
@@ -165,7 +168,8 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         self.assertEqual(expected_performance_counters,
                          self.perf_library.performance_counters)
 
-        expected_pool_utilization = {'pool1': 25, 'pool2': 75, 'pool3': 75}
+        expected_pool_utilization = {'pool1': 25, 'pool2': 75, 'pool3': 75,
+                                     'pool4': perf_base.DEFAULT_UTILIZATION}
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)
 
@@ -202,6 +206,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             'pool1': perf_base.DEFAULT_UTILIZATION,
             'pool2': perf_base.DEFAULT_UTILIZATION,
             'pool3': perf_base.DEFAULT_UTILIZATION,
+            'pool4': perf_base.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)
@@ -244,6 +249,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             'pool1': perf_base.DEFAULT_UTILIZATION,
             'pool2': perf_base.DEFAULT_UTILIZATION,
             'pool3': perf_base.DEFAULT_UTILIZATION,
+            'pool4': perf_base.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)
@@ -285,6 +291,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
             'pool1': perf_base.DEFAULT_UTILIZATION,
             'pool2': perf_base.DEFAULT_UTILIZATION,
             'pool3': perf_base.DEFAULT_UTILIZATION,
+            'pool4': perf_base.DEFAULT_UTILIZATION,
         }
         self.assertEqual(expected_pool_utilization,
                          self.perf_library.pool_utilization)

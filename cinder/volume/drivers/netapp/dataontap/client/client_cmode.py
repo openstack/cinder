@@ -848,9 +848,8 @@ class Client(client_base.Client):
         result = self._invoke_vserver_api(vol_iter, vserver)
         num_records = result.get_child_content('num-records')
         if num_records and int(num_records) >= 1:
-            attr_list = result.get_child_by_name('attributes-list')
-            vols = attr_list.get_children()
-            vol_id = vols[0].get_child_by_name('volume-id-attributes')
+            volume_attr = self.get_unique_volume(result)
+            vol_id = volume_attr.get_child_by_name('volume-id-attributes')
             return vol_id.get_child_content('name')
         msg_fmt = {'vserver': vserver, 'junction': junction}
         raise exception.NotFound(_("No volume on cluster with vserver "
@@ -1019,6 +1018,9 @@ class Client(client_base.Client):
             },
             'desired-attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {
+                        'style-extended': None,
+                    },
                     'volume-space-attributes': {
                         'size-available': None,
                         'size-total': None,
@@ -1028,14 +1030,12 @@ class Client(client_base.Client):
         }
 
         result = self.send_iter_request('volume-get-iter', api_args)
-        if self._get_record_count(result) != 1:
+        if self._get_record_count(result) < 1:
             msg = _('Volume %s not found.')
             msg_args = flexvol_path or flexvol_name
             raise na_utils.NetAppDriverException(msg % msg_args)
 
-        attributes_list = result.get_child_by_name('attributes-list')
-        volume_attributes = attributes_list.get_child_by_name(
-            'volume-attributes')
+        volume_attributes = self.get_unique_volume(result)
         volume_space_attributes = volume_attributes.get_child_by_name(
             'volume-space-attributes')
 
@@ -1048,6 +1048,26 @@ class Client(client_base.Client):
             'size-total': size_total,
             'size-available': size_available,
         }
+
+    def get_unique_volume(self, get_volume_result):
+        """Get the unique FlexVol or FleGroup volume from a get volume list"""
+        volume_list = []
+        attributes_list = get_volume_result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for volume_attributes in attributes_list.get_children():
+            volume_id_attributes = volume_attributes.get_child_by_name(
+                'volume-id-attributes') or netapp_api.NaElement('none')
+            style = volume_id_attributes.get_child_content('style-extended')
+            if style == 'flexvol' or style == 'flexgroup':
+                volume_list.append(volume_attributes)
+
+        if len(volume_list) != 1:
+            msg = _('Could not find unique volume. Volumes foud: %(vol)s.')
+            msg_args = {'vol': volume_list}
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+        return volume_list[0]
 
     def list_flexvols(self):
         """Returns the names of the flexvols on the controller."""
@@ -1120,8 +1140,12 @@ class Client(client_base.Client):
                         'name': None,
                         'owning-vserver-name': None,
                         'junction-path': None,
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
                         'type': None,
+                        'style-extended': None,
                     },
                     'volume-mirror-attributes': {
                         'is-data-protection-mirror': None,
@@ -1147,19 +1171,19 @@ class Client(client_base.Client):
         }
         result = self.send_iter_request('volume-get-iter', api_args)
 
-        if self._get_record_count(result) != 1:
-            msg = _('Could not find unique volume %(vol)s.')
-            msg_args = {'vol': flexvol_name}
-            raise exception.VolumeBackendAPIException(data=msg % msg_args)
-
-        attributes_list = result.get_child_by_name(
-            'attributes-list') or netapp_api.NaElement('none')
-
-        volume_attributes = attributes_list.get_child_by_name(
-            'volume-attributes') or netapp_api.NaElement('none')
+        volume_attributes = self.get_unique_volume(result)
 
         volume_id_attributes = volume_attributes.get_child_by_name(
             'volume-id-attributes') or netapp_api.NaElement('none')
+        aggr = volume_id_attributes.get_child_content(
+            'containing-aggregate-name')
+        if not aggr:
+            aggr_list_attr = volume_id_attributes.get_child_by_name(
+                'aggr-list') or netapp_api.NaElement('none')
+            aggr = [aggr_elem.get_content()
+                    for aggr_elem in
+                    aggr_list_attr.get_children()]
+
         volume_space_attributes = volume_attributes.get_child_by_name(
             'volume-space-attributes') or netapp_api.NaElement('none')
         volume_qos_attributes = volume_attributes.get_child_by_name(
@@ -1175,8 +1199,7 @@ class Client(client_base.Client):
                 'owning-vserver-name'),
             'junction-path': volume_id_attributes.get_child_content(
                 'junction-path'),
-            'aggregate': volume_id_attributes.get_child_content(
-                'containing-aggregate-name'),
+            'aggregate': aggr,
             'type': volume_id_attributes.get_child_content('type'),
             'space-guarantee-enabled': strutils.bool_from_string(
                 volume_space_attributes.get_child_content(
@@ -1193,6 +1216,9 @@ class Client(client_base.Client):
                 'snapshot-policy'),
             'language': volume_language_attributes.get_child_content(
                 'language-code'),
+            'style-extended': volume_id_attributes.get_child_content(
+                'style-extended'),
+
         }
 
         return volume
@@ -2387,6 +2413,7 @@ class Client(client_base.Client):
             'snapshot_reserve': flexvol_info['percentage-snapshot-reserve'],
             'volume_type': flexvol_info['type'],
             'size': int(math.ceil(float(flexvol_info['size']) / units.Gi)),
+            'is_flexgroup': flexvol_info['style-extended'] == 'flexgroup',
         }
 
         return provisioning_opts

@@ -155,11 +155,16 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(1, mock_debug_log.call_count)
         self.assertEqual(expected_stats, self.driver._stats)
 
-    @ddt.data({'replication_backends': [], 'cluster_credentials': False},
+    @ddt.data({'replication_backends': [],
+               'cluster_credentials': False, 'is_fg': False},
               {'replication_backends': ['target_1', 'target_2'],
-               'cluster_credentials': True})
+               'cluster_credentials': True, 'is_fg': False},
+              {'replication_backends': ['target_1', 'target_2'],
+               'cluster_credentials': True, 'is_fg': True}
+              )
     @ddt.unpack
-    def test_get_pool_stats(self, replication_backends, cluster_credentials):
+    def test_get_pool_stats(self, replication_backends, cluster_credentials,
+                            is_fg):
         self.driver.using_cluster_credentials = cluster_credentials
         self.driver.zapi_client = mock.Mock()
         ssc = {
@@ -171,10 +176,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 'netapp_compression': 'false',
                 'netapp_mirrored': 'false',
                 'netapp_dedup': 'true',
-                'netapp_aggregate': 'aggr1',
-                'netapp_raid_type': 'raid_dp',
-                'netapp_disk_type': 'SSD',
+                'netapp_aggregate': ['aggr1'] if is_fg else 'aggr1',
+                'netapp_raid_type': ['raid_dp'] if is_fg else 'raid_dp',
+                'netapp_disk_type': ['SSD'] if is_fg else 'SSD',
                 'consistent_group_snapshot_enabled': True,
+                'netapp_is_flexgroup': 'true' if is_fg else 'false',
             },
         }
         mock_get_ssc = self.mock_object(self.driver.ssc_library,
@@ -246,13 +252,14 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'consistent_group_snapshot_enabled': True,
             'replication_enabled': False,
             'online_extend_support': False,
+            'netapp_is_flexgroup': 'false',
         }]
 
         expected[0].update({'QoS_support': cluster_credentials})
         if not cluster_credentials:
             expected[0].update({
                 'netapp_aggregate_used_percent': 0,
-                'netapp_dedupe_used_percent': 0
+                'netapp_dedupe_used_percent': 0,
             })
 
         if replication_backends:
@@ -261,6 +268,17 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 'replication_count': len(replication_backends),
                 'replication_targets': replication_backends,
                 'replication_type': 'async',
+            })
+
+        if is_fg:
+            expected[0].update({
+                'netapp_is_flexgroup': 'true',
+                'netapp_disk_type': ['SSD'],
+                'netapp_raid_type': ['raid_dp'],
+                'netapp_aggregate': ['aggr1'],
+                'netapp_dedupe_used_percent': 0,
+                'consistencygroup_support': False,
+                'consistent_group_snapshot_enabled': False,
             })
 
         self.assertEqual(expected, result)
@@ -538,15 +556,20 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_filer_delete = self.mock_object(self.driver, '_delete_file')
         mock_super_delete = self.mock_object(nfs_base.NetAppNfsDriver,
                                              'delete_volume')
+        mock_flexgroup = self.mock_object(self.driver, '_is_flexgroup',
+                                          return_value=False)
 
         self.driver._delete_backing_file_for_volume(fake.NFS_VOLUME)
 
+        mock_flexgroup.assert_called_once_with(host=fake.NFS_VOLUME['host'])
         mock_filer_delete.assert_called_once_with(
             fake.NFS_VOLUME['id'], fake.NFS_VOLUME['name'])
         self.assertEqual(0, mock_super_delete.call_count)
 
     @ddt.data(True, False)
     def test_delete_backing_file_for_volume_exception_path(self, super_exc):
+        mock_flexgroup = self.mock_object(self.driver, '_is_flexgroup',
+                                          return_value=False)
         mock_exception_log = self.mock_object(nfs_cmode.LOG, 'exception')
         exception_call_count = 2 if super_exc else 1
         mock_filer_delete = self.mock_object(self.driver, '_delete_file')
@@ -558,21 +581,28 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.driver._delete_backing_file_for_volume(fake.NFS_VOLUME)
 
+        mock_flexgroup.assert_called_once_with(host=fake.NFS_VOLUME['host'])
         mock_filer_delete.assert_called_once_with(
             fake.NFS_VOLUME['id'], fake.NFS_VOLUME['name'])
         mock_super_delete.assert_called_once_with(fake.NFS_VOLUME)
         self.assertEqual(exception_call_count, mock_exception_log.call_count)
 
-    def test_delete_snapshot(self):
-        mock_get_location = self.mock_object(self.driver,
-                                             '_get_provider_location')
-        mock_get_location.return_value = fake.PROVIDER_LOCATION
+    @ddt.data(True, False)
+    def test_delete_snapshot(self, is_flexgroup):
         mock_delete_backing = self.mock_object(
             self.driver, '_delete_backing_file_for_snapshot')
-
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=is_flexgroup)
+        mock_super_delete = self.mock_object(nfs_base.NetAppNfsDriver,
+                                             'delete_snapshot')
         self.driver.delete_snapshot(fake.test_snapshot)
 
-        mock_delete_backing.assert_called_once_with(fake.test_snapshot)
+        if is_flexgroup:
+            mock_super_delete.assert_called_once_with(fake.test_snapshot)
+            mock_delete_backing.assert_not_called()
+        else:
+            mock_super_delete.assert_not_called()
+            mock_delete_backing.assert_called_once_with(fake.test_snapshot)
 
     def test_delete_backing_file_for_snapshot(self):
         mock_filer_delete = self.mock_object(self.driver, '_delete_file')
@@ -1199,12 +1229,27 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         nfs_base.NetAppNfsDriver._direct_nfs_clone = mock.Mock(
             return_value=False)
         drv._copy_from_cache = mock.Mock(return_value=True)
+        drv._is_flexgroup = mock.Mock(return_value=False)
 
         drv.clone_image(context, volume, image_location, image_meta,
                         image_service)
 
         drv._copy_from_cache.assert_called_once_with(
             volume, image_id, [('share', 'img')])
+
+        drv.clone_image(context, volume, image_location, image_meta,
+                        image_service)
+
+    def test_clone_image_flexgroup(self):
+        self.driver._is_flexgroup = mock.Mock(return_value=True)
+        volume = {'host': 'openstack@nfscmode#192.128.1.1:/mnt_point'}
+        context = object()
+        model, cloned = self.driver.clone_image(
+            context, volume, 'fake_loc', 'fake_img', 'fake_img_service')
+
+        self.assertFalse(cloned)
+        self.assertIsNone(model)
+        self.driver._is_flexgroup.assert_called_once_with(host=volume['host'])
 
     def test_clone_image_copyoffload_from_img_service(self):
         drv = self.driver
@@ -1225,6 +1270,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         nfs_base.NetAppNfsDriver._post_clone_image = mock.Mock(
             return_value=True)
         drv._copy_from_img_service = mock.Mock(return_value=True)
+        drv._is_flexgroup = mock.Mock(return_value=False)
 
         retval = drv.clone_image(
             context, volume, image_location, image_meta, image_service)
@@ -1239,7 +1285,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_log = self.mock_object(nfs_cmode, 'LOG')
         drv = self.driver
         context = object()
-        volume = {'id': 'vol_id', 'name': 'name'}
+        volume = {'id': 'vol_id', 'name': 'name', 'host': 'host'}
         image_service = object()
         image_id = 'image_id'
         image_meta = {'id': image_id}
@@ -1251,6 +1297,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         nfs_base.NetAppNfsDriver._direct_nfs_clone = mock.Mock(
             return_value=False)
         drv._copy_from_img_service = mock.Mock(side_effect=Exception())
+        drv._is_flexgroup = mock.Mock(return_value=False)
 
         retval = drv.clone_image(
             context, volume, image_location, image_meta, image_service)
@@ -1477,19 +1524,60 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_ssc_library.assert_called_once_with()
 
     def test_create_group(self):
+        mock_flexgroup = self.mock_object(self.driver, '_is_flexgroup',
+                                          return_value=False)
+        self.mock_object(volume_utils,
+                         'is_group_a_cg_snapshot_type',
+                         return_value=False)
 
         model_update = self.driver.create_group(
             fake.VG_CONTEXT, fake.VOLUME_GROUP)
 
         self.assertEqual('available', model_update['status'])
+        mock_flexgroup.assert_called_once_with(host=fake.VOLUME_GROUP['host'])
+
+    def test_create_group_raises(self):
+        mock_flexgroup = self.mock_object(self.driver, '_is_flexgroup',
+                                          return_value=True)
+        mock_is_cg = self.mock_object(volume_utils,
+                                      'is_group_a_cg_snapshot_type',
+                                      return_value=True)
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.driver.create_group,
+            fake.VG_CONTEXT, fake.VOLUME_GROUP)
+
+        mock_flexgroup.assert_called_once_with(host=fake.VOLUME_GROUP['host'])
+        mock_is_cg.assert_called_once_with(fake.VOLUME_GROUP)
 
     def test_update_group(self):
-
+        mock_is_cg = self.mock_object(
+            volume_utils, 'is_group_a_cg_snapshot_type',
+            return_value=False)
         model_update, add_volumes_update, remove_volumes_update = (
             self.driver.update_group(fake.VG_CONTEXT, "foo"))
 
         self.assertIsNone(add_volumes_update)
         self.assertIsNone(remove_volumes_update)
+        mock_is_cg.assert_called_once_with("foo")
+
+    def test_update_group_raises(self):
+        mock_is_cg = self.mock_object(
+            volume_utils, 'is_group_a_cg_snapshot_type',
+            return_value=True)
+        mock_is_flexgroup = self.mock_object(
+            self.driver, '_is_flexgroup',
+            return_value=True)
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.driver.update_group,
+            fake.VG_CONTEXT,
+            "foo",
+            add_volumes=[fake.VOLUME])
+        mock_is_cg.assert_called_once_with("foo")
+        mock_is_flexgroup.assert_called_once_with(host=fake.VOLUME['host'])
 
     @ddt.data(None,
               {'replication_status': fields.ReplicationStatus.ENABLED})
@@ -1528,6 +1616,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             self.driver.zapi_client, 'wait_for_busy_snapshot')
         self.mock_object(self.driver, '_get_volume_model_update',
                          return_value=volume_model_update)
+        mock_is_flexgroup = self.mock_object(self.driver, '_is_flexgroup',
+                                             return_value=False)
 
         model_update, volumes_model_update = (
             self.driver.create_group_from_src(
@@ -1541,6 +1631,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         }]
         if volume_model_update:
             expected_volumes_model_updates[0].update(volume_model_update)
+
+        mock_is_flexgroup.assert_called_once_with(
+            host=fake.SOURCE_VG_VOLUME['host'])
         mock_get_snapshot_flexvols.assert_called_once_with(
             [fake.SOURCE_VG_VOLUME['host']])
         self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
@@ -1555,6 +1648,25 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertIsNone(model_update)
         self.assertEqual(expected_volumes_model_updates, volumes_model_update)
 
+    @ddt.data(
+        {'error': na_utils.NetAppDriverException, 'is_cg': True},
+        {'error': NotImplementedError, 'is_cg': False})
+    @ddt.unpack
+    def test_create_group_from_src_raises(self, error, is_cg):
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=is_cg)
+        mock_is_flexgroup = self.mock_object(self.driver, '_is_flexgroup',
+                                             return_value=True)
+
+        self.assertRaises(
+            error, self.driver.create_group_from_src,
+            fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VG_VOLUME],
+            source_group=fake.VOLUME_GROUP,
+            sorted_source_vols=[fake.SOURCE_VG_VOLUME])
+
+        mock_is_flexgroup.assert_called_once_with(
+            host=fake.SOURCE_VG_VOLUME['host'])
+
     def test_create_group_from_src_invalid_parms(self):
         model_update, volumes_model_update = (
             self.driver.create_group_from_src(
@@ -1567,10 +1679,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             volume_utils, 'is_group_a_cg_snapshot_type', return_value=True)
         mock__get_flexvol_names = self.mock_object(
             self.driver, '_get_flexvol_names_from_hosts')
+        self.mock_object(self.driver, '_is_flexgroup', return_value=False)
 
         self.mock_object(self.driver.zapi_client, 'create_cg_snapshot',
                          side_effect=netapp_api.NaApiError)
-
         self.assertRaises(na_utils.NetAppDriverException,
                           self.driver.create_group_snapshot,
                           fake.VG_CONTEXT,
@@ -1584,8 +1696,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_create_group_snapshot(self):
         mock_is_cg_snapshot = self.mock_object(
             volume_utils, 'is_group_a_cg_snapshot_type', return_value=False)
-        mock__clone_backing_file_for_volume = self.mock_object(
-            self.driver, '_clone_backing_file_for_volume')
+        mock_create_snapshot = self.mock_object(
+            self.driver, 'create_snapshot')
 
         model_update, snapshots_model_update = (
             self.driver.create_group_snapshot(fake.VG_CONTEXT,
@@ -1595,9 +1707,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertIsNone(model_update)
         self.assertIsNone(snapshots_model_update)
         mock_is_cg_snapshot.assert_called_once_with(fake.VOLUME_GROUP)
-        mock__clone_backing_file_for_volume.assert_called_once_with(
-            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'],
-            fake.SNAPSHOT['volume_id'], is_snapshot=True)
+        mock_create_snapshot.assert_called_once_with(fake.SNAPSHOT)
 
     def test_create_consistent_group_snapshot(self):
         mock_is_cg_snapshot = self.mock_object(
@@ -1611,6 +1721,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             self.driver, '_clone_backing_file_for_volume')
         mock_busy = self.mock_object(
             self.driver.zapi_client, 'wait_for_busy_snapshot')
+        mock_is_flexgroup = self.mock_object(
+            self.driver, '_is_flexgroup')
+        mock_is_flexgroup.return_value = False
 
         model_update, snapshots_model_update = (
             self.driver.create_group_snapshot(fake.VG_CONTEXT,
@@ -1619,6 +1732,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertIsNone(model_update)
         self.assertIsNone(snapshots_model_update)
+        mock_is_flexgroup.assert_called_once_with(
+            host=fake.VG_SNAPSHOT['volume']['host'])
         mock_is_cg_snapshot.assert_called_once_with(fake.VOLUME_GROUP)
         mock_get_snapshot_flexvols.assert_called_once_with(
             [fake.VG_SNAPSHOT['volume']['host']])
@@ -1633,9 +1748,29 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.driver.zapi_client.delete_snapshot.assert_called_once_with(
             fake.VG_POOL_NAME, fake.VOLUME_GROUP_ID)
 
+    def test_create_consistent_group_snapshot_flexgroup(self):
+        mock_is_cg_snapshot = self.mock_object(
+            volume_utils, 'is_group_a_cg_snapshot_type', return_value=True)
+        mock_is_flexgroup = self.mock_object(
+            self.driver, '_is_flexgroup')
+        mock_is_flexgroup.return_value = True
+
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.driver.create_group_snapshot,
+                          fake.VG_CONTEXT,
+                          fake.VOLUME_GROUP,
+                          [fake.VG_SNAPSHOT])
+
+        mock_is_cg_snapshot.assert_called_once_with(fake.VOLUME_GROUP)
+        mock_is_flexgroup.assert_called_once_with(
+            host=fake.VG_SNAPSHOT['volume']['host'])
+
     def test_create_group_snapshot_busy_snapshot(self):
         self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
                          return_value=True)
+        mock_is_flexgroup = self.mock_object(
+            self.driver, '_is_flexgroup')
+        mock_is_flexgroup.return_value = False
         self.driver.zapi_client = mock.Mock()
         snapshot = fake.VG_SNAPSHOT
         snapshot['volume'] = fake.VG_VOLUME
@@ -1655,6 +1790,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mock_get_snapshot_flexvols.assert_called_once_with(
             [snapshot['volume']['host']])
+        mock_is_flexgroup.assert_called_once_with(
+            host=snapshot['volume']['host'])
         self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
             set([fake.VG_POOL_NAME]), fake.VG_SNAPSHOT_ID)
         mock_clone_backing_file.assert_called_once_with(
@@ -1667,7 +1804,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             fake.VG_POOL_NAME, fake.VG_SNAPSHOT_ID)
 
     def test_delete_group_volume_delete_failure(self):
-        self.mock_object(self.driver, '_delete_file', side_effect=Exception)
+        self.mock_object(self.driver, 'delete_volume', side_effect=Exception)
 
         model_update, volumes = self.driver.delete_group(
             fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VG_VOLUME])
@@ -1677,12 +1814,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     def test_delete_group(self):
         mock_delete_file = self.mock_object(
-            self.driver, '_delete_file')
+            self.driver, 'delete_volume')
 
         model_update, volumes = self.driver.delete_group(
             fake.VG_CONTEXT, fake.VOLUME_GROUP, [fake.VG_VOLUME])
 
         self.assertEqual('deleted', model_update['status'])
         self.assertEqual('deleted', volumes[0]['status'])
-        mock_delete_file.assert_called_once_with(
-            fake.VG_VOLUME_ID, fake.VG_VOLUME_NAME)
+        mock_delete_file.assert_called_once_with(fake.VG_VOLUME)

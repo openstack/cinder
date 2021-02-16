@@ -171,7 +171,8 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         mock_get_ssc_mirror_info.assert_has_calls([
             mock.call('volume1'), mock.call('volume2')])
         mock_get_ssc_aggregate_info.assert_has_calls([
-            mock.call('aggr1'), mock.call('aggr2')])
+            mock.call('aggr1', is_flexgroup=False),
+            mock.call('aggr2', is_flexgroup=False)])
         mock_get_ssc_encryption_info.assert_has_calls([
             mock.call('volume1'), mock.call('volume2')])
         mock_get_ssc_qos_min_info.assert_has_calls([
@@ -206,6 +207,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'thick_provisioning_support': False,
             'thin_provisioning_support': True,
             'netapp_aggregate': 'fake_aggr1',
+            'netapp_is_flexgroup': 'false',
         }
         self.assertEqual(expected, result)
         self.zapi_client.get_flexvol.assert_called_once_with(
@@ -233,6 +235,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'thick_provisioning_support': lun_space_guarantee,
             'thin_provisioning_support': not lun_space_guarantee,
             'netapp_aggregate': 'fake_aggr1',
+            'netapp_is_flexgroup': 'false',
         }
         self.assertEqual(expected, result)
         self.zapi_client.get_flexvol.assert_called_once_with(
@@ -258,6 +261,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'thick_provisioning_support': False,
             'thin_provisioning_support': True,
             'netapp_aggregate': 'fake_aggr1',
+            'netapp_is_flexgroup': 'false',
         }
         self.assertEqual(expected, result)
         self.zapi_client.get_flexvol.assert_called_once_with(
@@ -286,6 +290,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'thick_provisioning_support': not nfs_sparsed_volumes,
             'thin_provisioning_support': nfs_sparsed_volumes,
             'netapp_aggregate': 'fake_aggr1',
+            'netapp_is_flexgroup': 'false',
         }
         self.assertEqual(expected, result)
         self.zapi_client.get_flexvol.assert_called_once_with(
@@ -347,8 +352,12 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.zapi_client.is_flexvol_mirrored.assert_called_once_with(
             fake_client.VOLUME_NAMES[0], fake.SSC_VSERVER)
 
-    @ddt.data([], ['netapp_raid_type'])
-    def test_get_ssc_aggregate_info(self, invalid_extra_specs):
+    @ddt.data({'invalid_extra_specs': [], 'is_fg': False},
+              {'invalid_extra_specs': ['netapp_raid_type'],
+               'is_fg': False},
+              {'invalid_extra_specs': [], 'is_fg': True})
+    @ddt.unpack
+    def test_get_ssc_aggregate_info(self, invalid_extra_specs, is_fg):
         self.ssc_library.invalid_extra_specs = invalid_extra_specs
         self.mock_object(
             self.ssc_library.zapi_client, 'get_aggregate',
@@ -357,8 +366,12 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             self.ssc_library.zapi_client, 'get_aggregate_disk_types',
             return_value=fake_client.AGGREGATE_DISK_TYPES)
 
-        result = self.ssc_library._get_ssc_aggregate_info(
-            fake_client.VOLUME_AGGREGATE_NAME)
+        aggr_name = fake_client.VOLUME_AGGREGATE_NAME
+        if is_fg:
+            aggr_name = [fake_client.VOLUME_AGGREGATE_NAME]
+
+        result = self.ssc_library._get_ssc_aggregate_info(aggr_name,
+                                                          is_flexgroup=is_fg)
 
         if invalid_extra_specs:
             expected = {
@@ -376,6 +389,17 @@ class CapabilitiesLibraryTestCase(test.TestCase):
                 'netapp_hybrid_aggregate': 'true',
                 'netapp_node_name': fake_client.NODE_NAME,
             }
+            if is_fg:
+                result['netapp_disk_type'] = sorted(
+                    result['netapp_disk_type'])
+                expected['netapp_disk_type'] = sorted(
+                    expected['netapp_disk_type'])
+                expected['netapp_raid_type'] = [
+                    fake_client.AGGREGATE_RAID_TYPE]
+                expected['netapp_node_name'] = [
+                    fake_client.NODE_NAME]
+                expected['netapp_hybrid_aggregate'] = ['true']
+
             self.zapi_client.get_aggregate.assert_called_once_with(
                 fake_client.VOLUME_AGGREGATE_NAME)
             self.zapi_client.get_aggregate_disk_types.assert_called_once_with(
@@ -539,6 +563,22 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         expected = {
             'netapp_qos_min_support': 'true',
+        }
+        self.assertEqual(expected, result)
+        self.zapi_client.is_qos_min_supported.assert_called_once_with(False,
+                                                                      'node')
+
+    @ddt.data(False, True)
+    def test_get_ssc_qos_min_info_flexgroup(self, qos_min_support):
+
+        self.mock_object(
+            self.ssc_library.zapi_client, 'is_qos_min_supported',
+            return_value=qos_min_support)
+
+        result = self.ssc_library._get_ssc_qos_min_info(['node'])
+
+        expected = {
+            'netapp_qos_min_support': 'true' if qos_min_support else 'false',
         }
         self.assertEqual(expected, result)
         self.zapi_client.is_qos_min_supported.assert_called_once_with(False,

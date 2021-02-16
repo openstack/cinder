@@ -97,12 +97,15 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
         pool_utilization = {}
         for pool_name, pool_info in ssc_pools.items():
             aggr_name = pool_info.get('netapp_aggregate', 'unknown')
-            node_name = aggr_node_map.get(aggr_name)
-            if node_name:
+
+            if isinstance(aggr_name, list):
+                # NOTE(felipe_rodrigues): for FlexGroup pool, the utilization
+                # is not calculate.
+                pool_utilization[pool_name] = perf_base.DEFAULT_UTILIZATION
+            else:
+                node_name = aggr_node_map.get(aggr_name)
                 pool_utilization[pool_name] = node_utilization.get(
                     node_name, perf_base.DEFAULT_UTILIZATION)
-            else:
-                pool_utilization[pool_name] = perf_base.DEFAULT_UTILIZATION
 
         self.pool_utilization = pool_utilization
 
@@ -121,7 +124,12 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
 
         aggr_names = set()
         for pool_name, pool_info in ssc_pools.items():
-            aggr_names.add(pool_info.get('netapp_aggregate'))
+            aggr = pool_info.get('netapp_aggregate')
+            if isinstance(aggr, list):
+                # NOTE(felipe_rodrigues): for FlexGroup pool, the utilization
+                # is not calculate
+                continue
+            aggr_names.add(aggr)
         return aggr_names
 
     def _get_nodes_for_aggregates(self, aggr_names):

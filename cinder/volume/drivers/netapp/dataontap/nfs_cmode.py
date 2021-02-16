@@ -284,12 +284,17 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             pool['multiattach'] = True
             pool['online_extend_support'] = False
 
+            is_flexgroup = ssc_vol_info.get('netapp_is_flexgroup') == 'true'
+            if is_flexgroup:
+                pool['consistencygroup_support'] = False
+                pool['consistent_group_snapshot_enabled'] = False
+
             # Add up-to-date capacity info
             nfs_share = ssc_vol_info['pool_name']
             capacity = self._get_share_capacity_info(nfs_share)
             pool.update(capacity)
 
-            if self.using_cluster_credentials:
+            if self.using_cluster_credentials and not is_flexgroup:
                 dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
                     ssc_vol_name)
             else:
@@ -298,9 +303,24 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 dedupe_used)
 
             aggregate_name = ssc_vol_info.get('netapp_aggregate')
-            aggr_capacity = aggr_capacities.get(aggregate_name, {})
-            pool['netapp_aggregate_used_percent'] = aggr_capacity.get(
-                'percent-used', 0)
+            aggr_used = 0
+            if isinstance(aggregate_name, list):
+                # For FlexGroup, the aggregate percentage can be seen as the
+                # average of all aggregates.
+                aggr_used_total = 0
+                aggr_num = 0
+                for aggr in aggregate_name:
+                    aggr_capacity = aggr_capacities.get(aggr, {})
+                    aggr_used_total += aggr_capacity.get('percent-used', 0)
+                    aggr_num += 1
+
+                if aggr_num:
+                    aggr_used = aggr_used_total / aggr_num
+            else:
+                aggr_capacity = aggr_capacities.get(aggregate_name, {})
+                aggr_used = aggr_capacity.get('percent-used', 0)
+
+            pool['netapp_aggregate_used_percent'] = aggr_used
 
             # Add utilization data
             utilization = self.perf_library.get_node_utilization_for_pool(
@@ -429,18 +449,26 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def _delete_backing_file_for_volume(self, volume):
         """Deletes file on nfs share that backs a cinder volume."""
+        is_flexgroup = self._is_flexgroup(host=volume['host'])
         try:
             LOG.debug('Deleting backing file for volume %s.', volume['id'])
-            self._delete_file(volume['id'], volume['name'])
-        except Exception:
-            LOG.exception('Could not delete volume %s on backend, '
-                          'falling back to exec of "rm" command.',
-                          volume['id'])
-            try:
+            if is_flexgroup:
                 super(NetAppCmodeNfsDriver, self).delete_volume(volume)
-            except Exception:
+            else:
+                self._delete_file(volume['id'], volume['name'])
+        except Exception:
+            if is_flexgroup:
                 LOG.exception('Exec of "rm" command on backing file for '
                               '%s was unsuccessful.', volume['id'])
+            else:
+                LOG.exception('Could not delete volume %s on backend, '
+                              'falling back to exec of "rm" command.',
+                              volume['id'])
+                try:
+                    super(NetAppCmodeNfsDriver, self).delete_volume(volume)
+                except Exception:
+                    LOG.exception('Exec of "rm" command on backing file for '
+                                  '%s was unsuccessful.', volume['id'])
 
     def _delete_file(self, file_id, file_name):
         (host_ip, junction_path) = self._get_export_ip_path(volume_id=file_id)
@@ -454,7 +482,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        self._delete_backing_file_for_snapshot(snapshot)
+        if self._is_flexgroup(snapshot['volume_id']):
+            super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
+        else:
+            self._delete_backing_file_for_snapshot(snapshot)
 
     def _delete_backing_file_for_snapshot(self, snapshot):
         """Deletes file on nfs share that backs a cinder volume."""
@@ -738,6 +769,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         :returns: Hard-coded model update for generic volume group model.
         """
         model_update = {'status': fields.GroupStatus.AVAILABLE}
+        if (self._is_flexgroup(host=group['host']) and
+                volume_utils.is_group_a_cg_snapshot_type(group)):
+            msg = _("Cannot create %s consistency group on FlexGroup pool.")
+            raise na_utils.NetAppDriverException(msg % group['id'])
+
         return model_update
 
     def delete_group(self, context, group, volumes):
@@ -750,7 +786,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         volumes_model_update = []
         for volume in volumes:
             try:
-                self._delete_file(volume['id'], volume['name'])
+                self.delete_volume(volume)
                 volumes_model_update.append(
                     {'id': volume['id'], 'status': 'deleted'})
             except Exception:
@@ -769,6 +805,12 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         necessary to update any metadata on the backend. Since this is a NO-OP,
         there is guaranteed to be no change in any of the volumes' statuses.
         """
+        if volume_utils.is_group_a_cg_snapshot_type(group):
+            for vol in add_volumes:
+                if self._is_flexgroup(host=vol['host']):
+                    msg = _("Cannot add volume from FlexGroup pool to "
+                            "consistency group.")
+                    raise na_utils.NetAppDriverException(msg)
 
         return None, None, None
 
@@ -793,13 +835,20 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         """
         try:
             if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+                # NOTE(felipe_rodrigues): ONTAP FlexGroup does not support
+                # consistency group snapshot, so all members must be inside
+                # a FlexVol pool.
+                for snapshot in snapshots:
+                    if self._is_flexgroup(host=snapshot['volume']['host']):
+                        msg = _("Cannot create consistency group snapshot with"
+                                " volumes on a FlexGroup pool.")
+                        raise na_utils.NetAppDriverException(msg)
+
                 self._create_consistent_group_snapshot(group_snapshot,
                                                        snapshots)
             else:
                 for snapshot in snapshots:
-                    self._clone_backing_file_for_volume(
-                        snapshot['volume_name'], snapshot['name'],
-                        snapshot['volume_id'], is_snapshot=True)
+                    self.create_snapshot(snapshot)
         except Exception as ex:
             err_msg = (_("Create group snapshot failed (%s).") % ex)
             LOG.exception(err_msg, resource=group_snapshot)
@@ -853,7 +902,22 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 volumes_model_update.append(update)
 
         elif source_group and sorted_source_vols:
-            hosts = [source_vol['host'] for source_vol in sorted_source_vols]
+            hosts = []
+            for source_vol in sorted_source_vols:
+                # NOTE(felipe_rodrigues): ONTAP FlexGroup does not support
+                # consistency group snapshot, so if any source volume is on a
+                # FlexGroup, the operation must be create from a not-cg,
+                # falling back to the generic group support.
+                if self._is_flexgroup(host=source_vol['host']):
+                    if volume_utils.is_group_a_cg_snapshot_type(group):
+                        msg = _("Cannot create consistency group with volume "
+                                "on a FlexGroup pool.")
+                        raise na_utils.NetAppDriverException(msg)
+                    else:
+                        # falls back to generic support
+                        raise NotImplementedError()
+                hosts.append(source_vol['host'])
+
             flexvols = self._get_flexvol_names_from_hosts(hosts)
 
             # Create snapshot for backing flexvol
@@ -885,3 +949,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             model_update = {'status': fields.GroupStatus.ERROR}
 
         return model_update, volumes_model_update
+
+    def _is_flexgroup(self, vol_id=None, host=None):
+        """Discover if a volume is a FlexGroup or not"""
+        if host is None:
+            host = self._get_volume_host(vol_id)
+
+        pool_name = volume_utils.extract_host(host, level='pool')
+        return self.ssc_library.is_flexgroup(pool_name)

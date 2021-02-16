@@ -418,6 +418,11 @@ class DataMotionMixin(object):
                 src_flexvol_name)
         )
 
+        if provisioning_options.pop('is_flexgroup', False):
+            msg = _("Destination volume cannot be created as FlexGroup for "
+                    "replication, it must already exist there.")
+            raise na_utils.NetAppDriverException(msg)
+
         # If the source is encrypted then the destination needs to be
         # encrypted too. Using is_flexvol_encrypted because it includes
         # a simple check to ensure that the NVE feature is supported.

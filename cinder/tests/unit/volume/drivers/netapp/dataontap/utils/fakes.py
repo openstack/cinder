@@ -44,6 +44,7 @@ SSC = {
         'netapp_flexvol_encryption': 'true',
         'netapp_qos_min_support': 'true',
         'pool_name': 'volume1',
+        'netapp_is_flexgroup': 'false',
     },
     'volume2': {
         'thick_provisioning_support': False,
@@ -59,6 +60,7 @@ SSC = {
         'netapp_flexvol_encryption': 'false',
         'netapp_qos_min_support': 'false',
         'pool_name': 'volume2',
+        'netapp_is_flexgroup': 'false',
     },
 }
 
@@ -68,12 +70,14 @@ SSC_FLEXVOL_INFO = {
         'thin_provisioning_support': False,
         'netapp_thin_provisioned': 'false',
         'netapp_aggregate': 'aggr1',
+        'netapp_is_flexgroup': 'false',
     },
     'volume2': {
         'thick_provisioning_support': False,
         'thin_provisioning_support': True,
         'netapp_thin_provisioned': 'true',
         'netapp_aggregate': 'aggr2',
+        'netapp_is_flexgroup': 'false',
     },
 }
 
@@ -140,6 +144,7 @@ PROVISIONING_OPTS = {
     'snapshot_reserve': '12',
     'volume_type': 'rw',
     'size': 20,
+    'is_flexgroup': False,
 }
 
 ENCRYPTED_PROVISIONING_OPTS = {
@@ -153,6 +158,7 @@ ENCRYPTED_PROVISIONING_OPTS = {
     'volume_type': 'rw',
     'size': 20,
     'encrypt': 'true',
+    'is_flexgroup': False,
 }
 
 
