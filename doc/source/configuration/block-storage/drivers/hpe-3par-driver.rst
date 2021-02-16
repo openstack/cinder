@@ -502,8 +502,8 @@ bootable volume creation may fail.
 Peer Persistence support
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Given 3PAR backend configured with replication setup, currently only
-Active/Passive replication is supported by 3PAR in OpenStack. When
+Given 3PAR/Primera backend configured with replication setup, currently only
+Active/Passive replication is supported by 3PAR/Primera in OpenStack. When
 failover happens, nova does not support volume force-detach (from
 dead primary backend) / re-attach to secondary backend. Storage
 engineer's manual intervention is required.
