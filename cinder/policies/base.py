@@ -68,6 +68,12 @@ SYSTEM_OR_PROJECT_MEMBER = (
 SYSTEM_OR_PROJECT_READER = (
     '(' + SYSTEM_READER + ') or (' + PROJECT_READER + ')'
 )
+LEGACY_ADMIN_OR_PROJECT_MEMBER = (
+    'role:admin or (role:member and project_id:%(project_id)s)'
+)
+LEGACY_ADMIN_OR_PROJECT_READER = (
+    'role:admin or (role:reader and project_id:%(project_id)s)'
+)
 
 rules = [
     policy.RuleDefault('context_is_admin', 'role:admin',
