@@ -1444,7 +1444,7 @@ class DS8KProxyTest(test.TestCase):
         lun = ds8kproxy.Lun(volume)
         self.driver._create_lun_helper(lun)
         pid, lss = lun.pool_lss_pair['source']
-        self.assertTrue(lss in ['20', '21', '22', '23'])
+        self.assertIn(lss, ('20', '21', '22', '23'))
 
     def test_find_lss_for_volume_which_belongs_to_cg2(self):
         """find lss for volume, which is in CG having volumes."""

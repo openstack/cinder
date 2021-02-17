@@ -83,7 +83,7 @@ class TestRevertVolume(powerflex.TestPowerFlexDriver):
 
     def test_revert_to_snapshot_replicated_volume(self):
         self.volume_is_replicated_mock.return_value = True
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             exception.InvalidVolume,
             'Reverting replicated volume is not allowed.',
             self.driver.revert_to_snapshot,
@@ -95,7 +95,7 @@ class TestRevertVolume(powerflex.TestPowerFlexDriver):
         patched_volume.id = self.volume.id
         patched_volume.size = 16
         patched_volume.is_replicated.return_value = False
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             exception.InvalidVolume,
             ('Volume %s size is not equal to snapshot %s size.' %
              (self.volume.id, self.snapshot.id)),

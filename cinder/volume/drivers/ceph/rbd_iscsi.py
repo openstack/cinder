@@ -387,10 +387,9 @@ class RBDISCSIDriver(rbd.RBDDriver):
 
         target_portal = ips[0]
         if netutils.is_valid_ipv6(target_portal):
-            target_portal = "[{}]:{}".format(
-                target_portal, "3260")
+            target_portal = "[%s]:3260" % target_portal
         else:
-            target_portal = "{}:3260".format(target_portal)
+            target_portal = "%s:3260" % target_portal
 
         data = {
             'driver_volume_type': 'iscsi',
@@ -424,8 +423,8 @@ class RBDISCSIDriver(rbd.RBDDriver):
 
         if not found:
             # we can delete the disk definition
-            LOG.info("Deleteing volume definition in iscsi gateway for {}".
-                     format(lun_name))
+            LOG.info("Deleting volume definition in iscsi gateway for %s",
+                     lun_name)
             self.client.delete_disk(self.configuration.rbd_pool, volume.name,
                                     preserve_image=True)
 
@@ -459,9 +458,7 @@ class RBDISCSIDriver(rbd.RBDDriver):
         disks = self._get_disks()
         lun_name = self._lun_name(volume.name)
         if lun_name not in disks['disks']:
-            LOG.debug("Volume {} not attached anywhere.".format(
-                lun_name
-            ))
+            LOG.debug("Volume %s not attached anywhere.", lun_name)
             return
 
         for target_iqn_tmp in iscsi_config['targets']:

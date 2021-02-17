@@ -153,8 +153,8 @@ class TestVolumeAttachDetach(powerstore.TestPowerStoreDriver):
         iqns, portals = self.iscsi_driver.adapter._get_iscsi_targets("A1")
         self.assertTrue(len(iqns) == len(portals))
         self.assertEqual(1, len(portals))
-        self.assertFalse(
-            "iqn.2020-07.com.dell:dellemc-powerstore-test-iqn-2" in iqns
+        self.assertNotIn(
+            "iqn.2020-07.com.dell:dellemc-powerstore-test-iqn-2", iqns
         )
 
     def test_get_iscsi_targets_filtered_no_matched_ports(self):

@@ -120,7 +120,7 @@ class RSDClientTestCase(test.TestCase):
         rsd_client = rsd_driver.RSDClient.initialize(MOCK_URL, MOCK_USER,
                                                      MOCK_PASSWORD,
                                                      verify=True)
-        self.assertTrue(isinstance(rsd_client, rsd_driver.RSDClient))
+        self.assertIsInstance(rsd_client, rsd_driver.RSDClient)
 
     def test_initialize_rsd_api_incorrect_version(self):
         self.mock_rsd_lib._rsd_api_version = "2.3.0"
@@ -134,7 +134,7 @@ class RSDClientTestCase(test.TestCase):
         rsd_client = rsd_driver.RSDClient.initialize(MOCK_URL, MOCK_USER,
                                                      MOCK_PASSWORD,
                                                      verify=True)
-        self.assertTrue(isinstance(rsd_client, rsd_driver.RSDClient))
+        self.assertIsInstance(rsd_client, rsd_driver.RSDClient)
 
     def test_initialize_rsd_lib_incorrect_version(self):
         self.mock_rsd_lib._redfish_version = "1.0.0"
@@ -148,7 +148,7 @@ class RSDClientTestCase(test.TestCase):
         rsd_client = rsd_driver.RSDClient.initialize(MOCK_URL, MOCK_USER,
                                                      MOCK_PASSWORD,
                                                      verify=True)
-        self.assertTrue(isinstance(rsd_client, rsd_driver.RSDClient))
+        self.assertIsInstance(rsd_client, rsd_driver.RSDClient)
 
     def test_initialize_invalid_credentials(self):
         self.mock_rsd_lib_factory.side_effect = (

@@ -560,7 +560,7 @@ class TestClient(test_base.TestCase):
     @res_mock.patch_client
     def test_get_running_policy(self, client, mocked):
         policy, is_new = client.get_running_policy()
-        self.assertEqual(policy.state in ['Running', 'Measuring'], True)
+        self.assertIn(policy.state, ['Running', 'Measuring'])
         self.assertFalse(is_new)
 
     @res_mock.patch_client

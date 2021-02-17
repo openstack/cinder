@@ -442,8 +442,8 @@ class NetAppApiElementTransTests(test.TestCase):
 
         # No ordering is guaranteed for elements in this XML.
         self.assertTrue(result_xml.startswith("<options>"), result_xml)
-        self.assertTrue("<test1>abc</test1>" in result_xml, result_xml)
-        self.assertTrue("<test2>abc</test2>" in result_xml, result_xml)
+        self.assertIn("<test1>abc</test1>", result_xml)
+        self.assertIn("<test2>abc</test2>", result_xml)
         self.assertTrue(result_xml.rstrip().endswith("</options>"), result_xml)
 
     def test_add_new_child(self):

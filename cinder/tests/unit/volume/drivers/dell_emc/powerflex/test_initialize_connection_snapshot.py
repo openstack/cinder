@@ -57,7 +57,7 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         self.assertEqual(self.snapshot_id,
                          props['data']['scaleIO_volume_id'])
         # make sure QOS properties are set
-        self.assertTrue('iopsLimit' in props['data'])
+        self.assertIn('iopsLimit', props['data'])
 
     def test_initialize_connection_with_size(self):
         """Test initializing when we know the snapshot size.
@@ -79,7 +79,7 @@ class TestInitializeConnectionSnapshot(powerflex.TestPowerFlexDriver):
         self.assertEqual(self.snapshot_id,
                          props['data']['scaleIO_volume_id'])
         # make sure QOS properties are set
-        self.assertTrue('iopsLimit' in props['data'])
+        self.assertIn('iopsLimit', props['data'])
 
     def test_qos_specs(self):
         """Ensure QOS specs are honored if present."""
