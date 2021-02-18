@@ -89,7 +89,7 @@ class UnityDriver(driver.ManageableVD,
     VERSION = '07.02.00'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "EMC_UNITY_CI"
+    CI_WIKI_NAME = "DellEMC_Unity_CI"
 
     def __init__(self, *args, **kwargs):
         super(UnityDriver, self).__init__(*args, **kwargs)

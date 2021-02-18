@@ -95,7 +95,7 @@ class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
     _DISK_FORMAT_VHDX = 'vhdx'
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "Microsoft_iSCSI_CI"
+    CI_WIKI_NAME = "Cloudbase_Cinder_SMB3_CI"
 
     _MINIMUM_QEMU_IMG_VERSION = '1.6'
 

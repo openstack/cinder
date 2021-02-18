@@ -1393,7 +1393,7 @@ class GPFSRemoteDriver(GPFSDriver, san.SanDriver):
     VERSION = "1.0"
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "IBM_GPFS_REMOTE_CI"
+    CI_WIKI_NAME = "IBM_GPFS_CI"
 
     def __init__(self, *args, **kwargs):
         super(GPFSRemoteDriver, self).__init__(*args, **kwargs)
@@ -1516,7 +1516,7 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     VERSION = "1.0"
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "IBM_GPFS_NFS_CI"
+    CI_WIKI_NAME = "IBM_GPFS_CI"
 
     def __init__(self, *args, **kwargs):
         self._context = None

@@ -93,7 +93,7 @@ class StorPoolDriver(driver.VolumeDriver):
     """
 
     VERSION = '1.2.3'
-    CI_WIKI_NAME = 'StorPool_CI'
+    CI_WIKI_NAME = 'StorPool_distributed_storage_CI'
 
     def __init__(self, *args, **kwargs):
         super(StorPoolDriver, self).__init__(*args, **kwargs)

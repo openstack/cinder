@@ -179,7 +179,7 @@ class AS13000Driver(san.SanISCSIDriver):
     PROTOCOL = 'iSCSI'
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = 'INSPUR_CI'
+    CI_WIKI_NAME = 'Inspur_CI'
 
     def __init__(self, *args, **kwargs):
         super(AS13000Driver, self).__init__(*args, **kwargs)

@@ -76,7 +76,7 @@ def replication_synced(params):
 class MacroSANBaseDriver(driver.VolumeDriver):
     """Base driver for MacroSAN SAN."""
 
-    CI_WIKI_NAME = 'MacroSAN Volume CI'
+    CI_WIKI_NAME = 'MacroSAN_Volume_CI'
 
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""

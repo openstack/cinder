@@ -93,7 +93,7 @@ class VNXDriver(driver.ManageableVD,
     VERSION = '14.00.01'
     VENDOR = 'Dell EMC'
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "EMC_VNX_CI"
+    CI_WIKI_NAME = "DellEMC_VNX_CI"
 
     def __init__(self, *args, **kwargs):
         super(VNXDriver, self).__init__(*args, **kwargs)
