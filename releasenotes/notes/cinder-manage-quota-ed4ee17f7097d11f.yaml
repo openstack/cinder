@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The cinder-manage command now includes a new ``quota`` category with two
+    possible actions ``check`` and ``sync`` to help administrators manage out
+    of sync quotas on long running deployments.
