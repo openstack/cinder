@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The Huawei FusionStorage Cinder driver (dsware) now supports
+    OceanStor 100D Storage.
