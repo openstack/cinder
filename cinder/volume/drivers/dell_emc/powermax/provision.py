@@ -723,7 +723,7 @@ class PowerMaxProvision(object):
                 array, source_device_id, "", snap_name, extra_specs,
                 snap_id=snap_id, restore=True)
         except exception.VolumeBackendAPIException as ex:
-            if utils.REVERT_SS_EXC in ex:
+            if utils.REVERT_SS_EXC in str(ex):
                 exception_message = _(
                     "Link must be fully copied for this operation to proceed. "
                     "Please reset the volume state from error to available "
