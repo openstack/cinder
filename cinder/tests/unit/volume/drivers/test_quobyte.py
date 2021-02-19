@@ -441,12 +441,15 @@ class QuobyteDriverTestCase(test.TestCase):
                                           any_order=False)
             mock_validate.assert_called_once_with(self.TEST_MNT_POINT)
 
-    def test_mount_quobyte_should_reraise_already_mounted_error(self):
+    @mock.patch.object(psutil, "disk_partitions")
+    def test_mount_quobyte_should_reraise_already_mounted_error(self,
+                                                                part_mock):
         """test_mount_quobyte_should_reraise_already_mounted_error
 
         Like test_mount_quobyte_should_suppress_already_mounted_error
         but with ensure=False.
         """
+        part_mock.return_value = []  # no quobyte@ devices
         with mock.patch.object(self._driver, '_execute') as mock_execute, \
                 mock.patch('oslo_utils.fileutils.ensure_tree') as mock_mkdir, \
                 mock.patch('cinder.volume.drivers.quobyte.QuobyteDriver'
