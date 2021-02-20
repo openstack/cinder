@@ -166,7 +166,7 @@ def authorize(context, action, target, do_raise=True, exc=None):
             LOG.exception('Policy not registered')
     except Exception:
         with excutils.save_and_reraise_exception():
-            LOG.error('Policy check for %(action)s failed with context '
+            LOG.debug('Policy check for %(action)s failed with context '
                       '%(credentials)s',
                       {'action': action,
                        'credentials': context.to_policy_values()})
