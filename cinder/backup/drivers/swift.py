@@ -293,7 +293,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             if etag != md5:
                 err = _('error writing object to swift, MD5 of object in '
                         'swift %(etag)s is not the same as MD5 of object sent '
-                        'to swift %(md5)s'), {'etag': etag, 'md5': md5}
+                        'to swift %(md5)s') % {'etag': etag, 'md5': md5}
                 raise exception.InvalidBackup(reason=err)
             return md5
 
