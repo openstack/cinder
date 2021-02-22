@@ -46,7 +46,6 @@ from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy import sql
 from sqlalchemy.sql.expression import bindparam
 from sqlalchemy.sql.expression import desc
-from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
 from sqlalchemy.sql import sqltypes
@@ -573,12 +572,15 @@ def service_create(context, values):
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def service_update(context, service_id, values):
+    query = _service_query(context, id=service_id)
+
     if 'disabled' in values:
+        entity = query.column_descriptions[0]['entity']
+
         values = values.copy()
         values['modified_at'] = values.get('modified_at', timeutils.utcnow())
-        values['updated_at'] = values.get('updated_at',
-                                          literal_column('updated_at'))
-    query = _service_query(context, id=service_id)
+        values['updated_at'] = values.get('updated_at', entity.updated_at)
+
     result = query.update(values)
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
@@ -1507,7 +1509,7 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
                           'attached_host': host_name,
                           'attach_time': timeutils.utcnow(),
                           'attach_mode': attach_mode,
-                          'updated_at': literal_column('updated_at')}
+                          'updated_at': volume_attachment_ref.updated_at}
         volume_attachment_ref.update(updated_values)
         volume_attachment_ref.save(session=session)
         del updated_values['updated_at']
@@ -1639,19 +1641,23 @@ def volume_destroy(context, volume_id):
     updated_values = {'status': 'deleted',
                       'deleted': True,
                       'deleted_at': now,
-                      'updated_at': literal_column('updated_at'),
                       'migration_status': None}
     with session.begin():
-        model_query(context, models.Volume, session=session).\
-            filter_by(id=volume_id).\
-            update(updated_values)
+        query = model_query(context, models.Volume, session=session).\
+            filter_by(id=volume_id)
+        entity = query.column_descriptions[0]['entity']
+        updated_values['updated_at'] = entity.updated_at
+        query.update(updated_values)
+
         for model in VOLUME_DEPENDENT_MODELS:
-            model_query(context, model, session=session).\
-                filter_by(volume_id=volume_id).\
-                update({'deleted': True,
-                        'deleted_at': now,
-                        'updated_at': literal_column('updated_at')})
-    del updated_values['updated_at']
+            query = model_query(context, model, session=session).\
+                filter_by(volume_id=volume_id)
+            entity = query.column_descriptions[0]['entity']
+            query.update({'deleted': True,
+                          'deleted_at': now,
+                          'updated_at': entity.updated_at})
+        del updated_values['updated_at']
+
     return updated_values
 
 
@@ -1734,8 +1740,7 @@ def volume_detached(context, volume_id, attachment_id):
                 'detach_time': now,
                 'deleted': True,
                 'deleted_at': now,
-                'updated_at':
-                literal_column('updated_at'),
+                'updated_at': attachment.updated_at,
             }
             attachment.update(attachment_updates)
             attachment.save(session=session)
@@ -1744,7 +1749,7 @@ def volume_detached(context, volume_id, attachment_id):
         attachment_list = None
         volume_ref = _volume_get(context, volume_id,
                                  session=session)
-        volume_updates = {'updated_at': literal_column('updated_at')}
+        volume_updates = {'updated_at': volume_ref.updated_at}
         if not volume_ref.volume_attachment:
             # NOTE(jdg): We kept the old arg style allowing session exclusively
             # for this one call
@@ -2004,18 +2009,21 @@ def attachment_destroy(context, attachment_id):
     utcnow = timeutils.utcnow()
     session = get_session()
     with session.begin():
+        query = model_query(context, models.VolumeAttachment,
+                            session=session).filter_by(id=attachment_id)
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'attach_status': fields.VolumeAttachStatus.DELETED,
                           'deleted': True,
                           'deleted_at': utcnow,
-                          'updated_at': literal_column('updated_at')}
-        model_query(context, models.VolumeAttachment, session=session).\
-            filter_by(id=attachment_id).\
-            update(updated_values)
-        model_query(context, models.AttachmentSpecs, session=session).\
-            filter_by(attachment_id=attachment_id).\
-            update({'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
+
+        query = model_query(context, models.AttachmentSpecs, session=session).\
+            filter_by(attachment_id=attachment_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': utcnow,
+                      'updated_at': entity.updated_at})
     del updated_values['updated_at']
     return updated_values
 
@@ -2050,11 +2058,12 @@ def attachment_specs_delete(context, attachment_id, key):
                                    attachment_id,
                                    key,
                                    session)
-        _attachment_specs_query(context, attachment_id, session).\
-            filter_by(key=key).\
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+        query = _attachment_specs_query(context, attachment_id, session).\
+            filter_by(key=key)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
 
 @require_context
@@ -2862,19 +2871,21 @@ def volume_metadata_get(context, volume_id):
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_metadata_delete(context, volume_id, key, meta_type):
     if meta_type == common.METADATA_TYPES.user:
-        (_volume_user_metadata_get_query(context, volume_id).
-            filter_by(key=key).
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')}))
+        query = _volume_user_metadata_get_query(context, volume_id).\
+            filter_by(key=key)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
     elif meta_type == common.METADATA_TYPES.image:
         metadata_id = _volume_glance_metadata_key_to_id(context,
                                                         volume_id, key)
-        (_volume_image_metadata_get_query(context, volume_id).
-            filter_by(id=metadata_id).
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')}))
+        query = _volume_image_metadata_get_query(context, volume_id).\
+            filter_by(id=metadata_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
     else:
         raise exception.InvalidMetadataType(metadata_type=meta_type,
                                             id=volume_id)
@@ -2933,11 +2944,12 @@ def volume_admin_metadata_get(context, volume_id):
 @require_volume_exists
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def volume_admin_metadata_delete(context, volume_id, key):
-    _volume_admin_metadata_get_query(context, volume_id).\
-        filter_by(key=key).\
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+    query = _volume_admin_metadata_get_query(context, volume_id).\
+        filter_by(key=key)
+    entity = query.column_descriptions[0]['entity']
+    query.update({'deleted': True,
+                  'deleted_at': timeutils.utcnow(),
+                  'updated_at': entity.updated_at})
 
 
 @require_admin_context
@@ -2974,18 +2986,20 @@ def snapshot_destroy(context, snapshot_id):
     utcnow = timeutils.utcnow()
     session = get_session()
     with session.begin():
+        query = model_query(context, models.Snapshot, session=session).\
+            filter_by(id=snapshot_id)
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'status': 'deleted',
                           'deleted': True,
                           'deleted_at': utcnow,
-                          'updated_at': literal_column('updated_at')}
-        model_query(context, models.Snapshot, session=session).\
-            filter_by(id=snapshot_id).\
-            update(updated_values)
-        model_query(context, models.SnapshotMetadata, session=session).\
-            filter_by(snapshot_id=snapshot_id).\
-            update({'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
+        query = model_query(context, models.SnapshotMetadata,
+                            session=session).filter_by(snapshot_id=snapshot_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': utcnow,
+                      'updated_at': entity.updated_at})
     del updated_values['updated_at']
     return updated_values
 
@@ -3356,11 +3370,12 @@ def snapshot_metadata_get(context, snapshot_id):
 @require_snapshot_exists
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
 def snapshot_metadata_delete(context, snapshot_id, key):
-    _snapshot_metadata_get_query(context, snapshot_id).\
-        filter_by(key=key).\
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+    query = _snapshot_metadata_get_query(context, snapshot_id).\
+        filter_by(key=key)
+    entity = query.column_descriptions[0]['entity']
+    query.update({'deleted': True,
+                  'deleted_at': timeutils.utcnow(),
+                  'updated_at': entity.updated_at})
 
 
 @require_context
@@ -4125,22 +4140,25 @@ def volume_type_destroy(context, id):
         if results or group_count or cg_count:
             LOG.error('VolumeType %s deletion failed, VolumeType in use.', id)
             raise exception.VolumeTypeInUse(volume_type_id=id)
+        query = model_query(context, models.VolumeType, session=session).\
+            filter_by(id=id)
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'deleted': True,
                           'deleted_at': utcnow,
-                          'updated_at': literal_column('updated_at')}
-        model_query(context, models.VolumeType, session=session).\
-            filter_by(id=id).\
-            update(updated_values)
-        model_query(context, models.VolumeTypeExtraSpecs, session=session).\
-            filter_by(volume_type_id=id).\
-            update({'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
-        model_query(context, models.Encryption, session=session).\
-            filter_by(volume_type_id=id).\
-            update({'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
+        query = model_query(context, models.VolumeTypeExtraSpecs,
+                            session=session).filter_by(volume_type_id=id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': utcnow,
+                      'updated_at': entity.updated_at})
+        query = model_query(context, models.Encryption, session=session).\
+            filter_by(volume_type_id=id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': utcnow,
+                      'updated_at': entity.updated_at})
         model_query(context, models.VolumeTypeProjects, session=session,
                     read_deleted="int_no").filter_by(
             volume_type_id=id).soft_delete(synchronize_session=False)
@@ -4160,16 +4178,18 @@ def group_type_destroy(context, id):
             LOG.error('GroupType %s deletion failed, '
                       'GroupType in use.', id)
             raise exception.GroupTypeInUse(group_type_id=id)
-        model_query(context, models.GroupType, session=session).\
-            filter_by(id=id).\
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
-        model_query(context, models.GroupTypeSpecs, session=session).\
-            filter_by(group_type_id=id).\
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+        query = model_query(context, models.GroupType, session=session).\
+            filter_by(id=id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
+        query = model_query(context, models.GroupTypeSpecs, session=session).\
+            filter_by(group_type_id=id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
 
 @require_context
@@ -4406,11 +4426,12 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
     with session.begin():
         _volume_type_extra_specs_get_item(context, volume_type_id, key,
                                           session)
-        _volume_type_extra_specs_query(context, volume_type_id, session).\
-            filter_by(key=key).\
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+        query = _volume_type_extra_specs_query(context, volume_type_id,
+                                               session).filter_by(key=key)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
 
 @require_context
@@ -4477,11 +4498,12 @@ def group_type_specs_delete(context, group_type_id, key):
     with session.begin():
         _group_type_specs_get_item(context, group_type_id, key,
                                    session)
-        _group_type_specs_query(context, group_type_id, session).\
-            filter_by(key=key).\
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+        query = _group_type_specs_query(context, group_type_id, session).\
+            filter_by(key=key)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
 
 @require_context
@@ -4796,12 +4818,13 @@ def qos_specs_disassociate_all(context, qos_specs_id):
 def qos_specs_item_delete(context, qos_specs_id, key):
     session = get_session()
     with session.begin():
-        session.query(models.QualityOfServiceSpecs). \
+        query = session.query(models.QualityOfServiceSpecs). \
             filter(models.QualityOfServiceSpecs.key == key). \
-            filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id). \
-            update({'deleted': True,
-                    'deleted_at': timeutils.utcnow(),
-                    'updated_at': literal_column('updated_at')})
+            filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
 
 @require_admin_context
@@ -4809,14 +4832,15 @@ def qos_specs_delete(context, qos_specs_id):
     session = get_session()
     with session.begin():
         _qos_specs_get_all_ref(context, qos_specs_id, session)
-        updated_values = {'deleted': True,
-                          'deleted_at': timeutils.utcnow(),
-                          'updated_at': literal_column('updated_at')}
-        session.query(models.QualityOfServiceSpecs).\
+        query = session.query(models.QualityOfServiceSpecs).\
             filter(or_(models.QualityOfServiceSpecs.id == qos_specs_id,
                        models.QualityOfServiceSpecs.specs_id ==
-                       qos_specs_id)).\
-            update(updated_values)
+                       qos_specs_id))
+        entity = query.column_descriptions[0]['entity']
+        updated_values = {'deleted': True,
+                          'deleted_at': timeutils.utcnow(),
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
     del updated_values['updated_at']
     return updated_values
 
@@ -4901,7 +4925,7 @@ def volume_type_encryption_delete(context, volume_type_id):
                 type_id=volume_type_id)
         encryption.update({'deleted': True,
                            'deleted_at': timeutils.utcnow(),
-                           'updated_at': literal_column('updated_at')})
+                           'updated_at': encryption.updated_at})
 
 
 @handle_db_data_error
@@ -5167,20 +5191,22 @@ def volume_glance_metadata_copy_to_volume(context, volume_id, snapshot_id):
 
 @require_context
 def volume_glance_metadata_delete_by_volume(context, volume_id):
-    model_query(context, models.VolumeGlanceMetadata, read_deleted='no').\
-        filter_by(volume_id=volume_id).\
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+    query = model_query(context, models.VolumeGlanceMetadata,
+                        read_deleted='no').filter_by(volume_id=volume_id)
+    entity = query.column_descriptions[0]['entity']
+    query.update({'deleted': True,
+                  'deleted_at': timeutils.utcnow(),
+                  'updated_at': entity.updated_at})
 
 
 @require_context
 def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
-    model_query(context, models.VolumeGlanceMetadata, read_deleted='no').\
-        filter_by(snapshot_id=snapshot_id).\
-        update({'deleted': True,
-                'deleted_at': timeutils.utcnow(),
-                'updated_at': literal_column('updated_at')})
+    query = model_query(context, models.VolumeGlanceMetadata,
+                        read_deleted='no').filter_by(snapshot_id=snapshot_id)
+    entity = query.column_descriptions[0]['entity']
+    query.update({'deleted': True,
+                  'deleted_at': timeutils.utcnow(),
+                  'updated_at': entity.updated_at})
 
 
 ###############################
@@ -5344,19 +5370,22 @@ def backup_destroy(context, backup_id):
     utcnow = timeutils.utcnow()
     updated_values = {'status': fields.BackupStatus.DELETED,
                       'deleted': True,
-                      'deleted_at': utcnow,
-                      'updated_at': literal_column('updated_at')}
+                      'deleted_at': utcnow}
     session = get_session()
     with session.begin():
-        model_query(context, models.Backup, session=session).\
-            filter_by(id=backup_id).\
-            update(updated_values)
-        model_query(context, models.BackupMetadata, session=session).\
-            filter_by(backup_id=backup_id).\
-            update({'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
-    del updated_values['updated_at']
+        query = model_query(context, models.Backup, session=session).\
+            filter_by(id=backup_id)
+        entity = query.column_descriptions[0]['entity']
+        updated_values['updated_at'] = entity.updated_at
+        query.update(updated_values)
+
+        query = model_query(context, models.BackupMetadata, session=session).\
+            filter_by(backup_id=backup_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': utcnow,
+                      'updated_at': entity.updated_at})
+        del updated_values['updated_at']
     return updated_values
 
 
@@ -5565,12 +5594,15 @@ def transfer_destroy(context, transfer_id):
                    % {'transfer_id': transfer_id})
             LOG.error(msg)
 
+        query = model_query(context, models.Transfer, session=session).\
+            filter_by(id=transfer_id)
+
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'deleted': True,
                           'deleted_at': utcnow,
-                          'updated_at': literal_column('updated_at')}
-        (model_query(context, models.Transfer, session=session)
-         .filter_by(id=transfer_id)
-         .update(updated_values))
+                          'updated_at': entity.updated_at}
+
+        query.update(updated_values)
         del updated_values['updated_at']
         return updated_values
 
@@ -5649,13 +5681,13 @@ def transfer_accept(context, transfer_id, user_id, project_id,
                     raise exception.InvalidSnapshot(reason=msg)
                 transferred_snapshots.append(snapshot['id'])
 
-        (session.query(models.Transfer)
-         .filter_by(id=transfer_id)
-         .update({'deleted': True,
-                  'deleted_at': timeutils.utcnow(),
-                  'updated_at': literal_column('updated_at'),
-                  'destination_project_id': project_id,
-                  'accepted': True}))
+        query = session.query(models.Transfer).filter_by(id=transfer_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at,
+                      'destination_project_id': project_id,
+                      'accepted': True})
 
 
 ###############################
@@ -5843,16 +5875,14 @@ def consistencygroup_destroy(context, consistencygroup_id):
     utcnow = timeutils.utcnow()
     session = get_session()
     with session.begin():
+        query = model_query(context, models.ConsistencyGroup,
+                            session=session).filter_by(id=consistencygroup_id)
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'status': fields.ConsistencyGroupStatus.DELETED,
                           'deleted': True,
                           'deleted_at': utcnow,
-                          'updated_at': literal_column('updated_at')}
-        model_query(context, models.ConsistencyGroup, session=session).\
-            filter_by(id=consistencygroup_id).\
-            update({'status': fields.ConsistencyGroupStatus.DELETED,
-                    'deleted': True,
-                    'deleted_at': utcnow,
-                    'updated_at': literal_column('updated_at')})
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
 
     del updated_values['updated_at']
     return updated_values
@@ -6230,18 +6260,20 @@ def group_update(context, group_id, values):
 def group_destroy(context, group_id):
     session = get_session()
     with session.begin():
-        (model_query(context, models.Group, session=session).
-         filter_by(id=group_id).
-         update({'status': fields.GroupStatus.DELETED,
-                 'deleted': True,
-                 'deleted_at': timeutils.utcnow(),
-                 'updated_at': literal_column('updated_at')}))
+        query = model_query(context, models.Group, session=session).\
+            filter_by(id=group_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'status': fields.GroupStatus.DELETED,
+                      'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
-        (session.query(models.GroupVolumeTypeMapping).
-         filter_by(group_id=group_id).
-         update({'deleted': True,
-                 'deleted_at': timeutils.utcnow(),
-                 'updated_at': literal_column('updated_at')}))
+        query = session.query(models.GroupVolumeTypeMapping).\
+            filter_by(group_id=group_id)
+        entity = query.column_descriptions[0]['entity']
+        query.update({'deleted': True,
+                      'deleted_at': timeutils.utcnow(),
+                      'updated_at': entity.updated_at})
 
 
 def group_has_group_snapshot_filter():
@@ -6417,13 +6449,14 @@ def cgsnapshot_update(context, cgsnapshot_id, values):
 def cgsnapshot_destroy(context, cgsnapshot_id):
     session = get_session()
     with session.begin():
+        query = model_query(context, models.CGSnapshot, session=session).\
+            filter_by(id=cgsnapshot_id)
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'status': 'deleted',
                           'deleted': True,
                           'deleted_at': timeutils.utcnow(),
-                          'updated_at': literal_column('updated_at')}
-        model_query(context, models.CGSnapshot, session=session).\
-            filter_by(id=cgsnapshot_id).\
-            update(updated_values)
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
     del updated_values['updated_at']
     return updated_values
 
@@ -6573,14 +6606,15 @@ def group_snapshot_update(context, group_snapshot_id, values):
 def group_snapshot_destroy(context, group_snapshot_id):
     session = get_session()
     with session.begin():
+        query = model_query(context, models.GroupSnapshot, session=session).\
+            filter_by(id=group_snapshot_id)
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'status': 'deleted',
                           'deleted': True,
                           'deleted_at': timeutils.utcnow(),
-                          'updated_at': literal_column('updated_at')}
-        model_query(context, models.GroupSnapshot, session=session).\
-            filter_by(id=group_snapshot_id).\
-            update(updated_values)
-    del updated_values['updated_at']
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
+        del updated_values['updated_at']
     return updated_values
 
 
@@ -6789,12 +6823,13 @@ def message_destroy(context, message):
     session = get_session()
     now = timeutils.utcnow()
     with session.begin():
+        query = model_query(context, models.Message, session=session).\
+            filter_by(id=message.get('id'))
+        entity = query.column_descriptions[0]['entity']
         updated_values = {'deleted': True,
                           'deleted_at': now,
-                          'updated_at': literal_column('updated_at')}
-        (model_query(context, models.Message, session=session).
-            filter_by(id=message.get('id')).
-            update(updated_values))
+                          'updated_at': entity.updated_at}
+        query.update(updated_values)
     del updated_values['updated_at']
     return updated_values
 
