@@ -117,6 +117,9 @@ def common_mocks(f):
             inst.mock_rbd.PermissionError = MockPermissionError
 
             inst.driver.rbd = inst.mock_rbd
+            aux = inst.driver.rbd
+            aux.Image.return_value.stripe_unit.return_value = 4194304
+
             inst.driver.rados = inst.mock_rados
             return f(inst, *args, **kwargs)
 
@@ -1101,6 +1104,29 @@ class RBDTestCase(test.TestCase):
         self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
         flatten_mock.assert_called_once_with(self.cfg.rbd_pool,
                                              self.volume_a.name)
+
+    @common_mocks
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch.object(driver.RBDDriver, '_resize', mock.Mock())
+    def test_log_create_vol_from_snap_raise(self, volume_get_by_id):
+        volume_get_by_id.return_value = self.volume_a
+
+        self.mock_proxy().__enter__().volume.op_features.side_effect = \
+            Exception
+        self.mock_rbd.RBD_OPERATION_FEATURE_CLONE_PARENT = 1
+
+        snapshot = self.snapshot
+        self.cfg.rbd_flatten_volume_from_snapshot = False
+
+        with mock.patch.object(driver, 'LOG') as mock_log:
+            # Fist call
+            self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
+            self.assertTrue(self.driver._clone_v2_api_checked)
+            # Second call
+            self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
+            # Check that that the second call to create_volume_from_snapshot
+            # doesn't log anything
+            mock_log.warning.assert_called_once_with(mock.ANY)
 
     @common_mocks
     @mock.patch('cinder.objects.Volume.get_by_id')

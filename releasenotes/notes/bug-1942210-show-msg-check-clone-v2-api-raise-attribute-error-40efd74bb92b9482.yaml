@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1942210
+    <https://bugs.launchpad.net/cinder/+bug/1942210>`_: When
+    creating a volume from a snapshot, the operation could
+    fail due to an uncaught exception being raised during a
+    check to see if the backend Ceph installation supported
+    the clone v2 API.  The driver now handles this situation
+    gracefully.
