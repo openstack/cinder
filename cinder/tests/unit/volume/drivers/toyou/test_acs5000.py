@@ -79,18 +79,50 @@ class CommandSimulator(object):
         self._lun_maps_list = []
         self._snapshots_list = []
         self._controllers_list = [
-            {'id': '1',
+            {'id': '0',
              'name': 'node1',
              'iscsi_name': 'iqn.2020-12.cn.com.toyou:'
                            'disk-array-000f12345:dev0.ctr1',
              'WWNN': '200008CA45D33768',
              'status': 'online'},
-            {'id': '2',
+            {'id': '1',
              'name': 'node2',
              'iscsi_name': 'iqn.2020-04.cn.com.toyou:'
                            'disk-array-000f12345:dev0.ctr2',
              'WWNN': '200008CA45D33768',
              'status': 'online'}]
+        self._ip_list = {
+            '0': [{
+                'ctrl_idx': 0,
+                'id': 0,
+                'name': 'lan1',
+                'ip': '10.23.45.67',
+                'mask': '255.255.255.0',
+                'gw': ''
+            }, {
+                'ctrl_idx': 0,
+                'id': 1,
+                'name': 'lan2',
+                'ip': '10.23.45.68',
+                'mask': '255.255.255.0',
+                'gw': ''
+            }],
+            '1': [{
+                'ctrl_idx': 1,
+                'id': 0,
+                'name': 'lan1',
+                'ip': '10.23.45.69',
+                'mask': '255.255.255.0',
+                'gw': ''
+            }, {
+                'ctrl_idx': 1,
+                'id': 1,
+                'name': 'lan2',
+                'ip': '10.23.45.70',
+                'mask': '255.255.255.0',
+                'gw': ''
+            }]
+        }
         self._system_info = {'version': '3.1.2.345678',
                              'vendor': 'TOYOU',
                              'system_name': 'Disk-Array',
@@ -133,7 +165,7 @@ class CommandSimulator(object):
         }
         self._command_function = {
             'sshGetSystem': 'get_system',
-            'sshGetIscsiConnect': 'get_ip_connect',
+            'sshGetIpConnect': 'get_ip_connect',
             'sshGetPoolInfo': 'get_pool_info',
             'sshGetVolume': 'get_volume',
             'sshGetCtrInfo': 'ls_ctr_info',
@@ -245,24 +277,7 @@ class CommandSimulator(object):
         return self._json_return(self._system_info)
 
     def _sim_get_ip_connect(self, **kwargs):
-        target = kwargs['target']
-        data = {
-            'iscsi_name': [],
-            'portal': [],
-            'state': 'online'
-        }
-        ctr1_iscsi = ('iqn.2020-04.cn.com.toyou:disk-array-'
-                      '000f12345:dev%s.ctr1' % target)
-        ctr2_iscsi = ('iqn.2020-04.cn.com.toyou:disk-array-'
-                      '000f12345:dev%s.ctr2' % target)
-        ctr1_port1 = '10.23.45.67:3260'
-        ctr1_port2 = '10.23.45.68:3260'
-        ctr2_port1 = '10.23.45.69:3260'
-        ctr2_port2 = '10.23.45.70:3260'
-        data['iscsi_name'] = [ctr1_iscsi, ctr2_iscsi]
-        data['portal'] = [ctr1_port1, ctr1_port2, ctr2_port1, ctr2_port2]
-
-        return self._json_return(data)
+        return self._json_return(self._ip_list)
 
     def _sim_get_pool_info(self, **kwargs):
         pool_name = kwargs['poolName'].strip('\'\"')
@@ -449,7 +464,6 @@ class CommandSimulator(object):
         volume_name = kwargs['cinderVolume']
         protocol = kwargs['protocol']
         hosts = kwargs['host']
-        target = kwargs['target']
         if volume_name not in self._volumes_list:
             return self._json_return(
                 msg=self._error['volume_not_exist'][1],
@@ -465,8 +479,7 @@ class CommandSimulator(object):
                     existed_lun = lun_row['lun']
                     hosts = [h for h in hosts if h != lun_row['host']]
             else:
-                if (lun_row['protocol'] == protocol
-                        and lun_row['target'] == target):
+                if lun_row['protocol'] == protocol:
                     available_luns = [lun for lun in available_luns
                                       if lun != lun_row['lun']]
         if hosts and existed_lun > -1:
@@ -475,7 +488,6 @@ class CommandSimulator(object):
         lun_info['vd_id'] = volume['id']
         lun_info['vd_name'] = volume['name']
         lun_info['protocol'] = protocol
-        lun_info['target'] = target
         if existed_lun > -1:
             lun_info['lun'] = existed_lun
         elif available_luns:
@@ -488,14 +500,24 @@ class CommandSimulator(object):
             lun_info['id'] = self._create_id(self._lun_maps_list)
             lun_info['host'] = host
             self._lun_maps_list.append(copy.deepcopy(lun_info))
-        return self._json_return({'info': lun_info['lun']})
+        ret = {'lun': [],
+               'iscsi_name': [],
+               'portal': []}
+        for ctr, ips in self._ip_list.items():
+            for ip in ips:
+                ret['lun'].append(lun_info['lun'])
+                ret['portal'].append('%s:3260' % ip['ip'])
+                for control in self._controllers_list:
+                    if ctr == control['id']:
+                        ret['iscsi_name'].append(control['iscsi_name'])
+                        break
+        return self._json_return(ret)
 
     def _sim_delete_lun_map(self, **kwargs):
         map_exist = False
         volume_name = kwargs['cinderVolume']
         protocol = kwargs['protocol']
         hosts = kwargs['cinderHost']
-        target = kwargs['cinderTarget']
         if isinstance(hosts, str):
             hosts = [hosts]
         if volume_name not in self._volumes_list:
@@ -508,8 +530,7 @@ class CommandSimulator(object):
         for row in lun_maps_list:
             if (row['vd_id'] == volume['id']
                     and row['protocol'] == protocol
-                    and row['host'] in hosts
-                    and row['target'] == target):
+                    and row['host'] in hosts):
                 map_exist = True
             else:
                 map_exist = False
@@ -643,7 +664,6 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         self.configuration.san_login = 'cliuser'
         self.configuration.san_password = 'clipassword'
         self.configuration.acs5000_volpool_name = ['pool01']
-        self.configuration.acs5000_target = 0
         self.iscsi_driver = Acs5000ISCSIFakeDriver(
             configuration=self.configuration)
         initiator = 'test.iqn.%s' % str(random.randint(10000, 99999))
@@ -708,15 +728,17 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         volume = self._create_volume()
         result = self.iscsi_driver.initialize_connection(volume,
                                                          self._connector)
-        ip_connect = self.iscsi_driver._cmd.get_ip_connect(
-            str(self.configuration.acs5000_target))
+        ip_connect = self.sim._ip_list
+        ip_count = 0
+        for ips in ip_connect.values():
+            ip_count += len(ips)
         self.assertEqual('iscsi', result['driver_volume_type'])
-        self.assertEqual(ip_connect['iscsi_name'],
-                         result['data']['target_iqns'])
-        self.assertEqual(ip_connect['portal'],
-                         result['data']['target_portals'])
+        self.assertEqual(ip_count,
+                         len(result['data']['target_iqns']))
+        self.assertEqual(ip_count,
+                         len(result['data']['target_portals']))
         self.assertEqual(volume['id'], result['data']['volume_id'])
-        self.assertEqual(len(ip_connect['portal']),
+        self.assertEqual(ip_count,
                          len(result['data']['target_portals']))
         self._delete_volume(volume)
 
@@ -775,6 +797,7 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
                                                 self._connector)
         self.iscsi_driver.terminate_connection(volume,
                                                self._connector)
+        self._assert_lun_exists(volume['id'], False)
         self._delete_volume(volume)
 
 
@@ -789,7 +812,6 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self.configuration.san_login = 'cliuser'
         self.configuration.san_password = 'clipassword'
         self.configuration.acs5000_volpool_name = POOLS_NAME
-        self.configuration.acs5000_target = 0
         self.configuration.acs5000_copy_interval = 0.01
         self.configuration.reserved_percentage = 0
         self._driver = Acs5000ISCSIFakeDriver(
@@ -802,7 +824,6 @@ class Acs5000CommonDriverTestCase(test.TestCase):
                              conf.SHARED_CONF_GROUP)
         self.override_config('acs5000_volpool_name', POOLS_NAME,
                              conf.SHARED_CONF_GROUP)
-        self.override_config('acs5000_target', 0, conf.SHARED_CONF_GROUP)
         self._iscsi_driver = acs5000_iscsi.Acs5000ISCSIDriver(
             configuration=config)
         initiator = 'test.iqn.%s' % str(random.randint(10000, 99999))

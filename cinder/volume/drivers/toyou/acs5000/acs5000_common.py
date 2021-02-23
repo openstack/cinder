@@ -137,12 +137,10 @@ class Command(object):
         ssh_cmd = ['cinder', 'Storage', 'sshGetSystem']
         return self.run_ssh_info(ssh_cmd)
 
-    def get_ip_connect(self, target):
+    def get_ip_connect(self):
         ssh_cmd = ['cinder',
                    'Storage',
-                   'sshGetIscsiConnect',
-                   '--target',
-                   target]
+                   'sshGetIpConnect']
         return self.run_ssh_info(ssh_cmd)
 
     def get_pool_info(self, pool):
@@ -254,7 +252,7 @@ class Command(object):
                    snapshot]
         return self.run_ssh_info(ssh_cmd, key=True)
 
-    def create_lun_map(self, volume_name, protocol, host, target=None):
+    def create_lun_map(self, volume_name, protocol, host):
         """Map volume to host."""
         LOG.debug('enter: create_lun_map volume %s.', volume_name)
         ssh_cmd = ['cinder',
@@ -271,12 +269,9 @@ class Command(object):
         else:
             ssh_cmd.append('--host')
             ssh_cmd.append(str(host))
-        if target:
-            ssh_cmd.append('--target')
-            ssh_cmd.append(target)
         return self.run_ssh_info(ssh_cmd, key=True)
 
-    def delete_lun_map(self, volume_name, protocol, host, target=''):
+    def delete_lun_map(self, volume_name, protocol, host):
         ssh_cmd = ['cinder',
                    'Storage',
                    'sshDeleteLunMap',
@@ -291,9 +286,6 @@ class Command(object):
         else:
             ssh_cmd.append('--cinderHost')
             ssh_cmd.append(str(host))
-        if target:
-            ssh_cmd.append('--cinderTarget')
-            ssh_cmd.append(target)
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def create_snapshot(self, volume_name, snapshot_name):
@@ -355,6 +347,13 @@ class Acs5000CommonDriver(san.SanDriver,
                        'code_level': None,
                        'version': None}
 
+    @staticmethod
+    def get_driver_options():
+        additional_opts = driver.BaseVD._get_oslo_driver_opts(
+            'san_ip', 'san_ssh_port', 'san_login', 'san_password',
+            'ssh_conn_timeout', 'ssh_min_pool_conn', 'ssh_max_pool_conn')
+        return acs5000c_opts + additional_opts
+
     @volume_utils.trace_method
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
@@ -363,14 +362,14 @@ class Acs5000CommonDriver(san.SanDriver,
         self._state.update(self._cmd.get_system())
 
         self._state['storage_nodes'] = self._cmd.ls_ctr_info()
-        ports = self._cmd.get_ip_connect(
-            str(self.configuration.acs5000_target))
-        if ports['iscsi_name']:
+        ports = self._cmd.get_ip_connect()
+        if len(ports) > 0:
             self._state['enabled_protocols'].add('iSCSI')
-            iscsi_name = ' '.join(ports['iscsi_name'])
             for node in self._state['storage_nodes'].values():
-                if ('ctr%s' % node['id']) in iscsi_name:
+                if node['id'] in ports.keys():
                     node['enabled_protocols'].append('iSCSI')
+                    for port in ports[node['id']]:
+                        node['ipv4'].append(port['ip'])
         return
 
     def _validate_pools_exist(self):
