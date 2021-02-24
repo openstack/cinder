@@ -22,7 +22,7 @@ enable_and_disable = {
     'type': 'object',
     'properties': {
         'binary': {'type': 'string', 'minLength': 1, 'maxLength': 255},
-        'host': parameter_types.hostname,
+        'host': parameter_types.cinder_host,
         'cluster': parameter_types.nullable_string,
         'service': {'type': 'string', 'minLength': 1, 'maxLength': 255},
     },
@@ -67,7 +67,7 @@ freeze_and_thaw = {
     'type': 'object',
     'properties': {
         'cluster': parameter_types.nullable_string,
-        'host': parameter_types.hostname,
+        'host': parameter_types.cinder_host,
     },
     'additionalProperties': False,
 }
@@ -76,7 +76,7 @@ freeze_and_thaw = {
 failover_host = {
     'type': 'object',
     'properties': {
-        'host': parameter_types.hostname,
+        'host': parameter_types.cinder_host,
         'backend_id': parameter_types.nullable_string,
         'cluster': parameter_types.nullable_string,
     },
