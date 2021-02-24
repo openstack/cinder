@@ -648,6 +648,9 @@ class HBSDREST(common.HBSDCommon):
             return None
 
         pvol, svol_info = self._get_copy_pair_info(ldev)
+        if svol_info and svol_info[0]['status'] in ('SMPP', 'PSUP'):
+            self._wait_copy_pair_deleting(svol_info[0]['ldev'])
+            return self.get_pair_info(ldev)
         if pvol is not None:
             pair_info['pvol'] = pvol
             pair_info.setdefault('svol_info', [])
