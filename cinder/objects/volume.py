@@ -351,7 +351,8 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                 volume_types.get_default_volume_type()['id'])
 
         db_volume = db.volume_create(self._context, updates)
-        self._from_db_object(self._context, self, db_volume)
+        expected_attrs = self._get_expected_attrs(self._context)
+        self._from_db_object(self._context, self, db_volume, expected_attrs)
 
     def save(self):
         updates = self.cinder_obj_get_changes()
