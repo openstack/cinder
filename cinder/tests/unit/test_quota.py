@@ -162,7 +162,7 @@ class QuotaIntegrationTestCase(test.TestCase):
             status='available',
             host=CONF.host,
             volume_type_id=self.vt['id'])
-        volume_api = volume.api.API()
+        volume_api = volume.API()
         volume_api.create_snapshots_in_db(self.context,
                                           [test_volume1, test_volume2],
                                           'fake_name',
@@ -543,7 +543,7 @@ class QuotaEngineTestCase(test.TestCase):
 
     def test_register_resource(self):
         quota_obj = quota.QuotaEngine()
-        resource = quota.AbsoluteResource('test_resource')
+        resource = quota.BaseResource('test_resource')
         quota_obj.register_resource(resource)
 
         self.assertEqual(dict(test_resource=resource), quota_obj.resources)
@@ -551,9 +551,9 @@ class QuotaEngineTestCase(test.TestCase):
     def test_register_resources(self):
         quota_obj = quota.QuotaEngine()
         resources = [
-            quota.AbsoluteResource('test_resource1'),
-            quota.AbsoluteResource('test_resource2'),
-            quota.AbsoluteResource('test_resource3'), ]
+            quota.BaseResource('test_resource1'),
+            quota.BaseResource('test_resource2'),
+            quota.BaseResource('test_resource3'), ]
         quota_obj.register_resources(resources)
 
         self.assertEqual(dict(test_resource1=resources[0],
@@ -593,10 +593,10 @@ class QuotaEngineTestCase(test.TestCase):
     def _make_quota_obj(self, driver):
         quota_obj = quota.QuotaEngine(quota_driver_class=driver)
         resources = [
-            quota.AbsoluteResource('test_resource4'),
-            quota.AbsoluteResource('test_resource3'),
-            quota.AbsoluteResource('test_resource2'),
-            quota.AbsoluteResource('test_resource1'), ]
+            quota.BaseResource('test_resource4'),
+            quota.BaseResource('test_resource3'),
+            quota.BaseResource('test_resource2'),
+            quota.BaseResource('test_resource1'), ]
         quota_obj.register_resources(resources)
 
         return quota_obj
@@ -687,37 +687,6 @@ class QuotaEngineTestCase(test.TestCase):
              False), ], driver.called)
         self.assertEqual(quota_obj.resources, result1)
         self.assertEqual(quota_obj.resources, result2)
-
-    def test_count_no_resource(self):
-        context = FakeContext(None, None)
-        driver = FakeDriver()
-        quota_obj = self._make_quota_obj(driver)
-        self.assertRaises(exception.QuotaResourceUnknown,
-                          quota_obj.count, context, 'test_resource5',
-                          True, foo='bar')
-
-    def test_count_wrong_resource(self):
-        context = FakeContext(None, None)
-        driver = FakeDriver()
-        quota_obj = self._make_quota_obj(driver)
-        self.assertRaises(exception.QuotaResourceUnknown,
-                          quota_obj.count, context, 'test_resource1',
-                          True, foo='bar')
-
-    def test_count(self):
-        def fake_count(context, *args, **kwargs):
-            self.assertEqual((True,), args)
-            self.assertEqual(dict(foo='bar'), kwargs)
-            return 5
-
-        context = FakeContext(None, None)
-        driver = FakeDriver()
-        quota_obj = self._make_quota_obj(driver)
-        quota_obj.register_resource(quota.CountableResource('test_resource5',
-                                                            fake_count))
-        result = quota_obj.count(context, 'test_resource5', True, foo='bar')
-
-        self.assertEqual(5, result)
 
     def test_limit_check(self):
         context = FakeContext(None, None)
