@@ -54,6 +54,7 @@ This module provides Manager, a base class for managers.
 from eventlet import greenpool
 from eventlet import tpool
 from oslo_config import cfg
+import oslo_config.types
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_service import periodic_task
@@ -83,16 +84,20 @@ class Manager(base.Base, PeriodicTasks):
 
     target = messaging.Target(version=RPC_API_VERSION)
 
-    def __init__(self, host=None, db_driver=None, cluster=None, **kwargs):
+    def __init__(self,
+                 host: oslo_config.types.HostAddress = None,
+                 db_driver=None,
+                 cluster=None,
+                 **_kwargs):
         if not host:
             host = CONF.host
-        self.host = host
+        self.host: oslo_config.types.HostAddress = host
         self.cluster = cluster
-        self.additional_endpoints = []
+        self.additional_endpoints: list = []
         self.availability_zone = CONF.storage_availability_zone
-        super(Manager, self).__init__(db_driver)
+        super(Manager, self).__init__(db_driver)  # type: ignore
 
-    def _set_tpool_size(self, nthreads):
+    def _set_tpool_size(self, nthreads: int) -> None:
         # NOTE(geguileo): Until PR #472 is merged we have to be very careful
         # not to call "tpool.execute" before calling this method.
         tpool.set_num_threads(nthreads)
@@ -217,14 +222,14 @@ class SchedulerDependentManager(ThreadPoolManager):
 
 
 class CleanableManager(object):
-    def do_cleanup(self, context, cleanup_request):
+    def do_cleanup(self, context, cleanup_request) -> None:
         LOG.info('Initiating service %s cleanup',
                  cleanup_request.service_id)
 
         # If the 'until' field in the cleanup request is not set, we default to
         # this very moment.
         until = cleanup_request.until or timeutils.utcnow()
-        keep_entry = False
+        keep_entry: bool = False
 
         to_clean = db.worker_get_all(
             context,
@@ -300,10 +305,10 @@ class CleanableManager(object):
 
         LOG.info('Service %s cleanup completed.', cleanup_request.service_id)
 
-    def _do_cleanup(self, ctxt, vo_resource):
+    def _do_cleanup(self, ctxt, vo_resource) -> bool:
         return False
 
-    def init_host(self, service_id, **kwargs):
+    def init_host(self, service_id, **kwargs) -> None:
         ctxt = context.get_admin_context()
         self.service_id = service_id
         # TODO(geguileo): Once we don't support MySQL 5.5 anymore we can remove
