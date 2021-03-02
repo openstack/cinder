@@ -215,6 +215,9 @@ class PowerMaxMasking(object):
             if not portgroup:
                 exc_msg = ("Failed to get portgroup %(pg)s."
                            % {'pg': port_group_name})
+            else:
+                self._check_director_and_port_status(
+                    serial_number, port_group_name)
         else:
             exc_msg = "Port group cannot be left empty."
         if exc_msg:
@@ -225,6 +228,48 @@ class PowerMaxMasking(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
+
+    def _check_director_and_port_status(self, serial_number, port_group_name):
+        """Check the status of the director and port.
+
+        :param serial_number: the array serial number
+        :param port_group_name: the port group name (can be None)
+        """
+        exc_msg = None
+        port_id_list = self.rest.get_port_ids(serial_number, port_group_name)
+        if not port_id_list:
+            exc_msg = ("Unable to get ports from portgroup %(pgn)s "
+                       % {'pgn': port_group_name})
+        for port in port_id_list:
+            port_info = self.rest.get_port(serial_number, port)
+            if port_info:
+                # Check that the director and port are online
+                port_details = port_info.get("symmetrixPort")
+                if port_details:
+                    director_status = port_details.get('director_status')
+                    port_status = port_details.get('port_status')
+                    if not director_status or not port_status:
+                        exc_msg = ("Unable to get the director or port status "
+                                   "for dir:port %(port)s." % {'port': port})
+                    elif not (director_status.lower() == 'online' and (
+                            port_status.lower() == 'on')):
+                        exc_msg = ("The director status is %(ds)s and the "
+                                   "port status is %(ps)s for dir:port "
+                                   "%(port)s."
+                                   % {'ds': director_status,
+                                      'ps': port_status,
+                                      'port': port})
+                else:
+                    exc_msg = ("Unable to get port details for dir:port "
+                               "%(port)s." % {'port': port})
+            else:
+                exc_msg = ("Unable to get port information for dir:port "
+                           "%(port)s."
+                           % {'port': port})
+        if exc_msg:
+            LOG.error(exc_msg)
+            raise exception.VolumeBackendAPIException(
+                message=exc_msg)
 
     def _create_new_masking_view(
             self, serial_number, masking_view_dict,
@@ -581,7 +626,10 @@ class PowerMaxMasking(object):
         """
         msg = None
         portgroup = self.rest.get_portgroup(serial_number, portgroup_name)
-        if portgroup is None:
+        if portgroup:
+            self._check_director_and_port_status(
+                serial_number, portgroup_name)
+        else:
             msg = ("Cannot get port group: %(portgroup)s from the array "
                    "%(array)s. Portgroups must be pre-configured - please "
                    "check the array."
