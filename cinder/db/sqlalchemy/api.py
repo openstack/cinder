@@ -1232,6 +1232,15 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     #            for.  We don't check, because this is
                     #            a best-effort mechanism.
 
+            # There are 3 cases where we want to update "until_refresh" in the
+            # DB: when we enabled it, when we disabled it, and when we changed
+            # to a value lower than the current remaining value.
+            else:
+                res_until = usages[resource].until_refresh
+                if ((res_until is None and until_refresh) or
+                        ((res_until or 0) > (until_refresh or 0))):
+                    usages[resource].until_refresh = until_refresh or None
+
         # Check for deltas that would go negative
         if is_allocated_reserve:
             unders = [r for r, delta in deltas.items()

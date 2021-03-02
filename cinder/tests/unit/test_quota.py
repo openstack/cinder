@@ -1695,6 +1695,57 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                                        usage_id=self.usages['gigabytes'],
                                        delta=2 * 1024), ])
 
+    def test_quota_reserve_until_refresh_enable(self):
+        """Test that enabling until_refresh works."""
+        # Simulate service running with until_refresh disabled
+        self.init_usage('test_project', 'volumes', 3, 0, until_refresh=None)
+        self.init_usage('test_project', 'gigabytes', 100, 0,
+                        until_refresh=None)
+        context = FakeContext('test_project', 'test_class')
+        quotas = dict(volumes=5, gigabytes=10 * 1024, )
+        deltas = dict(volumes=2, gigabytes=2 * 1024, )
+        self._mock_allocated_get_all_by_project()
+
+        # Simulate service is now running with until_refresh set to 5
+        sqa_api.quota_reserve(context, self.resources, quotas, deltas,
+                              self.expire, 5, 0)
+
+        self.compare_usage(self.usages, [dict(resource='volumes',
+                                              project_id='test_project',
+                                              in_use=3,
+                                              reserved=2,
+                                              until_refresh=5),
+                                         dict(resource='gigabytes',
+                                              project_id='test_project',
+                                              in_use=100,
+                                              reserved=2 * 1024,
+                                              until_refresh=5), ])
+
+    def test_quota_reserve_until_refresh_disable(self):
+        """Test that disabling until_refresh works."""
+        # Simulate service running with until_refresh enabled and set to 5
+        self.init_usage('test_project', 'volumes', 3, 0, until_refresh=5)
+        self.init_usage('test_project', 'gigabytes', 100, 0, until_refresh=5)
+        context = FakeContext('test_project', 'test_class')
+        quotas = dict(volumes=5, gigabytes=10 * 1024, )
+        deltas = dict(volumes=2, gigabytes=2 * 1024, )
+        self._mock_allocated_get_all_by_project()
+
+        # Simulate service is now running with until_refresh disabled
+        sqa_api.quota_reserve(context, self.resources, quotas, deltas,
+                              self.expire, None, 0)
+
+        self.compare_usage(self.usages, [dict(resource='volumes',
+                                              project_id='test_project',
+                                              in_use=3,
+                                              reserved=2,
+                                              until_refresh=None),
+                                         dict(resource='gigabytes',
+                                              project_id='test_project',
+                                              in_use=100,
+                                              reserved=2 * 1024,
+                                              until_refresh=None), ])
+
     def test_quota_reserve_max_age(self):
         max_age = 3600
         record_created = (timeutils.utcnow() -
