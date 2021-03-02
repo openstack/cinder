@@ -5532,7 +5532,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._set_flag('reserved_percentage', 25)
         self._set_flag('storwize_svc_multihostmap_enabled', True)
         self._set_flag('storwize_svc_vol_rsize', rsize)
-        stats = self.driver.get_volume_stats()
+        stats = self.driver.get_volume_stats(True)
         for each_pool in stats['pools']:
             self.assertIn(each_pool['pool_name'],
                           self._def_flags['storwize_svc_volpool_name'])
@@ -8143,6 +8143,7 @@ port_speed!8Gb
                          list(resp.select('port_id', 'port_status')))
 
 
+@ddt.ddt
 class StorwizeHelpersTestCase(test.TestCase):
     def setUp(self):
         super(StorwizeHelpersTestCase, self).setUp()
@@ -8308,6 +8309,61 @@ class StorwizeHelpersTestCase(test.TestCase):
             'target_vdisk_name': 'testvol'}
         self.storwize_svc_common.pretreatment_before_revert(vol)
         stopfcmap.assert_called_once_with('4', split=True)
+
+    def test_storwize_check_flashcopy_rate_invalid1(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 6, 0, 0),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            flashcopy_rate = 120
+            self.assertRaises(exception.VolumeDriverException,
+                              self.storwize_svc_common.check_flashcopy_rate,
+                              flashcopy_rate)
+
+    def test_storwize_check_flashcopy_rate_invalid2(self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 8, 1, 2),
+                                'topology': 'standard',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            flashcopy_rate = 200
+            self.assertRaises(exception.InvalidInput,
+                              self.storwize_svc_common.check_flashcopy_rate,
+                              flashcopy_rate)
+
+    @ddt.data(({'mirror_pool': 'openstack2',
+                'volume_topology': None,
+                'peer_pool': None}, True, 1),
+              ({'mirror_pool': 'openstack2',
+                'volume_topology': None,
+                'peer_pool': None}, False, 2),
+              ({'mirror_pool': None,
+                'volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1'}, True, 1),
+              ({'mirror_pool': None,
+                'volume_topology': 'hyperswap',
+                'peer_pool': 'openstack1'}, False, 2))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'is_data_reduction_pool')
+    @ddt.unpack
+    def test_is_volume_type_dr_pools_dr_pool(self, opts, is_drp, call_count,
+                                             is_data_reduction_pool):
+        is_data_reduction_pool.return_value = is_drp
+        pool = 'openstack'
+        rep_type = None
+        rep_target_pool = None
+
+        isdrpool = (self.storwize_svc_common.
+                    is_volume_type_dr_pools(pool, opts, rep_type,
+                                            rep_target_pool))
+        self.assertEqual(is_drp, isdrpool)
+        is_data_reduction_pool.assert_called()
+        self.assertEqual(call_count, is_data_reduction_pool.call_count)
 
 
 @ddt.ddt
