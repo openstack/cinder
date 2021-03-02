@@ -32,7 +32,7 @@ class PVMEISCSIDriver(iscsi.STXISCSIDriver):
 
     VERSION = "2.0"
 
-    CI_WIKI_NAME = "PVME_CI"
+    CI_WIKI_NAME = "DellEMC_PowerVault_ME_CI"
 
     SUPPORTED = True
 

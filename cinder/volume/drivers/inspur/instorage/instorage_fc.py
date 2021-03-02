@@ -50,7 +50,7 @@ class InStorageMCSFCDriver(instorage_common.InStorageMCSCommonDriver,
     VERSION = "1.0.0"
 
     # ThirdPartySystems wiki page
-    CI_WIKI_NAME = "INSPUR_CI"
+    CI_WIKI_NAME = "Inspur_CI"
 
     def __init__(self, *args, **kwargs):
         super(InStorageMCSFCDriver, self).__init__(*args, **kwargs)

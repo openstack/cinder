@@ -135,7 +135,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
     VERSION = "4.4.0"
 
     # ThirdPartySystems wiki
-    CI_WIKI_NAME = "EMC_VMAX_CI"
+    CI_WIKI_NAME = "DellEMC_PowerMAX_CI"
 
     def __init__(self, *args, **kwargs):
 

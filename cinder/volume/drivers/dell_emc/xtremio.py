@@ -430,7 +430,7 @@ class XtremIOVolumeDriver(san.SanDriver):
     VERSION = '1.0.12'
 
     # ThirdPartySystems wiki
-    CI_WIKI_NAME = "EMC_XIO_CI"
+    CI_WIKI_NAME = "DellEMC_XtremIO_CI"
 
     driver_name = 'XtremIO'
     MIN_XMS_VERSION = [3, 0, 0]
