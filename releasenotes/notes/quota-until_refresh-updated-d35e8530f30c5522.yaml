@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1697906 <https://bugs.launchpad.net/cinder/+bug/1697906>`_: Fix
+    ``until_refresh`` configuration changes not taking effect in a timely
+    fashion or at all.
