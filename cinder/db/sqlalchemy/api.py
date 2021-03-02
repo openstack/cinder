@@ -1579,15 +1579,25 @@ def volume_data_get_for_host(context, host, count_only=False):
 
 @require_admin_context
 def _volume_data_get_for_project(context, project_id, volume_type_id=None,
-                                 session=None, host=None):
+                                 session=None, host=None, skip_internal=True):
+    model = models.Volume
     query = model_query(context,
-                        func.count(models.Volume.id),
-                        func.sum(models.Volume.size),
+                        func.count(model.id),
+                        func.sum(model.size),
                         read_deleted="no",
                         session=session).\
         filter_by(project_id=project_id)
+
+    # When calling the method for quotas we don't count volumes that are the
+    # destination of a migration since they were not accounted for quotas or
+    # reservations in the first place.
+    if skip_internal:
+        query = query.filter(
+            or_(model.migration_status.is_(None),
+                ~model.migration_status.startswith('target:')))
+
     if host:
-        query = query.filter(_filter_host(models.Volume.host, host))
+        query = query.filter(_filter_host(model.host, host))
 
     if volume_type_id:
         query = query.filter_by(volume_type_id=volume_type_id)
@@ -1618,10 +1628,9 @@ def _backup_data_get_for_project(context, project_id, volume_type_id=None,
 
 
 @require_admin_context
-def volume_data_get_for_project(context, project_id,
-                                volume_type_id=None, host=None):
-    return _volume_data_get_for_project(context, project_id,
-                                        volume_type_id, host=host)
+def volume_data_get_for_project(context, project_id, host=None):
+    return _volume_data_get_for_project(context, project_id, host=host,
+                                        skip_internal=False)
 
 
 VOLUME_DEPENDENT_MODELS = frozenset([models.VolumeMetadata,

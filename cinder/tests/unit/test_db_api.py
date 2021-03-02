@@ -513,6 +513,47 @@ class DBAPIVolumeTestCase(BaseTest):
                              db.volume_data_get_for_project(
                                  self.ctxt, 'p%d' % i))
 
+    @mock.patch.object(sqlalchemy_api, '_volume_data_get_for_project')
+    def test_volume_data_get_for_project_migrating(self, mock_vol_data):
+        expected = (mock.sentinel.count, mock.sentinel.gb)
+        mock_vol_data.return_value = expected
+        res = db.volume_data_get_for_project(self.ctxt,
+                                             mock.sentinel.project_id,
+                                             mock.sentinel.host)
+        self.assertEqual(expected, res)
+        mock_vol_data.assert_called_once_with(self.ctxt,
+                                              mock.sentinel.project_id,
+                                              host=mock.sentinel.host,
+                                              skip_internal=False)
+
+    @ddt.data((True, THREE_HUNDREDS, THREE),
+              (False, THREE_HUNDREDS + ONE_HUNDREDS, THREE + 1))
+    @ddt.unpack
+    def test__volume_data_get_for_project_migrating(self, skip_internal,
+                                                    gigabytes, count):
+        for i in range(2):
+            db.volume_create(self.ctxt,
+                             {'project_id': 'project',
+                              'size': ONE_HUNDREDS,
+                              'host': 'h-%d' % i,
+                              'volume_type_id': fake.VOLUME_TYPE_ID})
+        # This volume is migrating and will be counted
+        db.volume_create(self.ctxt, {'project_id': 'project',
+                                     'size': ONE_HUNDREDS,
+                                     'host': 'h-%d' % i,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'migration_status': 'migrating'})
+        # This one will not be counted
+        db.volume_create(self.ctxt, {'project_id': 'project',
+                                     'size': ONE_HUNDREDS,
+                                     'host': 'h-%d' % i,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'migration_status': 'target:vol-id'})
+
+        result = sqlalchemy_api._volume_data_get_for_project(
+            self.ctxt, 'project', skip_internal=skip_internal)
+        self.assertEqual((count, gigabytes), result)
+
     def test_volume_data_get_for_project_with_host(self):
 
         db.volume_create(self.ctxt, {'project_id': fake.PROJECT_ID,
