@@ -108,6 +108,12 @@ def create_volume(ctxt,
 def attach_volume(ctxt, volume_id, instance_uuid, attached_host,
                   mountpoint, mode='rw'):
 
+    if isinstance(volume_id, objects.Volume):
+        volume_ovo = volume_id
+        volume_id = volume_ovo.id
+    else:
+        volume_ovo = None
+
     now = timeutils.utcnow()
     values = {}
     values['volume_id'] = volume_id
@@ -119,6 +125,13 @@ def attach_volume(ctxt, volume_id, instance_uuid, attached_host,
     volume, updated_values = db.volume_attached(
         ctxt, attachment['id'], instance_uuid,
         attached_host, mountpoint, mode)
+
+    if volume_ovo:
+        cls = objects.Volume
+        expected_attrs = cls._get_expected_attrs(ctxt)
+        volume = cls._from_db_object(ctxt, cls(ctxt), volume,
+                                     expected_attrs=expected_attrs)
+
     return volume
 
 
