@@ -4793,25 +4793,12 @@ class VolumeManager(manager.CleanableManager,
         Notifies the backend device that we're detaching the specified
         attachment instance.
 
+        param: attachment_id: Attachment id to remove
         param: vref: Volume object associated with the attachment
-        param: attachment: Attachment reference object to remove
-
-        NOTE if the attachment reference is None, we remove all existing
-        attachments for the specified volume object.
         """
-        attachment_ref = objects.VolumeAttachment.get_by_id(context,
-                                                            attachment_id)
-        if not attachment_ref:
-            for attachment in VA_LIST.get_all_by_volume_id(context, vref.id):
-                self._do_attachment_delete(context, vref, attachment)
-        else:
-            self._do_attachment_delete(context, vref, attachment_ref)
-
-    def _do_attachment_delete(self,
-                              context: context.RequestContext,
-                              vref,
-                              attachment: objects.VolumeAttachment) -> None:
         utils.require_driver_initialized(self.driver)
+        attachment = objects.VolumeAttachment.get_by_id(context, attachment_id)
+
         self._notify_about_volume_usage(context, vref, "detach.start")
         has_shared_connection = self._connection_terminate(context,
                                                            vref,
