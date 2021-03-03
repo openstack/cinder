@@ -107,8 +107,11 @@ def fake_volume_obj(context, **updates):
     if updates.get('encryption_key_id'):
         assert is_uuid_like(updates['encryption_key_id'])
 
+    updates['volume_attachment'] = updates.get('volume_attachment') or []
+
     expected_attrs = updates.pop('expected_attrs',
-                                 ['metadata', 'admin_metadata'])
+                                 ['metadata', 'admin_metadata',
+                                  'volume_attachment'])
     vol = objects.Volume._from_db_object(context, objects.Volume(),
                                          fake_db_volume(**updates),
                                          expected_attrs=expected_attrs)
