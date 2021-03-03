@@ -2263,7 +2263,7 @@ class API(base.Base):
     def attachment_delete(self, ctxt, attachment):
         ctxt.authorize(attachment_policy.DELETE_POLICY,
                        target_obj=attachment)
-        volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
+        volume = attachment.volume
         if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:
             self.db.volume_detached(ctxt.elevated(), attachment.volume_id,
                                     attachment.get('id'))
