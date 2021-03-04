@@ -98,6 +98,7 @@ Response Parameters
    - count: count
    - metadata: metadata_backup
    - user_id: user_id_backup
+   - encryption_key_id: encryption_key_id
 
 Response Example
 ----------------
@@ -157,6 +158,7 @@ Response Parameters
    - os-backup-project-attr:project_id: os-backup-project-attr:project_id
    - metadata: metadata_backup
    - user_id: user_id_backup
+   - encryption_key_id: encryption_key_id
 
 Response Example
 ----------------

@@ -147,6 +147,7 @@ REST_API_VERSION_HISTORY = """
              in the volume details. This MV affects the volume detail list
              ("GET /v3/{project_id}/volumes/detail") and volume-show
              ("GET /v3/{project_id}/volumes/{volume_id}") calls.
+    * 3.64 - Include 'encryption_key_id' in volume and backup details
 """
 
 # The minimum and maximum versions of the API supported
@@ -154,9 +155,9 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.63"
+_MAX_API_VERSION = "3.64"
 _LEGACY_API_VERSION2 = "2.0"
-UPDATED = "2020-11-19T08:56:00Z"
+UPDATED = "2021-02-03T00:00:00Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can
