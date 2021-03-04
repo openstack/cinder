@@ -191,6 +191,12 @@ image_opts = [
     cfg.StrOpt('glance_ca_certificates_file',
                help='Location of ca certificates file to use for glance '
                     'client requests.'),
+    cfg.StrOpt('glance_certfile',
+               help='Location of certificate file to use for glance '
+                    'client requests.'),
+    cfg.StrOpt('glance_keyfile',
+               help='Location of certificate key file to use for glance '
+                    'client requests.'),
     cfg.IntOpt('glance_request_timeout',
                help='http/https timeout value for glance operations. If no '
                     'value (None) is supplied here, the glanceclient default '
