@@ -256,7 +256,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
         volume_id = volume['id']
         self.assertIsNone(volume['encryption_key_id'])
-        mock_notify.assert_not_called()
+
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.create_volume, self.context, volume)
 
@@ -339,7 +339,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             **self.volume_params)
 
         self.assertIsNone(volume['encryption_key_id'])
-        mock_notify.assert_not_called()
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.delete_volume, self.context, volume)
 
@@ -358,8 +357,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             availability_zone=CONF.storage_availability_zone,
             **self.volume_params)
         volume_id = volume['id']
-
-        mock_notify.assert_not_called()
 
         self.assertIsNone(volume['encryption_key_id'])
 
