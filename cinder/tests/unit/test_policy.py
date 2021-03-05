@@ -131,3 +131,28 @@ class PolicyTestCase(test.TestCase):
                                                roles=['AdMiN'])
         policy.authorize(admin_context, lowercase_action, self.target)
         policy.authorize(admin_context, uppercase_action, self.target)
+
+    def test_enforce_properly_handles_invalid_scope_exception(self):
+        self.fixture.config(enforce_scope=True, group='oslo_policy')
+        project_context = context.RequestContext(project_id='fake-project-id',
+                                                 roles=['bar'])
+        policy.reset()
+        policy.init()
+        rule = oslo_policy.RuleDefault('foo', 'role:bar',
+                                       scope_types=['system'])
+        policy._ENFORCER.register_defaults([rule])
+
+        self.assertRaises(exception.PolicyNotAuthorized, policy.enforce,
+                          project_context, 'foo', {})
+
+    def test_enforce_does_not_raise_forbidden(self):
+        self.fixture.config(enforce_scope=False, group='oslo_policy')
+        project_context = context.RequestContext(project_id='fake-project-id',
+                                                 roles=['bar'])
+        policy.reset()
+        policy.init()
+        rule = oslo_policy.RuleDefault('foo', 'role:bar',
+                                       scope_types=['system'])
+        policy._ENFORCER.register_defaults([rule])
+
+        self.assertTrue(policy.enforce(project_context, 'foo', {}))
