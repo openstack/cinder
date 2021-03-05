@@ -2350,6 +2350,8 @@ class PowerMaxCommonTest(test.TestCase):
             array_id, volume, device_id, srp, target_slo, target_workload,
             volume_name, new_type, extra_specs)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+                       return_value=['activebias'])
     @mock.patch.object(common.PowerMaxCommon,
                        '_post_retype_srdf_protect_storage_group',
                        return_value=(True, True, True))
@@ -2369,7 +2371,7 @@ class PowerMaxCommonTest(test.TestCase):
                        return_value=True)
     def test_cleanup_on_migrate_failure(
             self, mck_rep_enabled, mck_retype_remote, mck_break, mck_resume,
-            mck_retype, mck_configure, mck_get_vname, mck_protect):
+            mck_retype, mck_configure, mck_get_vname, mck_protect, mck_states):
         rdf_pair_broken = True
         rdf_pair_created = True
         vol_retyped = True
