@@ -3196,6 +3196,50 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.error(msg)
             raise exception.VolumeDriverException(reason=msg)
 
+    def _update_replication_properties(self, ctxt, volume, model_update):
+        metadata = self.db.volume_admin_metadata_get(ctxt.elevated(),
+                                                     volume['id'])
+        model_update['metadata'] = metadata
+        rel_info = self._helpers.get_relationship_info(volume.name)
+        rep_properties = {
+            'Id': 'id',
+            'Relationship Name': 'name',
+            'Master Cluster Id': 'master_cluster_id',
+            'Master Cluster Name': 'master_cluster_name',
+            'Master Volume Id': 'master_vdisk_id',
+            'Master Volume Name': 'master_vdisk_name',
+            'Aux Cluster Id': 'aux_cluster_id',
+            'Aux Cluster Name': 'aux_cluster_name',
+            'Aux Volume Id': 'aux_vdisk_id',
+            'Aux Volume Name': 'aux_vdisk_name',
+            'Consistency Group Id': 'consistency_group_id',
+            'Consistency Group Name': 'consistency_group_name',
+            'Bg Copy Priority': 'bg_copy_priority',
+            'Primary': 'primary',
+            'Progress': 'progress',
+            'Mirroring State': 'state',
+            'Status': 'status',
+            'Sync': 'sync',
+            'Copy Type': 'copy_type',
+            'Cycling Mode': 'cycling_mode',
+            'Cycle Period Seconds': 'cycle_period_seconds',
+            'Master Change Volume Id': 'master_change_vdisk_id',
+            'Master Change Volume Name': 'master_change_vdisk_name',
+            'Aux Change Volume Id': 'aux_change_vdisk_id',
+            'Aux Change Volume Name': 'aux_change_vdisk_name',
+            'Freeze Time': 'freeze_time'
+        }
+        # Update model for replication
+        if not rel_info:
+            for key in rep_properties.keys():
+                if key in model_update['metadata']:
+                    del model_update['metadata'][key]
+        else:
+            for key, value in rep_properties.items():
+                if rel_info.get(value):
+                    model_update['metadata'][key] = rel_info[value]
+        return model_update
+
     def create_volume(self, volume):
         LOG.debug('enter: create_volume: volume %s', volume['name'])
         # Create a replication or hyperswap volume with group_id is not
@@ -3208,7 +3252,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         rep_type = self._get_volume_replicated_type(ctxt, volume)
 
         pool = volume_utils.extract_host(volume['host'], 'pool')
-        model_update = None
+        model_update = dict()
 
         if opts['volume_topology'] == 'hyperswap':
             LOG.debug('Volume %s to be created is a hyperswap volume.',
@@ -3229,6 +3273,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._helpers.check_hyperswap_pool(pool, opts['peer_pool'])
             self._helpers.create_hyperswap_volume(volume.name, volume.size,
                                                   'gb', pool, opts)
+            # Updating Hyperswap volume replication properties
+            model_update = self._update_replication_properties(ctxt, volume,
+                                                               model_update)
         else:
             if opts['mirror_pool'] and rep_type:
                 reason = _('Create mirror volume with replication enabled is '
@@ -3241,14 +3288,18 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if opts['qos']:
             self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
 
-        model_update = {'replication_status':
-                        fields.ReplicationStatus.NOT_CAPABLE}
+        model_update[
+            'replication_status'] = fields.ReplicationStatus.NOT_CAPABLE
 
         if rep_type:
             replica_obj = self._get_replica_obj(rep_type)
             replica_obj.volume_replication_setup(ctxt, volume)
-            model_update = {'replication_status':
-                            fields.ReplicationStatus.ENABLED}
+            model_update[
+                'replication_status'] = fields.ReplicationStatus.ENABLED
+            # Updating replication properties for a volume with replication
+            # enabled.
+            model_update = self._update_replication_properties(ctxt, volume,
+                                                               model_update)
 
         LOG.debug('leave: create_volume:\n volume: %(vol)s\n '
                   'model_update %(model_update)s',
@@ -3392,10 +3443,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             replica_obj.volume_replication_setup(ctxt, volume)
             model_update = {'replication_status':
                             fields.ReplicationStatus.ENABLED}
+            # Updating replication properties for a volume with replication
+            # enabled.
+            model_update = self._update_replication_properties(ctxt, volume,
+                                                               model_update)
         return model_update
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         """Creates a clone of the specified volume."""
+        model_update = dict()
         # Create a cloned volume with a replication or hyperswap group_id is
         # not allowed.
         self._check_if_group_type_cg_snapshot(tgt_volume)
@@ -3414,6 +3470,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # with two different sizes. So use source volume size to
         # create target volume first and then extend target
         # volume to original size.
+        ctxt = context.get_admin_context()
         if tgt_volume['size'] > src_volume['size']:
             # extend the new created target volume to expected size.
             self._extend_volume_op(tgt_volume, tgt_volume['size'],
@@ -3434,18 +3491,26 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._helpers.convert_volume_to_hyperswap(tgt_volume['name'],
                                                       opts,
                                                       self._state)
+            # Updating Hyperswap volume replication properties
+            model_update = self._update_replication_properties(ctxt,
+                                                               tgt_volume,
+                                                               model_update)
 
-        ctxt = context.get_admin_context()
-        model_update = {'replication_status':
-                        fields.ReplicationStatus.NOT_CAPABLE}
+        model_update[
+            'replication_status'] = fields.ReplicationStatus.NOT_CAPABLE
         rep_type = self._get_volume_replicated_type(ctxt, tgt_volume)
 
         if rep_type:
             self._validate_replication_enabled()
             replica_obj = self._get_replica_obj(rep_type)
             replica_obj.volume_replication_setup(ctxt, tgt_volume)
-            model_update = {'replication_status':
-                            fields.ReplicationStatus.ENABLED}
+            model_update[
+                'replication_status'] = fields.ReplicationStatus.ENABLED
+            # Updating replication properties for a volume with replication
+            # enabled.
+            model_update = self._update_replication_properties(ctxt,
+                                                               tgt_volume,
+                                                               model_update)
         return model_update
 
     def extend_volume(self, volume, new_size):
@@ -4890,7 +4955,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             change_mirror = True
 
         # Check if retype affects volume replication
-        model_update = None
+        model_update = dict()
         new_rep_type = self._get_specs_replicated_type(new_type)
         old_rep_type = self._get_volume_replicated_type(ctxt, volume)
         old_io_grp = self._helpers.get_volume_io_group(volume['name'])
@@ -4909,6 +4974,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._retype_hyperswap_volume(volume, host, old_opts, new_opts,
                                           old_pool, new_pool, vdisk_changes,
                                           need_copy, new_type)
+            # Updating Hyperswap volume replication properties
+            model_update = self._update_replication_properties(ctxt, volume,
+                                                               model_update)
         else:
             # hyperswap volume will select iogrp by storage. ignore iogrp here.
             if old_io_grp != new_io_grp:
@@ -4996,6 +5064,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                             fields.ReplicationStatus.DISABLED,
                             'replication_driver_data': None,
                             'replication_extended_status': None}
+            # Updating replication properties for a volume with replication
+            # enabled.
+            model_update = self._update_replication_properties(ctxt, volume,
+                                                               model_update)
         # Add replica if needed
         if not old_rep_type and new_rep_type:
             replica_obj = self._get_replica_obj(new_rep_type)
@@ -5007,6 +5079,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     new_opts.get('cycle_period_seconds'))
             model_update = {'replication_status':
                             fields.ReplicationStatus.ENABLED}
+            # Updating replication properties for a volume with replication
+            # enabled.
+            model_update = self._update_replication_properties(ctxt, volume,
+                                                               model_update)
 
         LOG.debug('exit: retype: ild=%(id)s, new_type=%(new_type)s,'
                   'diff=%(diff)s, host=%(host)s', {'id': volume['id'],
@@ -5567,6 +5643,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 replica_obj.volume_replication_setup(context, vol)
                 volumes_model[volumes.index(vol)]['replication_status'] = (
                     fields.ReplicationStatus.ENABLED)
+                # Updating replication properties for a volume with replication
+                # enabled.
+                volumes_model[volumes.index(vol)] = (
+                    self._update_replication_properties(
+                        context, vol, volumes_model[volumes.index(vol)]))
 
         LOG.debug("Leave: create_group_from_src.")
         return model_update, volumes_model
