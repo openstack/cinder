@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    PowerMax driver:
+    Fix to suspend the storage group you are about to delete
+    and then add a force flag to delete the volume pairs within
+    the storage group.
