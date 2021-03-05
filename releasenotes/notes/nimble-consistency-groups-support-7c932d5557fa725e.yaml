@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added consistency group support in Nimble Storage driver.

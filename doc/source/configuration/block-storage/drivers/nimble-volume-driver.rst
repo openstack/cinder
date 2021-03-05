@@ -39,6 +39,8 @@ Supported operations
 * Create a Thinly Provisioned Volume
 * Attach a volume to multiple servers simultaneously (multiattach)
 * Volume Revert to Snapshot
+* Create, list, update, and delete consistency groups
+* Create, list, and delete consistency group snapshots
 
 Nimble Storage driver configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

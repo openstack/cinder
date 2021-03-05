@@ -22,19 +22,24 @@ from six.moves import http_client
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder.objects import volume as obj_volume
+from cinder.objects import volume_type
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_group
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.volume.drivers import nimble
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.NimbleRestAPIExecutor'
 NIMBLE_URLLIB2 = 'cinder.volume.drivers.nimble.requests'
 NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'
 NIMBLE_ISCSI_DRIVER = 'cinder.volume.drivers.nimble.NimbleISCSIDriver'
 NIMBLE_FC_DRIVER = 'cinder.volume.drivers.nimble.NimbleFCDriver'
-DRIVER_VERSION = '4.0.1'
+DRIVER_VERSION = '4.1.0'
 nimble.DEFAULT_SLEEP = 0
 
 FAKE_POSITIVE_LOGIN_RESPONSE_1 = '2c20aad78a220ed1dae21dcd6f9446f5'
@@ -193,6 +198,57 @@ FAKE_POSITIVE_GROUP_INFO_RESPONSE = {
     'compressed_snap_usage_bytes': 36189,
     'unused_reserve_bytes': 0}
 
+FAKE_GET_VOL_INFO_RESPONSE = {'name': 'testvolume-cg',
+                              'clone': False,
+                              'target_name': 'iqn.test',
+                              'online': True,
+                              'agent_type': 'openstack'}
+
+FAKE_EXTRA_SPECS_CG = {'consistent_group_snapshot_enabled': "<is> False"}
+
+FAKE_VOLUME_TYPE = {'extra_specs': FAKE_EXTRA_SPECS_CG}
+SRC_CG_VOLUME_ID = 'bd21d11b-c765-4c68-896c-6b07f63cfcb6'
+
+SRC_CG_VOLUME_NAME = 'volume-' + SRC_CG_VOLUME_ID
+
+volume_src_cg = {'name': SRC_CG_VOLUME_NAME,
+                 'id': SRC_CG_VOLUME_ID,
+                 'display_name': 'Foo Volume',
+                 'size': 2,
+                 'host': 'FAKE_CINDER_HOST',
+                 'volume_type': None,
+                 'volume_type_id': None}
+
+VOLUME_TYPE_ID_CG = 'd03338a9-9115-48a3-8dfc-44444444444'
+
+VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
+admin_context = context.get_admin_context()
+
+VOLUME_NAME = 'volume-' + VOLUME_ID
+FAKE_GROUP = fake_group.fake_group_obj(
+    admin_context, id=fake.GROUP_ID, status='available')
+
+
+volume_cg = {'name': VOLUME_NAME,
+             'id': VOLUME_ID,
+             'display_name': 'Foo Volume',
+             'provider_location': 12,
+             'size': 2,
+             'host': 'FAKE_CINDER_HOST',
+             'volume_type': 'cg_type',
+             'volume_type_id': VOLUME_TYPE_ID_CG}
+
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_CG = {
+    'clone': False,
+    'name': "testvolume-cg"}
+
+FAKE_GET_VOLID_INFO_RESPONSE = {'vol_id': fake.VOLUME_ID}
+
+FAKE_GET_VOLCOLL_INFO_RESPONSE = {'volcoll_id': fake.VOLUME2_ID}
+
+FAKE_ASSOCIATE_VOLCOLL_INFO_RESPONSE = {'vol_id': fake.VOLUME_ID,
+                                        'volcoll_id': fake.VOLUME2_ID}
+
 FAKE_GENERIC_POSITIVE_RESPONSE = ""
 FAKE_VOLUME_DELETE_HAS_CLONE_RESPONSE = "Object has a clone"
 
@@ -203,6 +259,11 @@ FAKE_PERFORMANCE_POLICY_ID = fake.OBJECT_ID
 NIMBLE_MANAGEMENT_IP = "10.18.108.55"
 NIMBLE_SAN_LOGIN = "nimble"
 NIMBLE_SAN_PASS = "nimble_pass"
+
+SRC_CONSIS_GROUP_ID = '7d7dfa02-ac6e-48cb-96af-8a0cd3008d47'
+
+FAKE_SRC_GROUP = fake_group.fake_group_obj(
+    admin_context, id = SRC_CONSIS_GROUP_ID, status = 'available')
 
 
 def create_configuration(username, password, ip_address,
@@ -1075,7 +1136,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                    'free_capacity_gb': 7463.567649364471,
                                    'reserved_percentage': 0,
                                    'QoS_support': False,
-                                   'multiattach': True}]}
+                                   'multiattach': True,
+                                   'consistent_group_snapshot_enabled': True}]}
         self.assertEqual(
             expected_res,
             self.driver.get_volume_stats(refresh=True))
@@ -1709,3 +1771,246 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
         self.mock_client_service.assert_has_calls(
             self.mock_client_service.method_calls,
             expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_create_group_positive(self, mock_is_cg):
+        mock_is_cg.return_value = True
+        ctx = context.get_admin_context()
+        self.group = fake_group.fake_group_obj(
+            ctx, id = fake.GROUP_ID)
+        model_update = self.driver.create_group(ctx, self.group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_create_generic_group(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        ctx = context.get_admin_context()
+        self.group = fake_group.fake_group_obj(
+            ctx, id=fake.GROUP_ID, status='available')
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.create_group,
+            ctx, self.group
+        )
+        mock_is_cg.assert_called_once_with(self.group)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_delete_generic_group(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        ctx = context.get_admin_context()
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.delete_group,
+            ctx, group, volumes
+        )
+        mock_is_cg.assert_called_once()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_delete_group_positive(self, mock_get_specs, mock_is_cg):
+        mock_get_specs.return_value = '<is> True'
+        mock_is_cg.return_value = True
+        ctx = context.get_admin_context()
+        group = mock.MagicMock()
+        volumes = [fake_volume.fake_volume_obj(None)]
+        self.driver.delete_group(ctx, group, volumes)
+        self.mock_client_service.delete_volcoll.assert_called_once()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_update_group(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group = mock.MagicMock()
+        ctx = context.get_admin_context()
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.update_group,
+            ctx, group
+        )
+        mock_is_cg.assert_called_once_with(group)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    @mock.patch(NIMBLE_ISCSI_DRIVER + '.is_volume_group_snap_type')
+    def test_update_group_positive(self, vol_gs_enable,
+                                   mock_get_specs, mock_is_cg):
+        mock_get_specs.return_value = '<is> True'
+        mock_is_cg.return_value = True
+        self.mock_client_service.get_volume_id_by_name.return_value = (
+            FAKE_GET_VOLID_INFO_RESPONSE)
+        self.mock_client_service.get_volcoll_id_by_name.return_value = (
+            FAKE_GET_VOLCOLL_INFO_RESPONSE)
+        self.mock_client_service.associate_volcoll.return_value = (
+            FAKE_GET_SNAP_INFO_BACKUP_RESPONSE)
+
+        ctx = context.get_admin_context()
+        group = mock.MagicMock()
+        volume1 = fake_volume.fake_volume_obj(
+            ctx, name='testvolume-cg1',
+            host='fakehost@nimble#Openstack',
+            provider_location='12 13',
+            id=12, consistency_group_snapshot_enabled=True)
+        addvollist = [volume1]
+        remvollist = [volume1]
+        model_update = self.driver.update_group(
+            ctx,
+            group,
+            addvollist,
+            remvollist
+        )
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update[0]['status'])
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_create_group_from_src(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group = mock.MagicMock()
+        ctx = context.get_admin_context()
+        volumes = [fake_volume.fake_volume_obj(None)]
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.create_group_from_src,
+            ctx, group, volumes
+        )
+        mock_is_cg.assert_called_once_with(group)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    @mock.patch(NIMBLE_ISCSI_DRIVER + ".create_cloned_volume")
+    def test_create_group_from_src_positive(self, mock_clone,
+                                            mock_get_specs,
+                                            mock_is_cg):
+        source_volume = volume_src_cg
+        volume = volume_cg
+        volume['source_volid'] = source_volume['id']
+        volume['display_name'] = "cg-volume"
+        source_volume['display_name'] = "source-volume"
+
+        mock_get_specs.return_value = '<is> True'
+        mock_clone.return_value = volume['name']
+        mock_is_cg.return_value = True
+
+        self.driver.create_group_from_src(
+            context.get_admin_context(), FAKE_GROUP,
+            [volume], source_group=FAKE_SRC_GROUP,
+            source_vols=[source_volume])
+        self.mock_client_service.associate_volcoll.assert_called_once()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_create_group_snapshot_positive(self, mock_get_specs, mock_is_cg):
+        mock_get_specs.return_value = '<is> True'
+        mock_is_cg.return_value = True
+        ctx = context.get_admin_context()
+        group_snapshot = mock.MagicMock()
+        snapshots = [fake_snapshot.fake_snapshot_obj(None)]
+
+        self.driver.create_group_snapshot(
+            ctx,
+            group_snapshot,
+            snapshots
+        )
+        self.mock_client_service.snapcoll_create.assert_called_once()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_delete_generic_group_snapshot(self, mock_is_cg):
+        mock_is_cg.return_value = False
+        group_snapshot = mock.MagicMock()
+        snapshots = [fake_snapshot.fake_snapshot_obj(None)]
+        ctx = context.get_admin_context()
+        self.assertRaises(
+            NotImplementedError,
+            self.driver.delete_group_snapshot,
+            ctx, group_snapshot, snapshots
+        )
+        mock_is_cg.assert_called_once_with(group_snapshot)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    @mock.patch('cinder.volume.group_types.get_group_type_specs')
+    def test_delete_group_snapshot_positive(self, mock_get_specs, mock_is_cg):
+        mock_get_specs.return_value = '<is> True'
+        mock_is_cg.return_value = True
+        ctx = context.get_admin_context()
+        group_snapshot = mock.MagicMock()
+        snapshots = [mock.Mock()]
+
+        self.driver.delete_group_snapshot(
+            ctx,
+            group_snapshot,
+            snapshots
+        )
+        self.mock_client_service.snapcoll_delete.assert_called_once()
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        NIMBLE_SAN_LOGIN, NIMBLE_SAN_PASS, NIMBLE_MANAGEMENT_IP,
+        'default', '*'))
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_create_group_negative(self, mock_is_cg):
+        mock_is_cg.return_value = True
+        ctx = context.get_admin_context()
+        self.vol_type = volume_type.VolumeType(
+            name='volume_type',
+            extra_specs=
+            {'consistent_group_snapshot_enabled': '<is> False'})
+        FAKE_GROUP.volume_types = volume_type.VolumeTypeList(
+            objects=[self.vol_type])
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_group, ctx, FAKE_GROUP)

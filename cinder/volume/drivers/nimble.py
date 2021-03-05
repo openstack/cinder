@@ -37,15 +37,18 @@ import six
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.objects import fields
 from cinder.objects import volume
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
-DRIVER_VERSION = "4.0.1"
+
+DRIVER_VERSION = "4.1.0"
 AES_256_XTS_CIPHER = 'aes_256_xts'
 DEFAULT_CIPHER = 'none'
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -130,6 +133,9 @@ class NimbleBaseVolumeDriver(san.SanDriver):
         4.0.0 - Migrate from SOAP to REST API
                 Add support for Group Scoped Target
         4.0.1 - Add QoS and dedupe support
+        4.1.0 - Added multiattach support
+                Added revert to snapshot support
+                Added consistency groups support
     """
     VERSION = DRIVER_VERSION
 
@@ -168,6 +174,16 @@ class NimbleBaseVolumeDriver(san.SanDriver):
             self.configuration.nimble_pool_name, reserve,
             self._storage_protocol,
             self._group_target_enabled)
+        volume_type = volume.get('volume_type')
+        consis_group_snap_type = False
+        if volume_type is not None:
+            consis_group_snap_type = self.is_volume_group_snap_type(
+                volume_type)
+            cg_id = volume.get('group_id', None)
+        if consis_group_snap_type and cg_id:
+            volume_id = self.APIExecutor.get_volume_id_by_name(volume['name'])
+            cg_volcoll_id = self.APIExecutor.get_volcoll_id_by_name(cg_id)
+            self.APIExecutor.associate_volcoll(volume_id, cg_volcoll_id)
         return self._get_model_info(volume['name'])
 
     def is_volume_backup_clone(self, volume):
@@ -370,7 +386,6 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                           group_info['compressed_snap_usage_bytes'] +
                           group_info['unused_reserve_bytes']) /
                           float(units.Gi))
-
             free_space = total_capacity - used_space
             LOG.debug('total_capacity=%(capacity)f '
                       'used_space=%(used)f free_space=%(free)f',
@@ -392,7 +407,8 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                 free_capacity_gb=free_space,
                 reserved_percentage=0,
                 QoS_support=False,
-                multiattach=True)
+                multiattach=True,
+                consistent_group_snapshot_enabled=True)
             self.group_stats['pools'] = [single_pool]
         return self.group_stats
 
@@ -758,6 +774,179 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                                       'snap_id': snap_id,
                                       'err': ex.message})
         return self._get_model_info(volume['name'])
+
+    def is_volume_group_snap_type(self, volume_type):
+        consis_group_snap_type = False
+        if volume_type:
+            extra_specs = volume_type.get('extra_specs')
+            if 'consistent_group_snapshot_enabled' in extra_specs:
+                gsnap_val = extra_specs['consistent_group_snapshot_enabled']
+                consis_group_snap_type = (gsnap_val == "<is> True")
+        return consis_group_snap_type
+
+    def create_group(self, context, group):
+        """Creates a generic group"""
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        cg_type = False
+        cg_name = group.id
+        description = group.description if group.description else group.name
+        LOG.info('Create group: %(name)s, description)s', {'name': cg_name,
+                 'description': description})
+        for volume_type in group.volume_types:
+            if volume_type:
+                extra_specs = volume_type.get('extra_specs')
+                if 'consistent_group_snapshot_enabled' in extra_specs:
+                    gsnap_val = extra_specs[
+                        'consistent_group_snapshot_enabled']
+                    cg_type = (gsnap_val == "<is> True")
+                    if not cg_type:
+                        msg = _('For a volume type to be a part of consistent'
+                                ' group, volume type extra spec must have '
+                                'consistent_group_snapshot_enabled'
+                                '="<is> True"')
+                        LOG.error(msg)
+                        raise exception.InvalidInput(reason=msg)
+        self.APIExecutor.create_volcoll(cg_name)
+        return {'status': fields.GroupStatus.AVAILABLE}
+
+    def delete_group(self, context, group, volumes):
+        """Deletes a group."""
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        LOG.info("Delete Consistency Group %s.", group.id)
+        model_updates = {"status": fields.GroupStatus.DELETED}
+        error_statuses = [
+            fields.GroupStatus.ERROR,
+            fields.GroupStatus.ERROR_DELETING,
+        ]
+        volume_model_updates = []
+        for tmp_volume in volumes:
+            update_item = {"id": tmp_volume.id}
+            try:
+                self.delete_volume(tmp_volume)
+                update_item["status"] = "deleted"
+            except exception.VolumeBackendAPIException:
+                update_item["status"] = fields.VolumeStatus.ERROR_DELETING
+                if model_updates["status"] not in error_statuses:
+                    model_updates["status"] = fields.GroupStatus.ERROR_DELETING
+                    LOG.error("Failed to delete volume %(vol_id)s of "
+                              "group %(group_id)s.",
+                              {"vol_id": tmp_volume.id, "group_id": group.id})
+            volume_model_updates.append(update_item)
+        cg_name = group.id
+        cg_id = self.APIExecutor.get_volcoll_id_by_name(cg_name)
+        self.APIExecutor.delete_volcoll(cg_id)
+        return model_updates, volume_model_updates
+
+    def update_group(self, context, group, add_volumes=None,
+                     remove_volumes=None):
+        if (not volume_utils.is_group_a_cg_snapshot_type(group)):
+            raise NotImplementedError()
+        model_update = {'status': fields.GroupStatus.AVAILABLE}
+
+        for tmp_volume in add_volumes:
+            volume_id = self.APIExecutor.get_volume_id_by_name(
+                tmp_volume['name'])
+            vol_snap_enable = self.is_volume_group_snap_type(
+                tmp_volume.get('volume_type'))
+            cg_id = self.APIExecutor.get_volcoll_id_by_name(group.id)
+            try:
+                if vol_snap_enable:
+                    self.APIExecutor.associate_volcoll(volume_id, cg_id)
+                else:
+                    msg = (_('Volume with volume id %s is not '
+                             'supported as extra specs of this '
+                             'volume does not have '
+                             'consistent_group_snapshot_enabled="<is> True"'
+                             ) % volume['id'])
+                    LOG.error(msg)
+                    raise exception.InvalidInput(reason=msg)
+            except NimbleAPIException:
+                msg = ('Volume collection does not exist.')
+                LOG.error(msg)
+                raise NimbleAPIException(msg)
+
+        for tmp_volume in remove_volumes:
+            volume_id = self.APIExecutor.get_volume_id_by_name(
+                tmp_volume['name'])
+            try:
+                self.APIExecutor.dissociate_volcoll(volume_id)
+            except NimbleAPIException:
+                msg = ('Volume collection does not exist.')
+                LOG.error(msg)
+                raise NimbleAPIException(msg)
+
+        return model_update, None, None
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        """Creates a group snapshot."""
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
+        group_id = group_snapshot.group_id
+        snap_name = group_snapshot.id
+        cg_id = self.APIExecutor.get_volcoll_id_by_name(group_id)
+        try:
+            self.APIExecutor.snapcoll_create(snap_name, cg_id)
+        except NimbleAPIException:
+            msg = ('Error creating cg snapshot')
+            LOG.error(msg)
+            raise NimbleAPIException(msg)
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_update = {'id': snapshot['id'],
+                               'status': fields.SnapshotStatus.AVAILABLE}
+            snapshot_model_updates.append(snapshot_update)
+        model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
+        return model_update, snapshot_model_updates
+
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        """Deletes a group snapshot."""
+        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            raise NotImplementedError()
+        snap_name = group_snapshot.id
+        model_update = {'status': fields.ConsistencyGroupStatus.DELETED}
+        snapshots_model_update = []
+        snapcoll_id = self.APIExecutor.get_snapcoll_id_by_name(snap_name)
+        try:
+            self.APIExecutor.snapcoll_delete(snapcoll_id)
+            for snapshot in snapshots:
+                snapshots_model_update.append(
+                    {'id': snapshot.id,
+                     'status': fields.SnapshotStatus.DELETED})
+        except Exception as e:
+            LOG.error("Error deleting volume group snapshot."
+                      "Error received: %(e)s", {'e': e})
+            model_update = {
+                'status': fields.GroupSnapshotStatus.ERROR_DELETING}
+        return model_update, snapshots_model_update
+
+    def create_group_from_src(self, context, group, volumes,
+                              group_snapshot=None, snapshots=None,
+                              source_group=None, source_vols=None):
+        """Creates the volume group from source."""
+        if not volume_utils.is_group_a_cg_snapshot_type(group):
+            raise NotImplementedError()
+        self.create_group(context, group)
+        cg_id = self.APIExecutor.get_volcoll_id_by_name(group.id)
+        try:
+            if group_snapshot is not None and snapshots is not None:
+                for tmp_volume, snapshot in zip(volumes, snapshots):
+                    self.create_volume_from_snapshot(tmp_volume, snapshot)
+                    volume_id = self.APIExecutor.get_volume_id_by_name(
+                        tmp_volume['name'])
+                    self.APIExecutor.associate_volcoll(volume_id, cg_id)
+            elif source_group is not None and source_vols is not None:
+                for tmp_volume, src_vol in zip(volumes, source_vols):
+                    self.create_cloned_volume(tmp_volume, src_vol)
+                    volume_id = self.APIExecutor.get_volume_id_by_name(
+                        tmp_volume['name'])
+                    self.APIExecutor.associate_volcoll(volume_id, cg_id)
+        except NimbleAPIException:
+            msg = ('Error creating cg snapshot')
+            LOG.error(msg)
+            raise NimbleAPIException(msg)
+        return None, None
 
 
 @interface.volumedriver
@@ -1643,6 +1832,63 @@ class NimbleRestAPIExecutor(object):
         if not r.json()['data']:
             raise NimbleAPIException(_("Snapshot: %s doesn't exist") % snap_id)
         return r.json()['data'][0]
+
+    def get_volcoll_id_by_name(self, volcoll_name):
+        api = "volume_collections"
+        filter = {"name": volcoll_name}
+        r = self.get_query(api, filter)
+        if not r.json()['data']:
+            raise Exception("Unable to retrieve information for volcoll: {0}"
+                            .format(volcoll_name))
+        return r.json()['data'][0]['id']
+
+    def get_snapcoll_id_by_name(self, snapcoll_name):
+        api = "snapshot_collections"
+        filter = {"name": snapcoll_name}
+        r = self.get_query(api, filter)
+        if not r.json()['data']:
+            raise Exception("Unable to retrieve information for snapcoll: {0}"
+                            .format(snapcoll_name))
+        return r.json()['data'][0]['id']
+
+    def create_volcoll(self, volcoll_name):
+        api = "volume_collections"
+        data = {"data": {"name": volcoll_name}}
+        r = self.post(api, data)
+        return r['data']
+
+    def delete_volcoll(self, volcoll_id):
+        api = "volume_collections/" + str(volcoll_id)
+        self.delete(api)
+
+    def dissociate_volcoll(self, volume_id):
+        api = "volumes/" + str(volume_id)
+        data = {'data': {"volcoll_id": ''
+                         }
+                }
+        r = self.put(api, data)
+        return r
+
+    def associate_volcoll(self, volume_id, volcoll_id):
+        api = "volumes/" + str(volume_id)
+        data = {'data': {"volcoll_id": volcoll_id
+                         }
+                }
+        r = self.put(api, data)
+        return r
+
+    def snapcoll_create(self, snapcoll_name, volcoll_id):
+        data = {'data': {"name": snapcoll_name,
+                         "volcoll_id": volcoll_id
+                         }
+                }
+        api = 'snapshot_collections'
+        r = self.post(api, data)
+        return r
+
+    def snapcoll_delete(self, snapcoll_id):
+        api = "snapshot_collections/" + str(snapcoll_id)
+        self.delete(api)
 
     @utils.retry(NimbleAPIException, 2, 3)
     def online_vol(self, volume_name, online_flag):
