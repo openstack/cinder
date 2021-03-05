@@ -3403,7 +3403,7 @@ class PowerMaxRest(object):
                 message=exception_message)
         else:
             return snapshots[0].get('snap_id') if self.is_snap_id else (
-                snapshots[0].get('generation'))
+                self.utils.convert_to_string(snapshots[0].get('generation')))
 
     def get_major_minor_ucode(self, array):
         """Get the major and minor parts of the ucode

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    PowerMax driver `bug #1938572
+    <https://bugs.launchpad.net/cinder/+bug/1938572>`_ :
+    Legacy PowerMax OS fix to convert an int to a string if the generation
+    of snapVX is returned as an int from REST so that a 0  does not equate
+    to False in python.
