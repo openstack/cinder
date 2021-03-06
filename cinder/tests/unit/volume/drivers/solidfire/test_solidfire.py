@@ -349,11 +349,14 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'attributes': {'uuid': f_uuid[1]},
                              'qos': None,
                              'iqn': test_name}]}}
-            if params and params['startVolumeID']:
+            if params and params.get('startVolumeID', None):
                 volumes = result['result']['volumes']
-                selected_volumes = [v for v in volumes if v.get('volumeID')
-                                    != params['startVolumeID']]
+                selected_volumes = [v for v in volumes if v.get('volumeID') !=
+                                    params['startVolumeID']]
                 result['result']['volumes'] = selected_volumes
+            else:
+                result = {'result': {'volumes': []}}
+
             return result
         elif method == 'DeleteSnapshot':
             return {'result': {}}
