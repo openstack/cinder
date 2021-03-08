@@ -43,7 +43,7 @@ Response Parameters
 
    - transfer: transfer
    - volume_id: volume_id
-   - id: id
+   - id: transfer_obj_id
    - links: links
    - name: name
 
@@ -101,7 +101,7 @@ Response Parameters
    - links: links
    - created_at: created_at
    - volume_id: volume_id
-   - id: id
+   - id: transfer_obj_id
    - name: name
 
 Response Example
@@ -141,7 +141,7 @@ Response Parameters
 .. rest_parameters:: parameters.yaml
 
    - volume_id: volume_id
-   - id: id
+   - id: transfer_obj_id
    - links: links
    - name: name
 
@@ -184,7 +184,7 @@ Response Parameters
 
    - created_at: created_at
    - volume_id: volume_id
-   - id: id
+   - id: transfer_obj_id
    - links: links
    - name: name
 
@@ -250,7 +250,7 @@ Response Parameters
    - transfers: transfers
    - created_at: created_at
    - volume_id: volume_id
-   - id: id
+   - id: transfer_obj_id
    - links: links
    - name: name
 
