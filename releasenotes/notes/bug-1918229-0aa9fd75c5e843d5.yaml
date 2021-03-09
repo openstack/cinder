@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Nimble driver `bug #1918229
+    <https://bugs.launchpad.net/cinder/+bug/1918229>`_: Corrected an issue
+    where the Nimble storage driver was inaccurately determining that there
+    was no free space left in the storage array. The driver now relies on the
+    storage array to report the amount of free space.

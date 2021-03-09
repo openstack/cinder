@@ -382,15 +382,11 @@ class NimbleBaseVolumeDriver(san.SanDriver):
                                               'array is invalid'))
             total_capacity = (group_info['usable_capacity_bytes'] /
                               float(units.Gi))
-            used_space = ((group_info['compressed_vol_usage_bytes'] +
-                          group_info['compressed_snap_usage_bytes'] +
-                          group_info['unused_reserve_bytes']) /
+            free_space = (group_info['free_space'] /
                           float(units.Gi))
-            free_space = total_capacity - used_space
             LOG.debug('total_capacity=%(capacity)f '
-                      'used_space=%(used)f free_space=%(free)f',
+                      'free_space=%(free)f',
                       {'capacity': total_capacity,
-                       'used': used_space,
                        'free': free_space})
 
             backend_name = self.configuration.safe_get(
