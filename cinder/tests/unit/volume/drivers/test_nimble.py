@@ -167,6 +167,9 @@ FAKE_GET_VOL_INFO_REVERT = {'name': 'testvolume',
                             'agent_type': 'openstack',
                             'last_snap': {'snap_id': fake.SNAPSHOT_ID}}
 
+FAKE_SNAP_INFO_REVERT = {'name': 'testsnap',
+                         'id': fake.SNAPSHOT2_ID}
+
 FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE = exception.VolumeBackendAPIException(
     "Volume testvolume not found")
 
@@ -1274,17 +1277,20 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
             FAKE_GET_VOL_INFO_REVERT)
         self.mock_client_service.get_netconfig.return_value = (
             FAKE_POSITIVE_NETCONFIG_RESPONSE)
+        self.mock_client_service.get_snap_info.return_value = (
+            FAKE_SNAP_INFO_REVERT)
         ctx = context.get_admin_context()
         self.driver.revert_to_snapshot(ctx,
                                        {'id': fake.VOLUME_ID,
                                         'size': 1,
                                         'name': 'testvolume'},
-                                       {'id': fake.SNAPSHOT_ID,
+                                       {'id': fake.SNAPSHOT2_ID,
+                                        'name': 'testsnap',
                                         'volume_id': fake.VOLUME_ID})
         expected_calls = [mock.call.online_vol('testvolume', False),
                           mock.call.volume_restore('testvolume',
                           {'data': {'id': fake.VOLUME_ID,
-                           'base_snap_id': fake.SNAPSHOT_ID}}),
+                           'base_snap_id': fake.SNAPSHOT2_ID}}),
                           mock.call.online_vol('testvolume', True)]
         self.mock_client_service.assert_has_calls(expected_calls)
 
@@ -1301,6 +1307,8 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
             FAKE_GET_VOL_INFO_REVERT)
         self.mock_client_service.get_netconfig.return_value = (
             FAKE_POSITIVE_NETCONFIG_RESPONSE)
+        self.mock_client_service.get_snap_info.return_value = (
+            FAKE_SNAP_INFO_REVERT)
         ctx = context.get_admin_context()
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.revert_to_snapshot, ctx,
@@ -1308,6 +1316,7 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
                            'size': 1,
                            'name': 'testvolume'},
                           {'id': fake.SNAPSHOT_ID,
+                           'name': 'testsnap',
                            'volume_id': fake.VOLUME_ID})
 
 
