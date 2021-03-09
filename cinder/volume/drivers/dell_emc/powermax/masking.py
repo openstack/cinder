@@ -575,47 +575,64 @@ class PowerMaxMasking(object):
 
         return child_sg_name, msg
 
-    @coordination.synchronized(
-        "emc-sg-{source_storagegroup_name}-{serial_number}")
-    @coordination.synchronized(
-        "emc-sg-{target_storagegroup_name}-{serial_number}")
     def move_volume_between_storage_groups(
-            self, serial_number, device_id, source_storagegroup_name,
-            target_storagegroup_name, extra_specs, force=False,
+            self, serial_number, device_id, source_storage_group_name,
+            target_storage_group_name, extra_specs, force=False,
             parent_sg=None):
         """Move a volume between storage groups.
 
         :param serial_number: the array serial number
         :param device_id: the device id
-        :param source_storagegroup_name: the source sg
-        :param target_storagegroup_name: the target sg
+        :param source_storage_group_name: the source sg
+        :param target_storage_group_name: the target sg
         :param extra_specs: the extra specifications
         :param force: optional Force flag required for replicated vols
         :param parent_sg: optional Parent storage group
         """
-        self._check_child_storage_group_exists(
-            device_id, serial_number, target_storagegroup_name,
-            extra_specs, parent_sg)
-        num_vol_in_sg = self.rest.get_num_vols_in_sg(
-            serial_number, source_storagegroup_name)
-        LOG.debug("There are %(num_vol)d volumes in the "
-                  "storage group %(sg_name)s.",
-                  {'num_vol': num_vol_in_sg,
-                   'sg_name': source_storagegroup_name})
-        self.rest.move_volume_between_storage_groups(
-            serial_number, device_id, source_storagegroup_name,
-            target_storagegroup_name, extra_specs, force)
-        if num_vol_in_sg == 1:
-            # Check if storage group is a child sg
-            parent_sg_name = self.get_parent_sg_from_child(
-                serial_number, source_storagegroup_name)
-            if parent_sg_name:
-                self.rest.remove_child_sg_from_parent_sg(
-                    serial_number, source_storagegroup_name, parent_sg_name,
-                    extra_specs)
-            # Last volume in the storage group - delete sg.
-            self.rest.delete_storage_group(
-                serial_number, source_storagegroup_name)
+        if source_storage_group_name.lower() == (
+                target_storage_group_name.lower()):
+            LOG.info(
+                "Source storage group %(src)s and target storage "
+                "group %(tgt)s are the same, no move operation "
+                "required.",
+                {'src': source_storage_group_name,
+                 'tgt': target_storage_group_name})
+            return
+
+        @coordination.synchronized(
+            "emc-sg-{source_storage_group_name}-{serial_number}")
+        @coordination.synchronized(
+            "emc-sg-{target_storage_group_name}-{serial_number}")
+        def do_move_volume_between_storage_groups(
+                serial_number, source_storage_group_name,
+                target_storage_group_name):
+            self._check_child_storage_group_exists(
+                device_id, serial_number, target_storage_group_name,
+                extra_specs, parent_sg)
+            num_vol_in_sg = self.rest.get_num_vols_in_sg(
+                serial_number, source_storage_group_name)
+            LOG.debug("There are %(num_vol)d volumes in the "
+                      "storage group %(sg_name)s.",
+                      {'num_vol': num_vol_in_sg,
+                       'sg_name': source_storage_group_name})
+            self.rest.move_volume_between_storage_groups(
+                serial_number, device_id, source_storage_group_name,
+                target_storage_group_name, extra_specs, force)
+            if num_vol_in_sg == 1:
+                # Check if storage group is a child sg
+                parent_sg_name = self.get_parent_sg_from_child(
+                    serial_number, source_storage_group_name)
+                if parent_sg_name:
+                    self.rest.remove_child_sg_from_parent_sg(
+                        serial_number, source_storage_group_name,
+                        parent_sg_name, extra_specs)
+                # Last volume in the storage group - delete sg.
+                self.rest.delete_storage_group(
+                    serial_number, source_storage_group_name)
+
+        do_move_volume_between_storage_groups(
+            serial_number, source_storage_group_name,
+            target_storage_group_name)
 
     def _check_port_group(self, serial_number, portgroup_name):
         """Check that you can get a port group.
