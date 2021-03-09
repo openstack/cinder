@@ -5411,6 +5411,51 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                     if 'CMMVC7050E' not in e.stderr:
                         raise
 
+    @ddt.data(('IOPs_limit', "50"), ('bandwidth_limit_MB', "100"))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_pool_volumes')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsthrottle')
+    @ddt.unpack
+    def test_storwize_svc_max_pool_throttle_rate(self, fake_throttle_name,
+                                                 fake_throttle_value,
+                                                 io_throttles,
+                                                 get_pool_volumes):
+        pools = _get_test_pool(get_all=True)
+        for pool in pools:
+            vol_throttles = []
+            expected_throttle_value = 0
+            if 'openstack' == pool:
+                # Create volumes in the pool 'openstack'
+                host = 'openstack@svc#%s' % pool
+                vol1 = testutils.create_volume(
+                    self.ctxt, host=host,
+                    volume_type_id=self.vt['id'])
+                self.driver.create_volume(vol1)
+                self._assert_vol_exists(vol1['name'], True)
+
+                vol2 = testutils.create_volume(
+                    self.ctxt, host=host,
+                    volume_type_id=self.vt['id'])
+                self.driver.create_volume(vol2)
+                self._assert_vol_exists(vol1['name'], True)
+
+                # Set io_throttle values to volumes
+                vol_throttles = [
+                    {'object_name': vol1.name, 'IOPs_limit': '20',
+                     'bandwidth_limit_MB': '40'},
+                    {'object_name': vol2.name, 'IOPs_limit': '30',
+                     'bandwidth_limit_MB': '60'}]
+                expected_throttle_value = int(fake_throttle_value)
+
+            get_pool_volumes.return_value = [vol1, vol2]
+            io_throttles.return_value = vol_throttles
+            iothrottle_value = (
+                self.driver._helpers.get_pool_max_throttle_rate_vdisk(
+                    pool, fake_throttle_name))
+            # Check the sum of throttle values set to volumes from a pool
+            self.assertEqual(expected_throttle_value, iothrottle_value)
+            self.assertTrue(get_pool_volumes.called)
+            self.assertTrue(io_throttles.called)
+
     def test_storwize_svc_unicode_host_and_volume_names(self):
         # We'll check with iSCSI only - nothing protocol-dependent here
         self.driver.do_setup(None)
