@@ -1637,34 +1637,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual((None, None), result)
         mock_create_cg.assert_called_with(mock_context, mock_group)
         self.assertTrue(self.array.create_pgroup_snapshot.called)
-        self.assertEqual(num_volumes, self.array.copy_volume.call_count)
-        self.assertEqual(num_volumes, self.array.set_pgroup.call_count)
-        self.assertTrue(self.array.destroy_pgroup.called)
-
-    @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
-    def test_create_consistencygroup_from_cg_with_error(self, mock_create_cg):
-        num_volumes = 5
-        mock_context = mock.MagicMock()
-        mock_group = mock.MagicMock()
-        mock_source_cg = mock.MagicMock()
-        mock_volumes = [mock.MagicMock() for i in range(num_volumes)]
-        mock_source_vols = [mock.MagicMock() for i in range(num_volumes)]
-
-        self.array.copy_volume.side_effect = FakePureStorageHTTPError()
-
-        self.assertRaises(
-            FakePureStorageHTTPError,
-            self.driver.create_consistencygroup_from_src,
-            mock_context,
-            mock_group,
-            mock_volumes,
-            source_cg=mock_source_cg,
-            source_vols=mock_source_vols
-        )
-        mock_create_cg.assert_called_with(mock_context, mock_group)
-        self.assertTrue(self.array.create_pgroup_snapshot.called)
-        # Make sure that the temp snapshot is cleaned up even when copying
-        # the volume fails!
         self.assertTrue(self.array.destroy_pgroup.called)
 
     @mock.patch(BASE_DRIVER_OBJ + ".delete_volume", autospec=True)
