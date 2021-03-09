@@ -137,8 +137,6 @@ class HBSDCommon():
             'portals': {},
         }
 
-        self._stats = {}
-
     def create_ldev(self, size):
         """Create an LDEV and return its LDEV number."""
         raise NotImplementedError()
@@ -331,11 +329,10 @@ class HBSDCommon():
                 backend_state='down'))
             data["pools"].append(single_pool)
             LOG.debug("Updating volume status. (%s)", data)
-            self._stats = data
             utils.output_log(
                 MSG.POOL_INFO_RETRIEVAL_FAILED,
                 pool=self.conf.hitachi_pool)
-            return
+            return data
         single_pool.update(dict(
             total_capacity_gb=total_capacity,
             free_capacity_gb=free_capacity,
@@ -349,13 +346,7 @@ class HBSDCommon():
         single_pool.update(dict(backend_state='up'))
         data["pools"].append(single_pool)
         LOG.debug("Updating volume status. (%s)", data)
-        self._stats = data
-
-    def get_volume_stats(self, refresh=False):
-        """Return properties, capabilities and current states of the driver."""
-        if refresh:
-            self.update_volume_stats()
-        return self._stats
+        return data
 
     def discard_zero_page(self, volume):
         """Return the volume's no-data pages to the storage pool."""

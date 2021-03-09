@@ -104,14 +104,14 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
     def local_path(self, volume):
         pass
 
-    def get_volume_stats(self, refresh=False):
+    def _update_volume_stats(self):
         """Return properties, capabilities and current states of the driver."""
-        data = self.common.get_volume_stats(refresh)
+        data = self.common.update_volume_stats()
         if 'pools' in data:
             data["pools"][0]["filter_function"] = self.get_filter_function()
             data["pools"][0]["goodness_function"] = (
                 self.get_goodness_function())
-        return data
+        self._stats = data
 
     @volume_utils.trace
     def update_migrated_volume(
