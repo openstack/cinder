@@ -50,7 +50,7 @@ Response Parameters
    - volume_id: volume_id
    - id: id
    - links: links
-   - name: name
+   - name: transfer_name
 
 Response Example
 ----------------

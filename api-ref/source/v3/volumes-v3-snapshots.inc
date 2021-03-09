@@ -417,7 +417,7 @@ Request
    - snapshot_id: snapshot_id_path
    - snapshot: snapshot_obj
    - description: description_snap
-   - name: name
+   - name: snapshot_name
 
 Request Example
 ---------------
