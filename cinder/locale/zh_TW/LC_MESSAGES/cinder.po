@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-01-29 17:54+0000\n"
+"POT-Creation-Date: 2021-03-10 05:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -203,11 +203,6 @@ msgstr "API 回應：%s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "此方法不支援 API %(version)s 版。"
 
-msgid ""
-"About to delete child projects having non-zero quota. This should not be "
-"performed"
-msgstr "即將刪除具有非零配額的子項專案。不應執行此動作"
-
 msgid "Access list not available for public volume types."
 msgstr "存取清單不可用於公用磁區類型。"
 
@@ -264,11 +259,6 @@ msgstr ""
 
 msgid "An unknown exception occurred."
 msgstr "發生一個未知例外"
-
-msgid ""
-"An user with a token scoped to a subproject is not allowed to see the quota "
-"of its parents."
-msgstr "不容許具備已限定為某個子專案之記號的使用者來查看其母項的配額。"
 
 msgid "Append port group description error."
 msgstr "附加埠群組說明時發生錯誤。"
@@ -2300,10 +2290,6 @@ msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "XtremIO %(cur)s 版無效，需要 %(min)s 版或更高版本"
 
 #, python-format
-msgid "Invalid allocated quotas defined for the following project quotas: %s"
-msgstr "為下列專案配額定義的已配置配額無效：%s"
-
-#, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "連接模式 '%(mode)s' 不適用於磁區 %(volume_id)s。"
 
@@ -2513,9 +2499,6 @@ msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr "發出失效接手失敗，因為未正確配置抄寫。"
 
-msgid "Keystone version 3 or greater must be used to get nested quota support."
-msgstr "Keystone 第 3 版或更高版本必須用於取得巢狀配額支援。"
-
 msgid "LUN map overflow on every channel."
 msgstr "在每個通道上，LUN 對映溢位。"
 
@@ -2689,13 +2672,6 @@ msgstr "必須實作 schedule_get_pools"
 
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "必須將 WWPN 或主機傳遞給 lsfabric。"
-
-msgid ""
-"Must run this command as cloud admin using a Keystone policy.json which "
-"allows cloud admin to list and get any project."
-msgstr ""
-"必須以雲端管理者身分使用 Keystone policy.json 來執行此指令，此 policy.json 容"
-"許雲端管理者列出和取得任何專案。"
 
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
@@ -2913,12 +2889,6 @@ msgstr "只能每隔 %(unit_string)s 向 %(uri)s 提出 %(value)s 個 %(verb)s �
 msgid "Only one limit can be set in a QoS spec."
 msgstr "在一個服務品質規格中，只能設定一個限制。"
 
-msgid ""
-"Only users with token scoped to immediate parents or root projects are "
-"allowed to see its children quotas."
-msgstr ""
-"只容許具備已限定為原生母項或 root 專案範圍之記號的使用者來查看其子項配額。"
-
 msgid "Only volumes managed by OpenStack can be unmanaged."
 msgstr "只能取消管理由 OpenStack 進行管理的磁區。"
 
@@ -2976,10 +2946,6 @@ msgstr "未設定儲存區名稱。"
 
 msgid "Project ID"
 msgstr "專案識別號"
-
-#, python-format
-msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
-msgstr "未針對巢狀配額正確設定專案配額：%(reason)s。"
 
 msgid "Protection Group not ready."
 msgstr "保護群組尚未備妥。"
@@ -3041,14 +3007,6 @@ msgstr "已超出配額：錯誤碼 = %(code)s"
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "找不到專案 %(project_id)s 的配額。"
-
-#, python-format
-msgid ""
-"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
-"%(limit)d is less than in-use value of %(used)d"
-msgstr ""
-"針對資源 '%(res)s'，專案 '%(proj)s' 的配額限制無效：限制 %(limit)d 小於使用中"
-"的值 %(used)d"
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -3298,11 +3256,6 @@ msgstr "設定配對次要存取時發生錯誤。"
 msgid "Sets thin provisioning."
 msgstr "設定精簡供應。"
 
-msgid ""
-"Show operations can only be made to projects in the same hierarchy of the "
-"project in which users are scoped to."
-msgstr "顯示作業只能對將使用者限定範圍之相同專案階層中的專案執行。"
-
 msgid "Size"
 msgstr "容量"
 
@@ -3422,15 +3375,6 @@ msgstr "未配置儲存區。"
 #, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "找不到儲存體設定檔 %(storage_profile)s。"
-
-#, python-format
-msgid ""
-"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
-"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
-"for one or more of the following projects: '%(child_ids)s'"
-msgstr ""
-"針對資源 '%(res)s'，子項總用量 '%(sum)s' 大於專案 '%(proj)s' 的可用配額 "
-"'%(free)s'。請降低下列一個以上專案的限制或用量：'%(child_ids)s'"
 
 msgid "Switch over pair error."
 msgstr "切換配對時發生錯誤。"
@@ -4011,16 +3955,6 @@ msgstr "不受支援的磁區格式：%s"
 msgid "Update QoS policy error."
 msgstr "更新服務品質原則時發生錯誤。"
 
-msgid ""
-"Update and delete quota operations can only be made by an admin of immediate "
-"parent or by the CLOUD admin."
-msgstr "更新和刪除配額作業只能由原生母項的管理者或CLOUD 管理者來執行。"
-
-msgid ""
-"Update and delete quota operations can only be made to projects in the same "
-"hierarchy of the project in which users are scoped to."
-msgstr "更新和刪除配額作業只能對將使用者限定範圍之相同專案階層中的專案執行。"
-
 msgid "Updated At"
 msgstr "已更新"
 
@@ -4395,9 +4329,6 @@ msgstr "等待同步失敗。執行中狀態：%s。"
 
 msgid "We should not do switch over on primary array."
 msgstr "我們不應切換到主要陣列上。"
-
-msgid "XtremIO not configured correctly, no iscsi portals found"
-msgstr "未正確地配置 XtremIO，找不到 iSCSI 入口網站"
 
 msgid "XtremIO not initialized correctly, no clusters found"
 msgstr "未正確地起始設定 XtremIO，找不到叢集"

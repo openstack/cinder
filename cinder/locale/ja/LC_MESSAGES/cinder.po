@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-02-12 04:01+0000\n"
+"POT-Creation-Date: 2021-03-10 05:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -274,13 +274,6 @@ msgstr "API 応答: %s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "このメソッドでは API バージョン %(version)s はサポートされていません。"
 
-msgid ""
-"About to delete child projects having non-zero quota. This should not be "
-"performed"
-msgstr ""
-"ゼロでないクォータを持つ子プロジェクトを削除しようとしています。これは実施す"
-"べきではありません。"
-
 msgid "Access list not available for public volume types."
 msgstr "パブリックボリュームタイプではアクセスリストを使用できません。"
 
@@ -347,13 +340,6 @@ msgstr "不明なエラーが発生しました。"
 
 msgid "An unknown exception occurred."
 msgstr "不明な例外が発生しました。"
-
-msgid ""
-"An user with a token scoped to a subproject is not allowed to see the quota "
-"of its parents."
-msgstr ""
-"サブプロジェクトに割り当てられたトークンを持つユーザーは、親のクォータを参照"
-"することはできません。"
 
 msgid "Append port group description error."
 msgstr "ポートグループの説明追加のエラー。"
@@ -3017,11 +3003,6 @@ msgstr ""
 "XtremIO バージョン %(cur)s は無効です。バージョン %(min)s 以上が必要です"
 
 #, python-format
-msgid "Invalid allocated quotas defined for the following project quotas: %s"
-msgstr ""
-"以下のプロジェクトのクォータに定義した割り当て済みのクォータが無効です: %s"
-
-#, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "接続モード '%(mode)s' はボリューム %(volume_id)s には無効です。"
 
@@ -3273,11 +3254,6 @@ msgstr "再試行可能な Kaminario 例外: %(reason)s"
 #, python-format
 msgid "KaminarioCinderDriver failure: %(reason)s"
 msgstr "Kaminario Cinder ドライバー障害です: %(reason)s"
-
-msgid "Keystone version 3 or greater must be used to get nested quota support."
-msgstr ""
-"ネストされたクォータを使用するには、Keystone のバージョン 3 以降を使用する必"
-"要があります。"
 
 msgid "LUN doesn't exist."
 msgstr "LUN が存在しません。"
@@ -3531,14 +3507,6 @@ msgstr "schedule_get_pools を実装する必要があります"
 
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "wwpn またはホストを lsfabric に渡す必要があります。"
-
-msgid ""
-"Must run this command as cloud admin using a Keystone policy.json which "
-"allows cloud admin to list and get any project."
-msgstr ""
-"クラウド管理者があらゆるプロジェクトのリストと取得を行える Keystone の "
-"policy.json を使用して、クラウド管理者としてこのコマンドを実行する必要があり"
-"ます。"
 
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
@@ -3814,13 +3782,6 @@ msgstr ""
 msgid "Only one limit can be set in a QoS spec."
 msgstr "QoS 仕様に設定できる制限は 1 つのみです。"
 
-msgid ""
-"Only users with token scoped to immediate parents or root projects are "
-"allowed to see its children quotas."
-msgstr ""
-"直近の親またはルートプロジェクトに割り当てられたトークンを持つユーザーのみ"
-"が、子のクォータを参照することができます。"
-
 msgid "Only volumes managed by OpenStack can be unmanaged."
 msgstr "非管理に設定できるのは、OpenStack が管理するボリュームのみです。"
 
@@ -3901,12 +3862,6 @@ msgstr "Cinder でのプログラミングエラー : %(reason)s"
 msgid "Project ID"
 msgstr "プロジェクト ID"
 
-#, python-format
-msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
-msgstr ""
-"ネストされたクォータに対してプロジェクトのクォータが適切に設定されていませ"
-"ん: %(reason)s"
-
 msgid "Protection Group not ready."
 msgstr "保護グループの準備ができていません。"
 
@@ -3973,14 +3928,6 @@ msgstr "クォータを超過しました: code=%(code)s"
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "プロジェクト %(project_id)s のクォータが見つかりませんでした。"
-
-#, python-format
-msgid ""
-"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
-"%(limit)d is less than in-use value of %(used)d"
-msgstr ""
-"リソース '%(res)s' のプロジェクト'%(proj)s' に関するクォーター上限が無効で"
-"す : %(limit)d の上限が %(used)d の使用中の値よりも小さくなっています"
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -4293,13 +4240,6 @@ msgstr ""
 "形式が無効であるため、共有 %s は無視されました。address:/export 形式でなけれ"
 "ばなりません。nas_host および nas_share_path の設定を確認してください。"
 
-msgid ""
-"Show operations can only be made to projects in the same hierarchy of the "
-"project in which users are scoped to."
-msgstr ""
-"処理の表示を行えるのは、ユーザーが割り当てられたプロジェクトと同じ階層にある"
-"プロジェクトに限られます。"
-
 msgid "Size"
 msgstr "サイズ"
 
@@ -4490,16 +4430,6 @@ msgid ""
 msgstr ""
 "%(num_vols)s ボリュームと %(num_cgs)s 整合性グループの、クラスター "
 "%(current)s から %(new)s への名前変更が正常に行われました。"
-
-#, python-format
-msgid ""
-"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
-"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
-"for one or more of the following projects: '%(child_ids)s'"
-msgstr ""
-"子の使用量の合計 '%(sum)s' がリソース '%(res)s' のプロジェクト'%(proj)s'  に"
-"関するクォータ '%(free)s' よりも大きくなっています。以下のプロジェクトの 1 つ"
-"以上について上限または使用量を減らしてください: '%(child_ids)s'"
 
 msgid "Switch over pair error."
 msgstr "ペア切り替えのエラー。"
@@ -5241,20 +5171,6 @@ msgstr "ボリューム形式はサポートされていません: %s "
 msgid "Update QoS policy error."
 msgstr "QoS ポリシー更新のエラー。"
 
-msgid ""
-"Update and delete quota operations can only be made by an admin of immediate "
-"parent or by the CLOUD admin."
-msgstr ""
-"クォータ処理の更新と削除を行えるのは、直近の親の管理者または CLOUD 管理者のい"
-"ずれかです。"
-
-msgid ""
-"Update and delete quota operations can only be made to projects in the same "
-"hierarchy of the project in which users are scoped to."
-msgstr ""
-"クォータ処理の更新と削除を行えるのは、ユーザーが割り当てられたプロジェクトと"
-"同じ階層にあるプロジェクトに限られます。"
-
 msgid "Updated At"
 msgstr "最終更新"
 
@@ -5738,9 +5654,6 @@ msgstr "%(type)s のワーカー %(id)s はすでに存在します。"
 #, python-format
 msgid "Worker with %s could not be found."
 msgstr "%s の ID を持つワーカーを見つけることができませんでした。"
-
-msgid "XtremIO not configured correctly, no iscsi portals found"
-msgstr "XtremIO は正しく設定されていません。iscsi ポータルが見つかりません"
 
 msgid "XtremIO not initialized correctly, no clusters found"
 msgstr "XtremIO は正しく初期化されていません。クラスターが見つかりません"

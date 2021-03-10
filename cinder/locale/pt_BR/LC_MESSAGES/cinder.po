@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-01-29 17:54+0000\n"
+"POT-Creation-Date: 2021-03-10 05:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -217,13 +217,6 @@ msgstr "Resposta da API: %s"
 msgid "API version %(version)s is not supported on this method."
 msgstr "A versão da API %(version)s não é suportada nesse método."
 
-msgid ""
-"About to delete child projects having non-zero quota. This should not be "
-"performed"
-msgstr ""
-"Prestes a excluir projetos filhos que têm cota diferente de zero. Isso não "
-"deve ser executado"
-
 msgid "Access list not available for public volume types."
 msgstr "Lista de acesso não disponível para tipos de volume público."
 
@@ -285,13 +278,6 @@ msgstr ""
 
 msgid "An unknown exception occurred."
 msgstr "Ocorreu uma exceção desconhecida."
-
-msgid ""
-"An user with a token scoped to a subproject is not allowed to see the quota "
-"of its parents."
-msgstr ""
-"Um usuário com escopo do token definido para um subprojeto não tem permissão "
-"para ver a quota de seus pais."
 
 msgid "Append port group description error."
 msgstr "Erro ao anexar descrição do grupo de portas."
@@ -2484,11 +2470,6 @@ msgstr ""
 "Versão XtremIO %(cur)s inválida, versão %(min)s ou posterior é necessária"
 
 #, python-format
-msgid "Invalid allocated quotas defined for the following project quotas: %s"
-msgstr ""
-"Cotas alocadas inválidas definidas para as cotas de projeto a seguir: %s"
-
-#, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "Modo de anexamento inválido '%(mode)s' para o volume %(volume_id)s."
 
@@ -2711,11 +2692,6 @@ msgstr ""
 "Falha ao emitir um failover porque a replicação não está configurada "
 "corretamente."
 
-msgid "Keystone version 3 or greater must be used to get nested quota support."
-msgstr ""
-"O Keystone versão 3 ou maior deve ser usado para obter o suporte de cota "
-"aninhado."
-
 msgid "LUN map overflow on every channel."
 msgstr "Estouro do mapa de LUN em todos os canais."
 
@@ -2911,14 +2887,6 @@ msgstr "Deve implementar schedule_get_pools"
 
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "É necessário passar wwpn ou host para lsfabric."
-
-msgid ""
-"Must run this command as cloud admin using a Keystone policy.json which "
-"allows cloud admin to list and get any project."
-msgstr ""
-"Deve-se executar esse comando como um administrador em nuvem usando policy."
-"json do Keystone, que permite que o administrador em nuvem liste e obtenha "
-"qualquer projeto. "
 
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
@@ -3154,13 +3122,6 @@ msgstr ""
 msgid "Only one limit can be set in a QoS spec."
 msgstr "Somente um limite pode ser configurado em uma especificação de QoS."
 
-msgid ""
-"Only users with token scoped to immediate parents or root projects are "
-"allowed to see its children quotas."
-msgstr ""
-"Somente usuários com escopo do token definido para pais imediatos ou "
-"projetos raiz têm permissão para ver suas cotas filhas."
-
 msgid "Only volumes managed by OpenStack can be unmanaged."
 msgstr "Somente volumes gerenciados pelo OpenStack podem ser não gerenciados."
 
@@ -3221,12 +3182,6 @@ msgstr "O nome dos conjuntos não está configurado."
 
 msgid "Project ID"
 msgstr "ID do Projeto"
-
-#, python-format
-msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
-msgstr ""
-"As Cotas de Projeto não estão configuradas corretamente para as cotas "
-"aninhadas:  %(reason)s."
 
 msgid "Protection Group not ready."
 msgstr "Grupo de Proteção não pronto."
@@ -3290,14 +3245,6 @@ msgstr "Quota excedida: codigo=%(code)s"
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "A cota para o projeto %(project_id)s não pôde ser localizada."
-
-#, python-format
-msgid ""
-"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
-"%(limit)d is less than in-use value of %(used)d"
-msgstr ""
-"Limite de cota inválido para o projeto '%(proj)s'para o recurso '%(res)s': O "
-"limite de %(limit)d é menor que o valor em uso de  %(used)d"
 
 #, python-format
 msgid "Quota usage for project %(project_id)s could not be found."
@@ -3559,13 +3506,6 @@ msgstr "Erro de configuração de acesso secundário do par."
 msgid "Sets thin provisioning."
 msgstr "Configura thin provisioning."
 
-msgid ""
-"Show operations can only be made to projects in the same hierarchy of the "
-"project in which users are scoped to."
-msgstr ""
-"As operações de exibição podem ser feitas somente para projetos na mesma "
-"hierarquia do projeto no qual os usuários estão com escopo definido."
-
 msgid "Size"
 msgstr "Tamanho"
 
@@ -3700,16 +3640,6 @@ msgstr "O conjunto de armazenamento não está configurado."
 #, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Perfil de armazenamento: %(storage_profile)s não encontrado."
-
-#, python-format
-msgid ""
-"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
-"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
-"for one or more of the following projects: '%(child_ids)s'"
-msgstr ""
-"A soma de uso filho  '%(sum)s' é maior que a cota livre de '%(free)s' para o "
-"projeto  '%(proj)s' do recurso '%(res)s'. Diminua o limite ou o uso de um ou "
-"mais dos projetos a seguir: '%(child_ids)s'"
 
 msgid "Switch over pair error."
 msgstr "Erro ao executar switch over de par."
@@ -4353,21 +4283,6 @@ msgstr "Formato de volume não suportado: %s "
 msgid "Update QoS policy error."
 msgstr "Erro ao atualizar política de QoS."
 
-msgid ""
-"Update and delete quota operations can only be made by an admin of immediate "
-"parent or by the CLOUD admin."
-msgstr ""
-"As operações de atualização e exclusão de cota podem ser feitas somente por "
-"um administrador de pai imediato ou pelo administrador CLOUD."
-
-msgid ""
-"Update and delete quota operations can only be made to projects in the same "
-"hierarchy of the project in which users are scoped to."
-msgstr ""
-"As operações de atualização e exclusão de cota podem ser feitas somente para "
-"projetos na mesma hierarquia do projeto no qual os usuários estão com escopo "
-"definido."
-
 msgid "Updated At"
 msgstr "Atualizado em"
 
@@ -4773,9 +4688,6 @@ msgstr "Falha ao aguardar sincronização. Status de execução: %s."
 
 msgid "We should not do switch over on primary array."
 msgstr "Não é recomendável executar switch over na matriz primária."
-
-msgid "XtremIO not configured correctly, no iscsi portals found"
-msgstr "XtremIO não configurado corretamente; nenhum portal iscsi localizado"
 
 msgid "XtremIO not initialized correctly, no clusters found"
 msgstr "XtremIO não inicializado corretamente, nenhum cluster localizado"
