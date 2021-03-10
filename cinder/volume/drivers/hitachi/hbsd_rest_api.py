@@ -27,6 +27,7 @@ from oslo_utils import timeutils
 import requests
 
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
+from cinder.volume import volume_utils
 
 _LOCK_WAITTIME = 2 * 60 * 60
 _EXEC_MAX_WAITTIME = 30
@@ -234,6 +235,7 @@ class RestApiClient():
             }
             return req
 
+    @volume_utils.trace
     def _request(self, method, url, params=None, body=None,
                  async_=False, **kwargs):
         """Transmit the request to REST API server."""
