@@ -3631,6 +3631,22 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
              self.array.create_host],
             self.driver._connect, self.array, vol_name, FC_CONNECTOR)
 
+        self.mock_config.safe_get.return_value = 'oracle-vm-server'
+
+        # Branch where we fail due to invalid version for setting personality
+        self.assertRaises(pure.PureDriverException, self.driver._connect,
+                          self.array, vol_name, FC_CONNECTOR)
+        self.assertTrue(self.array.create_host.called)
+        self.assertFalse(self.array.set_host.called)
+
+        self.array.get_rest_version.return_value = '1.14'
+
+        # Branch where personality is set
+        self.driver._connect(self.array, vol_name, FC_CONNECTOR)
+        self.assertDictEqual(result, real_result)
+        self.array.set_host.assert_called_with(PURE_HOST_NAME,
+                                               personality='oracle-vm-server')
+
     @mock.patch(FC_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected(self, mock_host):
         vol, vol_name = self.new_fake_vol()

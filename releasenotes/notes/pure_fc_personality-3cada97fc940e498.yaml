@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pure Storage driver: Add missing support for ``host_personality`` setting
+    for FC-based hosts
