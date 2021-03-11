@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1906528 <https://bugs.launchpad.net/cinder/+bug/1906528>`_:
+    IBM Spectrum Virtualize Family driver: Fixed issue regarding
+    host-failback and group-failback which impacts storage back-end
+    performance.

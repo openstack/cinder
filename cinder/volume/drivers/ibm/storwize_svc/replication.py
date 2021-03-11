@@ -56,8 +56,21 @@ class StorwizeSVCReplication(object):
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
 
+    @volume_utils.trace
     def replication_failback(self, volume):
-        pass
+        tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
+        rel_info = self.target_helpers.get_relationship_info(tgt_volume)
+        if rel_info:
+            try:
+                self.target_helpers.stop_relationship(tgt_volume, access=True)
+                self.target_helpers.start_relationship(tgt_volume, 'master')
+                return
+            except Exception as e:
+                msg = (_('Unable to fail-back the volume: %(vol)s to the '
+                         'master back-end, error: %(error)s') %
+                       {"vol": volume['name'], "error": six.text_type(e)})
+                LOG.exception(msg)
+                raise exception.VolumeDriverException(message=msg)
 
     def volume_replication_setup(self, context, vref):
         pass
@@ -107,21 +120,6 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])
-
-    def replication_failback(self, volume):
-        tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
-        rel_info = self.target_helpers.get_relationship_info(tgt_volume)
-        if rel_info:
-            try:
-                self.target_helpers.switch_relationship(rel_info['name'],
-                                                        aux=False)
-                return
-            except Exception as e:
-                msg = (_('Unable to fail-back the volume:%(vol)s to the '
-                         'master back-end, error:%(error)s') %
-                       {"vol": volume['name'], "error": e})
-                LOG.exception(msg)
-                raise exception.VolumeDriverException(message=msg)
 
 
 class StorwizeSVCReplicationMetroMirror(
@@ -231,23 +229,6 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
             LOG.exception(msg)
             raise exception.VolumeDriverException(message=msg)
         LOG.debug('leave: volume_replication_setup:volume %s', vref['name'])
-
-    def replication_failback(self, volume):
-        LOG.debug('enter: replication_failback: volume=%(volume)s',
-                  {'volume': volume['name']})
-        tgt_volume = storwize_const.REPLICA_AUX_VOL_PREFIX + volume['name']
-        rel_info = self.target_helpers.get_relationship_info(tgt_volume)
-        if rel_info:
-            try:
-                self.target_helpers.stop_relationship(tgt_volume, access=True)
-                self.target_helpers.start_relationship(tgt_volume, 'master')
-                return
-            except Exception as e:
-                msg = (_('Unable to fail-back the volume:%(vol)s to the '
-                         'master back-end, error:%(error)s') %
-                       {"vol": volume['name'], "error": six.text_type(e)})
-                LOG.exception(msg)
-                raise exception.VolumeDriverException(message=msg)
 
 
 class StorwizeSVCReplicationManager(object):

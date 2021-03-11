@@ -4386,6 +4386,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             volumes_model_update.append(volume_model_update)
         return model_update, volumes_model_update
 
+    @volume_utils.trace
     def _rep_grp_failback(self, ctxt, group, sync_grp=True):
         """Fail back all the volume in the replication group."""
         model_update = {
@@ -4393,59 +4394,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         rccg_name = self._get_rccg_name(group)
 
         try:
-            self._master_backend_helpers.get_system_info()
-        except Exception as ex:
-            msg = (_("Unable to failback group %(rccg)s due to primary is not "
-                     "reachable. error=%(error)s"),
-                   {'rccg': rccg_name, 'error': ex})
-            LOG.error(msg)
-            raise exception.UnableToFailOver(reason=msg)
-
-        rccg = self._helpers.get_rccg(rccg_name)
-        if not rccg:
-            msg = (_("Unable to failback group %(rccg)s due to replication "
-                     "group does not exist on backend."),
-                   {'rccg': rccg_name})
-            LOG.error(msg)
-            raise exception.UnableToFailOver(reason=msg)
-
-        if rccg['relationship_count'] == '0':
-            msg = (_("Unable to failback empty group %(rccg)s"),
-                   {'rccg': rccg['name']})
-            LOG.error(msg)
-            raise exception.UnableToFailOver(reason=msg)
-
-        if rccg['primary'] == 'master':
-            LOG.info("Do not need to fail back group %(rccg)s again due to "
-                     "primary is already master.", {'rccg': rccg['name']})
+            self._aux_backend_helpers.stop_rccg(rccg_name, access=True)
+            self._aux_backend_helpers.start_rccg(rccg_name, primary='master')
             return model_update
-
-        if sync_grp:
-            self._sync_with_aux_grp(ctxt, rccg['name'])
-            self._wait_replica_grp_ready(ctxt, rccg['name'])
-
-        if rccg['cycling_mode'] == 'multi':
-            # This is a gmcv replication group
-            try:
-                self._aux_backend_helpers.stop_rccg(rccg['name'], access=True)
-                self._aux_backend_helpers.start_rccg(rccg['name'],
-                                                     primary='master')
-                return model_update
-            except exception.VolumeBackendAPIException as e:
-                msg = (_('Unable to fail over the group %(rccg)s to the aux '
-                         'back-end, error: %(error)s') %
-                       {"rccg": rccg['name'], "error": e})
-                LOG.exception(msg)
-                raise exception.UnableToFailOver(reason=msg)
-        else:
-            try:
-                self._helpers.switch_rccg(rccg['name'], aux=False)
-            except exception.VolumeBackendAPIException as e:
-                msg = (_('Unable to fail back the group %(rccg)s, error: '
-                         '%(error)s') % {"rccg": rccg['name'], "error": e})
-                LOG.exception(msg)
-                raise exception.UnableToFailOver(reason=msg)
-        return model_update
+        except exception.VolumeBackendAPIException as e:
+            msg = (_('Unable to fail back the group %(rccg)s, error: '
+                     '%(error)s') % {"rccg": rccg_name, "error": e})
+            LOG.exception(msg)
+            raise exception.UnableToFailOver(reason=msg)
 
     @volume_utils.trace
     def _rep_grp_failover(self, ctxt, group):
