@@ -3970,6 +3970,26 @@ class PowerMaxCommonTest(test.TestCase):
                 self.data.test_volume, None)
             self.assertEqual(self.data.rep_extra_specs_metro, extra_specs)
 
+    @mock.patch.object(utils.PowerMaxUtils, 'get_rdf_management_group_name')
+    def test_retype_volume_promotion_get_extra_specs_mgmt_group(self, mck_get):
+        array = self.data.array
+        srp = self.data.srp
+        device_id = self.data.device_id
+        volume = self.data.test_volume
+        volume_name = self.data.volume_id
+        extra_specs = deepcopy(self.data.rep_extra_specs)
+        target_slo = self.data.slo_silver
+        target_workload = self.data.workload
+        target_extra_specs = deepcopy(self.data.extra_specs)
+        target_extra_specs[utils.DISABLECOMPRESSION] = False
+        extra_specs[utils.REP_CONFIG] = self.data.rep_config_async
+        self.common.promotion = True
+        self.common._retype_volume(
+            array, srp, device_id, volume, volume_name, extra_specs,
+            target_slo, target_workload, target_extra_specs)
+        self.common.promotion = False
+        mck_get.assert_called_once_with(extra_specs[utils.REP_CONFIG])
+
     @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
                        return_value=True)
     @mock.patch.object(masking.PowerMaxMasking,
