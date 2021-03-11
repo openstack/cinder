@@ -8,13 +8,13 @@ template: |
       Additional instructions available at
       https://docs.openstack.org/cinder/latest/contributor/releasenotes.html
 
-      Replace this text with content to appear at the top of the section for this
-      release. All of the prelude content is merged together and then rendered
-      separately from the items listed in other parts of the file, so the text
-      needs to be worded so that both the prelude and the other items make sense
-      when read independently. This may mean repeating some details. Not every
-      release note requires a prelude. Usually only notes describing major
-      features or adding release theme details should have a prelude.
+      Replace this text with content to appear at the top of the section for
+      this release. All of the prelude content is merged together and then
+      rendered separately from the items listed in other parts of the file, so
+      the text needs to be worded so that both the prelude and the other items
+      make sense when read independently. This may mean repeating some details.
+      Not every release note requires a prelude. Usually only notes describing
+      major features or adding release theme details should have a prelude.
   features:
     - |
       List new features here, or remove this section.  All of the list items in
@@ -70,7 +70,8 @@ template: |
       text needs to be worded so that it does not depend on any information only
       available in another section, such as the prelude. This may mean repeating
       some details.  Examples for core code fixes, and driver fixes:
-    - `Bug #1889758 <https://bugs.launchpad.net/cinder/+bug/1889758>`_: Fix
+    - |
+      `Bug #1889758 <https://bugs.launchpad.net/cinder/+bug/1889758>`_: Fix
       revert to snapshot not working for non admin users when using the
       snapshot's name.
     - |
