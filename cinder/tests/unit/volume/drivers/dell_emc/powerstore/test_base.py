@@ -22,47 +22,21 @@ from cinder.tests.unit.volume.drivers.dell_emc import powerstore
 class TestBase(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_id_by_name")
-    def test_configuration(self, mock_appliance, mock_chap):
-        mock_appliance.return_value = "A1"
+    def test_configuration(self, mock_chap):
         self.driver.check_for_setup_error()
 
     def test_configuration_rest_parameters_not_set(self):
         self.driver.adapter.client.rest_ip = None
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
-
-    def test_configuration_appliances_not_set(self):
-        self.driver.adapter.appliances = {}
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.check_for_setup_error)
-
-    @mock.patch("requests.request")
-    def test_configuration_appliance_not_found(self, mock_get_request):
-        mock_get_request.return_value = powerstore.MockResponse()
-        error = self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.driver.check_for_setup_error)
-        self.assertIn("not found", error.msg)
-
-    @mock.patch("requests.request")
-    def test_configuration_appliance_bad_status(self, mock_get_request):
-        mock_get_request.return_value = powerstore.MockResponse(rc=400)
-        error = self.assertRaises(exception.VolumeBackendAPIException,
-                                  self.driver.check_for_setup_error)
-        self.assertIn("Failed to query PowerStore appliances.", error.msg)
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_id_by_name")
-    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_metrics")
+                "PowerStoreClient.get_metrics")
     def test_update_volume_stats(self,
                                  mock_metrics,
-                                 mock_appliance,
                                  mock_chap):
-        mock_appliance.return_value = "A1"
         mock_metrics.return_value = {
             "physical_total": 2147483648,
             "physical_used": 1073741824,
@@ -72,16 +46,65 @@ class TestBase(powerstore.TestPowerStoreDriver):
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_id_by_name")
     @mock.patch("requests.request")
     def test_update_volume_stats_bad_status(self,
                                             mock_metrics,
-                                            mock_appliance,
                                             mock_chap):
-        mock_appliance.return_value = "A1"
         mock_metrics.return_value = powerstore.MockResponse(rc=400)
         self.driver.check_for_setup_error()
         error = self.assertRaises(exception.VolumeBackendAPIException,
                                   self.driver._update_volume_stats)
-        self.assertIn("Failed to query metrics", error.msg)
+        self.assertIn("Failed to query PowerStore metrics", error.msg)
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    def test_configuration_with_replication(self, mock_chap):
+        replication_device = [
+            {
+                "backend_id": "repl_1",
+                "san_ip": "127.0.0.2",
+                "san_login": "test_1",
+                "san_password": "test_2"
+            }
+        ]
+        self._override_shared_conf("replication_device",
+                                   override=replication_device)
+        self.driver.do_setup({})
+        self.driver.check_for_setup_error()
+        self.assertEqual(2, len(self.driver.adapters))
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    def test_configuration_with_replication_2_rep_devices(self, mock_chap):
+        device = {
+            "backend_id": "repl_1",
+            "san_ip": "127.0.0.2",
+            "san_login": "test_1",
+            "san_password": "test_2"
+        }
+        replication_device = [device] * 2
+        self._override_shared_conf("replication_device",
+                                   override=replication_device)
+        self.driver.do_setup({})
+        error = self.assertRaises(exception.InvalidInput,
+                                  self.driver.check_for_setup_error)
+        self.assertIn("PowerStore driver does not support more than one "
+                      "replication device.", error.msg)
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_chap_config")
+    def test_configuration_with_replication_failed_over(self, mock_chap):
+        replication_device = [
+            {
+                "backend_id": "repl_1",
+                "san_ip": "127.0.0.2",
+                "san_login": "test_1",
+                "san_password": "test_2"
+            }
+        ]
+        self._override_shared_conf("replication_device",
+                                   override=replication_device)
+        self.driver.do_setup({})
+        self.driver.check_for_setup_error()
+        self.driver.active_backend_id = "repl_1"
+        self.assertFalse(self.driver.replication_enabled)

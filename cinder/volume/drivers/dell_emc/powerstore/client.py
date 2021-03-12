@@ -24,24 +24,31 @@ import requests
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils as cinder_utils
 
 
 LOG = logging.getLogger(__name__)
 VOLUME_NOT_MAPPED_ERROR = "0xE0A08001000F"
+SESSION_ALREADY_FAILED_OVER_ERROR = "0xE0201005000C"
 
 
 class PowerStoreClient(object):
-    def __init__(self, configuration):
-        self.configuration = configuration
-        self.rest_ip = None
-        self.rest_username = None
-        self.rest_password = None
-        self.verify_certificate = None
-        self.certificate_path = None
-        self.base_url = None
+    def __init__(self,
+                 rest_ip,
+                 rest_username,
+                 rest_password,
+                 verify_certificate,
+                 certificate_path):
+        self.rest_ip = rest_ip
+        self.rest_username = rest_username
+        self.rest_password = rest_password
+        self.verify_certificate = verify_certificate
+        self.certificate_path = certificate_path
+        self.base_url = "https://%s:/api/rest" % self.rest_ip
         self.ok_codes = [
             requests.codes.ok,
             requests.codes.created,
+            requests.codes.accepted,
             requests.codes.no_content,
             requests.codes.partial_content
         ]
@@ -53,28 +60,16 @@ class PowerStoreClient(object):
             verify_cert = self.certificate_path
         return verify_cert
 
-    def do_setup(self):
-        self.rest_ip = self.configuration.safe_get("san_ip")
-        self.rest_username = self.configuration.safe_get("san_login")
-        self.rest_password = self.configuration.safe_get("san_password")
-        self.base_url = "https://%s:/api/rest" % self.rest_ip
-        self.verify_certificate = self.configuration.safe_get(
-            "driver_ssl_cert_verify"
-        )
-        if self.verify_certificate:
-            self.certificate_path = (
-                self.configuration.safe_get("driver_ssl_cert_path")
-            )
-
     def check_for_setup_error(self):
         if not all([self.rest_ip, self.rest_username, self.rest_password]):
             msg = _("REST server IP, username and password must be set.")
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.InvalidInput(reason=msg)
 
         # log warning if not using certificates
         if not self.verify_certificate:
             LOG.warning("Verify certificate is not set, using default of "
                         "False.")
+            self.verify_certificate = False
         LOG.debug("Successfully initialized PowerStore REST client. "
                   "Server IP: %(ip)s, username: %(username)s. "
                   "Verify server's certificate: %(verify_cert)s.",
@@ -97,10 +92,9 @@ class PowerStoreClient(object):
         request_params = {
             "auth": (self.rest_username, self.rest_password),
             "verify": self._verify_cert,
+            "params": params
         }
-        if method == "GET":
-            request_params["params"] = params
-        else:
+        if method != "GET":
             request_params["data"] = json.dumps(payload)
         request_url = self.base_url + url
         r = requests.request(method, request_url, **request_params)
@@ -143,55 +137,34 @@ class PowerStoreClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return response
 
-    def get_appliance_id_by_name(self, appliance_name):
-        r, response = self._send_get_request(
-            "/appliance",
-            params={
-                "name": "eq.%s" % appliance_name,
-            }
-        )
-        if r.status_code not in self.ok_codes:
-            msg = _("Failed to query PowerStore appliances.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        try:
-            appliance_id = response[0].get("id")
-            return appliance_id
-        except IndexError:
-            msg = _("PowerStore appliance %s is not found.") % appliance_name
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-    def get_appliance_metrics(self, appliance_id):
+    def get_metrics(self):
         r, response = self._send_post_request(
             "/metrics/generate",
             payload={
-                "entity": "space_metrics_by_appliance",
-                "entity_id": appliance_id,
+                "entity": "space_metrics_by_cluster",
+                "entity_id": "0",
             },
             log_response_data=False
         )
         if r.status_code not in self.ok_codes:
-            msg = (_("Failed to query metrics for "
-                     "PowerStore appliance with id %s.") % appliance_id)
+            msg = _("Failed to query PowerStore metrics.")
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         try:
             latest_metrics = response[-1]
             return latest_metrics
         except IndexError:
-            msg = (_("Failed to query metrics for "
-                     "PowerStore appliance with id %s.") % appliance_id)
+            msg = _("Failed to query PowerStore metrics.")
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def create_volume(self, appliance_id, name, size):
+    def create_volume(self, name, size, pp_id):
         r, response = self._send_post_request(
             "/volume",
             payload={
-                "appliance_id": appliance_id,
                 "name": name,
                 "size": size,
+                "protection_policy_id": pp_id,
             }
         )
         if r.status_code not in self.ok_codes:
@@ -247,14 +220,40 @@ class PowerStoreClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return response["id"]
 
+    def get_snapshot_id_by_name(self, volume_id, name):
+        r, response = self._send_get_request(
+            "/volume",
+            params={
+                "name": "eq.%s" % name,
+                "protection_data->>source_id": "eq.%s" % volume_id,
+                "type": "eq.Snapshot",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore snapshots.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            snap_id = response[0].get("id")
+            return snap_id
+        except IndexError:
+            msg = (_("PowerStore snapshot %(snapshot_name)s for volume "
+                     "with id %(volume_id)s is not found.")
+                   % {"snapshot_name": name,
+                      "volume_id": volume_id, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
     def clone_volume_or_snapshot(self,
                                  name,
                                  entity_id,
+                                 pp_id,
                                  entity="volume"):
         r, response = self._send_post_request(
             "/volume/%s/clone" % entity_id,
             payload={
                 "name": name,
+                "protection_policy_id": pp_id,
             }
         )
         if r.status_code not in self.ok_codes:
@@ -363,27 +362,25 @@ class PowerStoreClient(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def get_fc_port(self, appliance_id):
+    def get_fc_port(self):
         r, response = self._send_get_request(
             "/fc_port",
             params={
-                "appliance_id": "eq.%s" % appliance_id,
                 "is_link_up": "eq.True",
                 "select": "wwn"
 
             }
         )
         if r.status_code not in self.ok_codes:
-            msg = _("Failed to query PowerStore IP pool addresses.")
+            msg = _("Failed to query PowerStore FC ports.")
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return response
 
-    def get_ip_pool_address(self, appliance_id):
+    def get_ip_pool_address(self):
         r, response = self._send_get_request(
             "/ip_pool_address",
             params={
-                "appliance_id": "eq.%s" % appliance_id,
                 "purposes": "eq.{Storage_Iscsi_Target}",
                 "select": "address,ip_port(target_iqn)"
 
@@ -444,5 +441,161 @@ class PowerStoreClient(object):
                      "%(volume_id)s from snapshot with id %(snapshot_id)s.")
                    % {"volume_id": volume_id,
                       "snapshot_id": snapshot_id, })
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_protection_policy_id_by_name(self, name):
+        r, response = self._send_get_request(
+            "/policy",
+            params={
+                "name": "eq.%s" % name,
+                "type": "eq.Protection",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore Protection policies.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            pp_id = response[0].get("id")
+            return pp_id
+        except IndexError:
+            msg = _("PowerStore Protection policy %s is not found.") % name
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_volume_replication_session_id(self, volume_id):
+        r, response = self._send_get_request(
+            "/replication_session",
+            params={
+                "local_resource_id": "eq.%s" % volume_id,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore Replication sessions.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            return response[0].get("id")
+        except IndexError:
+            msg = _("Replication session for PowerStore volume with "
+                    "id %s is not found.") % volume_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_volume_id_by_name(self, name):
+        r, response = self._send_get_request(
+            "/volume",
+            params={
+                "name": "eq.%s" % name,
+                "type": "in.(Primary,Clone)",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore volumes.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            vol_id = response[0].get("id")
+            return vol_id
+        except IndexError:
+            msg = _("PowerStore volume %s is not found.") % name
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def unassign_volume_protection_policy(self, volume_id):
+        r, response = self._send_patch_request(
+            "/volume/%s" % volume_id,
+            payload={
+                "protection_policy_id": "",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to unassign Protection policy for PowerStore "
+                     "volume with id %s.") % volume_id)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    @cinder_utils.retry(exception.VolumeBackendAPIException,
+                        interval=1, backoff_rate=3, retries=5)
+    def wait_for_replication_session_deletion(self, rep_session_id):
+        r, response = self._send_get_request(
+            "/job",
+            params={
+                "resource_type": "eq.replication_session",
+                "resource_action": "eq.delete",
+                "resource_id": "eq.%s" % rep_session_id,
+                "state": "eq.COMPLETED",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore jobs.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        if not response:
+            msg = _("PowerStore Replication session with "
+                    "id %s is still exists.") % rep_session_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def failover_volume_replication_session(self, rep_session_id, is_failback):
+        r, response = self._send_post_request(
+            "/replication_session/%s/failover" % rep_session_id,
+            payload={
+                "is_planned": False,
+                "force": is_failback,
+            },
+            params={
+                "is_async": True,
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to failover PowerStore replication session "
+                     "with id %s.") % rep_session_id)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response["id"]
+
+    @cinder_utils.retry(exception.VolumeBackendAPIException,
+                        interval=1, backoff_rate=3, retries=5)
+    def wait_for_failover_completion(self, job_id):
+        r, response = self._send_get_request(
+            "/job/%s" % job_id,
+            params={
+                "select": "resource_action,resource_type,"
+                          "resource_id,state,response_body",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore job with id %s.") % job_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        elif (
+                isinstance(response["response_body"], dict) and
+                any([
+                    message["code"] == SESSION_ALREADY_FAILED_OVER_ERROR
+                    for message in
+                    response["response_body"].get("messages", [])
+                ])
+        ):
+            # Replication session is already in Failed-Over state.
+            return True
+        elif response["state"] == "COMPLETED":
+            return True
+        elif response["state"] in ["FAILED", "UNRECOVERABLE_FAILED"]:
+            return False
+        else:
+            msg = _("Failover of PowerStore Replication session with id "
+                    "%s is still in progress.") % response["resource_id"]
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def reprotect_volume_replication_session(self, rep_session_id):
+        r, response = self._send_post_request(
+            "/replication_session/%s/reprotect" % rep_session_id
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to reprotect PowerStore replication session "
+                     "with id %s.") % rep_session_id)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)

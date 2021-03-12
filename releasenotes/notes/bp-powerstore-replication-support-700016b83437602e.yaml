@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    PowerStore driver: Add OpenStack replication v2.1 support.
+deprecations:
+  - |
+    PowerStore driver: ``powerstore_appliances`` option is deprecated and
+    will be removed in a future release. Driver does not use this option
+    to determine which appliances to use. PowerStore uses its own
+    load balancer instead.

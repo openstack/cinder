@@ -24,28 +24,26 @@ from cinder.tests.unit.volume.drivers.dell_emc import powerstore
 class TestSnapshotCreateDelete(powerstore.TestPowerStoreDriver):
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
-                "PowerStoreClient.get_appliance_id_by_name")
-    def setUp(self, mock_appliance, mock_chap):
+    def setUp(self, mock_chap):
         super(TestSnapshotCreateDelete, self).setUp()
-        mock_appliance.return_value = "A1"
         self.driver.check_for_setup_error()
         self.volume = fake_volume.fake_volume_obj(
-            {},
-            host="host@backend#test-appliance",
+            self.context,
+            host="host@backend",
             provider_id="fake_id",
             size=8
         )
         self.snapshot = fake_snapshot.fake_snapshot_obj(
-            {},
-            provider_id="fake_id_1",
+            self.context,
             volume=self.volume
         )
+        self.mock_object(self.driver.adapter.client,
+                         "get_snapshot_id_by_name",
+                         return_value="fake_id_1")
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.create_snapshot")
     def test_create_snapshot(self, mock_create):
-        mock_create.return_value = self.snapshot.provider_id
         self.driver.create_snapshot(self.snapshot)
 
     @mock.patch("requests.request")

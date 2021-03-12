@@ -18,6 +18,7 @@ from unittest import mock
 
 import requests
 
+from cinder import context
 from cinder.tests.unit import test
 from cinder.volume import configuration
 from cinder.volume.drivers.dell_emc.powerstore import driver
@@ -51,6 +52,7 @@ class MockResponse(requests.Response):
 class TestPowerStoreDriver(test.TestCase):
     def setUp(self):
         super(TestPowerStoreDriver, self).setUp()
+        self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.configuration = configuration.Configuration(
             options.POWERSTORE_OPTS,
             configuration.SHARED_CONF_GROUP
@@ -76,5 +78,3 @@ class TestPowerStoreDriver(test.TestCase):
         self._override_shared_conf("san_ip", override="127.0.0.1")
         self._override_shared_conf("san_login", override="test")
         self._override_shared_conf("san_password", override="test")
-        self._override_shared_conf("powerstore_appliances",
-                                   override="test-appliance")
