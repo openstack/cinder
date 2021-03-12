@@ -16,7 +16,6 @@ from unittest import mock
 
 from oslo_utils import timeutils
 import pytz
-import six
 
 from cinder import exception
 from cinder import objects
@@ -143,13 +142,9 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
         # value for that field
         cgsnapshot.refresh()
         self._compare(self, db_cgsnapshot2, cgsnapshot)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         cgsnapshot_get.assert_has_calls([mock.call(self.context,
                                                    fake.CGSNAPSHOT_ID),
-                                         call_bool,
+                                         mock.call.__bool__(),
                                          mock.call(self.context,
                                                    fake.CGSNAPSHOT_ID)])
 

@@ -17,7 +17,6 @@ from unittest import mock
 import ddt
 from oslo_utils import timeutils
 import pytz
-import six
 
 from cinder import context
 from cinder import exception
@@ -349,12 +348,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # for that field
         volume.refresh()
         self._compare(self, db_volume2, volume)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         volume_get.assert_has_calls([mock.call(self.context, fake.VOLUME_ID),
-                                     call_bool,
+                                     mock.call.__bool__(),
                                      mock.call(self.context, fake.VOLUME_ID)])
 
     def test_metadata_aliases(self):

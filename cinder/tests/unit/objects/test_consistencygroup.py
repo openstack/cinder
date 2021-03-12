@@ -16,7 +16,6 @@ from unittest import mock
 
 from oslo_utils import timeutils
 import pytz
-import six
 
 from cinder import exception
 from cinder import objects
@@ -215,15 +214,11 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         # new value for that field
         cg.refresh()
         self._compare(self, db_cg2, cg)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         consistencygroup_get.assert_has_calls([
             mock.call(
                 self.context,
                 fake.CONSISTENCY_GROUP_ID),
-            call_bool,
+            mock.call.__bool__(),
             mock.call(
                 self.context,
                 fake.CONSISTENCY_GROUP_ID)])

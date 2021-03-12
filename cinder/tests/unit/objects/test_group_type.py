@@ -14,7 +14,6 @@
 
 from unittest import mock
 
-import six
 
 from cinder import objects
 from cinder.tests.unit import fake_constants as fake
@@ -90,13 +89,9 @@ class TestGroupType(test_objects.BaseObjectsTestCase):
         # value for that field
         group_type.refresh()
         self._compare(self, db_type2, group_type)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         group_type_get.assert_has_calls([mock.call(self.context,
                                                    fake.GROUP_TYPE_ID),
-                                         call_bool,
+                                         mock.call.__bool__(),
                                          mock.call(self.context,
                                                    fake.GROUP_TYPE_ID)])
 
