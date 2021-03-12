@@ -18,6 +18,7 @@ import re
 import time
 from unittest import mock
 
+from oslo_utils import netutils
 import six
 
 from cinder import context
@@ -699,6 +700,24 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         i1['chap-discovery-initiator-password'] = 'chap_password2'
         self.driver.initialize_connection(self.data.test_volume2,
                                           self.data.connector)
+
+    def test_initialize_connection_escape_ipv6(self, req):
+        req.side_effect = xms_request
+        portals = xms_data['iscsi-portals'].copy()
+        xms_data['iscsi-portals'] = {
+            'fd00:206:553::7/16': {
+                "port-address": "iqn.2008-05.com.xtremio:003e67939c34",
+                "ip-port": 3260,
+                "ip-addr": "fd00:206:553::7/16",
+                "name": "fd00:206:553::7/16",
+                "index": 1,
+            },
+        }
+        lunmap = {'lun': 4}
+        connection_properties = self.driver._get_iscsi_properties(lunmap)
+        result_addr, _ = connection_properties['target_portal'].rsplit(':', 1)
+        self.assertEqual(netutils.escape_ipv6('fd00:206:553::7'), result_addr)
+        xms_data['iscsi-portals'] = portals
 
     def test_terminate_connection(self, req):
         req.side_effect = xms_request

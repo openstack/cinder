@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1918889 <https://bugs.launchpad.net/cinder/+bug/1918889>`_:
+    Add support for iSCSI IPv6 in XtremIO driver.
