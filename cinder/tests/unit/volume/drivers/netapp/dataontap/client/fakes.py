@@ -618,17 +618,25 @@ AGGR_GET_ITER_SSC_RESPONSE = etree.XML("""
           <raid-type>%(raid)s</raid-type>
           <is-hybrid>true</is-hybrid>
         </aggr-raid-attributes>
+        <aggr-ownership-attributes>
+          <home-name>%(node)s</home-name>
+        </aggr-ownership-attributes>
         <aggregate-name>%(aggr)s</aggregate-name>
       </aggr-attributes>
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'aggr': VOLUME_AGGREGATE_NAME, 'raid': AGGREGATE_RAID_TYPE})
+""" % {
+    'aggr': VOLUME_AGGREGATE_NAME,
+    'raid': AGGREGATE_RAID_TYPE,
+    'node': NODE_NAME,
+})
 
 AGGR_INFO_SSC = {
     'name': VOLUME_AGGREGATE_NAME,
     'raid-type': AGGREGATE_RAID_TYPE,
     'is-hybrid': True,
+    'node-name': NODE_NAME,
 }
 
 AGGR_SIZE_TOTAL = 107374182400
@@ -1309,14 +1317,3 @@ VSERVER_DATA_LIST_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {'vserver': VSERVER_NAME})
-
-SYSTEM_NODE_GET_ITER_RESPONSE = etree.XML("""
-  <results status="passed">
-    <attributes-list>
-      <node-details-info>
-        <node>%s</node>
-      </node-details-info>
-    </attributes-list>
-    <num-records>1</num-records>
-  </results>
-""" % NODE_NAME)

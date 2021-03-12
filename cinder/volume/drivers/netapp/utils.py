@@ -30,7 +30,6 @@ import re
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import netutils
-import six
 
 from cinder import context
 from cinder import exception
@@ -51,7 +50,16 @@ DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
                         'netapp_nodedup': 'netapp_dedup',
                         'netapp_nocompression': 'netapp_compression',
                         'netapp_thick_provisioned': 'netapp_thin_provisioned'}
-QOS_KEYS = frozenset(['maxIOPS', 'maxIOPSperGiB', 'maxBPS', 'maxBPSperGiB'])
+MIN_QOS_KEYS = frozenset([
+    'minIOPS',
+    'minIOPSperGiB',
+])
+MAX_QOS_KEYS = frozenset([
+    'maxIOPS',
+    'maxIOPSperGiB',
+    'maxBPS',
+    'maxBPSperGiB',
+])
 BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 
 # Secret length cannot be less than 96 bits. http://tools.ietf.org/html/rfc3723
@@ -87,7 +95,7 @@ def check_flags(required_flags, configuration):
 def to_bool(val):
     """Converts true, yes, y, 1 to True, False otherwise."""
     if val:
-        strg = six.text_type(val).lower()
+        strg = str(val).lower()
         if (strg == 'true' or strg == 'y'
             or strg == 'yes' or strg == 'enabled'
                 or strg == '1'):
@@ -152,7 +160,7 @@ def trace_filter_func_api(all_args):
 
 
 def round_down(value, precision='0.00'):
-    return float(decimal.Decimal(six.text_type(value)).quantize(
+    return float(decimal.Decimal(str(value)).quantize(
         decimal.Decimal(precision), rounding=decimal.ROUND_DOWN))
 
 
@@ -176,7 +184,7 @@ def get_iscsi_connection_properties(lun_id, volume, iqns,
                  for a in addresses]
 
     lun_id = int(lun_id)
-    if isinstance(iqns, six.string_types):
+    if isinstance(iqns, str):
         iqns = [iqns] * len(addresses)
 
     target_portals = ['%s:%s' % (a, p) for a, p in zip(addresses, ports)]
@@ -208,17 +216,28 @@ def validate_qos_spec(qos_spec):
     """Check validity of Cinder qos spec for our backend."""
     if qos_spec is None:
         return
-    normalized_qos_keys = [key.lower() for key in QOS_KEYS]
-    keylist = []
-    for key, value in qos_spec.items():
-        lower_case_key = key.lower()
-        if lower_case_key not in normalized_qos_keys:
-            msg = _('Unrecognized QOS keyword: "%s"') % key
-            raise exception.Invalid(msg)
-        keylist.append(lower_case_key)
-    # Modify the following check when we allow multiple settings in one spec.
-    if len(keylist) > 1:
-        msg = _('Only one limit can be set in a QoS spec.')
+
+    normalized_min_keys = [key.lower() for key in MIN_QOS_KEYS]
+    normalized_max_keys = [key.lower() for key in MAX_QOS_KEYS]
+
+    unrecognized_keys = [
+        k for k in qos_spec.keys()
+        if k.lower() not in normalized_max_keys + normalized_min_keys]
+
+    if unrecognized_keys:
+        msg = _('Unrecognized QOS keywords: "%s"') % unrecognized_keys
+        raise exception.Invalid(msg)
+
+    min_dict = {k: v for k, v in qos_spec.items()
+                if k.lower() in normalized_min_keys}
+    if len(min_dict) > 1:
+        msg = _('Only one minimum limit can be set in a QoS spec.')
+        raise exception.Invalid(msg)
+
+    max_dict = {k: v for k, v in qos_spec.items()
+                if k.lower() in normalized_max_keys}
+    if len(max_dict) > 1:
+        msg = _('Only one maximum limit can be set in a QoS spec.')
         raise exception.Invalid(msg)
 
 
@@ -231,28 +250,67 @@ def get_volume_type_from_volume(volume):
     return volume_types.get_volume_type(ctxt, type_id)
 
 
+def _get_min_throughput_from_qos_spec(qos_spec, volume_size):
+    """Returns the minimum QoS throughput.
+
+    The QoS min specs are exclusive of one another and it accepts values in
+    IOPS only.
+    """
+    if 'miniops' in qos_spec:
+        min_throughput = '%siops' % qos_spec['miniops']
+    elif 'miniopspergib' in qos_spec:
+        min_throughput = '%siops' % str(
+            int(qos_spec['miniopspergib']) * int(volume_size))
+    else:
+        min_throughput = None
+    return min_throughput
+
+
+def _get_max_throughput_from_qos_spec(qos_spec, volume_size):
+    """Returns the maximum QoS throughput.
+
+    The QoS max specs are exclusive of one another.
+    """
+    if 'maxiops' in qos_spec:
+        max_throughput = '%siops' % qos_spec['maxiops']
+    elif 'maxiopspergib' in qos_spec:
+        max_throughput = '%siops' % str(
+            int(qos_spec['maxiopspergib']) * int(volume_size))
+    elif 'maxbps' in qos_spec:
+        max_throughput = '%sB/s' % qos_spec['maxbps']
+    elif 'maxbpspergib' in qos_spec:
+        max_throughput = '%sB/s' % str(
+            int(qos_spec['maxbpspergib']) * int(volume_size))
+    else:
+        max_throughput = None
+    return max_throughput
+
+
 def map_qos_spec(qos_spec, volume):
     """Map Cinder QOS spec to limit/throughput-value as used in client API."""
     if qos_spec is None:
         return None
 
-    qos_spec = map_dict_to_lower(qos_spec)
-    spec = dict(policy_name=get_qos_policy_group_name(volume),
-                max_throughput=None)
+    spec = map_dict_to_lower(qos_spec)
+    min_throughput = _get_min_throughput_from_qos_spec(spec, volume['size'])
+    max_throughput = _get_max_throughput_from_qos_spec(spec, volume['size'])
 
-    # QoS specs are exclusive of one another.
-    if 'maxiops' in qos_spec:
-        spec['max_throughput'] = '%siops' % qos_spec['maxiops']
-    elif 'maxiopspergib' in qos_spec:
-        spec['max_throughput'] = '%siops' % six.text_type(
-            int(qos_spec['maxiopspergib']) * int(volume['size']))
-    elif 'maxbps' in qos_spec:
-        spec['max_throughput'] = '%sB/s' % qos_spec['maxbps']
-    elif 'maxbpspergib' in qos_spec:
-        spec['max_throughput'] = '%sB/s' % six.text_type(
-            int(qos_spec['maxbpspergib']) * int(volume['size']))
+    if min_throughput and max_throughput and max_throughput.endswith('B/s'):
+        msg = _('Maximum limit should be in IOPS when minimum limit is '
+                'specified.')
+        raise exception.Invalid(msg)
 
-    return spec
+    if min_throughput and max_throughput and max_throughput < min_throughput:
+        msg = _('Maximum limit should be greater than or equal to the '
+                'minimum limit.')
+        raise exception.Invalid(msg)
+
+    policy = dict(policy_name=get_qos_policy_group_name(volume))
+    if min_throughput:
+        policy['min_throughput'] = min_throughput
+    if max_throughput:
+        policy['max_throughput'] = max_throughput
+    return policy
 
 
 def map_dict_to_lower(input_dict):
@@ -392,6 +450,13 @@ def get_export_host_junction_path(share):
                                           "format.") % share)
 
     return host, junction_path
+
+
+def qos_min_feature_name(is_nfs, node_name):
+    if is_nfs:
+        return 'QOS_MIN_NFS_' + node_name
+    else:
+        return 'QOS_MIN_BLOCK_' + node_name
 
 
 class hashabledict(dict):

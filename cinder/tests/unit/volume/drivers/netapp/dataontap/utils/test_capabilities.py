@@ -117,6 +117,18 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         six.assertCountEqual(self, list(fake.SSC_AGGREGATES), result)
 
+    def test_is_qos_min_supported(self):
+        ssc_pool = fake.SSC.get(fake.SSC_VOLUMES[0])
+        is_qos_min = ssc_pool['netapp_qos_min_support'] == 'true'
+        result = self.ssc_library.is_qos_min_supported(ssc_pool['pool_name'])
+
+        self.assertEqual(is_qos_min, result)
+
+    def test_is_qos_min_supported_not_found(self):
+        result = self.ssc_library.is_qos_min_supported('invalid_pool')
+
+        self.assertFalse(result)
+
     def test_update_ssc(self):
 
         mock_get_ssc_flexvol_info = self.mock_object(
@@ -139,6 +151,11 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             self.ssc_library, '_get_ssc_encryption_info',
             side_effect=[fake.SSC_ENCRYPTION_INFO['volume1'],
                          fake.SSC_ENCRYPTION_INFO['volume2']])
+        mock_get_ssc_qos_min_info = self.mock_object(
+            self.ssc_library, '_get_ssc_qos_min_info',
+            side_effect=[fake.SSC_QOS_MIN_INFO['volume1'],
+                         fake.SSC_QOS_MIN_INFO['volume2']])
+
         ordered_ssc = collections.OrderedDict()
         ordered_ssc['volume1'] = fake.SSC_VOLUME_MAP['volume1']
         ordered_ssc['volume2'] = fake.SSC_VOLUME_MAP['volume2']
@@ -157,6 +174,8 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             mock.call('aggr1'), mock.call('aggr2')])
         mock_get_ssc_encryption_info.assert_has_calls([
             mock.call('volume1'), mock.call('volume2')])
+        mock_get_ssc_qos_min_info.assert_has_calls([
+            mock.call('node1'), mock.call('node2')])
 
     def test__update_for_failover(self):
         self.mock_object(self.ssc_library, 'update_ssc')
@@ -346,6 +365,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
                 'netapp_disk_type': None,
                 'netapp_raid_type': None,
                 'netapp_hybrid_aggregate': None,
+                'netapp_node_name': None,
             }
             self.zapi_client.get_aggregate.assert_not_called()
             self.zapi_client.get_aggregate_disk_types.assert_not_called()
@@ -354,6 +374,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
                 'netapp_disk_type': fake_client.AGGREGATE_DISK_TYPES,
                 'netapp_raid_type': fake_client.AGGREGATE_RAID_TYPE,
                 'netapp_hybrid_aggregate': 'true',
+                'netapp_node_name': fake_client.NODE_NAME,
             }
             self.zapi_client.get_aggregate.assert_called_once_with(
                 fake_client.VOLUME_AGGREGATE_NAME)
@@ -377,6 +398,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'netapp_disk_type': None,
             'netapp_raid_type': None,
             'netapp_hybrid_aggregate': None,
+            'netapp_node_name': None,
         }
         self.assertEqual(expected, result)
 
@@ -506,3 +528,18 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             self.assertFalse(self.ssc_library.cluster_user_supported())
         else:
             self.assertTrue(self.ssc_library.cluster_user_supported())
+
+    def test_get_ssc_qos_min_info(self):
+
+        self.mock_object(
+            self.ssc_library.zapi_client, 'is_qos_min_supported',
+            return_value=True)
+
+        result = self.ssc_library._get_ssc_qos_min_info('node')
+
+        expected = {
+            'netapp_qos_min_support': 'true',
+        }
+        self.assertEqual(expected, result)
+        self.zapi_client.is_qos_min_supported.assert_called_once_with(False,
+                                                                      'node')

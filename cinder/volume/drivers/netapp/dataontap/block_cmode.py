@@ -402,7 +402,10 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             msg = _('Invalid QoS specification detected while getting QoS '
                     'policy for volume %s') % volume['id']
             raise exception.VolumeBackendAPIException(data=msg)
-        self.zapi_client.provision_qos_policy_group(qos_policy_group_info)
+        pool = volume_utils.extract_host(volume['host'], level='pool')
+        qos_min_support = self.ssc_library.is_qos_min_supported(pool)
+        self.zapi_client.provision_qos_policy_group(qos_policy_group_info,
+                                                    qos_min_support)
         return qos_policy_group_info
 
     def _get_volume_model_update(self, volume):

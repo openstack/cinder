@@ -165,7 +165,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
                 volume, extra_specs)
-            self.zapi_client.provision_qos_policy_group(qos_policy_group_info)
+            pool = volume_utils.extract_host(volume['host'], level='pool')
+            qos_min_support = self.ssc_library.is_qos_min_supported(pool)
+            self.zapi_client.provision_qos_policy_group(qos_policy_group_info,
+                                                        qos_min_support)
             self._set_qos_policy_group_on_volume(volume, qos_policy_group_info,
                                                  qos_policy_group_is_adaptive)
         except Exception:

@@ -53,6 +53,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
         super(NetAppCmodeClientTestCase, self).setUp()
 
         self.mock_object(client_cmode.Client, '_init_ssh_client')
+        # store the original reference so we can call it later in
+        # test__get_cluster_nodes_info
+        self.original_get_cluster_nodes_info = (
+            client_cmode.Client._get_cluster_nodes_info)
+        self.mock_object(client_cmode.Client, '_get_cluster_nodes_info',
+                         return_value=fake.HYBRID_SYSTEM_NODES_INFO)
         self.mock_object(client_cmode.Client, 'get_ontap_version',
                          return_value='9.6')
         with mock.patch.object(client_cmode.Client,
@@ -215,6 +221,25 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertRaises(netapp_utils.NetAppDriverException,
                           self.client.send_iter_request,
                           'storage-disk-get-iter')
+
+    @ddt.data((fake.AFF_SYSTEM_NODE_GET_ITER_RESPONSE,
+               fake.AFF_SYSTEM_NODES_INFO),
+              (fake.FAS_SYSTEM_NODE_GET_ITER_RESPONSE,
+               fake.FAS_SYSTEM_NODES_INFO),
+              (fake_client.NO_RECORDS_RESPONSE, []),
+              (fake.HYBRID_SYSTEM_NODE_GET_ITER_RESPONSE,
+               fake.HYBRID_SYSTEM_NODES_INFO))
+    @ddt.unpack
+    def test__get_cluster_nodes_info(self, response, expected):
+        client_cmode.Client._get_cluster_nodes_info = (
+            self.original_get_cluster_nodes_info)
+        nodes_response = netapp_api.NaElement(response)
+        self.mock_object(client_cmode.Client, 'send_iter_request',
+                         return_value=nodes_response)
+
+        result = self.client._get_cluster_nodes_info()
+
+        self.assertEqual(expected, result)
 
     def test_list_vservers(self):
 
@@ -829,44 +854,114 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def test_provision_qos_policy_group_no_qos_policy_group_info(self):
 
-        self.client.provision_qos_policy_group(qos_policy_group_info=None)
+        self.client.provision_qos_policy_group(qos_policy_group_info=None,
+                                               qos_min_support=True)
 
         self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
 
     def test_provision_qos_policy_group_legacy_qos_policy_group_info(self):
 
         self.client.provision_qos_policy_group(
-            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_LEGACY)
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_LEGACY,
+            qos_min_support=True)
 
         self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
+
+    def test_provision_qos_policy_group_with_qos_spec_create_with_min(self):
+
+        self.mock_object(self.client,
+                         'qos_policy_group_exists',
+                         return_value=False)
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+
+        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO,
+                                               True)
+
+        mock_qos_policy_group_create.assert_has_calls([
+            mock.call({
+                'policy_name': fake.QOS_POLICY_GROUP_NAME,
+                'min_throughput': fake.MIN_IOPS,
+                'max_throughput': fake.MAX_IOPS,
+            })])
+        mock_qos_policy_group_modify.assert_not_called()
+
+    def test_provision_qos_policy_group_with_qos_spec_create_unsupported(self):
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.provision_qos_policy_group,
+            fake.QOS_POLICY_GROUP_INFO, False)
+
+        mock_qos_policy_group_create.assert_not_called()
+        mock_qos_policy_group_modify.assert_not_called()
 
     def test_provision_qos_policy_group_with_qos_spec_create(self):
 
         self.mock_object(self.client,
                          'qos_policy_group_exists',
                          return_value=False)
-        self.mock_object(self.client, 'qos_policy_group_create')
-        self.mock_object(self.client, 'qos_policy_group_modify')
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
 
-        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO)
+        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO_MAX,
+                                               True)
 
-        self.client.qos_policy_group_create.assert_has_calls([
-            mock.call(fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)])
-        self.assertFalse(self.client.qos_policy_group_modify.called)
+        mock_qos_policy_group_create.assert_has_calls([
+            mock.call({
+                'policy_name': fake.QOS_POLICY_GROUP_NAME,
+                'max_throughput': fake.MAX_THROUGHPUT,
+            })])
+        mock_qos_policy_group_modify.assert_not_called()
+
+    def test_provision_qos_policy_group_with_qos_spec_modify_with_min(self):
+
+        self.mock_object(self.client,
+                         'qos_policy_group_exists',
+                         return_value=True)
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+
+        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO,
+                                               True)
+
+        mock_qos_policy_group_create.assert_not_called()
+        mock_qos_policy_group_modify.assert_has_calls([
+            mock.call({
+                'policy_name': fake.QOS_POLICY_GROUP_NAME,
+                'min_throughput': fake.MIN_IOPS,
+                'max_throughput': fake.MAX_IOPS,
+            })])
 
     def test_provision_qos_policy_group_with_qos_spec_modify(self):
 
         self.mock_object(self.client,
                          'qos_policy_group_exists',
                          return_value=True)
-        self.mock_object(self.client, 'qos_policy_group_create')
-        self.mock_object(self.client, 'qos_policy_group_modify')
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
 
-        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO)
+        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO_MAX,
+                                               True)
 
-        self.assertFalse(self.client.qos_policy_group_create.called)
-        self.client.qos_policy_group_modify.assert_has_calls([
-            mock.call(fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)])
+        mock_qos_policy_group_create.assert_not_called()
+        mock_qos_policy_group_modify.assert_has_calls([
+            mock.call({
+                'policy_name': fake.QOS_POLICY_GROUP_NAME,
+                'max_throughput': fake.MAX_THROUGHPUT,
+            })])
 
     def test_qos_policy_group_exists(self):
 
@@ -906,12 +1001,16 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_args = {
             'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'min-throughput': '0',
             'max-throughput': fake.MAX_THROUGHPUT,
             'vserver': self.vserver,
         }
 
-        self.client.qos_policy_group_create(
-            fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)
+        self.client.qos_policy_group_create({
+            'policy_name': fake.QOS_POLICY_GROUP_NAME,
+            'min_throughput': '0',
+            'max_throughput': fake.MAX_THROUGHPUT,
+        })
 
         self.mock_send_request.assert_has_calls([
             mock.call('qos-policy-group-create', api_args, False)])
@@ -920,11 +1019,15 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         api_args = {
             'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'min-throughput': '0',
             'max-throughput': fake.MAX_THROUGHPUT,
         }
 
-        self.client.qos_policy_group_modify(
-            fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)
+        self.client.qos_policy_group_modify({
+            'policy_name': fake.QOS_POLICY_GROUP_NAME,
+            'min_throughput': '0',
+            'max_throughput': fake.MAX_THROUGHPUT,
+        })
 
         self.mock_send_request.assert_has_calls([
             mock.call('qos-policy-group-modify', api_args, False)])
@@ -988,7 +1091,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         new_name = 'deleted_cinder_%s' % fake.QOS_POLICY_GROUP_NAME
 
         self.client.mark_qos_policy_group_for_deletion(
-            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO)
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_MAX)
 
         mock_rename.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_NAME, new_name)])
@@ -1005,7 +1108,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         new_name = 'deleted_cinder_%s' % fake.QOS_POLICY_GROUP_NAME
 
         self.client.mark_qos_policy_group_for_deletion(
-            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO)
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_MAX)
 
         mock_rename.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_NAME, new_name)])
@@ -2187,17 +2290,20 @@ class NetAppCmodeClientTestCase(test.TestCase):
                     'raid-type': None,
                     'is-hybrid': None,
                 },
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
             },
         }
         self.client._get_aggregates.assert_has_calls([
             mock.call(
                 aggregate_names=[fake_client.VOLUME_AGGREGATE_NAME],
                 desired_attributes=desired_attributes)])
-
         expected = {
             'name': fake_client.VOLUME_AGGREGATE_NAME,
             'raid-type': 'raid_dp',
             'is-hybrid': True,
+            'node-name': fake_client.NODE_NAME,
         }
         self.assertEqual(expected, result)
 
@@ -2232,29 +2338,6 @@ class NetAppCmodeClientTestCase(test.TestCase):
         result = self.client.get_aggregate(fake_client.VOLUME_AGGREGATE_NAME)
 
         self.assertEqual({}, result)
-
-    def test_list_cluster_nodes(self):
-
-        api_response = netapp_api.NaElement(
-            fake_client.SYSTEM_NODE_GET_ITER_RESPONSE)
-        self.mock_object(self.client.connection,
-                         'send_request',
-                         mock.Mock(return_value=api_response))
-
-        result = self.client.list_cluster_nodes()
-
-        self.assertListEqual([fake_client.NODE_NAME], result)
-
-    def test_list_cluster_nodes_not_found(self):
-
-        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client.connection,
-                         'send_request',
-                         mock.Mock(return_value=api_response))
-
-        result = self.client.list_cluster_nodes()
-
-        self.assertListEqual([], result)
 
     @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
               {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']},)
@@ -3591,3 +3674,23 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.client.connection.send_request.assert_called_once_with(
             'snapshot-get-iter', api_args)
         self.assertListEqual(expected, result)
+
+    @ddt.data(True, False)
+    def test_is_qos_min_supported(self, supported):
+        self.client.features.add_feature('test', supported=supported)
+        mock_name = self.mock_object(netapp_utils,
+                                     'qos_min_feature_name',
+                                     return_value='test')
+        result = self.client.is_qos_min_supported(True, 'node')
+
+        mock_name.assert_called_once_with(True, 'node')
+        self.assertEqual(result, supported)
+
+    def test_is_qos_min_supported_invalid_node(self):
+        mock_name = self.mock_object(netapp_utils,
+                                     'qos_min_feature_name',
+                                     return_value='invalid_feature')
+        result = self.client.is_qos_min_supported(True, 'node')
+
+        mock_name.assert_called_once_with(True, 'node')
+        self.assertFalse(result)

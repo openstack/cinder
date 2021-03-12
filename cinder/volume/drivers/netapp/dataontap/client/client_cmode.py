@@ -34,6 +34,8 @@ from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
 DEFAULT_MAX_PAGE_LENGTH = 50
+ONTAP_SELECT_MODEL = 'FDvM300'
+ONTAP_C190 = 'C190'
 
 
 @six.add_metaclass(volume_utils.TraceWrapperMetaclass)
@@ -62,6 +64,26 @@ class Client(client_base.Client):
         ontapi_1_30 = ontapi_version >= (1, 30)
         ontapi_1_100 = ontapi_version >= (1, 100)
         ontapi_1_1xx = (1, 100) <= ontapi_version < (1, 200)
+        ontapi_1_60 = ontapi_version >= (1, 160)
+
+        nodes_info = self._get_cluster_nodes_info()
+        for node in nodes_info:
+            qos_min_block = False
+            qos_min_nfs = False
+            if node['model'] == ONTAP_SELECT_MODEL:
+                qos_min_block = node['is_all_flash_select'] and ontapi_1_60
+                qos_min_nfs = qos_min_block
+            elif ONTAP_C190 in node['model']:
+                qos_min_block = node['is_all_flash'] and ontapi_1_60
+                qos_min_nfs = qos_min_block
+            else:
+                qos_min_block = node['is_all_flash'] and ontapi_1_20
+                qos_min_nfs = node['is_all_flash'] and ontapi_1_30
+
+            qos_name = na_utils.qos_min_feature_name(True, node['name'])
+            self.features.add_feature(qos_name, supported=qos_min_nfs)
+            qos_name = na_utils.qos_min_feature_name(False, node['name'])
+            self.features.add_feature(qos_name, supported=qos_min_block)
 
         self.features.add_feature('SNAPMIRROR_V2', supported=ontapi_1_20)
         self.features.add_feature('USER_CAPABILITY_LIST',
@@ -146,6 +168,45 @@ class Client(client_base.Client):
             six.text_type(num_records))
         result.get_child_by_name('next-tag').set_content('')
         return result
+
+    def _get_cluster_nodes_info(self):
+        """Return a list of models of the nodes in the cluster"""
+        api_args = {
+            'desired-attributes': {
+                'node-details-info': {
+                    'node': None,
+                    'node-model': None,
+                    'is-all-flash-select-optimized': None,
+                    'is-all-flash-optimized': None,
+                }
+            }
+        }
+
+        nodes = []
+        try:
+            result = self.send_iter_request('system-node-get-iter', api_args,
+                                            enable_tunneling=False)
+            system_node_list = result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+            for system_node in system_node_list.get_children():
+                node = {
+                    'model': system_node.get_child_content('node-model'),
+                    'name': system_node.get_child_content('node'),
+                    'is_all_flash': system_node.get_child_content(
+                        'is-all-flash-optimized') == 'true',
+                    'is_all_flash_select': system_node.get_child_content(
+                        'is-all-flash-select-optimized') == 'true',
+                }
+                nodes.append(node)
+
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                LOG.debug('Cluster nodes can only be collected with '
+                          'cluster scoped credentials.')
+            else:
+                LOG.exception('Failed to get the cluster nodes.')
+
+        return nodes
 
     def list_vservers(self, vserver_type='data'):
         """Get the names of vservers present, optionally filtered by type."""
@@ -538,7 +599,8 @@ class Client(client_base.Client):
         }
         return self.connection.send_request('file-assign-qos', api_args, False)
 
-    def provision_qos_policy_group(self, qos_policy_group_info):
+    def provision_qos_policy_group(self, qos_policy_group_info,
+                                   qos_min_support):
         """Create QOS policy group on the backend if appropriate."""
         if qos_policy_group_info is None:
             return
@@ -546,17 +608,19 @@ class Client(client_base.Client):
         # Legacy QOS uses externally provisioned QOS policy group,
         # so we don't need to create one on the backend.
         legacy = qos_policy_group_info.get('legacy')
-        if legacy is not None:
+        if legacy:
             return
 
         spec = qos_policy_group_info.get('spec')
-        if spec is not None:
+        if spec:
+            if spec.get('min_throughput') and not qos_min_support:
+                msg = _('QoS min_throughput is not supported by this back '
+                        'end.')
+                raise na_utils.NetAppDriverException(msg)
             if not self.qos_policy_group_exists(spec['policy_name']):
-                self.qos_policy_group_create(spec['policy_name'],
-                                             spec['max_throughput'])
+                self.qos_policy_group_create(spec)
             else:
-                self.qos_policy_group_modify(spec['policy_name'],
-                                             spec['max_throughput'])
+                self.qos_policy_group_modify(spec)
 
     def qos_policy_group_exists(self, qos_policy_group_name):
         """Checks if a QOS policy group exists."""
@@ -577,22 +641,24 @@ class Client(client_base.Client):
                                               False)
         return self._has_records(result)
 
-    def qos_policy_group_create(self, qos_policy_group_name, max_throughput):
+    def _qos_spec_to_api_args(self, spec, **kwargs):
+        """Convert a QoS spec to ZAPI args."""
+        formatted_spec = {k.replace('_', '-'): v for k, v in spec.items() if v}
+        formatted_spec['policy-group'] = formatted_spec.pop('policy-name')
+        formatted_spec = {**formatted_spec, **kwargs}
+
+        return formatted_spec
+
+    def qos_policy_group_create(self, spec):
         """Creates a QOS policy group."""
-        api_args = {
-            'policy-group': qos_policy_group_name,
-            'max-throughput': max_throughput,
-            'vserver': self.vserver,
-        }
+        api_args = self._qos_spec_to_api_args(
+            spec, vserver=self.vserver)
         return self.connection.send_request(
             'qos-policy-group-create', api_args, False)
 
-    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
+    def qos_policy_group_modify(self, spec):
         """Modifies a QOS policy group."""
-        api_args = {
-            'policy-group': qos_policy_group_name,
-            'max-throughput': max_throughput,
-        }
+        api_args = self._qos_spec_to_api_args(spec)
         return self.connection.send_request(
             'qos-policy-group-modify', api_args, False)
 
@@ -834,22 +900,6 @@ class Client(client_base.Client):
                 return False
 
         return True
-
-    def list_cluster_nodes(self):
-        """Get all available cluster nodes."""
-
-        api_args = {
-            'desired-attributes': {
-                'node-details-info': {
-                    'node': None,
-                },
-            },
-        }
-        result = self.send_iter_request('system-node-get-iter', api_args)
-        nodes_info_list = result.get_child_by_name(
-            'attributes-list') or netapp_api.NaElement('none')
-        return [node_info.get_child_content('node') for node_info
-                in nodes_info_list.get_children()]
 
     def get_operational_lif_addresses(self):
         """Gets the IP addresses of operational LIFs on the vserver."""
@@ -1233,6 +1283,11 @@ class Client(client_base.Client):
 
         return True
 
+    def is_qos_min_supported(self, is_nfs, node_name):
+        """Check if the node supports QoS minimum."""
+        qos_min_name = na_utils.qos_min_feature_name(is_nfs, node_name)
+        return getattr(self.features, qos_min_name, False).__bool__()
+
     def create_flexvol(self, flexvol_name, aggregate_name, size_gb,
                        space_guarantee_type=None, snapshot_policy=None,
                        language=None, dedupe_enabled=False,
@@ -1415,6 +1470,9 @@ class Client(client_base.Client):
                     'raid-type': None,
                     'is-hybrid': None,
                 },
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
             },
         }
 
@@ -1432,12 +1490,15 @@ class Client(client_base.Client):
         aggr_attributes = aggrs[0]
         aggr_raid_attrs = aggr_attributes.get_child_by_name(
             'aggr-raid-attributes') or netapp_api.NaElement('none')
+        aggr_ownership_attrs = aggrs[0].get_child_by_name(
+            'aggr-ownership-attributes') or netapp_api.NaElement('none')
 
         aggregate = {
             'name': aggr_attributes.get_child_content('aggregate-name'),
             'raid-type': aggr_raid_attrs.get_child_content('raid-type'),
             'is-hybrid': strutils.bool_from_string(
                 aggr_raid_attrs.get_child_content('is-hybrid')),
+            'node-name': aggr_ownership_attrs.get_child_content('home-name'),
         }
 
         return aggregate
