@@ -561,10 +561,16 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.assertIn("nfs://host/path/image-id", locations)
 
-    def test_extend_volume(self):
+    @ddt.data(None, 'raw', 'qcow2')
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_extend_volume(self, file_format, mock_get):
 
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        if file_format:
+            volume.admin_metadata = {'format': file_format}
+        mock_get.return_value = volume
         new_size = 100
-        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy = copy.copy(volume)
         volume_copy['size'] = new_size
 
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
@@ -578,18 +584,22 @@ class NetAppNfsDriverTestCase(test.TestCase):
         mock_do_qos_for_volume = self.mock_object(self.driver,
                                                   '_do_qos_for_volume')
 
-        self.driver.extend_volume(fake.VOLUME, new_size)
+        self.driver.extend_volume(volume, new_size)
 
-        mock_resize_image_file.assert_called_once_with(path, new_size)
-        mock_get_volume_extra_specs.assert_called_once_with(fake.VOLUME)
+        mock_resize_image_file.assert_called_once_with(path, new_size,
+                                                       file_format=file_format)
+        mock_get_volume_extra_specs.assert_called_once_with(volume)
         mock_do_qos_for_volume.assert_called_once_with(volume_copy,
                                                        fake.EXTRA_SPECS,
                                                        cleanup=False)
 
-    def test_extend_volume_resize_error(self):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_extend_volume_resize_error(self, mock_get):
 
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        mock_get.return_value = volume
         new_size = 100
-        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy = copy.copy(volume)
         volume_copy['size'] = new_size
 
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
@@ -606,17 +616,21 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
-                          fake.VOLUME,
+                          volume,
                           new_size)
 
-        mock_resize_image_file.assert_called_once_with(path, new_size)
+        mock_resize_image_file.assert_called_once_with(path, new_size,
+                                                       file_format=None)
         self.assertFalse(mock_get_volume_extra_specs.called)
         self.assertFalse(mock_do_qos_for_volume.called)
 
-    def test_extend_volume_qos_error(self):
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_extend_volume_qos_error(self, mock_get):
 
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+        mock_get.return_value = volume
         new_size = 100
-        volume_copy = copy.copy(fake.VOLUME)
+        volume_copy = copy.copy(volume)
         volume_copy['size'] = new_size
 
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
@@ -634,11 +648,12 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
-                          fake.VOLUME,
+                          volume,
                           new_size)
 
-        mock_resize_image_file.assert_called_once_with(path, new_size)
-        mock_get_volume_extra_specs.assert_called_once_with(fake.VOLUME)
+        mock_resize_image_file.assert_called_once_with(path, new_size,
+                                                       file_format=None)
+        mock_get_volume_extra_specs.assert_called_once_with(volume)
         mock_do_qos_for_volume.assert_called_once_with(volume_copy,
                                                        fake.EXTRA_SPECS,
                                                        cleanup=False)

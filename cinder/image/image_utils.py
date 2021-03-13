@@ -406,9 +406,12 @@ def convert_image(source, dest, out_format, out_subformat=None,
                        src_passphrase_file=src_passphrase_file)
 
 
-def resize_image(source, size, run_as_root=False):
+def resize_image(source, size, run_as_root=False, file_format=None):
     """Changes the virtual size of the image."""
-    cmd = ('qemu-img', 'resize', source, '%sG' % size)
+    if file_format:
+        cmd = ('qemu-img', 'resize', '-f', file_format, source, '%sG' % size)
+    else:
+        cmd = ('qemu-img', 'resize', source, '%sG' % size)
     utils.execute(*cmd, run_as_root=run_as_root)
 
 

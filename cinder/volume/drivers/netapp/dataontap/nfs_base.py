@@ -36,9 +36,11 @@ from oslo_utils import units
 import six
 from six.moves import urllib
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
+from cinder import objects
 import cinder.privsep.path
 from cinder import utils
 from cinder.volume import driver
@@ -644,7 +646,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         raise exception.InvalidResults(
             _("NFS file could not be discovered."))
 
-    def _resize_image_file(self, path, new_size):
+    def _resize_image_file(self, path, new_size, file_format=None):
         """Resize the image file on share to new size."""
         LOG.debug('Checking file for resize')
         if self._is_file_size_equal(path, new_size):
@@ -652,10 +654,10 @@ class NetAppNfsDriver(driver.ManageableVD,
         else:
             LOG.info('Resizing file to %sG', new_size)
             image_utils.resize_image(path, new_size,
-                                     run_as_root=self._execute_as_root)
-            if self._is_file_size_equal(path, new_size):
-                return
-            else:
+                                     run_as_root=self._execute_as_root,
+                                     file_format=file_format)
+            if file_format == 'qcow2' and not self._is_file_size_equal(
+                    path, new_size):
                 raise exception.InvalidResults(
                     _('Resizing image file failed.'))
 
@@ -798,7 +800,13 @@ class NetAppNfsDriver(driver.ManageableVD,
 
         try:
             path = self.local_path(volume)
-            self._resize_image_file(path, new_size)
+            file_format = None
+            admin_metadata = objects.Volume.get_by_id(
+                context.get_admin_context(), volume.id).admin_metadata
+            if admin_metadata and 'format' in admin_metadata:
+                file_format = admin_metadata['format']
+            self._resize_image_file(
+                path, new_size, file_format=file_format)
         except Exception as err:
             exception_msg = (_("Failed to extend volume "
                                "%(name)s, Error msg: %(msg)s.") %
