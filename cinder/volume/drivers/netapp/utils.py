@@ -60,6 +60,23 @@ MAX_QOS_KEYS = frozenset([
     'maxBPS',
     'maxBPSperGiB',
 ])
+ADAPTIVE_QOS_KEYS = frozenset([
+    'expectedIOPSperGiB',
+    'peakIOPSperGiB',
+    'expectedIOPSAllocation',
+    'peakIOPSAllocation',
+    'absoluteMinIOPS',
+    'blockSize',
+])
+QOS_ADAPTIVE_POLICY_GROUP_SPEC_KEYS = frozenset([
+    'expected_iops',
+    'peak_iops',
+    'expected_iops_allocation',
+    'peak_iops_allocation',
+    'absolute_min_iops',
+    'block_size',
+    'policy_name',
+])
 BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 
 # Secret length cannot be less than 96 bits. http://tools.ietf.org/html/rfc3723
@@ -219,10 +236,12 @@ def validate_qos_spec(qos_spec):
 
     normalized_min_keys = [key.lower() for key in MIN_QOS_KEYS]
     normalized_max_keys = [key.lower() for key in MAX_QOS_KEYS]
+    normalized_aqos_keys = [key.lower() for key in ADAPTIVE_QOS_KEYS]
 
     unrecognized_keys = [
         k for k in qos_spec.keys()
-        if k.lower() not in normalized_max_keys + normalized_min_keys]
+        if k.lower() not in
+        normalized_max_keys + normalized_min_keys + normalized_aqos_keys]
 
     if unrecognized_keys:
         msg = _('Unrecognized QOS keywords: "%s"') % unrecognized_keys
@@ -238,6 +257,13 @@ def validate_qos_spec(qos_spec):
                 if k.lower() in normalized_max_keys}
     if len(max_dict) > 1:
         msg = _('Only one maximum limit can be set in a QoS spec.')
+        raise exception.Invalid(msg)
+
+    aqos_dict = {k: v for k, v in qos_spec.items()
+                 if k.lower() in normalized_aqos_keys}
+    if aqos_dict and (min_dict or max_dict):
+        msg = _('Adaptive QoS specs and non-adaptive QoS specs '
+                'cannot be used together.')
         raise exception.Invalid(msg)
 
 
@@ -311,6 +337,42 @@ def map_qos_spec(qos_spec, volume):
     if max_throughput:
         policy['max_throughput'] = max_throughput
     return policy
+
+
+def map_aqos_spec(qos_spec, volume):
+    """Map Cinder QOS spec to Adaptive QoS values."""
+    if qos_spec is None:
+        return None
+
+    qos_spec = map_dict_to_lower(qos_spec)
+    spec = dict(policy_name=get_qos_policy_group_name(volume))
+
+    # Adaptive QoS specs
+    if 'expectediopspergib' in qos_spec:
+        spec['expected_iops'] = (
+            '%sIOPS/GB' % qos_spec['expectediopspergib'])
+    if 'peakiopspergib' in qos_spec:
+        spec['peak_iops'] = '%sIOPS/GB' % qos_spec['peakiopspergib']
+    if 'expectediopsallocation' in qos_spec:
+        spec['expected_iops_allocation'] = qos_spec['expectediopsallocation']
+    if 'peakiopsallocation' in qos_spec:
+        spec['peak_iops_allocation'] = qos_spec['peakiopsallocation']
+    if 'absoluteminiops' in qos_spec:
+        spec['absolute_min_iops'] = '%sIOPS' % qos_spec['absoluteminiops']
+    if 'blocksize' in qos_spec:
+        spec['block_size'] = qos_spec['blocksize']
+
+    if 'peak_iops' not in spec or 'expected_iops' not in spec:
+        msg = _('Adaptive QoS requires the expected property and '
+                'the peak property set together.')
+        raise exception.Invalid(msg)
+
+    if spec['peak_iops'] < spec['expected_iops']:
+        msg = _('Adaptive maximum limit should be greater than or equal to '
+                'the adaptive minimum limit.')
+        raise exception.Invalid(msg)
+
+    return spec
 
 
 def map_dict_to_lower(input_dict):
@@ -389,11 +451,35 @@ def get_valid_qos_policy_group_info(volume, extra_specs=None):
 
 def get_valid_backend_qos_spec_from_volume_type(volume, volume_type):
     """Given a volume type, return the associated Cinder QoS spec."""
-    spec_key_values = get_backend_qos_spec_from_volume_type(volume_type)
-    if spec_key_values is None:
+    spec_dict = get_backend_qos_spec_from_volume_type(volume_type)
+    if spec_dict is None:
         return None
-    validate_qos_spec(spec_key_values)
-    return map_qos_spec(spec_key_values, volume)
+    validate_qos_spec(spec_dict)
+    map_spec = (map_aqos_spec
+                if is_qos_adaptive(spec_dict)
+                else map_qos_spec)
+    return map_spec(spec_dict, volume)
+
+
+def is_qos_adaptive(spec_dict):
+    if not spec_dict:
+        return False
+
+    normalized_aqos_keys = [key.lower() for key in ADAPTIVE_QOS_KEYS]
+    return all(key in normalized_aqos_keys
+               for key in map_dict_to_lower(spec_dict).keys())
+
+
+def is_qos_policy_group_spec_adaptive(policy):
+    if not policy:
+        return False
+
+    spec = policy.get('spec')
+    if not spec:
+        return False
+
+    return all(key in QOS_ADAPTIVE_POLICY_GROUP_SPEC_KEYS
+               for key in map_dict_to_lower(spec).keys())
 
 
 def get_backend_qos_spec_from_volume_type(volume_type):
@@ -408,8 +494,7 @@ def get_backend_qos_spec_from_volume_type(volume_type):
     # Front end QoS specs are handled by libvirt and we ignore them here.
     if consumer not in BACKEND_QOS_CONSUMERS:
         return None
-    spec_key_values = qos_spec['specs']
-    return spec_key_values
+    return qos_spec['specs']
 
 
 def check_for_invalid_qos_spec_combination(info, volume_type):

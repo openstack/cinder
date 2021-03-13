@@ -414,8 +414,10 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             return {'replication_status': fields.ReplicationStatus.ENABLED}
 
     def _mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
-        self.zapi_client.mark_qos_policy_group_for_deletion(
+        is_adaptive = na_utils.is_qos_policy_group_spec_adaptive(
             qos_policy_group_info)
+        self.zapi_client.mark_qos_policy_group_for_deletion(
+            qos_policy_group_info, is_adaptive)
 
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.

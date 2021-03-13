@@ -599,15 +599,20 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                          self.zapi_client.
                          provision_qos_policy_group.call_count)
 
-    def test_mark_qos_policy_group_for_deletion(self):
+    @ddt.data(True, False)
+    def test_mark_qos_policy_group_for_deletion(self, is_adaptive):
         self.mock_object(self.zapi_client,
                          'mark_qos_policy_group_for_deletion')
+        self.mock_object(na_utils,
+                         'is_qos_policy_group_spec_adaptive',
+                         return_value=is_adaptive)
 
         self.library._mark_qos_policy_group_for_deletion(
             fake.QOS_POLICY_GROUP_INFO)
 
         self.zapi_client.mark_qos_policy_group_for_deletion\
-            .assert_called_once_with(fake.QOS_POLICY_GROUP_INFO)
+            .assert_called_once_with(fake.QOS_POLICY_GROUP_INFO,
+                                     is_adaptive)
 
     def test_unmanage(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
@@ -639,7 +644,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         block_base.NetAppBlockStorageLibrary.unmanage.assert_called_once_with(
             fake.VOLUME)
 
-    def test_manage_existing_lun_same_name(self):
+    @ddt.data(True, False)
+    def test_manage_existing_lun_same_name(self, is_adaptive):
         mock_lun = block_base.NetAppLun('handle', 'name', '1',
                                         {'Path': '/vol/FAKE_CMODE_VOL1/name'})
         self.library._get_existing_vol_with_manage_ref = mock.Mock(
@@ -650,6 +656,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._setup_qos_for_volume = mock.Mock()
         self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
                          return_value=fake.QOS_POLICY_GROUP_NAME)
+        self.mock_object(na_utils, 'is_qos_policy_group_spec_adaptive',
+                         return_value=is_adaptive)
         self.library._add_lun_to_table = mock.Mock()
         self.zapi_client.move_lun = mock.Mock()
         mock_set_lun_qos_policy_group = self.mock_object(
@@ -675,6 +683,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._setup_qos_for_volume = mock.Mock()
         self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
                          return_value=None)
+        self.mock_object(na_utils, 'is_qos_policy_group_spec_adaptive',
+                         return_value=False)
         self.library._add_lun_to_table = mock.Mock()
         self.zapi_client.move_lun = mock.Mock()
 

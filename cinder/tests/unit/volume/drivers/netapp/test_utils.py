@@ -45,13 +45,13 @@ class NetAppDriverUtilsTestCase(test.TestCase):
     def test_validate_instantiation_proxy(self):
         kwargs = {'netapp_mode': 'proxy'}
         na_utils.validate_instantiation(**kwargs)
-        self.assertEqual(0, na_utils.LOG.warning.call_count)
+        na_utils.LOG.warning.assert_not_called()
 
     @mock.patch.object(na_utils, 'LOG', mock.Mock())
     def test_validate_instantiation_no_proxy(self):
         kwargs = {'netapp_mode': 'asdf'}
         na_utils.validate_instantiation(**kwargs)
-        self.assertEqual(1, na_utils.LOG.warning.call_count)
+        na_utils.LOG.warning.assert_called_once()
 
     def test_check_flags(self):
 
@@ -228,7 +228,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         na_utils.log_extra_spec_warnings({'netapp:raid_type': 'raid4'})
 
-        self.assertEqual(1, mock_log.call_count)
+        mock_log.assert_called_once()
 
     def test_log_extra_spec_warnings_deprecated_specs(self):
 
@@ -236,13 +236,23 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         na_utils.log_extra_spec_warnings({'netapp_thick_provisioned': 'true'})
 
-        self.assertEqual(1, mock_log.call_count)
+        mock_log.assert_called_once()
+
+    def test_validate_qos_spec(self):
+        qos_spec = fake.QOS_SPEC
+
+        # Just return without raising an exception.
+        na_utils.validate_qos_spec(qos_spec)
 
     def test_validate_qos_spec_none(self):
         qos_spec = None
 
         # Just return without raising an exception.
         na_utils.validate_qos_spec(qos_spec)
+
+    def test_validate_qos_spec_adaptive(self):
+        # Just return without raising an exception.
+        na_utils.validate_qos_spec(fake.ADAPTIVE_QOS_SPEC)
 
     def test_validate_qos_spec_keys_weirdly_cased(self):
         qos_spec = {'mAxIopS': 33000, 'mInIopS': 0}
@@ -280,6 +290,34 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
     def test_validate_qos_spec_bad_key_combination_miniops_miniopspergib(self):
         qos_spec = {'minIOPS': 33000, 'minIOPSperGiB': 10000000}
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_bad_key_combination_aqos_qos_max(self):
+        qos_spec = {'peakIOPSperGiB': 33000, 'maxIOPS': 33000}
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_bad_key_combination_aqos_qos_min(self):
+        qos_spec = {'absoluteMinIOPS': 33000, 'minIOPS': 33000}
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_bad_key_combination_aqos_qos_min_max(self):
+        qos_spec = {
+            'expectedIOPSperGiB': 33000,
+            'minIOPS': 33000,
+            'maxIOPS': 33000,
+        }
+        self.assertRaises(exception.Invalid,
+                          na_utils.validate_qos_spec,
+                          qos_spec)
+
+    def test_validate_qos_spec_adaptive_and_non_adaptive(self):
+        qos_spec = fake.INVALID_QOS_POLICY_GROUP_INFO_STANDARD_AND_ADAPTIVE
 
         self.assertRaises(exception.Invalid,
                           na_utils.validate_qos_spec,
@@ -408,6 +446,101 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_map_aqos_spec(self):
+        qos_spec = {
+            'expectedIOPSperGiB': '128',
+            'peakIOPSperGiB': '512',
+            'expectedIOPSAllocation': 'used-space',
+            'peakIOPSAllocation': 'used-space',
+            'absoluteMinIOPS': '75',
+            'blockSize': 'ANY',
+        }
+        mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
+        mock_get_name.return_value = 'fake_qos_policy'
+        expected = {
+            'expected_iops': '128IOPS/GB',
+            'peak_iops': '512IOPS/GB',
+            'expected_iops_allocation': 'used-space',
+            'peak_iops_allocation': 'used-space',
+            'absolute_min_iops': '75IOPS',
+            'block_size': 'ANY',
+            'policy_name': 'fake_qos_policy',
+        }
+
+        result = na_utils.map_aqos_spec(qos_spec, fake.VOLUME)
+
+        self.assertEqual(expected, result)
+
+    @ddt.data({'expectedIOPSperGiB': '528', 'peakIOPSperGiB': '128'},
+              {'expectedIOPSperGiB': '528'})
+    def test_map_aqos_spec_error(self, qos_spec):
+        mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
+        mock_get_name.return_value = 'fake_qos_policy'
+
+        self.assertRaises(exception.Invalid, na_utils.map_aqos_spec, qos_spec,
+                          fake.VOLUME)
+
+    def test_is_qos_adaptive_adaptive_spec(self):
+        aqos_spec = fake.ADAPTIVE_QOS_SPEC
+
+        self.assertTrue(na_utils.is_qos_adaptive(aqos_spec))
+
+    def test_is_qos_adaptive_weirdly_cased_adaptive_spec(self):
+        aqos_spec = {'expecTEDiopsPERgib': '128IOPS/GB'}
+
+        self.assertTrue(na_utils.is_qos_adaptive(aqos_spec))
+
+    def test_is_qos_adaptive_non_adaptive_spec(self):
+        qos_spec = fake.QOS_SPEC
+
+        self.assertFalse(na_utils.is_qos_adaptive(qos_spec))
+
+    def test_is_qos_policy_group_spec_adaptive_adaptive_spec(self):
+        aqos_spec = {
+            'spec': {
+                'expected_iops': '128IOPS/GB',
+                'peak_iops': '512IOPS/GB',
+                'expected_iops_allocation': 'used-space',
+                'absolute_min_iops': '75IOPS',
+                'block_size': 'ANY',
+                'policy_name': 'fake_policy_name',
+            }
+        }
+
+        self.assertTrue(na_utils.is_qos_policy_group_spec_adaptive(aqos_spec))
+
+    def test_is_qos_policy_group_spec_adaptive_none(self):
+        qos_spec = None
+
+        self.assertFalse(na_utils.is_qos_policy_group_spec_adaptive(qos_spec))
+
+    def test_is_qos_policy_group_spec_adaptive_legacy(self):
+        qos_spec = {
+            'legacy': fake.LEGACY_QOS,
+        }
+
+        self.assertFalse(na_utils.is_qos_policy_group_spec_adaptive(qos_spec))
+
+    def test_is_qos_policy_group_spec_adaptive_non_adaptive_spec(self):
+        qos_spec = {
+            'spec': {
+                'max_throughput': '21834289B/s',
+                'policy_name': 'fake_policy_name',
+            }
+        }
+
+        self.assertFalse(na_utils.is_qos_policy_group_spec_adaptive(qos_spec))
+
+    def test_policy_group_qos_spec_is_adaptive_invalid_spec(self):
+        qos_spec = {
+            'spec': {
+                'max_flops': '512',
+                'policy_name': 'fake_policy_name',
+            }
+        }
+
+        self.assertFalse(na_utils.is_qos_policy_group_spec_adaptive(qos_spec))
+
     def test_map_dict_to_lower(self):
         original = {'UPperKey': 'Value'}
         expected = {'upperkey': 'Value'}
@@ -498,7 +631,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         mock_get_valid_qos_spec_from_volume_type = self.mock_object(
             na_utils, 'get_valid_backend_qos_spec_from_volume_type')
         mock_get_valid_qos_spec_from_volume_type.return_value = None
-        self.mock_object(na_utils, 'check_for_invalid_qos_spec_combination')
         expected = fake.QOS_POLICY_GROUP_INFO_NONE
 
         result = na_utils.get_valid_qos_policy_group_info(fake.VOLUME)
@@ -516,7 +648,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         mock_get_valid_qos_spec_from_volume_type = self.mock_object(
             na_utils, 'get_valid_backend_qos_spec_from_volume_type')
         mock_get_valid_qos_spec_from_volume_type.return_value = None
-        self.mock_object(na_utils, 'check_for_invalid_qos_spec_combination')
 
         result = na_utils.get_valid_qos_policy_group_info(fake.VOLUME)
 
@@ -533,7 +664,6 @@ class NetAppDriverUtilsTestCase(test.TestCase):
             na_utils, 'get_valid_backend_qos_spec_from_volume_type')
         mock_get_valid_qos_spec_from_volume_type.return_value =\
             fake.QOS_POLICY_GROUP_SPEC
-        self.mock_object(na_utils, 'check_for_invalid_qos_spec_combination')
 
         result = na_utils.get_valid_qos_policy_group_info(fake.VOLUME)
 
@@ -543,25 +673,43 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         mock_get_spec = self.mock_object(
             na_utils, 'get_backend_qos_spec_from_volume_type')
         mock_get_spec.return_value = None
-        mock_validate = self.mock_object(na_utils, 'validate_qos_spec')
+        mock_map_qos_spec = self.mock_object(
+            na_utils, 'map_qos_spec')
+        mock_map_aqos_spec = self.mock_object(
+            na_utils, 'map_aqos_spec')
 
         result = na_utils.get_valid_backend_qos_spec_from_volume_type(
             fake.VOLUME, fake.VOLUME_TYPE)
 
         self.assertIsNone(result)
-        self.assertEqual(0, mock_validate.call_count)
+        mock_map_qos_spec.assert_not_called()
+        mock_map_aqos_spec.assert_not_called()
 
     def test_get_valid_backend_qos_spec_from_volume_type(self):
         mock_get_spec = self.mock_object(
             na_utils, 'get_backend_qos_spec_from_volume_type')
         mock_get_spec.return_value = fake.QOS_SPEC
-        mock_validate = self.mock_object(na_utils, 'validate_qos_spec')
+        mock_map_aqos_spec = self.mock_object(
+            na_utils, 'map_aqos_spec')
 
         result = na_utils.get_valid_backend_qos_spec_from_volume_type(
             fake.VOLUME, fake.VOLUME_TYPE)
 
         self.assertEqual(fake.QOS_POLICY_GROUP_SPEC, result)
-        self.assertEqual(1, mock_validate.call_count)
+        mock_map_aqos_spec.assert_not_called()
+
+    def test_get_valid_backend_qos_spec_from_volume_type_adaptive(self):
+        mock_get_spec = self.mock_object(
+            na_utils, 'get_backend_qos_spec_from_volume_type')
+        mock_get_spec.return_value = fake.ADAPTIVE_QOS_SPEC
+        mock_map_qos_spec = self.mock_object(
+            na_utils, 'map_qos_spec')
+
+        result = na_utils.get_valid_backend_qos_spec_from_volume_type(
+            fake.VOLUME, fake.VOLUME_TYPE)
+
+        self.assertEqual(fake.ADAPTIVE_QOS_POLICY_GROUP_SPEC, result)
+        mock_map_qos_spec.assert_not_called()
 
     def test_get_backend_qos_spec_from_volume_type_no_qos_specs_id(self):
         volume_type = copy.deepcopy(fake.VOLUME_TYPE)
@@ -571,7 +719,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         result = na_utils.get_backend_qos_spec_from_volume_type(volume_type)
 
         self.assertIsNone(result)
-        self.assertEqual(0, mock_get_context.call_count)
+        mock_get_context.assert_not_called()
 
     def test_get_backend_qos_spec_from_volume_type_no_qos_spec(self):
         volume_type = fake.VOLUME_TYPE
@@ -613,11 +761,20 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         self.assertEqual(fake.QOS_SPEC, result)
 
-    def test_check_for_invalid_qos_spec_combination(self):
+    def test_check_for_invalid_qos_spec_combination_legacy(self):
+        na_utils.check_for_invalid_qos_spec_combination(
+            fake.LEGACY_QOS_POLICY_GROUP_INFO,
+            fake.VOLUME_TYPE)
 
+    def test_check_for_invalid_qos_spec_combination_spec(self):
+        na_utils.check_for_invalid_qos_spec_combination(
+            fake.QOS_POLICY_GROUP_INFO,
+            fake.VOLUME_TYPE)
+
+    def test_check_for_invalid_qos_spec_combination_legacy_and_spec(self):
         self.assertRaises(exception.Invalid,
                           na_utils.check_for_invalid_qos_spec_combination,
-                          fake.INVALID_QOS_POLICY_GROUP_INFO,
+                          fake.INVALID_QOS_POLICY_GROUP_INFO_LEGACY_AND_SPEC,
                           fake.VOLUME_TYPE)
 
     def test_get_legacy_qos_policy(self):

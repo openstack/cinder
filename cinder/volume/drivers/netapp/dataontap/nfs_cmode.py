@@ -160,13 +160,15 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 self.ssc_library.get_ssc_flexvol_names())
 
     def _do_qos_for_volume(self, volume, extra_specs, cleanup=True):
-        qos_policy_group_is_adaptive = volume_utils.is_boolean_str(
-            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
                 volume, extra_specs)
             pool = volume_utils.extract_host(volume['host'], level='pool')
             qos_min_support = self.ssc_library.is_qos_min_supported(pool)
+            qos_policy_group_is_adaptive = (volume_utils.is_boolean_str(
+                extra_specs.get('netapp:qos_policy_group_is_adaptive')) or
+                na_utils.is_qos_policy_group_spec_adaptive(
+                    qos_policy_group_info))
             self.zapi_client.provision_qos_policy_group(qos_policy_group_info,
                                                         qos_min_support)
             self._set_qos_policy_group_on_volume(volume, qos_policy_group_info,
@@ -416,8 +418,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
                 volume)
-            self.zapi_client.mark_qos_policy_group_for_deletion(
+            is_adaptive = na_utils.is_qos_policy_group_spec_adaptive(
                 qos_policy_group_info)
+            self.zapi_client.mark_qos_policy_group_for_deletion(
+                qos_policy_group_info, is_adaptive)
         except Exception:
             # Don't blow up here if something went wrong de-provisioning the
             # QoS policy for the volume.

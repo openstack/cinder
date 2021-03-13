@@ -104,6 +104,8 @@ class NetAppBaseClientTestCase(test.TestCase):
             client_base.Client, 'do_direct_resize')
         mock_set_space_reservation = self.mock_object(
             client_base.Client, 'set_lun_space_reservation')
+        mock_validate_qos_policy_group = self.mock_object(
+            client_base.Client, '_validate_qos_policy_group')
         initial_size = self.fake_size
 
         if ontap_version < '9.5':
@@ -118,6 +120,7 @@ class NetAppBaseClientTestCase(test.TestCase):
                                    self.fake_size,
                                    self.fake_metadata)
 
+            mock_validate_qos_policy_group.assert_called_once()
             mock_create_node.assert_called_with(
                 'lun-create-by-size',
                 **{'path': expected_path,
@@ -154,6 +157,8 @@ class NetAppBaseClientTestCase(test.TestCase):
             client_base.Client, 'do_direct_resize')
         mock_set_space_reservation = self.mock_object(
             client_base.Client, 'set_lun_space_reservation')
+        mock_validate_qos_policy_group = self.mock_object(
+            client_base.Client, '_validate_qos_policy_group')
         initial_size = self.fake_size
 
         if ontap_version < '9.5':
@@ -168,6 +173,7 @@ class NetAppBaseClientTestCase(test.TestCase):
                                    self.fake_size,
                                    self.fake_metadata)
 
+            mock_validate_qos_policy_group.assert_called_once()
             mock_create_node.assert_called_with(
                 'lun-create-by-size',
                 **{'path': expected_path,
@@ -208,6 +214,8 @@ class NetAppBaseClientTestCase(test.TestCase):
             client_base.Client, 'do_direct_resize')
         mock_set_space_reservation = self.mock_object(
             client_base.Client, 'set_lun_space_reservation')
+        mock_validate_qos_policy_group = self.mock_object(
+            client_base.Client, '_validate_qos_policy_group')
         initial_size = self.fake_size
 
         if ontap_version < '9.5':
@@ -225,6 +233,7 @@ class NetAppBaseClientTestCase(test.TestCase):
                 self.fake_metadata,
                 qos_policy_group_name=expected_qos_group_name)
 
+            mock_validate_qos_policy_group.assert_called_once()
             mock_create_node.assert_called_with(
                 'lun-create-by-size',
                 **{'path': expected_path, 'size': initial_size,
@@ -284,6 +293,8 @@ class NetAppBaseClientTestCase(test.TestCase):
             side_effect=netapp_api.NaApiError)
         self.mock_object(self.client, 'get_ontap_version',
                          return_value=ontap_version)
+        mock_validate_qos_policy_group = self.mock_object(
+            client_base.Client, '_validate_qos_policy_group')
 
         self.assertRaises(netapp_api.NaApiError,
                           self.client.create_lun,
@@ -291,6 +302,7 @@ class NetAppBaseClientTestCase(test.TestCase):
                           self.fake_lun,
                           self.fake_size,
                           self.fake_metadata)
+        mock_validate_qos_policy_group.assert_called_once()
 
     def test_destroy_lun(self):
         path = '/vol/%s/%s' % (self.fake_volume, self.fake_lun)

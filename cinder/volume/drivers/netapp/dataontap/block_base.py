@@ -236,8 +236,10 @@ class NetAppBlockStorageLibrary(object):
         qos_policy_group_name = (
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
-        qos_policy_group_is_adaptive = volume_utils.is_boolean_str(
-            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
+        qos_policy_group_is_adaptive = (volume_utils.is_boolean_str(
+            extra_specs.get('netapp:qos_policy_group_is_adaptive')) or
+            na_utils.is_qos_policy_group_spec_adaptive(
+                qos_policy_group_info))
 
         try:
             self._create_lun(pool_name, lun_name, size, metadata,
@@ -359,8 +361,10 @@ class NetAppBlockStorageLibrary(object):
         qos_policy_group_name = (
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
-        qos_policy_group_is_adaptive = volume_utils.is_boolean_str(
-            extra_specs.get('netapp:qos_policy_group_is_adaptive'))
+        qos_policy_group_is_adaptive = (volume_utils.is_boolean_str(
+            extra_specs.get('netapp:qos_policy_group_is_adaptive')) or
+            na_utils.is_qos_policy_group_spec_adaptive(
+                qos_policy_group_info))
 
         try:
             self._clone_lun(
@@ -741,6 +745,8 @@ class NetAppBlockStorageLibrary(object):
         qos_policy_group_name = (
             na_utils.get_qos_policy_group_name_from_info(
                 qos_policy_group_info))
+        is_adaptive = na_utils.is_qos_policy_group_spec_adaptive(
+            qos_policy_group_info)
 
         path = lun.get_metadata_property('Path')
         if lun.name == volume['name']:
@@ -756,7 +762,8 @@ class NetAppBlockStorageLibrary(object):
 
         if qos_policy_group_name is not None:
             self.zapi_client.set_lun_qos_policy_group(new_path,
-                                                      qos_policy_group_name)
+                                                      qos_policy_group_name,
+                                                      is_adaptive)
         self._add_lun_to_table(lun)
         LOG.info("Manage operation completed for LUN with new path"
                  " %(path)s and uuid %(uuid)s.",

@@ -729,6 +729,67 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertSetEqual(igroups, expected)
 
+    @ddt.data(True, False)
+    def test__validate_qos_policy_group_none_adaptive(self, is_adaptive):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=True)
+        self.client._validate_qos_policy_group(
+            is_adaptive=is_adaptive, spec=None)
+
+    def test__validate_qos_policy_group_none_adaptive_no_support(self):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=False)
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client._validate_qos_policy_group,
+            is_adaptive=True,
+            spec=None)
+
+    @ddt.data(True, False)
+    def test__validate_qos_policy_group_no_qos_min_support(self, is_adaptive):
+        spec = {'min_throughput': '10'}
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client._validate_qos_policy_group,
+            is_adaptive=is_adaptive,
+            spec=spec,
+            qos_min_support=False)
+
+    def test__validate_qos_policy_group_no_block_size_support(self):
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_BLOCK_SIZE', supported=False)
+        spec = {'block_size': '4K'}
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client._validate_qos_policy_group,
+            is_adaptive=True,
+            spec=spec)
+
+    def test__validate_qos_policy_group_no_expected_iops_allocation_support(
+            self):
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION', supported=False)
+        spec = {'expected_iops_allocation': 'used-space'}
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client._validate_qos_policy_group,
+            is_adaptive=True,
+            spec=spec)
+
+    def test__validate_qos_policy_group_adaptive_qos_spec(self):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=True)
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_BLOCK_SIZE', supported=True)
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION', supported=True)
+        spec = {
+            'expected_iops': '128IOPS/GB',
+            'peak_iops': '512IOPS/GB',
+            'expected_iops_allocation': 'used-space',
+            'peak_iops_allocation': 'used-space',
+            'absolute_min_iops': '64IOPS',
+            'block_size': '4K',
+        }
+        self.client._validate_qos_policy_group(is_adaptive=True, spec=spec)
+
     def test_clone_lun(self):
         self.client.clone_lun(
             'volume', 'fakeLUN', 'newFakeLUN',
@@ -853,19 +914,38 @@ class NetAppCmodeClientTestCase(test.TestCase):
             mock.call('lun-set-qos-policy-group', api_args)])
 
     def test_provision_qos_policy_group_no_qos_policy_group_info(self):
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
 
         self.client.provision_qos_policy_group(qos_policy_group_info=None,
                                                qos_min_support=True)
 
-        self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
+        mock_qos_policy_group_create.assert_not_called()
+
+    def test_provision_qos_policy_group_no_legacy_no_spec(self):
+        mock_qos_policy_group_exists = self.mock_object(
+            self.client, 'qos_policy_group_exists')
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+
+        self.client.provision_qos_policy_group(qos_policy_group_info={},
+                                               qos_min_support=False)
+
+        mock_qos_policy_group_exists.assert_not_called()
+        mock_qos_policy_group_create.assert_not_called()
+        mock_qos_policy_group_modify.assert_not_called()
 
     def test_provision_qos_policy_group_legacy_qos_policy_group_info(self):
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
 
         self.client.provision_qos_policy_group(
             qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_LEGACY,
             qos_min_support=True)
 
-        self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
+        mock_qos_policy_group_create.assert_not_called()
 
     def test_provision_qos_policy_group_with_qos_spec_create_with_min(self):
 
@@ -880,15 +960,43 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO,
                                                True)
 
-        mock_qos_policy_group_create.assert_has_calls([
-            mock.call({
-                'policy_name': fake.QOS_POLICY_GROUP_NAME,
-                'min_throughput': fake.MIN_IOPS,
-                'max_throughput': fake.MAX_IOPS,
-            })])
+        mock_qos_policy_group_create.assert_called_once_with({
+            'policy_name': fake.QOS_POLICY_GROUP_NAME,
+            'min_throughput': fake.MIN_IOPS,
+            'max_throughput': fake.MAX_IOPS,
+        })
+        mock_qos_policy_group_modify.assert_not_called()
+
+    def test_provision_qos_policy_group_with_qos_spec_create_with_aqos(self):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=True)
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_BLOCK_SIZE', supported=True)
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION', supported=True)
+        self.mock_object(self.client,
+                         'qos_policy_group_exists',
+                         return_value=False)
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+        mock_qos_adaptive_policy_group_create = self.mock_object(
+            self.client, 'qos_adaptive_policy_group_create')
+        mock_qos_adaptive_policy_group_modify = self.mock_object(
+            self.client, 'qos_adaptive_policy_group_modify')
+
+        self.client.provision_qos_policy_group(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_INFO, False)
+
+        mock_qos_adaptive_policy_group_create.assert_called_once_with(
+            fake.ADAPTIVE_QOS_SPEC)
+        mock_qos_adaptive_policy_group_modify.assert_not_called()
+        mock_qos_policy_group_create.assert_not_called()
         mock_qos_policy_group_modify.assert_not_called()
 
     def test_provision_qos_policy_group_with_qos_spec_create_unsupported(self):
+        mock_qos_policy_group_exists = self.mock_object(
+            self.client, 'qos_policy_group_exists')
         mock_qos_policy_group_create = self.mock_object(
             self.client, 'qos_policy_group_create')
         mock_qos_policy_group_modify = self.mock_object(
@@ -897,8 +1005,34 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertRaises(
             netapp_utils.NetAppDriverException,
             self.client.provision_qos_policy_group,
-            fake.QOS_POLICY_GROUP_INFO, False)
+            fake.QOS_POLICY_GROUP_INFO,
+            False)
 
+        mock_qos_policy_group_exists.assert_not_called()
+        mock_qos_policy_group_create.assert_not_called()
+        mock_qos_policy_group_modify.assert_not_called()
+
+    def test_provision_qos_policy_group_with_invalid_qos_spec(self):
+        self.mock_object(self.client, '_validate_qos_policy_group',
+                         side_effect=netapp_utils.NetAppDriverException)
+        mock_policy_group_spec_is_adaptive = self.mock_object(
+            netapp_utils, 'is_qos_policy_group_spec_adaptive')
+        mock_qos_policy_group_exists = self.mock_object(
+            self.client, 'qos_policy_group_exists')
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+
+        self.assertRaises(
+            netapp_utils.NetAppDriverException,
+            self.client.provision_qos_policy_group,
+            fake.QOS_POLICY_GROUP_INFO,
+            False)
+
+        mock_policy_group_spec_is_adaptive.assert_called_once_with(
+            fake.QOS_POLICY_GROUP_INFO)
+        mock_qos_policy_group_exists.assert_not_called()
         mock_qos_policy_group_create.assert_not_called()
         mock_qos_policy_group_modify.assert_not_called()
 
@@ -963,6 +1097,33 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 'max_throughput': fake.MAX_THROUGHPUT,
             })])
 
+    def test_provision_qos_policy_group_with_qos_spec_modify_with_aqos(self):
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=True)
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_BLOCK_SIZE', supported=True)
+        self.client.features.add_feature(
+            'ADAPTIVE_QOS_EXPECTED_IOPS_ALLOCATION', supported=True)
+        self.mock_object(self.client,
+                         'qos_policy_group_exists',
+                         return_value=True)
+        mock_qos_policy_group_create = self.mock_object(
+            self.client, 'qos_policy_group_create')
+        mock_qos_policy_group_modify = self.mock_object(
+            self.client, 'qos_policy_group_modify')
+        mock_qos_adaptive_policy_group_create = self.mock_object(
+            self.client, 'qos_adaptive_policy_group_create')
+        mock_qos_adaptive_policy_group_modify = self.mock_object(
+            self.client, 'qos_adaptive_policy_group_modify')
+
+        self.client.provision_qos_policy_group(
+            fake.ADAPTIVE_QOS_POLICY_GROUP_INFO, False)
+
+        mock_qos_adaptive_policy_group_modify.assert_called_once_with(
+            fake.ADAPTIVE_QOS_SPEC)
+        mock_qos_adaptive_policy_group_create.assert_not_called()
+        mock_qos_policy_group_create.assert_not_called()
+        mock_qos_policy_group_modify.assert_not_called()
+
     def test_qos_policy_group_exists(self):
 
         self.mock_send_request.return_value = netapp_api.NaElement(
@@ -1015,6 +1176,30 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.mock_send_request.assert_has_calls([
             mock.call('qos-policy-group-create', api_args, False)])
 
+    def test_qos_adaptive_policy_group_create(self):
+
+        api_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'expected-iops': '%sIOPS/GB' % fake.EXPECTED_IOPS_PER_GB,
+            'peak-iops': '%sIOPS/GB' % fake.PEAK_IOPS_PER_GB,
+            'expected-iops-allocation': fake.EXPECTED_IOPS_ALLOCATION,
+            'peak-iops-allocation': fake.PEAK_IOPS_ALLOCATION,
+            'block-size': fake.BLOCK_SIZE,
+            'vserver': self.vserver,
+        }
+
+        self.client.qos_adaptive_policy_group_create({
+            'policy_name': fake.QOS_POLICY_GROUP_NAME,
+            'expected_iops': '%sIOPS/GB' % fake.EXPECTED_IOPS_PER_GB,
+            'peak_iops': '%sIOPS/GB' % fake.PEAK_IOPS_PER_GB,
+            'expected_iops_allocation': fake.EXPECTED_IOPS_ALLOCATION,
+            'peak_iops_allocation': fake.PEAK_IOPS_ALLOCATION,
+            'block_size': fake.BLOCK_SIZE,
+        })
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-adaptive-policy-group-create', api_args, False)])
+
     def test_qos_policy_group_modify(self):
 
         api_args = {
@@ -1032,17 +1217,28 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.mock_send_request.assert_has_calls([
             mock.call('qos-policy-group-modify', api_args, False)])
 
-    def test_qos_policy_group_delete(self):
+    def test_qos_adaptive_policy_group_modify(self):
 
         api_args = {
-            'policy-group': fake.QOS_POLICY_GROUP_NAME
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'expected-iops': '%sIOPS/GB' % fake.EXPECTED_IOPS_PER_GB,
+            'peak-iops': '%sIOPS/GB' % fake.PEAK_IOPS_PER_GB,
+            'expected-iops-allocation': fake.EXPECTED_IOPS_ALLOCATION,
+            'peak-iops-allocation': fake.PEAK_IOPS_ALLOCATION,
+            'block-size': fake.BLOCK_SIZE,
         }
 
-        self.client.qos_policy_group_delete(
-            fake.QOS_POLICY_GROUP_NAME)
+        self.client.qos_adaptive_policy_group_modify({
+            'policy_name': fake.QOS_POLICY_GROUP_NAME,
+            'expected_iops': '%sIOPS/GB' % fake.EXPECTED_IOPS_PER_GB,
+            'peak_iops': '%sIOPS/GB' % fake.PEAK_IOPS_PER_GB,
+            'expected_iops_allocation': fake.EXPECTED_IOPS_ALLOCATION,
+            'peak_iops_allocation': fake.PEAK_IOPS_ALLOCATION,
+            'block_size': fake.BLOCK_SIZE,
+        })
 
         self.mock_send_request.assert_has_calls([
-            mock.call('qos-policy-group-delete', api_args, False)])
+            mock.call('qos-adaptive-policy-group-modify', api_args, False)])
 
     def test_qos_policy_group_rename(self):
 
@@ -1082,7 +1278,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(0, mock_rename.call_count)
         self.assertEqual(1, mock_remove.call_count)
 
-    def test_mark_qos_policy_group_for_deletion_w_qos_spec(self):
+    @ddt.data(True, False)
+    def test_mark_qos_policy_group_for_deletion_w_qos_spec(self,
+                                                           is_adaptive):
 
         mock_rename = self.mock_object(self.client, 'qos_policy_group_rename')
         mock_remove = self.mock_object(self.client,
@@ -1091,14 +1289,17 @@ class NetAppCmodeClientTestCase(test.TestCase):
         new_name = 'deleted_cinder_%s' % fake.QOS_POLICY_GROUP_NAME
 
         self.client.mark_qos_policy_group_for_deletion(
-            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_MAX)
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_MAX,
+            is_adaptive=is_adaptive)
 
         mock_rename.assert_has_calls([
-            mock.call(fake.QOS_POLICY_GROUP_NAME, new_name)])
+            mock.call(fake.QOS_POLICY_GROUP_NAME, new_name, is_adaptive)])
         self.assertEqual(0, mock_log.call_count)
         self.assertEqual(1, mock_remove.call_count)
 
-    def test_mark_qos_policy_group_for_deletion_exception_path(self):
+    @ddt.data(True, False)
+    def test_mark_qos_policy_group_for_deletion_exception_path(self,
+                                                               is_adaptive):
 
         mock_rename = self.mock_object(self.client, 'qos_policy_group_rename')
         mock_rename.side_effect = netapp_api.NaApiError
@@ -1108,10 +1309,11 @@ class NetAppCmodeClientTestCase(test.TestCase):
         new_name = 'deleted_cinder_%s' % fake.QOS_POLICY_GROUP_NAME
 
         self.client.mark_qos_policy_group_for_deletion(
-            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_MAX)
+            qos_policy_group_info=fake.QOS_POLICY_GROUP_INFO_MAX,
+            is_adaptive=is_adaptive)
 
         mock_rename.assert_has_calls([
-            mock.call(fake.QOS_POLICY_GROUP_NAME, new_name)])
+            mock.call(fake.QOS_POLICY_GROUP_NAME, new_name, is_adaptive)])
         self.assertEqual(1, mock_log.call_count)
         self.assertEqual(1, mock_remove.call_count)
 
@@ -1138,15 +1340,29 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(0, mock_log.call_count)
 
     def test_remove_unused_qos_policy_groups_api_error(self):
-
+        self.client.features.add_feature('ADAPTIVE_QOS', supported=True)
         mock_log = self.mock_object(client_cmode.LOG, 'debug')
-        api_args = {
-            'query': {
-                'qos-policy-group-info': {
-                    'policy-group': 'deleted_cinder_*',
-                    'vserver': self.vserver,
-                }
-            },
+        qos_query = {
+            'qos-policy-group-info': {
+                'policy-group': 'deleted_cinder_*',
+                'vserver': self.vserver,
+            }
+        }
+        adaptive_qos_query = {
+            'qos-adaptive-policy-group-info': {
+                'policy-group': 'deleted_cinder_*',
+                'vserver': self.vserver,
+            }
+        }
+        qos_api_args = {
+            'query': qos_query,
+            'max-records': 3500,
+            'continue-on-failure': 'true',
+            'return-success-list': 'false',
+            'return-failure-list': 'false',
+        }
+        adaptive_qos_api_args = {
+            'query': adaptive_qos_query,
             'max-records': 3500,
             'continue-on-failure': 'true',
             'return-success-list': 'false',
@@ -1157,8 +1373,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.client.remove_unused_qos_policy_groups()
 
         self.mock_send_request.assert_has_calls([
-            mock.call('qos-policy-group-delete-iter', api_args, False)])
-        self.assertEqual(1, mock_log.call_count)
+            mock.call('qos-policy-group-delete-iter',
+                      qos_api_args, False),
+            mock.call('qos-adaptive-policy-group-delete-iter',
+                      adaptive_qos_api_args, False),
+        ])
+        self.assertEqual(2, mock_log.call_count)
 
     @mock.patch('cinder.volume.volume_utils.resolve_hostname',
                 return_value='192.168.1.101')
