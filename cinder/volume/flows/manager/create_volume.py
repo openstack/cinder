@@ -12,6 +12,8 @@
 
 import binascii
 import traceback
+import typing
+from typing import Any, Dict, Optional, Tuple  # noqa: H301
 
 from castellan import key_manager
 import os_brick.initiator.connectors
@@ -381,7 +383,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
     default_provides = 'volume_spec'
 
-    def __init__(self, manager, db, driver, image_volume_cache=None):
+    def __init__(self, manager, db, driver, image_volume_cache=None) -> None:
         super(CreateVolumeFromSpecTask, self).__init__(addons=[ACTION])
         self.manager = manager
         self.db = db
@@ -450,8 +452,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                'vol_id': volume.id})
             raise exception.MetadataCopyFailure(reason=ex)
 
-    def _create_from_snapshot(self, context, volume, snapshot_id,
-                              **kwargs):
+    def _create_from_snapshot(self,
+                              context: cinder_context.RequestContext,
+                              volume: objects.Volume,
+                              snapshot_id: str,
+                              **kwargs: Any) -> dict:
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
         try:
             model_update = self.driver.create_volume_from_snapshot(volume,
@@ -618,7 +623,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
 
         return model_update
 
-    def _create_from_source_volume(self, context, volume, source_volid,
+    def _create_from_source_volume(self,
+                                   context: cinder_context.RequestContext,
+                                   volume: objects.Volume,
+                                   source_volid: str,
                                    **kwargs):
         # NOTE(harlowja): if the source volume has disappeared this will be our
         # detection of that since this database call should fail.
@@ -645,8 +653,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 context, volume, source_volid=srcvol_ref.id)
         return model_update
 
-    def _capture_volume_image_metadata(self, context, volume_id,
-                                       image_id, image_meta):
+    def _capture_volume_image_metadata(self,
+                                       context: cinder_context.RequestContext,
+                                       volume_id: str,
+                                       image_id: str,
+                                       image_meta: dict) -> None:
         volume_metadata = volume_utils.get_volume_image_metadata(
             image_id, image_meta)
         LOG.debug("Creating volume glance metadata for volume %(volume_id)s"
@@ -656,7 +667,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self.db.volume_glance_metadata_bulk_create(context, volume_id,
                                                    volume_metadata)
 
-    def _clone_image_volume(self, context, volume, image_location, image_meta):
+    def _clone_image_volume(self,
+                            context: cinder_context.RequestContext,
+                            volume: objects.Volume,
+                            image_location,
+                            image_meta: Dict[str, Any]) -> Tuple[None, bool]:
         """Create a volume efficiently from an existing image.
 
         Returns a dict of volume properties eg. provider_location,
@@ -713,8 +728,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                           {'id': image_volume['id']})
             return None, False
 
-    def _create_from_image_download(self, context, volume, image_location,
-                                    image_meta, image_service):
+    def _create_from_image_download(self,
+                                    context: cinder_context.RequestContext,
+                                    volume: objects.Volume,
+                                    image_location,
+                                    image_meta: Dict[str, Any],
+                                    image_service) -> dict:
         # TODO(harlowja): what needs to be rolled back in the clone if this
         # volume create fails?? Likely this should be a subflow or broken
         # out task in the future. That will bring up the question of how
@@ -743,14 +762,20 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                               {'volume_id': volume.id})
         return model_update
 
-    def _create_from_image_cache(self, context, internal_context, volume,
-                                 image_id, image_meta):
+    def _create_from_image_cache(
+            self,
+            context: cinder_context.RequestContext,
+            internal_context: cinder_context.RequestContext,
+            volume: objects.Volume,
+            image_id: str,
+            image_meta: Dict[str, Any]) -> Tuple[None, bool]:
         """Attempt to create the volume using the image cache.
 
         Best case this will simply clone the existing volume in the cache.
         Worst case the image is out of date and will be evicted. In that case
         a clone will not be created and the image must be downloaded again.
         """
+        assert self.image_volume_cache is not None
         LOG.debug('Attempting to retrieve cache entry for image = '
                   '%(image_id)s on host %(host)s.',
                   {'image_id': image_id, 'host': volume.host})
@@ -787,9 +812,15 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         return None, False
 
     @coordination.synchronized('{image_id}')
-    def _prepare_image_cache_entry(self, context, volume,
-                                   image_location, image_id,
-                                   image_meta, image_service):
+    def _prepare_image_cache_entry(self,
+                                   context: cinder_context.RequestContext,
+                                   volume: objects.Volume,
+                                   image_location: str,
+                                   image_id: str,
+                                   image_meta: Dict[str, Any],
+                                   image_service) -> Tuple[Optional[dict],
+                                                           bool]:
+        assert self.image_volume_cache is not None
         internal_context = cinder_context.get_internal_tenant_context()
         if not internal_context:
             return None, False
@@ -822,10 +853,15 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 update_cache=True)
             return model_update, True
 
-    def _create_from_image_cache_or_download(self, context, volume,
-                                             image_location, image_id,
-                                             image_meta, image_service,
-                                             update_cache=False):
+    def _create_from_image_cache_or_download(
+            self,
+            context: cinder_context.RequestContext,
+            volume: objects.Volume,
+            image_location,
+            image_id: str,
+            image_meta: Dict[str, Any],
+            image_service,
+            update_cache: bool = False) -> Optional[dict]:
         # NOTE(e0ne): check for free space in image_conversion_dir before
         # image downloading.
         # NOTE(mnaser): This check *only* happens if the backend is not able
@@ -850,7 +886,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         should_create_cache_entry = False
         cloned = False
         model_update = None
-        if self.image_volume_cache:
+        if self.image_volume_cache is not None:
             internal_context = cinder_context.get_internal_tenant_context()
             if not internal_context:
                 LOG.info('Unable to get Cinder internal context, will '
@@ -968,9 +1004,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         return model_update
 
     @utils.retry(exception.SnapshotLimitReached, retries=1)
-    def _create_from_image(self, context, volume,
-                           image_location, image_id, image_meta,
-                           image_service, **kwargs):
+    def _create_from_image(self,
+                           context: cinder_context.RequestContext,
+                           volume: objects.Volume,
+                           image_location,
+                           image_id: str,
+                           image_meta: Dict[str, Any],
+                           image_service,
+                           **kwargs: Any) -> Optional[dict]:
         LOG.debug("Cloning %(volume_id)s from image %(image_id)s "
                   " at location %(image_location)s.",
                   {'volume_id': volume.id,
@@ -1036,9 +1077,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         self._handle_bootable_volume_glance_meta(context, volume,
                                                  image_id=image_id,
                                                  image_meta=image_meta)
+        typing.cast(dict, model_update)
         return model_update
 
-    def _create_from_backup(self, context, volume, backup_id, **kwargs):
+    def _create_from_backup(self,
+                            context: cinder_context.RequestContext,
+                            volume: objects.Volume,
+                            backup_id: str,
+                            **kwargs) -> Tuple[Dict, bool]:
         LOG.info("Creating volume %(volume_id)s from backup %(backup_id)s.",
                  {'volume_id': volume.id,
                   'backup_id': backup_id})
@@ -1077,7 +1123,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                   'backup_id': backup_id})
         return ret, need_update_volume
 
-    def _create_raw_volume(self, context, volume, **kwargs):
+    def _create_raw_volume(self,
+                           context: cinder_context.RequestContext,
+                           volume: objects.Volume,
+                           **kwargs: Any):
         try:
             ret = self.driver.create_volume(volume)
         except Exception as ex:
@@ -1092,7 +1141,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             self._cleanup_cg_in_volume(volume)
         return ret
 
-    def execute(self, context, volume, volume_spec):
+    def execute(self,
+                context: cinder_context.RequestContext,
+                volume: objects.Volume,
+                volume_spec) -> dict:
         volume_spec = dict(volume_spec)
         volume_id = volume_spec.pop('volume_id', None)
         if not volume_id:
@@ -1119,6 +1171,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                  "with specification: %(volume_spec)s",
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
                   'create_type': create_type})
+        model_update: dict
         if create_type == 'raw':
             model_update = self._create_raw_volume(
                 context, volume, **volume_spec)
@@ -1155,7 +1208,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             raise
         return volume_spec
 
-    def _cleanup_cg_in_volume(self, volume):
+    def _cleanup_cg_in_volume(self, volume: objects.Volume) -> None:
         # NOTE(xyang): Cannot have both group_id and consistencygroup_id.
         # consistencygroup_id needs to be removed to avoid DB reference
         # error because there isn't an entry in the consistencygroups table.

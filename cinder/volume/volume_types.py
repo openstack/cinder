@@ -312,7 +312,8 @@ def remove_volume_type_access(context, volume_type_id, project_id):
                                           'access.remove')
 
 
-def is_encrypted(context, volume_type_id):
+def is_encrypted(context: context.RequestContext,
+                 volume_type_id: str) -> bool:
     return get_volume_type_encryption(context, volume_type_id) is not None
 
 

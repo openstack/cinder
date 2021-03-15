@@ -723,8 +723,9 @@ def get_all_volume_groups(vg_name=None) -> list:
         vg_name)
 
 
-def extract_availability_zones_from_volume_type(volume_type) \
-        -> Optional[list]:
+def extract_availability_zones_from_volume_type(
+        volume_type: Union['objects.VolumeType', dict]) \
+        -> Optional[List[str]]:
     if not volume_type:
         return None
     extra_specs = volume_type.get('extra_specs', {})
@@ -1026,6 +1027,7 @@ def create_encryption_key(context: context.RequestContext,
             raise exception.Invalid(message="Key manager error")
 
     typing.cast(str, encryption_key_id)
+
     return encryption_key_id
 
 
