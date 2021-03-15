@@ -1289,8 +1289,9 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     usages[resource].reserved += delta
 
         if unders:
-            LOG.warning("Change will make usage less than 0 for the following "
-                        "resources: %s", unders)
+            LOG.warning("Reservation would make usage less than 0 for the "
+                        "following resources, so on commit they will be "
+                        "limited to prevent going below 0: %s", unders)
         if overs:
             usages = {k: dict(in_use=v.in_use, reserved=v.reserved)
                       for k, v in usages.items()}
@@ -1345,9 +1346,14 @@ def reservation_commit(context, reservations, project_id=None):
 
         for reservation in _quota_reservations(session, context, reservations):
             usage = usages[reservation.usage_id]
-            if reservation.delta >= 0:
-                usage.reserved -= reservation.delta
-            usage.in_use += reservation.delta
+            delta = reservation.delta
+            if delta >= 0:
+                usage.reserved -= min(delta, usage.reserved)
+            # For negative deltas make sure we never go into negative usage
+            elif -delta > usage.in_use:
+                delta = -usage.in_use
+
+            usage.in_use += delta
 
             reservation.delete(session=session)
 
@@ -1365,7 +1371,7 @@ def reservation_rollback(context, reservations, project_id=None):
         for reservation in _quota_reservations(session, context, reservations):
             usage = usages[reservation.usage_id]
             if reservation.delta >= 0:
-                usage.reserved -= reservation.delta
+                usage.reserved -= min(reservation.delta, usage.reserved)
 
             reservation.delete(session=session)
 
@@ -1434,7 +1440,8 @@ def reservation_expire(context):
         if results:
             for reservation in results:
                 if reservation.delta >= 0:
-                    reservation.usage.reserved -= reservation.delta
+                    reservation.usage.reserved -= min(
+                        reservation.delta, reservation.usage.reserved)
                     reservation.usage.save(session=session)
 
                 reservation.delete(session=session)
