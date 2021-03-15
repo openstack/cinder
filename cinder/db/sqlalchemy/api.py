@@ -1593,10 +1593,20 @@ def _volume_data_get_for_project(context, project_id, volume_type_id=None,
     # When calling the method for quotas we don't count volumes that are the
     # destination of a migration since they were not accounted for quotas or
     # reservations in the first place.
+    # Also skip temporary volumes that have 'temporary' admin_metadata key set
+    # to True.
     if skip_internal:
+        admin_model = models.VolumeAdminMetadata
         query = query.filter(
-            or_(model.migration_status.is_(None),
-                ~model.migration_status.startswith('target:')))
+            and_(or_(model.migration_status.is_(None),
+                     ~model.migration_status.startswith('target:')),
+                 ~sql.exists().where(and_(model.id == admin_model.volume_id,
+                                          ~admin_model.deleted,
+                                          admin_model.key == 'temporary',
+                                          admin_model.value == 'True')
+                                     )
+                 )
+        )
 
     if host:
         query = query.filter(_filter_host(model.host, host))
