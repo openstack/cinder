@@ -51,7 +51,20 @@ LOG = logging.getLogger(__name__)
 @six.add_metaclass(volume_utils.TraceWrapperWithABCMetaclass)
 class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                            data_motion.DataMotionMixin):
-    """NetApp NFS driver for Data ONTAP (Cluster-mode)."""
+    """NetApp NFS driver for Data ONTAP (Cluster-mode).
+
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0 - Driver development before Wallaby
+        2.0.0 - Add support for QoS minimums specs
+                Add support for dynamic Adaptive QoS policy group creation
+                Implement FlexGroup pool
+
+    """
+
+    VERSION = "2.0.0"
 
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']
 
@@ -101,6 +114,12 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
         self._add_looping_tasks()
+
+        if (self.ssc_library.contains_flexgroup_pool() and
+                not self.zapi_client.features.FLEXGROUP):
+            msg = _('FlexGroup pool requires Data ONTAP 9.8 or later.')
+            raise na_utils.NetAppDriverException(msg)
+
         super(NetAppCmodeNfsDriver, self).check_for_setup_error()
 
     def _add_looping_tasks(self):
@@ -288,6 +307,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             if is_flexgroup:
                 pool['consistencygroup_support'] = False
                 pool['consistent_group_snapshot_enabled'] = False
+                pool['multiattach'] = False
 
             # Add up-to-date capacity info
             nfs_share = ssc_vol_info['pool_name']
@@ -452,12 +472,14 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         is_flexgroup = self._is_flexgroup(host=volume['host'])
         try:
             LOG.debug('Deleting backing file for volume %s.', volume['id'])
-            if is_flexgroup:
+            if (is_flexgroup and
+                    not self._is_flexgroup_clone_file_supported()):
                 super(NetAppCmodeNfsDriver, self).delete_volume(volume)
             else:
                 self._delete_file(volume['id'], volume['name'])
         except Exception:
-            if is_flexgroup:
+            if (is_flexgroup and
+                    not self._is_flexgroup_clone_file_supported()):
                 LOG.exception('Exec of "rm" command on backing file for '
                               '%s was unsuccessful.', volume['id'])
             else:
@@ -482,7 +504,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        if self._is_flexgroup(snapshot['volume_id']):
+        if (self._is_flexgroup(snapshot['volume_id']) and
+                not self._is_flexgroup_clone_file_supported()):
             super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
         else:
             self._delete_backing_file_for_snapshot(snapshot)
@@ -957,3 +980,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         pool_name = volume_utils.extract_host(host, level='pool')
         return self.ssc_library.is_flexgroup(pool_name)
+
+    def _is_flexgroup_clone_file_supported(self):
+        """Check whether storage can perform clone file for FlexGroup"""
+        return self.zapi_client.features.FLEXGROUP_CLONE_FILE

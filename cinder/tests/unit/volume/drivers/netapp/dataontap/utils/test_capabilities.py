@@ -583,3 +583,32 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         self.assertEqual(expected, result)
         self.zapi_client.is_qos_min_supported.assert_called_once_with(False,
                                                                       'node')
+
+    @ddt.data(True, False)
+    def test_is_flexgroup(self, is_fg):
+        pool_name = 'fake_pool'
+        self.ssc_library.ssc = {
+            pool_name: {
+                'pool_name': pool_name,
+                'netapp_is_flexgroup': 'true' if is_fg else 'false',
+            },
+        }
+
+        if not is_fg:
+            pool_name = 'no_pool'
+
+        is_fg_returned = self.ssc_library.is_flexgroup(pool_name)
+
+        self.assertEqual(is_fg_returned, is_fg)
+
+    @ddt.data(True, False)
+    def test_contains_flexgroup(self, contains_fg):
+        self.ssc_library.ssc = {
+            'fake_pool': {
+                'netapp_is_flexgroup': 'true' if contains_fg else 'false',
+            },
+        }
+
+        contains_fg_returned = self.ssc_library.contains_flexgroup_pool()
+
+        self.assertEqual(contains_fg_returned, contains_fg)

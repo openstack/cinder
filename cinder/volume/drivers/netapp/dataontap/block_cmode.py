@@ -48,7 +48,19 @@ LOG = logging.getLogger(__name__)
 @six.add_metaclass(volume_utils.TraceWrapperMetaclass)
 class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
                                      data_motion.DataMotionMixin):
-    """NetApp block storage library for Data ONTAP (Cluster-mode)."""
+    """NetApp block storage library for Data ONTAP (Cluster-mode).
+
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0 - Driver development before Wallaby
+        2.0.0 - Add support for QoS minimums specs
+                Add support for dynamic Adaptive QoS policy group creation
+
+    """
+
+    VERSION = "2.0.0"
 
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']
 

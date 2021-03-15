@@ -378,3 +378,11 @@ class CapabilitiesLibrary(object):
                 return flexvol_info['netapp_is_flexgroup'] == 'true'
 
         return False
+
+    def contains_flexgroup_pool(self):
+        for __, flexvol_info in self.ssc.items():
+            if ('netapp_is_flexgroup' in flexvol_info and
+                    flexvol_info['netapp_is_flexgroup'] == 'true'):
+                return True
+
+        return False
