@@ -21,6 +21,7 @@ SnapMirror, and copy-offload as improvements to brute force data transfer.
 """
 
 from oslo_log import log
+from oslo_service import loopingcall
 from oslo_utils import excutils
 
 from cinder import exception
@@ -34,6 +35,9 @@ from cinder.volume import volume_utils
 
 LOG = log.getLogger(__name__)
 ENTRY_DOES_NOT_EXIST = "(entry doesn't exist)"
+GEOMETRY_HAS_BEEN_CHANGED = (
+    "Geometry of the destination",  # This intends to be a Tuple
+    "has been changed since the SnapMirror relationship was created")
 QUIESCE_RETRY_INTERVAL = 5
 
 
@@ -128,22 +132,33 @@ class DataMotionMixin(object):
         If a SnapMirror relationship already exists and is broken off or
         quiesced, resume and re-sync the mirror.
         """
+
         dest_backend_config = config_utils.get_backend_configuration(
             dest_backend_name)
         dest_vserver = dest_backend_config.netapp_vserver
-        dest_client = config_utils.get_client_for_backend(
-            dest_backend_name, vserver_name=dest_vserver)
-
         source_backend_config = config_utils.get_backend_configuration(
             src_backend_name)
         src_vserver = source_backend_config.netapp_vserver
 
+        dest_client = config_utils.get_client_for_backend(
+            dest_backend_name, vserver_name=dest_vserver)
+        src_client = config_utils.get_client_for_backend(
+            src_backend_name, vserver_name=src_vserver)
+
+        provisioning_options = (
+            src_client.get_provisioning_options_from_flexvol(
+                src_flexvol_name)
+        )
+        pool_is_flexgroup = provisioning_options.get('is_flexgroup', False)
+
         # 1. Create destination 'dp' FlexVol if it doesn't exist
         if not dest_client.flexvol_exists(dest_flexvol_name):
-            self.create_destination_flexvol(src_backend_name,
-                                            dest_backend_name,
-                                            src_flexvol_name,
-                                            dest_flexvol_name)
+            self.create_destination_flexvol(
+                src_backend_name,
+                dest_backend_name,
+                src_flexvol_name,
+                dest_flexvol_name,
+                pool_is_flexgroup=pool_is_flexgroup)
 
         # 2. Check if SnapMirror relationship exists
         existing_mirrors = dest_client.get_snapmirrors(
@@ -158,28 +173,48 @@ class DataMotionMixin(object):
 
         # 3. Create and initialize SnapMirror if it doesn't already exist
         if not existing_mirrors:
+
             # TODO(gouthamr): Change the schedule from hourly to a config value
             msg = ("Creating a SnapMirror relationship between "
                    "%(src_vserver)s:%(src_volume)s and %(dest_vserver)s:"
                    "%(dest_volume)s.")
             LOG.debug(msg, msg_payload)
 
-            dest_client.create_snapmirror(src_vserver,
-                                          src_flexvol_name,
-                                          dest_vserver,
-                                          dest_flexvol_name,
-                                          schedule='hourly')
+            try:
+                dest_client.create_snapmirror(
+                    src_vserver,
+                    src_flexvol_name,
+                    dest_vserver,
+                    dest_flexvol_name,
+                    schedule='hourly',
+                    relationship_type=('extended_data_protection'
+                                       if pool_is_flexgroup
+                                       else 'data_protection'))
 
-            msg = ("Initializing SnapMirror transfers between "
-                   "%(src_vserver)s:%(src_volume)s and %(dest_vserver)s:"
-                   "%(dest_volume)s.")
-            LOG.debug(msg, msg_payload)
+                msg = ("Initializing SnapMirror transfers between "
+                       "%(src_vserver)s:%(src_volume)s and %(dest_vserver)s:"
+                       "%(dest_volume)s.")
+                LOG.debug(msg, msg_payload)
 
-            # Initialize async transfer of the initial data
-            dest_client.initialize_snapmirror(src_vserver,
-                                              src_flexvol_name,
-                                              dest_vserver,
-                                              dest_flexvol_name)
+                # Initialize async transfer of the initial data
+                dest_client.initialize_snapmirror(src_vserver,
+                                                  src_flexvol_name,
+                                                  dest_vserver,
+                                                  dest_flexvol_name)
+            except netapp_api.NaApiError as e:
+                with excutils.save_and_reraise_exception() as raise_ctxt:
+                    if (e.code == netapp_api.EAPIERROR and
+                        all(substr in e.message for
+                            substr in GEOMETRY_HAS_BEEN_CHANGED)):
+                        msg = _("Error creating SnapMirror. Geometry has "
+                                "changed on destination volume.")
+                        LOG.error(msg)
+                        self.delete_snapmirror(src_backend_name,
+                                               dest_backend_name,
+                                               src_flexvol_name,
+                                               dest_flexvol_name)
+                        raise_ctxt.reraise = False
+                        raise na_utils.GeometryHasChangedOnDestination(msg)
 
         # 4. Try to repair SnapMirror if existing
         else:
@@ -191,6 +226,7 @@ class DataMotionMixin(object):
                            "'%(state)s' state. Attempting to repair it.")
                     msg_payload['state'] = snapmirror.get('mirror-state')
                     LOG.debug(msg, msg_payload)
+
                     dest_client.resume_snapmirror(src_vserver,
                                                   src_flexvol_name,
                                                   dest_vserver,
@@ -399,7 +435,8 @@ class DataMotionMixin(object):
                                       dest_flexvol_name)
 
     def create_destination_flexvol(self, src_backend_name, dest_backend_name,
-                                   src_flexvol_name, dest_flexvol_name):
+                                   src_flexvol_name, dest_flexvol_name,
+                                   pool_is_flexgroup=False):
         """Create a SnapMirror mirror target FlexVol for a given source."""
         dest_backend_config = config_utils.get_backend_configuration(
             dest_backend_name)
@@ -417,11 +454,7 @@ class DataMotionMixin(object):
             src_client.get_provisioning_options_from_flexvol(
                 src_flexvol_name)
         )
-
-        if provisioning_options.pop('is_flexgroup', False):
-            msg = _("Destination volume cannot be created as FlexGroup for "
-                    "replication, it must already exist there.")
-            raise na_utils.NetAppDriverException(msg)
+        provisioning_options.pop('is_flexgroup')
 
         # If the source is encrypted then the destination needs to be
         # encrypted too. Using is_flexvol_encrypted because it includes
@@ -441,23 +474,65 @@ class DataMotionMixin(object):
         aggregate_map = self._get_replication_aggregate_map(
             src_backend_name, dest_backend_name)
 
-        if not aggregate_map.get(source_aggregate):
-            msg = _("Unable to find configuration matching the source "
-                    "aggregate (%s) and the destination aggregate. Option "
-                    "netapp_replication_aggregate_map may be incorrect.")
-            raise na_utils.NetAppDriverException(
-                message=msg % source_aggregate)
-
-        destination_aggregate = aggregate_map[source_aggregate]
+        destination_aggregate = []
+        for src_aggr in source_aggregate:
+            dst_aggr = aggregate_map.get(src_aggr, None)
+            if dst_aggr:
+                destination_aggregate.append(dst_aggr)
+            else:
+                msg = _("Unable to find configuration matching the source "
+                        "aggregate and the destination aggregate. Option "
+                        "netapp_replication_aggregate_map may be incorrect.")
+                raise na_utils.NetAppDriverException(message=msg)
 
         # NOTE(gouthamr): The volume is intentionally created as a Data
         # Protection volume; junction-path will be added on breaking
         # the mirror.
         provisioning_options['volume_type'] = 'dp'
-        dest_client.create_flexvol(dest_flexvol_name,
-                                   destination_aggregate,
-                                   size,
-                                   **provisioning_options)
+
+        if pool_is_flexgroup:
+            compression_enabled = provisioning_options.pop(
+                'compression_enabled', False)
+            # cDOT compression requires that deduplication be enabled.
+            dedupe_enabled = provisioning_options.pop(
+                'dedupe_enabled', False) or compression_enabled
+
+            dest_client.create_volume_async(
+                dest_flexvol_name,
+                destination_aggregate,
+                size,
+                **provisioning_options)
+
+            timeout = self._get_replication_volume_online_timeout()
+
+            def _wait_volume_is_online():
+                volume_state = dest_client.get_volume_state(
+                    flexvol_name=dest_flexvol_name)
+                if volume_state and volume_state == 'online':
+                    raise loopingcall.LoopingCallDone()
+
+            try:
+                wait_call = loopingcall.FixedIntervalWithTimeoutLoopingCall(
+                    _wait_volume_is_online)
+                wait_call.start(interval=5, timeout=timeout).wait()
+
+                if dedupe_enabled:
+                    dest_client.enable_volume_dedupe_async(
+                        dest_flexvol_name)
+                if compression_enabled:
+                    dest_client.enable_volume_compression_async(
+                        dest_flexvol_name)
+
+            except loopingcall.LoopingCallTimeOut:
+                msg = _("Timeout waiting destination FlexGroup to to come "
+                        "online.")
+                raise na_utils.NetAppDriverException(msg)
+
+        else:
+            dest_client.create_flexvol(dest_flexvol_name,
+                                       destination_aggregate[0],
+                                       size,
+                                       **provisioning_options)
 
     def ensure_snapmirrors(self, config, src_backend_name, src_flexvol_names):
         """Ensure all the SnapMirrors needed for whole-backend replication."""
@@ -467,10 +542,24 @@ class DataMotionMixin(object):
 
                 dest_flexvol_name = src_flexvol_name
 
-                self.create_snapmirror(src_backend_name,
-                                       dest_backend_name,
-                                       src_flexvol_name,
-                                       dest_flexvol_name)
+                retry_exceptions = (
+                    na_utils.GeometryHasChangedOnDestination,
+                )
+
+                @utils.retry(retry_exceptions,
+                             interval=30, retries=6, backoff_rate=1)
+                def _try_create_snapmirror():
+                    self.create_snapmirror(src_backend_name,
+                                           dest_backend_name,
+                                           src_flexvol_name,
+                                           dest_flexvol_name)
+                try:
+                    _try_create_snapmirror()
+                except na_utils.NetAppDriverException as e:
+                    with excutils.save_and_reraise_exception():
+                        if isinstance(e, retry_exceptions):
+                            LOG.error("Number of tries exceeded "
+                                      "while trying to create SnapMirror.")
 
     def break_snapmirrors(self, config, src_backend_name, src_flexvol_names,
                           chosen_target):
@@ -648,3 +737,6 @@ class DataMotionMixin(object):
         self.failed_over_backend_name = active_backend_name
 
         return active_backend_name, volume_updates, []
+
+    def _get_replication_volume_online_timeout(self):
+        return self.configuration.netapp_replication_volume_online_timeout
