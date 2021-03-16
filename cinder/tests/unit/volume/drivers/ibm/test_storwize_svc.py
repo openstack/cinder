@@ -4968,27 +4968,38 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                }
         return opt
 
+    @ddt.data(('5000', 'iops', True),
+              ('500', 'iops_per_gb', False),
+              ('3000', 'mbps', False))
     @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
     @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
                        '_get_vdisk_params')
-    def test_storwize_svc_create_volume_with_qos(self, get_vdisk_params,
+    @ddt.unpack
+    def test_storwize_svc_create_volume_with_qos(self,
+                                                 fake_iothrottling_value,
+                                                 fake_iothrottling_unit,
+                                                 empty_qos,
+                                                 get_vdisk_params,
                                                  add_vdisk_qos):
         fake_opts = self._get_default_opts()
         # If the qos is empty, chvdisk should not be called
         # for create_volume.
         get_vdisk_params.return_value = fake_opts
         vol = self._create_volume()
-        self._assert_vol_exists(vol['name'], True)
-        self.assertFalse(add_vdisk_qos.called)
+        if empty_qos:
+            self._assert_vol_exists(vol['name'], True)
+            self.assertFalse(add_vdisk_qos.called)
         self.driver.delete_volume(vol)
 
         # If the qos is not empty, chvdisk should be called
         # for create_volume.
-        fake_opts['qos'] = {'IOThrottling': 5000}
+        fake_opts['qos'] = {'IOThrottling': fake_iothrottling_value,
+                            'IOThrottling_unit': fake_iothrottling_unit}
         get_vdisk_params.return_value = fake_opts
         self.driver.create_volume(vol)
         self._assert_vol_exists(vol['name'], True)
-        add_vdisk_qos.assert_called_once_with(vol['name'], fake_opts['qos'])
+        add_vdisk_qos.assert_called_once_with(vol['name'], fake_opts['qos'],
+                                              vol['size'])
 
         self.driver.delete_volume(vol)
         self._assert_vol_exists(vol['name'], False)
@@ -5196,9 +5207,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(vol1)
         self._assert_vol_exists(vol1['name'], False)
 
+    @ddt.data(('5000', 'iops', True),
+              ('500', 'iops_per_gb', False),
+              ('3000', 'mbps', False))
     @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
-    def test_storwize_svc_create_volfromsnap_clone_with_qos(self,
-                                                            add_vdisk_qos):
+    @ddt.unpack
+    def test_storwize_svc_create_volfromsnap_clone_with_qos(
+            self, fake_iothrottling_value, fake_iothrottling_unit,
+            empty_qos, add_vdisk_qos):
         vol1 = self._create_volume()
         snap1 = self._generate_snap_info(vol1.id)
         self.driver.create_snapshot(snap1)
@@ -5214,42 +5230,48 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         # for create_volume_from_snapshot.
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
-            get_vdisk_params.return_value = fake_opts
-            self.driver.create_volume_from_snapshot(vol2, snap1)
-            self._assert_vol_exists(vol2['name'], True)
-            self.assertFalse(add_vdisk_qos.called)
-            self.driver.delete_volume(vol2)
+            if empty_qos:
+                get_vdisk_params.return_value = fake_opts
+                self.driver.create_volume_from_snapshot(vol2, snap1)
+                self._assert_vol_exists(vol2['name'], True)
+                self.assertFalse(add_vdisk_qos.called)
+                self.driver.delete_volume(vol2)
 
             # If the qos is not empty, chvdisk should be called
             # for create_volume_from_snapshot.
-            fake_opts['qos'] = {'IOThrottling': 5000}
+            fake_opts['qos'] = {'IOThrottling': fake_iothrottling_value,
+                                'IOThrottling_unit': fake_iothrottling_unit}
             get_vdisk_params.return_value = fake_opts
             self.driver.create_volume_from_snapshot(vol2, snap1)
             self._assert_vol_exists(vol2['name'], True)
             add_vdisk_qos.assert_called_once_with(vol2['name'],
-                                                  fake_opts['qos'])
+                                                  fake_opts['qos'],
+                                                  vol2['size'])
 
             if self.USESIM:
                 self.sim.error_injection('lsfcmap', 'speed_up')
 
             # If the qos is empty, chvdisk should not be called
-            # for create_volume_from_snapshot.
+            # for create_cloned_volume.
             add_vdisk_qos.reset_mock()
-            fake_opts['qos'] = None
-            get_vdisk_params.return_value = fake_opts
-            self.driver.create_cloned_volume(vol3, vol2)
-            self._assert_vol_exists(vol3['name'], True)
-            self.assertFalse(add_vdisk_qos.called)
-            self.driver.delete_volume(vol3)
+            if empty_qos:
+                fake_opts['qos'] = None
+                get_vdisk_params.return_value = fake_opts
+                self.driver.create_cloned_volume(vol3, vol2)
+                self._assert_vol_exists(vol3['name'], True)
+                self.assertFalse(add_vdisk_qos.called)
+                self.driver.delete_volume(vol3)
 
             # If the qos is not empty, chvdisk should be called
-            # for create_volume_from_snapshot.
-            fake_opts['qos'] = {'IOThrottling': 5000}
+            # for create_cloned_volume.
+            fake_opts['qos'] = {'IOThrottling': fake_iothrottling_value,
+                                'IOThrottling_unit': fake_iothrottling_unit}
             get_vdisk_params.return_value = fake_opts
             self.driver.create_cloned_volume(vol3, vol2)
             self._assert_vol_exists(vol3['name'], True)
             add_vdisk_qos.assert_called_once_with(vol3['name'],
-                                                  fake_opts['qos'])
+                                                  fake_opts['qos'],
+                                                  vol3['size'])
 
         # Delete in the 'opposite' order to make sure it works
         self.driver.delete_volume(vol3)
@@ -5643,21 +5665,52 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(volume)
         volume_types.destroy(ctxt, type_ref['id'])
 
-    def test_storwize_svc_extend_volume(self):
+    @ddt.data(('100', 'iops', '100', True),
+              ('100', 'iops_per_gb', '1500', False),
+              ('200', 'mbps', '200', False))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'update_vdisk_qos')
+    @ddt.unpack
+    def test_storwize_svc_extend_volume(self, old_iothrottling_value,
+                                        iothrottling_unit,
+                                        new_iothrottling_value,
+                                        empty_qos,
+                                        update_vdisk_qos):
         volume = self._create_volume()
-        self.driver.extend_volume(volume, '13')
-        attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
-        vol_size = int(attrs['capacity']) / units.Gi
+        if empty_qos:
+            self.driver.extend_volume(volume, '13')
+            attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 13)
+            self.assertFalse(update_vdisk_qos.called)
 
-        self.assertAlmostEqual(vol_size, 13)
+            snap = self._generate_snap_info(volume.id)
+            self.driver.create_snapshot(snap)
+            self._assert_vol_exists(snap['name'], True)
+            self.assertRaises(exception.VolumeDriverException,
+                              self.driver.extend_volume, volume, '16')
+            self.driver.delete_snapshot(snap)
 
-        snap = self._generate_snap_info(volume.id)
-        self.driver.create_snapshot(snap)
-        self._assert_vol_exists(snap['name'], True)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.extend_volume, volume, '16')
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                               '_get_vdisk_params') as get_vdisk_params:
+            # If qos is specified for source volume with 'iops_per_gb' as
+            # IOThrottling_unit, update_vdisk_qos will be called for
+            # extend_volume.
+            fake_opts_qos = self._get_default_opts()
+            fake_opts_qos['qos'] = {'IOThrottling': new_iothrottling_value,
+                                    'IOThrottling_unit': iothrottling_unit}
+            get_vdisk_params.return_value = fake_opts_qos
 
-        self.driver.delete_snapshot(snap)
+            self.driver.extend_volume(volume, 15)
+            attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            if fake_opts_qos['qos']['IOThrottling_unit'] == 'iops_per_gb':
+                update_vdisk_qos.assert_called_with(volume['name'],
+                                                    fake_opts_qos['qos'],
+                                                    vol_size)
+            else:
+                self.assertFalse(update_vdisk_qos.called)
+
         self.driver.delete_volume(volume)
 
     @mock.patch.object(storwize_rep.StorwizeSVCReplicationGlobalMirror,
@@ -5741,20 +5794,33 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.migrate_volume(ctxt, volume, host)
         self._delete_volume(volume)
 
-    def test_storwize_svc_get_vdisk_params(self):
+    @ddt.data(('5000', 'iops', 5000, 'iops', True),
+              ('500', 'iops_per_gb', 500, 'iops_per_gb', False),
+              ('2000', 'mbps', 2000, 'mbps', False))
+    @ddt.unpack
+    def test_storwize_svc_get_vdisk_params(self,
+                                           fake_iothrottling_value,
+                                           fake_iothrottling_unit,
+                                           expected_iothrottling_value,
+                                           expected_iothrottling_unit,
+                                           empty_qos):
         self.driver.do_setup(None)
-        fake_qos = {'qos:IOThrottling': '5000'}
-        expected_qos = {'IOThrottling': 5000}
+        fake_qos = {'qos:IOThrottling': fake_iothrottling_value,
+                    'qos:IOThrottling_unit': fake_iothrottling_unit}
+        expected_qos = {'IOThrottling': float(expected_iothrottling_value),
+                        'IOThrottling_unit': expected_iothrottling_unit}
         fake_opts = self._get_default_opts()
         # The parameters retured should be the same to the default options,
         # if the QoS is empty.
-        vol_type_empty_qos = self._create_volume_type_qos(True, None)
-        type_id = vol_type_empty_qos['id']
-        params = self.driver._get_vdisk_params(type_id,
-                                               volume_type=vol_type_empty_qos,
-                                               volume_metadata=None)
-        self.assertEqual(fake_opts, params)
-        volume_types.destroy(self.ctxt, type_id)
+        if empty_qos:
+            vol_type_empty_qos = self._create_volume_type_qos(True, None)
+            type_id = vol_type_empty_qos['id']
+            params = \
+                self.driver._get_vdisk_params(type_id,
+                                              volume_type=vol_type_empty_qos,
+                                              volume_metadata=None)
+            self.assertEqual(fake_opts, params)
+            volume_types.destroy(self.ctxt, type_id)
 
         # If the QoS is set via the qos association with the volume type,
         # qos value should be set in the retured parameters.
@@ -5812,8 +5878,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # If the QoS is set in the volume metadata,
         # qos value should be set in the retured parameters.
-        metadata = [{'key': 'qos:IOThrottling', 'value': 4000}]
-        expected_qos_metadata = {'IOThrottling': 4000}
+        metadata = [{'key': 'qos:IOThrottling', 'value': '4000'},
+                    {'key': 'qos:IOThrottling_unit',
+                     'value': fake_iothrottling_unit}]
+        expected_qos_metadata = {
+            'IOThrottling': 4000.0,
+            'IOThrottling_unit': expected_iothrottling_unit}
         params = self.driver._get_vdisk_params(None, volume_type=None,
                                                volume_metadata=metadata)
         self.assertEqual(expected_qos_metadata, params['qos'])
@@ -5829,8 +5899,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # If the QoS is set both via the qos association and the
         # extra specs, the one from the qos association will take effect.
-        fake_qos_associate = {'qos:IOThrottling': '6000'}
-        expected_qos_associate = {'IOThrottling': 6000}
+        fake_qos_associate = {'qos:IOThrottling': '6000',
+                              'qos:IOThrottling_unit': fake_iothrottling_unit}
+        expected_qos_associate = {
+            'IOThrottling': 6000.0,
+            'IOThrottling_unit': expected_iothrottling_unit}
         vol_type_qos = self._create_volume_type_qos_both(fake_qos,
                                                          fake_qos_associate)
         type_id = vol_type_qos['id']
@@ -5841,11 +5914,23 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         volume_types.destroy(self.ctxt, type_id)
         qos_specs.delete(self.ctxt, qos_spec['qos_specs']['id'])
 
+    @ddt.data(('5000', 'iops', 500, 'iops_per_gb', True),
+              ('5000', 'iops', '2000', 'mbps', False),
+              ('500', 'iops_per_gb', '5000', 'iops', False),
+              ('500', 'iops_per_gb', '2000', 'mbps', False),
+              ('2000', 'mbps', '5000', 'iops', False),
+              ('2000', 'mbps', '500', 'iops_per_gb', False))
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'disable_vdisk_qos')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'update_vdisk_qos')
-    def test_storwize_svc_retype_no_copy(self, update_vdisk_qos,
+    @ddt.unpack
+    def test_storwize_svc_retype_no_copy(self, old_iothrottling_value,
+                                         old_iothrottling_unit,
+                                         new_iothrottling_value,
+                                         new_iothrottling_unit,
+                                         empty_qos,
+                                         update_vdisk_qos,
                                          disable_vdisk_qos):
         self.driver.do_setup(None)
         loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
@@ -5880,19 +5965,24 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         fake_opts = self._get_default_opts()
         fake_opts_old = self._get_default_opts()
-        fake_opts_old['qos'] = {'IOThrottling': 4000}
+        fake_opts_old['qos'] = {'IOThrottling': old_iothrottling_value,
+                                'IOThrottling_unit': old_iothrottling_unit}
         fake_opts_qos = self._get_default_opts()
-        fake_opts_qos['qos'] = {'IOThrottling': 5000}
+        fake_opts_qos['qos'] = {'IOThrottling': new_iothrottling_value,
+                                'IOThrottling_unit': new_iothrottling_unit}
         self.driver.create_volume(volume)
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for both the source and target volumes,
-            # add_vdisk_qos and disable_vdisk_qos will not be called for
+            # update_vdisk_qos and disable_vdisk_qos will not be called for
             # retype.
-            get_vdisk_params.side_effect = [fake_opts, fake_opts, fake_opts]
-            self.driver.retype(ctxt, volume, new_type, diff, host)
-            self.assertFalse(update_vdisk_qos.called)
-            self.assertFalse(disable_vdisk_qos.called)
+            if empty_qos:
+                get_vdisk_params.side_effect = [fake_opts,
+                                                fake_opts,
+                                                fake_opts]
+                self.driver.retype(ctxt, volume, new_type, diff, host)
+                self.assertFalse(update_vdisk_qos.called)
+                self.assertFalse(disable_vdisk_qos.called)
             self.driver.delete_volume(volume)
 
         self.driver.create_volume(volume)
@@ -5900,13 +5990,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is specified for both source and target volumes,
-            # add_vdisk_qos will be called for retype, and disable_vdisk_qos
+            # update_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
             get_vdisk_params.side_effect = [fake_opts_old, fake_opts_qos,
                                             fake_opts_old]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
-                                                fake_opts_qos['qos'])
+                                                fake_opts_qos['qos'],
+                                                volume['size'])
             self.assertFalse(disable_vdisk_qos.called)
             self.driver.delete_volume(volume)
 
@@ -5915,13 +6006,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for source and speficied for target volume,
-            # add_vdisk_qos will be called for retype, and disable_vdisk_qos
+            # update_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
             get_vdisk_params.side_effect = [fake_opts, fake_opts_qos,
                                             fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
-                                                fake_opts_qos['qos'])
+                                                fake_opts_qos['qos'],
+                                                volume['size'])
             self.assertFalse(disable_vdisk_qos.called)
             self.driver.delete_volume(volume)
 
@@ -5930,7 +6022,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for target volume and specified for source
-            # volume, add_vdisk_qos will not be called for retype, and
+            # volume, update_vdisk_qos will not be called for retype, and
             # disable_vdisk_qos will be called.
             get_vdisk_params.side_effect = [fake_opts_qos, fake_opts,
                                             fake_opts]
@@ -5989,11 +6081,23 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.driver.retype, ctxt, volume,
                           new_type, diff, host)
 
+    @ddt.data(('5000', 'iops', 500, 'iops_per_gb', True),
+              ('5000', 'iops', '2000', 'mbps', False),
+              ('500', 'iops_per_gb', '5000', 'iops', False),
+              ('500', 'iops_per_gb', '2000', 'mbps', False),
+              ('2000', 'mbps', '5000', 'iops', False),
+              ('2000', 'mbps', '500', 'iops_per_gb', False))
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'disable_vdisk_qos')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'update_vdisk_qos')
-    def test_storwize_svc_retype_need_copy(self, update_vdisk_qos,
+    @ddt.unpack
+    def test_storwize_svc_retype_need_copy(self, old_iothrottling_value,
+                                           old_iothrottling_unit,
+                                           new_iothrottling_value,
+                                           new_iothrottling_unit,
+                                           empty_qos,
+                                           update_vdisk_qos,
                                            disable_vdisk_qos):
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
@@ -6035,19 +6139,24 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         fake_opts = self._get_default_opts()
         fake_opts_old = self._get_default_opts()
-        fake_opts_old['qos'] = {'IOThrottling': 4000}
+        fake_opts_old['qos'] = {'IOThrottling': old_iothrottling_value,
+                                'IOThrottling_unit': old_iothrottling_unit}
         fake_opts_qos = self._get_default_opts()
-        fake_opts_qos['qos'] = {'IOThrottling': 5000}
+        fake_opts_qos['qos'] = {'IOThrottling': new_iothrottling_value,
+                                'IOThrottling_unit': new_iothrottling_unit}
         self.driver.create_volume(volume)
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for both the source and target volumes,
-            # add_vdisk_qos and disable_vdisk_qos will not be called for
+            # update_vdisk_qos and disable_vdisk_qos will not be called for
             # retype.
-            get_vdisk_params.side_effect = [fake_opts, fake_opts, fake_opts]
-            self.driver.retype(ctxt, volume, new_type, diff, host)
-            self.assertFalse(update_vdisk_qos.called)
-            self.assertFalse(disable_vdisk_qos.called)
+            if empty_qos:
+                get_vdisk_params.side_effect = [fake_opts,
+                                                fake_opts,
+                                                fake_opts]
+                self.driver.retype(ctxt, volume, new_type, diff, host)
+                self.assertFalse(update_vdisk_qos.called)
+                self.assertFalse(disable_vdisk_qos.called)
             self.driver.delete_volume(volume)
 
         self.driver.create_volume(volume)
@@ -6055,13 +6164,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is specified for both source and target volumes,
-            # add_vdisk_qos will be called for retype, and disable_vdisk_qos
+            # update_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
             get_vdisk_params.side_effect = [fake_opts_old, fake_opts_qos,
                                             fake_opts_qos]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
-                                                fake_opts_qos['qos'])
+                                                fake_opts_qos['qos'],
+                                                volume['size'])
             self.assertFalse(disable_vdisk_qos.called)
             self.driver.delete_volume(volume)
 
@@ -6070,13 +6180,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for source and speficied for target volume,
-            # add_vdisk_qos will be called for retype, and disable_vdisk_qos
+            # update_vdisk_qos will be called for retype, and disable_vdisk_qos
             # will not be called.
             get_vdisk_params.side_effect = [fake_opts, fake_opts_qos,
                                             fake_opts]
             self.driver.retype(ctxt, volume, new_type, diff, host)
             update_vdisk_qos.assert_called_with(volume['name'],
-                                                fake_opts_qos['qos'])
+                                                fake_opts_qos['qos'],
+                                                volume['size'])
             self.assertFalse(disable_vdisk_qos.called)
             self.driver.delete_volume(volume)
 
@@ -6085,7 +6196,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for target volume and specified for source
-            # volume, add_vdisk_qos will not be called for retype, and
+            # volume, update_vdisk_qos will not be called for retype, and
             # disable_vdisk_qos will be called.
             get_vdisk_params.side_effect = [fake_opts_qos, fake_opts,
                                             fake_opts]
@@ -6518,6 +6629,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
+    @ddt.data(('5000', 'iops', True),
+              ('500', 'iops_per_gb', False),
+              ('3000', 'mbps', False))
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
@@ -6530,7 +6644,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                        '_get_pool')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'add_vdisk_qos')
-    def test_storwize_create_flashcopy_to_consistgrp(self, add_vdisk_qos,
+    @ddt.unpack
+    def test_storwize_create_flashcopy_to_consistgrp(self,
+                                                     fake_iothrottling_value,
+                                                     fake_iothrottling_unit,
+                                                     empty_qos,
+                                                     add_vdisk_qos,
                                                      _get_pool,
                                                      mkfcmap,
                                                      create_vdisk,
@@ -6538,24 +6657,26 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         source = "volume-36cd5a6f-a13c-456c-8129-c3e8874fb15c"
         target = "volume-55eb6c7e-a13c-456c-8129-c3e8874kl34f"
         consistgrp = "cg_snap-9021b016-ce1e-4145-a1f0-0bd4007a3a78"
+        fake_target_size = 0
         config = self.driver.configuration
         pool = "openstack2"
-        opts = {'rsize': 2, 'iogrp': 0, 'qos': None, 'flashcopy_rate': 50}
-        self.driver._helpers.create_flashcopy_to_consistgrp(source,
-                                                            target, consistgrp,
-                                                            config, opts,
-                                                            full_copy=False,
-                                                            pool=pool)
-        _get_pool.assert_not_called()
-        add_vdisk_qos.assert_not_called()
+        if empty_qos:
+            opts = {'rsize': 2, 'iogrp': 0, 'qos': None, 'flashcopy_rate': 50}
+            self.driver._helpers.create_flashcopy_to_consistgrp(
+                source, target, consistgrp, config,
+                opts, full_copy=False, pool=pool)
+            _get_pool.assert_not_called()
+            add_vdisk_qos.assert_not_called()
 
-        opts = {'rsize': 2, 'iogrp': 0, 'qos': 'abc', 'flashcopy_rate': 50}
+        qos = {'IOThrottling': fake_iothrottling_value,
+               'IOThrottling_unit': fake_iothrottling_unit}
+        opts = {'rsize': 2, 'iogrp': 0, 'qos': qos, 'flashcopy_rate': 50}
         self.driver._helpers.create_flashcopy_to_consistgrp(source,
                                                             target, consistgrp,
                                                             config, opts,
                                                             full_copy=False,
                                                             pool=pool)
-        add_vdisk_qos.assert_called_with(target, opts['qos'])
+        add_vdisk_qos.assert_called_with(target, opts['qos'], fake_target_size)
         pool = None
         self.driver._helpers.create_flashcopy_to_consistgrp(source,
                                                             target, consistgrp,
