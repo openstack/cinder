@@ -546,6 +546,10 @@ class PowerMaxData(object):
         id=test_vol_grp_name_id_only, host=fake_host,
         replication_status=fields.ReplicationStatus.ENABLED)
 
+    test_rep_group2 = fake_group.fake_group_obj(
+        context=ctx,
+        replication_status=fields.ReplicationStatus.ENABLED)
+
     test_group = fake_group.fake_group_obj(
         context=ctx, name=storagegroup_name_source,
         id=test_vol_grp_name_id_only, host=fake_host)
