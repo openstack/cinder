@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    PowerMax driver: Previously, the target storage group created from a
+    replicated storage group was also replicated, which could cause failures.
+    This fix creates a non-replicated target initially, and lets the replicate
+    group API take care of replicating it.

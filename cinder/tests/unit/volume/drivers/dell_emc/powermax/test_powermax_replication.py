@@ -129,21 +129,39 @@ class PowerMaxReplicationTest(test.TestCase):
     @mock.patch.object(
         utils.PowerMaxUtils, 'is_volume_failed_over', return_value=True)
     def test_initialize_connection_vol_failed_over(self, mock_fo):
-        extra_specs = deepcopy(self.extra_specs)
-        extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
-
-        rep_extra_specs = deepcopy(tpd.PowerMaxData.rep_extra_specs)
-        rep_extra_specs[utils.PORTGROUPNAME] = self.data.port_group_name_f
-
-        rep_config = deepcopy(self.data.rep_config_sync)
-        extra_specs[utils.REP_CONFIG] = rep_config
-        rep_config[utils.RDF_CONS_EXEMPT] = False
+        rep_extra_specs = {
+            'pool_name': 'Diamond+NONE+SRP_1+000197800123',
+            'slo': 'Diamond', 'workload': 'NONE', 'srp': 'SRP_1',
+            'array': '000197800124', 'interval': 1, 'retries': 1,
+            'replication_enabled': True, 'rep_mode': 'Synchronous',
+            'sync_interval': 3, 'sync_retries': 200,
+            'rdf_group_label': '23_24_007', 'rdf_group_no': '70',
+            'storagetype:portgroupname': 'OS-fibre-PG'}
+        rep_config = {
+            'backend_id': 'rep_backend_id_sync', 'array': '000197800124',
+            'portgroup': 'OS-fibre-PG', 'srp': 'SRP_1',
+            'rdf_group_label': '23_24_007', 'mode': 'Synchronous',
+            'allow_extend': True, 'sync_interval': 3, 'sync_retries': 200,
+            'exempt': False}
+        extra_specs = {
+            'pool_name': 'Diamond+NONE+SRP_1+000197800123', 'slo': 'Diamond',
+            'workload': 'NONE', 'srp': 'SRP_1', 'array': '000197800123',
+            'interval': 1, 'retries': 1, 'replication_enabled': True,
+            'rep_mode': 'Synchronous',
+            'storagetype:portgroupname': 'OS-fibre-PG', 'rep_config': {
+                'backend_id': 'rep_backend_id_sync', 'array': '000197800124',
+                'portgroup': 'OS-fibre-PG', 'srp': 'SRP_1',
+                'rdf_group_label': '23_24_007', 'mode': 'Synchronous',
+                'allow_extend': True, 'sync_interval': 3,
+                'sync_retries': 200, 'exempt': False}}
 
         with mock.patch.object(self.common, '_get_replication_extra_specs',
                                return_value=rep_extra_specs) as mock_es:
-            self.common.initialize_connection(
-                self.data.test_volume, self.data.connector)
-            mock_es.assert_called_once_with(extra_specs, rep_config)
+            with mock.patch.object(self.common, '_initial_setup',
+                                   return_value=extra_specs):
+                self.common.initialize_connection(
+                    self.data.test_volume, self.data.connector)
+                mock_es.assert_called_once_with(extra_specs, rep_config)
 
     @mock.patch.object(utils.PowerMaxUtils, 'is_metro_device',
                        return_value=True)
@@ -2156,3 +2174,53 @@ class PowerMaxReplicationTest(test.TestCase):
             array, device_id, volume, volume_name, rep_extra_specs)
         mck_resume.assert_called_once_with(
             array, management_sg, rdf_group_no, rep_extra_specs)
+
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_add_replicated_volumes_to_default_storage_group')
+    @mock.patch.object(common.PowerMaxCommon,
+                       '_replicate_group')
+    @mock.patch.object(provision.PowerMaxProvision, 'link_and_break_replica')
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_snap_id_list',
+                       return_value=[tpd.PowerMaxData.snap_id])
+    @mock.patch.object(common.PowerMaxCommon, 'get_volume_metadata')
+    @mock.patch.object(common.PowerMaxCommon, '_create_non_replicated_volume')
+    @mock.patch.object(utils.PowerMaxUtils, 'get_volume_group_utils',
+                       return_value=(None, {'interval': 1, 'retries': 1}))
+    def test_create_group_from_src_replication(
+            self, mock_grp_utils, mock_create, mock_metadata, mock_snap,
+            mock_link, mock_rep, mock_add):
+        context = None
+        group_snapshot = self.data.test_group_snapshot_1
+        snapshots = []
+        source_vols = [self.data.test_volume]
+        volumes = [self.data.test_volume]
+        source_group = self.data.test_group_1
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True), mock.patch.object(
+                    volume_utils, 'is_group_a_type', return_value=True):
+            self.common.create_group_from_src(
+                context, self.data.test_rep_group2, volumes, group_snapshot,
+                snapshots, source_group, source_vols)
+            mock_create.assert_called_once()
+            mock_link.assert_called_once()
+            mock_metadata.assert_called_once()
+            mock_rep.assert_called_once()
+            mock_add.assert_called_once()
+
+    @mock.patch.object(masking.PowerMaxMasking,
+                       'add_volumes_to_storage_group')
+    def test_add_replicated_volumes_to_default_storage_group(self, mock_add):
+        volumes_model_update = [{'provider_location': six.text_type(
+            self.data.provider_location),
+            'replication_driver_data': six.text_type(
+                {'array': self.data.remote_array,
+                 'device_id': self.data.device_id2})}]
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs)
+        self.common._add_replicated_volumes_to_default_storage_group(
+            self.data.array, volumes_model_update, rep_extra_specs)
+        mock_add.assert_has_calls(
+            [call(self.data.array, [self.data.device_id],
+                  'OS-SRP_1-Diamond-DSS-RE-SG', rep_extra_specs),
+             call(self.data.remote_array, [self.data.device_id2],
+                  'OS-SRP_1-Diamond-DSS-RE-SG', rep_extra_specs)])

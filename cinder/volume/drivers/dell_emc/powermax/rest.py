@@ -2114,6 +2114,8 @@ class PowerMaxRest(object):
         """
         action, operation, payload = '', '', {}
         copy = 'true' if copy else 'false'
+        force = (
+            "true" if utils.FORCE_VOL_EDIT in extra_specs else "false")
 
         if link:
             action = "Link"
@@ -2143,7 +2145,7 @@ class PowerMaxRest(object):
             payload = {"deviceNameListSource": src_list,
                        "deviceNameListTarget": tgt_list,
                        "copy": copy, "action": action,
-                       "star": 'false', "force": 'false',
+                       "star": 'false', "force": force,
                        "exact": 'false', "remote": 'false',
                        "symforce": 'false'}
         elif action == "Rename":
@@ -2277,7 +2279,7 @@ class PowerMaxRest(object):
         snapvx_tgt = False
         rdf_grp = None
         volume_details = self.get_volume(array, device_id)
-        if volume_details:
+        if volume_details and isinstance(volume_details, dict):
             if volume_details.get('snapvx_target'):
                 snapvx_tgt = volume_details['snapvx_target']
             if volume_details.get('snapvx_source'):
@@ -2461,9 +2463,11 @@ class PowerMaxRest(object):
         snap_tgt_dict, snap_src_dict_list = dict(), list()
         s_in = self.get_volume_snap_info(array, device_id)
         snap_src = (
-            s_in['snapshotSrcs'] if s_in.get('snapshotSrcs') else list())
+            s_in['snapshotSrcs'] if s_in and s_in.get(
+                'snapshotSrcs') else list())
         snap_tgt = (
-            s_in['snapshotLnks'][0] if s_in.get('snapshotLnks') else dict())
+            s_in['snapshotLnks'][0] if s_in and s_in.get(
+                'snapshotLnks') else dict())
         if snap_src and not tgt_only:
             for session in snap_src:
                 snap_src_dict = dict()
