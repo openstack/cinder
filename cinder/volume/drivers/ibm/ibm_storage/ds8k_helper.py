@@ -587,7 +587,7 @@ class DS8KCommonHelper(object):
 
     def _get_host(self, connector):
         # DS8K doesn't support hostname which is longer than 32 chars.
-        hname = ('OShost:%s' % filter_alnum(connector['host']))[:32]
+        hname = filter_alnum(connector['host'])[:32]
         os_type = connector.get('os_type')
         platform = connector.get('platform')
 
@@ -597,7 +597,7 @@ class DS8KCommonHelper(object):
             htype = 'iSeries'
         elif os_type == 'AIX':
             htype = 'pSeries'
-        elif platform in ('s390', 's390x') and os_type == 'linux2':
+        elif platform in ('s390', 's390x') and os_type in ('linux', 'linux2'):
             htype = 'zLinux'
         else:
             htype = 'LinuxRHEL'

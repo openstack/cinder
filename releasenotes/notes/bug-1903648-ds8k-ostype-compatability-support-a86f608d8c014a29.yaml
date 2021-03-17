@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    IBM DS8000 Driver `Bug #1903648
+    <https://bugs.launchpad.net/cinder/+bug/1903648>`_:
+    Fix os_type compatability and hostname template issue.
