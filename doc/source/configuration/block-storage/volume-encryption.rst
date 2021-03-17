@@ -29,8 +29,7 @@ Steps to update ``cinder-api`` servers:
 
 Update ``nova-compute`` servers:
 
-#. Ensure the ``cryptsetup`` utility is installed, and install
-   the ``python-barbicanclient`` Python package.
+#. Install the ``python-barbicanclient`` Python package.
 
 #. Set up the Key Manager service by editing ``/etc/nova/nova.conf``:
 
