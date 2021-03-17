@@ -217,6 +217,11 @@ class IBMStorageProxy(object):
         pass
 
     @_trace_time
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot."""
+        pass
+
+    @_trace_time
     def _get_bunch_from_host(
             self, connector, host_id=0, host_name=None, chap=None):
         """Get's a Bunch describing a host"""

@@ -143,9 +143,10 @@ class Lun(object):
         2.1.1 - Added support for replication consistency group.
         2.1.2 - Added support for cloning volume asynchronously.
         2.3.0 - Added support for reporting backend state.
+        2.5.0 - Added support for revert to snapshot operation.
     """
 
-    VERSION = "2.3.0"
+    VERSION = "2.5.0"
 
     class FakeLun(object):
 
@@ -1058,6 +1059,31 @@ class DS8KProxy(proxy.IBMStorageProxy):
                 lun.multiattach = False
             volume_update = lun.get_volume_update()
         return True, volume_update
+
+    @proxy._trace_time
+    @proxy.logger
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot."""
+        if snapshot.volume_size != volume.size:
+            raise exception.InvalidInput(
+                reason=_('Reverting volume is not supported if the volume '
+                         'size is not equal to the snapshot size.'))
+
+        vol_lun = Lun(volume)
+        snap_lun = Lun(snapshot, is_snapshot=True)
+        if vol_lun.type_replication:
+            raise exception.VolumeDriverException(
+                message=_('Driver does not support revert to snapshot '
+                          'of replicated volume.'))
+
+        try:
+            self._clone_lun(snap_lun, vol_lun)
+        except Exception as err:
+            msg = (_("Reverting volume %(vol)s to snapshot %(snap)s failed "
+                     "due to: %(err)s.")
+                   % {"vol": volume.name, "snap": snapshot.name, "err": err})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     @proxy._trace_time
     @proxy.logger

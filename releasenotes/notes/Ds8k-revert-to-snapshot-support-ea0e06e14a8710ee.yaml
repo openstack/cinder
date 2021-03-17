@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    IBM DS8000 Driver: Add support for revert-to-snapshot operation.
