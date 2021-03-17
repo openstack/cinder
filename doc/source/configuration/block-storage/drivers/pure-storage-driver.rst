@@ -48,6 +48,20 @@ Supported operations
 
 * Replicate volumes to remote Pure Storage array(s).
 
+QoS support for the Pure Storage drivers include the ability to set the
+following capabilities in the OpenStack Block Storage API
+``cinder.api.contrib.qos_spec_manage`` qos specs extension module:
+
+* **maxIOPS** - Maximum number of IOPs allowed for volume. Range: 100 - 100M
+
+* **maxBWS** - Maximum bandwidth limit in MB/s. Range: 1 - 524288 (512GB/s)
+
+The qos keys above must be created and asscoiated to a volume type. For
+information on how to set the key-value pairs and associate them with a
+volume type see the `volume qos
+<https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/volume-qos.html>`_
+section in the OpenStack Client command list.
+
 Configure OpenStack and Purity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
