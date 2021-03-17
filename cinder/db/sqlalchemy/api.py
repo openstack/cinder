@@ -41,7 +41,7 @@ osprofiler_sqlalchemy = importutils.try_import('osprofiler.sqlalchemy')
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
-from sqlalchemy.orm import joinedload, joinedload_all, undefer_group, load_only
+from sqlalchemy.orm import joinedload, undefer_group, load_only
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy import sql
 from sqlalchemy.sql.expression import bindparam
@@ -633,7 +633,7 @@ def _cluster_query(context, is_up=None, get_services=False,
         query = query.params(expired=utils.service_expired_time())
 
     if get_services:
-        query = query.options(joinedload_all('services'))
+        query = query.options(joinedload('services'))
 
     if is_up is not None:
         date_limit = utils.service_expired_time()
@@ -4614,7 +4614,7 @@ def _qos_specs_get_all_ref(context, qos_specs_id, session=None,
     result = model_query(context, models.QualityOfServiceSpecs,
                          read_deleted=read_deleted, session=session). \
         filter_by(id=qos_specs_id). \
-        options(joinedload_all('specs')).all()
+        options(joinedload('specs')).all()
 
     if not result:
         raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
@@ -4721,7 +4721,7 @@ def _qos_specs_get_query(context, session):
     rows = model_query(context, models.QualityOfServiceSpecs,
                        session=session,
                        read_deleted='no').\
-        options(joinedload_all('specs')).filter_by(key='QoS_Specs_Name')
+        options(joinedload('specs')).filter_by(key='QoS_Specs_Name')
     return rows
 
 
