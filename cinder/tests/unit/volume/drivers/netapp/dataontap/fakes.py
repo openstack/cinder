@@ -334,7 +334,9 @@ SNAPSHOT = {
     'volume_size': SIZE,
     'volume_id': VOLUME_ID,
     'volume_name': VOLUME_NAME,
+    'volume_type_id': 'fake_id',
     'busy': False,
+    'id': 'fake_id'
 }
 
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
@@ -616,6 +618,7 @@ VOLUME_GROUP = {
     'id': VOLUME_GROUP_ID,
     'status': 'fake_status',
     'name': VG_GROUP_NAME,
+    'host': 'fake_host',
 }
 
 VG_CONTEXT = {}

@@ -114,7 +114,11 @@ class CapabilitiesLibrary(object):
         aggregates = set()
         for __, flexvol_info in self.ssc.items():
             if 'netapp_aggregate' in flexvol_info:
-                aggregates.add(flexvol_info['netapp_aggregate'])
+                aggr = flexvol_info['netapp_aggregate']
+                if isinstance(aggr, list):
+                    aggregates.update(aggr)
+                else:
+                    aggregates.add(aggr)
         return list(aggregates)
 
     def is_qos_min_supported(self, pool_name):
@@ -152,7 +156,9 @@ class CapabilitiesLibrary(object):
 
             # Get aggregate info
             aggregate_name = ssc_volume.get('netapp_aggregate')
-            aggr_info = self._get_ssc_aggregate_info(aggregate_name)
+            is_flexgroup = isinstance(aggregate_name, list)
+            aggr_info = self._get_ssc_aggregate_info(
+                aggregate_name, is_flexgroup=is_flexgroup)
             node_name = aggr_info.pop('netapp_node_name')
             ssc_volume.update(aggr_info)
 
@@ -176,12 +182,14 @@ class CapabilitiesLibrary(object):
                         (volume_info.get('space-guarantee') == 'file' or
                          volume_info.get('space-guarantee') == 'volume'))
         thick = self._get_thick_provisioning_support(netapp_thick)
+        is_flexgroup = volume_info.get('style-extended') == 'flexgroup'
 
         return {
             'netapp_thin_provisioned': six.text_type(not netapp_thick).lower(),
             'thick_provisioning_support': thick,
             'thin_provisioning_support': not thick,
             'netapp_aggregate': volume_info.get('aggregate'),
+            'netapp_is_flexgroup': six.text_type(is_flexgroup).lower(),
         }
 
     def _get_thick_provisioning_support(self, netapp_thick):
@@ -227,8 +235,19 @@ class CapabilitiesLibrary(object):
 
     def _get_ssc_qos_min_info(self, node_name):
         """Gather Qos minimum info and recast into SSC-style stats."""
-        supported = self.zapi_client.is_qos_min_supported(
-            self.protocol == 'nfs', node_name)
+        supported = True
+        is_nfs = self.protocol == 'nfs'
+        if isinstance(node_name, list):
+            # NOTE(felipe_rodrigues): it cannot choose which node the volume
+            # is created, so the pool must have all nodes as QoS min supported
+            # for enabling this feature.
+            for n_name in node_name:
+                if not self.zapi_client.is_qos_min_supported(is_nfs, n_name):
+                    supported = False
+                    break
+        else:
+            supported = self.zapi_client.is_qos_min_supported(is_nfs,
+                                                              node_name)
 
         return {'netapp_qos_min_support': six.text_type(supported).lower()}
 
@@ -240,14 +259,37 @@ class CapabilitiesLibrary(object):
 
         return {'netapp_mirrored': six.text_type(mirrored).lower()}
 
-    def _get_ssc_aggregate_info(self, aggregate_name):
-        """Gather aggregate info and recast into SSC-style volume stats."""
+    def _get_ssc_aggregate_info(self, aggregate_name, is_flexgroup=False):
+        """Gather aggregate info and recast into SSC-style volume stats.
+
+        :param aggregate_name: a list of aggregate names for FlexGroup or
+        a single aggregate name for FlexVol
+        :param is_flexgroup: bool informing the type of aggregate_name param
+        """
 
         if 'netapp_raid_type' in self.invalid_extra_specs:
             raid_type = None
             hybrid = None
             disk_types = None
             node_name = None
+        elif is_flexgroup:
+            raid_type = set()
+            hybrid = set()
+            disk_types = set()
+            node_name = set()
+            for aggr in aggregate_name:
+                aggregate = self.zapi_client.get_aggregate(aggr)
+                node_name.add(aggregate.get('node-name'))
+                raid_type.add(aggregate.get('raid-type'))
+                hybrid.add((six.text_type(
+                    aggregate.get('is-hybrid')).lower()
+                    if 'is-hybrid' in aggregate else None))
+                disks = set(self.zapi_client.get_aggregate_disk_types(aggr))
+                disk_types = disk_types.union(disks)
+            node_name = list(node_name)
+            raid_type = list(raid_type)
+            hybrid = list(hybrid)
+            disk_types = list(disk_types)
         else:
             aggregate = self.zapi_client.get_aggregate(aggregate_name)
             node_name = aggregate.get('node-name')
@@ -327,3 +369,12 @@ class CapabilitiesLibrary(object):
                     modified_extra_specs[key] = False
 
         return modified_extra_specs
+
+    def is_flexgroup(self, pool_name):
+        for __, flexvol_info in self.ssc.items():
+            if ('netapp_is_flexgroup' in flexvol_info and
+                    'pool_name' in flexvol_info and
+                    flexvol_info['pool_name'] == pool_name):
+                return flexvol_info['netapp_is_flexgroup'] == 'true'
+
+        return False

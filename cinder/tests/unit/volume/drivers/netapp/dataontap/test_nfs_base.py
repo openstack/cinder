@@ -129,6 +129,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
               {'replication_status': fields.ReplicationStatus.ENABLED})
     def test_create_volume(self, model_update):
         self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(self.driver, '_do_create_volume')
         self.mock_object(self.driver, '_do_qos_for_volume')
@@ -146,6 +147,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         volume = copy.deepcopy(fake.NFS_VOLUME)
         volume['host'] = '%s@%s' % (fake.HOST_NAME, fake.BACKEND_NAME)
         self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
 
         self.assertRaises(exception.InvalidHost,
                           self.driver.create_volume,
@@ -153,6 +155,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_create_volume_exception(self):
         self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         self.mock_object(na_utils, 'get_volume_extra_specs')
         mock_create = self.mock_object(self.driver, '_do_create_volume')
         mock_create.side_effect = Exception
@@ -263,7 +266,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.CLONE_SOURCE,
                           fake.NFS_VOLUME)
 
-    def test_create_volume_from_snapshot(self):
+    @ddt.data(True, False)
+    def test_create_volume_from_snapshot(self, is_flexgroup):
+        provider_location = fake.POOL_NAME
         volume = fake.VOLUME
         expected_source = {
             'name': fake.SNAPSHOT_NAME,
@@ -272,22 +277,86 @@ class NetAppNfsDriverTestCase(test.TestCase):
         }
         mock_clone_call = self.mock_object(
             self.driver, '_clone_source_to_destination_volume',
-            return_value='fake')
+            return_value=provider_location)
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=is_flexgroup)
+        mock_super_create = self.mock_object(
+            nfs.NfsDriver, 'create_volume_from_snapshot',
+            return_value=provider_location)
+        mock_do_qos = self.mock_object(
+            self.driver, '_do_qos_for_file_flexgroup',
+            return_value=provider_location)
 
         retval = self.driver.create_volume_from_snapshot(volume, fake.SNAPSHOT)
 
-        self.assertEqual('fake', retval)
-        mock_clone_call.assert_called_once_with(expected_source, volume)
+        self.assertEqual(provider_location, retval)
+        if is_flexgroup:
+            mock_clone_call.assert_not_called()
+            mock_super_create.assert_called_once_with(volume, fake.SNAPSHOT)
+            mock_do_qos.assert_called_once_with(volume, provider_location)
+        else:
+            mock_clone_call.assert_called_once_with(expected_source, volume)
+            mock_do_qos.assert_not_called()
+            mock_super_create.not_called()
 
-    def test_create_cloned_volume(self):
+    @ddt.data(True, False)
+    def test_create_cloned_volume(self, is_flexgroup):
         provider_location = fake.POOL_NAME
+        volume = fake.VOLUME
         src_vref = fake.CLONE_SOURCE
-        self.mock_object(self.driver, '_clone_source_to_destination_volume',
-                         return_value=provider_location)
+        mock_clone_call = self.mock_object(
+            self.driver, '_clone_source_to_destination_volume',
+            return_value=provider_location)
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=is_flexgroup)
+        mock_super_create = self.mock_object(
+            nfs.NfsDriver, 'create_cloned_volume',
+            return_value=provider_location)
+        mock_do_qos = self.mock_object(
+            self.driver, '_do_qos_for_file_flexgroup',
+            return_value=provider_location)
 
-        result = self.driver.create_cloned_volume(fake.NFS_VOLUME,
-                                                  src_vref)
+        result = self.driver.create_cloned_volume(volume, src_vref)
+
         self.assertEqual(provider_location, result)
+        if is_flexgroup:
+            mock_clone_call.assert_not_called()
+            mock_super_create.assert_called_once_with(volume, src_vref)
+            mock_do_qos.assert_called_once_with(volume, provider_location)
+        else:
+            mock_clone_call.assert_called_once_with(src_vref, volume)
+            mock_do_qos.assert_not_called()
+            mock_super_create.not_called()
+
+    def test_do_qos_for_file_flexgroup(self):
+        volume = {'provider_location': 'fake'}
+        extra_specs = 'fake_extra'
+        model = {'provider_location': 'fake'}
+        vol_model = {'replication': 'fake'}
+        expected_model = {
+            'replication': vol_model['replication'],
+            'provider_location': model['provider_location'],
+        }
+        self.mock_object(self.driver, '_do_qos_for_volume')
+        self.mock_object(self.driver, '_get_volume_model_update',
+                         return_value=vol_model)
+        mock_extra = self.mock_object(na_utils, 'get_volume_extra_specs',
+                                      return_value=extra_specs)
+
+        model_updated = self.driver._do_qos_for_file_flexgroup(volume, model)
+
+        self.assertEqual(model_updated, expected_model)
+        mock_extra.assert_called_once_with(volume)
+
+    def test_do_qos_for_file_flexgroup_error(self):
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         side_effect=exception.NotFound)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._do_qos_for_file_flexgroup,
+                          fake.VOLUME, 'fake_model')
 
     def test_do_qos_for_volume(self):
         self.assertRaises(NotImplementedError,
@@ -295,18 +364,81 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.NFS_VOLUME,
                           fake.EXTRA_SPECS)
 
-    def test_create_snapshot(self):
-
+    @ddt.data(True, False)
+    def test_create_snapshot(self, is_flexgroup):
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=is_flexgroup)
         mock_clone_backing_file_for_volume = self.mock_object(
             self.driver, '_clone_backing_file_for_volume')
+        mock_snap_flexgroup = self.mock_object(
+            self.driver, '_create_snapshot_for_flexgroup')
 
         self.driver.create_snapshot(fake.SNAPSHOT)
 
-        mock_clone_backing_file_for_volume.assert_called_once_with(
-            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'],
-            fake.SNAPSHOT['volume_id'], is_snapshot=True)
+        if is_flexgroup:
+            mock_snap_flexgroup.assert_called_once_with(fake.SNAPSHOT)
+            mock_clone_backing_file_for_volume.assert_not_called()
+        else:
+            mock_snap_flexgroup.assert_not_called()
+            mock_clone_backing_file_for_volume.assert_called_once_with(
+                fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'],
+                fake.SNAPSHOT['volume_id'], is_snapshot=True)
 
-    def test_delete_snapshot(self):
+    def test_create_snapshot_for_flexgroup(self):
+        source_vol = {
+            'id': fake.SNAPSHOT['volume_id'],
+            'name': fake.SNAPSHOT['volume_name'],
+            'volume_type_id': fake.SNAPSHOT['volume_type_id'],
+        }
+        snap_vol = {
+            'name': '%s.%s' % (fake.SNAPSHOT['volume_name'],
+                               fake.SNAPSHOT['id']),
+            'host': fake.HOST_NAME,
+        }
+        mock_super_snapshot = self.mock_object(nfs.NfsDriver,
+                                               'create_snapshot')
+        mock_extra_specs = self.mock_object(na_utils,
+                                            'get_volume_extra_specs')
+        mock_extra_specs.return_value = fake.EXTRA_SPECS
+        mock_get_info = self.mock_object(na_utils,
+                                         'get_valid_qos_policy_group_info')
+        mock_get_info.return_value = fake.QOS_POLICY_GROUP_INFO
+        mock_get_host = self.mock_object(self.driver,
+                                         '_get_volume_host')
+        mock_get_host.return_value = fake.HOST_NAME
+        mock_set_policy = self.mock_object(self.driver,
+                                           '_set_qos_policy_group_on_volume')
+
+        self.driver._create_snapshot_for_flexgroup(fake.SNAPSHOT)
+
+        mock_super_snapshot.assert_has_calls([
+            mock.call(fake.SNAPSHOT)])
+        mock_get_host.assert_has_calls([
+            mock.call(source_vol['id'])])
+        mock_extra_specs.assert_has_calls([
+            mock.call(source_vol)])
+        mock_get_info.assert_has_calls([
+            mock.call(source_vol, fake.EXTRA_SPECS)])
+        mock_set_policy.assert_has_calls([
+            mock.call(snap_vol, fake.QOS_POLICY_GROUP_INFO, False)])
+
+    def test_create_snapshot_for_flexgroup_error(self):
+        self.mock_object(nfs.NfsDriver, 'create_snapshot',
+                         side_effect=exception.NotFound)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._create_snapshot_for_flexgroup,
+                          fake.SNAPSHOT)
+
+    def test_set_qos_policy_group_on_volume(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._set_qos_policy_group_on_volume,
+                          fake.NFS_VOLUME,
+                          fake.QOS_POLICY_GROUP_INFO,
+                          False)
+
+    @ddt.data(True, False)
+    def test_delete_snapshot(self, is_flexgroup):
         updates = {
             'name': fake.SNAPSHOT_NAME,
             'volume_size': fake.SIZE,
@@ -316,11 +448,20 @@ class NetAppNfsDriverTestCase(test.TestCase):
         }
         snapshot = fake_snapshot.fake_snapshot_obj(self.ctxt, **updates)
         self.mock_object(self.driver, '_delete_file')
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=is_flexgroup)
+        mock_super_delete = self.mock_object(nfs.NfsDriver,
+                                             'delete_snapshot')
 
         self.driver.delete_snapshot(snapshot)
 
-        self.driver._delete_file.assert_called_once_with(snapshot.volume_id,
-                                                         snapshot.name)
+        if is_flexgroup:
+            mock_super_delete.assert_called_once_with(snapshot)
+            self.driver._delete_file.assert_not_called()
+        else:
+            mock_super_delete.assert_not_called()
+            self.driver._delete_file.assert_called_once_with(
+                snapshot.volume_id, snapshot.name)
 
     @ddt.data(fake.NFS_SHARE, fake.NFS_SHARE_IPV6)
     def test__get_volume_location(self, provider):
@@ -339,6 +480,10 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.VOLUME_NAME, fake.CLONE_SOURCE_NAME,
                           fake.VOLUME_ID, share=None)
 
+    def test__is_flexgroup(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._is_flexgroup)
+
     def test__get_provider_location(self):
         updates = {'provider_location': fake.PROVIDER_LOCATION}
         volume = fake_volume.fake_volume_obj(self.ctxt, **updates)
@@ -347,6 +492,15 @@ class NetAppNfsDriverTestCase(test.TestCase):
         retval = self.driver._get_provider_location(fake.VOLUME_ID)
 
         self.assertEqual(fake.PROVIDER_LOCATION, retval)
+
+    def test__get_volume_host(self):
+        updates = {'host': fake.HOST_NAME}
+        volume = fake_volume.fake_volume_obj(self.ctxt, **updates)
+        self.mock_object(self.driver.db, 'volume_get', return_value=volume)
+
+        retval = self.driver._get_volume_host(fake.VOLUME_ID)
+
+        self.assertEqual(fake.HOST_NAME, retval)
 
     @ddt.data(None, processutils.ProcessExecutionError)
     def test__volume_not_present(self, side_effect):
@@ -382,6 +536,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_copy_image_to_volume_base_exception(self):
         mock_info_log = self.mock_object(nfs_base.LOG, 'info')
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         self.mock_object(remotefs.RemoteFSDriver, 'copy_image_to_volume',
                          side_effect=exception.NfsException)
 
@@ -393,6 +548,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_copy_image_to_volume(self):
         mock_log = self.mock_object(nfs_base, 'LOG')
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=False)
+        self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         mock_copy_image = self.mock_object(
             remotefs.RemoteFSDriver, 'copy_image_to_volume')
         mock_register_image = self.mock_object(
@@ -955,3 +1113,37 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertFalse(cloned)
         mock_call__is_share_clone_compatible.assert_not_called()
         mock_call__do_clone_rel_img_cache.assert_not_called()
+
+    def test__find_share(self):
+        mock_extract = self.mock_object(volume_utils, 'extract_host',
+                                        return_value=fake.POOL_NAME)
+
+        pool_name = self.driver._find_share(fake.VOLUME)
+
+        self.assertEqual(pool_name, fake.POOL_NAME)
+        mock_extract.assert_called_once_with(fake.VOLUME['host'],
+                                             level='pool')
+
+    def test__find_share_error(self):
+        mock_extract = self.mock_object(volume_utils, 'extract_host',
+                                        return_value=None)
+
+        self.assertRaises(exception.InvalidHost,
+                          self.driver._find_share,
+                          fake.VOLUME)
+        mock_extract.assert_called_once_with(fake.VOLUME['host'],
+                                             level='pool')
+
+    def test__ensure_flexgroup_not_in_cg_raises(self):
+        self.mock_object(self.driver, '_is_flexgroup',
+                         return_value=True)
+        self.mock_object(volume_utils, 'is_group_a_cg_snapshot_type',
+                         return_value=True)
+        fake_v1 = {
+            'group': 'fake_group',
+            'host': 'fake_host',
+            'id': 'fake_id'
+        }
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.driver._ensure_flexgroup_not_in_cg,
+                          fake_v1)

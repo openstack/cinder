@@ -504,14 +504,21 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
             self.dest_flexvol_name)
 
-    @ddt.data({'size': 1, 'aggr_map': {}},
-              {'size': 1, 'aggr_map': {'aggr02': 'aggr20'}},
-              {'size': None, 'aggr_map': {'aggr01': 'aggr10'}})
+    @ddt.data({'size': 1, 'aggr_map': {},
+               'is_flexgroup': False},
+              {'size': 1, 'aggr_map': {'aggr02': 'aggr20'},
+               'is_flexgroup': False},
+              {'size': None, 'aggr_map': {'aggr01': 'aggr10'},
+               'is_flexgroup': False},
+              {'size': 1, 'aggr_map': {'aggr01': 'aggr10'},
+               'is_flexgroup': True})
     @ddt.unpack
-    def test_create_destination_flexvol_exception(self, size, aggr_map):
+    def test_create_destination_flexvol_exception(self, size, aggr_map,
+                                                  is_flexgroup):
         self.mock_object(
             self.mock_src_client, 'get_provisioning_options_from_flexvol',
-            return_value={'size': size, 'aggregate': 'aggr01'})
+            return_value={'size': size, 'aggregate': 'aggr01',
+                          'is_flexgroup': is_flexgroup})
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
         mock_client_call = self.mock_object(
@@ -521,10 +528,10 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                           self.dm_mixin.create_destination_flexvol,
                           self.src_backend, self.dest_backend,
                           self.src_flexvol_name, self.dest_flexvol_name)
-        if size:
+        if size and is_flexgroup is False:
             self.dm_mixin._get_replication_aggregate_map.\
                 assert_called_once_with(self.src_backend, self.dest_backend)
-        else:
+        elif is_flexgroup is False:
             self.assertFalse(
                 self.dm_mixin._get_replication_aggregate_map.called)
         self.assertFalse(mock_client_call.called)
@@ -539,6 +546,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         expected_prov_opts.pop('volume_type', None)
         expected_prov_opts.pop('size', None)
         expected_prov_opts.pop('aggregate', None)
+        expected_prov_opts.pop('is_flexgroup', None)
         mock_get_provisioning_opts_call = self.mock_object(
             self.mock_src_client, 'get_provisioning_options_from_flexvol',
             return_value=provisioning_opts)
@@ -575,6 +583,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         expected_prov_opts.pop('volume_type', None)
         expected_prov_opts.pop('size', None)
         expected_prov_opts.pop('aggregate', None)
+        expected_prov_opts.pop('is_flexgroup', None)
         mock_get_provisioning_opts_call = self.mock_object(
             self.mock_src_client, 'get_provisioning_options_from_flexvol',
             return_value=provisioning_opts)

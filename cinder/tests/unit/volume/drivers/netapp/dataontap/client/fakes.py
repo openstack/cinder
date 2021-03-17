@@ -665,22 +665,86 @@ AGGR_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
 
 VOLUME_SIZE_TOTAL = 19922944
 VOLUME_SIZE_AVAILABLE = 19791872
-VOLUME_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
-    <results status="passed">
-        <num-records>1</num-records>
-        <attributes-list>
-            <volume-attributes>
-                <volume-space-attributes>
-                    <size-available>%(available_size)s</size-available>
-                    <size-total>%(total_size)s</size-total>
-                </volume-space-attributes>
-            </volume-attributes>
-        </attributes-list>
-    </results>
+VOLUME_GET_ITER_CAPACITY_ATTR_STR = """
+<volume-attributes>
+    <volume-id-attributes>
+        <style-extended>flexgroup</style-extended>
+    </volume-id-attributes>
+    <volume-space-attributes>
+        <size-available>%(available_size)s</size-available>
+        <size-total>%(total_size)s</size-total>
+    </volume-space-attributes>
+</volume-attributes>
 """ % {
     'available_size': VOLUME_SIZE_AVAILABLE,
     'total_size': VOLUME_SIZE_TOTAL,
+}
+
+VOLUME_GET_ITER_CAPACITY_ATTR = etree.XML(VOLUME_GET_ITER_CAPACITY_ATTR_STR)
+
+VOLUME_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list> %(volume)s </attributes-list>
+    </results>
+""" % {
+    'volume': VOLUME_GET_ITER_CAPACITY_ATTR_STR,
 })
+
+
+VOLUME_GET_ITER_STYLE_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>3</num-records>
+        <attributes-list>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexgroup</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexgroup-constituent</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexgroup-constituent</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+        </attributes-list>
+    </results>
+""")
+
+VOLUME_FLEXGROUP_STYLE = etree.XML("""
+<volume-attributes>
+    <volume-id-attributes>
+        <style-extended>flexgroup</style-extended>
+    </volume-id-attributes>
+</volume-attributes>
+""")
+
+VOLUME_GET_ITER_SAME_STYLE_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>3</num-records>
+        <attributes-list>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexvol</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexvol</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+            <volume-attributes>
+                <volume-id-attributes>
+                    <style-extended>flexvol</style-extended>
+                </volume-id-attributes>
+            </volume-attributes>
+        </attributes-list>
+    </results>
+""")
 
 VOLUME_GET_ITER_LIST_RESPONSE = etree.XML("""
   <results status="passed">
@@ -706,44 +770,102 @@ VOLUME_GET_ITER_LIST_RESPONSE = etree.XML("""
     'vserver': VOLUME_VSERVER_NAME,
 })
 
-VOLUME_GET_ITER_SSC_RESPONSE = etree.XML("""
-  <results status="passed">
-    <attributes-list>
-      <volume-attributes>
-        <volume-id-attributes>
-          <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
-          <junction-path>/%(volume)s</junction-path>
-          <name>%(volume)s</name>
-          <owning-vserver-name>%(vserver)s</owning-vserver-name>
-          <type>rw</type>
-        </volume-id-attributes>
-        <volume-mirror-attributes>
-          <is-data-protection-mirror>false</is-data-protection-mirror>
-          <is-replica-volume>false</is-replica-volume>
-        </volume-mirror-attributes>
-        <volume-qos-attributes>
-          <policy-group-name>fake_qos_policy_group_name</policy-group-name>
-        </volume-qos-attributes>
-        <volume-space-attributes>
-          <is-space-guarantee-enabled>true</is-space-guarantee-enabled>
-          <space-guarantee>none</space-guarantee>
-          <percentage-snapshot-reserve>5</percentage-snapshot-reserve>
-          <size>12345</size>
-        </volume-space-attributes>
-        <volume-snapshot-attributes>
-          <snapshot-policy>default</snapshot-policy>
-        </volume-snapshot-attributes>
-        <volume-language-attributes>
-          <language-code>en_US</language-code>
-        </volume-language-attributes>
-      </volume-attributes>
-    </attributes-list>
-    <num-records>1</num-records>
-  </results>
+VOLUME_GET_ITER_SSC_RESPONSE_STR = """
+<volume-attributes>
+    <volume-id-attributes>
+      <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
+      <junction-path>/%(volume)s</junction-path>
+      <name>%(volume)s</name>
+      <owning-vserver-name>%(vserver)s</owning-vserver-name>
+      <type>rw</type>
+      <style-extended>flexvol</style-extended>
+    </volume-id-attributes>
+    <volume-mirror-attributes>
+      <is-data-protection-mirror>false</is-data-protection-mirror>
+      <is-replica-volume>false</is-replica-volume>
+    </volume-mirror-attributes>
+    <volume-qos-attributes>
+      <policy-group-name>fake_qos_policy_group_name</policy-group-name>
+    </volume-qos-attributes>
+    <volume-space-attributes>
+      <is-space-guarantee-enabled>true</is-space-guarantee-enabled>
+      <space-guarantee>none</space-guarantee>
+      <percentage-snapshot-reserve>5</percentage-snapshot-reserve>
+      <size>12345</size>
+    </volume-space-attributes>
+    <volume-snapshot-attributes>
+      <snapshot-policy>default</snapshot-policy>
+    </volume-snapshot-attributes>
+    <volume-language-attributes>
+      <language-code>en_US</language-code>
+    </volume-language-attributes>
+</volume-attributes>
 """ % {
     'aggr': VOLUME_AGGREGATE_NAMES[0],
     'volume': VOLUME_NAMES[0],
     'vserver': VOLUME_VSERVER_NAME,
+}
+
+VOLUME_GET_ITER_SSC_RESPONSE_ATTR = etree.XML(
+    VOLUME_GET_ITER_SSC_RESPONSE_STR)
+
+VOLUME_GET_ITER_SSC_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>%(volume)s</attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'volume': VOLUME_GET_ITER_SSC_RESPONSE_STR,
+})
+
+VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP = """
+<volume-attributes>
+    <volume-id-attributes>
+      <aggr-list>
+        <aggr-name>%(aggr)s</aggr-name>
+      </aggr-list>
+      <junction-path>/%(volume)s</junction-path>
+      <name>%(volume)s</name>
+      <owning-vserver-name>%(vserver)s</owning-vserver-name>
+      <type>rw</type>
+      <style-extended>flexgroup</style-extended>
+    </volume-id-attributes>
+    <volume-mirror-attributes>
+      <is-data-protection-mirror>false</is-data-protection-mirror>
+      <is-replica-volume>false</is-replica-volume>
+    </volume-mirror-attributes>
+    <volume-qos-attributes>
+      <policy-group-name>fake_qos_policy_group_name</policy-group-name>
+    </volume-qos-attributes>
+    <volume-space-attributes>
+      <is-space-guarantee-enabled>true</is-space-guarantee-enabled>
+      <space-guarantee>none</space-guarantee>
+      <percentage-snapshot-reserve>5</percentage-snapshot-reserve>
+      <size>12345</size>
+    </volume-space-attributes>
+    <volume-snapshot-attributes>
+      <snapshot-policy>default</snapshot-policy>
+    </volume-snapshot-attributes>
+    <volume-language-attributes>
+      <language-code>en_US</language-code>
+    </volume-language-attributes>
+</volume-attributes>
+""" % {
+    'aggr': VOLUME_AGGREGATE_NAMES[0],
+    'volume': VOLUME_NAMES[0],
+    'vserver': VOLUME_VSERVER_NAME,
+}
+
+VOLUME_GET_ITER_SSC_RESPONSE_ATTR_FLEXGROUP = etree.XML(
+    VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP)
+
+VOLUME_GET_ITER_SSC_RESPONSE_FLEXGROUP = etree.XML("""
+  <results status="passed">
+    <attributes-list>%(volume)s</attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'volume': VOLUME_GET_ITER_SSC_RESPONSE_STR_FLEXGROUP,
 })
 
 VOLUME_INFO_SSC = {
@@ -759,6 +881,23 @@ VOLUME_INFO_SSC = {
     'size': '12345',
     'space-guarantee': 'none',
     'qos-policy-group': 'fake_qos_policy_group_name',
+    'style-extended': 'flexvol',
+}
+
+VOLUME_INFO_SSC_FLEXGROUP = {
+    'name': VOLUME_NAMES[0],
+    'vserver': VOLUME_VSERVER_NAME,
+    'junction-path': '/%s' % VOLUME_NAMES[0],
+    'aggregate': [VOLUME_AGGREGATE_NAMES[0]],
+    'space-guarantee-enabled': True,
+    'language': 'en_US',
+    'percentage-snapshot-reserve': '5',
+    'snapshot-policy': 'default',
+    'type': 'rw',
+    'size': '12345',
+    'space-guarantee': 'none',
+    'qos-policy-group': 'fake_qos_policy_group_name',
+    'style-extended': 'flexgroup',
 }
 
 SIS_GET_ITER_SSC_RESPONSE = etree.XML("""

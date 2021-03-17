@@ -369,6 +369,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                 'netapp_aggregate': 'aggr1',
                 'netapp_raid_type': 'raid_dp',
                 'netapp_disk_type': 'SSD',
+                'netapp_is_flexgroup': 'false',
             },
         }
         mock_get_ssc = self.mock_object(self.library.ssc_library,
@@ -435,6 +436,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'netapp_disk_type': 'SSD',
             'replication_enabled': False,
             'online_extend_support': True,
+            'netapp_is_flexgroup': 'false',
         }]
 
         expected[0].update({'QoS_support': cluster_credentials})

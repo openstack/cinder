@@ -1432,23 +1432,28 @@ class NetAppCmodeClientTestCase(test.TestCase):
         fake_vserver = 'fake_vserver'
         fake_junc = 'fake_junction_path'
         expected_flex_vol = 'fake_flex_vol'
+        volume_attr_str = ("""
+            <volume-attributes>
+            <volume-id-attributes>
+                <name>%(flex_vol)s</name>
+            </volume-id-attributes>
+          </volume-attributes>
+        """ % {'flex_vol': expected_flex_vol})
+        volume_attr = netapp_api.NaElement(etree.XML(volume_attr_str))
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
                             <num-records>1</num-records>
-                            <attributes-list>
-                              <volume-attributes>
-                                <volume-id-attributes>
-                                  <name>%(flex_vol)s</name>
-                                </volume-id-attributes>
-                              </volume-attributes>
-                            </attributes-list>
-                          </results>""" % {'flex_vol': expected_flex_vol}))
+                            <attributes-list>%(vol)s</attributes-list>
+                          </results>""" % {'vol': volume_attr_str}))
         self.connection.invoke_successfully.return_value = response
+        mock_get_unique_vol = self.mock_object(
+            self.client, 'get_unique_volume', return_value=volume_attr)
 
         actual_flex_vol = self.client.get_vol_by_junc_vserver(fake_vserver,
                                                               fake_junc)
 
         self.assertEqual(expected_flex_vol, actual_flex_vol)
+        mock_get_unique_vol.assert_called_once_with(response)
 
     def test_clone_file(self):
         expected_flex_vol = "fake_flex_vol"
@@ -1721,6 +1726,10 @@ class NetAppCmodeClientTestCase(test.TestCase):
             fake_client.VOLUME_GET_ITER_CAPACITY_RESPONSE)
         mock_send_iter_request = self.mock_object(
             self.client, 'send_iter_request', return_value=api_response)
+        volume_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_CAPACITY_ATTR)
+        mock_get_unique_vol = self.mock_object(
+            self.client, 'get_unique_volume', return_value=volume_response)
 
         capacity = self.client.get_flexvol_capacity(**kwargs)
 
@@ -1738,6 +1747,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
             },
             'desired-attributes': {
                 'volume-attributes': {
+                    'volume-id-attributes': {
+                        'style-extended': None,
+                    },
                     'volume-space-attributes': {
                         'size-available': None,
                         'size-total': None,
@@ -1747,6 +1759,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         }
         mock_send_iter_request.assert_called_once_with(
             'volume-get-iter', volume_get_iter_args)
+        mock_get_unique_vol.assert_called_once_with(api_response)
 
         self.assertEqual(fake_client.VOLUME_SIZE_TOTAL, capacity['size-total'])
         self.assertEqual(fake_client.VOLUME_SIZE_AVAILABLE,
@@ -1810,13 +1823,25 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual([], result)
 
-    def test_get_flexvol(self):
+    @ddt.data(False, True)
+    def test_get_flexvol(self, is_flexgroup):
 
-        api_response = netapp_api.NaElement(
-            fake_client.VOLUME_GET_ITER_SSC_RESPONSE)
+        if is_flexgroup:
+            api_response = netapp_api.NaElement(
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE_FLEXGROUP)
+            volume_response = netapp_api.NaElement(
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE_ATTR_FLEXGROUP)
+        else:
+            api_response = netapp_api.NaElement(
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE)
+            volume_response = netapp_api.NaElement(
+                fake_client.VOLUME_GET_ITER_SSC_RESPONSE_ATTR)
+
         self.mock_object(self.client,
                          'send_iter_request',
                          return_value=api_response)
+        mock_get_unique_vol = self.mock_object(
+            self.client, 'get_unique_volume', return_value=volume_response)
 
         result = self.client.get_flexvol(
             flexvol_name=fake_client.VOLUME_NAMES[0],
@@ -1846,7 +1871,11 @@ class NetAppCmodeClientTestCase(test.TestCase):
                         'owning-vserver-name': None,
                         'junction-path': None,
                         'type': None,
+                        'aggr-list': {
+                            'aggr-name': None,
+                        },
                         'containing-aggregate-name': None,
+                        'style-extended': None,
                     },
                     'volume-mirror-attributes': {
                         'is-data-protection-mirror': None,
@@ -1872,19 +1901,12 @@ class NetAppCmodeClientTestCase(test.TestCase):
         }
         self.client.send_iter_request.assert_called_once_with(
             'volume-get-iter', volume_get_iter_args)
-        self.assertEqual(fake_client.VOLUME_INFO_SSC, result)
+        mock_get_unique_vol.assert_called_once_with(api_response)
 
-    def test_get_flexvol_not_found(self):
-
-        api_response = netapp_api.NaElement(
-            fake_client.NO_RECORDS_RESPONSE)
-        self.mock_object(self.client,
-                         'send_iter_request',
-                         return_value=api_response)
-
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.client.get_flexvol,
-                          flexvol_name=fake_client.VOLUME_NAMES[0])
+        if is_flexgroup:
+            self.assertEqual(fake_client.VOLUME_INFO_SSC_FLEXGROUP, result)
+        else:
+            self.assertEqual(fake_client.VOLUME_INFO_SSC, result)
 
     def test_create_flexvol(self):
         self.mock_object(self.client.connection, 'send_request')
@@ -3811,7 +3833,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'snapshot_policy': 'default',
             'snapshot_reserve': '5',
             'space_guarantee_type': 'none',
-            'volume_type': 'rw'
+            'volume_type': 'rw',
+            'is_flexgroup': False,
         }
 
         actual_prov_opts = self.client.get_provisioning_options_from_flexvol(
@@ -3914,3 +3937,22 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         mock_name.assert_called_once_with(True, 'node')
         self.assertFalse(result)
+
+    def test_get_unique_volume(self):
+        api_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_STYLE_RESPONSE)
+        volume_elem = netapp_api.NaElement(fake_client.VOLUME_FLEXGROUP_STYLE)
+
+        volume_id_attr = self.client.get_unique_volume(api_response)
+
+        xml_exp = str(volume_elem).replace(" ", "").replace("\n", "")
+        xml_res = str(volume_id_attr).replace(" ", "").replace("\n", "")
+        self.assertEqual(xml_exp, xml_res)
+
+    def test_get_unique_volume_raise_exception(self):
+        api_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_SAME_STYLE_RESPONSE)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.client.get_unique_volume,
+                          api_response)
