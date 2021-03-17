@@ -325,11 +325,13 @@ class RemoteFSDriver(driver.BaseVD):
             self._create_regular_file(volume_path, volume_size)
 
         self._set_rw_permissions(volume_path)
-        volume.admin_metadata['format'] = self.format
-        # This is done here because when creating a volume from image,
-        # while encountering other volume.save() method fails for non-admins
-        with volume.obj_as_admin():
-            volume.save()
+        if not volume.consistencygroup_id and not volume.group_id:
+            volume.admin_metadata['format'] = self.format
+            # This is done here because when creating a volume from image,
+            # while encountering other volume.save() method fails for
+            # non-admins
+            with volume.obj_as_admin():
+                volume.save()
 
     def _ensure_shares_mounted(self):
         """Look for remote shares in the flags and mount them locally."""
@@ -1179,6 +1181,10 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         if src_vref.admin_metadata and 'format' in src_vref.admin_metadata:
             volume.admin_metadata['format'] = (
                 src_vref.admin_metadata['format'])
+            # This is done here because when cloning from a bootable volume,
+            # while encountering other volume.save() method fails
+            with volume.obj_as_admin():
+                volume.save()
         return {'provider_location': src_vref.provider_location}
 
     def _copy_volume_image(self, src_path, dest_path):
