@@ -9252,6 +9252,59 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                        access=access)
             startrcrelationship.assert_called_once_with(opts['RC_name'], None)
 
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsfabric')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lshost')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
+    def test_get_host_from_connector_with_vol(self,
+                                              lsvdishosmap,
+                                              lshost,
+                                              lsfabric):
+        vol = 'testvol'
+        connector = {"wwpns": ["10000090fa3870d7", "C050760825191B00"]}
+        lsfabric.return_value = [{"remote_wwpn": "10000090fa3870d7",
+                                  "name": "test_host"}]
+        raw = "id!name!host_id!host_name!vdisk_UID\n2594!testvol!315!"\
+              "test_host!60050768028110A4700000000001168E"
+        ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', '"%s"' % vol]
+        lsvdishosmap.return_value = storwize_svc_common.CLIResponse(raw,
+                                                                    ssh_cmd,
+                                                                    '!',
+                                                                    True)
+        host = self.storwize_svc_common.get_host_from_connector(connector,
+                                                                vol)
+        self.assertEqual(host, "test_host")
+        lsfabric.assert_called_with(wwpn='10000090fa3870d7')
+        self.assertEqual(1, lsfabric.call_count)
+        lsvdishosmap.assert_called_with(vol)
+        self.assertEqual(1, lsvdishosmap.call_count)
+        lshost.assert_not_called()
+
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsfabric')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lshost')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
+    def test_get_host_from_connector_wo_vol(self,
+                                            lsvdishosmap,
+                                            lshost,
+                                            lsfabric):
+        vol = 'testvol'
+        connector = {"wwpns": ["10000090fa3870d7", "C050760825191B00"]}
+        lsfabric.return_value = [{"remote_wwpn": "10000090fa3870d7",
+                                  "name": "test_host"}]
+        raw = "id!name!host_id!host_name!vdisk_UID\n2594!testvol!315!"\
+              "test_host!60050768028110A4700000000001168E"
+        ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', '"%s"' % vol]
+        lsvdishosmap.return_value = storwize_svc_common.CLIResponse(raw,
+                                                                    ssh_cmd,
+                                                                    '!',
+                                                                    True)
+        host = self.storwize_svc_common.get_host_from_connector(connector)
+        self.assertEqual(host, "test_host")
+        lsfabric.assert_called_with(wwpn='10000090fa3870d7')
+        self.assertEqual(1, lsfabric.call_count)
+        lsvdishosmap.assert_not_called()
+        self.assertEqual(0, lsvdishosmap.call_count)
+        lshost.assert_not_called()
+
 
 @ddt.ddt
 class StorwizeSSHTestCase(test.TestCase):
