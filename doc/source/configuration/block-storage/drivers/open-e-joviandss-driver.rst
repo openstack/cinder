@@ -38,10 +38,11 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
     backend_name = jdss-0
     chap_password_len = 14
     driver_use_ssl = True
+    driver_ssl_cert_verify = True
+    driver_ssl_cert_path = /etc/cinder/jdss.crt
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-0
     jovian_block_size = 128K
-    jovian_rest_send_repeats = 4
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
@@ -65,6 +66,12 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
    * - ``driver_use_ssl``
      - True
      - Use SSL to send requests to JovianDSS[1]
+   * - ``driver_ssl_cert_verify``
+     - True
+     - Verify authenticity of JovianDSS[1] certificate
+   * - ``driver_ssl_cert_path``
+     - None
+     - Path to the JovianDSS[1] certificate for verification
    * - ``iscsi_target_prefix``
      - iqn.2016-04.com.open-e:01:cinder-
      - Prefix that will be used to form target name for volume
@@ -74,9 +81,6 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
    * - ``jovian_block_size``
      - 128K
      - Block size for newly created volumes
-   * - ``jovian_rest_send_repeats``
-     - 3
-     - Number of times that driver will try to send REST request
    * - ``san_api_port``
      - 82
      - Rest port according to the settings in [1]
@@ -94,7 +98,7 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
      - Must be set according to the settings in [1]
    * - ``san_password``
      - admin
-     - Jovian password [1], **should be changed** for security purpouses
+     - Jovian password [1], **should be changed** for security purposes
    * - ``san_thin_provision``
      - False
      - Using thin provisioning for new volumes
@@ -126,10 +130,10 @@ For instance if you want to add ``Pool-1`` located on the same host as
     backend_name = jdss-0
     chap_password_len = 14
     driver_use_ssl = True
+    driver_ssl_cert_verify = False
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-0
     jovian_block_size = 128K
-    jovian_rest_send_repeats = 4
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
@@ -142,10 +146,10 @@ For instance if you want to add ``Pool-1`` located on the same host as
     backend_name = jdss-1
     chap_password_len = 14
     driver_use_ssl = True
+    driver_ssl_cert_verify = False
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-1
     jovian_block_size = 128K
-    jovian_rest_send_repeats = 4
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
@@ -175,10 +179,10 @@ and 192.168.31.100 the configuration file will look like:
     backend_name = jdss-2
     chap_password_len = 14
     driver_use_ssl = True
+    driver_ssl_cert_verify = False
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-0
     jovian_block_size = 128K
-    jovian_rest_send_repeats = 4
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver

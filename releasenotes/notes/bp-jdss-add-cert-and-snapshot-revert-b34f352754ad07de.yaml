@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added support of authenticity verification through self-signed certificates
+    for JovianDSS data storage.
+    Added support of revert to snapshot functionality.
+    Expands unit-test coverage for JovianDSS driver.

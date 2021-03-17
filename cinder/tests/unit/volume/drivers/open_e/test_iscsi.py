@@ -27,7 +27,6 @@ from cinder.volume.drivers.open_e import iscsi
 from cinder.volume.drivers.open_e.jovian_common import exception as jexc
 from cinder.volume.drivers.open_e.jovian_common import jdss_common as jcom
 
-
 UUID_1 = '12345678-1234-1234-1234-000000000001'
 UUID_2 = '12345678-1234-1234-1234-000000000002'
 UUID_3 = '12345678-1234-1234-1234-000000000003'
@@ -36,7 +35,7 @@ UUID_4 = '12345678-1234-1234-1234-000000000004'
 CONFIG_OK = {
     'san_hosts': ['192.168.0.2'],
     'san_api_port': 82,
-    'driver_use_ssl': 'https',
+    'driver_use_ssl': 'true',
     'jovian_rest_send_repeats': 3,
     'jovian_recovery_delay': 60,
     'jovian_user': 'admin',
@@ -53,7 +52,7 @@ CONFIG_OK = {
 CONFIG_BLOCK_SIZE = {
     'san_hosts': ['192.168.0.2'],
     'san_api_port': 82,
-    'driver_use_ssl': 'https',
+    'driver_use_ssl': 'true',
     'jovian_rest_send_repeats': 3,
     'jovian_recovery_delay': 60,
     'jovian_user': 'admin',
@@ -67,10 +66,27 @@ CONFIG_BLOCK_SIZE = {
     'jovian_block_size': '64K'
 }
 
+CONFIG_BAD_BLOCK_SIZE = {
+    'san_hosts': ['192.168.0.2'],
+    'san_api_port': 82,
+    'driver_use_ssl': 'true',
+    'jovian_rest_send_repeats': 3,
+    'jovian_recovery_delay': 60,
+    'jovian_user': 'admin',
+    'jovian_password': 'password',
+    'jovian_ignore_tpath': [],
+    'target_port': 3260,
+    'jovian_pool': 'Pool-0',
+    'target_prefix': 'iqn.2020-04.com.open-e.cinder:',
+    'chap_password_len': 12,
+    'san_thin_provision': False,
+    'jovian_block_size': '61K'
+}
+
 CONFIG_BACKEND_NAME = {
     'san_hosts': ['192.168.0.2'],
     'san_api_port': 82,
-    'driver_use_ssl': 'https',
+    'driver_use_ssl': 'true',
     'jovian_rest_send_repeats': 3,
     'jovian_recovery_delay': 60,
     'jovian_user': 'admin',
@@ -89,7 +105,7 @@ CONFIG_BACKEND_NAME = {
 CONFIG_MULTI_HOST = {
     'san_hosts': ['192.168.0.2', '192.168.0.3'],
     'san_api_port': 82,
-    'driver_use_ssl': 'https',
+    'driver_use_ssl': 'true',
     'jovian_rest_send_repeats': 3,
     'jovian_recovery_delay': 60,
     'jovian_user': 'admin',
@@ -168,10 +184,6 @@ def get_jdss_exceptions():
     return out
 
 
-def fake_safe_get(value):
-    return CONFIG_OK[value]
-
-
 class TestOpenEJovianDSSDriver(test.TestCase):
 
     def get_driver(self, config):
@@ -179,11 +191,16 @@ class TestOpenEJovianDSSDriver(test.TestCase):
 
         cfg = mock.Mock()
         cfg.append_config_values.return_value = None
-        cfg.safe_get = lambda val: config[val]
+        cfg.get = lambda val, default: config.get(val, default)
 
         jdssd = iscsi.JovianISCSIDriver()
+
         jdssd.configuration = cfg
-        jdssd.do_setup(ctx)
+        lib_to_patch = ('cinder.volume.drivers.open_e.jovian_common.rest.'
+                        'JovianRESTAPI')
+        with mock.patch(lib_to_patch) as ra:
+            ra.is_pool_exists.return_value = True
+            jdssd.do_setup(ctx)
         jdssd.ra = mock.Mock()
         return jdssd, ctx
 
@@ -194,6 +211,39 @@ class TestOpenEJovianDSSDriver(test.TestCase):
     def stop_patches(self, patches):
         for p in patches:
             p.stop()
+
+    def test_check_for_setup_error(self):
+
+        cfg = mock.Mock()
+        cfg.append_config_values.return_value = None
+
+        jdssd = iscsi.JovianISCSIDriver()
+        jdssd.configuration = cfg
+
+        jdssd.ra = mock.Mock()
+
+        # No IP
+        jdssd.ra.is_pool_exists.return_value = True
+        jdssd.jovian_hosts = []
+        jdssd.block_size = ['64K']
+
+        self.assertRaises(exception.VolumeDriverException,
+                          jdssd.check_for_setup_error)
+
+        # No pool detected
+        jdssd.ra.is_pool_exists.return_value = False
+        jdssd.jovian_hosts = ['192.168.0.2']
+        jdssd.block_size = ['64K']
+
+        self.assertRaises(exception.VolumeDriverException,
+                          jdssd.check_for_setup_error)
+        # Bad block size
+        jdssd.ra.is_pool_exists.return_value = True
+        jdssd.jovian_hosts = ['192.168.0.2', '192.168.0.3']
+        jdssd.block_size = ['61K']
+
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          jdssd.check_for_setup_error)
 
     def test_get_provider_location(self):
         jdssd, ctx = self.get_driver(CONFIG_OK)
@@ -351,17 +401,18 @@ class TestOpenEJovianDSSDriver(test.TestCase):
             SNAPSHOTS_EMPTY,
             SNAPSHOTS_EMPTY]
 
-        fake_gc = mock.Mock()
-        fake_hide_object = mock.Mock()
-        gc = mock.patch.object(jdssd, "_gc_delete", new=fake_gc)
-        gc.start()
-        hide = mock.patch.object(jdssd, "_hide_object", new=fake_hide_object)
-        hide.start()
+        patches = [mock.patch.object(jdssd, "_gc_delete"),
+                   mock.patch.object(jdssd, "_hide_object")]
+
+        self.start_patches(patches)
+
         jdssd._cascade_volume_delete(o_vname, o_snaps)
+
         jdssd._hide_object.assert_called_once_with(o_vname)
-        hide.stop()
         jdssd._gc_delete.assert_not_called()
-        gc.stop()
+
+        self.stop_patches(patches)
+
         delete_snapshot_expected = [
             mock.call(o_vname,
                       SNAPSHOTS_CASCADE_2[0]["name"],
@@ -399,17 +450,17 @@ class TestOpenEJovianDSSDriver(test.TestCase):
             mock.call(SNAPSHOTS_CASCADE_1[1]["name"]),
             mock.call(o_vname)]
 
-        fake_gc = mock.Mock()
-        fake_hide_object = mock.Mock()
-        gc = mock.patch.object(jdssd, "_gc_delete", new=fake_gc)
-        gc.start()
-        hide = mock.patch.object(jdssd, "_hide_object", new=fake_hide_object)
-        hide.start()
+        patches = [mock.patch.object(jdssd, "_gc_delete"),
+                   mock.patch.object(jdssd, "_hide_object")]
+
+        self.start_patches(patches)
+
         jdssd._cascade_volume_delete(o_vname, o_snaps)
         jdssd._hide_object.assert_has_calls(hide_object_expected)
-        hide.stop()
         jdssd._gc_delete.assert_not_called()
-        gc.stop()
+
+        self.stop_patches(patches)
+
         jdssd.ra.get_snapshots.assert_has_calls(get_snapshots)
 
         delete_snapshot_expected = [
@@ -522,7 +573,8 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         jdssd._gc_delete(jcom.vname(UUID_1))
 
         jdssd._delete_back_recursively.assert_not_called()
-        jdssd.ra.delete_lun.assert_called_once_with(jcom.vname(UUID_1))
+        jdssd.ra.delete_lun.assert_called_once_with(jcom.vname(UUID_1),
+                                                    force_umount=True)
 
         self.stop_patches(patches)
 
@@ -654,6 +706,133 @@ class TestOpenEJovianDSSDriver(test.TestCase):
                 jdssd.extend_volume(vol, 2)
             except Exception as err:
                 self.assertIsInstance(err, exception.VolumeBackendAPIException)
+
+    def test_revert_to_snapshot(self):
+
+        jdssd, ctx = self.get_driver(CONFIG_OK)
+        vol = fake_volume.fake_volume_obj(ctx)
+        vol.id = UUID_1
+        snap = fake_snapshot.fake_snapshot_obj(ctx)
+        snap.id = UUID_2
+
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+
+        get_lun_resp_1 = {'vscan': None,
+                          'full_name': 'Pool-0/' + UUID_1,
+                          'userrefs': None,
+                          'primarycache': 'all',
+                          'logbias': 'latency',
+                          'creation': '1591543140',
+                          'sync': 'always',
+                          'is_clone': False,
+                          'dedup': 'off',
+                          'sharenfs': None,
+                          'receive_resume_token': None,
+                          'volsize': '2147483648'}
+
+        get_lun_resp_2 = {'vscan': None,
+                          'full_name': 'Pool-0/' + UUID_1,
+                          'userrefs': None,
+                          'primarycache': 'all',
+                          'logbias': 'latency',
+                          'creation': '1591543140',
+                          'sync': 'always',
+                          'is_clone': False,
+                          'dedup': 'off',
+                          'sharenfs': None,
+                          'receive_resume_token': None,
+                          'volsize': '1073741824'}
+
+        jdssd.ra.get_lun.side_effect = [get_lun_resp_1, get_lun_resp_2]
+
+        get_lun_expected = [mock.call(vname), mock.call(vname)]
+
+        jdssd.revert_to_snapshot(ctx, vol, snap)
+
+        jdssd.ra.get_lun.assert_has_calls(get_lun_expected)
+
+        jdssd.ra.rollback_volume_to_snapshot.assert_called_once_with(vname,
+                                                                     sname)
+        jdssd.ra.extend_lun(vname, '2147483648')
+
+    def test_revert_to_snapshot_exception(self):
+
+        jdssd, ctx = self.get_driver(CONFIG_OK)
+        vol = fake_volume.fake_volume_obj(ctx)
+        vol.id = UUID_1
+        snap = fake_snapshot.fake_snapshot_obj(ctx)
+        snap.id = UUID_2
+
+        vname = jcom.vname(UUID_1)
+
+        get_lun_resp_no_size = {'vscan': None,
+                                'full_name': 'Pool-0/' + vname,
+                                'userrefs': None,
+                                'primarycache': 'all',
+                                'logbias': 'latency',
+                                'creation': '1591543140',
+                                'sync': 'always',
+                                'is_clone': False,
+                                'dedup': 'off',
+                                'sharenfs': None,
+                                'receive_resume_token': None,
+                                'volsize': None}
+
+        get_lun_resp_1 = {'vscan': None,
+                          'full_name': 'Pool-0/' + vname,
+                          'userrefs': None,
+                          'primarycache': 'all',
+                          'logbias': 'latency',
+                          'creation': '1591543140',
+                          'sync': 'always',
+                          'is_clone': False,
+                          'dedup': 'off',
+                          'sharenfs': None,
+                          'receive_resume_token': None,
+                          'volsize': '2147483648'}
+
+        get_lun_resp_2 = {'vscan': None,
+                          'full_name': 'Pool-0/' + vname,
+                          'userrefs': None,
+                          'primarycache': 'all',
+                          'logbias': 'latency',
+                          'creation': '1591543140',
+                          'sync': 'always',
+                          'is_clone': False,
+                          'dedup': 'off',
+                          'sharenfs': None,
+                          'receive_resume_token': None,
+                          'volsize': '1073741824'}
+
+        jdssd.ra.get_lun.side_effect = [get_lun_resp_no_size, get_lun_resp_2]
+
+        self.assertRaises(exception.VolumeDriverException,
+                          jdssd.revert_to_snapshot,
+                          ctx,
+                          vol,
+                          snap)
+
+        jdssd.ra.get_lun.side_effect = [get_lun_resp_1, get_lun_resp_2]
+
+        jdssd.ra.rollback_volume_to_snapshot.side_effect = [
+            jexc.JDSSResourceNotFoundException(res=vname)]
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          jdssd.revert_to_snapshot,
+                          ctx,
+                          vol,
+                          snap)
+
+        jdssd.ra.get_lun.side_effect = [get_lun_resp_1,
+                                        jexc.JDSSException("some_error")]
+
+        jdssd.ra.rollback_volume_to_snapshot.side_effect = [
+            jexc.JDSSResourceNotFoundException(res=vname)]
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          jdssd.revert_to_snapshot,
+                          ctx,
+                          vol,
+                          snap)
 
     def test_clone_object(self):
         jdssd, ctx = self.get_driver(CONFIG_OK)
@@ -1103,7 +1282,7 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         location_info = 'JovianISCSIDriver:192.168.0.2:Pool-0'
         correct_out = {
             'vendor_name': 'Open-E',
-            'driver_version': "1.0.0",
+            'driver_version': "1.0.1",
             'storage_protocol': 'iSCSI',
             'total_capacity_gb': 100,
             'free_capacity_gb': 50,
@@ -1311,6 +1490,7 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         jdssd._create_target_volume.assert_called_once_with(vol)
 
         jdssd.ra.is_target_lun.assert_not_called()
+        self.stop_patches(patches)
 
     def test_remove_target_volume(self):
 
@@ -1454,7 +1634,6 @@ class TestOpenEJovianDSSDriver(test.TestCase):
             'driver_volume_type': 'iscsi',
             'data': properties,
         }
-        jdssd.ra.activate_target.return_value = None
 
         ret = jdssd.initialize_connection(vol, connector)
 

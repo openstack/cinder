@@ -26,11 +26,12 @@ from cinder.volume.drivers.open_e.jovian_common import rest
 
 UUID_1 = '12345678-1234-1234-1234-000000000001'
 UUID_2 = '12345678-1234-1234-1234-000000000002'
+UUID_3 = '12345678-1234-1234-1234-000000000003'
 
 CONFIG_OK = {
     'san_hosts': ['192.168.0.2'],
     'san_api_port': 82,
-    'driver_use_ssl': 'https',
+    'driver_use_ssl': 'true',
     'jovian_rest_send_repeats': 3,
     'jovian_recovery_delay': 60,
     'san_login': 'admin',
@@ -45,10 +46,6 @@ CONFIG_OK = {
 }
 
 
-def fake_safe_get(value):
-    return CONFIG_OK[value]
-
-
 class TestOpenEJovianRESTAPI(test.TestCase):
 
     def get_rest(self, config):
@@ -57,18 +54,10 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         cfg = mock.Mock()
         cfg.append_config_values.return_value = None
         cfg.safe_get = lambda val: config[val]
-        cfg.get = lambda val, default: config[val]
-        jdssr = rest.JovianRESTAPI(cfg)
+        cfg.get = lambda val, default: config.get(val, default)
+        jdssr = rest.JovianRESTAPI(config)
         jdssr.rproxy = mock.Mock()
         return jdssr, ctx
-
-    def start_patches(self, patches):
-        for p in patches:
-            p.start()
-
-    def stop_patches(self, patches):
-        for p in patches:
-            p.stop()
 
     def test_get_active_host(self):
 
@@ -114,7 +103,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         jrest, ctx = self.get_rest(CONFIG_OK)
         resp = {'data': [{
                 'vscan': None,
-                'full_name': 'pool-0/' + UUID_1,
+                'full_name': 'Pool-0/' + UUID_1,
                 'userrefs': None,
                 'primarycache': 'all',
                 'logbias': 'latency',
@@ -148,7 +137,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         jrest, ctx = self.get_rest(CONFIG_OK)
         resp = {'data': {
                 'vscan': None,
-                'full_name': 'pool-0/' + jcom.vname(UUID_1),
+                'full_name': 'Pool-0/' + jcom.vname(UUID_1),
                 'userrefs': None,
                 'primarycache': 'all',
                 'logbias': 'latency',
@@ -231,7 +220,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         jrest, ctx = self.get_rest(CONFIG_OK)
         resp = {'data': {
                 "vscan": None,
-                "full_name": "pool-0/" + jcom.vname(UUID_1),
+                "full_name": "Pool-0/" + jcom.vname(UUID_1),
                 "userrefs": None,
                 "primarycache": "all",
                 "logbias": "latency",
@@ -268,7 +257,7 @@ class TestOpenEJovianRESTAPI(test.TestCase):
     def test_get_lun(self):
         jrest, ctx = self.get_rest(CONFIG_OK)
         resp = {'data': {"vscan": None,
-                         "full_name": "pool-0/v_" + UUID_1,
+                         "full_name": "Pool-0/v_" + UUID_1,
                          "userrefs": None,
                          "primarycache": "all",
                          "logbias": "latency",
@@ -995,3 +984,498 @@ class TestOpenEJovianRESTAPI(test.TestCase):
         self.assertRaises(jexc.JDSSException,
                           jrest.detach_target_vol, tname, vname)
         jrest.rproxy.pool_request.assert_has_calls(detach_target_vol_expected)
+
+    def test_create_snapshot(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+
+        data = {'name': jcom.sname(UUID_2)}
+        resp = {'data': data,
+                'error': None,
+                'code': 201}
+
+        jrest.rproxy.pool_request.return_value = resp
+        self.assertIsNone(jrest.create_snapshot(vname, sname))
+
+    def test_create_snapshot_exception(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+
+        addr = '/volumes/{vol}/snapshots'.format(vol=vname)
+        req = {'snapshot_name': sname}
+
+        url = ('http://192.168.0.2:82/api/v3/pools/Pool-0/volumes/{vol}/'
+               'snapshots').format(vol=UUID_1)
+        resp = {'data': None,
+                'error': {
+                    'class': "zfslib.zfsapi.resources.ZfsResourceError",
+                    'errno': 1,
+                    'message': ('Zfs resource: Pool-0/{vol} not found in '
+                                'this collection.'.format(vol=vname)),
+                    "url": url},
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_snapshot_expected = [
+            mock.call('POST', addr, json_data=req)]
+
+        self.assertRaises(jexc.JDSSVolumeNotFoundException,
+                          jrest.create_snapshot,
+                          vname,
+                          sname)
+
+        # snapshot exists
+        resp = {'data': None,
+                'error': {
+                    'class': "zfslib.zfsapi.resources.ZfsResourceError",
+                    'errno': 5,
+                    'message': 'Resource Pool-0/{vol}@{snap} already exists.',
+                    'url': url},
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_snapshot_expected += [mock.call('POST', addr, json_data=req)]
+        self.assertRaises(jexc.JDSSSnapshotExistsException,
+                          jrest.create_snapshot,
+                          vname,
+                          sname)
+
+        # error unknown
+        err = {"class": "some test error",
+               "message": "test error message",
+               "url": url,
+               "errno": 123}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_snapshot_expected += [mock.call('POST', addr, json_data=req)]
+        self.assertRaises(jexc.JDSSException,
+                          jrest.create_snapshot,
+                          vname,
+                          sname)
+        jrest.rproxy.pool_request.assert_has_calls(create_snapshot_expected)
+
+    def test_create_volume_from_snapshot(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+        cname = jcom.vname(UUID_3)
+
+        addr = '/volumes/{vol}/clone'.format(vol=vname)
+        jbody = {
+            'name': cname,
+            'snapshot': sname,
+            'sparse': False
+        }
+
+        data = {
+            "origin": "Pool-0/{vol}@{snap}".format(vol=vname, snap=sname),
+            "is_clone": True,
+            "full_name": "Pool-0/{}".format(cname),
+            "name": cname
+        }
+
+        resp = {'data': data,
+                'error': None,
+                'code': 201}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_volume_from_snapshot_expected = [
+            mock.call('POST', addr, json_data=jbody)]
+        self.assertIsNone(jrest.create_volume_from_snapshot(cname,
+                                                            sname,
+                                                            vname))
+
+        jrest.rproxy.pool_request.assert_has_calls(
+            create_volume_from_snapshot_expected)
+
+    def test_create_volume_from_snapshot_exception(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+        cname = jcom.vname(UUID_3)
+
+        addr = '/volumes/{vol}/clone'.format(vol=vname)
+        jbody = {
+            'name': cname,
+            'snapshot': sname,
+            'sparse': False
+        }
+
+        # volume DNE
+        url = ('http://192.168.0.2:82/api/v3/pools/Pool-0/volumes/{vol}/'
+               'clone').format(vol=UUID_1)
+        resp = {'data': None,
+                'error': {
+                    'class': "zfslib.zfsapi.resources.ZfsResourceError",
+                    'errno': 1,
+                    'message': ('Zfs resource: Pool-0/{vol} not found in '
+                                'this collection.'.format(vol=vname)),
+                    "url": url},
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_volume_from_snapshot_expected = [
+            mock.call('POST', addr, json_data=jbody)]
+
+        self.assertRaises(jexc.JDSSResourceNotFoundException,
+                          jrest.create_volume_from_snapshot,
+                          cname,
+                          sname,
+                          vname)
+
+        # clone exists
+        resp = {'data': None,
+                'error': {
+                    "class": "zfslib.wrap.zfs.ZfsCmdError",
+                    "errno": 100,
+                    "message": ("cannot create 'Pool-0/{}': "
+                                "dataset already exists").format(vname),
+                    'url': url},
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_volume_from_snapshot_expected += [
+            mock.call('POST', addr, json_data=jbody)]
+        self.assertRaises(jexc.JDSSResourceExistsException,
+                          jrest.create_volume_from_snapshot,
+                          cname,
+                          sname,
+                          vname)
+
+        # error unknown
+        err = {"class": "some test error",
+               "message": "test error message",
+               "url": url,
+               "errno": 123}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        create_volume_from_snapshot_expected += [
+            mock.call('POST', addr, json_data=jbody)]
+        self.assertRaises(jexc.JDSSException,
+                          jrest.create_volume_from_snapshot,
+                          cname,
+                          sname,
+                          vname)
+        jrest.rproxy.pool_request.assert_has_calls(
+            create_volume_from_snapshot_expected)
+
+    def test_rollback_volume_to_snapshot(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+
+        req = ('/volumes/{vol}/snapshots/'
+               '{snap}/rollback').format(vol=vname, snap=sname)
+
+        resp = {'data': None,
+                'error': None,
+                'code': 200}
+
+        jrest.rproxy.pool_request.return_value = resp
+        rollback_volume_to_snapshot_expected = [
+            mock.call('POST', req)]
+        self.assertIsNone(jrest.rollback_volume_to_snapshot(vname, sname))
+
+        jrest.rproxy.pool_request.assert_has_calls(
+            rollback_volume_to_snapshot_expected)
+
+    def test_rollback_volume_to_snapshot_exception(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+
+        req = ('/volumes/{vol}/snapshots/'
+               '{snap}/rollback').format(vol=vname,
+                                         snap=sname)
+
+        # volume DNE
+        msg = ('Zfs resource: Pool-0/{vname}'
+               ' not found in this collection.').format(vname=vname)
+
+        url = ('http://192.168.0.2:82/api/v3/pools/Pool-0/volumes/{vol}/'
+               'snapshots/{snap}/rollback').format(vol=vname, snap=sname)
+        err = {"class": "zfslib.zfsapi.resources.ZfsResourceError",
+               "message": msg,
+               "url": url,
+               "errno": 123}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        rollback_volume_to_snapshot_expected = [
+            mock.call('POST', req)]
+        self.assertRaises(jexc.JDSSException,
+                          jrest.rollback_volume_to_snapshot,
+                          vname,
+                          sname)
+        jrest.rproxy.pool_request.assert_has_calls(
+            rollback_volume_to_snapshot_expected)
+
+        # error unknown
+        err = {"class": "some test error",
+               "message": "test error message",
+               "url": url,
+               "errno": 123}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        rollback_volume_to_snapshot_expected += [
+            mock.call('POST', req)]
+        self.assertRaises(jexc.JDSSException,
+                          jrest.rollback_volume_to_snapshot,
+                          vname,
+                          sname)
+        jrest.rproxy.pool_request.assert_has_calls(
+            rollback_volume_to_snapshot_expected)
+
+    def test_delete_snapshot(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+
+        addr = '/volumes/{vol}/snapshots/{snap}'.format(vol=vname, snap=sname)
+
+        jbody = {
+            'recursively_children': True,
+            'recursively_dependents': True,
+            'force_umount': True
+        }
+
+        resp = {'data': None,
+                'error': None,
+                'code': 204}
+
+        jrest.rproxy.pool_request.return_value = resp
+        delete_snapshot_expected = [mock.call('DELETE', addr)]
+        self.assertIsNone(jrest.delete_snapshot(vname, sname))
+
+        delete_snapshot_expected += [
+            mock.call('DELETE', addr, json_data=jbody)]
+        self.assertIsNone(jrest.delete_snapshot(vname,
+                                                sname,
+                                                recursively_children=True,
+                                                recursively_dependents=True,
+                                                force_umount=True))
+
+        jrest.rproxy.pool_request.assert_has_calls(delete_snapshot_expected)
+
+    def test_delete_snapshot_exception(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+        sname = jcom.sname(UUID_2)
+        cname = jcom.sname(UUID_3)
+
+        addr = '/volumes/{vol}/snapshots/{snap}'.format(vol=vname, snap=sname)
+
+        # snapshot busy
+        url = ('http://192.168.0.2:82/api/v3/pools/Pool-0/volumes/{vol}/'
+               'snapshots/{snap}').format(vol=vname, snap=sname)
+        msg = ('cannot destroy "Pool-0/{vol}@{snap}": snapshot has dependent '
+               'clones use "-R" to destroy the following datasets: '
+               'Pool-0/{clone}').format(vol=vname, snap=sname, clone=cname)
+        err = {'class': 'zfslib.wrap.zfs.ZfsCmdError',
+               'message': msg,
+               'url': url,
+               'errno': 1000}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        delete_snapshot_expected = [
+            mock.call('DELETE', addr)]
+
+        self.assertRaises(jexc.JDSSSnapshotIsBusyException,
+                          jrest.delete_snapshot,
+                          vname,
+                          sname)
+
+        # error unknown
+        err = {"class": "some test error",
+               "message": "test error message",
+               "url": url,
+               "errno": 123}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        delete_snapshot_expected += [mock.call('DELETE', addr)]
+        self.assertRaises(jexc.JDSSException,
+                          jrest.delete_snapshot, vname, sname)
+
+        jrest.rproxy.pool_request.assert_has_calls(delete_snapshot_expected)
+
+    def test_get_snapshots(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+
+        addr = '/volumes/{vol}/snapshots'.format(vol=vname)
+
+        data = {"results": 2,
+                "entries": {"referenced": "65536",
+                            "name": jcom.sname(UUID_2),
+                            "defer_destroy": "off",
+                            "userrefs": "0",
+                            "primarycache": "all",
+                            "type": "snapshot",
+                            "creation": "2015-5-27 16:8:35",
+                            "refcompressratio": "1.00x",
+                            "compressratio": "1.00x",
+                            "written": "65536",
+                            "used": "0",
+                            "clones": "",
+                            "mlslabel": "none",
+                            "secondarycache": "all"}}
+
+        resp = {'data': data,
+                'error': None,
+                'code': 200}
+
+        jrest.rproxy.pool_request.return_value = resp
+        get_snapshots_expected = [mock.call('GET', addr)]
+        self.assertEqual(data['entries'], jrest.get_snapshots(vname))
+
+        jrest.rproxy.pool_request.assert_has_calls(get_snapshots_expected)
+
+    def test_get_snapshots_exception(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+        vname = jcom.vname(UUID_1)
+
+        addr = '/volumes/{vol}/snapshots'.format(vol=vname)
+
+        url = ('http://192.168.0.2:82/api/v3/pools/Pool-0/volumes/{vol}/'
+               'snapshots').format(vol=vname)
+
+        err = {"class": "zfslib.zfsapi.resources.ZfsResourceError",
+               "message": ('Zfs resource: Pool-0/{vol} not found in '
+                           'this collection.').format(vol=vname),
+               "url": url,
+               "errno": 1}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        get_snapshots_expected = [mock.call('GET', addr)]
+        self.assertRaises(jexc.JDSSResourceNotFoundException,
+                          jrest.get_snapshots,
+                          vname)
+
+        # error unknown
+        err = {"class": "some test error",
+               "message": "test error message",
+               "url": url,
+               "errno": 123}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        get_snapshots_expected += [
+            mock.call('GET', addr)]
+        self.assertRaises(jexc.JDSSException, jrest.get_snapshots, vname)
+
+        jrest.rproxy.pool_request.assert_has_calls(get_snapshots_expected)
+
+    def test_get_pool_stats(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+
+        addr = ''
+
+        data = {"available": "950040707072",
+                "status": 26,
+                "name": "Pool-0",
+                "scan": None,
+                "encryption": {"enabled": False},
+                "iostats": {
+                    "read": "0",
+                    "write": "0",
+                    "chksum": "0"},
+                "vdevs": [{"name": "wwn-0x5000cca3a8cddb2f",
+                           "iostats": {"read": "0",
+                                       "write": "0",
+                                       "chksum": "0"},
+                           "disks": [{"origin": "local",
+                                      "led": "off",
+                                      "name": "sdc",
+                                      "iostats": {"read": "0",
+                                                  "write": "0",
+                                                  "chksum": "0"},
+                                      "health": "ONLINE",
+                                      "sn": "JPW9K0N20ZGXWE",
+                                      "path": None,
+                                      "model": "Hitachi HUA72201",
+                                      "id": "wwn-0x5000cca3a8cddb2f",
+                                      "size": 1000204886016}],
+                           "health": "ONLINE",
+                           "vdev_replacings": [],
+                           "vdev_spares": [],
+                           "type": ""}],
+                "health": "ONLINE",
+                "operation": "none",
+                "id": "12413634663904564349",
+                "size": "996432412672"}
+
+        resp = {'data': data,
+                'error': None,
+                'code': 200}
+
+        jrest.rproxy.pool_request.return_value = resp
+        get_pool_stats_expected = [mock.call('GET', addr)]
+        self.assertEqual(data, jrest.get_pool_stats())
+
+        jrest.rproxy.pool_request.assert_has_calls(get_pool_stats_expected)
+
+    def test_get_pool_stats_exception(self):
+
+        jrest, ctx = self.get_rest(CONFIG_OK)
+
+        addr = ''
+
+        url = 'http://192.168.0.2:82/api/v3/pools/Pool-0/'
+
+        err = {'class': 'zfslib.zfsapi.zpool.ZpoolError',
+               'message': "Given zpool 'Pool-0' doesn't exists.",
+               "url": url,
+               "errno": 1}
+
+        resp = {'data': None,
+                'error': err,
+                'code': 500}
+
+        jrest.rproxy.pool_request.return_value = resp
+        get_pool_stats_expected = [mock.call('GET', addr)]
+        self.assertRaises(jexc.JDSSException, jrest.get_pool_stats)
+
+        jrest.rproxy.pool_request.assert_has_calls(get_pool_stats_expected)
