@@ -200,7 +200,7 @@ class VolumeManager(manager.CleanableManager,
     _VOLUME_CLONE_SKIP_PROPERTIES = {
         'id', '_name_id', 'name_id', 'name', 'status',
         'attach_status', 'migration_status', 'volume_type',
-        'consistencygroup', 'volume_attachment', 'group'}
+        'consistencygroup', 'volume_attachment', 'group', 'snapshots'}
 
     def _get_service(self,
                      host: str = None,
@@ -3047,6 +3047,11 @@ class VolumeManager(manager.CleanableManager,
             self._set_replication_status(diff, model_update)
             volume.update(model_update)
             volume.save()
+
+            # We need to make the snapshots match the volume's type
+            for snap in volume.snapshots:
+                snap.volume_type_id = new_type_id
+                snap.save()
 
         if old_reservations:
             QUOTAS.commit(context, old_reservations, project_id=project_id)
