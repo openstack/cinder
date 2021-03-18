@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1877164 <https://bugs.launchpad.net/cinder/+bug/1877164>`_: Fix
+    retyping volume with snapshots leaves the snapshots with the old type,
+    making the quotas wrong inmediately for snapshots, and breaking them even
+    more after those snapshots are deleted.

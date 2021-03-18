@@ -31,6 +31,7 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
+from cinder import quota_utils
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
@@ -783,41 +784,23 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         volume.previous_status = 'available'
         volume.save()
         if snap:
-            create_snapshot(volume.id, size=volume.size,
-                            user_id=self.user_context.user_id,
-                            project_id=self.user_context.project_id,
-                            ctxt=self.user_context)
+            snapshot = create_snapshot(volume.id, size=volume.size,
+                                       user_id=self.user_context.user_id,
+                                       project_id=self.user_context.project_id,
+                                       volume_type_id=volume.volume_type_id,
+                                       ctxt=self.user_context)
         if driver or diff_equal:
             host_obj = {'host': CONF.host, 'capabilities': {}}
         else:
             host_obj = {'host': 'newhost', 'capabilities': {}}
 
-        reserve_opts = {'volumes': 1, 'gigabytes': volume.size}
-        QUOTAS.add_volume_type_opts(self.context,
-                                    reserve_opts,
-                                    vol_type['id'])
-        if reserve_vol_type_only:
-            reserve_opts.pop('volumes')
-            reserve_opts.pop('gigabytes')
-            try:
-                usage = db.quota_usage_get(elevated, project_id, 'volumes')
-                total_volumes_in_use = usage.in_use
-                usage = db.quota_usage_get(elevated, project_id, 'gigabytes')
-                total_gigabytes_in_use = usage.in_use
-            except exception.QuotaUsageNotFound:
-                total_volumes_in_use = 0
-                total_gigabytes_in_use = 0
-        reservations = QUOTAS.reserve(self.context,
-                                      project_id=project_id,
-                                      **reserve_opts)
+        reservations = quota_utils.get_volume_type_reservation(
+            self.context, volume, new_type.id, reserve_vol_type_only)
+        old_reservations = quota_utils.get_volume_type_reservation(
+            self.context, volume, old_vol_type['id'], reserve_vol_type_only,
+            negative=True)
 
-        old_reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
-        QUOTAS.add_volume_type_opts(self.context,
-                                    old_reserve_opts,
-                                    old_vol_type['id'])
-        old_reservations = QUOTAS.reserve(self.context,
-                                          project_id=project_id,
-                                          **old_reserve_opts)
+        old_usage = db.quota_usage_get_all_by_project(elevated, project_id)
 
         with mock.patch.object(self.volume.driver, 'retype') as _retype,\
                 mock.patch.object(volume_types, 'volume_types_diff') as _diff,\
@@ -874,17 +857,22 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
         # Get new in_use after retype, it should not be changed.
         if reserve_vol_type_only:
-            try:
-                usage = db.quota_usage_get(elevated, project_id, 'volumes')
-                new_total_volumes_in_use = usage.in_use
-                usage = db.quota_usage_get(elevated, project_id, 'gigabytes')
-                new_total_gigabytes_in_use = usage.in_use
-            except exception.QuotaUsageNotFound:
-                new_total_volumes_in_use = 0
-                new_total_gigabytes_in_use = 0
-            self.assertEqual(total_volumes_in_use, new_total_volumes_in_use)
-            self.assertEqual(total_gigabytes_in_use,
-                             new_total_gigabytes_in_use)
+            new_usage = db.quota_usage_get_all_by_project(elevated, project_id)
+            for resource in ('volumes', 'gigabytes', 'snapshots'):
+                empty = {'in_use': 0, 'reserved': 0}
+                # Global resource hasn't changed
+                self.assertEqual(old_usage.get(resource, empty)['in_use'],
+                                 new_usage.get(resource, empty)['in_use'])
+                # The new type was empty before
+                self.assertEqual(
+                    0, old_usage.get(resource + '_new', empty)['in_use'])
+                # Old type resources have been moved to the new one
+                self.assertEqual(
+                    old_usage.get(resource + '_old', empty)['in_use'],
+                    new_usage.get(resource + '_new', empty)['in_use'])
+                # The old type is empty now
+                self.assertEqual(
+                    0, new_usage.get(resource + '_old', empty)['in_use'])
 
         # check properties
         if driver or diff_equal:
@@ -903,6 +891,12 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                                 new_type,
                                                 returned_diff,
                                                 host_obj)
+            # When retyping a volume with snapshots the snapshots should be
+            # retyped as well
+            if snap:
+                snapshot.refresh()
+                self.assertEqual(new_type.id, snapshot.volume_type_id)
+
         elif not exc:
             self.assertEqual(old_vol_type['id'], volume.volume_type_id)
             self.assertEqual('retyping', volume.status)
@@ -950,6 +944,10 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
 
     def test_retype_volume_migration_equal_types(self):
         self._retype_volume_exec(False, diff_equal=True)
+
+    def test_retype_volume_migration_equal_types_snaps(self):
+        self._retype_volume_exec(False, snap=True, diff_equal=True,
+                                 reserve_vol_type_only=True)
 
     def test_retype_volume_with_type_only(self):
         self._retype_volume_exec(True, reserve_vol_type_only=True)
