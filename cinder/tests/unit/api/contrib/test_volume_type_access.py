@@ -30,7 +30,7 @@ from cinder.tests.unit import test
 def generate_type(type_id, is_public):
     return {
         'id': type_id,
-        'name': u'test',
+        'name': 'test',
         'deleted': False,
         'created_at': datetime.datetime(2012, 1, 1, 1, 1, 1, 1),
         'updated_at': None,

@@ -687,7 +687,7 @@ class ServicesTest(test.TestCase):
             fakes.HTTPRequest.blank('v1/fake/os-services/disable-log-reason'))
         body = {'host': 'host1',
                 'binary': 'cinder-scheduler',
-                'disabled_reason': u'test-reason',
+                'disabled_reason': 'test-reason',
                 }
         res_dict = self.controller.update(req, "disable-log-reason", body)
 
