@@ -231,9 +231,12 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'terminate_connection', volume_id=volume['id'],
                           connector=connector, force=force)
 
-    def remove_export(self, ctxt, volume):
+    def remove_export(self, ctxt, volume, sync=False):
         cctxt = self._get_cctxt(volume.service_topic_queue)
-        cctxt.cast(ctxt, 'remove_export', volume_id=volume['id'])
+        if sync:
+            cctxt.call(ctxt, 'remove_export', volume_id=volume.id)
+        else:
+            cctxt.cast(ctxt, 'remove_export', volume_id=volume.id)
 
     def publish_service_capabilities(self, ctxt):
         cctxt = self._get_cctxt(fanout=True)

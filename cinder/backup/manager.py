@@ -1070,7 +1070,7 @@ class BackupManager(manager.SchedulerDependentManager):
         if not is_snapshot:
             rpcapi.terminate_connection(ctxt, device, properties,
                                         force=force)
-            rpcapi.remove_export(ctxt, device)
+            rpcapi.remove_export(ctxt, device, sync=True)
         else:
             rpcapi.terminate_connection_snapshot(ctxt, device,
                                                  properties, force=force)
