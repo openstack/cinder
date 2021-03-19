@@ -1180,6 +1180,14 @@ force:
   in: body
   required: false
   type: boolean
+force_snapshot:
+  description: |
+    Indicates whether to snapshot, even if the volume
+    is attached. Default is ``false``.
+    See :ref:`valid boolean values <valid-boolean-values>`
+  in: body
+  required: false
+  type: boolean
 force_upload_vol:
   description: |
     Enables or disables upload of a volume that is

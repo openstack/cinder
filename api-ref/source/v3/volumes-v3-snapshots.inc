@@ -122,7 +122,7 @@ Request
    - volume_id: volume_id
    - name: name_snap_req
    - description: description_snap
-   - force: force
+   - force: force_snapshot
    - metadata: metadata_snap
 
 Request Example
