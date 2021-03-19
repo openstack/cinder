@@ -281,7 +281,6 @@ Response codes
 .. rest_status_code:: error ../status.yaml
 
    - 400
-   - 500
 
 Request
 -------
