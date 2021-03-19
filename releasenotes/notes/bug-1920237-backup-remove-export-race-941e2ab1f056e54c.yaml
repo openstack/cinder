@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1920237 <https://bugs.launchpad.net/cinder/+bug/1920237>`_: The
+    backup manager calls volume remove_export() but does not wait for it to
+    complete when detaching a volume after backup.  This caused problems
+    when a subsequent operation started on that volume before it had fully
+    detached.
