@@ -43,23 +43,25 @@ class JovianISCSIDriver(driver.ISCSIDriver):
     .. code-block:: none
 
         1.0.0 - Open-E JovianDSS driver with basic functionality
+        1.0.1 - Added certificate support
+                Added revert to snapshot support
     """
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Open-E_JovianDSS_CI"
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
     def __init__(self, *args, **kwargs):
         super(JovianISCSIDriver, self).__init__(*args, **kwargs)
 
         self._stats = None
-        self._pool = 'Pool-0'
         self.jovian_iscsi_target_portal_port = "3260"
         self.jovian_target_prefix = 'iqn.2020-04.com.open-e.cinder:'
         self.jovian_chap_pass_len = 12
         self.jovian_sparse = False
         self.jovian_ignore_tpath = None
         self.jovian_hosts = None
+        self._pool = 'Pool-0'
         self.ra = None
 
     @property
@@ -67,7 +69,8 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         """Return backend name."""
         backend_name = None
         if self.configuration:
-            backend_name = self.configuration.safe_get('volume_backend_name')
+            backend_name = self.configuration.get('volume_backend_name',
+                                                  'JovianDSS')
         if not backend_name:
             backend_name = self.__class__.__name__
         return backend_name
@@ -82,26 +85,30 @@ class JovianISCSIDriver(driver.ISCSIDriver):
             options.jdss_volume_opts)
         self.configuration.append_config_values(san.san_opts)
 
-        self._pool = self.configuration.safe_get('jovian_pool')
-        self.jovian_iscsi_target_portal_port = self.configuration.safe_get(
-            'target_port')
+        self._pool = self.configuration.get('jovian_pool', 'Pool-0')
+        self.jovian_iscsi_target_portal_port = self.configuration.get(
+            'target_port', 3260)
 
-        self.jovian_target_prefix = self.configuration.safe_get(
-            'target_prefix')
-        self.jovian_chap_pass_len = self.configuration.safe_get(
-            'chap_password_len')
+        self.jovian_target_prefix = self.configuration.get(
+            'target_prefix',
+            'iqn.2020-04.com.open-e.cinder:')
+        self.jovian_chap_pass_len = self.configuration.get(
+            'chap_password_len', 12)
         self.block_size = (
-            self.configuration.safe_get('jovian_block_size'))
+            self.configuration.get('jovian_block_size', '64K'))
         self.jovian_sparse = (
-            self.configuration.safe_get('san_thin_provision'))
+            self.configuration.get('san_thin_provision', True))
         self.jovian_ignore_tpath = self.configuration.get(
             'jovian_ignore_tpath', None)
-        self.jovian_hosts = self.configuration.safe_get(
-            'san_hosts')
+        self.jovian_hosts = self.configuration.get(
+            'san_hosts', [])
+
         self.ra = rest.JovianRESTAPI(self.configuration)
 
+        self.check_for_setup_error()
+
     def check_for_setup_error(self):
-        """Verify that the pool exists."""
+        """Check for setup error."""
         if len(self.jovian_hosts) == 0:
             msg = _("No hosts provided in configuration")
             raise exception.VolumeDriverException(msg)
@@ -109,6 +116,12 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         if not self.ra.is_pool_exists():
             msg = (_("Unable to identify pool %s") % self._pool)
             raise exception.VolumeDriverException(msg)
+
+        valid_bsize = ['32K', '64K', '128K', '256K', '512K', '1M']
+        if self.block_size not in valid_bsize:
+            raise exception.InvalidConfigurationValue(
+                value=self.block_size,
+                option='jovian_block_size')
 
     def _get_target_name(self, volume_name):
         """Return iSCSI target name to access volume."""
@@ -290,14 +303,14 @@ class JovianISCSIDriver(driver.ISCSIDriver):
                                           jcom.origin_snapshot(vol['origin']))
         else:
             try:
-                self.ra.delete_lun(vname)
+                self.ra.delete_lun(vname, force_umount=True)
             except jexc.JDSSRESTException as err:
                 LOG.debug(
                     "Unable to delete physical volume %(volume)s "
                     "with error %(err)s.", {
                         "volume": vname,
                         "err": err})
-                raise exception.SnapshotIsBusy(err)
+                raise exception.VolumeIsBusy(err)
 
     def _delete_back_recursively(self, opvname, opsname):
         """Deletes snapshot by removing its oldest removable parent
@@ -391,6 +404,46 @@ class JovianISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(
                 (_('Failed to extend volume %s.'), volume.id))
 
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert volume to snapshot.
+
+        Note: the revert process should not change the volume's
+        current size, that means if the driver shrank
+        the volume during the process, it should extend the
+        volume internally.
+        """
+        vname = jcom.vname(volume.id)
+        sname = jcom.sname(snapshot.id)
+        LOG.debug('reverting %(vname)s to %(sname)s', {
+            "vname": vname,
+            "sname": sname})
+
+        vsize = None
+        try:
+            vsize = self.ra.get_lun(vname).get('volsize')
+        except jexc.JDSSResourceNotFoundException:
+            raise exception.VolumeNotFound(volume_id=volume.id)
+        except jexc.JDSSException as err:
+            raise exception.VolumeBackendAPIException(err)
+
+        if vsize is None:
+            raise exception.VolumeDriverException(
+                _("unable to identify volume size"))
+
+        try:
+            self.ra.rollback_volume_to_snapshot(vname, sname)
+        except jexc.JDSSException as err:
+            raise exception.VolumeBackendAPIException(err.message)
+
+        try:
+            rvsize = self.ra.get_lun(vname).get('volsize')
+            if rvsize != vsize:
+                self.ra.extend_lun(vname, vsize)
+        except jexc.JDSSResourceNotFoundException:
+            raise exception.VolumeNotFound(volume_id=volume.id)
+        except jexc.JDSSException as err:
+            raise exception.VolumeBackendAPIException(err)
+
     def _clone_object(self, oname, coname):
         """Creates a clone of specified object
 
@@ -430,7 +483,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
                 coname,
                 oname,
                 sparse=self.jovian_sparse)
-        except jexc.JDSSVolumeExistsException:
+        except jexc.JDSSResourceExistsException:
             raise exception.Duplicate()
         except jexc.JDSSException as err:
             try:
@@ -671,7 +724,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         free_capacity = math.floor(int(pool_stats["available"]) / o_units.Gi)
 
         reserved_percentage = (
-            self.configuration.safe_get('reserved_percentage'))
+            self.configuration.get('reserved_percentage', 0))
 
         if total_capacity is None:
             total_capacity = 'unknown'
@@ -784,7 +837,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         auth = volume.provider_auth
 
         if not auth:
-            msg = _("Volume {} is missing provider_auth") % volume.id
+            msg = _("Volume %s is missing provider_auth") % volume.id
             raise exception.VolumeDriverException(msg)
 
         (__, auth_username, auth_secret) = auth.split()

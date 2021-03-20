@@ -20,7 +20,6 @@ import re
 from oslo_log import log as logging
 
 from cinder import exception
-from cinder.i18n import _
 from cinder.volume.drivers.open_e.jovian_common import exception as jexc
 from cinder.volume.drivers.open_e.jovian_common import rest_proxy
 
@@ -32,9 +31,7 @@ class JovianRESTAPI(object):
 
     def __init__(self, config):
 
-        self.target_p = config.get('iscsi_target_prefix',
-                                   'iqn.2020-04.com.open-e.cinder:')
-        self.pool = config.safe_get('jovian_pool')
+        self.pool = config.get('jovian_pool', 'Pool-0')
         self.rproxy = rest_proxy.JovianRESTProxy(config)
 
         self.resource_dne_msg = (
@@ -48,7 +45,7 @@ class JovianRESTAPI(object):
             code = resp.get('code', 'Unknown')
             msg = resp.get('message', 'Unknown')
 
-            reason = ("Request to {url} failed with code:%{code} "
+            reason = ("Request to {url} failed with code: {code} "
                       "of type:{eclass} reason:{message}")
             reason = reason.format(eclass=eclass,
                                    code=code,
@@ -638,12 +635,12 @@ class JovianRESTAPI(object):
 
         if resp["code"] == 500:
             if resp["error"]:
-                if resp["error"]["errno"] == 1:
-                    raise jexc.JDSSVolumeNotFoundException(
-                        volume=volume_name)
                 if resp["error"]["errno"] == 5:
                     raise jexc.JDSSSnapshotExistsException(
                         snapshot=snapshot_name)
+                if resp["error"]["errno"] == 1:
+                    raise jexc.JDSSVolumeNotFoundException(
+                        volume=volume_name)
 
         self._general_error(req, resp)
 
@@ -682,34 +679,42 @@ class JovianRESTAPI(object):
                 if resp["error"]["errno"] == 100:
                     raise jexc.JDSSVolumeExistsException(
                         volume=volume_name)
-                args = {"vol": volume_name, "e": resp['error']['message']}
-                msg = _('Failed to create volume %(vol)s, err: %(e)s') % args
-                raise jexc.JDSSRESTException(msg)
+                if resp["error"]["errno"] == 1:
+                    raise jexc.JDSSResourceNotFoundException(
+                        res="{vol}@{snap}".format(vol=original_vol_name,
+                                                  snap=snapshot_name))
 
-        raise jexc.JDSSRESTException('unable to create volume')
+        self._general_error(req, resp)
 
-    def is_snapshot(self, volume_name, snapshot_name):
-        """is_snapshots.
+    def rollback_volume_to_snapshot(self, volume_name, snapshot_name):
+        """Rollback volume to its snapshot
 
-        GET
-        /volumes/<string:volumename>/snapshots/<string:snapshotname>/clones
-
-        :param volume_name: that snapshot belongs to
-        :return: bool
+        POST /volumes/<volume_name>/snapshots/<snapshot_name>/rollback
+        :param volume_name: volume that is going to be restored
+        :param snapshot_name: snapshot of a volume above
+        :return:
         """
-        req = '/volumes/' + volume_name + '/snapshots/' + snapshot_name + \
-            '/clones'
+        req = ('/volumes/{vol}/snapshots/'
+               '{snap}/rollback').format(vol=volume_name,
+                                         snap=snapshot_name)
 
-        LOG.debug("check if snapshot %(snap)s of volume %(vol)s exists",
-                  {'snap': snapshot_name,
-                   'vol': volume_name})
+        LOG.debug("rollback volume %(vol)s to snapshot %(snap)s",
+                  {'vol': volume_name,
+                   'snap': snapshot_name})
 
-        resp = self.rproxy.pool_request('GET', req)
+        resp = self.rproxy.pool_request('POST', req)
 
         if not resp["error"] and resp["code"] == 200:
-            return True
+            return
 
-        return False
+        if resp["code"] == 500:
+            if resp["error"]:
+                if resp["error"]["errno"] == 1:
+                    raise jexc.JDSSResourceNotFoundException(
+                        res="{vol}@{snap}".format(vol=volume_name,
+                                                  snap=snapshot_name))
+
+        self._general_error(req, resp)
 
     def delete_snapshot(self,
                         volume_name,
@@ -733,8 +738,6 @@ class JovianRESTAPI(object):
             umount (defualt false).
         :return:
         """
-        if not self.is_snapshot(volume_name, snapshot_name):
-            return
 
         req = '/volumes/' + volume_name + '/snapshots/' + snapshot_name
 
@@ -767,11 +770,7 @@ class JovianRESTAPI(object):
                 if resp["error"]["errno"] == 1000:
                     raise jexc.JDSSSnapshotIsBusyException(
                         snapshot=snapshot_name)
-                msg = 'Failed to delete snapshot {}, err: {}'.format(
-                    snapshot_name, resp['error']['message'])
-                raise jexc.JDSSRESTException(msg)
-        msg = 'Failed to delete snapshot {}'.format(snapshot_name)
-        raise jexc.JDSSRESTException(msg)
+        self._general_error(req, resp)
 
     def get_snapshots(self, volume_name):
         """get_snapshots.
@@ -818,7 +817,8 @@ class JovianRESTAPI(object):
             if 'message' in resp['error']:
                 if self.resource_dne_msg.match(resp['error']['message']):
                     raise jexc.JDSSResourceNotFoundException(volume_name)
-        raise jexc.JDSSRESTException('unable to get snapshots')
+
+        self._general_error(req, resp)
 
     def get_pool_stats(self):
         """get_pool_stats.
@@ -890,4 +890,4 @@ class JovianRESTAPI(object):
         if not resp["error"] and resp["code"] == 200:
             return resp["data"]
 
-        raise jexc.JDSSRESTException('Unable to get pool info')
+        self._general_error(req, resp)

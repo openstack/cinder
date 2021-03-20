@@ -80,3 +80,9 @@ class JDSSSnapshotIsBusyException(JDSSResourceIsBusyException):
     """Snapshot have dependent clones"""
 
     message = _("JDSS snapshot %(snapshot)s is busy.")
+
+
+class JDSSOSException(JDSSException):
+    """Storage internal system error"""
+
+    message = _("JDSS internal system error %(message)s.")

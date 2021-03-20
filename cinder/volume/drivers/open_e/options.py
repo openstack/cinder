@@ -19,9 +19,6 @@ jdss_connection_opts = [
     cfg.ListOpt('san_hosts',
                 default='',
                 help='IP address of Open-E JovianDSS SA'),
-    cfg.IntOpt('jovian_rest_send_repeats',
-               default=3,
-               help='Number of retries to send REST request.'),
     cfg.IntOpt('jovian_recovery_delay',
                default=60,
                help='Time before HA cluster failure.'),
@@ -41,8 +38,8 @@ jdss_iscsi_opts = [
 
 jdss_volume_opts = [
     cfg.StrOpt('jovian_block_size',
-               default='128K',
-               help='Block size for volumes (512 - 128K)'),
+               default='64K',
+               help='Block size can be: 32K, 64K, 128K, 256K, 512K, 1M'),
 ]
 
 CONF = cfg.CONF
