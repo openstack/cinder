@@ -80,6 +80,12 @@ Between Milestone-1 and Milestone-2
 
 #. Review stable backports and release status.
 
+#. The Cinder Spec Freeze usually occurs sometime within this window.
+   After all the approved specs have merged, propose a patch that adds
+   a directory for the next release.  (You may have to wait until the release
+   name has been determined by the TC.)  Example patch:
+   https://review.opendev.org/c/openstack/cinder-specs/+/778436
+
 #. Watch for and respond to updates to new driver patches.
 
 Milestone-2
