@@ -62,6 +62,14 @@ xms_init = {'xms': {1: {'version': '4.2.0',
                                "name": "10.205.68.5/16",
                                "index": 1,
                                },
+                              '10.205.68.6/16':
+                              {"port-address":
+                               "iqn.2008-05.com.xtremio:002e67939c34",
+                               "ip-port": 3260,
+                               "ip-addr": "10.205.68.6/16",
+                               "name": "10.205.68.6/16",
+                               "index": 1,
+                               },
                               },
             'targets': {'X1-SC2-target1': {'index': 1, "name": "X1-SC2-fc1",
                                            "port-address":
@@ -347,7 +355,8 @@ class BaseXtremIODriverTestCase(test.TestCase):
                                 driver_ssl_cert_path='/test/path/root_ca.crt',
                                 xtremio_array_busy_retry_count=5,
                                 xtremio_array_busy_retry_interval=5,
-                                xtremio_clean_unused_ig=False)
+                                xtremio_clean_unused_ig=False,
+                                xtremio_ports=[])
 
         def safe_get(key):
             return getattr(self.config, key)
@@ -650,9 +659,25 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
         portals = xms_data['iscsi-portals'].copy()
         xms_data['iscsi-portals'].clear()
         lunmap = {'lun': 4}
-        self.assertRaises(exception.VolumeDriverException,
+        self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._get_iscsi_properties, lunmap)
         xms_data['iscsi-portals'] = portals
+
+    def test_no_allowed_portals(self, req):
+        req.side_effect = xms_request
+        lunmap = {'lun': 4}
+        self.driver.allowed_ports = ['1.2.3.4']
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._get_iscsi_properties, lunmap)
+
+    def test_filtered_portals(self, req):
+        req.side_effect = xms_request
+        lunmap = {'lun': 4}
+        self.driver.allowed_ports = ['10.205.68.6']
+        connection_properties = self.driver._get_iscsi_properties(lunmap)
+        self.assertEqual(1, len(connection_properties['target_portals']))
+        self.assertIn('10.205.68.6:3260',
+                      connection_properties['target_portals'])
 
     def test_initialize_connection(self, req):
         req.side_effect = xms_request
@@ -1365,6 +1390,27 @@ class XtremIODriverFCTestCase(BaseXtremIODriverTestCase):
             configuration=self.config)
 
 # ##### Connection FC#####
+    def test_no_targets_configured(self, req):
+        req.side_effect = xms_request
+        targets = xms_data['targets'].copy()
+        xms_data['targets'].clear()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.get_targets)
+        xms_data['targets'] = targets
+
+    def test_no_allowed_targets(self, req):
+        req.side_effect = xms_request
+        self.driver.allowed_ports = ['58:cc:f0:98:49:22:07:02']
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.get_targets)
+
+    def test_filtered_targets(self, req):
+        req.side_effect = xms_request
+        self.driver.allowed_ports = ['21:00:00:24:ff:57:b2:36']
+        targets = self.driver.get_targets()
+        self.assertEqual(1, len(targets))
+        self.assertIn('21000024ff57b236', targets)
+
     def test_initialize_connection(self, req):
         req.side_effect = xms_request
 
