@@ -390,7 +390,7 @@ class PowerStoreClient(object):
         r, response = self._send_get_request(
             "/ip_pool_address",
             params={
-                "purposes": "eq.{Storage_Iscsi_Target}",
+                "purposes": "cs.{Storage_Iscsi_Target}",
                 "select": "address,ip_port(target_iqn)"
 
             }

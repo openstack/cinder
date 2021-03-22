@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    PowerStore driver `Bug #1920729
+    <https://bugs.launchpad.net/cinder/+bug/1920729>`_: Fix
+    iSCSI targets not being returned from the REST API call if
+    targets are used for multiple purposes
+    (iSCSI target, Replication target, etc.).
