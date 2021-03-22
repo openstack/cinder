@@ -901,6 +901,7 @@ class BackupTestCase(BaseBackupTest):
             self.assertRaises(exception.InvalidSnapshot,
                               self.backup_mgr.create_backup, self.ctxt, backup)
 
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.remove_export_snapshot')
     @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
@@ -910,7 +911,8 @@ class BackupTestCase(BaseBackupTest):
                                               mock_open,
                                               mock_temporary_chown,
                                               mock_get_backup_device,
-                                              mock_get_conn):
+                                              mock_get_conn,
+                                              mock_remove_export_snapshot):
         """Test backup in-use volume using temp snapshot."""
         self.override_config('backup_use_same_host', True)
         vol_size = 1
@@ -952,6 +954,8 @@ class BackupTestCase(BaseBackupTest):
         mock_get_conn.assert_called_once_with()
         mock_terminate_connection_snapshot.assert_called_once_with(
             self.ctxt, snap, properties, force=True)
+        mock_remove_export_snapshot.assert_called_once_with(
+            self.ctxt, mock.ANY, sync=True)
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('in-use', vol['status'])
         self.assertEqual('backing-up', vol['previous_status'])
