@@ -220,42 +220,53 @@ class PowerMaxUtilsTest(test.TestCase):
     def test_is_compression_disabled_true(self):
         # Compression disabled in extra specs
         extra_specs = self.data.extra_specs_disable_compression
-        do_disable_compression = self.utils.is_compression_disabled(
-            extra_specs)
-        self.assertTrue(do_disable_compression)
+        self.assertTrue(self.utils.is_compression_disabled(extra_specs))
         # Compression disabled by no SL/WL combination
         extra_specs = deepcopy(self.data.vol_type_extra_specs_none_pool)
-        self.assertTrue(self.utils.is_compression_disabled(
-            extra_specs))
+        self.assertTrue(self.utils.is_compression_disabled(extra_specs))
+        extra_specs3 = deepcopy(extra_specs)
+        extra_specs3.update({utils.DISABLECOMPRESSION: '<is> True'})
+        self.assertTrue(self.utils.is_compression_disabled(extra_specs3))
+        extra_specs4 = deepcopy(extra_specs)
+        extra_specs4.update({utils.DISABLECOMPRESSION: 'True'})
+        self.assertTrue(self.utils.is_compression_disabled(extra_specs4))
 
     def test_is_compression_disabled_false(self):
         # Path 1: no compression extra spec set
         extra_specs = self.data.extra_specs
-        do_disable_compression = self.utils.is_compression_disabled(
-            extra_specs)
-        self.assertFalse(do_disable_compression)
+        self.assertFalse(self.utils.is_compression_disabled(extra_specs))
         # Path 2: compression extra spec set to false
         extra_specs2 = deepcopy(extra_specs)
         extra_specs2.update({utils.DISABLECOMPRESSION: 'false'})
-        do_disable_compression2 = self.utils.is_compression_disabled(
-            extra_specs)
-        self.assertFalse(do_disable_compression2)
+        self.assertFalse(self.utils.is_compression_disabled(extra_specs2))
+        extra_specs3 = deepcopy(extra_specs)
+        extra_specs3.update({utils.DISABLECOMPRESSION: '<is> False'})
+        self.assertFalse(self.utils.is_compression_disabled(extra_specs3))
+        extra_specs4 = deepcopy(extra_specs)
+        extra_specs4.update({utils.DISABLECOMPRESSION: 'False'})
+        self.assertFalse(self.utils.is_compression_disabled(extra_specs4))
 
     def test_change_compression_type_true(self):
         source_compr_disabled = True
-        new_type_compr_disabled = {
+        new_type_compr_disabled_1 = {
             'extra_specs': {utils.DISABLECOMPRESSION: 'false'}}
-        ans = self.utils.change_compression_type(
-            source_compr_disabled, new_type_compr_disabled)
-        self.assertTrue(ans)
+        self.assertTrue(self.utils.change_compression_type(
+            source_compr_disabled, new_type_compr_disabled_1))
+        new_type_compr_disabled_2 = {
+            'extra_specs': {utils.DISABLECOMPRESSION: '<is> False'}}
+        self.assertTrue(self.utils.change_compression_type(
+            source_compr_disabled, new_type_compr_disabled_2))
 
     def test_change_compression_type_false(self):
         source_compr_disabled = True
         new_type_compr_disabled = {
             'extra_specs': {utils.DISABLECOMPRESSION: 'true'}}
-        ans = self.utils.change_compression_type(
-            source_compr_disabled, new_type_compr_disabled)
-        self.assertFalse(ans)
+        self.assertFalse(self.utils.change_compression_type(
+            source_compr_disabled, new_type_compr_disabled))
+        new_type_compr_disabled_2 = {
+            'extra_specs': {utils.DISABLECOMPRESSION: '<is> True'}}
+        self.assertFalse(self.utils.change_compression_type(
+            source_compr_disabled, new_type_compr_disabled_2))
 
     def test_is_replication_enabled(self):
         is_re = self.utils.is_replication_enabled(
