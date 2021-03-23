@@ -755,7 +755,9 @@ class NimbleBaseVolumeDriver(san.SanDriver):
 
     def revert_to_snapshot(self, context, volume, snapshot):
         vol_info = self.APIExecutor.get_vol_info(volume['name'])
-        snap_id = vol_info['last_snap']['snap_id']
+        snap_info = self.APIExecutor.get_snap_info(snapshot['name'],
+                                                   volume['name'])
+        snap_id = snap_info['id']
         volume_id = vol_info['id']
         LOG.debug("Reverting volume %(vol)s with snapshot id %(snap_id)s",
                   {'vol': volume['name'], 'snap_id': snap_id})

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Nimble driver `bug #1918099
+    <https://bugs.launchpad.net/cinder/+bug/1918099>`_: Fix
+    revert to snapshot not working as expected.
