@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1920099
+    <https://bugs.launchpad.net/cinder/+bug/1920099>`_:
+    Fix issue where _check_delete_vdisk_fc_mappings was deleting flashcopy
+    mappings during extend operation of a clone volume where its
+    source volume already contained a snapshot.

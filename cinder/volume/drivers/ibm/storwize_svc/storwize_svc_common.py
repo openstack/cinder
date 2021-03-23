@@ -2185,7 +2185,7 @@ class StorwizeHelpers(object):
 
     @volume_utils.trace
     def _check_delete_vdisk_fc_mappings(self, name, allow_snaps=True,
-                                        allow_fctgt=False):
+                                        allow_fctgt=False, rel_info=None):
         """FlashCopy mapping check helper."""
         mapping_ids = self._get_vdisk_fc_mappings(name)
         wait_for_copy = False
@@ -2261,7 +2261,10 @@ class StorwizeHelpers(object):
                         self.ssh.rmfcmap(map_id)
                     elif (status in ['copying', 'prepared'] and
                           progress == '100'):
-                        self.ssh.stopfcmap(map_id)
+                        force = False
+                        if rel_info:
+                            force = True
+                        self.ssh.stopfcmap(map_id, force)
                     else:
                         wait_for_copy = True
                 except exception.VolumeBackendAPIException as ex:
@@ -2273,7 +2276,7 @@ class StorwizeHelpers(object):
 
     @volume_utils.trace
     def _check_vdisk_fc_mappings(self, name, allow_snaps=True,
-                                 allow_fctgt=False):
+                                 allow_fctgt=False, rel_info=None):
         """FlashCopy mapping check helper."""
         # if this is a remove disk we need to be down to one fc clone
         mapping_ids = self._get_vdisk_fc_mappings(name)
@@ -2315,14 +2318,15 @@ class StorwizeHelpers(object):
             if len(mapping_ids) - len(Rc_mapping_ids) > 1:
                 return
         return self._check_delete_vdisk_fc_mappings(
-            name, allow_snaps=allow_snaps, allow_fctgt=allow_fctgt)
+            name, allow_snaps=allow_snaps, allow_fctgt=allow_fctgt,
+            rel_info=rel_info)
 
     def ensure_vdisk_no_fc_mappings(self, name, allow_snaps=True,
-                                    allow_fctgt=False):
+                                    allow_fctgt=False, rel_info=None):
         """Ensure vdisk has no flashcopy mappings."""
         timer = loopingcall.FixedIntervalLoopingCall(
             self._check_vdisk_fc_mappings, name,
-            allow_snaps, allow_fctgt)
+            allow_snaps, allow_fctgt, rel_info)
         # Create a timer greenthread. The default volume service heart
         # beat is every 10 seconds. The flashcopy usually takes hours
         # before it finishes. Don't set the sleep interval shorter
@@ -3681,8 +3685,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.error(msg)
             raise exception.InvalidInput(message=msg)
 
+        rel_info = self._helpers.get_relationship_info(volume_name)
+
         ret = self._helpers.ensure_vdisk_no_fc_mappings(volume_name,
-                                                        allow_snaps=False)
+                                                        allow_snaps=False,
+                                                        rel_info=rel_info)
         if not ret:
             msg = (_('_extend_volume_op: Extending a volume with snapshots is '
                      'not supported.'))
@@ -3693,7 +3700,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             old_size = volume.size
         extend_amt = int(new_size) - old_size
 
-        rel_info = self._helpers.get_relationship_info(volume_name)
         if rel_info:
             LOG.warning('_extend_volume_op: Extending a volume with '
                         'remote copy is not recommended.')
