@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1920890
+    <https://bugs.launchpad.net/cinder/+bug/1920890>`_: Fixed issue in
+    retype_hyperswap_volume method to update site and iogrp information to
+    the host during a retype from a non-HyperSwap volume to a HyperSwap volume.
