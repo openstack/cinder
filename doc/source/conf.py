@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.abspath('./'))
 # or your custom ones.
 
 extensions = ['sphinx.ext.coverage',
+              'sphinx.ext.todo',
               'sphinx.ext.graphviz',
               'sphinx_feature_classification.support_matrix',
               'openstackdocstheme',
