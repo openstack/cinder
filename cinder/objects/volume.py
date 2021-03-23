@@ -180,6 +180,13 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         md = {d['key']: d['value'] for d in value}
         self.admin_metadata = md
 
+    def admin_metadata_update(self, metadata, delete, add=True, update=True):
+        new_metadata = db.volume_admin_metadata_update(self._context, self.id,
+                                                       metadata, delete, add,
+                                                       update)
+        self.admin_metadata = new_metadata
+        self._reset_metadata_tracking(fields=('admin_metadata',))
+
     @property
     def volume_glance_metadata(self):
         md = [MetadataObject(k, v) for k, v in self.glance_metadata.items()]
