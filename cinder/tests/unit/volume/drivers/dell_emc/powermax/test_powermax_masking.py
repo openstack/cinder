@@ -400,13 +400,13 @@ class PowerMaxMaskingTest(test.TestCase):
     def test_check_existing_initiator_group(self):
         with mock.patch.object(
                 rest.PowerMaxRest, 'get_element_from_masking_view',
-                return_value=tpd.PowerMaxData.inititiatorgroup):
+                return_value=tpd.PowerMaxData.initiatorgroup_name_f):
             ig_from_mv, msg = (
                 self.driver.masking._check_existing_initiator_group(
                     self.data.array, self.maskingviewdict['maskingview_name'],
                     self.maskingviewdict, self.data.storagegroup_name_i,
                     self.data.port_group_name_i, self.extra_specs))
-            self.assertEqual(self.data.inititiatorgroup, ig_from_mv)
+            self.assertEqual(self.data.initiatorgroup_name_f, ig_from_mv)
 
     def test_check_adding_volume_to_storage_group(self):
         with mock.patch.object(
@@ -536,27 +536,88 @@ class PowerMaxMaskingTest(test.TestCase):
                     self.device_id, self.data.masking_view_dict_multiattach)
                 mock_return.assert_called_once()
 
-    @mock.patch.object(rest.PowerMaxRest, 'delete_masking_view')
-    @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
-    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group')
+    @mock.patch.object(masking.PowerMaxMasking, '_recreate_masking_view')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group',
+                       return_value=True)
+    def test_verify_initiator_group_from_masking_view(
+            self, mock_get_ig, mock_recreate_mv):
+        mv_dict = deepcopy(self.maskingviewdict)
+        mv_dict['initiator_check'] = True
+        self.mask._verify_initiator_group_from_masking_view(
+            self.data.array, mv_dict['maskingview_name'],
+            mv_dict, self.data.initiatorgroup_name_i,
+            self.data.storagegroup_name_i, self.data.port_group_name_i,
+            self.extra_specs)
+        mock_recreate_mv.assert_called()
+
+    @mock.patch.object(masking.PowerMaxMasking, '_recreate_masking_view')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group',
+                       return_value=True)
     @mock.patch.object(
         masking.PowerMaxMasking, '_find_initiator_group',
         return_value=tpd.PowerMaxData.initiatorgroup_name_i)
-    def test_verify_initiator_group_from_masking_view(
-            self, mock_find_ig, mock_get_ig, mock_delete_ig, mock_delete_mv):
-        self.mask._verify_initiator_group_from_masking_view(
-            self.data.array, self.maskingviewdict['maskingview_name'],
-            self.maskingviewdict, self.data.initiatorgroup_name_i,
+    def test_verify_initiator_group_from_masking_view_no_recreate(
+            self, mock_find_ig, mock_get_ig, mock_recreate):
+        mv_dict = deepcopy(self.maskingviewdict)
+        mv_dict['initiator_check'] = False
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.mask._verify_initiator_group_from_masking_view,
+            self.data.array, mv_dict['maskingview_name'],
+            mv_dict, 'OS-Wrong-Host-I-IG',
             self.data.storagegroup_name_i, self.data.port_group_name_i,
             self.extra_specs)
-        mock_get_ig.assert_not_called()
-        mock_get_ig.return_value = False
-        self.mask._verify_initiator_group_from_masking_view(
-            self.data.array, self.maskingviewdict['maskingview_name'],
-            self.maskingviewdict, 'OS-Wrong-Host-I-IG',
+        mock_recreate.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group',
+                       return_value=True)
+    def test_recreate_masking_view(
+            self, mock_get_ig, mock_delete_ig):
+
+        ig_from_conn = self.data.initiatorgroup_name_i
+        ig_from_mv = self.data.initiatorgroup_name_i
+        ig_openstack = self.data.initiatorgroup_name_i
+
+        self.mask._recreate_masking_view(
+            self.data.array, ig_from_conn, ig_from_mv,
+            ig_openstack, self.data.masking_view_name_i, [self.data.initiator],
             self.data.storagegroup_name_i, self.data.port_group_name_i,
             self.extra_specs)
-        mock_get_ig.assert_called()
+        mock_delete_ig.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group',
+                       return_value=True)
+    def test_recreate_masking_view_no_ig_from_connector(
+            self, mock_get_ig, mock_delete_ig):
+
+        ig_from_mv = self.data.initiatorgroup_name_i
+        ig_openstack = self.data.initiatorgroup_name_i
+
+        self.mask._recreate_masking_view(
+            self.data.array, None, ig_from_mv,
+            ig_openstack, self.data.masking_view_name_i, [self.data.initiator],
+            self.data.storagegroup_name_i, self.data.port_group_name_i,
+            self.extra_specs)
+        mock_delete_ig.assert_called()
+
+    @mock.patch.object(rest.PowerMaxRest, 'create_masking_view')
+    @mock.patch.object(rest.PowerMaxRest, 'get_initiator_group',
+                       return_value=True)
+    def test_recreate_masking_view_wrong_host(
+            self, mock_get_ig, mock_create_mv):
+
+        ig_from_conn = 'OS-Wrong-Host-I-IG'
+        ig_from_mv = self.data.initiatorgroup_name_i
+        ig_openstack = self.data.initiatorgroup_name_i
+
+        self.mask._recreate_masking_view(
+            self.data.array, ig_from_conn, ig_from_mv,
+            ig_openstack, self.data.masking_view_name_i, [self.data.initiator],
+            self.data.storagegroup_name_i, self.data.port_group_name_i,
+            self.extra_specs)
+        mock_create_mv.assert_called()
 
     @mock.patch.object(rest.PowerMaxRest, 'delete_masking_view')
     @mock.patch.object(rest.PowerMaxRest, 'delete_initiator_group')
@@ -565,23 +626,19 @@ class PowerMaxMaskingTest(test.TestCase):
     @mock.patch.object(
         masking.PowerMaxMasking, '_find_initiator_group',
         return_value=tpd.PowerMaxData.initiatorgroup_name_i)
-    def test_verify_initiator_group_from_masking_view2(
+    def test_recreate_masking_view_delete_mv(
             self, mock_find_ig, mock_get_ig, mock_delete_ig, mock_delete_mv):
+
         mock_delete_mv.side_effect = [None, Exception]
-        self.mask._verify_initiator_group_from_masking_view(
-            self.data.array, self.maskingviewdict['maskingview_name'],
-            self.maskingviewdict, 'OS-Wrong-Host-I-IG',
+        mv_dict = deepcopy(self.maskingviewdict)
+        mv_dict['initiator_check'] = True
+        verify_flag = self.mask._verify_initiator_group_from_masking_view(
+            self.data.array, mv_dict['maskingview_name'],
+            mv_dict, 'OS-Wrong-Host-I-IG',
             self.data.storagegroup_name_i, self.data.port_group_name_i,
             self.extra_specs)
         mock_delete_mv.assert_called()
-        _, found_ig_from_connector = (
-            self.mask._verify_initiator_group_from_masking_view(
-                self.data.array, self.maskingviewdict['maskingview_name'],
-                self.maskingviewdict, 'OS-Wrong-Host-I-IG',
-                self.data.storagegroup_name_i, self.data.port_group_name_i,
-                self.extra_specs))
-        self.assertEqual(self.data.initiatorgroup_name_i,
-                         found_ig_from_connector)
+        self.assertTrue(verify_flag)
 
     @mock.patch.object(rest.PowerMaxRest, 'create_initiator_group')
     def test_create_initiator_group(self, mock_create_ig):
