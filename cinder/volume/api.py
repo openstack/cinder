@@ -353,9 +353,6 @@ class API(base.Base):
                 if flow_engine.storage.fetch('refresh_az'):
                     self.list_availability_zones(enable_cache=True,
                                                  refresh_cache=True)
-                # Refresh the object here, otherwise things ain't right
-                vref = objects.Volume.get_by_id(
-                    context, vref['id'])
                 LOG.info("Create volume request issued successfully.",
                          resource=vref)
                 return vref
