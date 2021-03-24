@@ -3321,6 +3321,40 @@ class PowerMaxCommonTest(test.TestCase):
         self.assertTrue(self.rest.u4p_failover_enabled)
         self.assertIsNotNone(self.rest.u4p_failover_targets)
 
+    @mock.patch.object(rest.PowerMaxRest, 'set_u4p_failover_config')
+    def test_get_u4p_failover_info_failover_config(self, mck_set_fo):
+        configuration = tpfo.FakeConfiguration(
+            None, 'CommonTests', 1, 1, san_ip='1.1.1.1', san_login='test',
+            san_password='test', san_api_port=8443,
+            driver_ssl_cert_verify='/path/to/cert',
+            u4p_failover_target=(self.data.u4p_failover_config[
+                'u4p_failover_targets']), u4p_failover_backoff_factor='2',
+            u4p_failover_retries='3', u4p_failover_timeout='10',
+            u4p_primary='10.10.10.10', powermax_array=self.data.array,
+            powermax_srp=self.data.srp)
+        expected_u4p_failover_config = {
+            'u4p_failover_targets': [
+                {'RestServerIp': '10.10.10.11', 'RestServerPort': '8443',
+                 'RestUserName': 'test', 'RestPassword': 'test',
+                 'SSLVerify': 'True', 'SerialNumber': '000197800123'},
+                {'RestServerIp': '10.10.10.12', 'RestServerPort': '8443',
+                 'RestUserName': 'test', 'RestPassword': 'test',
+                 'SSLVerify': True, 'SerialNumber': '000197800123'},
+                {'RestServerIp': '10.10.10.11', 'RestServerPort': '8443',
+                 'RestUserName': 'test', 'RestPassword': 'test',
+                 'SSLVerify': 'False', 'SerialNumber': '000197800123'}],
+            'u4p_failover_backoff_factor': '2', 'u4p_failover_retries': '3',
+            'u4p_failover_timeout': '10', 'u4p_failover_autofailback': None,
+            'u4p_primary': {
+                'RestServerIp': '1.1.1.1', 'RestServerPort': 8443,
+                'RestUserName': 'test', 'RestPassword': 'test',
+                'SerialNumber': '000197800123', 'srpName': 'SRP_1',
+                'PortGroup': None, 'SSLVerify': True}}
+        self.common.configuration = configuration
+        self.common._get_u4p_failover_info()
+        self.assertIsNotNone(self.rest.u4p_failover_targets)
+        mck_set_fo.assert_called_once_with(expected_u4p_failover_config)
+
     def test_update_vol_stats_retest_u4p(self):
         self.rest.u4p_in_failover = True
         self.rest.u4p_failover_autofailback = True

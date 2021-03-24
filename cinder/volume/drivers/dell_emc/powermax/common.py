@@ -286,12 +286,13 @@ class PowerMaxCommon(object):
                     'driver_ssl_cert_path': 'SSLPath'}
 
         if self.configuration.safe_get('u4p_failover_target'):
+            serial_number = self.configuration.safe_get(utils.POWERMAX_ARRAY)
             u4p_targets = self.configuration.safe_get('u4p_failover_target')
             formatted_target_list = list()
             for target in u4p_targets:
                 formatted_target = {key_dict[key]: value for key, value in
                                     target.items()}
-
+                formatted_target['SerialNumber'] = serial_number
                 try:
                     formatted_target['SSLVerify'] = formatted_target['SSLPath']
                     del formatted_target['SSLPath']
