@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax driver: Fix to prevent an R2 volume being larger than the R1 so
+    that an extend operation will not fail if the R2 happens to be larger
+    than the requested extend size.

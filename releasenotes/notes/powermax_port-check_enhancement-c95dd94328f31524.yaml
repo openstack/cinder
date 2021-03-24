@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax driver: Enhancement to check the status of the ports in the port
+    group so that any potential issue, like the ports being down, is
+    highlighted early and clearly.
