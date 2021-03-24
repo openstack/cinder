@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1917450 <https://bugs.launchpad.net/cinder/+bug/1917450>`_: Fix
+    automatic quota refresh to correctly account for migrating volumes.  During
+    volume migration we'll have 2 volumes in cinder and only one will be
+    accounted for in quota usage.
