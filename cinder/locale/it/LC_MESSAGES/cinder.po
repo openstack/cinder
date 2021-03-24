@@ -5,16 +5,17 @@
 # Translators:
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Luigi Toscano <ltoscano@redhat.com>, 2021. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-03-10 05:54+0000\n"
+"POT-Creation-Date: 2021-03-24 05:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-12 04:56+0000\n"
-"Last-Translator: Copied by Zanata <copied-by-zanata@zanata.org>\n"
+"PO-Revision-Date: 2021-03-19 02:52+0000\n"
+"Last-Translator: Luigi Toscano <ltoscano@redhat.com>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -279,7 +280,7 @@ msgstr ""
 "%(luncopystate)s."
 
 msgid "An unknown exception occurred."
-msgstr "E' stato riscontrato un errore sconosciuto"
+msgstr "È stato riscontrato un errore sconosciuto"
 
 msgid "Append port group description error."
 msgstr "Errore di aggiunta descrizione gruppo di porte."
@@ -2550,7 +2551,7 @@ msgstr ""
 
 #, python-format
 msgid "Invalid content type %(content_type)s."
-msgstr "Tipo di contenuto non valido%(content_type)s."
+msgstr "Tipo di contenuto %(content_type)s non valido."
 
 #, python-format
 msgid "Invalid directory: %s"
@@ -2571,6 +2572,10 @@ msgstr "Tipo disco non valido: %(disk_type)s."
 #, python-format
 msgid "Invalid disk type: %s."
 msgstr "Tipo disco non valido: %s."
+
+#, python-format
+msgid "Invalid group type: %(reason)s"
+msgstr "Tipo di gruppo non valido: %(reason)s"
 
 #, python-format
 msgid "Invalid host: %(reason)s"
@@ -2887,6 +2892,10 @@ msgstr ""
 msgid "May specify only one of %s"
 msgstr "È possibile specificare soltanto uno di %s"
 
+#, python-format
+msgid "Message %(message_id)s could not be found."
+msgstr "Impossibile trovare il messaggio %(message_id)s."
+
 msgid "Metadata backup already exists for this volume"
 msgstr "Il backup dei metadati esiste già per questo volume"
 
@@ -3175,9 +3184,6 @@ msgid ""
 msgstr ""
 "Solo le richieste %(value)s %(verb)s request(s) possono essere effettuate a "
 "%(uri)s ogni %(unit_string)s."
-
-msgid "Only one limit can be set in a QoS spec."
-msgstr "In una specifica QoS può essere impostato un solo limite. "
 
 msgid "Only volumes managed by OpenStack can be unmanaged."
 msgstr ""
@@ -4311,10 +4317,6 @@ msgstr ""
 "non è consentito."
 
 #, python-format
-msgid "Unrecognized QOS keyword: \"%s\""
-msgstr "Parola chiave QoS non riconosciuta: \"%s\" "
-
-#, python-format
 msgid "Unrecognized backing format: %s"
 msgstr "Formato backup non riconosciuto: %s"
 
@@ -4452,7 +4454,7 @@ msgstr "Impossibile trovare il volume %(volume_id)s."
 #, python-format
 msgid "Volume %(volume_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
-"Volume %(volume_id)s non contiene metadati con la chiave %(metadata_key)s."
+"Il volume %(volume_id)s non contiene metadati con la chiave %(metadata_key)s."
 
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."

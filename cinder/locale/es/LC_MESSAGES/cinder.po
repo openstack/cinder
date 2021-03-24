@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-03-10 05:54+0000\n"
+"POT-Creation-Date: 2021-03-24 05:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3250,9 +3250,6 @@ msgstr ""
 "Solo se pueden realizar %(value)s solicitud(es) de %(verb)s para %(uri)s "
 "cada %(unit_string)s."
 
-msgid "Only one limit can be set in a QoS spec."
-msgstr "Sólo se puede establecer un límite en una especificación QoS."
-
 msgid "Only volumes managed by OpenStack can be unmanaged."
 msgstr ""
 "Solo los volúmenes gestionados por OpenStack pueden dejarse de gestionar."
@@ -4430,10 +4427,6 @@ msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr ""
 "No se permite dejar de gestionar instantáneas desde volúmenes que han dado "
 "error."
-
-#, python-format
-msgid "Unrecognized QOS keyword: \"%s\""
-msgstr "Palabra clave de QOS no reconocida: \"%s\""
 
 #, python-format
 msgid "Unrecognized backing format: %s"

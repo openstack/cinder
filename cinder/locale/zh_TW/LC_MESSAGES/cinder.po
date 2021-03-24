@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-03-10 05:54+0000\n"
+"POT-Creation-Date: 2021-03-24 05:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2886,9 +2886,6 @@ msgid ""
 "%(unit_string)s."
 msgstr "只能每隔 %(unit_string)s 向 %(uri)s 提出 %(value)s 個 %(verb)s 要求。"
 
-msgid "Only one limit can be set in a QoS spec."
-msgstr "在一個服務品質規格中，只能設定一個限制。"
-
 msgid "Only volumes managed by OpenStack can be unmanaged."
 msgstr "只能取消管理由 OpenStack 進行管理的磁區。"
 
@@ -3919,10 +3916,6 @@ msgstr "未實作取消管理磁區。"
 
 msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
 msgstr "不容許取消管理已失效接手之磁區中的 Snapshot。"
-
-#, python-format
-msgid "Unrecognized QOS keyword: \"%s\""
-msgstr "無法辨識的服務品質關鍵字：\"%s\""
 
 #, python-format
 msgid "Unrecognized backing format: %s"
