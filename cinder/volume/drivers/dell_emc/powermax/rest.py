@@ -1692,20 +1692,24 @@ class PowerMaxRest(object):
         return self.get_resource(
             array, SLOPROVISIONING, 'portgroup', resource_name=portgroup)
 
-    def get_port_ids(self, array, portgroup):
+    def get_port_ids(self, array, port_group_name):
         """Get a list of port identifiers from a port group.
 
         :param array: the array serial number
-        :param portgroup: the name of the portgroup
+        :param port_group_name: the name of the portgroup
         :returns: list of port ids, e.g. ['FA-3D:35', 'FA-4D:32']
         """
         portlist = []
-        portgroup_info = self.get_portgroup(array, portgroup)
+        portgroup_info = self.get_portgroup(array, port_group_name)
         if portgroup_info:
             port_key = portgroup_info["symmetrixPortKey"]
             for key in port_key:
                 port = "%s:%s" % (key['directorId'], key['portId'])
                 portlist.append(port)
+        else:
+            exception_message = (_("Cannot find port group %(pg)s.")
+                                 % {'pg': port_group_name})
+            raise exception.VolumeBackendAPIException(exception_message)
         return portlist
 
     def get_port(self, array, port_id):

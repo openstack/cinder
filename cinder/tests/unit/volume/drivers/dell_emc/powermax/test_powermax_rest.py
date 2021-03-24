@@ -947,8 +947,10 @@ class PowerMaxRestTest(test.TestCase):
         pg_name = self.data.port_group_name_f
         with mock.patch.object(self.rest, 'get_portgroup',
                                return_value=None):
-            port_ids = self.rest.get_port_ids(array, pg_name)
-            self.assertEqual([], port_ids)
+            with self.assertRaisesRegex(
+                    exception.VolumeBackendAPIException,
+                    'Cannot find port group OS-fibre-PG.'):
+                self.rest.get_port_ids(array, pg_name)
 
     def test_get_port(self):
         array = self.data.array
