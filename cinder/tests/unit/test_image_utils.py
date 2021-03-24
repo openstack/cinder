@@ -1142,7 +1142,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                                     volume_format, blocksize)
 
         self.assertIsNone(output)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=True),
             mock.call(tmp, run_as_root=True)])
@@ -1194,7 +1195,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         self.assertIsNone(output)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1250,7 +1252,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         self.assertIsNone(output)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1302,7 +1305,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         self.assertIsNone(output)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1406,7 +1410,8 @@ class TestFetchToVolumeFormat(test.TestCase):
 
         self.assertIsNone(output)
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_called_once_with(tmp,
                                           force_share=False,
                                           run_as_root=run_as_root)
@@ -1453,7 +1458,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_called_once_with(tmp,
                                           force_share=False,
                                           run_as_root=run_as_root)
@@ -1498,7 +1504,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_called_once_with(tmp,
                                           force_share=False,
                                           run_as_root=run_as_root)
@@ -1549,7 +1556,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1597,7 +1605,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1645,7 +1654,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         image_service.show.assert_called_once_with(ctxt, image_id)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1694,7 +1704,8 @@ class TestFetchToVolumeFormat(test.TestCase):
             run_as_root=run_as_root)
 
         self.assertIsNone(output)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=run_as_root),
             mock.call(tmp, run_as_root=run_as_root)])
@@ -1852,7 +1863,8 @@ class TestFetchToVolumeFormat(test.TestCase):
                                                     volume_format, blocksize)
 
         self.assertIsNone(output)
-        mock_temp.assert_called_once_with()
+        mock_temp.assert_called_once_with(prefix='image_download_%s_' %
+                                          image_id)
         mock_info.assert_has_calls([
             mock.call(tmp, force_share=False, run_as_root=True),
             mock.call(tmp, run_as_root=True)])
