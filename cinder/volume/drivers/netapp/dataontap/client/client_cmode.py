@@ -67,6 +67,8 @@ class Client(client_base.Client):
         ontapi_1_60 = ontapi_version >= (1, 160)
         ontapi_1_40 = ontapi_version >= (1, 140)
         ontapi_1_50 = ontapi_version >= (1, 150)
+        ontapi_1_80 = ontapi_version >= (1, 180)
+        ontapi_1_90 = ontapi_version >= (1, 190)
 
         nodes_info = self._get_cluster_nodes_info()
         for node in nodes_info:
@@ -100,6 +102,9 @@ class Client(client_base.Client):
         self.features.add_feature('BACKUP_CLONE_PARAM', supported=ontapi_1_100)
         self.features.add_feature('CLUSTER_PEER_POLICY', supported=ontapi_1_30)
         self.features.add_feature('FLEXVOL_ENCRYPTION', supported=ontapi_1_1xx)
+        self.features.add_feature('FLEXGROUP', supported=ontapi_1_80)
+        self.features.add_feature('FLEXGROUP_CLONE_FILE',
+                                  supported=ontapi_1_90)
 
         self.features.add_feature('ADAPTIVE_QOS', supported=ontapi_1_40)
         self.features.add_feature('ADAPTIVE_QOS_BLOCK_SIZE',

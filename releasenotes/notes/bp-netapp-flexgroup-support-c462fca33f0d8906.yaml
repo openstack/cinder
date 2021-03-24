@@ -4,29 +4,34 @@ features:
     NetApp ONTAP driver: added support for FlexGroup pool using the NFS
     mode. There are several considerations for using the driver with it:
 
-    1. The FlexGroup pool has a different view of aggregate capabilites,
+    1. The FlexGroup pool is only supported using ONTAP storage 9.8 or greater.
+
+    2. The FlexGroup pool has a different view of aggregate capabilites,
     changing them by a list of elements, instead of a single element. They
     are ``netapp_aggregate``, ``netapp_raid_type``, ``netapp_disk_type`` and
     ``netapp_hybrid_aggregate``. The ``netapp_aggregate_used_percent``
     capability is an average of used percent of all FlexGroup's aggregates.
 
-    2. The ``utilization`` capability is not calculated to FlexGroup pools, it is
+    3. The ``utilization`` capability is not calculated to FlexGroup pools, it is
     always set to default of 50.
 
-    3. The driver cannot support consistency group with volumes that are over
+    4. The driver cannot support consistency group with volumes that are over
     FlexGroup pools.
 
-    4. For volumes over the FlexGroup pool, the operations of clone volume,
+    5. The driver cannot support multi-attach with volumes that are over
+    FlexGroup pools.
+
+    6. For volumes over the FlexGroup pool, the operations of clone volume,
     create snapshot and create volume from an image are implemented as the NFS
     generic driver. Hence, it does not rely on the ONTAP storage to perform
     those operations.
 
-    5. A driver with FlexGroup pools has snapshot support disabled by default. To
+    7. A driver with FlexGroup pools has snapshot support disabled by default. To
     enable, you must set ``nfs_snapshot_support`` to true in the backend's configuration
     section of the cinder configuration file.
 
-    6. The driver image cache is not applied for volumes over FlexGroup pools.
+    8. The driver image cache is not applied for volumes over FlexGroup pools.
     It can use the core image cache for avoiding downloading twice, though.
 
-    7. Given that the FlexGroup pool may be on several cluster nodes, the QoS minimum
+    9. Given that the FlexGroup pool may be on several cluster nodes, the QoS minimum
     support is only enabled if all nodes support it.

@@ -179,7 +179,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         because the ONTAP clone file is not supported by FlexGroup yet.
         """
         self._ensure_flexgroup_not_in_cg(volume)
-        if self._is_flexgroup(vol_id=snapshot['volume_id']):
+        if (self._is_flexgroup(vol_id=snapshot['volume_id']) and
+                not self._is_flexgroup_clone_file_supported()):
             model = super(NetAppNfsDriver, self).create_volume_from_snapshot(
                 volume, snapshot)
 
@@ -199,7 +200,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         because the ONTAP clone file is not supported by FlexGroup yet.
         """
         self._ensure_flexgroup_not_in_cg(volume)
-        if self._is_flexgroup(vol_id=src_vref['id']):
+        if (self._is_flexgroup(vol_id=src_vref['id']) and
+                not self._is_flexgroup_clone_file_supported()):
             model = super(NetAppNfsDriver, self).create_cloned_volume(
                 volume, src_vref)
 
@@ -306,7 +308,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         For a FlexGroup pool, the operation relies on the NFS generic driver
         because the ONTAP clone file is not supported by FlexGroup yet.
         """
-        if self._is_flexgroup(vol_id=snapshot['volume_id']):
+        if (self._is_flexgroup(vol_id=snapshot['volume_id']) and
+                not self._is_flexgroup_clone_file_supported()):
             self._create_snapshot_for_flexgroup(snapshot)
         else:
             self._clone_backing_file_for_volume(snapshot['volume_name'],
@@ -360,7 +363,8 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        if self._is_flexgroup(vol_id=snapshot.volume_id):
+        if (self._is_flexgroup(vol_id=snapshot.volume_id) and
+                not self._is_flexgroup_clone_file_supported()):
             super(NetAppNfsDriver, self).delete_snapshot(snapshot)
         else:
             self._delete_file(snapshot.volume_id, snapshot.name)
@@ -477,9 +481,11 @@ class NetAppNfsDriver(driver.ManageableVD,
         LOG.info('Copied image to volume %s using regular download.',
                  volume['id'])
 
-        if not self._is_flexgroup(host=volume['host']):
-            # NOTE(felipe_rodrigues): FlexGroup does not support FlexClone
-            # file, so the NetApp image cache cannot be used.
+        if (not self._is_flexgroup(host=volume['host']) or
+                self._is_flexgroup_clone_file_supported()):
+            # NOTE(felipe_rodrigues): NetApp image cache relies on the
+            # FlexClone file, which is only available for the earliest
+            # versions of FlexGroup.
             self._register_image_in_cache(volume, image_id)
 
     def _register_image_in_cache(self, volume, image_id):
@@ -641,10 +647,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred.
         """
-        if self._is_flexgroup(host=volume['host']):
-            # NOTE(felipe_rodrigues): FlexGroup does not support FlexClone
-            # file, so the clone_image cannot be used together with the Netapp
-            # cache. Instead, it can use the core cache implementation.
+        if (self._is_flexgroup(host=volume['host']) and
+                not self._is_flexgroup_clone_file_supported()):
             return None, False
 
         image_id = image_meta['id']
@@ -1215,3 +1219,7 @@ class NetAppNfsDriver(driver.ManageableVD,
             msg = _("Cannot create %s volume on FlexGroup pool with "
                     "consistency group.")
             raise na_utils.NetAppDriverException(msg % volume['id'])
+
+    def _is_flexgroup_clone_file_supported(self):
+        """Check whether storage can perform clone file for FlexGroup"""
+        raise NotImplementedError()

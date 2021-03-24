@@ -281,6 +281,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         self.mock_object(self.driver, '_is_flexgroup',
                          return_value=is_flexgroup)
+        self.mock_object(self.driver, '_is_flexgroup_clone_file_supported',
+                         return_value=not is_flexgroup)
         mock_super_create = self.mock_object(
             nfs.NfsDriver, 'create_volume_from_snapshot',
             return_value=provider_location)
@@ -311,6 +313,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         self.mock_object(self.driver, '_is_flexgroup',
                          return_value=is_flexgroup)
+        self.mock_object(self.driver, '_is_flexgroup_clone_file_supported',
+                         return_value=not is_flexgroup)
         mock_super_create = self.mock_object(
             nfs.NfsDriver, 'create_cloned_volume',
             return_value=provider_location)
@@ -368,6 +372,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test_create_snapshot(self, is_flexgroup):
         self.mock_object(self.driver, '_is_flexgroup',
                          return_value=is_flexgroup)
+        self.mock_object(self.driver, '_is_flexgroup_clone_file_supported',
+                         return_value=not is_flexgroup)
         mock_clone_backing_file_for_volume = self.mock_object(
             self.driver, '_clone_backing_file_for_volume')
         mock_snap_flexgroup = self.mock_object(
@@ -450,6 +456,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_delete_file')
         self.mock_object(self.driver, '_is_flexgroup',
                          return_value=is_flexgroup)
+        self.mock_object(self.driver, '_is_flexgroup_clone_file_supported',
+                         return_value=not is_flexgroup)
         mock_super_delete = self.mock_object(nfs.NfsDriver,
                                              'delete_snapshot')
 
@@ -550,6 +558,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         mock_log = self.mock_object(nfs_base, 'LOG')
         self.mock_object(self.driver, '_is_flexgroup',
                          return_value=False)
+        self.mock_object(self.driver, '_is_flexgroup_clone_file_supported',
+                         return_value=True)
         self.mock_object(self.driver, '_ensure_flexgroup_not_in_cg')
         mock_copy_image = self.mock_object(
             remotefs.RemoteFSDriver, 'copy_image_to_volume')
@@ -1147,3 +1157,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertRaises(na_utils.NetAppDriverException,
                           self.driver._ensure_flexgroup_not_in_cg,
                           fake_v1)
+
+    def test__is_flexgroup_clone_file_supported(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._is_flexgroup_clone_file_supported)
