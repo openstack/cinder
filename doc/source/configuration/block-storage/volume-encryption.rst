@@ -1,3 +1,5 @@
+.. _volume-encryption:
+
 ==============================================
 Volume encryption supported by the key manager
 ==============================================
