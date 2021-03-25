@@ -120,6 +120,8 @@ def _create_glance_client(context, netloc, use_ssl):
             config_options = {'insecure': CONF.glance_api_insecure,
                               'cacert': CONF.glance_ca_certificates_file,
                               'timeout': CONF.glance_request_timeout,
+                              'cert': CONF.glance_certfile,
+                              'key': CONF.glance_keyfile,
                               'split_loggers': CONF.split_loggers
                               }
             _SESSION = ks_session.Session().load_from_options(**config_options)

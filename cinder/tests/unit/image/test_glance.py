@@ -1108,6 +1108,8 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         config_options = {'insecure': False,
                           'cacert': None,
+                          'key': None,
+                          'cert': None,
                           'timeout': None,
                           'split_loggers': False}
 
@@ -1129,6 +1131,8 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.flags(glance_request_timeout=60)
         self.flags(
             glance_ca_certificates_file='/opt/stack/data/ca-bundle.pem')
+        self.flags(glance_certfile='/opt/stack/data/cert.pem')
+        self.flags(glance_keyfile='/opt/stack/data/key.pem')
 
         class MyGlanceStubClient(object):
             def __init__(inst, version, *args, **kwargs):
@@ -1140,6 +1144,8 @@ class TestGlanceImageServiceClient(test.TestCase):
 
         config_options = {'insecure': False,
                           'cacert': '/opt/stack/data/ca-bundle.pem',
+                          'cert': '/opt/stack/data/cert.pem',
+                          'key': '/opt/stack/data/key.pem',
                           'timeout': 60,
                           'split_loggers': False}
 
