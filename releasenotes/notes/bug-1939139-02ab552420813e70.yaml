@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    PowerMax driver `bug #1939139
+    <https://bugs.launchpad.net/cinder/+bug/1939139>`_: Fix
+    on create snapshot operation that exists when using PowerMax OS
+    5978.711 and later.
