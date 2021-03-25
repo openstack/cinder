@@ -138,9 +138,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.2.9 - Failover group volume update (#1888831)
         4.2.10 - Replica RDFG suspend fix (#1892718)
         4.2.11 - Fix non-temporary snapshot delete (#1887962)
+        4.2.12 - Fix for create snapshot (#1939139)
     """
 
-    VERSION = "4.2.11"
+    VERSION = "4.2.12"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

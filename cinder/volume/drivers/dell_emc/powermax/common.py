@@ -6416,12 +6416,15 @@ class PowerMaxCommon(object):
         :returns: dict -- volume metadata
         """
         snap_info = self.rest.get_volume_snap_info(array, device_id)
-        device_name = snap_info['deviceName']
-        device_label = device_name.split(':')[1]
+        device_name = snap_info.get('deviceName')
+        try:
+            device_label = device_name.split(':')[1] if device_name else None
+        except IndexError:
+            device_label = None
         metadata = {'SnapshotLabel': snap_name,
-                    'SourceDeviceID': device_id,
-                    'SourceDeviceLabel': device_label}
-
+                    'SourceDeviceID': device_id}
+        if device_label:
+            metadata['SourceDeviceLabel'] = device_label
         return metadata
 
     def _check_and_add_tags_to_storage_array(
