@@ -663,6 +663,31 @@ AGGR_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
     'total_size': AGGR_SIZE_TOTAL,
 })
 
+VOLUME_STATE_ONLINE = 'online'
+VOLUME_GET_ITER_STATE_ATTR_STR = """
+    <volume-attributes>
+        <volume-id-attributes>
+            <style-extended>flexgroup</style-extended>
+        </volume-id-attributes>
+        <volume-state-attributes>
+            <state>%(state)s</state>
+        </volume-state-attributes>
+    </volume-attributes>
+""" % {
+    'state': VOLUME_STATE_ONLINE
+}
+
+VOLUME_GET_ITER_STATE_ATTR = etree.XML(VOLUME_GET_ITER_STATE_ATTR_STR)
+
+VOLUME_GET_ITER_STATE_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list> %(volume)s </attributes-list>
+    </results>
+""" % {
+    'volume': VOLUME_GET_ITER_STATE_ATTR_STR,
+})
+
 VOLUME_SIZE_TOTAL = 19922944
 VOLUME_SIZE_AVAILABLE = 19791872
 VOLUME_GET_ITER_CAPACITY_ATTR_STR = """

@@ -1068,7 +1068,7 @@ class Client(client_base.Client):
                 volume_list.append(volume_attributes)
 
         if len(volume_list) != 1:
-            msg = _('Could not find unique volume. Volumes foud: %(vol)s.')
+            msg = _('Could not find unique volume. Volumes found: %(vol)s.')
             msg_args = {'vol': volume_list}
             raise exception.VolumeBackendAPIException(data=msg % msg_args)
 
@@ -1117,6 +1117,43 @@ class Client(client_base.Client):
             volumes.append(volume_id_attributes.get_child_content('name'))
 
         return volumes
+
+    def get_volume_state(self, junction_path=None, name=None):
+        """Returns volume state for a given name or junction path"""
+
+        volume_id_attributes = {}
+        if junction_path:
+            volume_id_attributes['junction-path'] = junction_path
+        if name:
+            volume_id_attributes['name'] = name
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': volume_id_attributes
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'style-extended': None
+                    },
+                    'volume-state-attributes': {
+                        'state': None
+                    }
+                }
+            }
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        try:
+            volume_attributes = self.get_unique_volume(result)
+        except exception.VolumeBackendAPIException:
+            return None
+
+        volume_state_attributes = volume_attributes.get_child_by_name(
+            'volume-state-attributes') or netapp_api.NaElement('none')
+        volume_state = volume_state_attributes.get_child_content('state')
+        return volume_state
 
     def get_flexvol(self, flexvol_path=None, flexvol_name=None):
         """Get flexvol attributes needed for the storage service catalog."""
@@ -1396,6 +1433,41 @@ class Client(client_base.Client):
         qos_min_name = na_utils.qos_min_feature_name(is_nfs, node_name)
         return getattr(self.features, qos_min_name, False).__bool__()
 
+    def create_volume_async(self, name, aggregate_list, size_gb,
+                            space_guarantee_type=None, snapshot_policy=None,
+                            language=None, snapshot_reserve=None,
+                            volume_type='rw'):
+        """Creates a FlexGroup volume asynchronously."""
+
+        api_args = {
+            'aggr-list': [{'aggr-name': aggr} for aggr in aggregate_list],
+            'size': size_gb * units.Gi,
+            'volume-name': name,
+            'volume-type': volume_type,
+        }
+        if volume_type == 'dp':
+            snapshot_policy = None
+        else:
+            api_args['junction-path'] = '/%s' % name
+        if snapshot_policy is not None:
+            api_args['snapshot-policy'] = snapshot_policy
+        if space_guarantee_type:
+            api_args['space-reserve'] = space_guarantee_type
+        if language is not None:
+            api_args['language-code'] = language
+        if snapshot_reserve is not None:
+            api_args['percentage-snapshot-reserve'] = six.text_type(
+                snapshot_reserve)
+
+        result = self.connection.send_request('volume-create-async', api_args)
+        job_info = {
+            'status': result.get_child_content('result-status'),
+            'jobid': result.get_child_content('result-jobid'),
+            'error-code': result.get_child_content('result-error-code'),
+            'error-message': result.get_child_content('result-error-message')
+        }
+        return job_info
+
     def create_flexvol(self, flexvol_name, aggregate_name, size_gb,
                        space_guarantee_type=None, snapshot_policy=None,
                        language=None, dedupe_enabled=False,
@@ -1495,6 +1567,32 @@ class Client(client_base.Client):
             'enable-compression': 'false'
         }
         self.connection.send_request('sis-set-config', api_args)
+
+    def enable_volume_dedupe_async(self, volume_name):
+        """Enable deduplication on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {'volume-name': volume_name}
+        self.connection.send_request('sis-enable-async', api_args)
+
+    def disable_volume_dedupe_async(self, volume_name):
+        """Disable deduplication on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {'volume-name': volume_name}
+        self.connection.send_request('sis-disable-async', api_args)
+
+    def enable_volume_compression_async(self, volume_name):
+        """Enable compression on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {
+            'volume-name': volume_name,
+            'enable-compression': 'true'
+        }
+        self.connection.send_request('sis-set-config-async', api_args)
+
+    def disable_volume_compression_async(self, volume_name):
+        """Disable compression on FlexVol/FlexGroup volume asynchronously."""
+        api_args = {
+            'volume-name': volume_name,
+            'enable-compression': 'false'
+        }
+        self.connection.send_request('sis-set-config-async', api_args)
 
     @volume_utils.trace_method
     def delete_file(self, path_to_file):
@@ -2140,6 +2238,7 @@ class Client(client_base.Client):
             'destination-vserver': destination_vserver,
             'relationship-type': relationship_type,
         }
+
         if schedule:
             api_args['schedule'] = schedule
         if policy:

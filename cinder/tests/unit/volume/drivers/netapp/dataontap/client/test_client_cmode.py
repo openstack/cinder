@@ -22,6 +22,7 @@ import uuid
 
 import ddt
 from lxml import etree
+from oslo_utils import units
 import paramiko
 import six
 
@@ -1717,6 +1718,51 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_result, address_list)
 
+    @ddt.data({'junction_path': '/fake/vol'},
+              {'name': 'fake_volume'},
+              {'junction_path': '/fake/vol', 'name': 'fake_volume'})
+    def test_get_volume_state(self, kwargs):
+
+        api_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_STATE_RESPONSE)
+        mock_send_iter_request = self.mock_object(
+            self.client, 'send_iter_request', return_value=api_response)
+        volume_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_STATE_ATTR)
+        mock_get_unique_vol = self.mock_object(
+            self.client, 'get_unique_volume', return_value=volume_response)
+
+        state = self.client.get_volume_state(**kwargs)
+
+        volume_id_attributes = {}
+        if 'junction_path' in kwargs:
+            volume_id_attributes['junction-path'] = kwargs['junction_path']
+        if 'name' in kwargs:
+            volume_id_attributes['name'] = kwargs['name']
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': volume_id_attributes,
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'style-extended': None,
+                    },
+                    'volume-state-attributes': {
+                        'state': None
+                    }
+                }
+            },
+        }
+        mock_send_iter_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+        mock_get_unique_vol.assert_called_once_with(api_response)
+
+        self.assertEqual(fake_client.VOLUME_STATE_ONLINE, state)
+
     @ddt.data({'flexvol_path': '/fake/vol'},
               {'flexvol_name': 'fake_volume'},
               {'flexvol_path': '/fake/vol', 'flexvol_name': 'fake_volume'})
@@ -1961,6 +2007,51 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.client.enable_flexvol_compression.assert_called_once_with(
             fake_client.VOLUME_NAME)
 
+    def test_create_volume_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.create_volume_async(
+            fake_client.VOLUME_NAME, [fake_client.VOLUME_AGGREGATE_NAME], 100,
+            volume_type='dp')
+
+        volume_create_args = {
+            'aggr-list': [{'aggr-name': fake_client.VOLUME_AGGREGATE_NAME}],
+            'size': 100 * units.Gi,
+            'volume-name': fake_client.VOLUME_NAME,
+            'volume-type': 'dp'
+        }
+
+        self.client.connection.send_request.assert_called_once_with(
+            'volume-create-async', volume_create_args)
+
+    @ddt.data('dp', 'rw', None)
+    def test_create_volume_async_with_extra_specs(self, volume_type):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.create_volume_async(
+            fake_client.VOLUME_NAME, [fake_client.VOLUME_AGGREGATE_NAME], 100,
+            space_guarantee_type='volume', language='en-US',
+            snapshot_policy='default', snapshot_reserve=15,
+            volume_type=volume_type)
+
+        volume_create_args = {
+            'aggr-list': [{'aggr-name': fake_client.VOLUME_AGGREGATE_NAME}],
+            'size': 100 * units.Gi,
+            'volume-name': fake_client.VOLUME_NAME,
+            'space-reserve': 'volume',
+            'language-code': 'en-US',
+            'volume-type': volume_type,
+            'percentage-snapshot-reserve': '15',
+        }
+
+        if volume_type != 'dp':
+            volume_create_args['snapshot-policy'] = 'default'
+            volume_create_args['junction-path'] = ('/%s' %
+                                                   fake_client.VOLUME_NAME)
+
+        self.client.connection.send_request.assert_called_with(
+            'volume-create-async', volume_create_args)
+
     def test_flexvol_exists(self):
 
         api_response = netapp_api.NaElement(
@@ -2044,6 +2135,53 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.client.connection.send_request.assert_has_calls([
             mock.call('volume-mount', volume_mount_args)])
+
+    def test_enable_volume_dedupe_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.enable_volume_dedupe_async(fake_client.VOLUME_NAME)
+
+        sis_enable_args = {'volume-name': fake_client.VOLUME_NAME}
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-enable-async', sis_enable_args)
+
+    def test_disable_volume_dedupe_async(self):
+
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.disable_volume_dedupe_async(fake_client.VOLUME_NAME)
+
+        sis_enable_args = {'volume-name': fake_client.VOLUME_NAME}
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-disable-async', sis_enable_args)
+
+    def test_enable_volume_compression_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.enable_volume_compression_async(fake_client.VOLUME_NAME)
+
+        sis_set_config_args = {
+            'volume-name': fake_client.VOLUME_NAME,
+            'enable-compression': 'true'
+        }
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config-async', sis_set_config_args)
+
+    def test_disable_volume_compression_async(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        self.client.disable_volume_compression_async(fake_client.VOLUME_NAME)
+
+        sis_set_config_args = {
+            'volume-name': fake_client.VOLUME_NAME,
+            'enable-compression': 'false'
+        }
+
+        self.client.connection.send_request.assert_called_once_with(
+            'sis-set-config-async', sis_set_config_args)
 
     def test_enable_flexvol_dedupe(self):
 

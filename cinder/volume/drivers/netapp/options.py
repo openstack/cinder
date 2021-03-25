@@ -150,9 +150,10 @@ netapp_replication_opts = [
                       "mapping between source and destination back ends when "
                       "using whole back end replication. For every "
                       "source aggregate associated with a cinder pool (NetApp "
-                      "FlexVol), you would need to specify the destination "
-                      "aggregate on the replication target device. A "
-                      "replication target device is configured with the "
+                      "FlexVol/FlexGroup), you would need to specify the "
+                      "destination aggregate on the replication target "
+                      "device. "
+                      "A replication target device is configured with the "
                       "configuration option replication_device. Specify this "
                       "option as many times as you have replication devices. "
                       "Each entry takes the standard dict config form: "
@@ -165,7 +166,12 @@ netapp_replication_opts = [
                default=3600,  # One Hour
                help='The maximum time in seconds to wait for existing '
                     'SnapMirror transfers to complete before aborting '
-                    'during a failover.'), ]
+                    'during a failover.'),
+    cfg.IntOpt('netapp_replication_volume_online_timeout',
+               min=60,
+               default=360,  # Default to six minutes
+               help='Sets time in seconds to wait for a replication volume '
+                    'create to complete and go online.')]
 
 netapp_support_opts = [
     cfg.StrOpt('netapp_api_trace_pattern',

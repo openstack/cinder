@@ -166,9 +166,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
         self.assertDictEqual({'aggr1': 'aggr10'}, aggr_map)
 
-    @ddt.data(True, False)
-    def test_create_snapmirror_dest_flexvol_exists(self, dest_exists):
+    @ddt.data({'dest_exists': True, 'is_flexgroup': False},
+              {'dest_exists': True, 'is_flexgroup': True},
+              {'dest_exists': False, 'is_flexgroup': False},
+              {'dest_exists': False, 'is_flexgroup': True})
+    @ddt.unpack
+    def test_create_snapmirror_dest_flexvol_exists(self, dest_exists,
+                                                   is_flexgroup):
         mock_dest_client = mock.Mock()
+        mock_src_client = mock.Mock()
         self.mock_object(mock_dest_client, 'flexvol_exists',
                          return_value=dest_exists)
         self.mock_object(mock_dest_client, 'get_snapmirrors',
@@ -176,7 +182,15 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         create_destination_flexvol = self.mock_object(
             self.dm_mixin, 'create_destination_flexvol')
         self.mock_object(utils, 'get_client_for_backend',
-                         return_value=mock_dest_client)
+                         side_effect=[mock_dest_client,
+                                      mock_src_client])
+
+        mock_provisioning_options = mock.Mock()
+        mock_provisioning_options.get.return_value = is_flexgroup
+
+        self.mock_object(mock_src_client,
+                         'get_provisioning_options_from_flexvol',
+                         return_value=mock_provisioning_options)
 
         self.dm_mixin.create_snapmirror(self.src_backend,
                                         self.dest_backend,
@@ -186,14 +200,70 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         if not dest_exists:
             create_destination_flexvol.assert_called_once_with(
                 self.src_backend, self.dest_backend, self.src_flexvol_name,
-                self.dest_flexvol_name)
+                self.dest_flexvol_name, pool_is_flexgroup=is_flexgroup)
         else:
             self.assertFalse(create_destination_flexvol.called)
         mock_dest_client.create_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
-            self.dest_flexvol_name, schedule='hourly')
+            self.dest_flexvol_name,
+            schedule='hourly',
+            relationship_type=('extended_data_protection'
+                               if is_flexgroup
+                               else 'data_protection'))
         mock_dest_client.initialize_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name, self.dest_vserver,
+            self.dest_flexvol_name)
+
+    def test_create_snapmirror_cleanup_on_geometry_has_changed(self):
+        mock_dest_client = mock.Mock()
+        mock_src_client = mock.Mock()
+        self.mock_object(mock_dest_client, 'flexvol_exists',
+                         return_value=True)
+        self.mock_object(mock_dest_client, 'get_snapmirrors',
+                         return_value=None)
+        create_destination_flexvol = self.mock_object(
+            self.dm_mixin, 'create_destination_flexvol')
+        mock_delete_snapshot = self.mock_object(
+            self.dm_mixin, 'delete_snapmirror'
+        )
+        self.mock_object(utils, 'get_client_for_backend',
+                         side_effect=[mock_dest_client,
+                                      mock_src_client])
+
+        geometry_exception_message = ("Geometry of the destination FlexGroup "
+                                      "has been changed since the SnapMirror "
+                                      "relationship was created.")
+        mock_dest_client.initialize_snapmirror.side_effect = [
+            netapp_api.NaApiError(code=netapp_api.EAPIERROR,
+                                  message=geometry_exception_message),
+        ]
+
+        mock_provisioning_options = mock.Mock()
+        mock_provisioning_options.get.return_value = False
+
+        self.mock_object(mock_src_client,
+                         'get_provisioning_options_from_flexvol',
+                         return_value=mock_provisioning_options)
+
+        self.assertRaises(na_utils.GeometryHasChangedOnDestination,
+                          self.dm_mixin.create_snapmirror,
+                          self.src_backend,
+                          self.dest_backend,
+                          self.src_flexvol_name,
+                          self.dest_flexvol_name)
+
+        self.assertFalse(create_destination_flexvol.called)
+        mock_dest_client.create_snapmirror.assert_called_once_with(
+            self.src_vserver, self.src_flexvol_name, self.dest_vserver,
+            self.dest_flexvol_name, schedule='hourly',
+            relationship_type='data_protection')
+
+        mock_dest_client.initialize_snapmirror.assert_called_once_with(
+            self.src_vserver, self.src_flexvol_name, self.dest_vserver,
+            self.dest_flexvol_name)
+
+        mock_delete_snapshot.assert_called_once_with(
+            self.src_backend, self.dest_backend, self.src_flexvol_name,
             self.dest_flexvol_name)
 
     @ddt.data('uninitialized', 'broken-off', 'snapmirrored')
@@ -223,7 +293,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             mock_dest_client.resume_snapmirror.assert_called_once_with(
                 self.src_vserver, self.src_flexvol_name,
                 self.dest_vserver, self.dest_flexvol_name)
-            mock_dest_client.resume_snapmirror.assert_called_once_with(
+            mock_dest_client.resync_snapmirror.assert_called_once_with(
                 self.src_vserver, self.src_flexvol_name,
                 self.dest_vserver, self.dest_flexvol_name)
 
@@ -254,9 +324,10 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_dest_client.resume_snapmirror.assert_called_once_with(
             self.src_vserver, self.src_flexvol_name,
             self.dest_vserver, self.dest_flexvol_name)
-        mock_dest_client.resume_snapmirror.assert_called_once_with(
-            self.src_vserver, self.src_flexvol_name,
-            self.dest_vserver, self.dest_flexvol_name)
+        if failed_call == 'resync_snapmirror':
+            mock_dest_client.resync_snapmirror.assert_called_once_with(
+                self.src_vserver, self.src_flexvol_name,
+                self.dest_vserver, self.dest_flexvol_name)
         self.assertEqual(1, mock_exception_log.call_count)
 
     def test_delete_snapmirror(self):
@@ -528,6 +599,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                           self.dm_mixin.create_destination_flexvol,
                           self.src_backend, self.dest_backend,
                           self.src_flexvol_name, self.dest_flexvol_name)
+
         if size and is_flexgroup is False:
             self.dm_mixin._get_replication_aggregate_map.\
                 assert_called_once_with(self.src_backend, self.dest_backend)
@@ -536,9 +608,63 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 self.dm_mixin._get_replication_aggregate_map.called)
         self.assertFalse(mock_client_call.called)
 
-    def test_create_destination_flexvol(self):
+    @ddt.data('mixed', None)
+    def test_create_destination_flexgroup_online_timeout(self, volume_state):
         aggr_map = {
-            fakes.PROVISIONING_OPTS['aggregate']: 'aggr01',
+            fakes.PROVISIONING_OPTS['aggregate'][0]: 'aggr01',
+            'aggr20': 'aggr02',
+        }
+        provisioning_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
+        expected_prov_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
+        expected_prov_opts.pop('volume_type', None)
+        expected_prov_opts.pop('size', None)
+        expected_prov_opts.pop('aggregate', None)
+        expected_prov_opts.pop('is_flexgroup', None)
+
+        self.mock_object(
+            self.mock_src_client, 'get_provisioning_options_from_flexvol',
+            return_value=provisioning_opts)
+        self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
+                         return_value=aggr_map)
+        self.mock_object(self.dm_mixin,
+                         '_get_replication_volume_online_timeout',
+                         return_value=2)
+
+        mock_create_volume_async = self.mock_object(self.mock_dest_client,
+                                                    'create_volume_async')
+        mock_volume_state = self.mock_object(self.mock_dest_client,
+                                             'get_volume_state',
+                                             return_value=volume_state)
+        self.mock_object(self.mock_src_client, 'is_flexvol_encrypted',
+                         return_value=False)
+
+        mock_dedupe_enabled = self.mock_object(
+            self.mock_dest_client, 'enable_volume_dedupe_async')
+        mock_compression_enabled = self.mock_object(
+            self.mock_dest_client, 'enable_volume_compression_async')
+
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.dm_mixin.create_destination_flexvol,
+                          self.src_backend, self.dest_backend,
+                          self.src_flexvol_name, self.dest_flexvol_name,
+                          pool_is_flexgroup=True)
+
+        expected_prov_opts.pop('dedupe_enabled')
+        expected_prov_opts.pop('compression_enabled')
+        mock_create_volume_async.assert_called_once_with(
+            self.dest_flexvol_name,
+            ['aggr01'],
+            fakes.PROVISIONING_OPTS['size'],
+            volume_type='dp', **expected_prov_opts)
+        mock_volume_state.assert_called_with(
+            flexvol_name=self.dest_flexvol_name)
+        mock_dedupe_enabled.assert_not_called()
+        mock_compression_enabled.assert_not_called()
+
+    @ddt.data('flexvol', 'flexgroup')
+    def test_create_destination_flexvol(self, volume_style):
+        aggr_map = {
+            fakes.PROVISIONING_OPTS['aggregate'][0]: 'aggr01',
             'aggr20': 'aggr02',
         }
         provisioning_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
@@ -555,27 +681,64 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             return_value=False)
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
-        mock_client_call = self.mock_object(
-            self.mock_dest_client, 'create_flexvol')
+
+        pool_is_flexgroup = False
+        if volume_style == 'flexgroup':
+            pool_is_flexgroup = True
+            self.mock_object(self.dm_mixin,
+                             '_get_replication_volume_online_timeout',
+                             return_value=2)
+            mock_create_volume_async = self.mock_object(self.mock_dest_client,
+                                                        'create_volume_async')
+            mock_volume_state = self.mock_object(self.mock_dest_client,
+                                                 'get_volume_state',
+                                                 return_value='online')
+            mock_dedupe_enabled = self.mock_object(
+                self.mock_dest_client, 'enable_volume_dedupe_async')
+            mock_compression_enabled = self.mock_object(
+                self.mock_dest_client, 'enable_volume_compression_async')
+        else:
+            mock_create_flexvol = self.mock_object(self.mock_dest_client,
+                                                   'create_flexvol')
 
         retval = self.dm_mixin.create_destination_flexvol(
             self.src_backend, self.dest_backend,
-            self.src_flexvol_name, self.dest_flexvol_name)
+            self.src_flexvol_name, self.dest_flexvol_name,
+            pool_is_flexgroup=pool_is_flexgroup)
 
         self.assertIsNone(retval)
         mock_get_provisioning_opts_call.assert_called_once_with(
             self.src_flexvol_name)
         self.dm_mixin._get_replication_aggregate_map.assert_called_once_with(
             self.src_backend, self.dest_backend)
-        mock_client_call.assert_called_once_with(
-            self.dest_flexvol_name, 'aggr01', fakes.PROVISIONING_OPTS['size'],
-            volume_type='dp', **expected_prov_opts)
+
+        if volume_style == 'flexgroup':
+            expected_prov_opts.pop('dedupe_enabled')
+            expected_prov_opts.pop('compression_enabled')
+            mock_create_volume_async.assert_called_once_with(
+                self.dest_flexvol_name,
+                ['aggr01'],
+                fakes.PROVISIONING_OPTS['size'],
+                volume_type='dp', **expected_prov_opts)
+            mock_volume_state.assert_called_once_with(
+                flexvol_name=self.dest_flexvol_name)
+            mock_dedupe_enabled.assert_called_once_with(
+                self.dest_flexvol_name)
+            mock_compression_enabled.assert_called_once_with(
+                self.dest_flexvol_name)
+        else:
+            mock_create_flexvol.assert_called_once_with(
+                self.dest_flexvol_name,
+                'aggr01',
+                fakes.PROVISIONING_OPTS['size'],
+                volume_type='dp', **expected_prov_opts)
+
         mock_is_flexvol_encrypted.assert_called_once_with(
             self.src_flexvol_name, self.src_vserver)
 
     def test_create_encrypted_destination_flexvol(self):
         aggr_map = {
-            fakes.ENCRYPTED_PROVISIONING_OPTS['aggregate']: 'aggr01',
+            fakes.ENCRYPTED_PROVISIONING_OPTS['aggregate'][0]: 'aggr01',
             'aggr20': 'aggr02',
         }
         provisioning_opts = copy.deepcopy(fakes.ENCRYPTED_PROVISIONING_OPTS)
@@ -636,6 +799,33 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.dm_mixin.get_replication_backend_names.assert_called_once_with(
             self.mock_src_config)
         self.dm_mixin.create_snapmirror.assert_has_calls(expected_calls)
+
+    def test_ensure_snapmirrors_number_of_tries_exceeded(self):
+        flexvols = ['nvol1']
+        replication_backends = ['fallback1']
+        mock_error_log = self.mock_object(data_motion.LOG, 'error')
+        self.mock_object(self.dm_mixin, 'get_replication_backend_names',
+                         return_value=replication_backends)
+        self.mock_object(self.dm_mixin, 'create_snapmirror',
+                         side_effect=na_utils.GeometryHasChangedOnDestination)
+
+        self.assertRaises(na_utils.GeometryHasChangedOnDestination,
+                          self.dm_mixin.ensure_snapmirrors,
+                          self.mock_src_config,
+                          self.src_backend,
+                          flexvols)
+
+        self.dm_mixin.get_replication_backend_names.assert_called_once_with(
+            self.mock_src_config)
+
+        excepted_call = mock.call(
+            self.src_backend, replication_backends[0],
+            flexvols[0], flexvols[0])
+        self.dm_mixin.create_snapmirror.assert_has_calls([
+            excepted_call, excepted_call, excepted_call
+        ])
+
+        mock_error_log.assert_called()
 
     def test_break_snapmirrors(self):
         flexvols = ['nvol1', 'nvol2']

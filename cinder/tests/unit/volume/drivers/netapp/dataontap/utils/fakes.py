@@ -135,12 +135,12 @@ SSC_AGGREGATE_INFO = {
 }
 
 PROVISIONING_OPTS = {
-    'aggregate': 'fake_aggregate',
+    'aggregate': ['fake_aggregate'],
     'thin_provisioned': True,
     'snapshot_policy': None,
     'language': 'en_US',
-    'dedupe_enabled': False,
-    'compression_enabled': False,
+    'dedupe_enabled': True,
+    'compression_enabled': True,
     'snapshot_reserve': '12',
     'volume_type': 'rw',
     'size': 20,
@@ -148,7 +148,7 @@ PROVISIONING_OPTS = {
 }
 
 ENCRYPTED_PROVISIONING_OPTS = {
-    'aggregate': 'fake_aggregate',
+    'aggregate': ['fake_aggregate'],
     'thin_provisioned': True,
     'snapshot_policy': None,
     'language': 'en_US',
