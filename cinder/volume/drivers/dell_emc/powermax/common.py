@@ -6847,14 +6847,17 @@ class PowerMaxCommon(object):
                 snap_id_list.append(snapshot_src.get(
                     'snap_id') if self.rest.is_snap_id else snapshot_src.get(
                         'generation'))
-        device_label = device_name.split(':')[1]
+        try:
+            device_label = device_name.split(':')[1] if device_name else None
+        except IndexError:
+            device_label = None
         metadata = {'SnapshotLabel': snap_name,
                     'SourceDeviceID': device_id,
-                    'SourceDeviceLabel': device_label,
                     'SnapIdList': ', '.join(
                         six.text_type(v) for v in snap_id_list),
                     'is_snap_id': self.rest.is_snap_id}
-
+        if device_label:
+            metadata['SourceDeviceLabel'] = device_label
         return metadata
 
     def _check_and_add_tags_to_storage_array(

@@ -3803,6 +3803,22 @@ class PowerMaxCommonTest(test.TestCase):
             array, device_id, snap_name)
         self.assertEqual(ref_metadata, act_metadata)
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_volume_snap_info',
+        return_value=(tpd.PowerMaxData.priv_snap_response_no_label))
+    def test_get_snapshot_metadata_no_label(self, mck_snap):
+        array = self.data.array
+        device_id = self.data.device_id
+        snap_name = self.data.test_snapshot_snap_name
+        ref_metadata = {'SnapshotLabel': snap_name,
+                        'SourceDeviceID': device_id,
+                        'SnapIdList': six.text_type(self.data.snap_id),
+                        'is_snap_id': True}
+
+        act_metadata = self.common.get_snapshot_metadata(
+            array, device_id, snap_name)
+        self.assertEqual(ref_metadata, act_metadata)
+
     def test_update_metadata(self):
         model_update = {'provider_location': six.text_type(
             self.data.provider_location)}

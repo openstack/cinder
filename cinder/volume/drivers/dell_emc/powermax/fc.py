@@ -130,9 +130,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Use of snap id instead of generation (bp powermax-snapset-ids)
               - Support for Failover Abilities (bp/powermax-failover-abilities)
         4.3.1 - Fix non-temporary snapshot delete (#1887962)
+        4.3.2 - Fix for create snapshot (#1939139)
     """
 
-    VERSION = "4.3.1"
+    VERSION = "4.3.2"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
