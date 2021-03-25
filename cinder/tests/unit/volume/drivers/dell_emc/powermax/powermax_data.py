@@ -1467,6 +1467,7 @@ class PowerMaxData(object):
 
     snap_device_label = ('%(dev)s:%(label)s' % {'dev': device_id,
                                                 'label': managed_snap_id})
+
     priv_snap_response = {
         'deviceName': snap_device_label, 'snapshotLnks': [],
         'snapshotSrcs': [
@@ -1477,6 +1478,9 @@ class PowerMaxData(object):
                   'linked': True}],
              'snapshotName': test_snapshot_snap_name,
              'state': 'Established'}]}
+
+    priv_snap_response_no_label = deepcopy(priv_snap_response)
+    priv_snap_response_no_label.update({'deviceName': device_id})
 
     volume_metadata = {
         'DeviceID': device_id, 'ArrayID': array, 'ArrayModel': array_model}
