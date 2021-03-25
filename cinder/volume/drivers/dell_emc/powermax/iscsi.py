@@ -129,9 +129,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.1.6 - Pools bug fix allowing 'None' variants (bug #1873253)
         4.1.7 - Fix to enable legacy volumes to live migrate (#1867163)
         4.1.8 - Block retype to some in-use replicated modes (#1899137)
+        4.1.9 - Fix for create snapshot (#1939139)
     """
 
-    VERSION = "4.1.8"
+    VERSION = "4.1.9"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
