@@ -101,7 +101,9 @@ class AttachmentsController(wsgi.Controller):
 
     @wsgi.Controller.api_version(mv.NEW_ATTACH)
     @wsgi.response(http_client.OK)
-    @validation.schema(attachment.create)
+    @validation.schema(attachment.create, mv.NEW_ATTACH,
+                       mv.get_prior_version(mv.ATTACHMENT_CREATE_MODE_ARG))
+    @validation.schema(attachment.create_v354, mv.ATTACHMENT_CREATE_MODE_ARG)
     def create(self, req, body):
         """Create an attachment.
 
@@ -124,6 +126,9 @@ class AttachmentsController(wsgi.Controller):
         referenced below is the UUID of the Instance, for non-nova consumers
         this can be a server UUID or some other arbitrary unique identifier.
 
+        Starting from microversion 3.54, we can pass the attach mode as
+        argument in the request body.
+
         Expected format of the input parameter 'body':
 
         .. code-block:: json
@@ -132,8 +137,9 @@ class AttachmentsController(wsgi.Controller):
                 "attachment":
                 {
                     "volume_uuid": "volume-uuid",
-                    "instance_uuid": "nova-server-uuid",
-                    "connector": "null|<connector-object>"
+                    "instance_uuid": "null|nova-server-uuid",
+                    "connector": "null|<connector-object>",
+                    "mode": "null|rw|ro"
                 }
             }
 
@@ -161,7 +167,7 @@ class AttachmentsController(wsgi.Controller):
         returns: A summary view of the attachment object
         """
         context = req.environ['cinder.context']
-        instance_uuid = body['attachment']['instance_uuid']
+        instance_uuid = body['attachment'].get('instance_uuid')
         volume_uuid = body['attachment']['volume_uuid']
         volume_ref = objects.Volume.get_by_id(
             context,

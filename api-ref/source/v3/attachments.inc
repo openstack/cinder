@@ -253,7 +253,7 @@ Request
 
    - project_id: project_id_path
    - attachment: attachment
-   - instance_uuid: instance_uuid_req
+   - instance_uuid: instance_uuid
    - connector: connector
    - volume_uuid: volume_id_attachment
    - mode: attach_mode
