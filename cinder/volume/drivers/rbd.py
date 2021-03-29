@@ -302,7 +302,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def _show_msg_check_clone_v2_api(self, volume_name):
         if not self._clone_v2_api_checked:
             self._clone_v2_api_checked = True
-            with RBDVolumeProxy(self, volume_name) as volume:
+            with RBDVolumeProxy(self, volume_name, read_only=True) as volume:
                 try:
                     if (volume.volume.op_features() &
                             self.rbd.RBD_OPERATION_FEATURE_CLONE_PARENT):
@@ -669,7 +669,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
     def _get_clone_depth(self, client, volume_name, depth=0):
         """Returns the number of ancestral clones of the given volume."""
-        parent_volume = self.rbd.Image(client.ioctx, volume_name)
+        parent_volume = self.rbd.Image(client.ioctx,
+                                       volume_name,
+                                       read_only=True)
         try:
             _pool, parent, _snap = self._get_clone_info(parent_volume,
                                                         volume_name)
@@ -1013,7 +1015,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         default_stripe_unit = \
             self.configuration.rbd_store_chunk_size * units.Mi
 
-        image = self.rbd.Image(ioctx, volume_name)
+        image = self.rbd.Image(ioctx, volume_name, read_only=True)
         try:
             image_stripe_unit = image.stripe_unit()
         finally:
@@ -1769,7 +1771,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RADOSClient(self) as client:
             # Raise an exception if we didn't find a suitable rbd image.
             try:
-                rbd_image = self.rbd.Image(client.ioctx, rbd_name)
+                rbd_image = self.rbd.Image(client.ioctx,
+                                           rbd_name,
+                                           read_only=True)
             except self.rbd.ImageNotFound:
                 kwargs = {'existing_ref': rbd_name,
                           'reason': 'Specified rbd image does not exist.'}
@@ -1996,7 +2000,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             # Raise an exception if we didn't find a suitable rbd image.
             try:
                 rbd_snapshot = self.rbd.Image(client.ioctx, volume_name,
-                                              snapshot=snapshot_name)
+                                              snapshot=snapshot_name,
+                                              read_only=True)
             except self.rbd.ImageNotFound:
                 kwargs = {'existing_ref': snapshot_name,
                           'reason': 'Specified snapshot does not exist.'}
