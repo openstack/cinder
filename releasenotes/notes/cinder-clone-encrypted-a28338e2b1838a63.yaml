@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1913054 <https://bugs.launchpad.net/cinder/+bug/1913054>`_: Fix
+    for creating a clone of an encrypted volume for drivers that require
+    additional information to attach.
