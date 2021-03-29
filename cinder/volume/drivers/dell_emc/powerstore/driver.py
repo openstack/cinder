@@ -47,9 +47,12 @@ class PowerStoreDriver(driver.VolumeDriver):
         1.0.1 - Add CHAP support
         1.1.0 - Add volume replication v2.1 support
         1.1.1 - Add Consistency Groups support
+        1.1.2 - Fix iSCSI targets not being returned from the REST API call if
+                targets are used for multiple purposes
+                (iSCSI target, Replication target, etc.)
     """
 
-    VERSION = "1.1.1"
+    VERSION = "1.1.2"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page
