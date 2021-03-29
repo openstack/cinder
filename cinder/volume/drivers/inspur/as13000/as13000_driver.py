@@ -704,7 +704,7 @@ class AS13000Driver(san.SanISCSIDriver):
                                  request_type=request_type)
 
     @utils.trace
-    @utils.retry(exceptions=exception.VolumeDriverException,
+    @utils.retry(retry_param=exception.VolumeDriverException,
                  interval=1,
                  retries=3)
     def _add_lun_to_target(self, target_name, volume):

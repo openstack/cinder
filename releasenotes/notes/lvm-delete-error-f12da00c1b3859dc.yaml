@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    LVM driver `bug #1901783
+    <https://bugs.launchpad.net/cinder/+bug/1901783>`_: Fix unexpected delete
+    volume failure due to unexpected exit code 139 on ``lvs`` command call.

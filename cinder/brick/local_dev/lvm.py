@@ -278,6 +278,8 @@ class LVM(executor.Executor):
         return LVM._supports_pvs_ignoreskippedcluster
 
     @staticmethod
+    @utils.retry(retry=utils.retry_if_exit_code, retry_param=139, interval=0.5,
+                 backoff_rate=0.5)  # Bug#1901783
     def get_lv_info(root_helper, vg_name=None, lv_name=None):
         """Retrieve info about LVs (all, in a VG, or a single LV).
 
@@ -644,7 +646,7 @@ class LVM(executor.Executor):
         # order to prevent a race condition.
         self._wait_for_volume_deactivation(name)
 
-    @utils.retry(exceptions=exception.VolumeNotDeactivated, retries=5,
+    @utils.retry(retry_param=exception.VolumeNotDeactivated, retries=5,
                  backoff_rate=2)
     def _wait_for_volume_deactivation(self, name):
         LOG.debug("Checking to see if volume %s has been deactivated.",
