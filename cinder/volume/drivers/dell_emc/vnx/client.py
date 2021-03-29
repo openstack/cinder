@@ -200,7 +200,7 @@ class Client(object):
     def modify_lun(self):
         pass
 
-    @cinder_utils.retry(exceptions=const.VNXTargetNotReadyError,
+    @cinder_utils.retry(retry_param=const.VNXTargetNotReadyError,
                         interval=15,
                         retries=5, backoff_rate=1)
     def migrate_lun(self, src_id, dst_id,
