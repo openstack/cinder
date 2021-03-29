@@ -51,11 +51,15 @@ backup_opts = [
     cfg.StrOpt('backup_compression_algorithm',
                default='zlib',
                ignore_case=True,
-               choices=['none', 'off', 'no',
-                        'zlib', 'gzip',
-                        'bz2', 'bzip2',
-                        'zstd'],
-               help='Compression algorithm ("none" to disable)'),
+               choices=[('none', 'Do not use compression'),
+                        ('off', "Same as 'none'"),
+                        ('no', "Same as 'none'"),
+                        ('zlib', 'Use the Deflate compression algorithm'),
+                        ('gzip', "Same as 'zlib'"),
+                        ('bz2', 'Use Burrows-Wheeler transform compression'),
+                        ('bzip2', "Same as 'bz2'"),
+                        ('zstd', 'Use the Zstandard compression algorithm')],
+               help="Compression algorithm for backups ('none' to disable)"),
 ]
 
 CONF = cfg.CONF
