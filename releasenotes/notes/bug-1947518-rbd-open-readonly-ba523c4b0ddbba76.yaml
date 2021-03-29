@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1947518
+    <https://bugs.launchpad.net/cinder/+bug/1947518>`_:
+    Corrected a regression caused by the fix for `Bug #1931004
+    <https://bugs.launchpad.net/cinder/+bug/1931004>`_ that was attempting
+    to access the glance images RBD pool with write privileges when creating
+    a volume from an image.
