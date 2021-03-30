@@ -4207,6 +4207,11 @@ class NetAppCmodeClientTestCase(test.TestCase):
         mock_name.assert_called_once_with(True, 'node')
         self.assertFalse(result)
 
+    def test_is_qos_min_supported_none_node(self):
+        result = self.client.is_qos_min_supported(True, None)
+
+        self.assertFalse(result)
+
     def test_get_unique_volume(self):
         api_response = netapp_api.NaElement(
             fake_client.VOLUME_GET_ITER_STYLE_RESPONSE)
