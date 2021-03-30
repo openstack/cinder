@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    NetApp ONTAP: Fix check QoS minimum support for SVM scoped account.
+    See: `Bug #1924798 <https://bugs.launchpad.net/cinder/+bug/1924798>`_.
