@@ -897,6 +897,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                    'source_group': source_group.id})
         current_array = self._get_current_array()
         current_array.create_pgroup_snapshot(pgroup_name, suffix=tmp_suffix)
+        volumes, _ = self.update_provider_info(volumes, None)
         try:
             for source_vol, cloned_vol in zip(source_vols, volumes):
                 source_snap_name = self._get_pgroup_vol_snap_name(
