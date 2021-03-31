@@ -1,0 +1,30 @@
+---
+other:
+  - |
+    This note applies to deployments that are using the cinder configuration
+    option ``volume_copy_bps_limit`` in its non-default value (the default
+    is 0).
+
+    The cinder-volume service currently depends on `Linux Kernel
+    Control Groups (cgroups) version 1
+    <https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/cgroups.html>`_
+    to control i/o throttling during some volume-copy and image-convert
+    operations.  At the time of this release, some Linux distributions may
+    have changed to using `cgroups v2
+    <https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html>`_
+    by default.  Thus, you may need to take explicit steps to ensure that
+    **cgroups v1** is enabled on any OpenStack nodes running the cinder-volume
+    service.  This may entail setting specific Linux kernel parameters for
+    these nodes.  Consult your Linux distribution's documentation for details.
+
+    For more information:
+
+    * The cinder options associated with throttling are
+      ``volume_copy_blkio_cgroup_name`` and ``volume_copy_bps_limit``.  They
+      are described in the `sample cinder configuration file
+      <https://docs.openstack.org/cinder/wallaby/configuration/block-storage/samples/cinder.conf.html>`_
+      for the Wallaby release.
+    * For an example of distribution-specific information about cgroups, see
+      `OpenStack and cgroups v1
+      <https://www.debian.org/releases/bullseye/amd64/release-notes/ch-information.en.html#openstack-cgroups>`_
+      in the Debian 11 ("bullseye") release notes.
