@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver
+    `Bug #1920870 <https://bugs.launchpad.net/cinder/+bug/1920870>`_:
+    Fixed extend issues for volumes with replication enabled by
+    avoiding volume remote-copy relationship deletion and creation.

@@ -170,6 +170,9 @@ class StorwizeSVCManagementSimulator(object):
                                'is not in a group.'),
             'CMMVC9012E': ('', 'CMMVC9012E The copy type differs from other '
                                'copies already in the consistency group.'),
+            'CMMVC5951E': ('', 'CMMVC5951E The operation cannot be performed '
+                               'because the relationship is not a stand-alone '
+                               'relationship.'),
             'CMMVC9201E': ('', 'CMMVC9201E Task failed because volume has a '
                                'copy that is fully allocated and is part of a '
                                'Metro Mirror or Global Mirror relationship.'),
@@ -2234,6 +2237,9 @@ port_speed!N/A
         except KeyError:
             return self._errors['CMMVC5753E']
 
+        if rcrel.get('consistency_group_name', None):
+            return self._errors['CMMVC5951E']
+
         function = 'stop_access' if force_access else 'stop'
         self._rc_state_transition(function, rcrel)
         if force_access:
@@ -2360,6 +2366,11 @@ port_speed!N/A
             cycleperiodseconds = kwargs['cycleperiodseconds'].strip('\'\"')
             nonull_num += 1
 
+        cyclingmode = None
+        if 'cyclingmode' in kwargs:
+            cyclingmode = kwargs['cyclingmode'].strip('\'\"')
+            nonull_num += 1
+
         if nonull_num > 1:
             return self._errors['CMMVC5713E']
         elif masterchange:
@@ -2370,6 +2381,8 @@ port_speed!N/A
             return ('', '')
         elif cycleperiodseconds:
             rcrel['cycle_period_seconds'] = cycleperiodseconds
+        elif cyclingmode:
+            rcrel['cycling_mode'] = cyclingmode
         return ('', '')
 
     def _rc_state_transition(self, function, rcrel):
@@ -9833,6 +9846,32 @@ class StorwizeHelpersTestCase(test.TestCase):
                                                        access=access)
             startrcrelationship.assert_called_once_with(opts['RC_name'], None)
 
+    @ddt.data(({'RC_name': None,
+                'name': 'volume-12d-7'}, 'multi'),
+              ({'RC_name': 'fake_rcrel',
+                'name': 'rep_volume-12d-8'}, 'multi'),
+              ({'RC_name': 'fake_rcrel-2',
+                'name': 'rep_volume-12d-9'}, 'none'),
+              ({'RC_name': 'fake_rcrel-3',
+                'name': 'rep_volume-12d-10'}, None))
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'ch_rcrelationship_cyclingmode')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_attributes')
+    @ddt.unpack
+    def test_change_relationship_cyclingmode(self, opts, cycling_mode,
+                                             get_vdisk_attributes,
+                                             ch_rcrelationship_cyclingmode):
+        get_vdisk_attributes.side_effect = [{'RC_name': opts['RC_name']}]
+        self.storwize_svc_common.change_relationship_cyclingmode(
+            opts['name'], cycling_mode)
+        get_vdisk_attributes.assert_called_with(opts['name'])
+        if not opts['RC_name'] or not cycling_mode:
+            ch_rcrelationship_cyclingmode.assert_not_called()
+        else:
+            ch_rcrelationship_cyclingmode.assert_called_once_with(
+                opts['RC_name'], cycling_mode)
+
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        'get_host_from_host_info')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lshost')
@@ -9897,6 +9936,18 @@ class StorwizeSSHTestCase(test.TestCase):
         self.fake_driver.set_fake_storage(sim)
         self.storwize_ssh = storwize_svc_common.StorwizeSSH(
             self.fake_driver._run_ssh)
+
+    def test_ch_rcrelationship_cyclingmode(self):
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH,
+                'run_ssh_assert_no_output') as run_ssh_assert_no_output:
+            run_ssh_assert_no_output.return_value = None
+            ret = self.storwize_ssh.ch_rcrelationship_cyclingmode('rcrel0',
+                                                                  'multi')
+            self.assertIsNone(ret)
+            ret = self.storwize_ssh.ch_rcrelationship_cyclingmode('rcrel1',
+                                                                  'none')
+            self.assertIsNone(ret)
 
     def test_mkvdiskhostmap(self):
         # mkvdiskhostmap should not be returning anything
@@ -11166,6 +11217,127 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume)
+
+    def test_storwize_extend_gmcv_volume_invalid(self):
+        # Set replication target.
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Extend gmcv volume with thick_provisioning_support.
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv',
+                'drivers:rsize': -1}
+
+        gmcv_thick_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_gmcv_thik_type')
+        gmcv_volume, model_update = self._create_test_volume(gmcv_thick_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        if self.USESIM:
+            # tell expandvdisksize to fail while called extend_volume
+            # because volume is fast formatting
+            self.sim.error_injection('expandvdisksize', 'fast_formatting')
+            self.assertRaises(exception.VolumeDriverException,
+                              self.driver.extend_volume, gmcv_volume, 15)
+            attrs = (
+                self.driver._helpers.get_vdisk_attributes(gmcv_volume['name']))
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 1)
+
+        self.driver.delete_volume(gmcv_volume)
+        self._validate_replic_vol_deletion(gmcv_volume)
+
+        # Extend gmcv volume that added to group with replication.
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'extend_vdisk') as extend_vdisk:
+            # Create group with replication.
+            group = self._create_test_rccg(self.rccg_type,
+                                           [self.gmcv_default_type.id])
+            rccg_name = self.driver._get_rccg_name(group)
+            # Create gloabl mirror replication with change volumes.
+            volume, model_update = self._create_test_volume(
+                self.gmcv_default_type)
+            self._validate_replic_vol_creation(volume, True)
+            rcrel = self.driver._helpers.get_relationship_info(volume.name)
+            self.sim._rc_state_transition('wait', rcrel)
+            # Add gmcv volume to group.
+            add_vols = [volume]
+            (model_update, add_volumes_update,
+             remove_volumes_update) = self.driver.update_group(
+                self.ctxt, group, add_vols, [])
+            self.assertEqual(
+                rccg_name,
+                self.driver._helpers.get_rccg_info(volume.name)['name'])
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+            self.assertEqual([{'id': volume.id, 'group_id': group.id}],
+                             add_volumes_update)
+            self.assertEqual([], remove_volumes_update)
+
+            self.assertRaises(exception.VolumeDriverException,
+                              self.driver.extend_volume, volume, 15)
+
+            self.assertFalse(extend_vdisk.called)
+            attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 1)
+
+            self.driver.delete_volume(volume)
+            self._validate_replic_vol_deletion(volume)
+
+    def test_convert_global_mirror_volume_to_gmcv(self):
+        """Test volume conversion from global to gmcv."""
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        # Create global mirror replication.
+        gm_vol, model_update = self._create_test_volume(self.gm_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(gm_vol)
+        rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
+        self.assertEqual(rcrel['cycling_mode'], '')
+        self.assertEqual(rcrel['master_change_vdisk_name'], '')
+        self.assertEqual(rcrel['aux_change_vdisk_name'], '')
+
+        # Validating volume conversion from global to gmcv by checking a few
+        # property values of RC relationship
+        target_vol = storwize_const.REPLICA_AUX_VOL_PREFIX + gm_vol.name
+        master_change_vol_name = (
+            storwize_const.REPLICA_CHG_VOL_PREFIX + gm_vol.name)
+        aux_change_vol_name = (
+            storwize_const.REPLICA_CHG_VOL_PREFIX + target_vol)
+        size = 1
+        self.driver._convert_global_mirror_volume_to_gmcv(gm_vol, target_vol,
+                                                          size)
+        rcrel = self.driver._helpers.get_relationship_info(gm_vol.name)
+        self.assertEqual(rcrel['cycling_mode'], 'multi')
+        self.assertEqual(rcrel['master_change_vdisk_name'],
+                         master_change_vol_name)
+        self.assertEqual(rcrel['aux_change_vdisk_name'],
+                         aux_change_vol_name)
+        self.driver.delete_volume(gm_vol)
+        self._validate_replic_vol_deletion(gm_vol)
+
+        gm_vol, model_update = self._create_test_volume(self.gm_type)
+        self._validate_replic_vol_creation(gm_vol)
+        with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+              'create_vdisk')) as create_vdisk:
+            with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                  'change_relationship_cyclingmode')
+                  ) as ch_relationship_cyclingmode:
+                target_vol = (
+                    storwize_const.REPLICA_AUX_VOL_PREFIX + gm_vol.name)
+                size = 1
+                self.driver._convert_global_mirror_volume_to_gmcv(
+                    gm_vol, target_vol, size)
+                create_vdisk.assert_called()
+                self.assertEqual(2, create_vdisk.call_count)
+                ch_relationship_cyclingmode.assert_called()
+        self.driver.delete_volume(gm_vol)
+        self._validate_replic_vol_deletion(gm_vol)
 
     def test_storwize_manage_existing_mismatch_with_volume_replication(self):
         # Set replication target.
