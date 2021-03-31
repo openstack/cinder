@@ -554,6 +554,28 @@ class DBAPIVolumeTestCase(BaseTest):
             self.ctxt, 'project', skip_internal=skip_internal)
         self.assertEqual((count, gigabytes), result)
 
+    @ddt.data((True, THREE_HUNDREDS, THREE),
+              (False, THREE_HUNDREDS + ONE_HUNDREDS, THREE + 1))
+    @ddt.unpack
+    def test__volume_data_get_for_project_temporary(self, skip_internal,
+                                                    gigabytes, count):
+        for i in range(3):
+            db.volume_create(self.ctxt,
+                             {'project_id': 'project',
+                              'size': ONE_HUNDREDS,
+                              'host': 'h-%d' % i,
+                              'volume_type_id': fake.VOLUME_TYPE_ID})
+        # This is a temporary volume
+        db.volume_create(self.ctxt, {'project_id': 'project',
+                                     'size': ONE_HUNDREDS,
+                                     'host': 'h-%d' % i,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'admin_metadata': {'temporary': 'True'}})
+
+        result = sqlalchemy_api._volume_data_get_for_project(
+            self.ctxt, 'project', skip_internal=skip_internal)
+        self.assertEqual((count, gigabytes), result)
+
     def test_volume_data_get_for_project_with_host(self):
 
         db.volume_create(self.ctxt, {'project_id': fake.PROJECT_ID,
