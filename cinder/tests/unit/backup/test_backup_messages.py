@@ -29,7 +29,7 @@ class BackupUserMessagesTest(test.TestCase):
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
-    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
     @mock.patch('cinder.backup.manager.BackupManager.'
                 '_notify_about_backup_usage')
@@ -61,7 +61,7 @@ class BackupUserMessagesTest(test.TestCase):
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.message.api.API.create_from_request_context')
-    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup')
     @mock.patch('cinder.backup.manager.BackupManager.is_working')
     @mock.patch('cinder.backup.manager.BackupManager.'
                 '_notify_about_backup_usage')
@@ -103,44 +103,6 @@ class BackupUserMessagesTest(test.TestCase):
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.backup.manager.BackupManager.'
                 '_cleanup_temp_volumes_snapshots_when_backup_created')
-    def test_backup_create_device_error(
-            self, mock_cleanup, mock_get_bak_dev, mock_get_conn, mock_notify,
-            mock_working, mock_msg_create, mock_get_vol, mock_vol_update):
-        manager = backup_manager.BackupManager()
-        fake_context = mock.MagicMock()
-        fake_backup = mock.MagicMock(
-            id=fake.BACKUP_ID, status='creating', volume_id=fake.VOLUME_ID,
-            snapshot_id=None)
-        mock_vol = mock.MagicMock()
-        mock_vol.__getitem__.side_effect = {'status': 'backing-up'}.__getitem__
-        mock_get_vol.return_value = mock_vol
-        mock_working.return_value = True
-        mock_get_bak_dev.side_effect = exception.InvalidVolume(
-            reason="test reason")
-
-        self.assertRaises(exception.InvalidVolume, manager.create_backup,
-                          fake_context, fake_backup)
-        self.assertEqual(message_field.Action.BACKUP_CREATE,
-                         fake_context.message_action)
-        self.assertEqual(message_field.Resource.VOLUME_BACKUP,
-                         fake_context.message_resource_type)
-        self.assertEqual(fake_backup.id,
-                         fake_context.message_resource_id)
-        mock_msg_create.assert_called_with(
-            fake_context,
-            detail=message_field.Detail.BACKUP_CREATE_DEVICE_ERROR)
-
-    @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.message.api.API.create_from_request_context')
-    @mock.patch('cinder.backup.manager.BackupManager.is_working')
-    @mock.patch('cinder.backup.manager.BackupManager.'
-                '_notify_about_backup_usage')
-    @mock.patch(
-        'cinder.backup.manager.volume_utils.brick_get_connector_properties')
-    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
-    @mock.patch('cinder.backup.manager.BackupManager.'
-                '_cleanup_temp_volumes_snapshots_when_backup_created')
     @mock.patch('cinder.backup.manager.BackupManager._attach_device')
     def test_backup_create_attach_error(
             self, mock_attach, mock_cleanup, mock_get_bak_dev, mock_get_conn,
@@ -155,16 +117,11 @@ class BackupUserMessagesTest(test.TestCase):
         mock_vol.__getitem__.side_effect = {'status': 'backing-up'}.__getitem__
         mock_get_vol.return_value = mock_vol
         mock_working.return_value = True
+        backup_device = mock.MagicMock()
         mock_attach.side_effect = exception.InvalidVolume(reason="test reason")
 
-        self.assertRaises(exception.InvalidVolume, manager.create_backup,
-                          fake_context, fake_backup)
-        self.assertEqual(message_field.Action.BACKUP_CREATE,
-                         fake_context.message_action)
-        self.assertEqual(message_field.Resource.VOLUME_BACKUP,
-                         fake_context.message_resource_type)
-        self.assertEqual(fake_backup.id,
-                         fake_context.message_resource_id)
+        self.assertRaises(exception.InvalidVolume, manager.continue_backup,
+                          fake_context, fake_backup, backup_device)
         mock_msg_create.assert_called_with(
             fake_context,
             detail=message_field.Detail.ATTACH_ERROR)
@@ -198,17 +155,12 @@ class BackupUserMessagesTest(test.TestCase):
         mock_vol.__getitem__.side_effect = {'status': 'backing-up'}.__getitem__
         mock_get_vol.return_value = mock_vol
         mock_working.return_value = True
+        backup_device = mock.MagicMock()
         mock_attach.return_value = {'device': {'path': '/dev/sdb'}}
         mock_backup.side_effect = exception.InvalidBackup(reason="test reason")
 
-        self.assertRaises(exception.InvalidBackup, manager.create_backup,
-                          fake_context, fake_backup)
-        self.assertEqual(message_field.Action.BACKUP_CREATE,
-                         fake_context.message_action)
-        self.assertEqual(message_field.Resource.VOLUME_BACKUP,
-                         fake_context.message_resource_type)
-        self.assertEqual(fake_backup.id,
-                         fake_context.message_resource_id)
+        self.assertRaises(exception.InvalidBackup, manager.continue_backup,
+                          fake_context, fake_backup, backup_device)
         mock_msg_create.assert_called_with(
             fake_context,
             detail=message_field.Detail.BACKUP_CREATE_DRIVER_ERROR)
@@ -242,17 +194,12 @@ class BackupUserMessagesTest(test.TestCase):
         mock_vol.__getitem__.side_effect = {'status': 'backing-up'}.__getitem__
         mock_get_vol.return_value = mock_vol
         mock_working.return_value = True
+        backup_device = mock.MagicMock()
         mock_attach.return_value = {'device': {'path': '/dev/sdb'}}
         mock_detach.side_effect = exception.InvalidVolume(reason="test reason")
 
-        self.assertRaises(exception.InvalidVolume, manager.create_backup,
-                          fake_context, fake_backup)
-        self.assertEqual(message_field.Action.BACKUP_CREATE,
-                         fake_context.message_action)
-        self.assertEqual(message_field.Resource.VOLUME_BACKUP,
-                         fake_context.message_resource_type)
-        self.assertEqual(fake_backup.id,
-                         fake_context.message_resource_id)
+        self.assertRaises(exception.InvalidVolume, manager.continue_backup,
+                          fake_context, fake_backup, backup_device)
         mock_msg_create.assert_called_with(
             fake_context,
             detail=message_field.Detail.DETACH_ERROR)
@@ -286,18 +233,13 @@ class BackupUserMessagesTest(test.TestCase):
         mock_vol.__getitem__.side_effect = {'status': 'backing-up'}.__getitem__
         mock_get_vol.return_value = mock_vol
         mock_working.return_value = True
+        backup_device = mock.MagicMock()
         mock_attach.return_value = {'device': {'path': '/dev/sdb'}}
         mock_cleanup.side_effect = exception.InvalidVolume(
             reason="test reason")
 
-        self.assertRaises(exception.InvalidVolume, manager.create_backup,
-                          fake_context, fake_backup)
-        self.assertEqual(message_field.Action.BACKUP_CREATE,
-                         fake_context.message_action)
-        self.assertEqual(message_field.Resource.VOLUME_BACKUP,
-                         fake_context.message_resource_type)
-        self.assertEqual(fake_backup.id,
-                         fake_context.message_resource_id)
+        self.assertRaises(exception.InvalidVolume, manager.continue_backup,
+                          fake_context, fake_backup, backup_device)
         mock_msg_create.assert_called_with(
             fake_context,
             detail=message_field.Detail.BACKUP_CREATE_CLEANUP_ERROR)

@@ -34,6 +34,7 @@ from cinder.backup import manager
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
@@ -630,7 +631,7 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry(size=1)
         backup = self._create_backup_db_entry(volume_id=vol_id)
 
-        mock_run_backup = self.mock_object(self.backup_mgr, '_run_backup')
+        mock_run_backup = self.mock_object(self.backup_mgr, '_start_backup')
         mock_run_backup.side_effect = FakeBackupException(str(uuid.uuid4()))
         self.assertRaises(FakeBackupException,
                           self.backup_mgr.create_backup,
@@ -643,22 +644,25 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(fields.BackupStatus.ERROR, backup['status'])
         self.assertTrue(mock_run_backup.called)
 
-    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
-    def test_create_backup_aborted(self, run_backup_mock):
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup')
+    def test_create_backup_aborted(self, start_backup_mock):
         """Test error handling when abort occurs during backup creation."""
-        def my_run_backup(*args, **kwargs):
+        def my_start_backup(*args, **kwargs):
             backup.destroy()
             with backup.as_read_deleted():
                 original_refresh()
 
-        run_backup_mock.side_effect = my_run_backup
+        start_backup_mock.side_effect = my_start_backup
         vol_id = self._create_volume_db_entry(size=1)
         backup = self._create_backup_db_entry(volume_id=vol_id)
         original_refresh = backup.refresh
 
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.backup_mgr.create_backup(self.ctxt, backup)
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        self.backup_mgr._finish_backup(self.ctxt, backup, vol, {})
 
-        self.assertTrue(run_backup_mock.called)
+        self.assertTrue(start_backup_mock.called)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('available', vol.status)
@@ -668,9 +672,9 @@ class BackupTestCase(BaseBackupTest):
             backup.refresh()
         self.assertEqual(fields.BackupStatus.DELETED, backup.status)
 
-    @mock.patch('cinder.backup.manager.BackupManager._run_backup',
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup',
                 side_effect=FakeBackupException(str(uuid.uuid4())))
-    def test_create_backup_with_snapshot_error(self, mock_run_backup):
+    def test_create_backup_with_snapshot_error(self, mock_start_backup):
         """Test error handling when error occurs during backup creation."""
         vol_id = self._create_volume_db_entry(size=1)
         snapshot = self._create_snapshot_db_entry(status='backing-up',
@@ -687,7 +691,7 @@ class BackupTestCase(BaseBackupTest):
 
         backup.refresh()
         self.assertEqual(fields.BackupStatus.ERROR, backup.status)
-        self.assertTrue(mock_run_backup.called)
+        self.assertTrue(mock_start_backup.called)
 
     @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
@@ -704,7 +708,7 @@ class BackupTestCase(BaseBackupTest):
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         backup_device_dict = {'backup_device': vol, 'secure_enabled': False,
                               'is_snapshot': False, }
-        mock_get_backup_device.return_value = (
+        mock_backup_device = (
             objects.BackupDeviceInfo.from_primitive(backup_device_dict,
                                                     self.ctxt,
                                                     ['admin_metadata',
@@ -719,6 +723,7 @@ class BackupTestCase(BaseBackupTest):
         mock_get_conn.return_value = properties
 
         self.backup_mgr.create_backup(self.ctxt, backup)
+        self.backup_mgr.continue_backup(self.ctxt, backup, mock_backup_device)
 
         mock_temporary_chown.assert_called_once_with('/dev/null')
         mock_attach_device.assert_called_once_with(self.ctxt, vol,
@@ -769,6 +774,8 @@ class BackupTestCase(BaseBackupTest):
                 mock_brick.return_value = properties
 
                 self.backup_mgr.create_backup(self.ctxt, backup)
+                self.backup_mgr.continue_backup(self.ctxt, backup,
+                                                mock_backup_device)
 
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
@@ -804,6 +811,8 @@ class BackupTestCase(BaseBackupTest):
                 mock_brick.return_value = properties
 
                 self.backup_mgr.create_backup(self.ctxt, backup)
+                self.backup_mgr.continue_backup(self.ctxt, backup,
+                                                mock_backup_device)
 
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup.status)
@@ -820,6 +829,11 @@ class BackupTestCase(BaseBackupTest):
                                            mock_brick):
         vol_id = self._create_volume_db_entry()
         backup = self._create_backup_db_entry(volume_id=vol_id)
+        # These are set in create_backup, but we are calling
+        # continue_backup
+        self.ctxt.message_resource_id = backup.id
+        self.ctxt.message_resource_type = message_field.Resource.VOLUME_BACKUP
+        self.ctxt.message_action = message_field.Action.BACKUP_CREATE
 
         with mock.patch.object(self.backup_mgr, 'service') as \
                 mock_service:
@@ -838,8 +852,8 @@ class BackupTestCase(BaseBackupTest):
                 mock_brick.return_value = properties
 
                 self.assertRaises(FakeBackupException,
-                                  self.backup_mgr.create_backup,
-                                  self.ctxt, backup)
+                                  self.backup_mgr.continue_backup,
+                                  self.ctxt, backup, mock_backup_device)
 
         vol = db.volume_get(self.ctxt, vol_id)
         self.assertEqual('available', vol.status)
@@ -847,6 +861,7 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.ERROR, backup.status)
 
+    @mock.patch('cinder.backup.manager.BackupManager._finish_backup')
     @mock.patch('cinder.volume.volume_utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
@@ -856,7 +871,8 @@ class BackupTestCase(BaseBackupTest):
                                              mock_open,
                                              mock_chown,
                                              mock_backup_device,
-                                             mock_brick):
+                                             mock_brick,
+                                             mock_finish):
         backup_service = mock.Mock()
         backup_service.backup = mock.Mock(
             return_value=mock.sentinel.backup_update)
@@ -872,22 +888,24 @@ class BackupTestCase(BaseBackupTest):
         self.backup_mgr._attach_device = mock.Mock(
             return_value=attach_info)
         self.backup_mgr._detach_device = mock.Mock()
-        output = self.backup_mgr._run_backup(self.ctxt, backup, volume)
+        self.backup_mgr.continue_backup(self.ctxt, backup,
+                                        mock_backup_device)
 
         mock_chown.assert_not_called()
         mock_open.assert_not_called()
         backup_service.backup.assert_called_once_with(
             backup, device_path)
-        self.assertEqual(mock.sentinel.backup_update, output)
+        mock_finish.called_once_with(self.ctxt, backup, volume,
+                                     mock.sentinel.backup_update)
 
-    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup')
     @ddt.data((fields.SnapshotStatus.BACKING_UP, 'available'),
               (fields.SnapshotStatus.BACKING_UP, 'in-use'),
               (fields.SnapshotStatus.AVAILABLE, 'available'),
               (fields.SnapshotStatus.AVAILABLE, 'in-use'))
     @ddt.unpack
     def test_create_backup_with_snapshot(self, snapshot_status, volume_status,
-                                         mock_run_backup):
+                                         mock_start_backup):
         vol_id = self._create_volume_db_entry(status=volume_status)
         snapshot = self._create_snapshot_db_entry(volume_id=vol_id,
                                                   status=snapshot_status)
@@ -895,6 +913,9 @@ class BackupTestCase(BaseBackupTest):
                                               snapshot_id=snapshot.id)
         if snapshot_status == fields.SnapshotStatus.BACKING_UP:
             self.backup_mgr.create_backup(self.ctxt, backup)
+
+            vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+            self.backup_mgr._finish_backup(self.ctxt, backup, vol, {})
 
             vol = objects.Volume.get_by_id(self.ctxt, vol_id)
             snapshot = objects.Snapshot.get_by_id(self.ctxt, snapshot.id)
@@ -926,7 +947,7 @@ class BackupTestCase(BaseBackupTest):
         snap = self._create_snapshot_db_entry(volume_id=vol_id)
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
-        mock_get_backup_device.return_value = (
+        mock_backup_device = (
             objects.BackupDeviceInfo.from_primitive({
                 'backup_device': snap, 'secure_enabled': False,
                 'is_snapshot': True, },
@@ -951,6 +972,7 @@ class BackupTestCase(BaseBackupTest):
         mock_open.return_value = open('/dev/null', 'rb')
 
         self.backup_mgr.create_backup(self.ctxt, backup)
+        self.backup_mgr.continue_backup(self.ctxt, backup, mock_backup_device)
         mock_temporary_chown.assert_called_once_with('/dev/null')
         mock_initialize_connection_snapshot.assert_called_once_with(
             self.ctxt, snap, properties)
@@ -1028,9 +1050,9 @@ class BackupTestCase(BaseBackupTest):
         vol_id = self._create_volume_db_entry(size=vol_size)
         backup = self._create_backup_db_entry(volume_id=vol_id)
 
-        self.mock_object(self.backup_mgr, '_run_backup')
+        self.mock_object(self.backup_mgr, '_start_backup')
         self.backup_mgr.create_backup(self.ctxt, backup)
-        self.assertEqual(2, notify.call_count)
+        self.assertEqual(1, notify.call_count)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.volume.volume_utils.clone_encryption_key')
@@ -1892,7 +1914,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(1, mock_restore.call_count)
         self.assertEqual(1, mock_sem.__exit__.call_count)
 
-    @mock.patch('cinder.backup.manager.BackupManager._run_backup')
+    @mock.patch('cinder.backup.manager.BackupManager._start_backup')
     def test_backup_max_operations_backup(self, mock_backup):
         mock_sem = self.mock_object(self.backup_mgr, '_semaphore')
         vol_id = self._create_volume_db_entry(
