@@ -339,7 +339,6 @@ class BackupManager(manager.SchedulerDependentManager):
         snapshot = objects.Snapshot.get_by_id(
             context, snapshot_id) if snapshot_id else None
         previous_status = volume.get('previous_status', None)
-        updates = {}
         if snapshot_id:
             log_message = ('Create backup started, backup: %(backup_id)s '
                            'volume: %(volume_id)s snapshot: %(snapshot_id)s.'
@@ -396,7 +395,12 @@ class BackupManager(manager.SchedulerDependentManager):
 
             backup.service = self.driver_name
             backup.save()
-            updates = self._run_backup(context, backup, volume)
+
+            # Backup is done in 3 phases.
+            # _start_backup
+            # continue_backup
+            # _finish_backup
+            self._start_backup(context, backup, volume)
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 if snapshot_id:
@@ -409,41 +413,16 @@ class BackupManager(manager.SchedulerDependentManager):
                          'previous_status': 'error_backing-up'})
                 volume_utils.update_backup_error(backup, str(err))
 
-        # Restore the original status.
-        if snapshot_id:
-            self.db.snapshot_update(
-                context, snapshot_id,
-                {'status': fields.SnapshotStatus.AVAILABLE})
-        else:
-            self.db.volume_update(context, volume_id,
-                                  {'status': previous_status,
-                                   'previous_status': 'backing-up'})
+    @volume_utils.trace
+    def _start_backup(self, context, backup, volume):
+        """This starts the backup process.
 
-        # _run_backup method above updated the status for the backup, so it
-        # will reflect latest status, even if it is deleted
-        completion_msg = 'finished'
-        if backup.status in (fields.BackupStatus.DELETING,
-                             fields.BackupStatus.DELETED):
-            completion_msg = 'aborted'
-        else:
-            backup.status = fields.BackupStatus.AVAILABLE
-            backup.size = volume['size']
+           First we have to get the backup device from the volume manager.
+           This can take a long time to complete.  Once the volume manager
+           is done creating/getting the backup device, we get a callback
+           to complete the process of backing up the volume.
 
-            if updates:
-                backup.update(updates)
-            backup.save()
-
-            # Handle the num_dependent_backups of parent backup when child
-            # backup has created successfully.
-            if backup.parent_id:
-                parent_backup = objects.Backup.get_by_id(context,
-                                                         backup.parent_id)
-                parent_backup.num_dependent_backups += 1
-                parent_backup.save()
-        LOG.info('Create backup %s. backup: %s.', completion_msg, backup.id)
-        self._notify_about_backup_usage(context, backup, "create.end")
-
-    def _run_backup(self, context, backup, volume):
+        """
         # Save a copy of the encryption key ID in case the volume is deleted.
         if (volume.encryption_key_id is not None and
                 backup.encryption_key_id is None):
@@ -453,17 +432,37 @@ class BackupManager(manager.SchedulerDependentManager):
                 volume.encryption_key_id)
             backup.save()
 
+        # This is an async call to the volume manager.  We will get a
+        # callback from the volume manager to continue once it's done.
+        self.volume_rpcapi.get_backup_device(context, backup, volume)
+
+    @volume_utils.trace
+    def continue_backup(self, context, backup, backup_device):
+        """This is the callback from the volume manager to continue.
+
+           If something went wrong on the volume manager getting/creating
+           the backup_device, the backup_device will be None.
+        """
+        volume_id = backup.volume_id
+        volume = objects.Volume.get_by_id(context, volume_id)
+        snapshot_id = backup.snapshot_id
+        snapshot = objects.Snapshot.get_by_id(
+            context, snapshot_id) if snapshot_id else None
+        previous_status = volume.get('previous_status', None)
+
         backup_service = self.service(context)
 
         properties = volume_utils.brick_get_connector_properties()
 
-        # NOTE(geguileo): Not all I/O disk operations properly do greenthread
-        # context switching and may end up blocking the greenthread, so we go
-        # with native threads proxy-wrapping the device file object.
+        updates = {}
         try:
-            backup_device = self.volume_rpcapi.get_backup_device(context,
-                                                                 backup,
-                                                                 volume)
+            if not backup_device:
+                # The volume manager didn't provide a backup_device
+                # due to something going wrong.  So we raise here and
+                # cleanup the volume state and the backup state to error.
+                raise exception.BackupOperationError("Failed to get backup "
+                                                     "device from driver.")
+
             attach_info = self._attach_device(context,
                                               backup_device.device_obj,
                                               properties,
@@ -491,12 +490,65 @@ class BackupManager(manager.SchedulerDependentManager):
                                     backup_device.device_obj, properties,
                                     backup_device.is_snapshot, force=True,
                                     ignore_errors=True)
+        except Exception as err:
+            with excutils.save_and_reraise_exception():
+                if snapshot_id:
+                    snapshot.status = fields.SnapshotStatus.AVAILABLE
+                    snapshot.save()
+                else:
+                    self.db.volume_update(
+                        context, volume_id,
+                        {'status': previous_status,
+                         'previous_status': 'error_backing-up'})
+                self._update_backup_error(backup, str(err))
         finally:
             with backup.as_read_deleted():
                 backup.refresh()
             self._cleanup_temp_volumes_snapshots_when_backup_created(
                 context, backup)
-        return updates
+
+        LOG.info("finish backup!")
+        self._finish_backup(context, backup, volume, updates)
+
+    @volume_utils.trace
+    def _finish_backup(self, context, backup, volume, updates):
+        volume_id = backup.volume_id
+        snapshot_id = backup.snapshot_id
+        previous_status = volume.get('previous_status', None)
+
+        # Restore the original status.
+        if snapshot_id:
+            self.db.snapshot_update(
+                context, snapshot_id,
+                {'status': fields.SnapshotStatus.AVAILABLE})
+        else:
+            self.db.volume_update(context, volume_id,
+                                  {'status': previous_status,
+                                   'previous_status': 'backing-up'})
+
+        # continue_backup method above updated the status for the backup, so it
+        # will reflect latest status, even if it is deleted
+        completion_msg = 'finished'
+        if backup.status in (fields.BackupStatus.DELETING,
+                             fields.BackupStatus.DELETED):
+            completion_msg = 'aborted'
+        else:
+            backup.status = fields.BackupStatus.AVAILABLE
+            backup.size = volume['size']
+
+            if updates:
+                backup.update(updates)
+            backup.save()
+
+            # Handle the num_dependent_backups of parent backup when child
+            # backup has created successfully.
+            if backup.parent_id:
+                parent_backup = objects.Backup.get_by_id(context,
+                                                         backup.parent_id)
+                parent_backup.num_dependent_backups += 1
+                parent_backup.save()
+        LOG.info('Create backup %s. backup: %s.', completion_msg, backup.id)
+        self._notify_about_backup_usage(context, backup, "create.end")
 
     def _is_our_backup(self, backup):
         # Accept strings and Service OVO

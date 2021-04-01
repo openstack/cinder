@@ -55,6 +55,7 @@ profiler = importutils.try_import('osprofiler.profiler')
 import requests
 from taskflow import exceptions as tfe
 
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
 from cinder import compute
 from cinder import context
@@ -4653,18 +4654,43 @@ class VolumeManager(manager.CleanableManager,
         LOG.debug("Obtained capabilities list: %s.", capabilities)
         return capabilities
 
-    def get_backup_device(self, ctxt, backup, want_objects=False):
-        (backup_device, is_snapshot) = (
-            self.driver.get_backup_device(ctxt, backup))
+    @volume_utils.trace
+    def get_backup_device(self, ctxt, backup, want_objects=False,
+                          async_call=False):
+        try:
+            (backup_device, is_snapshot) = (
+                self.driver.get_backup_device(ctxt, backup))
+        except Exception as ex:
+            if async_call:
+                LOG.exception("Failed to get backup device. "
+                              "Calling backup continue_backup to cleanup")
+                rpcapi = backup_rpcapi.BackupAPI()
+                rpcapi.continue_backup(ctxt, backup, backup_device=None)
+                return
+            else:
+                while excutils.save_and_reraise_exception():
+                    LOG.exception("Failed to get backup device.")
+
         secure_enabled = self.driver.secure_file_operations_enabled()
         backup_device_dict = {'backup_device': backup_device,
                               'secure_enabled': secure_enabled,
                               'is_snapshot': is_snapshot, }
         # TODO(sborkows): from_primitive method will be removed in O, so there
         # is a need to clean here then.
-        return (objects.BackupDeviceInfo.from_primitive(backup_device_dict,
-                                                        ctxt)
-                if want_objects else backup_device_dict)
+        backup_device = (
+            objects.BackupDeviceInfo.from_primitive(backup_device_dict, ctxt)
+            if want_objects else backup_device_dict)
+
+        if async_call:
+            # we have to use an rpc call back to the backup manager to
+            # continue the backup
+            LOG.info("Calling backup continue_backup for: {}".format(backup))
+            rpcapi = backup_rpcapi.BackupAPI()
+            rpcapi.continue_backup(ctxt, backup, backup_device)
+        else:
+            # The rpc api version doesn't support the async callback
+            # so we fallback to returning the value itself.
+            return backup_device
 
     def secure_file_operations_enabled(self,
                                        ctxt: context.RequestContext,

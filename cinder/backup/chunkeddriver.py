@@ -369,10 +369,9 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         obj[object_name] = {}
         obj[object_name]['offset'] = data_offset
         obj[object_name]['length'] = len(data)
-        LOG.debug('Backing up chunk of data from volume.')
         algorithm, output_data = self._prepare_output_data(data)
         obj[object_name]['compression'] = algorithm
-        LOG.debug('About to put_object')
+        LOG.debug('About to put_object : %s', obj[object_name])
         with self._get_object_writer(
                 container, object_name, extra_metadata=extra_metadata
         ) as writer:
@@ -587,6 +586,7 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
                                  win32_disk_size - data_offset)
             else:
                 read_bytes = self.chunk_size_bytes
+            LOG.debug("reading '%s' bytes", read_bytes)
             data = volume_file.read(read_bytes)
 
             if data == b'':

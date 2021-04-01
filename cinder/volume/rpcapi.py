@@ -134,9 +134,10 @@ class VolumeAPI(rpc.RPCAPI):
                failover_replication, and list_replication_targets.
         3.15 - Add revert_to_snapshot method
         3.16 - Add no_snapshots to accept_transfer method
+        3.17 - Make get_backup_device a cast (async)
     """
 
-    RPC_API_VERSION = '3.16'
+    RPC_API_VERSION = '3.17'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = constants.VOLUME_BINARY
@@ -346,8 +347,13 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'get_capabilities', discover=discover)
 
     def get_backup_device(self, ctxt, backup, volume):
-        cctxt = self._get_cctxt(volume.service_topic_queue, ('3.2', '3.0'))
-        if cctxt.can_send_version('3.2'):
+        cctxt = self._get_cctxt(volume.service_topic_queue,
+                                ('3.17', '3.2', '3.0'))
+        if cctxt.can_send_version('3.17'):
+            cctxt.cast(ctxt, 'get_backup_device', backup=backup,
+                       want_objects=True, async_call=True)
+            backup_obj = None
+        elif cctxt.can_send_version('3.2'):
             backup_obj = cctxt.call(ctxt, 'get_backup_device', backup=backup,
                                     want_objects=True)
         else:
