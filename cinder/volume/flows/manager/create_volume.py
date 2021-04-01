@@ -632,6 +632,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             if model_update is None:
                 model_update = {}
             if volume.encryption_key_id is not None:
+                volume.update(model_update)
                 rekey_model_update = self._rekey_volume(context, volume)
                 model_update.update(rekey_model_update)
         finally:
