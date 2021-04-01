@@ -560,48 +560,6 @@ class ReservableResource(BaseResource):
             self.sync = sync
 
 
-class AbsoluteResource(BaseResource):
-    """Describe a non-reservable resource."""
-
-    pass
-
-
-class CountableResource(AbsoluteResource):
-    """Describe a resource where counts aren't based only on the project ID."""
-
-    def __init__(self, name, count, flag=None):
-        """Initializes a CountableResource.
-
-        Countable resources are those resources which directly
-        correspond to objects in the database, i.e., volumes, gigabytes,
-        etc., but for which a count by project ID is inappropriate.  A
-        CountableResource must be constructed with a counting
-        function, which will be called to determine the current counts
-        of the resource.
-
-        The counting function will be passed the context, along with
-        the extra positional and keyword arguments that are passed to
-        Quota.count().  It should return an integer specifying the
-        count.
-
-        Note that this counting is not performed in a transaction-safe
-        manner.  This resource class is a temporary measure to provide
-        required functionality, until a better approach to solving
-        this problem can be evolved.
-
-        :param name: The name of the resource, i.e., "volumes".
-        :param count: A callable which returns the count of the
-                      resource.  The arguments passed are as described
-                      above.
-        :param flag: The name of the flag or configuration option
-                     which specifies the default value of the quota
-                     for this resource.
-        """
-
-        super(CountableResource, self).__init__(name, flag=flag)
-        self.count = count
-
-
 class VolumeTypeResource(ReservableResource):
     """ReservableResource for a specific volume type."""
 
@@ -734,25 +692,6 @@ class QuotaEngine(object):
                                                quota_class=quota_class,
                                                defaults=defaults,
                                                usages=usages)
-
-    def count(self, context, resource, *args, **kwargs):
-        """Count a resource.
-
-        For countable resources, invokes the count() function and
-        returns its result.  Arguments following the context and
-        resource are passed directly to the count function declared by
-        the resource.
-
-        :param context: The request context, for access checks.
-        :param resource: The name of the resource, as a string.
-        """
-
-        # Get the resource
-        res = self.resources.get(resource)
-        if not res or not hasattr(res, 'count'):
-            raise exception.QuotaResourceUnknown(unknown=[resource])
-
-        return res.count(context, *args, **kwargs)
 
     def limit_check(self, context, project_id=None, **values):
         """Check simple quota limits.
