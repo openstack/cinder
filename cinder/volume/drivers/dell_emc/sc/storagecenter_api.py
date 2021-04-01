@@ -232,8 +232,8 @@ class HttpClient(object):
                 raise exception.VolumeBackendAPIException(message=msg)
         return rest_response
 
-    @utils.retry(exceptions=(requests.ConnectionError,
-                             DellDriverRetryableException))
+    @utils.retry(retry_param=(requests.ConnectionError,
+                              DellDriverRetryableException))
     def get(self, url):
         LOG.debug('get: %(url)s', {'url': url})
         rest_response = self.session.get(self.__formatUrl(url),
@@ -247,7 +247,7 @@ class HttpClient(object):
             raise DellDriverRetryableException()
         return rest_response
 
-    @utils.retry(exceptions=(requests.ConnectionError,))
+    @utils.retry(retry_param=(requests.ConnectionError,))
     def post(self, url, payload, async_call=False):
         LOG.debug('post: %(url)s data: %(payload)s',
                   {'url': url,
@@ -261,7 +261,7 @@ class HttpClient(object):
                 self.asynctimeout if async_call else self.synctimeout)),
             async_call)
 
-    @utils.retry(exceptions=(requests.ConnectionError,))
+    @utils.retry(retry_param=(requests.ConnectionError,))
     def put(self, url, payload, async_call=False):
         LOG.debug('put: %(url)s data: %(payload)s',
                   {'url': url,
@@ -275,7 +275,7 @@ class HttpClient(object):
                 self.asynctimeout if async_call else self.synctimeout)),
             async_call)
 
-    @utils.retry(exceptions=(requests.ConnectionError,))
+    @utils.retry(retry_param=(requests.ConnectionError,))
     def delete(self, url, payload=None, async_call=False):
         LOG.debug('delete: %(url)s data: %(payload)s',
                   {'url': url, 'payload': payload})
