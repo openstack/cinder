@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _
 from cinder.scheduler import driver
@@ -46,7 +47,9 @@ class FilterScheduler(driver.Scheduler):
         """Fetch options dictionary. Broken out for testing."""
         return self.options.get_configuration()
 
-    def populate_filter_properties(self, request_spec, filter_properties):
+    def populate_filter_properties(self,
+                                   request_spec: dict,
+                                   filter_properties: dict) -> None:
         """Stuff things into filter_properties.
 
         Can be overridden in a subclass to add more data.
@@ -58,11 +61,13 @@ class FilterScheduler(driver.Scheduler):
         filter_properties['metadata'] = vol.get('metadata')
         filter_properties['qos_specs'] = vol.get('qos_specs')
 
-    def schedule_create_group(self, context, group,
+    def schedule_create_group(self,
+                              context: context.RequestContext,
+                              group,
                               group_spec,
                               request_spec_list,
                               group_filter_properties,
-                              filter_properties_list):
+                              filter_properties_list) -> None:
         weighed_backend = self._schedule_generic_group(
             context,
             group_spec,
@@ -82,7 +87,10 @@ class FilterScheduler(driver.Scheduler):
 
         self.volume_rpcapi.create_group(context, updated_group)
 
-    def schedule_create_volume(self, context, request_spec, filter_properties):
+    def schedule_create_volume(self,
+                               context: context.RequestContext,
+                               request_spec: dict,
+                               filter_properties: dict) -> None:
         backend = self._schedule(context, request_spec, filter_properties)
 
         if not backend:
@@ -107,8 +115,11 @@ class FilterScheduler(driver.Scheduler):
                                          filter_properties,
                                          allow_reschedule=True)
 
-    def backend_passes_filters(self, context, backend, request_spec,
-                               filter_properties):
+    def backend_passes_filters(self,
+                               context: context.RequestContext,
+                               backend,
+                               request_spec: dict,
+                               filter_properties: dict):
         """Check if the specified backend passes the filters."""
         weighed_backends = self._get_weighted_candidates(context, request_spec,
                                                          filter_properties)
@@ -132,8 +143,11 @@ class FilterScheduler(driver.Scheduler):
         raise exception.NoValidBackend(_('Cannot place %(resource)s %(id)s '
                                          'on %(backend)s.') % reason_param)
 
-    def find_retype_backend(self, context, request_spec,
-                            filter_properties=None, migration_policy='never'):
+    def find_retype_backend(self,
+                            context: context.RequestContext,
+                            request_spec: dict,
+                            filter_properties: dict = None,
+                            migration_policy: str = 'never'):
         """Find a backend that can accept the volume with its new type."""
         filter_properties = filter_properties or {}
         backend = (request_spec['volume_properties'].get('cluster_name')
@@ -186,8 +200,8 @@ class FilterScheduler(driver.Scheduler):
     def get_pools(self, context, filters):
         return self.host_manager.get_pools(context, filters)
 
-    def _post_select_populate_filter_properties(self, filter_properties,
-                                                backend_state):
+    def _post_select_populate_filter_properties(self, filter_properties: dict,
+                                                backend_state) -> None:
         """Populate filter properties with additional information.
 
         Add additional information to the filter properties after a backend has
@@ -196,7 +210,7 @@ class FilterScheduler(driver.Scheduler):
         # Add a retry entry for the selected volume backend:
         self._add_retry_backend(filter_properties, backend_state.backend_id)
 
-    def _add_retry_backend(self, filter_properties, backend):
+    def _add_retry_backend(self, filter_properties: dict, backend) -> None:
         """Add a retry entry for the selected volume backend.
 
         In the event that the request gets re-scheduled, this entry will signal
@@ -211,7 +225,7 @@ class FilterScheduler(driver.Scheduler):
             if backends is not None:
                 backends.append(backend)
 
-    def _max_attempts(self):
+    def _max_attempts(self) -> int:
         max_attempts = CONF.scheduler_max_attempts
         if max_attempts < 1:
             raise exception.InvalidParameterValue(
@@ -271,8 +285,10 @@ class FilterScheduler(driver.Scheduler):
                 {'max_attempts': max_attempts,
                  'resource_id': resource_id})
 
-    def _get_weighted_candidates(self, context, request_spec,
-                                 filter_properties=None):
+    def _get_weighted_candidates(self,
+                                 context: context.RequestContext,
+                                 request_spec: dict,
+                                 filter_properties: dict = None) -> list:
         """Return a list of backends that meet required specs.
 
         Returned list is ordered by their fitness.
@@ -351,7 +367,7 @@ class FilterScheduler(driver.Scheduler):
     def _get_weighted_candidates_generic_group(
             self, context, group_spec, request_spec_list,
             group_filter_properties=None,
-            filter_properties_list=None):
+            filter_properties_list=None) -> list:
         """Finds backends that supports the group.
 
         Returns a list of backends that meet the required specs,
@@ -443,7 +459,8 @@ class FilterScheduler(driver.Scheduler):
 
         return weighed_backends
 
-    def _find_valid_backends(self, backend_list1, backend_list2):
+    def _find_valid_backends(self,
+                             backend_list1: list, backend_list2: list) -> list:
         new_backends = []
         for backend1 in backend_list1:
             for backend2 in backend_list2:
@@ -458,7 +475,7 @@ class FilterScheduler(driver.Scheduler):
 
     def _get_weighted_candidates_by_group_type(
             self, context, group_spec,
-            group_filter_properties=None):
+            group_filter_properties=None) -> list:
         """Finds backends that supports the group type.
 
         Returns a list of backends that meet the required specs,
@@ -559,7 +576,7 @@ class FilterScheduler(driver.Scheduler):
             return None
         return self._choose_top_backend_generic_group(weighed_backends)
 
-    def _choose_top_backend(self, weighed_backends, request_spec):
+    def _choose_top_backend(self, weighed_backends: list, request_spec: dict):
         top_backend = weighed_backends[0]
         backend_state = top_backend.obj
         LOG.debug("Choosing %s", backend_state.backend_id)

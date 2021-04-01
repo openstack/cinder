@@ -18,6 +18,7 @@
 """RequestContext: context for requests that persist through all of cinder."""
 
 import copy
+from typing import Any, Dict, Optional  # noqa: H301
 
 from keystoneauth1.access import service_catalog as ksa_service_catalog
 from keystoneauth1 import plugin
@@ -79,10 +80,18 @@ class RequestContext(context.RequestContext):
     Represents the user taking a given action within the system.
 
     """
-    def __init__(self, user_id=None, project_id=None, is_admin=None,
-                 read_deleted="no", project_name=None, remote_address=None,
-                 timestamp=None, quota_class=None, service_catalog=None,
-                 user_auth_plugin=None, **kwargs):
+    def __init__(self,
+                 user_id: Optional[str] = None,
+                 project_id: Optional[str] = None,
+                 is_admin: Optional[bool] = None,
+                 read_deleted: Optional[str] = "no",
+                 project_name: Optional[str] = None,
+                 remote_address: Optional[str] = None,
+                 timestamp=None,
+                 quota_class=None,
+                 service_catalog: Optional[dict] = None,
+                 user_auth_plugin=None,
+                 **kwargs):
         """Initialize RequestContext.
 
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
@@ -122,7 +131,8 @@ class RequestContext(context.RequestContext):
         # We need to have RequestContext attributes defined
         # when policy.check_is_admin invokes request logging
         # to make it loggable.
-        if self.is_admin is None:  # type: ignore
+        self.is_admin: Optional[bool]
+        if self.is_admin is None:
             self.is_admin = policy.check_is_admin(self)
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
@@ -134,22 +144,22 @@ class RequestContext(context.RequestContext):
         else:
             return _ContextAuthPlugin(self.auth_token, self.service_catalog)
 
-    def _get_read_deleted(self):
+    def _get_read_deleted(self) -> str:
         return self._read_deleted
 
-    def _set_read_deleted(self, read_deleted):
+    def _set_read_deleted(self, read_deleted: str) -> None:
         if read_deleted not in ('no', 'yes', 'only'):
             raise ValueError(_("read_deleted can only be one of 'no', "
                                "'yes' or 'only', not %r") % read_deleted)
         self._read_deleted = read_deleted
 
-    def _del_read_deleted(self):
+    def _del_read_deleted(self) -> None:
         del self._read_deleted
 
     read_deleted = property(_get_read_deleted, _set_read_deleted,
                             _del_read_deleted)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         result = super(RequestContext, self).to_dict()
         result['user_id'] = self.user_id
         result['project_id'] = self.project_id
@@ -164,7 +174,7 @@ class RequestContext(context.RequestContext):
         return result
 
     @classmethod
-    def from_dict(cls, values):
+    def from_dict(cls, values: dict) -> 'RequestContext':
         return cls(user_id=values.get('user_id'),
                    project_id=values.get('project_id'),
                    project_name=values.get('project_name'),
@@ -183,7 +193,11 @@ class RequestContext(context.RequestContext):
                    project_domain_id=values.get('project_domain_id'),
                    )
 
-    def authorize(self, action, target=None, target_obj=None, fatal=True):
+    def authorize(self,
+                  action: str,
+                  target: Optional[dict] = None,
+                  target_obj: Optional[dict] = None,
+                  fatal: bool = True):
         """Verify that the given action is valid on the target in this context.
 
         :param action: string representing the action to be checked.
@@ -216,14 +230,16 @@ class RequestContext(context.RequestContext):
         return policy.authorize(self, action, target, do_raise=fatal,
                                 exc=exception.PolicyNotAuthorized)
 
-    def to_policy_values(self):
+    def to_policy_values(self) -> dict:
         policy = super(RequestContext, self).to_policy_values()
 
         policy['is_admin'] = self.is_admin
 
         return policy
 
-    def elevated(self, read_deleted=None, overwrite=False):
+    def elevated(self,
+                 read_deleted: Optional[str] = None,
+                 overwrite: bool = False) -> 'RequestContext':
         """Return a version of this context with admin flag set."""
         context = self.deepcopy()
         context.is_admin = True
@@ -236,11 +252,11 @@ class RequestContext(context.RequestContext):
 
         return context
 
-    def deepcopy(self):
+    def deepcopy(self) -> 'RequestContext':
         return copy.deepcopy(self)
 
 
-def get_admin_context(read_deleted="no"):
+def get_admin_context(read_deleted: Optional[str] = "no") -> RequestContext:
     return RequestContext(user_id=None,
                           project_id=None,
                           is_admin=True,
@@ -248,7 +264,7 @@ def get_admin_context(read_deleted="no"):
                           overwrite=False)
 
 
-def get_internal_tenant_context():
+def get_internal_tenant_context() -> Optional[RequestContext]:
     """Build and return the Cinder internal tenant context object
 
     This request context will only work for internal Cinder operations. It will
