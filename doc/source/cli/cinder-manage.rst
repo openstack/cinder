@@ -37,8 +37,7 @@ For example, to obtain a list of the cinder services currently running:
 Run without arguments to see a list of available command categories:
 ``cinder-manage``
 
-Categories are shell, logs, migrate, db, volume, host, service, backup,
-version, and config. Detailed descriptions are below.
+The categories are listed below, along with detailed descriptions.
 
 You can also run with a category argument such as 'db' to see a list of all
 commands in that category:
@@ -46,6 +45,76 @@ commands in that category:
 
 These sections describe the available categories and arguments for
 cinder-manage.
+
+Cinder Quota
+~~~~~~~~~~~~
+
+Cinder quotas sometimes run out of sync, and while there are some mechanisms
+in place in Cinder that, with the proper configuration, try to do a resync
+of the quotas, they are not perfect and are susceptible to race conditions,
+so they may result in less than perfect accuracy in refreshed quotas.
+
+The cinder-manage quota commands are meant to help manage these issues while
+allowing a finer control of when and what quotas are fixed.
+
+**Checking if quotas and reservations are correct.**
+
+``cinder-manage quota check [-h] [--project-id PROJECT_ID] [--use-locks]``
+
+Accepted arguments are:
+
+.. code-block:: console
+
+   --project-id PROJECT_ID
+                         The ID of the project where we want to sync the quotas
+                         (defaults to all projects).
+   --use-locks           For precise results tables in the DB need to be
+                         locked.
+
+This command checks quotas and reservations, for a specific project (passing
+``--project-id``) or for all projects, to see if they are out of sync.
+
+The check will also look for duplicated entries.
+
+By default it runs in the least accurate mode (where races have a higher
+chance of happening) to minimize the impact on running cinder services.  This
+means that false errors are more likely to be reported due to race conditions
+when Cinder services are running.
+
+Accurate mode is also supported, but it will lock many tables (affecting all
+tenants) and is not recommended with services that are being used.
+
+One way to use this action in combination with the sync action is to run the
+check for all projects, take note of those that are out of sync, and the sync
+them one by one at intervals to allow cinder to operate semi-normally.
+
+**Fixing quotas and reservations**
+
+``cinder-manage quota sync [-h] [--project-id PROJECT_ID] [--no-locks]``
+
+Accepted arguments are:
+
+.. code-block:: console
+
+  --project-id PROJECT_ID
+                        The ID of the project where we want to sync the quotas
+                        (defaults to all projects).
+  --no-locks            For less precise results, but also less intrusive.
+
+This command refreshes existing quota usage and reservation count for a
+specific project or for all projects.
+
+The refresh will also remove duplicated entries.
+
+This operation is best executed when Cinder is not running, as it requires
+locking many tables (affecting all tenants) to make sure that then sync is
+accurate.
+
+If accuracy is not our top priority, or we know that a specific project is not
+in use, we can disable the locking.
+
+A different transaction is used for each project's quota sync, so an action
+failure will only rollback the current project's changes.
 
 Cinder Db
 ~~~~~~~~~
