@@ -417,15 +417,10 @@ class QuotaCommands(object):
         project_ids = [row.project_id for row in projects]
         return project_ids
 
-    def _get_quota_syncs(self, ctxt, session, resources, project_id):
+    def _get_usages(self, ctxt, session, resources, project_id):
         """Get data necessary to check out of sync quota usage.
 
-        Returns a list of tuples where each tuple contains a QuotaUsage
-        instance, the corresponding resource from quota.QUOTAS.resources, the
-        volume type id, and the volume type name.
-
-        Volume type id and name will be None for non volume type entries, as
-        expected by the DB sync methods.
+        Returns a list QuotaUsage instances for the specific project
         """
         usages = db_api.model_query(ctxt,
                                     db_api.models.QuotaUsage,
@@ -434,14 +429,7 @@ class QuotaCommands(object):
             filter_by(project_id=project_id).\
             with_for_update().\
             all()
-
-        res = []
-        for usage in usages:
-            resource = resources[usage.resource]
-            volume_type_id = getattr(resource, 'volume_type_id', None)
-            volume_type_name = getattr(resource, 'volume_type_name', None)
-            res.append((usage, resource, volume_type_id, volume_type_name))
-        return res
+        return usages
 
     def _get_reservations(self, ctxt, session, project_id, usage_id):
         """Get reservations for a given project and usage id."""
@@ -453,33 +441,30 @@ class QuotaCommands(object):
             all()
         return reservations
 
-    def _check_duplicates(self, ctxt, session, sync_data, do_fix):
+    def _check_duplicates(self, ctxt, session, usages, do_fix):
         """Look for duplicated quota used entries (bug#1484343)
 
         If we have duplicates and we are fixing them, then we reassign the
         reservations of the usage we are removing.
         """
         resources = collections.defaultdict(list)
-        for sync in sync_data:
-            usage = sync[0]
-            resources[usage.resource].append(sync)
+        for usage in usages:
+            resources[usage.resource].append(usage)
 
         duplicates_found = False
         result = []
-        for syncs in resources.values():
-            keep_sync = syncs[0]
-            if len(syncs) > 1:
+        for resource_usages in resources.values():
+            keep_usage = resource_usages[0]
+            if len(resource_usages) > 1:
                 duplicates_found = True
-                keep_usage = keep_sync[0]
                 print('\t%s: %s duplicated usage entries - ' %
-                      (keep_usage.resource, len(syncs) - 1),
+                      (keep_usage.resource, len(resource_usages) - 1),
                       end='')
 
                 if do_fix:
                     # Each of the duplicates can have reservations
                     reassigned = 0
-                    for sync in syncs[1:]:
-                        usage = sync[0]
+                    for usage in resource_usages[1:]:
                         reservations = self._get_reservations(ctxt, session,
                                                               usage.project_id,
                                                               usage.id)
@@ -493,7 +478,7 @@ class QuotaCommands(object):
                           reassigned)
                 else:
                     print('ignored')
-            result.append(keep_sync)
+            result.append(keep_usage)
         return result, duplicates_found
 
     def _check_sync(self, project_id, do_fix):
@@ -521,28 +506,27 @@ class QuotaCommands(object):
             with session.begin():
                 print('Processing quota usage for project %s' % project)
                 # We only want to sync existing quota usage rows
-                syncs = self._get_quota_syncs(ctxt, session, resources,
-                                              project)
+                usages = self._get_usages(ctxt, session, resources, project)
 
                 # Check for duplicated entries (bug#1484343)
-                syncs, duplicates_found = self._check_duplicates(ctxt, session,
-                                                                 syncs, do_fix)
+                usages, duplicates_found = self._check_duplicates(ctxt,
+                                                                  session,
+                                                                  usages,
+                                                                  do_fix)
                 if duplicates_found:
                     discrepancy = True
 
                 # Check quota and reservations
-                for usage, resource, vol_type_id, vol_type_name in syncs:
+                for usage in usages:
+                    resource_name = usage.resource
                     # Get the correct value for this quota usage resource
-                    sync = db_api.QUOTA_SYNC_FUNCTIONS[resource.sync]
-                    updates = sync(ctxt, project,
-                                   volume_type_id=vol_type_id,
-                                   volume_type_name=vol_type_name,
-                                   session=session)
-
-                    in_use = list(updates.values())[0]
+                    updates = db_api._get_sync_updates(ctxt, project, session,
+                                                       resources,
+                                                       resource_name)
+                    in_use = updates[resource_name]
                     if in_use != usage.in_use:
                         print('\t%s: invalid usage saved=%s actual=%s%s' %
-                              (usage.resource, usage.in_use, in_use,
+                              (resource_name, usage.in_use, in_use,
                                action_msg))
                         discrepancy = True
                         if do_fix:
@@ -554,7 +538,7 @@ class QuotaCommands(object):
                                            if r.delta > 0)
                     if num_reservations != usage.reserved:
                         print('\t%s: invalid reserved saved=%s actual=%s%s' %
-                              (usage.resource, usage.reserved,
+                              (resource_name, usage.reserved,
                                num_reservations, action_msg))
                         discrepancy = True
                         if do_fix:
