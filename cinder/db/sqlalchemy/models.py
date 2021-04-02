@@ -641,6 +641,13 @@ class QuotaUsage(BASE, CinderBase):
     """Represents the current usage for a given resource."""
 
     __tablename__ = 'quota_usages'
+    # NOTE: project_id and resource are not enough as unique constraint since
+    # we do soft deletes and there could be duplicated entries, so we add the
+    # race_preventer field.
+    __table_args__ = (
+        UniqueConstraint('project_id', 'resource', 'race_preventer'),
+        CinderBase.__table_args__)
+
     id = Column(Integer, primary_key=True)
 
     project_id = Column(String(255), index=True)
@@ -654,6 +661,15 @@ class QuotaUsage(BASE, CinderBase):
         return self.in_use + self.reserved
 
     until_refresh = Column(Integer, nullable=True)
+
+    # To prevent races during creation on quota_reserve method
+    race_preventer = Column(Boolean, nullable=True, default=True)
+
+    @staticmethod
+    def delete_values():
+        res = CinderBase.delete_values()
+        res['race_preventer'] = None
+        return res
 
 
 class Reservation(BASE, CinderBase):

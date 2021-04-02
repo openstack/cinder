@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import datetime
 from unittest import mock
 
@@ -1341,6 +1342,12 @@ class FakeSession(object):
     def query(self, *args, **kwargs):
         pass
 
+    def rollback(self):
+        pass
+
+    def commit(self):
+        pass
+
 
 class FakeUsage(sqa_models.QuotaUsage):
     def save(self, *args, **kwargs):
@@ -1497,36 +1504,61 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
 
         self.assertEqual(0, len(reservations))
 
-    def test_quota_reserve_create_usages(self):
-        context = FakeContext('test_project', 'test_class')
-        quotas = dict(volumes=5,
-                      gigabytes=10 * 1024, )
-        deltas = dict(volumes=2,
-                      gigabytes=2 * 1024, )
+    @mock.patch.object(sqa_api, '_reservation_create')
+    @mock.patch.object(sqa_api, '_get_sync_updates')
+    @mock.patch.object(sqa_api, '_quota_usage_create')
+    @mock.patch.object(sqa_api, '_get_quota_usages')
+    def test_quota_reserve_create_usages(self, usages_mock, quota_create_mock,
+                                         sync_mock, reserve_mock):
+        project_id = 'test_project'
+        context = FakeContext(project_id, 'test_class')
+        quotas = collections.OrderedDict([('volumes', 5),
+                                          ('gigabytes', 10 * 1024)])
+        deltas = collections.OrderedDict([('volumes', 2),
+                                          ('gigabytes', 2 * 1024)])
+
+        sync_mock.side_effect = [{'volumes': 2}, {'gigabytes': 2 * 1024}]
+        vol_usage = self._make_quota_usage(project_id, 'volumes', 2, 0,
+                                           None, None, None)
+        gb_usage = self._make_quota_usage(project_id, 'gigabytes', 2 * 1024, 0,
+                                          None, None, None)
+        usages_mock.side_effect = [
+            {},
+            collections.OrderedDict([('volumes', vol_usage),
+                                     ('gigabytes', gb_usage)])
+        ]
+        reservations = [mock.Mock(), mock.Mock()]
+        reserve_mock.side_effect = reservations
+
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
-        self.assertEqual(set(['volumes', 'gigabytes']), self.sync_called)
-        self.compare_usage(self.usages_created,
-                           [dict(resource='volumes',
-                                 project_id='test_project',
-                                 in_use=0,
-                                 reserved=2,
-                                 until_refresh=None),
-                            dict(resource='gigabytes',
-                                 project_id='test_project',
-                                 in_use=0,
-                                 reserved=2 * 1024,
-                                 until_refresh=None), ])
-        self.compare_reservation(
-            result,
-            [dict(resource='volumes',
-                  usage_id=self.usages_created['volumes'],
-                  project_id='test_project',
-                  delta=2),
-             dict(resource='gigabytes',
-                  usage_id=self.usages_created['gigabytes'],
-                  delta=2 * 1024), ])
+        self.assertEqual([r.uuid for r in reservations], result)
+
+        usages_mock.assert_has_calls([
+            mock.call(mock.ANY, mock.ANY, project_id, resources=deltas.keys()),
+            mock.call(mock.ANY, mock.ANY, project_id, resources=deltas.keys())
+        ])
+
+        sync_mock.assert_has_calls([
+            mock.call(mock.ANY, project_id, mock.ANY, self.resources,
+                      'volumes'),
+            mock.call(mock.ANY, project_id, mock.ANY, self.resources,
+                      'gigabytes')])
+
+        quota_create_mock.assert_has_calls([
+            mock.call(mock.ANY, project_id, 'volumes', 2, 0, None,
+                      session=mock.ANY),
+            mock.call(mock.ANY, project_id, 'gigabytes', 2 * 1024, 0, None,
+                      session=mock.ANY)
+        ])
+
+        reserve_mock.assert_has_calls([
+            mock.call(mock.ANY, mock.ANY, vol_usage, project_id, 'volumes',
+                      2, mock.ANY, session=mock.ANY),
+            mock.call(mock.ANY, mock.ANY, gb_usage, project_id, 'gigabytes',
+                      2 * 1024, mock.ANY, session=mock.ANY),
+        ])
 
     def test_quota_reserve_negative_in_use(self):
         self.init_usage('test_project', 'volumes', -1, 0, until_refresh=1)

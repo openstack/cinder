@@ -20,6 +20,7 @@ from unittest.mock import call
 
 import ddt
 from oslo_config import cfg
+import oslo_db
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 from sqlalchemy.sql import operators
@@ -68,8 +69,8 @@ def _quota_reserve(context, project_id):
         deltas[resource] = i + 1
     return db.quota_reserve(
         context, resources, quotas, deltas,
-        datetime.datetime.utcnow(), datetime.datetime.utcnow(),
-        datetime.timedelta(days=1), project_id
+        datetime.datetime.utcnow(), until_refresh=None,
+        max_age=datetime.timedelta(days=1), project_id=project_id
     )
 
 
@@ -2563,6 +2564,46 @@ class DBAPIReservationTestCase(BaseTest):
                              self.ctxt,
                              'project1'))
 
+    @mock.patch('time.sleep', mock.Mock())
+    def test_quota_reserve_create_usages_race(self):
+        """Test we retry when there is a race in creation."""
+        def create(*args, original_create=sqlalchemy_api._quota_usage_create,
+                   **kwargs):
+            # Create the quota usage entry (with values set to 0)
+            session = sqlalchemy_api.get_session()
+            kwargs['session'] = session
+            with session.begin():
+                original_create(*args, **kwargs)
+            # Simulate that there's been a race condition with other create and
+            # that we got the exception
+            raise oslo_db.exception.DBDuplicateEntry
+
+        resources = quota.QUOTAS.resources
+        quotas = {'volumes': 5}
+        deltas = {'volumes': 2}
+        project_id = 'project1'
+        expire = timeutils.utcnow() + datetime.timedelta(seconds=3600)
+
+        with mock.patch.object(sqlalchemy_api, '_quota_usage_create',
+                               side_effect=create) as create_mock:
+            sqlalchemy_api.quota_reserve(self.ctxt, resources, quotas, deltas,
+                                         expire, 0, 0, project_id=project_id)
+
+            # The create call only happens once, when the race happens, because
+            # on the second try of the quota_reserve call the entry is already
+            # in the DB.
+            create_mock.assert_called_once_with(mock.ANY, 'project1',
+                                                'volumes', 0, 0, None,
+                                                session=mock.ANY)
+
+        # Confirm that regardless of who created the DB entry the values are
+        # updated
+        usages = sqlalchemy_api.quota_usage_get_all_by_project(self.ctxt,
+                                                               project_id)
+        expected = {'project_id': project_id,
+                    'volumes': {'in_use': 0, 'reserved': deltas['volumes']}}
+        self.assertEqual(expected, usages)
+
 
 class DBAPIMessageTestCase(BaseTest):
 
@@ -2821,6 +2862,29 @@ class DBAPIQuotaTestCase(BaseTest):
                     'gigabytes': {'in_use': 0, 'reserved': 2}}
         self.assertEqual(expected, db.quota_usage_get_all_by_project(
                          self.ctxt, 'p1'))
+
+    def test__quota_usage_create(self):
+        session = sqlalchemy_api.get_session()
+        usage = sqlalchemy_api._quota_usage_create(self.ctxt, 'project1',
+                                                   'resource',
+                                                   in_use=10, reserved=0,
+                                                   until_refresh=None,
+                                                   session=session)
+        self.assertEqual('project1', usage.project_id)
+        self.assertEqual('resource', usage.resource)
+        self.assertEqual(10, usage.in_use)
+        self.assertEqual(0, usage.reserved)
+        self.assertIsNone(usage.until_refresh)
+
+    def test__quota_usage_create_duplicate(self):
+        session = sqlalchemy_api.get_session()
+        kwargs = {'project_id': 'project1', 'resource': 'resource',
+                  'in_use': 10, 'reserved': 0, 'until_refresh': None,
+                  'session': session}
+        sqlalchemy_api._quota_usage_create(self.ctxt, **kwargs)
+        self.assertRaises(oslo_db.exception.DBDuplicateEntry,
+                          sqlalchemy_api._quota_usage_create,
+                          self.ctxt, **kwargs)
 
 
 class DBAPIBackupTestCase(BaseTest):

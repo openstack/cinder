@@ -114,107 +114,110 @@ class PurgeDeletedTest(test.TestCase):
 
         make_vol_now = self.volumes.update().\
             where(self.volumes.c.id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_vol_old = self.volumes.update().\
             where(self.volumes.c.id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_vol_older = self.volumes.update().\
             where(self.volumes.c.id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
         make_vol_meta_now = self.vm.update().\
             where(self.vm.c.volume_id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_vol_meta_old = self.vm.update().\
             where(self.vm.c.volume_id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_vol_meta_older = self.vm.update().\
             where(self.vm.c.volume_id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
 
         make_vol_types_now = self.vol_types.update().\
             where(self.vol_types.c.id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_vol_types_old = self.vol_types.update().\
             where(self.vol_types.c.id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_vol_types_older = self.vol_types.update().\
             where(self.vol_types.c.id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
         make_vol_type_proj_now = self.vol_type_proj.update().\
             where(self.vol_type_proj.c.volume_type_id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_vol_type_proj_old = self.vol_type_proj.update().\
             where(self.vol_type_proj.c.volume_type_id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_vol_type_proj_older = self.vol_type_proj.update().\
             where(self.vol_type_proj.c.volume_type_id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
 
         make_snap_now = self.snapshots.update().\
             where(self.snapshots.c.id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_snap_old = self.snapshots.update().\
             where(self.snapshots.c.id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_snap_older = self.snapshots.update().\
             where(self.snapshots.c.id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
 
         make_snap_meta_now = self.sm.update().\
             where(self.sm.c.snapshot_id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_snap_meta_old = self.sm.update().\
             where(self.sm.c.snapshot_id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_snap_meta_older = self.sm.update().\
             where(self.sm.c.snapshot_id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
 
         make_vol_glance_meta_now = self.vgm.update().\
             where(self.vgm.c.volume_id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_vol_glance_meta_old = self.vgm.update().\
             where(self.vgm.c.volume_id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_vol_glance_meta_older = self.vgm.update().\
             where(self.vgm.c.volume_id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
         make_snap_glance_meta_now = self.vgm.update().\
             where(self.vgm.c.snapshot_id.in_(self.uuidstrs[0:1]))\
-            .values(deleted_at=now)
+            .values(deleted_at=now, deleted=True)
         make_snap_glance_meta_old = self.vgm.update().\
             where(self.vgm.c.snapshot_id.in_(self.uuidstrs[1:3]))\
-            .values(deleted_at=old)
+            .values(deleted_at=old, deleted=True)
         make_snap_glance_meta_older = self.vgm.update().\
             where(self.vgm.c.snapshot_id.in_(self.uuidstrs[4:6]))\
-            .values(deleted_at=older)
+            .values(deleted_at=older, deleted=True)
 
         make_qos_now = self.qos.update().where(
-            self.qos.c.id.in_(self.uuidstrs[0:1])).values(deleted_at=now)
+            self.qos.c.id.in_(self.uuidstrs[0:1])).values(deleted_at=now,
+                                                          deleted=True)
         make_qos_old = self.qos.update().where(
-            self.qos.c.id.in_(self.uuidstrs[1:3])).values(deleted_at=old)
+            self.qos.c.id.in_(self.uuidstrs[1:3])).values(deleted_at=old,
+                                                          deleted=True)
         make_qos_older = self.qos.update().where(
-            self.qos.c.id.in_(self.uuidstrs[4:6])).values(deleted_at=older)
+            self.qos.c.id.in_(self.uuidstrs[4:6])).values(deleted_at=older,
+                                                          deleted=True)
 
         make_qos_child_record_now = self.qos.update().where(
             self.qos.c.specs_id.in_(self.uuidstrs[0:1])).values(
-            deleted_at=now)
+            deleted_at=now, deleted=True)
         make_qos_child_record_old = self.qos.update().where(
             self.qos.c.specs_id.in_(self.uuidstrs[1:3])).values(
-            deleted_at=old)
+            deleted_at=old, deleted=True)
         make_qos_child_record_older = self.qos.update().where(
             self.qos.c.specs_id.in_(self.uuidstrs[4:6])).values(
-            deleted_at=older)
+            deleted_at=older, deleted=True)
 
         make_vol_types1_now = self.vol_types.update().where(
             self.vol_types.c.qos_specs_id.in_(self.uuidstrs[0:1])).values(
-            deleted_at=now)
+            deleted_at=now, deleted=True)
         make_vol_types1_old = self.vol_types.update().where(
             self.vol_types.c.qos_specs_id.in_(self.uuidstrs[1:3])).values(
-            deleted_at=old)
+            deleted_at=old, deleted=True)
         make_vol_types1_older = self.vol_types.update().where(
             self.vol_types.c.qos_specs_id.in_(self.uuidstrs[4:6])).values(
-            deleted_at=older)
+            deleted_at=older, deleted=True)
 
         self.conn.execute(make_vol_now)
         self.conn.execute(make_vol_old)
@@ -389,7 +392,8 @@ class PurgeDeletedTest(test.TestCase):
         # set volume record to deleted 20 days ago
         old = timeutils.utcnow() - datetime.timedelta(days=20)
         make_old = self.volumes.update().where(
-            self.volumes.c.id.in_([uuid_str])).values(deleted_at=old)
+            self.volumes.c.id.in_([uuid_str])).values(deleted_at=old,
+                                                      deleted=True)
         self.conn.execute(make_old)
 
         # Verify that purge_deleted_rows fails due to Foreign Key constraint
