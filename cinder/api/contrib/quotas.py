@@ -140,8 +140,7 @@ class QuotaSetsController(wsgi.Controller):
         return {'quota_set': self._get_quotas(context, target_project_id)}
 
     def _get_quota_usage(self, quota_obj):
-        return (quota_obj.get('in_use', 0) + quota_obj.get('allocated', 0) +
-                quota_obj.get('reserved', 0))
+        return (quota_obj.get('in_use', 0) + quota_obj.get('reserved', 0))
 
     def defaults(self, req, id):
         context = req.environ['cinder.context']
