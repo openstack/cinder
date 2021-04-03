@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    RBD driver `Bug #1922408
+    <https://bugs.launchpad.net/cinder/+bug/1922408>`_:
+    Fixed create encrypted volume from encrypted snapshot.
