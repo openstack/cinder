@@ -1688,18 +1688,10 @@ class API(base.Base):
 
         # Get old reservations
         try:
-            reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
-            QUOTAS.add_volume_type_opts(context,
-                                        reserve_opts,
-                                        volume.volume_type_id)
-            # NOTE(wanghao): We don't need to reserve volumes and gigabytes
-            # quota for retyping operation since they didn't changed, just
-            # reserve volume_type and type gigabytes is fine.
-            reserve_opts.pop('volumes')
-            reserve_opts.pop('gigabytes')
-            old_reservations = QUOTAS.reserve(context,
-                                              project_id=volume.project_id,
-                                              **reserve_opts)
+            old_reservations = quota_utils.get_volume_type_reservation(
+                context, volume, volume.volume_type_id,
+                reserve_vol_type_only=True, negative=True)
+
         except Exception:
             volume.status = volume.previous_status
             volume.save()

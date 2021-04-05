@@ -18,6 +18,7 @@
 import datetime
 from unittest import mock
 
+import ddt
 from oslo_config import cfg
 from oslo_utils import timeutils
 
@@ -34,6 +35,8 @@ from cinder import quota
 from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 import cinder.tests.unit.image.fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
@@ -1916,6 +1919,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                                        delta=-2 * 1024), ])
 
 
+@ddt.ddt
 class QuotaVolumeTypeReservationTestCase(test.TestCase):
 
     def setUp(self):
@@ -1932,32 +1936,32 @@ class QuotaVolumeTypeReservationTestCase(test.TestCase):
                                      mock_add_volume_type_opts,
                                      mock_reserve):
         my_context = FakeContext('MyProject', None)
-        volume = {'name': 'my_vol_name',
-                  'id': 'my_vol_id',
-                  'size': '1',
-                  'project_id': 'vol_project_id',
-                  }
-        reserve_opts = {'volumes': 1, 'gigabytes': volume['size']}
+        volume = fake_volume.fake_volume_obj(my_context,
+                                             name= 'my_vol_name',
+                                             id= 'my_vol_id',
+                                             size= 1,
+                                             project_id= 'vol_project_id')
         quota_utils.get_volume_type_reservation(my_context,
                                                 volume,
                                                 self.volume_type['id'])
+        reserve_opts = {'volumes': 1, 'gigabytes': volume.size}
         mock_add_volume_type_opts.assert_called_once_with(
             my_context,
             reserve_opts,
             self.volume_type['id'])
         mock_reserve.assert_called_once_with(my_context,
                                              project_id='vol_project_id',
-                                             gigabytes='1',
+                                             gigabytes=1,
                                              volumes=1)
 
     @mock.patch.object(quota.QUOTAS, 'reserve')
     def test_volume_type_reservation_with_type_only(self, mock_reserve):
         my_context = FakeContext('MyProject', None)
-        volume = {'name': 'my_vol_name',
-                  'id': 'my_vol_id',
-                  'size': '1',
-                  'project_id': 'vol_project_id',
-                  }
+        volume = fake_volume.fake_volume_obj(my_context,
+                                             name='my_vol_name',
+                                             id='my_vol_id',
+                                             size=1,
+                                             project_id='vol_project_id')
         quota_utils.get_volume_type_reservation(my_context,
                                                 volume,
                                                 self.volume_type['id'],
@@ -1965,7 +1969,58 @@ class QuotaVolumeTypeReservationTestCase(test.TestCase):
         vtype_volume_quota = "%s_%s" % ('volumes', self.volume_type['name'])
         vtype_size_quota = "%s_%s" % ('gigabytes', self.volume_type['name'])
         reserve_opts = {vtype_volume_quota: 1,
-                        vtype_size_quota: volume['size']}
+                        vtype_size_quota: volume.size}
         mock_reserve.assert_called_once_with(my_context,
                                              project_id='vol_project_id',
+                                             **reserve_opts)
+
+    @ddt.data({'count_snaps': True, 'negative': True},
+              {'count_snaps': True, 'negative': False},
+              {'count_snaps': False, 'negative': True},
+              {'count_snaps': False, 'negative': False})
+    @ddt.unpack
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test_volume_type_reservation_snapshots_with_type_only(self,
+                                                              mock_reserve,
+                                                              count_snaps,
+                                                              negative):
+        """Volume type reservations on volume with snapshots
+
+        Test that when the volume has snapshots it takes them into account,
+        and even calculates the quota correctly depending on
+        no_snapshot_gb_quota configuration option.
+
+        It should work for negative and positive quotas.
+        """
+        self.override_config('no_snapshot_gb_quota', not count_snaps)
+        my_context = FakeContext('MyProject', None)
+        snaps = [fake_snapshot.fake_db_snapshot(volume_size=1),
+                 fake_snapshot.fake_db_snapshot(volume_size=2)]
+        volume = fake_volume.fake_volume_obj(my_context,
+                                             expected_attrs=['snapshots'],
+                                             name='my_vol_name',
+                                             id=fake.VOLUME_ID,
+                                             size=1,
+                                             project_id=fake.PROJECT_ID,
+                                             snapshots=snaps)
+        quota_utils.get_volume_type_reservation(my_context,
+                                                volume,
+                                                self.volume_type['id'],
+                                                reserve_vol_type_only=True,
+                                                negative=negative)
+
+        factor = -1 if negative else 1
+        if count_snaps:
+            snaps_size = (snaps[0]['volume_size'] + snaps[1]['volume_size'])
+        else:
+            snaps_size = 0
+        vtype_volume_quota = "volumes_%s" % self.volume_type['name']
+        vtype_snapshot_quota = "snapshots_%s" % self.volume_type['name']
+        vtype_size_quota = "%s_%s" % ('gigabytes', self.volume_type['name'])
+        reserve_opts = {vtype_volume_quota: factor * 1,
+                        vtype_snapshot_quota: factor * 2,
+                        vtype_size_quota: factor * (volume['size'] +
+                                                    snaps_size)}
+        mock_reserve.assert_called_once_with(my_context,
+                                             project_id=fake.PROJECT_ID,
                                              **reserve_opts)

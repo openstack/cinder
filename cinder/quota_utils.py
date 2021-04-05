@@ -45,12 +45,20 @@ class GenericProjectInfo(object):
 
 
 def get_volume_type_reservation(ctxt, volume, type_id,
-                                reserve_vol_type_only=False):
+                                reserve_vol_type_only=False,
+                                negative=False):
     from cinder import quota
     QUOTAS = quota.QUOTAS
     # Reserve quotas for the given volume type
     try:
         reserve_opts = {'volumes': 1, 'gigabytes': volume['size']}
+        # When retyping a volume it may contain snapshots (if we are not
+        # migrating it) and we need to account for its snapshots' size
+        if volume.snapshots:
+            reserve_opts['snapshots'] = len(volume.snapshots)
+            if not CONF.no_snapshot_gb_quota:
+                reserve_opts['gigabytes'] += sum(snap.volume_size
+                                                 for snap in volume.snapshots)
         QUOTAS.add_volume_type_opts(ctxt,
                                     reserve_opts,
                                     type_id)
@@ -59,6 +67,12 @@ def get_volume_type_reservation(ctxt, volume, type_id,
         if reserve_vol_type_only:
             reserve_opts.pop('volumes')
             reserve_opts.pop('gigabytes')
+            reserve_opts.pop('snapshots', None)
+
+        if negative:
+            for key, value in reserve_opts.items():
+                reserve_opts[key] = -value
+
         # Note that usually the project_id on the volume will be the same as
         # the project_id in the context. But, if they are different then the
         # reservations must be recorded against the project_id that owns the
