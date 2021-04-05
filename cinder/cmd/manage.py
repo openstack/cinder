@@ -50,7 +50,8 @@
 
 """CLI interface for cinder management."""
 
-import collections.abc as collections
+import collections
+import collections.abc as collections_abc
 import logging as python_logging
 import sys
 import time
@@ -75,6 +76,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base as ovo_base
+from cinder import quota
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
@@ -345,6 +347,220 @@ class DbCommands(object):
                     "check cinder-manage logs for more details.") %
                   backend_host)
             sys.exit(1)
+
+
+class QuotaCommands(object):
+    """Class for managing quota issues."""
+
+    def __init__(self):
+        pass
+
+    @args('--project-id', default=None,
+          help=('The ID of the project where we want to sync the quotas '
+                '(defaults to all projects).'))
+    def check(self, project_id):
+        """Check if quotas and reservations are correct
+
+        This action checks quotas and reservations, for a specific project or
+        for all projects, to see if they are out of sync.
+
+        The check will also look for duplicated entries.
+
+        One way to use this check in combination with the sync action is to
+        run the check for all projects, take note of those that are out of
+        sync, and then sync them one by one at intervals to reduce stress on
+        the DB.
+        """
+        result = self._check_sync(project_id, do_fix=False)
+        if result:
+            sys.exit(1)
+
+    @args('--project-id', default=None,
+          help=('The ID of the project where we want to sync the quotas '
+                '(defaults to all projects).'))
+    def sync(self, project_id):
+        """Fix quotas and reservations
+
+        This action refreshes existing quota usage and reservation count for a
+        specific project or for all projects.
+
+        The refresh will also remove duplicated entries.
+
+        This operation is best executed when Cinder is not running, but it can
+        be run with cinder services running as well.
+
+        A different transaction is used for each project's quota sync, so an
+        action failure will only rollback the current project's changes.
+        """
+        self._check_sync(project_id, do_fix=True)
+
+    def _get_quota_projects(self, ctxt, project_id):
+        """Get project ids that have quota_usage entries."""
+        if project_id:
+            model = models.QuotaUsage
+            session = db_api.get_session()
+            # If the project does not exist
+            if not session.query(db_api.sql.exists().where(
+                    db_api.and_(model.project_id == project_id,
+                                ~model.deleted))).scalar():
+                print('Project id %s has no quota usage. Nothing to do.' %
+                      project_id)
+                return []
+            return [project_id]
+
+        projects = db_api.model_query(context,
+                                      models.QuotaUsage,
+                                      read_deleted="no").\
+            with_entities('project_id').\
+            distinct().\
+            all()
+        project_ids = [row.project_id for row in projects]
+        return project_ids
+
+    def _get_quota_syncs(self, ctxt, session, resources, project_id):
+        """Get data necessary to check out of sync quota usage.
+
+        Returns a list of tuples where each tuple contains a QuotaUsage
+        instance, the corresponding resource from quota.QUOTAS.resources, the
+        volume type id, and the volume type name.
+
+        Volume type id and name will be None for non volume type entries, as
+        expected by the DB sync methods.
+        """
+        usages = db_api.model_query(ctxt,
+                                    db_api.models.QuotaUsage,
+                                    read_deleted="no",
+                                    session=session).\
+            filter_by(project_id=project_id).\
+            with_for_update().\
+            all()
+
+        res = []
+        for usage in usages:
+            resource = resources[usage.resource]
+            volume_type_id = getattr(resource, 'volume_type_id', None)
+            volume_type_name = getattr(resource, 'volume_type_name', None)
+            res.append((usage, resource, volume_type_id, volume_type_name))
+        return res
+
+    def _get_reservations(self, ctxt, session, project_id, usage_id):
+        """Get reservations for a given project and usage id."""
+        reservations = db_api.model_query(ctxt, models.Reservation,
+                                          read_deleted="no",
+                                          session=session).\
+            filter_by(project_id=project_id, usage_id=usage_id).\
+            with_for_update().\
+            all()
+        return reservations
+
+    def _check_duplicates(self, ctxt, session, sync_data, do_fix):
+        """Look for duplicated quota used entries (bug#1484343)
+
+        If we have duplicates and we are fixing them, then we reassign the
+        reservations of the usage we are removing.
+        """
+        resources = collections.defaultdict(list)
+        for sync in sync_data:
+            usage = sync[0]
+            resources[usage.resource].append(sync)
+
+        duplicates_found = False
+        result = []
+        for syncs in resources.values():
+            keep_sync = syncs[0]
+            if len(syncs) > 1:
+                duplicates_found = True
+                keep_usage = keep_sync[0]
+                print('\t%s: %s duplicated usage entries - ' %
+                      (keep_usage.resource, len(syncs) - 1),
+                      end='')
+
+                if do_fix:
+                    # Each of the duplicates can have reservations
+                    reassigned = 0
+                    for sync in syncs[1:]:
+                        usage = sync[0]
+                        reservations = self._get_reservations(ctxt, session,
+                                                              usage.project_id,
+                                                              usage.id)
+                        reassigned += len(reservations)
+                        for reservation in reservations:
+                            reservation.usage_id = keep_usage.id
+                        keep_usage.in_use += usage.in_use
+                        keep_usage.reserved += usage.reserved
+                        usage.delete(session=session)
+                    print('duplicates removed & %s reservations reassigned' %
+                          reassigned)
+                else:
+                    print('ignored')
+            result.append(keep_sync)
+        return result, duplicates_found
+
+    def _check_sync(self, project_id, do_fix):
+        """Check the quotas and reservations optionally fixing them."""
+
+        ctxt = context.get_admin_context()
+        # Get the quota usage types and their sync methods
+        resources = quota.QUOTAS.resources
+
+        # Get all project ids that have quota usage. Method doesn't lock
+        # projects, since newly added projects should not be out of sync and
+        # projects removed will just turn nothing on the quota usage.
+        projects = self._get_quota_projects(ctxt, project_id)
+
+        session = db_api.get_session()
+
+        action_msg = ' - fixed' if do_fix else ''
+
+        discrepancy = False
+
+        # NOTE: It's important to always get the quota first and then the
+        # reservations to prevent deadlocks with quota commit and rollback from
+        # running Cinder services.
+        for project in projects:
+            with session.begin():
+                print('Processing quota usage for project %s' % project)
+                # We only want to sync existing quota usage rows
+                syncs = self._get_quota_syncs(ctxt, session, resources,
+                                              project)
+
+                # Check for duplicated entries (bug#1484343)
+                syncs, duplicates_found = self._check_duplicates(ctxt, session,
+                                                                 syncs, do_fix)
+                if duplicates_found:
+                    discrepancy = True
+
+                # Check quota and reservations
+                for usage, resource, vol_type_id, vol_type_name in syncs:
+                    # Get the correct value for this quota usage resource
+                    sync = db_api.QUOTA_SYNC_FUNCTIONS[resource.sync]
+                    updates = sync(ctxt, project,
+                                   volume_type_id=vol_type_id,
+                                   volume_type_name=vol_type_name,
+                                   session=session)
+
+                    in_use = list(updates.values())[0]
+                    if in_use != usage.in_use:
+                        print('\t%s: invalid usage saved=%s actual=%s%s' %
+                              (usage.resource, usage.in_use, in_use,
+                               action_msg))
+                        discrepancy = True
+                        if do_fix:
+                            usage.in_use = in_use
+
+                    reservations = self._get_reservations(ctxt, session,
+                                                          project, usage.id)
+                    num_reservations = sum(r.delta for r in reservations
+                                           if r.delta > 0)
+                    if num_reservations != usage.reserved:
+                        print('\t%s: invalid reserved saved=%s actual=%s%s' %
+                              (usage.resource, usage.reserved,
+                               num_reservations, action_msg))
+                        discrepancy = True
+                        if do_fix:
+                            usage.reserved = num_reservations
+        print('Action successfully completed')
+        return discrepancy
 
 
 class VersionCommands(object):
@@ -667,6 +883,7 @@ CATEGORIES = {
     'cg': ConsistencyGroupCommands,
     'db': DbCommands,
     'host': HostCommands,
+    'quota': QuotaCommands,
     'service': ServiceCommands,
     'version': VersionCommands,
     'volume': VolumeCommands,
@@ -682,7 +899,7 @@ def methods_of(obj):
     result = []
     for i in dir(obj):
         if isinstance(getattr(obj, i),
-                      collections.Callable) and not i.startswith('_'):
+                      collections_abc.Callable) and not i.startswith('_'):
             result.append((i, getattr(obj, i)))
     return result
 
