@@ -45,7 +45,7 @@ ONE_HUNDREDS = 100
 UTC_NOW = timeutils.utcnow()
 
 
-def _quota_reserve(context, project_id):
+def _quota_reserve(context, project_id, **resource_dict):
     """Create sample Quota, QuotaUsage and Reservation objects.
 
     There is no method db.quota_usage_create(), so we have to use
@@ -58,15 +58,19 @@ def _quota_reserve(context, project_id):
         def sync(elevated, project_id, session):
             return {resource: usage}
         return sync
+
+    if not resource_dict:
+        resource_dict = {'volumes': 1, 'gigabytes': 2}
+
     quotas = {}
     resources = {}
     deltas = {}
-    for i, resource in enumerate(('volumes', 'gigabytes')):
-        quota_obj = db.quota_create(context, project_id, resource, i + 1)
+    for resource, value in resource_dict.items():
+        quota_obj = db.quota_create(context, project_id, resource, value)
         quotas[resource] = quota_obj.hard_limit
         resources[resource] = quota.ReservableResource(resource,
                                                        '_sync_%s' % resource)
-        deltas[resource] = i + 1
+        deltas[resource] = value
     return db.quota_reserve(
         context, resources, quotas, deltas,
         datetime.datetime.utcnow(), until_refresh=None,
@@ -2530,6 +2534,47 @@ class DBAPIReservationTestCase(BaseTest):
                              self.ctxt,
                              'project1'))
 
+    def test_reservation_commit_negative_reservation(self):
+        """Verify we can't make reservations negative on commit."""
+        project = 'project1'
+        reservations = _quota_reserve(self.ctxt, project, volumes=2)
+
+        # Force a smaller reserved value in quota_usages table
+        session = sqlalchemy_api.get_session()
+        with session.begin():
+            vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+            vol_usage.reserved -= 1
+            vol_usage.save(session=session)
+
+        # When committing 2 volumes from reserved to used reserved should not
+        # go from 1 to -1 but from 1 to 0, but in-use should still increase by
+        # 2
+        db.reservation_commit(self.ctxt, reservations, project)
+        expected = {'project_id': project,
+                    'volumes': {'reserved': 0, 'in_use': 2}}
+        self.assertEqual(expected,
+                         db.quota_usage_get_all_by_project(self.ctxt, project))
+
+    def test_reservation_commit_negative_in_use(self):
+        """Verify we can't make in-use negative on commit."""
+        project = 'project1'
+        reservations = _quota_reserve(self.ctxt, project, volumes=-2)
+
+        # Force a smaller in_use than the one the reservation will decrease
+        session = sqlalchemy_api.get_session()
+        with session.begin():
+            vol_usage = db.quota_usage_get(self.ctxt, 'project1', 'volumes')
+            vol_usage.in_use = 1
+            vol_usage.save(session=session)
+
+        # When committing -2 volumes from reserved to in-use they should not
+        # make in-use go from 1 to -1, but from 1 to 0
+        db.reservation_commit(self.ctxt, reservations, project)
+        expected = {'project_id': project,
+                    'volumes': {'reserved': 0, 'in_use': 0}}
+        self.assertEqual(expected,
+                         db.quota_usage_get_all_by_project(self.ctxt, project))
+
     def test_reservation_rollback(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = {'project_id': 'project1',
@@ -2550,6 +2595,27 @@ class DBAPIReservationTestCase(BaseTest):
                              self.ctxt,
                              'project1'))
 
+    def test_reservation_rollback_negative(self):
+        """Verify we can't make reservations negative on rollback."""
+        project = 'project1'
+        reservations = _quota_reserve(self.ctxt, project, volumes=2)
+
+        # Force a smaller reserved value in quota_usages table
+        session = sqlalchemy_api.get_session()
+        with session.begin():
+            vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+            vol_usage.reserved -= 1
+            vol_usage.save(session=session)
+
+        # When rolling back 2 volumes from reserved when there's only 1 in the
+        # quota usage's reserved field, reserved should not go from 1 to -1
+        # but from 1 to 0
+        db.reservation_rollback(self.ctxt, reservations, project)
+        expected = {'project_id': project,
+                    'volumes': {'reserved': 0, 'in_use': 0}}
+        self.assertEqual(expected,
+                         db.quota_usage_get_all_by_project(self.ctxt, project))
+
     def test_reservation_expire(self):
         self.values['expire'] = datetime.datetime.utcnow() + \
             datetime.timedelta(days=1)
@@ -2563,6 +2629,27 @@ class DBAPIReservationTestCase(BaseTest):
                          db.quota_usage_get_all_by_project(
                              self.ctxt,
                              'project1'))
+
+    def test_reservation_expire_negative(self):
+        """Verify we can't make reservation negative on expiration."""
+        project = 'project1'
+        _quota_reserve(self.ctxt, project, volumes=2)
+
+        # Force a smaller reserved value in quota_usages table
+        session = sqlalchemy_api.get_session()
+        with session.begin():
+            vol_usage = db.quota_usage_get(self.ctxt, project, 'volumes')
+            vol_usage.reserved -= 1
+            vol_usage.save(session=session)
+
+        # When expiring 2 volumes from reserved when there's only 1 in the
+        # quota usage's reserved field, reserved should not go from 1 to -1
+        # but from 1 to 0
+        db.reservation_expire(self.ctxt)
+        expected = {'project_id': project,
+                    'volumes': {'reserved': 0, 'in_use': 0}}
+        self.assertEqual(expected,
+                         db.quota_usage_get_all_by_project(self.ctxt, project))
 
     @mock.patch('time.sleep', mock.Mock())
     def test_quota_reserve_create_usages_race(self):
