@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1484343 <https://bugs.launchpad.net/cinder/+bug/1484343>`_: Fix
+    creation of duplicated quota usage entries in DB.
