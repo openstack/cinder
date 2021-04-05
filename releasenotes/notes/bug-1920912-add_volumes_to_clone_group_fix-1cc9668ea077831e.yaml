@@ -1,0 +1,6 @@
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1920912
+    <https://bugs.launchpad.net/cinder/+bug/1920912>`_:
+    Fixed rccg create issue while adding volumes to a group where
+    the group is cloned from group snapshot or other source group.
