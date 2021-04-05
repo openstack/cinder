@@ -1338,6 +1338,13 @@ def _dict_with_usage_id(usages):
 def reservation_commit(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
+        # NOTE: There's a potential race condition window with
+        # reservation_expire, since _get_reservation_resources does not lock
+        # the rows, but we won't fix it because:
+        # - Minuscule chance of happening, since quota expiration is usually
+        #   very high
+        # - Solution could create a DB lock on rolling upgrades since we need
+        #   to reverse the order of locking the rows.
         usages = _get_quota_usages(
             context, session, project_id,
             resources=_get_reservation_resources(session, context,
@@ -1363,6 +1370,13 @@ def reservation_commit(context, reservations, project_id=None):
 def reservation_rollback(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
+        # NOTE: There's a potential race condition window with
+        # reservation_expire, since _get_reservation_resources does not lock
+        # the rows, but we won't fix it because:
+        # - Minuscule chance of happening, since quota expiration is usually
+        #   very high
+        # - Solution could create a DB lock on rolling upgrades since we need
+        #   to reverse the order of locking the rows.
         usages = _get_quota_usages(
             context, session, project_id,
             resources=_get_reservation_resources(session, context,
@@ -1398,32 +1412,23 @@ def quota_destroy_all_by_project(context, project_id, only_quotas=False):
     """
     session = get_session()
     with session.begin():
-        quotas = model_query(context, models.Quota, session=session,
-                             read_deleted="no").\
+        model_query(context, models.Quota, session=session,
+                    read_deleted="no").\
             filter_by(project_id=project_id).\
-            all()
-
-        for quota_ref in quotas:
-            quota_ref.delete(session=session)
+            update(models.Quota.delete_values())
 
         if only_quotas:
             return
 
-        quota_usages = model_query(context, models.QuotaUsage,
-                                   session=session, read_deleted="no").\
+        model_query(context, models.QuotaUsage, session=session,
+                    read_deleted="no").\
             filter_by(project_id=project_id).\
-            all()
+            update(models.QuotaUsage.delete_values())
 
-        for quota_usage_ref in quota_usages:
-            quota_usage_ref.delete(session=session)
-
-        reservations = model_query(context, models.Reservation,
-                                   session=session, read_deleted="no").\
+        model_query(context, models.Reservation, session=session,
+                    read_deleted="no").\
             filter_by(project_id=project_id).\
-            all()
-
-        for reservation_ref in reservations:
-            reservation_ref.delete(session=session)
+            update(models.Reservation.delete_values())
 
 
 @require_admin_context
@@ -1435,6 +1440,7 @@ def reservation_expire(context):
         results = model_query(context, models.Reservation, session=session,
                               read_deleted="no").\
             filter(models.Reservation.expire < current_time).\
+            with_for_update().\
             all()
 
         if results:
