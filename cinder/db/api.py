@@ -1060,10 +1060,9 @@ def volume_glance_metadata_copy_from_volume_to_volume(context,
 ###################
 
 
-def quota_create(context, project_id, resource, limit, allocated=0):
+def quota_create(context, project_id, resource, limit):
     """Create a quota for the given project and resource."""
-    return IMPL.quota_create(context, project_id, resource, limit,
-                             allocated=allocated)
+    return IMPL.quota_create(context, project_id, resource, limit)
 
 
 def quota_get(context, project_id, resource):
@@ -1074,21 +1073,6 @@ def quota_get(context, project_id, resource):
 def quota_get_all_by_project(context, project_id):
     """Retrieve all quotas associated with a given project."""
     return IMPL.quota_get_all_by_project(context, project_id)
-
-
-def quota_allocated_get_all_by_project(context, project_id):
-    """Retrieve all allocated quotas associated with a given project."""
-    return IMPL.quota_allocated_get_all_by_project(context, project_id)
-
-
-def quota_allocated_update(context, project_id,
-                           resource, allocated):
-    """Update allocated quota to subprojects or raise if it does not exist.
-
-    :raises cinder.exception.ProjectQuotaNotFound:
-    """
-    return IMPL.quota_allocated_update(context, project_id,
-                                       resource, allocated)
 
 
 def quota_update(context, project_id, resource, limit):
@@ -1166,12 +1150,10 @@ def quota_usage_get_all_by_project(context, project_id):
 
 
 def quota_reserve(context, resources, quotas, deltas, expire,
-                  until_refresh, max_age, project_id=None,
-                  is_allocated_reserve=False):
+                  until_refresh, max_age, project_id=None):
     """Check quotas and create appropriate reservations."""
     return IMPL.quota_reserve(context, resources, quotas, deltas, expire,
-                              until_refresh, max_age, project_id=project_id,
-                              is_allocated_reserve=is_allocated_reserve)
+                              until_refresh, max_age, project_id=project_id)
 
 
 def reservation_commit(context, reservations, project_id=None):
