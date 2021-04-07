@@ -446,7 +446,11 @@ def reject_invalid_filters(context, filters, resource,
                 invalid_filters.append(key)
     if invalid_filters:
         if 'all_tenants' in invalid_filters:
+            # NOTE: this is a special case: the cinderclient always adds
+            # 'all_tenants', so we don't want to hold that against a non-admin
+            # user and we silently ignore it.  See Bug #1917574.
             invalid_filters.remove('all_tenants')
+            filters.pop('all_tenants')
         if len(invalid_filters) == 0:
             return
         raise webob.exc.HTTPBadRequest(

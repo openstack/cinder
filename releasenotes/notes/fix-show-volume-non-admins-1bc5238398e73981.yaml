@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1917574 <https://bugs.launchpad.net/cinder/+bug/1917574>`_:
+    Fixed issue when cinderclient requests to show volume by name for
+    non-admin users would result in the volume not being found for
+    microversions 3.31 or later.
