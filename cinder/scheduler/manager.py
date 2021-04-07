@@ -635,11 +635,14 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         return requested, not_requested
 
     def create_backup(self, context, backup):
+        availability_zone = backup.availability_zone
         volume_id = backup.volume_id
         volume = self.db.volume_get(context, volume_id)
         try:
+            # Bug #1952805: an incremental backup will already have a host set,
+            # and we must respect it
             if not backup.host:
-                host = self.driver.get_backup_host(volume)
+                host = self.driver.get_backup_host(volume, availability_zone)
                 backup.host = host
                 backup.save()
             self.backup_api.create_backup(context, backup)

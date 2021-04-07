@@ -29,6 +29,7 @@ from cinder import exception
 from cinder.message import message_field
 from cinder import objects
 from cinder.scheduler import driver
+from cinder.scheduler import host_manager
 from cinder.scheduler import manager
 from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
@@ -601,7 +602,7 @@ class SchedulerManagerTestCase(test.TestCase):
         self.manager.create_backup(self.context, backup=backup)
 
         mock_save.assert_called_once()
-        mock_host.assert_called_once_with(volume)
+        mock_host.assert_called_once_with(volume, None)
         mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
         mock_create.assert_called_once_with(self.context, backup)
 
@@ -642,7 +643,7 @@ class SchedulerManagerTestCase(test.TestCase):
 
         self.manager.create_backup(self.context, backup=backup)
 
-        mock_host.assert_called_once_with(volume)
+        mock_host.assert_called_once_with(volume, None)
         mock_volume_get.assert_called_once_with(self.context, backup.volume_id)
         mock_volume_update.assert_called_once_with(
             self.context,
@@ -651,6 +652,14 @@ class SchedulerManagerTestCase(test.TestCase):
              'previous_status': 'backing-up'})
         mock_error.assert_called_once_with(
             backup, 'Service not found for creating backup.')
+
+    def test_get_az(self):
+        volume = fake_volume.fake_db_volume()
+        volume['status'] = 'backing-up'
+        volume['previous_status'] = 'available'
+        hm = host_manager.HostManager()
+        az = hm.get_az(volume, availability_zone='test_az')
+        self.assertEqual('test_az', az)
 
 
 class SchedulerTestCase(test.TestCase):
