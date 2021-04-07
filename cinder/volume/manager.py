@@ -942,14 +942,13 @@ class VolumeManager(manager.CleanableManager,
         # needs to be handled for it.
         is_migrating = volume.migration_status not in (None, 'error',
                                                        'success')
-        is_migrating_dest = (is_migrating and
-                             volume.migration_status.startswith(
-                                 'target:'))
-        notification = "delete.start"
-        if unmanage_only:
-            notification = "unmanage.start"
-        if not is_temp_vol:
-            self._notify_about_volume_usage(context, volume, notification)
+        # If deleting source/destination volume in a migration or a temp
+        # volume for backup, we should skip quotas.
+        do_quota = not (is_migrating or is_temp_vol)
+        if do_quota:
+            notification = 'unmanage.' if unmanage_only else 'delete.'
+            self._notify_about_volume_usage(context, volume,
+                                            notification + 'start')
         try:
             volume_utils.require_driver_initialized(self.driver)
 
@@ -962,8 +961,7 @@ class VolumeManager(manager.CleanableManager,
                                                                     volume.id)
                 for s in snapshots:
                     if s.status != fields.SnapshotStatus.DELETING:
-                        self._clear_db(is_migrating_dest, volume,
-                                       'error_deleting')
+                        self._clear_db(volume, 'error_deleting')
 
                         msg = (_("Snapshot %(id)s was found in state "
                                  "%(state)s rather than 'deleting' during "
@@ -982,7 +980,7 @@ class VolumeManager(manager.CleanableManager,
                       resource=volume)
             # If this is a destination volume, we have to clear the database
             # record to avoid user confusion.
-            self._clear_db(is_migrating_dest, volume, 'available')
+            self._clear_db(volume, 'available')
             return True  # Let caller know we skipped deletion
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -992,12 +990,9 @@ class VolumeManager(manager.CleanableManager,
                 if unmanage_only is True:
                     new_status = 'error_unmanaging'
 
-                self._clear_db(is_migrating_dest, volume, new_status)
+                self._clear_db(volume, new_status)
 
-        # If deleting source/destination volume in a migration or a temp
-        # volume for backup, we should skip quotas.
-        skip_quota = is_migrating or is_temp_vol
-        if not skip_quota:
+        if do_quota:
             # Get reservations
             try:
                 reservations = None
@@ -1018,12 +1013,9 @@ class VolumeManager(manager.CleanableManager,
 
         # If deleting source/destination volume in a migration or a temp
         # volume for backup, we should skip quotas.
-        if not skip_quota:
-            notification = "delete.end"
-            if unmanage_only:
-                notification = "unmanage.end"
-            self._notify_about_volume_usage(context, volume, notification)
-
+        if do_quota:
+            self._notify_about_volume_usage(context, volume,
+                                            notification + 'end')
             # Commit the reservations
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
@@ -1037,11 +1029,11 @@ class VolumeManager(manager.CleanableManager,
         LOG.info(msg, resource=volume)
         return None
 
-    def _clear_db(self, is_migrating_dest, volume_ref, status) -> None:
+    def _clear_db(self, volume_ref, status) -> None:
         # This method is called when driver.unmanage() or
         # driver.delete_volume() fails in delete_volume(), so it is already
         # in the exception handling part.
-        if is_migrating_dest:
+        if volume_ref.is_migration_target():
             volume_ref.destroy()
             LOG.error("Unable to delete the destination volume "
                       "during volume migration, (NOTE: database "

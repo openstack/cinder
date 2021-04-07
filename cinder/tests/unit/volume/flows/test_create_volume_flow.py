@@ -1305,6 +1305,104 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             detail=message_field.Detail.DRIVER_FAILED_CREATE,
             exception=err)
 
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
+    def test_notify_volume_action_do_nothing(self, notify_mock):
+        task = create_volume_manager.NotifyVolumeActionTask(mock.sentinel.db,
+                                                            None)
+
+        task.execute(mock.sentinel.context, mock.sentinel.volume)
+        notify_mock.assert_not_called()
+
+    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
+    def test_notify_volume_action_send_notification(self, notify_mock):
+        event_suffix = 'create.start'
+        volume = mock.Mock()
+        task = create_volume_manager.NotifyVolumeActionTask(mock.sentinel.db,
+                                                            event_suffix)
+
+        task.execute(mock.sentinel.context, volume)
+
+        notify_mock.assert_called_once_with(mock.sentinel.context,
+                                            volume,
+                                            event_suffix,
+                                            host=volume.host)
+
+    @ddt.data(False, True)
+    @mock.patch('taskflow.engines.load')
+    @mock.patch.object(create_volume_manager, 'CreateVolumeOnFinishTask')
+    @mock.patch.object(create_volume_manager, 'CreateVolumeFromSpecTask')
+    @mock.patch.object(create_volume_manager, 'NotifyVolumeActionTask')
+    @mock.patch.object(create_volume_manager, 'ExtractVolumeSpecTask')
+    @mock.patch.object(create_volume_manager, 'OnFailureRescheduleTask')
+    @mock.patch.object(create_volume_manager, 'ExtractVolumeRefTask')
+    @mock.patch.object(create_volume_manager.linear_flow, 'Flow')
+    def test_get_flow(self, is_migration_target, flow_mock, extract_ref_mock,
+                      onfailure_mock, extract_spec_mock, notify_mock,
+                      create_mock, onfinish_mock, load_mock):
+        assert(isinstance(is_migration_target, bool))
+        filter_properties = {'retry': mock.sentinel.retry}
+        tasks = [mock.call(extract_ref_mock.return_value),
+                 mock.call(onfailure_mock.return_value),
+                 mock.call(extract_spec_mock.return_value),
+                 mock.call(notify_mock.return_value),
+                 mock.call(create_mock.return_value,
+                           onfinish_mock.return_value)]
+
+        volume = mock.Mock()
+        volume.is_migration_target.return_value = is_migration_target
+
+        result = create_volume_manager.get_flow(
+            mock.sentinel.context,
+            mock.sentinel.manager,
+            mock.sentinel.db,
+            mock.sentinel.driver,
+            mock.sentinel.scheduler_rpcapi,
+            mock.sentinel.host,
+            volume,
+            mock.sentinel.allow_reschedule,
+            mock.sentinel.reschedule_context,
+            mock.sentinel.request_spec,
+            filter_properties,
+            mock.sentinel.image_volume_cache)
+
+        volume.is_migration_target.assert_called_once_with()
+        if is_migration_target:
+            tasks.pop(3)
+            notify_mock.assert_not_called()
+            end_notify_suffix = None
+        else:
+            notify_mock.assert_called_once_with(mock.sentinel.db,
+                                                'create.start')
+            end_notify_suffix = 'create.end'
+        flow_mock.assert_called_once_with('volume_create_manager')
+        extract_ref_mock.assert_called_once_with(mock.sentinel.db,
+                                                 mock.sentinel.host,
+                                                 set_error=False)
+        onfailure_mock.assert_called_once_with(
+            mock.sentinel.reschedule_context, mock.sentinel.db,
+            mock.sentinel.manager, mock.sentinel.scheduler_rpcapi, mock.ANY)
+
+        extract_spec_mock.assert_called_once_with(mock.sentinel.db)
+
+        create_mock.assert_called_once_with(mock.sentinel.manager,
+                                            mock.sentinel.db,
+                                            mock.sentinel.driver,
+                                            mock.sentinel.image_volume_cache)
+        onfinish_mock.assert_called_once_with(mock.sentinel.db,
+                                              end_notify_suffix)
+
+        volume_flow = flow_mock.return_value
+        self.assertEqual(len(tasks), volume_flow.add.call_count)
+        volume_flow.add.assert_has_calls(tasks)
+
+        load_mock.assert_called_once_with(
+            volume_flow,
+            store={'context': mock.sentinel.context,
+                   'filter_properties': filter_properties,
+                   'request_spec': mock.sentinel.request_spec,
+                   'volume': volume})
+        self.assertEqual(result, load_mock.return_value)
+
 
 @ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
 class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):

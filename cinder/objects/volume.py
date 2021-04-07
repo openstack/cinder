@@ -580,6 +580,11 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
     def is_multiattach(self):
         return self.volume_type and self.volume_type.is_multiattach()
 
+    # Don't add it as a property to avoid having to add it obj_extra_fields,
+    # to manager's _VOLUME_CLONE_SKIP_PROPERTIES, etc.
+    def is_migration_target(self):
+        return (self.migration_status or '').startswith('target:')
+
 
 @base.CinderObjectRegistry.register
 class VolumeList(base.ObjectListBase, base.CinderObject):

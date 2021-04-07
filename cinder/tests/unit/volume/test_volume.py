@@ -391,6 +391,32 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           volume_id)
         mock_clean.assert_called_once_with(volume_id, self.volume.driver)
 
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
+    @mock.patch('cinder.quota.QUOTAS.rollback')
+    @mock.patch('cinder.quota.QUOTAS.commit')
+    @mock.patch('cinder.quota.QUOTAS.reserve', return_value=['RESERVATION'])
+    def test_delete_migrating_volume(self, reserve_mock, commit_mock,
+                                     rollback_mock, notify_mock):
+        """Test volume can be created and deleted."""
+        volume = tests_utils.create_volume(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            migration_status='target:123',
+            **self.volume_params)
+        volume_id = volume['id']
+
+        self.volume.delete_volume(self.context, volume)
+
+        vol = db.volume_get(context.get_admin_context(read_deleted='yes'),
+                            volume_id)
+        self.assertEqual(vol['status'], 'deleted')
+
+        # For migration's temp volume we don't notify or do any quota
+        notify_mock.assert_not_called()
+        rollback_mock.assert_not_called()
+        commit_mock.assert_not_called()
+        reserve_mock.assert_not_called()
+
     def test_create_delete_volume_with_metadata(self):
         """Test volume can be created with metadata and deleted."""
         test_meta = {'fake_key': 'fake_value'}

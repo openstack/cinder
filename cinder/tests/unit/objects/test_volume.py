@@ -578,6 +578,14 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.context, volume_type_id=None, volume_type=None)
         self.assertFalse(bool(volume.is_replicated()))
 
+    @ddt.data((None, False), ('error', False), ('success', False),
+              ('target:123456', True))
+    @ddt.unpack
+    def test_is_migration_target(self, migration_status, expected):
+        volume = fake_volume.fake_volume_obj(self.context,
+                                             migration_status=migration_status)
+        self.assertIs(expected, volume.is_migration_target())
+
 
 @ddt.ddt
 class TestVolumeList(test_objects.BaseObjectsTestCase):

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1922920 <https://bugs.launchpad.net/cinder/+bug/1922920>`_: Don't do
+    volume usage notifications for migration temporary volumes.

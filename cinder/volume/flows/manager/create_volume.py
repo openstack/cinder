@@ -364,6 +364,9 @@ class NotifyVolumeActionTask(flow_utils.CinderTask):
         self.event_suffix = event_suffix
 
     def execute(self, context, volume):
+        if not self.event_suffix:
+            return
+
         try:
             volume_utils.notify_about_volume_usage(context, volume,
                                                    self.event_suffix,
@@ -1346,13 +1349,17 @@ def get_flow(context, manager, db, driver, scheduler_rpcapi, host, volume,
     LOG.debug("Volume reschedule parameters: %(allow)s "
               "retry: %(retry)s", {'allow': allow_reschedule, 'retry': retry})
 
-    volume_flow.add(ExtractVolumeSpecTask(db),
-                    NotifyVolumeActionTask(db, "create.start"),
-                    CreateVolumeFromSpecTask(manager,
+    volume_flow.add(ExtractVolumeSpecTask(db))
+    # Temporary volumes created during migration should not be notified
+    end_notify_suffix = None
+    if not volume.is_migration_target():
+        volume_flow.add(NotifyVolumeActionTask(db, 'create.start'))
+        end_notify_suffix = 'create.end'
+    volume_flow.add(CreateVolumeFromSpecTask(manager,
                                              db,
                                              driver,
                                              image_volume_cache),
-                    CreateVolumeOnFinishTask(db, "create.end"))
+                    CreateVolumeOnFinishTask(db, end_notify_suffix))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(volume_flow, store=create_what)
