@@ -21,6 +21,7 @@ import pytz
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.objects import base as ovo_base
 from cinder.objects import fields
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
@@ -54,25 +55,68 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                           objects.Volume.get_by_id, self.context, 123)
 
     @mock.patch('cinder.db.volume_create')
-    def test_create(self, volume_create):
+    # TODO: (Y release) remove ddt.data and ddt.unpack decorators
+    @ddt.data(
+        ({}, True),  # default value
+        ({'use_quota': True}, True),  # Normal init
+        ({'use_quota': False}, False),
+        ({'migration_status': 'target:'}, False),  # auto detect migrating
+        ({'migration_status': 'migrating:'}, True),  # auto detect normal
+        ({'admin_metadata': {'temporary': True}}, False),  # temp
+        ({'admin_metadata': {'something': True}}, True),  # normal
+    )
+    @ddt.unpack
+    def test_create(self, ovo, expected, volume_create):
         db_volume = fake_volume.fake_db_volume()
         volume_create.return_value = db_volume
-        volume = objects.Volume(context=self.context)
+        volume = objects.Volume(context=self.context, **ovo)
         volume.create()
         self.assertEqual(db_volume['id'], volume.id)
 
+        use_quota = volume_create.call_args[0][1]['use_quota']
+        # TODO: (Y release) remove next line
+        self.assertIs(expected, use_quota)
+
     @mock.patch('cinder.db.volume_update')
-    @ddt.data(False, True)
-    def test_save(self, test_cg, volume_update):
-        db_volume = fake_volume.fake_db_volume()
+    # TODO: (Y release) replace ddt.data and ddt.unpack decorators with
+    #       @ddt.data(False, True)
+    @ddt.data(
+        (False, {}, True),
+        (True, {}, True),
+        (False, {'use_quota': True}, True),
+        (False, {'use_quota': False}, False),
+        (False, {'migration_status': 'target:'}, False),
+        (False, {'migration_status': 'migrating:'}, True),
+        (False,
+         {'volume_admin_metadata': [{'key': 'temporary', 'value': True}]},
+         False),
+        (False,
+         {'volume_admin_metadata': [{'key': 'something', 'value': True}]},
+         True),
+    )
+    @ddt.unpack
+    def test_save(self, test_cg, ovo, expected, volume_update):
+        use_quota = ovo.pop('use_quota', None)
+        db_volume = fake_volume.fake_db_volume(**ovo)
+        # TODO: (Y release) remove expected_attrs
+        if 'volume_admin_metadata' in ovo:
+            expected_attrs = ['admin_metadata']
+        else:
+            expected_attrs = []
         volume = objects.Volume._from_db_object(self.context,
-                                                objects.Volume(), db_volume)
+                                                objects.Volume(), db_volume,
+                                                expected_attrs=expected_attrs)
         volume.display_name = 'foobar'
         if test_cg:
             volume.consistencygroup = None
+        # TODO: (Y release) remove next 2 lines
+        if use_quota is not None:
+            volume.use_quota = use_quota
         volume.save()
+        # TODO: (Y release) remove use_quota
         volume_update.assert_called_once_with(self.context, volume.id,
-                                              {'display_name': 'foobar'})
+                                              {'display_name': 'foobar',
+                                               'use_quota': expected})
 
     def test_save_error(self):
         db_volume = fake_volume.fake_db_volume()
@@ -97,8 +141,10 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                           'metadata': {'key1': 'value1'}},
                          volume.obj_get_changes())
         volume.save()
+        # TODO: (Y release) remove use_quota
         volume_update.assert_called_once_with(self.context, volume.id,
-                                              {'display_name': 'foobar'})
+                                              {'display_name': 'foobar',
+                                               'use_quota': True})
         metadata_update.assert_called_once_with(self.context, volume.id,
                                                 {'key1': 'value1'}, True)
 
@@ -388,12 +434,14 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     def test_finish_volume_migration(self, volume_update, metadata_update,
                                      src_vol_type_id, dest_vol_type_id):
         src_volume_db = fake_volume.fake_db_volume(
-            **{'id': fake.VOLUME_ID, 'volume_type_id': src_vol_type_id})
+            **{'id': fake.VOLUME_ID, 'volume_type_id': src_vol_type_id,
+               'use_quota': True})
         if src_vol_type_id:
             src_volume_db['volume_type'] = fake_volume.fake_db_volume_type(
                 id=src_vol_type_id)
         dest_volume_db = fake_volume.fake_db_volume(
-            **{'id': fake.VOLUME2_ID, 'volume_type_id': dest_vol_type_id})
+            **{'id': fake.VOLUME2_ID, 'volume_type_id': dest_vol_type_id,
+               'use_quota': False})
         if dest_vol_type_id:
             dest_volume_db['volume_type'] = fake_volume.fake_db_volume_type(
                 id=dest_vol_type_id)
@@ -424,13 +472,16 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # finish_volume_migration
         ignore_keys = ('id', 'provider_location', '_name_id',
                        'migration_status', 'display_description', 'status',
-                       'volume_glance_metadata', 'volume_type')
+                       'volume_glance_metadata', 'volume_type', 'use_quota')
 
         dest_vol_dict = {k: updated_dest_volume[k] for k in
                          updated_dest_volume.keys() if k not in ignore_keys}
         src_vol_dict = {k: src_volume[k] for k in src_volume.keys()
                         if k not in ignore_keys}
         self.assertEqual(src_vol_dict, dest_vol_dict)
+        # use_quota must not have been switched, we'll mess our quota otherwise
+        self.assertTrue(src_volume.use_quota)
+        self.assertFalse(updated_dest_volume.use_quota)
 
     def test_volume_with_metadata_serialize_deserialize_no_changes(self):
         updates = {'volume_glance_metadata': [{'key': 'foo', 'value': 'bar'}],
@@ -444,7 +495,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_admin_metadata_update')
     @mock.patch('cinder.db.sqlalchemy.api.volume_attach')
     def test_begin_attach(self, volume_attach, metadata_update):
-        volume = fake_volume.fake_volume_obj(self.context)
+        volume = fake_volume.fake_volume_obj(self.context, use_quota=True)
         db_attachment = fake_volume.volume_attachment_db_obj(
             volume_id=volume.id,
             attach_status=fields.VolumeAttachStatus.ATTACHING)
@@ -554,6 +605,29 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         volume = fake_volume.fake_volume_obj(self.context,
                                              migration_status=migration_status)
         self.assertIs(expected, volume.is_migration_target())
+
+    @ddt.data(
+        # We could lose value during rolling upgrade if we added a new temp
+        # type in this upgrade and didn't take it into consideration
+        ('1.38', {'use_quota': False}, True),
+        # On rehydration we auto calculate use_quota value if not present
+        ('1.38', {'migration_status': 'target:123'}, False),
+        # Both versions in X
+        ('1.39', {'use_quota': True}, True),
+        # In X we don't recalculate, since we transmit the field
+        ('1.39', {'migration_status': 'target:123', 'use_quota': True}, True),
+    )
+    @ddt.unpack
+    def test_obj_make_compatible_use_quota_added(self, version, ovo, expected):
+        volume = objects.Volume(self.context, **ovo)
+
+        # When serializing to v1.38 we'll lose the use_quota value so it will
+        # be recalculated based on the Volume values
+        serializer = ovo_base.CinderObjectSerializer(version)
+        primitive = serializer.serialize_entity(self.context, volume)
+
+        converted_volume = objects.Volume.obj_from_primitive(primitive)
+        self.assertIs(expected, converted_volume.use_quota)
 
 
 @ddt.ddt

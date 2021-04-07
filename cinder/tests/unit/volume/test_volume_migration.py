@@ -93,7 +93,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                          lambda x, y, z, new_type_id=None: (
                              True, {'user_id': fake.USER_ID}))
 
-        volume = tests_utils.create_volume(self.context, size=0,
+        volume = tests_utils.create_volume(ctxt=self.context, size=0,
                                            host=CONF.host,
                                            migration_status='migrating')
         host_obj = {'host': 'newhost', 'capabilities': {}}
@@ -208,6 +208,9 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
     def test_migrate_volume_generic(self, volume_get,
                                     migrate_volume_completion,
                                     nova_api):
+        def Volume(original=objects.Volume, **kwargs):
+            return original(**kwargs)
+
         fake_db_new_volume = {'status': 'available', 'id': fake.VOLUME_ID}
         fake_new_volume = fake_volume.fake_db_volume(**fake_db_new_volume)
         new_volume_obj = fake_volume.fake_volume_obj(self.context,
@@ -217,10 +220,15 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         update_server_volume = nova_api.return_value.update_server_volume
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host)
+
+        volume_mock = self.mock_object(objects, 'Volume', side_effect=Volume)
         with mock.patch.object(self.volume, '_copy_volume_data') as \
                 mock_copy_volume:
             self.volume._migrate_volume_generic(self.context, volume,
                                                 host_obj, None)
+
+            # Temporary created volume must not use quota
+            self.assertFalse(volume_mock.call_args[1]['use_quota'])
             mock_copy_volume.assert_called_with(self.context, volume,
                                                 new_volume_obj,
                                                 remote='dest')

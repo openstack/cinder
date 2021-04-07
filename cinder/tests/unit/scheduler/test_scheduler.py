@@ -314,7 +314,7 @@ class SchedulerManagerTestCase(test.TestCase):
         # Test NoValidBackend exception behavior for create_volume.
         # Puts the volume in 'error' state and eats the exception.
         _mock_sched_create.side_effect = exception.NoValidBackend(reason="")
-        volume = fake_volume.fake_volume_obj(self.context)
+        volume = fake_volume.fake_volume_obj(self.context, use_quota=True)
         request_spec = {'volume_id': volume.id,
                         'volume': {'id': volume.id, '_name_id': None,
                                    'metadata': {}, 'admin_metadata': {},
@@ -689,7 +689,7 @@ class SchedulerDriverModuleTestCase(test.TestCase):
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     def test_volume_host_update_db(self, _mock_volume_get, _mock_vol_update):
-        volume = fake_volume.fake_volume_obj(self.context)
+        volume = fake_volume.fake_volume_obj(self.context, use_quota=True)
         _mock_volume_get.return_value = volume
 
         driver.volume_update_db(self.context, volume.id, 'fake_host',

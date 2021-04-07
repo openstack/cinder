@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    `Bug #1923828 <https://bugs.launchpad.net/cinder/+bug/1923828>`_: Fixed
+    quota usage sync counting temporary snapshots from backups and revert to
+    snapshot.
+  - |
+    `Bug #1923829 <https://bugs.launchpad.net/cinder/+bug/1923829>`_: Fixed
+    manually deleting temporary snapshots from backups and revert to snapshots
+    after failure leads to incorrect quota usage.
+  - |
+    `Bug #1923830 <https://bugs.launchpad.net/cinder/+bug/1923830>`_: Fixed
+    successfully backing up an in-use volume using a temporary snapshot instead
+    of a clone leads to incorrect quota usage.

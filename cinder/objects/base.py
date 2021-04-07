@@ -135,6 +135,11 @@ OBJ_VERSIONS = CinderObjectVersionsHistory()
 # '1.35' and the self['<versioname>'] = { to self['1.35'] = {
 
 
+# TODO: (Z release) remove up to next TODO  and update
+#       CinderObjectVersionsHistory (was added in X release)
+OBJ_VERSIONS.add('1.39', {'Volume': '1.9', 'Snapshot': '1.6'})
+
+
 class CinderObjectRegistry(base.VersionedObjectRegistry):
     def registration_hook(self, cls, index):
         """Hook called when registering a class.

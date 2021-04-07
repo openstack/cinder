@@ -270,6 +270,38 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
                              temp_vol.attach_status)
             self.assertEqual('fakezone', temp_vol.availability_zone)
             self.assertEqual('fakecluster', temp_vol.cluster_name)
+            self.assertFalse(temp_vol.use_quota)
+
+    def test__create_temp_snapshot(self):
+        volume_dict = {'id': fake.SNAPSHOT_ID,
+                       'host': 'fakehost',
+                       'cluster_name': 'fakecluster',
+                       'availability_zone': 'fakezone',
+                       'size': 1,
+                       'volume_type_id': fake.VOLUME_TYPE_ID}
+        volume = fake_volume.fake_volume_obj(self.context, **volume_dict)
+
+        # We want to confirm that the driver properly updates fields with the
+        # value returned by the create_snapshot method
+        driver_updates = {'provider_location': 'driver_provider_location'}
+
+        with mock.patch.object(self.volume.driver, 'create_snapshot',
+                               return_value=driver_updates) as create_mock:
+            res = self.volume.driver._create_temp_snapshot(self.context,
+                                                           volume)
+            create_mock.assert_called_once_with(res)
+
+        expected = {'volume_id': volume.id,
+                    'progress': '100%',
+                    'status': fields.SnapshotStatus.AVAILABLE,
+                    'use_quota': False,  # Temporary snapshots don't use quota
+                    'project_id': self.context.project_id,
+                    'user_id': self.context.user_id,
+                    'volume_size': volume.size,
+                    'volume_type_id': volume.volume_type_id,
+                    'provider_location': 'driver_provider_location'}
+        for key, value in expected.items():
+            self.assertEqual(value, res[key])
 
     @mock.patch.object(volume_utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_attach_volume')

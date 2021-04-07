@@ -1352,7 +1352,8 @@ def get_flow(context, manager, db, driver, scheduler_rpcapi, host, volume,
     volume_flow.add(ExtractVolumeSpecTask(db))
     # Temporary volumes created during migration should not be notified
     end_notify_suffix = None
-    if not volume.is_migration_target():
+    # TODO: (Y release) replace check with: if volume.use_quota:
+    if volume.use_quota or not volume.is_migration_target():
         volume_flow.add(NotifyVolumeActionTask(db, 'create.start'))
         end_notify_suffix = 'create.end'
     volume_flow.add(CreateVolumeFromSpecTask(manager,

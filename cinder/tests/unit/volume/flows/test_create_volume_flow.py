@@ -1327,7 +1327,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                             event_suffix,
                                             host=volume.host)
 
-    @ddt.data(False, True)
+    # Test possible combinations to confirm volumes from W, X, Y releases work
+    @ddt.data((False, True), (True, None), (True, False))
+    @ddt.unpack
     @mock.patch('taskflow.engines.load')
     @mock.patch.object(create_volume_manager, 'CreateVolumeOnFinishTask')
     @mock.patch.object(create_volume_manager, 'CreateVolumeFromSpecTask')
@@ -1336,9 +1338,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     @mock.patch.object(create_volume_manager, 'OnFailureRescheduleTask')
     @mock.patch.object(create_volume_manager, 'ExtractVolumeRefTask')
     @mock.patch.object(create_volume_manager.linear_flow, 'Flow')
-    def test_get_flow(self, is_migration_target, flow_mock, extract_ref_mock,
-                      onfailure_mock, extract_spec_mock, notify_mock,
-                      create_mock, onfinish_mock, load_mock):
+    def test_get_flow(self, is_migration_target, use_quota, flow_mock,
+                      extract_ref_mock, onfailure_mock, extract_spec_mock,
+                      notify_mock, create_mock, onfinish_mock, load_mock):
         assert(isinstance(is_migration_target, bool))
         filter_properties = {'retry': mock.sentinel.retry}
         tasks = [mock.call(extract_ref_mock.return_value),
@@ -1348,8 +1350,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                  mock.call(create_mock.return_value,
                            onfinish_mock.return_value)]
 
-        volume = mock.Mock()
-        volume.is_migration_target.return_value = is_migration_target
+        volume = mock.Mock(
+            **{'is_migration_target.return_value': is_migration_target,
+               'use_quota': use_quota})
 
         result = create_volume_manager.get_flow(
             mock.sentinel.context,
@@ -1365,8 +1368,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             filter_properties,
             mock.sentinel.image_volume_cache)
 
-        volume.is_migration_target.assert_called_once_with()
-        if is_migration_target:
+        if not volume.quota_use:
+            volume.is_migration_target.assert_called_once_with()
+        if is_migration_target or not use_quota:
             tasks.pop(3)
             notify_mock.assert_not_called()
             end_notify_suffix = None
@@ -1858,7 +1862,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                           self.mock_image_service)
 
         self.assertTrue(mock_cleanup_cg.called)
-        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 1})
+        # Online migration of the use_quota field
+        mock_volume_update.assert_any_call(self.ctxt, volume.id,
+                                           {'size': 1, 'use_quota': True})
         self.assertEqual(volume_size, volume.size)
 
     @mock.patch('cinder.image.image_utils.check_available_space')
@@ -1995,7 +2001,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         )
 
         # The volume size should be reduced to virtual_size and then put back
-        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 2})
+        # Online migration of the use_quota field
+        mock_volume_update.assert_any_call(self.ctxt, volume.id,
+                                           {'size': 2, 'use_quota': True})
         mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 10})
 
         # Make sure created a new cache entry
@@ -2073,7 +2081,9 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         # The volume size should be reduced to virtual_size and then put back,
         # especially if there is an exception while creating the volume.
         self.assertEqual(2, mock_volume_update.call_count)
-        mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 2})
+        # Online migration of the use_quota field
+        mock_volume_update.assert_any_call(self.ctxt, volume.id,
+                                           {'size': 2, 'use_quota': True})
         mock_volume_update.assert_any_call(self.ctxt, volume.id, {'size': 10})
 
         # Make sure we didn't try and create a cache entry

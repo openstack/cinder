@@ -349,13 +349,14 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual("error_deleting", volume.status)
         volume.destroy()
 
+    @ddt.data(True, False)
     @mock.patch('cinder.utils.clean_volume_file_locks')
     @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.Mock())
-    @mock.patch('cinder.quota.QUOTAS.commit', new=mock.Mock())
+    @mock.patch('cinder.quota.QUOTAS.commit')
     @mock.patch('cinder.quota.QUOTAS.reserve', return_value=['RESERVATION'])
-    def test_create_delete_volume(self, _mock_reserve, mock_notify,
-                                  mock_clean):
+    def test_create_delete_volume(self, use_quota, _mock_reserve, commit_mock,
+                                  mock_notify, mock_clean):
         """Test volume can be created and deleted."""
         volume = tests_utils.create_volume(
             self.context,
@@ -374,19 +375,33 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertEqual({'_pool0': {'allocated_capacity_gb': 1}},
                          self.volume.stats['pools'])
 
+        # Confirm delete_volume handles use_quota field
+        volume.use_quota = use_quota
+        volume.save()  # Need to save to DB because of the refresh call
+        commit_mock.reset_mock()
+        _mock_reserve.reset_mock()
+        mock_notify.reset_mock()
         self.volume.delete_volume(self.context, volume)
         vol = db.volume_get(context.get_admin_context(read_deleted='yes'),
                             volume_id)
         self.assertEqual(vol['status'], 'deleted')
 
-        self.assert_notify_called(mock_notify,
-                                  (['INFO', 'volume.create.start'],
-                                   ['INFO', 'volume.create.end'],
-                                   ['INFO', 'volume.delete.start'],
-                                   ['INFO', 'volume.delete.end']),
-                                  any_order=True)
-        self.assertEqual({'_pool0': {'allocated_capacity_gb': 0}},
-                         self.volume.stats['pools'])
+        if use_quota:
+            expected_capacity = 0
+            self.assert_notify_called(mock_notify,
+                                      (['INFO', 'volume.delete.start'],
+                                       ['INFO', 'volume.delete.end']),
+                                      any_order=True)
+            self.assertEqual(1, _mock_reserve.call_count)
+            self.assertEqual(1, commit_mock.call_count)
+        else:
+            expected_capacity = 1
+            mock_notify.assert_not_called()
+            _mock_reserve.assert_not_called()
+            commit_mock.assert_not_called()
+        self.assertEqual(
+            {'_pool0': {'allocated_capacity_gb': expected_capacity}},
+            self.volume.stats['pools'])
 
         self.assertRaises(exception.NotFound,
                           db.volume_get,
@@ -2337,7 +2352,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
 
             if use_temp_snapshot and has_snapshot:
                 _delete_snapshot.assert_called_once_with(
-                    self.context, {'id': 'fake_snapshot'}, handle_quota=False)
+                    self.context, {'id': 'fake_snapshot'})
             else:
                 _delete_snapshot.assert_not_called()
 
@@ -2390,6 +2405,47 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           self.context,
                           fake_volume,
                           fake_snapshot)
+
+    @ddt.data(True, False)
+    @mock.patch('cinder.quota.QUOTAS.commit')
+    @mock.patch('cinder.quota.QUOTAS.reserve')
+    @mock.patch.object(vol_manager.VolumeManager,
+                       '_notify_about_snapshot_usage')
+    @mock.patch.object(fake_driver.FakeLoggingVolumeDriver, 'delete_snapshot')
+    def test_delete_snapshot(self, use_quota, delete_mock, notify_mock,
+                             reserve_mock, commit_mock):
+        """Test delete snapshot."""
+        volume = tests_utils.create_volume(self.context, CONF.host)
+
+        snapshot = create_snapshot(volume.id, size=volume.size,
+                                   ctxt=self.context,
+                                   use_quota=use_quota,
+                                   status=fields.SnapshotStatus.AVAILABLE)
+
+        self.volume.delete_snapshot(self.context, snapshot)
+
+        delete_mock.assert_called_once_with(snapshot)
+        self.assertEqual(2, notify_mock.call_count)
+        notify_mock.assert_has_calls((
+            mock.call(mock.ANY, snapshot, 'delete.start'),
+            mock.call(mock.ANY, snapshot, 'delete.end'),
+        ))
+
+        if use_quota:
+            reserve_mock.assert_called_once_with(
+                mock.ANY, project_id=snapshot.project_id,
+                gigabytes=-snapshot.volume_size,
+                gigabytes_vol_type_name=-snapshot.volume_size,
+                snapshots=-1, snapshots_vol_type_name=-1)
+            commit_mock.assert_called_once_with(mock.ANY,
+                                                reserve_mock.return_value,
+                                                project_id=snapshot.project_id)
+        else:
+            reserve_mock.assert_not_called()
+            commit_mock.assert_not_called()
+
+        self.assertEqual(fields.SnapshotStatus.DELETED, snapshot.status)
+        self.assertTrue(snapshot.deleted)
 
     def test_cannot_delete_volume_with_snapshots(self):
         """Test volume can't be deleted with dependent snapshots."""
