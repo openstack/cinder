@@ -22,7 +22,7 @@ Weighing Functions.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import (Optional, Union)  # noqa: H301
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -604,5 +604,10 @@ class FilterScheduler(driver.Scheduler):
         LOG.debug("Choosing %s", backend_state.backend_id)
         return top_backend
 
-    def get_backup_host(self, volume: objects.Volume, driver=None):
-        return self.host_manager.get_backup_host(volume, driver)
+    def get_backup_host(self,
+                        volume: objects.Volume,
+                        availability_zone: Union[str, None],
+                        driver=None):
+        return self.host_manager.get_backup_host(volume,
+                                                 availability_zone,
+                                                 driver)

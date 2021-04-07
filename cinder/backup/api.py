@@ -349,7 +349,8 @@ class API(base.Base):
             'data_timestamp': data_timestamp,
             'parent': parent,
             'host': latest_host,
-            'metadata': metadata or {}
+            'metadata': metadata or {},
+            'availability_zone': availability_zone
         }
         try:
             backup = objects.Backup(context=context, **kwargs)
