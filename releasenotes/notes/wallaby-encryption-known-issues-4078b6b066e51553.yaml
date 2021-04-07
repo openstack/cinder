@@ -1,0 +1,64 @@
+---
+issues:
+  - |
+    **Anomalies with encrypted volumes**
+
+    For the most part, users are happy with the cinder feature `Volume
+    encryption supported by the key manager
+    <https://docs.openstack.org/cinder/wallaby/configuration/block-storage/volume-encryption.html>`_.
+    There are, however, some edge cases that have revealed bugs that you
+    and your users should be aware of.
+
+    First, some background.  The Block Storage API supports the creation of
+    volumes in gibibyte (GiB) units.  When a volume of a non-encrypted volume
+    type of size *n* is created, the volume contains *n* GiB of usable space.
+    When a volume of an encrypted type is requested, however, the volume
+    contains less than *n* GiB of usable space because the encryption metadata
+    that must be stored within that volume in order for the volume to be usable
+    consumes an amount of the otherwise usable space.
+
+    Although the encryption metadata consumes less than 1% of the volume,
+    suppose that a user wants to retype a volume of a non-encrypted type to an
+    encrypted type of the same size.  If the non-encrypted volume is "full", we
+    are in the position of trying to fit 101% of its capacity into the
+    encrypted volume, which is not possible under the current laws of
+    physics, and the retype should fail (see `Known Issues
+    <https://docs.openstack.org/cinder/wallaby/configuration/block-storage/volume-encryption.html>`_
+    for volume encryption in the cinder documentation).
+
+    (Note that whether a volume should be considered "full", even if it doesn't
+    contain exactly *n* GiB of data for an *n* GiB volume, can depend upon the
+    storage backend technology used.)
+
+    A similar situation can arise when a user creates a volume of an encrypted
+    volume type from an image in Glance.  If the image happens to be sized very
+    close to the gibibyte boundary given by the requested volume size, the
+    operation may fail if the image data plus the encryption metadata exceeds
+    the requested volume size.
+
+    So far, the behavior isn't anomalous; it's basically what you'd expect once
+    you are aware that the encryption metadata must be stored in the volume and
+    that it consumes some space.
+
+    We recently became aware of the following anomalies, however, when using
+    the current RBD driver with a Ceph storage backend.
+
+    * When creating an encrypted volume from an image in Glance that was
+      created from a non-encrypted volume uploaded as an image, or an image
+      that just happens to be sized very close to the gibibyte boundary given
+      by the requested volume size, the space consumed by the encryption header
+      may not leave sufficient space for the data contained in the image.  In
+      this case, the data is silently truncated to fit within the requested
+      volume size.
+
+    * Similarly, when creating an encrypted volume from a snapshot of an
+      encrypted volume, if the amount of data in the original volume at the
+      time the snapshot was created is very close to the gibibyte boundary
+      given by the volume's size, it is possible for the data in the new
+      volume to be silently truncated.
+
+    Not to put too fine a point on it, silent truncation is worse than failure,
+    and the Cinder team will be addressing these issues in the next release.
+    Additionally (as if that isn't bad enough!), we suspect that the above
+    anomalies will also occur when using volume encryption with NFS-based
+    storage backends, though this has not yet been reported or confirmed.
