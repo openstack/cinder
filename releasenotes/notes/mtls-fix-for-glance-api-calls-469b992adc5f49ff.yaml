@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    `Bug #1917797 <https://bugs.launchpad.net/cinder/+bug/1917797>`_: Fix
+    Cinder's communication with the Glance API to correctly load mTLS
+    certificates from config (``glance_certfile`` and ``glance_keyfile`` in the
+    ``[DEFAULT]`` section).
+upgrade:
+  - |
+    New configuration options have been added to enable mTLS between
+    cinder and glance: use ``glance_certfile`` and ``glance_keyfile``
+    in the ``[DEFAULT]`` section of the cinder configuration file.
