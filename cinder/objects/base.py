@@ -54,23 +54,45 @@ class CinderObjectVersionsHistory(dict):
         #
         # Please note that we do not need to add similar entires for each
         # release. Liberty is here just for historical reasons.
-        self.versions = ['liberty']
-        self['liberty'] = {
-            'Backup': '1.1',
-            'BackupImport': '1.1',
+        self.versions = ['1.38']
+        self['1.38'] = {
+            'Backup': '1.7',
+            'BackupDeviceInfo': '1.0',
+            'BackupImport': '1.7',
             'BackupList': '1.0',
-            'ConsistencyGroup': '1.1',
-            'ConsistencyGroupList': '1.0',
-            'Service': '1.0',
-            'ServiceList': '1.0',
-            'Snapshot': '1.0',
+            'CleanupRequest': '1.0',
+            'CGSnapshot': '1.1',
+            'CGSnapshotList': '1.0',
+            'Cluster': '1.1',
+            'ClusterList': '1.0',
+            'ConsistencyGroup': '1.4',
+            'ConsistencyGroupList': '1.1',
+            'Group': '1.2',
+            'GroupList': '1.0',
+            'GroupSnapshot': '1.0',
+            'GroupSnapshotList': '1.0',
+            'GroupType': '1.0',
+            'GroupTypeList': '1.0',
+            'LogLevel': '1.0',
+            'LogLevelList': '1.0',
+            'ManageableSnapshot': '1.0',
+            'ManageableSnapshotList': '1.0',
+            'ManageableVolume': '1.0',
+            'ManageableVolumeList': '1.0',
+            'QualityOfServiceSpecs': '1.0',
+            'QualityOfServiceSpecsList': '1.0',
+            'RequestSpec': '1.5',
+            'Service': '1.6',
+            'ServiceList': '1.1',
+            'Snapshot': '1.5',
             'SnapshotList': '1.0',
-            'Volume': '1.1',
-            'VolumeAttachment': '1.0',
-            'VolumeAttachmentList': '1.0',
+            'Volume': '1.8',
+            'VolumeAttachment': '1.3',
+            'VolumeAttachmentList': '1.1',
             'VolumeList': '1.1',
-            'VolumeType': '1.0',
-            'VolumeTypeList': '1.0',
+            'VolumeProperties': '1.1',
+            'VolumeType': '1.3',
+            'VolumeTypeList': '1.1',
         }
 
     def get_current(self):
@@ -92,61 +114,25 @@ class CinderObjectVersionsHistory(dict):
 OBJ_VERSIONS = CinderObjectVersionsHistory()
 # NOTE(dulek): You should add a new version here each time you bump a version
 # of any object. As a second parameter you need to specify only what changed.
+
+# On each release we should drop backward compatibility with -2 release, since
+# rolling upgrades only needs to support compatibility with previous release.
+# So if we are in N release we can remove history from L and earlier.
+# Example of how to keep track of this:
+#     # TODO: (T release) remove up to next TODO (was added in R release) and
+#     #       update CinderObjectVersionsHistory
+#     OBJ_VERSIONS.add('1.34', {'VolumeAttachment': '1.3'})
+#     OBJ_VERSIONS.add('1.35', {'Backup': '1.6', 'BackupImport': '1.6'})
 #
-# When dropping backward compatibility with an OpenStack release we can rework
-# this and remove some history while keeping the versions order.
-OBJ_VERSIONS.add('1.0', {'Backup': '1.3', 'BackupImport': '1.3',
-                         'CGSnapshot': '1.0', 'CGSnapshotList': '1.0',
-                         'ConsistencyGroup': '1.2',
-                         'ConsistencyGroupList': '1.1', 'Service': '1.1',
-                         'Volume': '1.3', 'VolumeTypeList': '1.1'})
-OBJ_VERSIONS.add('1.1', {'Service': '1.2', 'ServiceList': '1.1'})
-OBJ_VERSIONS.add('1.2', {'Backup': '1.4', 'BackupImport': '1.4'})
-OBJ_VERSIONS.add('1.3', {'Service': '1.3'})
-OBJ_VERSIONS.add('1.4', {'Snapshot': '1.1'})
-OBJ_VERSIONS.add('1.5', {'VolumeType': '1.1'})
-OBJ_VERSIONS.add('1.6', {'QualityOfServiceSpecs': '1.0',
-                         'QualityOfServiceSpecsList': '1.0',
-                         'VolumeType': '1.2'})
-OBJ_VERSIONS.add('1.7', {'Cluster': '1.0', 'ClusterList': '1.0',
-                         'Service': '1.4', 'Volume': '1.4',
-                         'ConsistencyGroup': '1.3'})
-OBJ_VERSIONS.add('1.8', {'RequestSpec': '1.0', 'VolumeProperties': '1.0'})
-OBJ_VERSIONS.add('1.9', {'GroupType': '1.0', 'GroupTypeList': '1.0'})
-OBJ_VERSIONS.add('1.10', {'Group': '1.0', 'GroupList': '1.0', 'Volume': '1.5',
-                          'RequestSpec': '1.1', 'VolumeProperties': '1.1'})
-OBJ_VERSIONS.add('1.11', {'GroupSnapshot': '1.0', 'GroupSnapshotList': '1.0',
-                          'Group': '1.1'})
-OBJ_VERSIONS.add('1.12', {'VolumeType': '1.3'})
-OBJ_VERSIONS.add('1.13', {'CleanupRequest': '1.0'})
-OBJ_VERSIONS.add('1.14', {'VolumeAttachmentList': '1.1'})
-OBJ_VERSIONS.add('1.15', {'Volume': '1.6', 'Snapshot': '1.2'})
-OBJ_VERSIONS.add('1.16', {'BackupDeviceInfo': '1.0'})
-OBJ_VERSIONS.add('1.17', {'VolumeAttachment': '1.1'})
-OBJ_VERSIONS.add('1.18', {'Snapshot': '1.3'})
-OBJ_VERSIONS.add('1.19', {'ConsistencyGroup': '1.4', 'CGSnapshot': '1.1'})
-OBJ_VERSIONS.add('1.20', {'Cluster': '1.1'})
-OBJ_VERSIONS.add('1.21', {'ManageableSnapshot': '1.0',
-                          'ManageableVolume': '1.0',
-                          'ManageableVolumeList': '1.0',
-                          'ManageableSnapshotList': '1.0'})
-OBJ_VERSIONS.add('1.22', {'Snapshot': '1.4'})
-OBJ_VERSIONS.add('1.23', {'VolumeAttachment': '1.2'})
-OBJ_VERSIONS.add('1.24', {'LogLevel': '1.0', 'LogLevelList': '1.0'})
-OBJ_VERSIONS.add('1.25', {'Group': '1.2'})
-OBJ_VERSIONS.add('1.26', {'Snapshot': '1.5'})
-OBJ_VERSIONS.add('1.27', {'Backup': '1.5', 'BackupImport': '1.5'})
-OBJ_VERSIONS.add('1.28', {'Service': '1.5'})
-OBJ_VERSIONS.add('1.29', {'Service': '1.6'})
-OBJ_VERSIONS.add('1.30', {'RequestSpec': '1.2'})
-OBJ_VERSIONS.add('1.31', {'Volume': '1.7'})
-OBJ_VERSIONS.add('1.32', {'RequestSpec': '1.3'})
-OBJ_VERSIONS.add('1.33', {'Volume': '1.8'})
-OBJ_VERSIONS.add('1.34', {'VolumeAttachment': '1.3'})
-OBJ_VERSIONS.add('1.35', {'Backup': '1.6', 'BackupImport': '1.6'})
-OBJ_VERSIONS.add('1.36', {'RequestSpec': '1.4'})
-OBJ_VERSIONS.add('1.37', {'RequestSpec': '1.5'})
-OBJ_VERSIONS.add('1.38', {'Backup': '1.7', 'BackupImport': '1.7'})
+#     # TODO: (U release) remove up to next TODO (was added in S release) and
+#     #       update CinderObjectVersionsHistory
+#     OBJ_VERSIONS.add('1.36', {'RequestSpec': '1.4'})
+#     OBJ_VERSIONS.add('1.37', {'RequestSpec': '1.5'})
+#     OBJ_VERSIONS.add('1.38', {'Backup': '1.7', 'BackupImport': '1.7'})
+# When we reach T release we remove versions 1.34 and 1.35 and update __init__
+# method in CinderObjectVerseionsHistory to bump VolumeAttachment to 1.3,
+# Backup to 1.6 and BackupImport to 1.6, and changing the versions list to
+# '1.35' and the self['<versioname>'] = { to self['1.35'] = {
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

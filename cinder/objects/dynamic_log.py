@@ -24,6 +24,7 @@ class LogLevel(base.CinderObject):
     # Version 1.0: Initial version
     VERSION = '1.0'
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'prefix': fields.StringField(nullable=True),
         'level': fields.StringField(nullable=True),

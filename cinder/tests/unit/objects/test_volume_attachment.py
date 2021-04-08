@@ -123,26 +123,6 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
                          attachment.attach_status)
 
-    @ddt.data('1.0', '1.1', '1.2', '1.3')
-    def test_obj_make_compatible(self, version):
-        connection_info = {'field': 'value'}
-        connector = {'host': '127.0.0.1'}
-        vol_attach = objects.VolumeAttachment(self.context,
-                                              connection_info=connection_info,
-                                              connector=connector)
-        primitive = vol_attach.obj_to_primitive(version)
-        converted_vol_attach = objects.VolumeAttachment.obj_from_primitive(
-            primitive)
-        if version == '1.3':
-            self.assertEqual(connector, converted_vol_attach.connector)
-        elif version == '1.2':
-            self.assertEqual(connection_info,
-                             converted_vol_attach.connection_info)
-        else:
-            self.assertNotIn('connector', converted_vol_attach)
-            self.assertFalse(converted_vol_attach.obj_attr_is_set(
-                'connection_info'))
-
     def test_migrate_attachment_specs(self):
         # Create an attachment.
         attachment = objects.VolumeAttachment(

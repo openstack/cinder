@@ -29,6 +29,7 @@ class GroupType(base.CinderPersistentObject, base.CinderObject,
 
     OPTIONAL_FIELDS = ['group_specs', 'projects']
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
         'name': fields.StringField(nullable=True),

@@ -36,6 +36,7 @@ from cinder.tests.unit import test
 class TestCinderObjectVersionHistory(test_objects.BaseObjectsTestCase):
     def test_add(self):
         history = test_objects.obj_base.CinderObjectVersionsHistory()
+        first_version = history.versions[0]
         v10 = {'Backup': '2.0'}
         v11 = {'Backup': '2.1'}
         history.add('1.0', v10)
@@ -43,9 +44,9 @@ class TestCinderObjectVersionHistory(test_objects.BaseObjectsTestCase):
         # We have 3 elements because we have the liberty version by default
         self.assertEqual(2 + 1, len(history))
 
-        expected_v10 = history['liberty'].copy()
+        expected_v10 = history[first_version].copy()
         expected_v10.update(v10)
-        expected_v11 = history['liberty'].copy()
+        expected_v11 = history[first_version].copy()
         expected_v11.update(v11)
 
         self.assertEqual('1.1', history.get_current())

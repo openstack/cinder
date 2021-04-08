@@ -42,9 +42,7 @@ class Cluster(base.CinderPersistentObject, base.CinderObject,
     VERSION = '1.1'
     OPTIONAL_FIELDS = ('num_hosts', 'num_down_hosts', 'services')
 
-    # NOTE(geguileo): We don't want to expose race_preventer field at the OVO
-    # layer since it is only meant for the DB layer internal mechanism to
-    # prevent races.
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.IntegerField(),
         'name': fields.StringField(nullable=False),
@@ -60,19 +58,10 @@ class Cluster(base.CinderPersistentObject, base.CinderObject,
         'replication_status': c_fields.ReplicationStatusField(nullable=True),
         'frozen': fields.BooleanField(default=False),
         'active_backend_id': fields.StringField(nullable=True),
+
+        # Don't add race_preventer field, as it's a DB layer internal mechanism
+        # piece to prevent races and should not be touched by other layers.
     }
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make a cluster representation compatible with a target version."""
-        # Convert all related objects
-        super(Cluster, self).obj_make_compatible(primitive, target_version)
-
-        # Before v1.1 we didn't have relication fields so we have to remove
-        # them.
-        if target_version == '1.0':
-            for obj_field in ('replication_status', 'frozen',
-                              'active_backend_id'):
-                primitive.pop(obj_field, None)
 
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):

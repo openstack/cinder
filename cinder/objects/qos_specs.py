@@ -35,6 +35,7 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
 
     OPTIONAL_FIELDS = ['volume_types']
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
         'name': fields.StringField(),

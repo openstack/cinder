@@ -13,7 +13,6 @@
 #    under the License.
 
 from oslo_config import cfg
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -45,6 +44,7 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
     # are typically the relationship in the sqlalchemy object.
     OPTIONAL_FIELDS = ('volume', 'metadata', 'cgsnapshot', 'group_snapshot')
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
 
@@ -115,25 +115,6 @@ class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
             changes.add('metadata')
 
         return changes
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make an object representation compatible with a target version."""
-        super(Snapshot, self).obj_make_compatible(primitive, target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-
-        backport_statuses = (((1, 3),
-                              (c_fields.SnapshotStatus.UNMANAGING,
-                               c_fields.SnapshotStatus.DELETING)),
-                             ((1, 4),
-                             (c_fields.SnapshotStatus.BACKING_UP,
-                              c_fields.SnapshotStatus.AVAILABLE)),
-                             ((1, 5),
-                              (c_fields.SnapshotStatus.RESTORING,
-                               c_fields.SnapshotStatus.AVAILABLE)))
-        for version, status in backport_statuses:
-            if target_version < version:
-                if primitive.get('status') == status[0]:
-                    primitive['status'] = status[1]
 
     @classmethod
     def _from_db_object(cls, context, snapshot, db_snapshot,

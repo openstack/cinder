@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -35,6 +34,7 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
 
     OPTIONAL_FIELDS = ('extra_specs', 'projects', 'qos_specs')
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
         'name': fields.StringField(nullable=True),
@@ -46,21 +46,6 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
         'qos_specs': fields.ObjectField('QualityOfServiceSpecs',
                                         nullable=True),
     }
-
-    def obj_make_compatible(self, primitive, target_version):
-        super(VolumeType, self).obj_make_compatible(primitive, target_version)
-
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        if target_version < (1, 1):
-            if primitive.get('extra_specs'):
-                # Before 1.1 extra_specs field didn't allowed None values. To
-                # make sure we won't explode on receiver side - change Nones to
-                # empty string.
-                for k, v in primitive['extra_specs'].items():
-                    if v is None:
-                        primitive['extra_specs'][k] = ''
-        if target_version < (1, 3):
-            primitive.pop('qos_specs_id', None)
 
     @classmethod
     def _get_expected_attrs(cls, context, *args, **kwargs):

@@ -75,18 +75,6 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
             self.context, fake.VOLUME_TYPE_ID)
         self._compare(self, db_volume_type, volume_type)
 
-    @ddt.data('1.0', '1.1')
-    def test_obj_make_compatible(self, version):
-        volume_type = objects.VolumeType(context=self.context)
-        volume_type.extra_specs = {'foo': None, 'bar': 'baz'}
-        volume_type.qos_specs_id = fake.QOS_SPEC_ID
-        primitive = volume_type.obj_to_primitive(version)
-        volume_type = objects.VolumeType.obj_from_primitive(primitive)
-        foo = '' if version == '1.0' else None
-        self.assertEqual(foo, volume_type.extra_specs['foo'])
-        self.assertEqual('baz', volume_type.extra_specs['bar'])
-        self.assertFalse(volume_type.obj_attr_is_set('qos_specs_id'))
-
     @mock.patch('cinder.volume.volume_types.create')
     def test_create(self, volume_type_create):
         db_volume_type = fake_volume.fake_db_volume_type()

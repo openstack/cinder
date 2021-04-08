@@ -356,19 +356,22 @@ class BackupTestCase(BaseBackupTest):
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-backup': '1.3',
                                                  'cinder-volume': '1.7'})
-    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-backup': '1.2',
-                                                 'cinder-volume': '1.4'})
     def test_reset(self, get_min_obj, get_min_rpc):
-        get_min_obj.return_value = 'liberty'
-        backup_mgr = manager.BackupManager()
+        old_version = objects.base.OBJ_VERSIONS.versions[-2]
+
+        with mock.patch('cinder.rpc.LAST_OBJ_VERSIONS',
+                        {'cinder-volume': old_version,
+                         'cinder-scheduler': old_version,
+                         'cinder-backup': old_version}):
+            backup_mgr = manager.BackupManager()
 
         backup_rpcapi = backup_mgr.backup_rpcapi
         volume_rpcapi = backup_mgr.volume_rpcapi
         self.assertEqual('1.3', backup_rpcapi.client.version_cap)
-        self.assertEqual('1.2',
+        self.assertEqual(old_version,
                          backup_rpcapi.client.serializer._base.version_cap)
         self.assertEqual('1.7', volume_rpcapi.client.version_cap)
-        self.assertEqual('1.4',
+        self.assertEqual(old_version,
                          volume_rpcapi.client.serializer._base.version_cap)
         get_min_obj.return_value = objects.base.OBJ_VERSIONS.get_current()
         backup_mgr.reset()

@@ -30,6 +30,7 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
 
     OPTIONAL_FIELDS = ['consistencygroup', 'snapshots']
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
         'consistencygroup_id': fields.UUIDField(nullable=True),
