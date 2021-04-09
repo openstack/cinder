@@ -25,7 +25,6 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - openstack-tox-lower-constraints
         - requirements-check:
             nodeset: ubuntu-xenial
         - cinder-tox-functional-py36
@@ -163,8 +162,6 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-
-        - openstack-tox-lower-constraints
         - requirements-check:
             nodeset: ubuntu-xenial
         - legacy-grenade-dsvm-cinder-mn-sub-volbak:
