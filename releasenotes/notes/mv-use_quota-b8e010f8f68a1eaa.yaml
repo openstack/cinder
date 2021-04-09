@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Starting with API microversion 3.65, a ``consumes_quota`` field
+    is included in the response body of volumes and snapshots to indicate
+    whether the volume is using quota or not.
+
+    Additionally, ``consumes_quota`` can be used as a listing filter for
+    volumes and snapshots.  Its availability is controlled by its inclusion in
+    ``etc/cinder/resource_filters.json``, where it is included by default.  The
+    default listing behavior is not to use this filter.
+
+    Only temporary resources created internally by cinder will have the value
+    set to ``false``.

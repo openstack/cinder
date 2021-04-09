@@ -39,7 +39,8 @@ class SnapshotBaseTest(test_base.VolumesSampleBase):
 @test_base.VolumesSampleBase.use_versions(
     mv.BASE_VERSION,  # 3.0
     mv.GROUP_SNAPSHOTS,  # 3.14
-    mv.SNAPSHOT_LIST_USER_ID)  # 3.41
+    mv.SNAPSHOT_LIST_USER_ID,  # 3.41
+    mv.USE_QUOTA)  # 3.65
 class SnapshotDetailTests(SnapshotBaseTest):
     """Test snapshot details returned for operations with different MVs.
 

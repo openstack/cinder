@@ -1,8 +1,8 @@
 {
     "snapshot": {
-        "created_at": "2019-03-11T16:24:34.469003",
+        "created_at": "%(strtime)s",
         "description": "Daily backup",
-        "id": "b36476e5-d18b-47f9-ac69-4818cb43ee21",
+        "id": "%(uuid)s",
         "metadata": {
             "key": "v3"
         },
@@ -10,6 +10,9 @@
         "size": 10,
         "status": "creating",
         "updated_at": null,
-        "volume_id": "d291b81c-6e40-4525-8231-90aa1588121e"
+        "volume_id": "%(uuid)s",
+        "group_snapshot_id": null,
+        "user_id": "%(uuid)s",
+        "consumes_quota": true
     }
 }

@@ -77,6 +77,9 @@ class ViewBuilder(views_v2.ViewBuilder):
                     encryption_key_id != cinder_constants.FIXED_KEY_ID):
                 volume_ref['volume']['encryption_key_id'] = encryption_key_id
 
+        if req_version.matches(mv.USE_QUOTA):
+            volume_ref['volume']['consumes_quota'] = volume.get('use_quota')
+
         return volume_ref
 
     def _list_view(self, func, request, volumes, volume_count,

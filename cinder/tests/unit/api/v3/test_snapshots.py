@@ -115,6 +115,28 @@ class SnapshotApiTest(test.TestCase):
             self.assertNotIn('group_snapshot_id', resp_dict['snapshot'])
             self.assertNotIn('user_id', resp_dict['snapshot'])
 
+    @ddt.data(
+        (True, True, mv.USE_QUOTA),
+        (True, False, mv.USE_QUOTA),
+        (False, True, mv.get_prior_version(mv.USE_QUOTA)),
+        (False, False, mv.get_prior_version(mv.USE_QUOTA)),
+    )
+    @ddt.unpack
+    def test_snapshot_show_with_use_quota(self, present, value, microversion):
+        volume = test_utils.create_volume(self.ctx, host='test_host1',
+                                          cluster_name='cluster1',
+                                          availability_zone='nova1')
+        snapshot = test_utils.create_snapshot(self.ctx, volume.id,
+                                              use_quota=value)
+
+        url = '/v3/snapshots?%s' % snapshot.id
+        req = fakes.HTTPRequest.blank(url, version=microversion)
+        res_dict = self.controller.show(req, snapshot.id)['snapshot']
+        if present:
+            self.assertIs(value, res_dict['consumes_quota'])
+        else:
+            self.assertNotIn('consumes_quota', res_dict)
+
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % snapshot_id)
@@ -133,25 +155,28 @@ class SnapshotApiTest(test.TestCase):
         body = {"snapshot": snap}
         self.controller.create(req, body=body)
 
-    @ddt.data(('host', 'test_host1', True), ('cluster_name', 'cluster1', True),
-              ('availability_zone', 'nova1', False))
+    @ddt.data(('host', 'test_host1', True, mv.RESOURCE_FILTER),
+              ('cluster_name', 'cluster1', True, mv.RESOURCE_FILTER),
+              ('availability_zone', 'nova1', False, mv.RESOURCE_FILTER),
+              ('consumes_quota', 'true', False, mv.USE_QUOTA))
     @ddt.unpack
     def test_snapshot_list_with_filter(self, filter_name, filter_value,
-                                       is_admin_user):
+                                       is_admin_user, microversion):
         volume1 = test_utils.create_volume(self.ctx, host='test_host1',
                                            cluster_name='cluster1',
                                            availability_zone='nova1')
         volume2 = test_utils.create_volume(self.ctx, host='test_host2',
                                            cluster_name='cluster2',
                                            availability_zone='nova2')
-        snapshot1 = test_utils.create_snapshot(self.ctx, volume1.id)
-        test_utils.create_snapshot(self.ctx, volume2.id)
+        snapshot1 = test_utils.create_snapshot(self.ctx, volume1.id,
+                                               use_quota=True)
+        test_utils.create_snapshot(self.ctx, volume2.id, use_quota=False)
 
         url = '/v3/snapshots?%s=%s' % (filter_name, filter_value)
         # Generic filtering is introduced since '3,31' and we add
         # 'availability_zone' support by using generic filtering.
         req = fakes.HTTPRequest.blank(url, use_admin_context=is_admin_user,
-                                      version=mv.RESOURCE_FILTER)
+                                      version=microversion)
         res_dict = self.controller.detail(req)
 
         self.assertEqual(1, len(res_dict['snapshots']))

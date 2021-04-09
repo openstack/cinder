@@ -1,5 +1,7 @@
 .. -*- rst -*-
 
+.. _resource-filters:
+
 Resource Filters (resource_filters)
 ===================================
 

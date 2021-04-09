@@ -22,7 +22,8 @@ from cinder.tests.functional import api_samples_test_base as test_base
     mv.VOLUME_DETAIL_PROVIDER_ID,  # 3.21
     mv.VOLUME_SHARED_TARGETS_AND_SERVICE_FIELDS,  # 3.48
     mv.VOLUME_CLUSTER_NAME,  # 3.61
-    mv.VOLUME_TYPE_ID_IN_VOLUME_DETAIL)  # 3.63
+    mv.VOLUME_TYPE_ID_IN_VOLUME_DETAIL,  # 3.63
+    mv.USE_QUOTA)  # 3.65
 class VolumeDetailTests(test_base.VolumesSampleBase):
     """Test volume details returned for operations with different MVs.
 
