@@ -112,13 +112,6 @@ class Service(base.CinderPersistentObject, base.CinderObject,
 
         service.obj_reset_changes()
 
-        # TODO(jdg): Remove in S when we're sure all Services have UUID in db
-        if 'uuid' not in service:
-            service.uuid = uuidutils.generate_uuid()
-            LOG.debug('Generated UUID %(uuid)s for service %(id)i',
-                      dict(uuid=service.uuid, id=service.id))
-            service.save()
-
         return service
 
     def obj_load_attr(self, attrname):
