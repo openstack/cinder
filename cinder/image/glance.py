@@ -366,7 +366,7 @@ class GlanceImageService(object):
                     # a system call to cp could have significant performance
                     # advantages, however we do not have the path to files at
                     # this point in the abstraction.
-                    with open(parsed_url.path, "r") as f:
+                    with open(parsed_url.path, "rb") as f:
                         shutil.copyfileobj(f, data)
                     return
 
