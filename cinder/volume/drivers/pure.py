@@ -2542,7 +2542,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     the underlying storage connectivity with the FlashArray.
     """
 
-    VERSION = "12.0.iscsi"
+    VERSION = "13.0.iscsi"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -2768,7 +2768,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     supports the Cinder Fibre Channel Zone Manager.
     """
 
-    VERSION = "12.0.fc"
+    VERSION = "13.0.fc"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
