@@ -231,6 +231,27 @@ class BrickLvmTestCase(test.TestCase):
                 'sudo', vg_name='fake-vg')
         )
 
+    @mock.patch('tenacity.nap.sleep', mock.Mock())
+    @mock.patch.object(brick.putils, 'execute')
+    def test_get_lv_info_retry(self, exec_mock):
+        exec_mock.side_effect = (
+            processutils.ProcessExecutionError('', '', exit_code=139),
+            ('vg name size', ''),
+        )
+
+        self.assertEqual(
+            [{'name': 'name', 'vg': 'vg', 'size': 'size'}],
+            self.vg.get_lv_info('sudo', vg_name='vg', lv_name='name')
+        )
+
+        self.assertEqual(2, exec_mock.call_count)
+        args = ['env', 'LC_ALL=C', 'lvs', '--noheadings', '--unit=g', '-o',
+                'vg_name,name,size', '--nosuffix', 'vg/name']
+        if self.configuration.lvm_suppress_fd_warnings:
+            args.insert(2, 'LVM_SUPPRESS_FD_WARNINGS=1')
+        lvs_call = mock.call(*args, root_helper='sudo', run_as_root=True)
+        exec_mock.assert_has_calls([lvs_call, lvs_call])
+
     def test_get_all_physical_volumes(self):
         # Filtered VG version
         pvs = self.vg.get_all_physical_volumes('sudo', 'fake-vg')

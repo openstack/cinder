@@ -655,8 +655,19 @@ class ComparableMixin(object):
         return self._compare(other, lambda s, o: s != o)
 
 
-def retry(exceptions, interval=1, retries=3, backoff_rate=2,
-          wait_random=False):
+class retry_if_exit_code(tenacity.retry_if_exception):
+    """Retry on ProcessExecutionError specific exit codes."""
+    def __init__(self, codes):
+        self.codes = (codes,) if isinstance(codes, int) else codes
+        super(retry_if_exit_code, self).__init__(self._check_exit_code)
+
+    def _check_exit_code(self, exc):
+        return (exc and isinstance(exc, processutils.ProcessExecutionError) and
+                exc.exit_code in self.codes)
+
+
+def retry(retry_param, interval=1, retries=3, backoff_rate=2,
+          wait_random=False, retry=tenacity.retry_if_exception_type):
 
     if retries < 1:
         raise ValueError('Retries must be greater than or '
@@ -678,7 +689,7 @@ def retry(exceptions, interval=1, retries=3, backoff_rate=2,
                 after=tenacity.after_log(LOG, logging.DEBUG),
                 stop=tenacity.stop_after_attempt(retries),
                 reraise=True,
-                retry=tenacity.retry_if_exception_type(exceptions),
+                retry=retry(retry_param),
                 wait=wait)
             return r.call(f, *args, **kwargs)
 
