@@ -56,19 +56,6 @@ class InstanceLocalityFilter(filters.BaseBackendFilter):
         self._cache = {}
         super(InstanceLocalityFilter, self).__init__()
 
-    def _nova_has_extended_server_attributes(self, context):
-        """Check Extended Server Attributes presence
-
-        Find out whether the Extended Server Attributes extension is activated
-        in Nova or not. Cache the result to query Nova only once.
-        """
-
-        if not hasattr(self, '_nova_ext_srv_attr'):
-            self._nova_ext_srv_attr = nova.API().has_extension(
-                context, 'ExtendedServerAttributes', timeout=REQUESTS_TIMEOUT)
-
-        return self._nova_ext_srv_attr
-
     def backend_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
         backend = volume_utils.extract_host(backend_state.backend_id, 'host')
@@ -94,13 +81,6 @@ class InstanceLocalityFilter(filters.BaseBackendFilter):
         # First, lookup for already-known information in local cache
         if instance_uuid in self._cache:
             return self._cache[instance_uuid] == backend
-
-        if not self._nova_has_extended_server_attributes(context):
-            LOG.warning('Hint "%s" dropped because '
-                        'ExtendedServerAttributes not active in Nova.',
-                        HINT_KEYWORD)
-            raise exception.CinderException(_('Hint "%s" not supported.') %
-                                            HINT_KEYWORD)
 
         server = nova.API().get_server(context, instance_uuid,
                                        privileged_user=True,
