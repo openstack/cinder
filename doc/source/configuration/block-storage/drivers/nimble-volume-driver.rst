@@ -106,8 +106,8 @@ NIMBLE_PASSWORD
   Password of the admin account for Nimble/Alletra 6k array.
 
 NIMBLE_VOLUME_DRIVER
-  Use either cinder.volume.drivers.nimble.NimbleISCSIDriver for iSCSI or
-  cinder.volume.drivers.nimble.NimbleFCDriver for Fibre Channel.
+  Use either cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver for iSCSI or
+  cinder.volume.drivers.hpe.nimble.NimbleFCDriver for Fibre Channel.
 
 NIMBLE_BACKEND_NAME
   A volume back-end name which is specified in the ``cinder.conf`` file.
@@ -168,7 +168,7 @@ The Nimble/Alletra 6k storage driver supports these configuration options:
 .. config-table::
    :config-target: Nimble
 
-   cinder.volume.drivers.nimble
+   cinder.volume.drivers.hpe.nimble
 
 Multipathing
 ~~~~~~~~~~~~

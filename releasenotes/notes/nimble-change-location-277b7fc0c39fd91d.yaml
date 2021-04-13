@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    The Nimble Storage became a part of the HPE family of Storage solutions.
+    The cinder Nimble driver has been relocated to the
+    ``cinder.volume.driver.hpe`` module to reflect this.
+    The impact on operators is that the module path
+    ``cinder.volume.drivers.nimble.NimbleISCSIDriver`` and
+    ``cinder.volume.drivers.nimble.FCDriver`` should now be updated to
+    ``cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver`` and
+    ``cinder.volume.drivers.hpe.nimble.NimbleFCDriver`` respectively in
+    ``cinder.conf``

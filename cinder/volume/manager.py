@@ -185,6 +185,10 @@ MAPPING = {
         'cinder.volume.drivers.dell_emc.powerflex.driver.PowerFlexDriver',
     'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver':
         'cinder.volume.drivers.zadara.zadara.ZadaraVPSAISCSIDriver',
+    'cinder.volume.drivers.nimble.NimbleISCSIDriver':
+        'cinder.volume.drivers.hpe.nimble.NimbleISCSIDriver',
+    'cinder.volume.drivers.nimble.NimbleFCDriver':
+        'cinder.volume.drivers.hpe.nimble.NimbleFCDriver',
 }
 
 
