@@ -438,9 +438,12 @@ class VolumeAPI(rpc.RPCAPI):
                           connector=connector, force=force)
 
     @rpc.assert_min_rpc_version('3.13')
-    def remove_export_snapshot(self, ctxt, snapshot):
+    def remove_export_snapshot(self, ctxt, snapshot, sync=False):
         cctxt = self._get_cctxt(snapshot.service_topic_queue, version='3.13')
-        cctxt.cast(ctxt, 'remove_export_snapshot', snapshot_id=snapshot.id)
+        if sync:
+            cctxt.call(ctxt, 'remove_export_snapshot', snapshot_id=snapshot.id)
+        else:
+            cctxt.cast(ctxt, 'remove_export_snapshot', snapshot_id=snapshot.id)
 
     @rpc.assert_min_rpc_version('3.9')
     def attachment_update(self, ctxt, vref, connector, attachment_id):
