@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax Driver - Promotion RDF Group number fix uses remote array
+    SID when finding rdf group number when performing retype during
+    failover.

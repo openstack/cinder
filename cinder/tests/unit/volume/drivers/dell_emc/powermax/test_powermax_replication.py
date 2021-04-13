@@ -494,6 +494,20 @@ class PowerMaxReplicationTest(test.TestCase):
                 extra_specs1, rep_config)
         self.assertEqual(ref_specs2, rep_extra_specs2)
 
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(1, True))
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_array_model_info',
+                       return_value=('VMAX250F', False))
+    def test_get_replication_extra_specs_get_rdf_group_promotion(
+            self, mock_model, mck_rdf):
+        self.common.promotion = True
+        remote_array = self.data.remote_array
+        rep_config = self.data.rep_config_sync
+        extra_specs1 = deepcopy(self.extra_specs)
+        self.common._get_replication_extra_specs(extra_specs1, rep_config)
+        mck_rdf.assert_called_with(remote_array, rep_config)
+
     @mock.patch.object(rest.PowerMaxRest,
                        'get_array_model_info',
                        return_value=('PowerMax 2000', True))
