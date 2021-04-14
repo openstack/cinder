@@ -3940,6 +3940,7 @@ class PowerMaxCommon(object):
         resume_target_sg, resume_original_sg = False, False
         resume_original_sg_dict = dict()
         orig_mgmt_sg_name = ''
+        is_partitioned = False
 
         target_extra_specs = dict(new_type['extra_specs'])
         target_extra_specs.update({
@@ -4091,6 +4092,12 @@ class PowerMaxCommon(object):
                     host_details[srp_index] = srp
                     updated_host = '+'.join(host_details)
                     model_update['host'] = updated_host
+                    if is_partitioned:
+                        # Must set these here as offline R1 promotion does
+                        # not perform rdf cleanup.
+                        model_update[
+                            'metadata']['ReplicationEnabled'] = 'False'
+                        model_update['metadata']['Configuration'] = 'TDEV'
 
                 target_backend_id = None
                 if is_rep_enabled:
@@ -4223,7 +4230,12 @@ class PowerMaxCommon(object):
         parent_sg = None
         if self.utils.is_replication_enabled(target_extra_specs):
             is_re, rep_mode = True, target_extra_specs['rep_mode']
-        if self.utils.is_replication_enabled(extra_specs):
+            mgmt_sg_name = self.utils.get_rdf_management_group_name(
+                target_extra_specs[utils.REP_CONFIG])
+        if self.promotion and self.utils.is_replication_enabled(extra_specs):
+            # Need to check this when performing promotion while R1 is offline
+            # as RDF cleanup is not performed. Target is not RDF enabled
+            # in that scenario.
             mgmt_sg_name = self.utils.get_rdf_management_group_name(
                 extra_specs[utils.REP_CONFIG])
 

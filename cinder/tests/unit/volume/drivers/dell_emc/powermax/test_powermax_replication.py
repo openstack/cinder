@@ -1230,6 +1230,10 @@ class PowerMaxReplicationTest(test.TestCase):
         self.common.promotion = False
 
     @mock.patch.object(
+        common.PowerMaxCommon, 'update_metadata',
+        return_value={'metadata': {
+            'Configuration': 'RDF2+TDEV', 'ReplicationEnabled': 'True'}})
+    @mock.patch.object(
         common.PowerMaxCommon, '_rdf_vols_partitioned',
         return_value=True)
     @mock.patch.object(
@@ -1243,7 +1247,8 @@ class PowerMaxReplicationTest(test.TestCase):
         common.PowerMaxCommon, '_retype_volume',
         return_value=(True, tpd.PowerMaxData.defaultstoragegroup_name))
     def test_migrate_volume_success_rep_partitioned(
-            self, mck_retype, mck_get, mck_break, mck_valid, mck_partitioned):
+            self, mck_retype, mck_get, mck_break, mck_valid, mck_partitioned,
+            mck_update):
         array_id = self.data.array
         volume = self.data.test_rep_volume
         device_id = self.data.device_id
@@ -1269,6 +1274,10 @@ class PowerMaxReplicationTest(test.TestCase):
             target_slo, target_workload, target_extra_specs)
         self.assertTrue(success)
         self.common.promotion = False
+        config_metadata = model_update['metadata']['Configuration']
+        rep_metadata = model_update['metadata']['ReplicationEnabled']
+        self.assertEqual('TDEV', config_metadata)
+        self.assertEqual('False', rep_metadata)
 
     @mock.patch.object(masking.PowerMaxMasking, 'add_volume_to_storage_group')
     @mock.patch.object(provision.PowerMaxProvision, 'get_or_create_group')
