@@ -1200,15 +1200,16 @@ class PowerMaxReplicationTest(test.TestCase):
         return_value=(True, tpd.PowerMaxData.defaultstoragegroup_name))
     def test_migrate_volume_success_rep_promotion(
             self, mck_retype, mck_get, mck_break, mck_valid):
-        array_id = self.data.array
+        array_id = self.data.remote_array
         volume = self.data.test_rep_volume
         device_id = self.data.device_id
-        srp = self.data.srp
+        srp = 'SRP_2'
         target_slo = self.data.slo_silver
         target_workload = self.data.workload
         volume_name = volume.name
         new_type = {'extra_specs': {}}
         extra_specs = self.data.rep_extra_specs_rep_config
+        updated_host = 'HostX@Backend#Diamond+DSS+SRP_2+000197800124'
         self.common.promotion = True
         target_extra_specs = {
             utils.SRP: srp, utils.ARRAY: array_id, utils.SLO: target_slo,
@@ -1219,6 +1220,7 @@ class PowerMaxReplicationTest(test.TestCase):
         success, model_update = self.common._migrate_volume(
             array_id, volume, device_id, srp, target_slo, target_workload,
             volume_name, new_type, extra_specs)
+        self.assertEqual(model_update['host'], updated_host)
         mck_break.assert_called_once_with(
             array_id, device_id, volume_name, extra_specs)
         mck_retype.assert_called_once_with(
