@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1931004 <https://bugs.launchpad.net/cinder/+bug/1931004>`_: Fixed
+    use of incorrect stripe unit in RBD image clone causing volume-from-image
+    to fail when using raw images backed by Ceph.
