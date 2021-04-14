@@ -110,8 +110,15 @@ class TestCleanableManager(test.TestCase):
 
     def test_do_cleanup_not_cleaning_already_claimed_by_us(self):
         """Basic cleanup that doesn't touch other thread's claimed works."""
-        original_time = timeutils.utcnow()
-        other_thread_claimed_time = timeutils.utcnow()
+        now = timeutils.utcnow()
+        delta = timeutils.datetime.timedelta(seconds=1)
+        original_time = now - delta
+        # Creating the worker in the future, and then changing the in-memory
+        # value of worker2.updated_at to an earlier time, we effectively
+        # simulate that the worker entry was created in the past and that it
+        # has been just updated between worker_get_all and trying
+        # to claim a work for cleanup
+        other_thread_claimed_time = now + delta
         vol = utils.create_volume(self.context, status='creating')
         worker1 = db.worker_create(self.context, status='creating',
                                    resource_type='Volume', resource_id=vol.id,
@@ -124,14 +131,14 @@ class TestCleanableManager(test.TestCase):
                                    service_id=self.service.id,
                                    updated_at=other_thread_claimed_time)
         worker2 = db.worker_get(self.context, id=worker2.id)
-
-        # Simulate that the change to vol2 worker happened between
-        # worker_get_all and trying to claim a work for cleanup
+        # This with the mock below simulates worker2 was created in the past
+        # and updated right between worker_get_all and worker_claim_for_cleanup
         worker2.updated_at = original_time
 
         clean_req = objects.CleanupRequest(service_id=self.service.id)
         mngr = FakeManager(self.service.id)
-        with mock.patch('cinder.db.worker_get_all') as get_all_mock:
+        with mock.patch('cinder.manager.timeutils.utcnow', return_value=now),\
+                mock.patch('cinder.db.worker_get_all') as get_all_mock:
             get_all_mock.return_value = [worker1, worker2]
             mngr.do_cleanup(self.context, clean_req)
 
