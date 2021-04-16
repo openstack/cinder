@@ -201,7 +201,8 @@ class InvalidAvailabilityZone(Invalid):
 
 
 class InvalidTypeAvailabilityZones(Invalid):
-    message = _("Volume type's availability zones are invalid %(az)s.")
+    message = _("Volume type is only supported in these availability zones: "
+                "%(az)s")
 
 
 class InvalidVolumeType(Invalid):
