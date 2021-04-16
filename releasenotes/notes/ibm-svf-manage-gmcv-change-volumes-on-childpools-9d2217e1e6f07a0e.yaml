@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added support to manage GMCV volumes
+    on separate storage pools.

@@ -54,6 +54,8 @@ from cinder.volume import volume_types
 from cinder.volume import volume_utils
 
 SVC_POOLS = ['openstack', 'openstack1']
+SVC_SOURCE_CHILD_POOL = 'openstack2'
+SVC_TARGET_CHILD_POOL = 'openstack3'
 
 CONF = cfg.CONF
 
@@ -5004,6 +5006,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'mirror_pool': None,
                'volume_topology': None,
                'peer_pool': None,
+               'storwize_svc_src_child_pool': None,
+               'storwize_svc_target_child_pool': None,
                'cycle_period_seconds': 300
                }
         return opt
@@ -10033,6 +10037,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                 return words[1]
         return None
 
+    def _get_pool_volumes(self, pool):
+        vdisks = self.sim._cmd_lsvdisks_from_filter('mdisk_grp_name', pool)
+        return vdisks
+
     def test_storwize_do_replication_setup_error(self):
         fake_targets = [self.rep_target, self.rep_target]
         self.driver.configuration.set_override('replication_device',
@@ -10155,6 +10163,48 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self._create_test_volume,
                           self.gmcv_with_cps86401_type)
+
+    @ddt.data((None, None),
+              (None, SVC_TARGET_CHILD_POOL), (SVC_SOURCE_CHILD_POOL, None),
+              (SVC_SOURCE_CHILD_POOL, SVC_TARGET_CHILD_POOL))
+    @ddt.unpack
+    def test_storwize_create_gmcv_volume_with_childpool(
+            self, svc_src_childpool, svc_tgt_childpool):
+        # Set replication target.
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create gmcv volume with change volumes on child pools
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv',
+                'drivers:storwize_svc_src_child_pool': svc_src_childpool,
+                'drivers:storwize_svc_target_child_pool': svc_tgt_childpool}
+        gmcv_childpool_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_gmcv_childpool_type')
+        volume, model_update = self._create_test_volume(
+            gmcv_childpool_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               volume.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               volume.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
+
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume, True)
 
     @ddt.data(({"backend_id": "svc_aux_target_1",
                 "san_ip": "192.168.10.22",
@@ -10354,10 +10404,12 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.do_setup(self.ctxt)
         rep_type = getattr(self, vol_spec['mirror_type'])
 
-        # Create metro mirror replication volume.
+        # Create mirror replication volume.
+        is_gmcv = True if "gmcv" in vol_spec['mirror_type'] else False
         vol1, model_update = self._create_test_volume(rep_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
+        self._validate_replic_vol_creation(vol1, isGMCV=is_gmcv)
 
         snap = testutils.create_snapshot(self.ctxt, vol1.id)
         self.driver.create_snapshot(snap)
@@ -10366,16 +10418,68 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         model_update = self.driver.create_volume_from_snapshot(vol2, snap)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
-        if "gmcv" in vol_spec['mirror_type']:
-            self._validate_replic_vol_creation(vol2, isGMCV=True)
-        else:
-            self._validate_replic_vol_creation(vol2)
+        self._validate_replic_vol_creation(vol2, isGMCV=is_gmcv)
 
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.delete_volume(vol2)
         self.driver.delete_snapshot(snap)
         self.driver.delete_volume(vol1)
+
+    @ddt.data((None, None),
+              (None, SVC_TARGET_CHILD_POOL), (SVC_SOURCE_CHILD_POOL, None),
+              (SVC_SOURCE_CHILD_POOL, SVC_TARGET_CHILD_POOL))
+    @ddt.unpack
+    def test_storwize_create_snapshot_gmcv_volume_with_childpool(
+            self, svc_src_childpool, svc_tgt_childpool):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create gmcv replication volume with change volumes on child pools
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv',
+                'drivers:storwize_svc_src_child_pool': svc_src_childpool,
+                'drivers:storwize_svc_target_child_pool': svc_tgt_childpool}
+        gmcv_childpool_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_gmcv_childpool_type')
+        vol1, model_update = self._create_test_volume(gmcv_childpool_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(vol1, True)
+
+        snap = testutils.create_snapshot(self.ctxt, vol1.id)
+        self.driver.create_snapshot(snap)
+
+        vol2 = self._generate_vol_info(gmcv_childpool_type)
+        model_update = self.driver.create_volume_from_snapshot(vol2, snap)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(vol2, True)
+
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               vol2.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               vol2.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
+
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.delete_volume(vol2)
+        self._validate_replic_vol_deletion(vol2, True)
+        self.driver.delete_snapshot(snap)
+        self.driver.delete_volume(vol1)
+        self._validate_replic_vol_deletion(vol1, True)
 
     def test_storwize_create_cloned_volume_with_mirror_replica(self):
         # Set replication target
@@ -10436,6 +10540,59 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.delete_volume(src_volume)
         self.driver.delete_volume(volume)
+
+    @ddt.data((None, None),
+              (None, SVC_TARGET_CHILD_POOL), (SVC_SOURCE_CHILD_POOL, None),
+              (SVC_SOURCE_CHILD_POOL, SVC_TARGET_CHILD_POOL))
+    @ddt.unpack
+    def test_storwize_create_cloned_volume_from_gmcv_with_childpool(
+            self, svc_src_childpool, svc_tgt_childpool):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create gmcv volume with change volumes on child pools
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv',
+                'drivers:storwize_svc_src_child_pool': svc_src_childpool,
+                'drivers:storwize_svc_target_child_pool': svc_tgt_childpool}
+        gmcv_childpool_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_gmcv_childpool_type')
+        src_volume, model_update = self._create_test_volume(
+            gmcv_childpool_type)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(src_volume, True)
+
+        # Create a cloned volume from source volume.
+        volume = self._generate_vol_info(gmcv_childpool_type)
+        model_update = self.driver.create_cloned_volume(volume, src_volume)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               volume.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               volume.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
+
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.delete_volume(src_volume)
+        self._validate_replic_vol_deletion(src_volume, True)
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(src_volume, True)
 
     @ddt.data(({'replication_enabled': '<is> True',
                 'replication_type': '<in> global'},
@@ -10692,6 +10849,60 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
         self._validate_replic_vol_creation(volume, True)
+
+        self.driver.delete_volume(volume)
+        self._validate_replic_vol_deletion(volume, True)
+
+    @ddt.data((None, None),
+              (None, SVC_TARGET_CHILD_POOL), (SVC_SOURCE_CHILD_POOL, None),
+              (SVC_SOURCE_CHILD_POOL, SVC_TARGET_CHILD_POOL))
+    @ddt.unpack
+    def test_storwize_retype_from_none_to_gmcv_with_childpool(
+            self, svc_src_childpool, svc_tgt_childpool):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create non-replica volume
+        volume, model_update = self._create_test_volume(self.non_replica_type)
+        self.assertEqual(fields.ReplicationStatus.NOT_CAPABLE,
+                         model_update['replication_status'])
+
+        # Retype to gmcv with childpool
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv',
+                'drivers:storwize_svc_src_child_pool': svc_src_childpool,
+                'drivers:storwize_svc_target_child_pool': svc_tgt_childpool}
+        gmcv_childpool_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_gmcv_childpool_type')
+        host = {'host': 'openstack@svc#openstack'}
+        diff, _equal = volume_types.volume_types_diff(
+            self.ctxt, self.non_replica_type['id'],
+            gmcv_childpool_type['id'])
+        retyped, model_update = self.driver.retype(
+            self.ctxt, volume, gmcv_childpool_type, diff, host)
+        volume['volume_type_id'] = gmcv_childpool_type['id']
+        volume['volume_type'] = gmcv_childpool_type
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(volume, True)
+
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               volume.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               volume.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
 
         self.driver.delete_volume(volume)
         self._validate_replic_vol_deletion(volume, True)
@@ -12635,8 +12846,193 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         if vol_spec['replication_enabled'] == '<is> True':
             self.assertEqual(fields.GroupStatus.AVAILABLE,
                              model_update['status'])
-        elif vol_spec['replication_enabled'] == '<is> False':
+        else:
             self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+
+    @ddt.data((None, None),
+              (None, SVC_TARGET_CHILD_POOL), (SVC_SOURCE_CHILD_POOL, None),
+              (SVC_SOURCE_CHILD_POOL, SVC_TARGET_CHILD_POOL))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    @ddt.unpack
+    def test_create_group_from_src_with_gmcv_volume_with_childpool(
+            self, svc_src_childpool, svc_tgt_childpool):
+        # Set replication target
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+
+        # Create new volume_type template for gmcv
+        pool = _get_test_pool()
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': '<in> gmcv',
+                'drivers:storwize_svc_src_child_pool': svc_src_childpool,
+                'drivers:storwize_svc_target_child_pool': svc_tgt_childpool}
+        gmcv_childpool_type = self._create_replica_volume_type(
+            False, opts=spec, vol_type_name='test_gmcv_childpool_type')
+
+        # Create source group
+        src_group = testutils.create_group(
+            self.ctxt, volume_type_ids=[gmcv_childpool_type.id],
+            group_type_id=self.rccg_type.id)
+        model_update = self.driver.create_group(self.ctxt, src_group)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create gmcv volume
+        src_volume = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=gmcv_childpool_type.id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+        model_update = self.driver.create_volume(src_volume)
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+        self._validate_replic_vol_creation(src_volume, True)
+
+        # Check source gmcv change volumes are created on child storage pools
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               src_volume.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               src_volume.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
+
+        rcrel = self.driver._helpers.get_relationship_info(src_volume.name)
+        self.sim._rc_state_transition('wait', rcrel)
+        src_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), src_group.id)
+
+        # Add volume to source group
+        add_volumes = [src_volume]
+        delete_volumes = []
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                              src_group,
+                                                              add_volumes,
+                                                              delete_volumes)
+
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        self.assertEqual([{'id': src_volume.id, 'group_id': src_group.id}],
+                         add_volumes_update)
+        self.assertEqual([], remove_volumes_update)
+
+        # Create clone group from source group
+        clone_group = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[gmcv_childpool_type.id],
+                group_type_id=self.rccg_type.id))
+        clone_volume = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=gmcv_childpool_type.id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), clone_group.id)
+
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(self.ctxt, clone_group,
+                                              clone_volumes, None, None,
+                                              src_group,
+                                              src_volumes))
+
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        for vol_model_update in volumes_model_update:
+            self.assertEqual(fields.VolumeStatus.AVAILABLE,
+                             vol_model_update['status'])
+
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               clone_volume.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               clone_volume.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
+
+        # Create group from source_group_snapshot
+        group_from_src_group_snapshot = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[gmcv_childpool_type.id],
+                group_type_id=self.rccg_type.id))
+        vol_from_snapshot = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=gmcv_childpool_type.id,
+                                    group_id=group_from_src_group_snapshot.id,
+                                    host='openstack@svc#%s' % pool))
+        group_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), group_from_src_group_snapshot.id)
+
+        group_snapshot, snapshots = self._create_group_snapshot(
+            src_group.id, group_type_id=self.rccg_type.id)
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(self.ctxt,
+                                              group_from_src_group_snapshot,
+                                              group_volumes,
+                                              group_snapshot,
+                                              snapshots, None, None))
+
+        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
+        for vol_model_update in volumes_model_update:
+            self.assertEqual(fields.VolumeStatus.AVAILABLE,
+                             vol_model_update['status'])
+
+        src_chg_vol_storage_pool = (
+            svc_src_childpool if svc_src_childpool else _get_test_pool())
+        tgt_chg_vol_storage_pool = (
+            svc_tgt_childpool if svc_tgt_childpool else _get_test_pool())
+        src_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               vol_from_snapshot.name)
+        src_childpool_vols = self._get_pool_volumes(src_chg_vol_storage_pool)
+        self.assertIn(src_change_vol_name, src_childpool_vols)
+
+        tgt_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
+                               storwize_const.REPLICA_AUX_VOL_PREFIX +
+                               vol_from_snapshot.name)
+        tgt_childpool_vols = self._get_pool_volumes(tgt_chg_vol_storage_pool)
+        self.assertIn(tgt_change_vol_name, tgt_childpool_vols)
+
+        # Delete groups
+        model_update = self.driver.delete_group(self.ctxt,
+                                                group_from_src_group_snapshot,
+                                                group_volumes)
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+        with mock.patch(
+                'cinder.volume.volume_utils.'
+                'is_group_a_cg_snapshot_type') as is_group_a_cg_snapshot_type:
+            is_group_a_cg_snapshot_type.return_value = True
+            model_update = self.driver.delete_group_snapshot(self.ctxt,
+                                                             group_snapshot,
+                                                             snapshots)
+            self.assertEqual(fields.GroupSnapshotStatus.DELETED,
+                             model_update[0]['status'])
+            for snapshot in model_update[1]:
+                self.assertEqual(fields.SnapshotStatus.DELETED,
+                                 snapshot['status'])
+
+        model_update = self.driver.delete_group(self.ctxt,
+                                                clone_group, clone_volumes)
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+        model_update = self.driver.delete_group(self.ctxt, src_group,
+                                                src_volumes)
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
 
     @ddt.data(({'volume_type': 'mm'}),
               ({'volume_type': 'gm'}),

@@ -154,7 +154,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
         super(StorwizeSVCReplicationGMCV, self).__init__(
             driver, replication_target, target_helpers)
 
-    def volume_replication_setup(self, context, vref):
+    def volume_replication_setup(self, context, vref, new_type=None):
         LOG.debug('enter: volume_replication_setup: volume %s', vref['name'])
         source_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
                                   vref['name'])
@@ -162,6 +162,9 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
         target_change_vol_name = (storwize_const.REPLICA_CHG_VOL_PREFIX +
                                   target_vol_name)
         try:
+            if new_type:
+                new_type_opts = self.driver._get_vdisk_params(
+                    new_type['id'], volume_type=new_type)
             src_attr = self.driver._helpers.get_vdisk_attributes(
                 vref['name'])
             # Create source change volume if it doesn't exist
@@ -173,10 +176,19 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                 src_change_opts['iogrp'] = src_attr['IO_group_id']
                 # Change volumes would usually be thin-provisioned
                 src_change_opts['autoexpand'] = True
+                src_change_pool = src_attr['mdisk_grp_name']
+                if new_type:
+                    src_child_pool = (
+                        new_type_opts['storwize_svc_src_child_pool'])
+                else:
+                    src_child_pool = (
+                        src_change_opts['storwize_svc_src_child_pool'])
+                if src_child_pool:
+                    src_change_pool = src_child_pool
                 self.driver._helpers.create_vdisk(source_change_vol_name,
                                                   six.text_type(vref['size']),
                                                   'gb',
-                                                  src_attr['mdisk_grp_name'],
+                                                  src_change_pool,
                                                   src_change_opts)
             # Create target volume if it doesn't exist
             target_attr = self.target_helpers.get_vdisk_attributes(
@@ -199,6 +211,14 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                 target_change_opts = self.driver._get_vdisk_params(
                     vref['volume_type_id'])
                 target_change_pool = self.target.get('pool_name')
+                if new_type:
+                    target_child_pool = (
+                        new_type_opts['storwize_svc_target_child_pool'])
+                else:
+                    target_child_pool = (
+                        target_change_opts['storwize_svc_target_child_pool'])
+                if target_child_pool:
+                    target_change_pool = target_child_pool
                 target_change_opts['iogrp'] = src_attr['IO_group_id']
                 # Change Volumes would usually be thin-provisioned
                 target_change_opts['autoexpand'] = True

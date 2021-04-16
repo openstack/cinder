@@ -127,6 +127,14 @@ storwize_svc_opts = [
                default=None,
                help='Specifies the name of the pool in which mirrored copy '
                     'is stored. Example: "pool2"'),
+    cfg.StrOpt('storwize_svc_src_child_pool',
+               default=None,
+               help='Specifies the name of the source child pool in which '
+                    'global mirror source change volume is stored.'),
+    cfg.StrOpt('storwize_svc_target_child_pool',
+               default=None,
+               help='Specifies the name of the target child pool in which '
+                    'global mirror auxiliary change volume is stored.'),
     cfg.StrOpt('storwize_peer_pool',
                default=None,
                help='Specifies the name of the peer pool for hyperswap '
@@ -1428,6 +1436,10 @@ class StorwizeHelpers(object):
                'mirror_pool': config.storwize_svc_mirror_pool,
                'volume_topology': None,
                'peer_pool': config.storwize_peer_pool,
+               'storwize_svc_src_child_pool':
+                   config.storwize_svc_src_child_pool,
+               'storwize_svc_target_child_pool':
+                   config.storwize_svc_target_child_pool,
                'cycle_period_seconds': config.cycle_period_seconds}
         return opt
 
@@ -5357,12 +5369,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # Add replica if needed
         if not old_rep_type and new_rep_type:
             replica_obj = self._get_replica_obj(new_rep_type)
-            replica_obj.volume_replication_setup(ctxt, volume)
             if storwize_const.GMCV == new_rep_type:
+                replica_obj.volume_replication_setup(ctxt, volume, new_type)
                 # Set cycle_period_seconds if needed
                 self._helpers.change_relationship_cycleperiod(
                     volume['name'],
                     new_opts.get('cycle_period_seconds'))
+            else:
+                replica_obj.volume_replication_setup(ctxt, volume)
             model_update['replication_status'] = (
                 fields.ReplicationStatus.ENABLED)
             # Updating replication properties for a volume with replication
