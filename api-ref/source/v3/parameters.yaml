@@ -1132,10 +1132,11 @@ encryption_id_body:
   type: string
 encryption_key_id:
   description: |
-    The UUID of the encryption key.
+    The UUID of the encryption key.  Only included for encrypted volumes.
   in: body
   required: false
   type: string
+  min_version: 3.64
 event_id:
   description: |
     The id of the event to this message, this id could
