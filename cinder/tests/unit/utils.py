@@ -489,7 +489,8 @@ def create_service(ctxt, values=None):
     values = values or {}
     v = default_service_values()
     v.update(values)
-    service = db.service_create(ctxt, v)
+    service = objects.Service(ctxt, **v)
+    service.create()
     # We need to read the contents from the DB if we have set updated_at
     # or created_at fields
     if 'updated_at' in values or 'created_at' in values:
