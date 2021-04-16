@@ -635,12 +635,14 @@ class Client(client_base.Client):
             else:
                 block_count = zbc
 
+            is_sub_clone = block_count > 0
             zapi_args = {
                 'volume': volume,
                 'source-path': name,
                 'destination-path': new_name,
-                'space-reserve': space_reserved,
             }
+            if not is_sub_clone:
+                zapi_args['space-reserve'] = space_reserved
             if source_snapshot:
                 zapi_args['snapshot-name'] = source_snapshot
             if is_snapshot and self.features.BACKUP_CLONE_PARAM:
@@ -651,7 +653,8 @@ class Client(client_base.Client):
                 child_name = 'qos-%spolicy-group-name' % (
                     'adaptive-' if qos_policy_group_is_adaptive else '')
                 clone_create.add_new_child(child_name, qos_policy_group_name)
-            if block_count > 0:
+
+            if is_sub_clone:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
                 bc = block_count

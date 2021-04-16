@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1924643 <https://bugs.launchpad.net/cinder/+bug/1924643>`_: Fixed
+    the NetApp cinder driver sub-clone operation that might be used
+    by extend operation in case the extended size is greater than the max
+    LUN geometry.
