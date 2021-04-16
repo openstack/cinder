@@ -1,0 +1,8 @@
+---
+other:
+  - |
+    Added user messages for backup operations that a user
+    can query through the `Messages API
+    <https://docs.openstack.org/api-ref/block-storage/v3/#messages-messages>`_.
+    These allow users to retrieve error messages for asynchronous
+    failures in backup operations like create, delete, and restore.

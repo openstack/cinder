@@ -28,6 +28,7 @@ class Resource(object):
 
     VOLUME = 'VOLUME'
     VOLUME_SNAPSHOT = 'VOLUME_SNAPSHOT'
+    VOLUME_BACKUP = 'VOLUME_BACKUP'
 
 
 class Action(object):
@@ -45,6 +46,9 @@ class Action(object):
     SNAPSHOT_DELETE = ('010', _('delete snapshot'))
     SNAPSHOT_UPDATE = ('011', _('update snapshot'))
     SNAPSHOT_METADATA_UPDATE = ('012', _('update snapshot metadata'))
+    BACKUP_CREATE = ('013', _('create backup'))
+    BACKUP_DELETE = ('014', _('delete backup'))
+    BACKUP_RESTORE = ('015', _('restore backup'))
 
     ALL = (SCHEDULE_ALLOCATE_VOLUME,
            ATTACH_VOLUME,
@@ -58,6 +62,9 @@ class Action(object):
            SNAPSHOT_DELETE,
            SNAPSHOT_UPDATE,
            SNAPSHOT_METADATA_UPDATE,
+           BACKUP_CREATE,
+           BACKUP_DELETE,
+           BACKUP_RESTORE,
            )
 
 
@@ -100,6 +107,24 @@ class Detail(object):
         _("Volume snapshot update metadata failed."))
     SNAPSHOT_IS_BUSY = ('015', _("Snapshot is busy."))
     SNAPSHOT_DELETE_ERROR = ('016', _("Snapshot failed to delete."))
+    BACKUP_INVALID_STATE = ('017', _("Backup status is invalid."))
+    BACKUP_SERVICE_DOWN = ('018', _("Backup service is down."))
+    BACKUP_CREATE_DEVICE_ERROR = (
+        '019', _("Failed to get backup device from the volume service."))
+    BACKUP_CREATE_DRIVER_ERROR = (
+        '020', ("Backup driver failed to create backup."))
+    ATTACH_ERROR = ('021', _("Failed to attach volume."))
+    DETACH_ERROR = ('022', _("Failed to detach volume."))
+    BACKUP_CREATE_CLEANUP_ERROR = (
+        '023', _("Cleanup of temporary volume/snapshot failed."))
+    BACKUP_SCHEDULE_ERROR = (
+        '024',
+        ("Backup failed to schedule. Service not found for creating backup."))
+    BACKUP_DELETE_DRIVER_ERROR = (
+        '025', _("Backup driver failed to delete backup."))
+    BACKUP_RESTORE_ERROR = (
+        '026', _("Backup driver failed to restore backup."))
+    VOLUME_INVALID_STATE = ('027', _("Volume status is invalid."))
 
     ALL = (UNKNOWN_ERROR,
            DRIVER_NOT_INITIALIZED,
@@ -117,6 +142,17 @@ class Detail(object):
            SNAPSHOT_UPDATE_METADATA_FAILED,
            SNAPSHOT_IS_BUSY,
            SNAPSHOT_DELETE_ERROR,
+           BACKUP_INVALID_STATE,
+           BACKUP_SERVICE_DOWN,
+           BACKUP_CREATE_DEVICE_ERROR,
+           BACKUP_CREATE_DRIVER_ERROR,
+           ATTACH_ERROR,
+           DETACH_ERROR,
+           BACKUP_CREATE_CLEANUP_ERROR,
+           BACKUP_SCHEDULE_ERROR,
+           BACKUP_DELETE_DRIVER_ERROR,
+           BACKUP_RESTORE_ERROR,
+           VOLUME_INVALID_STATE,
            )
 
     # Exception and detail mappings

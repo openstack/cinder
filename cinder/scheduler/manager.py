@@ -643,3 +643,9 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             msg = "Service not found for creating backup."
             LOG.error(msg)
             vol_utils.update_backup_error(backup, msg)
+            self.message_api.create(
+                context,
+                action=message_field.Action.BACKUP_CREATE,
+                resource_type=message_field.Resource.VOLUME_BACKUP,
+                resource_uuid=backup.id,
+                detail=message_field.Detail.BACKUP_SCHEDULE_ERROR)
