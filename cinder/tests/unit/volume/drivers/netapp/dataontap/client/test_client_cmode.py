@@ -736,6 +736,42 @@ class NetAppCmodeClientTestCase(test.TestCase):
             netapp_api.NaElement.create_node_with_children(
                 'clone-create', **clone_create_args), True)
 
+    @ddt.data(0, 1)
+    def test_clone_lun_is_sub_clone(self, block_count):
+
+        self.client.clone_lun(
+            'volume', 'fakeLUN', 'newFakeLUN', block_count=block_count)
+
+        clone_create_args = {
+            'volume': 'volume',
+            'source-path': 'fakeLUN',
+            'destination-path': 'newFakeLUN',
+        }
+
+        is_sub_clone = block_count > 0
+        if not is_sub_clone:
+            clone_create_args['space-reserve'] = 'true'
+
+        # build the expected request
+        expected_clone_create_request = \
+            netapp_api.NaElement.create_node_with_children(
+                'clone-create', **clone_create_args)
+
+        # add expected fields in the request if it's a sub-clone
+        if is_sub_clone:
+            block_ranges = netapp_api.NaElement("block-ranges")
+            block_range = \
+                netapp_api.NaElement.create_node_with_children(
+                    'block-range',
+                    **{'source-block-number': '0',
+                       'destination-block-number': '0',
+                       'block-count': '1'})
+            block_ranges.add_child_elem(block_range)
+            expected_clone_create_request.add_child_elem(block_ranges)
+
+        self.connection.invoke_successfully.assert_called_once_with(
+            expected_clone_create_request, True)
+
     def test_clone_lun_multiple_zapi_calls(self):
         """Test for when lun clone requires more than one zapi call."""
 
