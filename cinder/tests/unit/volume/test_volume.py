@@ -90,12 +90,12 @@ def create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
 
 
 class KeyObject(object):
-    def get_encoded(arg):
+    def get_encoded(self):
         return "asdf".encode('utf-8')
 
 
 class KeyObject2(object):
-    def get_encoded(arg):
+    def get_encoded(self):
         return "qwert".encode('utf-8')
 
 
