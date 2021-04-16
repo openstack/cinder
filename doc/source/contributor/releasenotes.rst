@@ -56,9 +56,19 @@ link to it as a RST link like in the following example:
    ---
    fixes:
      - |
-       `Bug #1889758 <https://bugs.launchpad.net/cinder/+bug/1889758>`_: Fix
+       `Bug #1889758 <https://bugs.launchpad.net/cinder/+bug/1889758>`_: Fixed
        revert to snapshot not working for non admin users when using the
        snapshot's name.
+
+Note the use of the past tense ("Fixed") instead of the present tense
+("Fix").  This is because although you are fixing the bug right now in the
+present, operators will be reading the release notes in the future (at the
+time of the release), at which time your bug fix will be a thing of the past.
+
+Additionally, keep in mind that when your release note is published, it is
+mixed in with all the other release notes and won't obviously be connected
+to your patch.  Thus, in order for it to make sense, you may need to repeat
+information that you already have in your commit message.  That's OK.
 
 Drivers
 -------
@@ -72,7 +82,7 @@ For example:
    ---
    features:
      - |
-       RBD driver: Add support for volume manage and unmanage operations.
+       RBD driver: Added support for volume manage and unmanage operations.
 
 When fixing a driver bug we must not only have the driver name prefix but also
 the bug number and link:
@@ -83,7 +93,7 @@ the bug number and link:
   fixes:
     - |
       Brocade driver `bug #1866860
-      <https://bugs.launchpad.net/cinder/+bug/1889758>`_: Fix
+      <https://bugs.launchpad.net/cinder/+bug/1889758>`_: Fixed
       ``AttributeError`` when using ``REST_HTTP`` or ``REST_HTTPS`` as the
       ``fc_southbound_protocol`` option and an exception is raised by the
       client.
@@ -97,14 +107,14 @@ list each of the driver as an independent item following above rules:
   fixes:
     - |
       Unity driver `bug #1881108
-      <https://bugs.launchpad.net/cinder/+bug/1881108>`_: Fix leaving leftover
-      devices on the host when validation of the attached volume fails on some
-      cloning cases and create volume from snapshot.
+      <https://bugs.launchpad.net/cinder/+bug/1881108>`_: Fixed leaving
+      leftover devices on the host when validation of the attached volume
+      fails on some cloning cases and create volume from snapshot.
     - |
       Kaminario driver `bug #1881108
-      <https://bugs.launchpad.net/cinder/+bug/1881108>`_: Fix leaving leftover
-      devices on the host when validation of the attached volume fails on some
-      cloning cases and create volume from snapshot.
+      <https://bugs.launchpad.net/cinder/+bug/1881108>`_:  Fixed leaving
+      leftover devices on the host when validation of the attached volume
+      fails on some cloning cases and create volume from snapshot.
 
 Creating the note
 -----------------

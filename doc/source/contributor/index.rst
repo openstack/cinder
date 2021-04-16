@@ -30,6 +30,17 @@ Getting Started
 
     contributing
 
+Writing Release Notes
+---------------------
+
+Please follow the format, it will make everyone's life easier.  There's
+even a special section on writing release notes for Cinder drivers.
+
+.. toctree::
+    :maxdepth: 2
+
+    releasenotes
+
 .. _programming-howtos:
 
 Programming HowTos and Tutorials
