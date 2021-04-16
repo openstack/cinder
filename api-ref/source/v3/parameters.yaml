@@ -1879,9 +1879,9 @@ multiattach_resp:
   type: boolean
 name:
   description: |
-    The name of the Volume Transfer.
+    The name of the object.
   in: body
-  required: true
+  required: false
   type: string
 name_backend_pool:
   description: |
@@ -2644,6 +2644,12 @@ snapshot_id_source_vol:
   in: body
   required: false
   type: string
+snapshot_name:
+  description: |
+    The name of the snapshot.
+  in: body
+  required: false
+  type: string
 snapshot_obj:
   description: |
     A ``snapshot`` object.
@@ -2889,13 +2895,18 @@ transfer:
   in: body
   required: true
   type: object
+transfer_name:
+  description: |
+    The name of the volume transfer.
+  in: body
+  required: true
+  type: string
 transfer_obj_id:
   description: |
     The UUID of the volume transfer.
   in: body
   required: true
   type: string
-
 transfers:
   description: |
     List of transfer details.
