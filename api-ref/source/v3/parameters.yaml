@@ -1417,7 +1417,7 @@ hosts:
   type: object
 id:
   description: |
-    The UUID of the volume transfer.
+    The UUID of the object.
   in: body
   required: true
   type: string
@@ -2889,6 +2889,13 @@ transfer:
   in: body
   required: true
   type: object
+transfer_obj_id:
+  description: |
+    The UUID of the volume transfer.
+  in: body
+  required: true
+  type: string
+
 transfers:
   description: |
     List of transfer details.
