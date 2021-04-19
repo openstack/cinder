@@ -17,9 +17,8 @@ import uuid
 
 from oslo_config import cfg
 from oslo_utils import timeutils
+import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer
-from sqlalchemy import MetaData, String, Table, Text, UniqueConstraint, text
 from sqlalchemy.sql import expression
 
 from cinder.volume import group_types as volume_group_types
@@ -40,494 +39,552 @@ CREATED_AT = datetime.datetime.now()  # noqa
 
 
 def define_tables(meta):
-    services = Table(
+    services = sa.Table(
         'services', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('host', String(255)),
-        Column('binary', String(255)),
-        Column('topic', String(255)),
-        Column('report_count', Integer, nullable=False),
-        Column('disabled', Boolean),
-        Column('availability_zone', String(255)),
-        Column('disabled_reason', String(255)),
-        Column('modified_at', DateTime(timezone=False)),
-        Column('rpc_current_version', String(36)),
-        Column('object_current_version', String(36)),
-        Column('replication_status', String(36), default='not-capable'),
-        Column('frozen', Boolean, default=False),
-        Column('active_backend_id', String(255)),
-        Column('cluster_name', String(255), nullable=True),
-        Column('uuid', String(36), nullable=True),
-        Index('services_uuid_idx', 'uuid', unique=True),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('host', sa.String(255)),
+        sa.Column('binary', sa.String(255)),
+        sa.Column('topic', sa.String(255)),
+        sa.Column('report_count', sa.Integer, nullable=False),
+        sa.Column('disabled', sa.Boolean),
+        sa.Column('availability_zone', sa.String(255)),
+        sa.Column('disabled_reason', sa.String(255)),
+        sa.Column('modified_at', sa.DateTime(timezone=False)),
+        sa.Column('rpc_current_version', sa.String(36)),
+        sa.Column('object_current_version', sa.String(36)),
+        sa.Column('replication_status', sa.String(36), default='not-capable'),
+        sa.Column('frozen', sa.Boolean, default=False),
+        sa.Column('active_backend_id', sa.String(255)),
+        sa.Column('cluster_name', sa.String(255), nullable=True),
+        sa.Column('uuid', sa.String(36), nullable=True),
+        sa.Index('services_uuid_idx', 'uuid', unique=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    consistencygroups = Table(
+    consistencygroups = sa.Table(
         'consistencygroups', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('user_id', String(255)),
-        Column('project_id', String(255)),
-        Column('host', String(255)),
-        Column('availability_zone', String(255)),
-        Column('name', String(255)),
-        Column('description', String(255)),
-        Column('volume_type_id', String(255)),
-        Column('status', String(255)),
-        Column('cgsnapshot_id', String(36)),
-        Column('source_cgid', String(36)),
-        Column('cluster_name', String(255), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('user_id', sa.String(255)),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('host', sa.String(255)),
+        sa.Column('availability_zone', sa.String(255)),
+        sa.Column('name', sa.String(255)),
+        sa.Column('description', sa.String(255)),
+        sa.Column('volume_type_id', sa.String(255)),
+        sa.Column('status', sa.String(255)),
+        sa.Column('cgsnapshot_id', sa.String(36)),
+        sa.Column('source_cgid', sa.String(36)),
+        sa.Column('cluster_name', sa.String(255), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    cgsnapshots = Table(
+    cgsnapshots = sa.Table(
         'cgsnapshots', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('consistencygroup_id', String(36),
-               ForeignKey('consistencygroups.id'),
-               nullable=False,
-               index=True),
-        Column('user_id', String(255)),
-        Column('project_id', String(255)),
-        Column('name', String(255)),
-        Column('description', String(255)),
-        Column('status', String(255)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column(
+            'consistencygroup_id',
+            sa.String(36),
+            sa.ForeignKey('consistencygroups.id'),
+            nullable=False,
+            index=True),
+        sa.Column('user_id', sa.String(255)),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('name', sa.String(255)),
+        sa.Column('description', sa.String(255)),
+        sa.Column('status', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    groups = Table(
+    groups = sa.Table(
         'groups', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('user_id', String(length=255)),
-        Column('project_id', String(length=255)),
-        Column('cluster_name', String(255)),
-        Column('host', String(length=255)),
-        Column('availability_zone', String(length=255)),
-        Column('name', String(length=255)),
-        Column('description', String(length=255)),
-        Column('group_type_id', String(length=36)),
-        Column('status', String(length=255)),
-        Column('group_snapshot_id', String(36)),
-        Column('source_group_id', String(36)),
-        Column('replication_status', String(255)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('user_id', sa.String(length=255)),
+        sa.Column('project_id', sa.String(length=255)),
+        sa.Column('cluster_name', sa.String(255)),
+        sa.Column('host', sa.String(length=255)),
+        sa.Column('availability_zone', sa.String(length=255)),
+        sa.Column('name', sa.String(length=255)),
+        sa.Column('description', sa.String(length=255)),
+        sa.Column('group_type_id', sa.String(length=36)),
+        sa.Column('status', sa.String(length=255)),
+        sa.Column('group_snapshot_id', sa.String(36)),
+        sa.Column('source_group_id', sa.String(36)),
+        sa.Column('replication_status', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    group_snapshots = Table(
+    group_snapshots = sa.Table(
         'group_snapshots', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('id', String(36), primary_key=True),
-        Column('group_id', String(36),
-               ForeignKey('groups.id'),
-               nullable=False,
-               index=True),
-        Column('user_id', String(length=255)),
-        Column('project_id', String(length=255)),
-        Column('name', String(length=255)),
-        Column('description', String(length=255)),
-        Column('status', String(length=255)),
-        Column('group_type_id', String(length=36)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.String(36), primary_key=True),
+        sa.Column(
+            'group_id',
+            sa.String(36),
+            sa.ForeignKey('groups.id'),
+            nullable=False,
+            index=True),
+        sa.Column('user_id', sa.String(length=255)),
+        sa.Column('project_id', sa.String(length=255)),
+        sa.Column('name', sa.String(length=255)),
+        sa.Column('description', sa.String(length=255)),
+        sa.Column('status', sa.String(length=255)),
+        sa.Column('group_type_id', sa.String(length=36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    volumes = Table(
+    volumes = sa.Table(
         'volumes', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('ec2_id', String(255)),
-        Column('user_id', String(255)),
-        Column('project_id', String(255)),
-        Column('host', String(255)),
-        Column('size', Integer),
-        Column('availability_zone', String(255)),
-        Column('status', String(255)),
-        Column('attach_status', String(255)),
-        Column('scheduled_at', DateTime),
-        Column('launched_at', DateTime),
-        Column('terminated_at', DateTime),
-        Column('display_name', String(255)),
-        Column('display_description', String(255)),
-        Column('provider_location', String(256)),
-        Column('provider_auth', String(256)),
-        Column('snapshot_id', String(36)),
-        Column('volume_type_id', String(36)),
-        Column('source_volid', String(36)),
-        Column('bootable', Boolean),
-        Column('provider_geometry', String(255)),
-        Column('_name_id', String(36)),
-        Column('encryption_key_id', String(36)),
-        Column('migration_status', String(255)),
-        Column('replication_status', String(255)),
-        Column('replication_extended_status', String(255)),
-        Column('replication_driver_data', String(255)),
-        Column('consistencygroup_id', String(36),
-               ForeignKey('consistencygroups.id'), index=True),
-        Column('provider_id', String(255)),
-        Column('multiattach', Boolean),
-        Column('previous_status', String(255)),
-        Column('cluster_name', String(255), nullable=True),
-        Column('group_id', String(36), ForeignKey('groups.id'), index=True),
-        Column('service_uuid', String(36), ForeignKey('services.uuid'),
-               nullable=True),
-        Column('shared_targets', Boolean, default=True),
-        Index('volumes_service_uuid_idx', 'service_uuid', 'deleted'),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('ec2_id', sa.String(255)),
+        sa.Column('user_id', sa.String(255)),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('host', sa.String(255)),
+        sa.Column('size', sa.Integer),
+        sa.Column('availability_zone', sa.String(255)),
+        sa.Column('status', sa.String(255)),
+        sa.Column('attach_status', sa.String(255)),
+        sa.Column('scheduled_at', sa.DateTime),
+        sa.Column('launched_at', sa.DateTime),
+        sa.Column('terminated_at', sa.DateTime),
+        sa.Column('display_name', sa.String(255)),
+        sa.Column('display_description', sa.String(255)),
+        sa.Column('provider_location', sa.String(256)),
+        sa.Column('provider_auth', sa.String(256)),
+        sa.Column('snapshot_id', sa.String(36)),
+        sa.Column('volume_type_id', sa.String(36)),
+        sa.Column('source_volid', sa.String(36)),
+        sa.Column('bootable', sa.Boolean),
+        sa.Column('provider_geometry', sa.String(255)),
+        sa.Column('_name_id', sa.String(36)),
+        sa.Column('encryption_key_id', sa.String(36)),
+        sa.Column('migration_status', sa.String(255)),
+        sa.Column('replication_status', sa.String(255)),
+        sa.Column('replication_extended_status', sa.String(255)),
+        sa.Column('replication_driver_data', sa.String(255)),
+        sa.Column(
+            'consistencygroup_id',
+            sa.String(36),
+            sa.ForeignKey('consistencygroups.id'),
+            index=True),
+        sa.Column('provider_id', sa.String(255)),
+        sa.Column('multiattach', sa.Boolean),
+        sa.Column('previous_status', sa.String(255)),
+        sa.Column('cluster_name', sa.String(255), nullable=True),
+        sa.Column(
+            'group_id',
+            sa.String(36),
+            sa.ForeignKey('groups.id'),
+            index=True),
+        sa.Column(
+            'service_uuid',
+            sa.String(36),
+            sa.ForeignKey('services.uuid'),
+            nullable=True),
+        sa.Column('shared_targets', sa.Boolean, default=True),
+        sa.Index('volumes_service_uuid_idx', 'service_uuid', 'deleted'),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    volume_attachment = Table(
+    volume_attachment = sa.Table(
         'volume_attachment', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('volume_id', String(36), ForeignKey('volumes.id'),
-               nullable=False, index=True),
-        Column('attached_host', String(255)),
-        Column('instance_uuid', String(36)),
-        Column('mountpoint', String(255)),
-        Column('attach_time', DateTime),
-        Column('detach_time', DateTime),
-        Column('attach_mode', String(36)),
-        Column('attach_status', String(255)),
-        Column('connection_info', Text),
-        Column('connector', Text),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column(
+            'volume_id',
+            sa.String(36),
+            sa.ForeignKey('volumes.id'),
+            nullable=False,
+            index=True),
+        sa.Column('attached_host', sa.String(255)),
+        sa.Column('instance_uuid', sa.String(36)),
+        sa.Column('mountpoint', sa.String(255)),
+        sa.Column('attach_time', sa.DateTime),
+        sa.Column('detach_time', sa.DateTime),
+        sa.Column('attach_mode', sa.String(36)),
+        sa.Column('attach_status', sa.String(255)),
+        sa.Column('connection_info', sa.Text),
+        sa.Column('connector', sa.Text),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    attachment_specs = Table(
+    attachment_specs = sa.Table(
         'attachment_specs', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(), default=False),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('attachment_id', String(36),
-               ForeignKey('volume_attachment.id'),
-               nullable=False,
-               index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(), default=False),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'attachment_id',
+            sa.String(36),
+            sa.ForeignKey('volume_attachment.id'),
+            nullable=False,
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    snapshots = Table(
+    snapshots = sa.Table(
         'snapshots', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('volume_id', String(36),
-               ForeignKey('volumes.id', name='snapshots_volume_id_fkey'),
-               nullable=False, index=True),
-        Column('user_id', String(255)),
-        Column('project_id', String(255)),
-        Column('status', String(255)),
-        Column('progress', String(255)),
-        Column('volume_size', Integer),
-        Column('scheduled_at', DateTime),
-        Column('display_name', String(255)),
-        Column('display_description', String(255)),
-        Column('provider_location', String(255)),
-        Column('encryption_key_id', String(36)),
-        Column('volume_type_id', String(36)),
-        Column('cgsnapshot_id', String(36),
-               ForeignKey('cgsnapshots.id'), index=True),
-        Column('provider_id', String(255)),
-        Column('provider_auth', String(255)),
-        Column('group_snapshot_id', String(36),
-               ForeignKey('group_snapshots.id'), index=True),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column(
+            'volume_id',
+            sa.String(36),
+            sa.ForeignKey('volumes.id', name='snapshots_volume_id_fkey'),
+            nullable=False,
+            index=True),
+        sa.Column('user_id', sa.String(255)),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('status', sa.String(255)),
+        sa.Column('progress', sa.String(255)),
+        sa.Column('volume_size', sa.Integer),
+        sa.Column('scheduled_at', sa.DateTime),
+        sa.Column('display_name', sa.String(255)),
+        sa.Column('display_description', sa.String(255)),
+        sa.Column('provider_location', sa.String(255)),
+        sa.Column('encryption_key_id', sa.String(36)),
+        sa.Column('volume_type_id', sa.String(36)),
+        sa.Column(
+            'cgsnapshot_id',
+            sa.String(36),
+            sa.ForeignKey('cgsnapshots.id'),
+            index=True),
+        sa.Column('provider_id', sa.String(255)),
+        sa.Column('provider_auth', sa.String(255)),
+        sa.Column(
+            'group_snapshot_id',
+            sa.String(36),
+            sa.ForeignKey('group_snapshots.id'),
+            index=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    snapshot_metadata = Table(
+    snapshot_metadata = sa.Table(
         'snapshot_metadata', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('snapshot_id', String(36), ForeignKey('snapshots.id'),
-               nullable=False, index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'snapshot_id',
+            sa.String(36),
+            sa.ForeignKey('snapshots.id'),
+            nullable=False,
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    quality_of_service_specs = Table(
+    quality_of_service_specs = sa.Table(
         'quality_of_service_specs', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('specs_id', String(36),
-               ForeignKey('quality_of_service_specs.id'),
-               index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column(
+            'specs_id',
+            sa.String(36),
+            sa.ForeignKey('quality_of_service_specs.id'),
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    volume_types = Table(
+    volume_types = sa.Table(
         'volume_types', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('name', String(255)),
-        Column('qos_specs_id', String(36),
-               ForeignKey('quality_of_service_specs.id'), index=True),
-        Column('is_public', Boolean),
-        Column('description', String(255)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('name', sa.String(255)),
+        sa.Column(
+            'qos_specs_id',
+            sa.String(36),
+            sa.ForeignKey('quality_of_service_specs.id'),
+            index=True),
+        sa.Column('is_public', sa.Boolean),
+        sa.Column('description', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    volume_type_projects = Table(
+    volume_type_projects = sa.Table(
         'volume_type_projects', meta,
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('volume_type_id', String(36),
-               ForeignKey('volume_types.id')),
-        Column('project_id', String(255)),
-        Column('deleted', Integer),
-        UniqueConstraint('volume_type_id', 'project_id', 'deleted'),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column(
+            'volume_type_id',
+            sa.String(36),
+            sa.ForeignKey('volume_types.id')),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('deleted', sa.Integer),
+        sa.UniqueConstraint('volume_type_id', 'project_id', 'deleted'),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    volume_metadata = Table(
+    volume_metadata = sa.Table(
         'volume_metadata', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('volume_id', String(36), ForeignKey('volumes.id'),
-               nullable=False, index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'volume_id',
+            sa.String(36),
+            sa.ForeignKey('volumes.id'),
+            nullable=False,
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    volume_type_extra_specs = Table(
+    volume_type_extra_specs = sa.Table(
         'volume_type_extra_specs', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('volume_type_id', String(36),
-               ForeignKey('volume_types.id',
-                          name='volume_type_extra_specs_ibfk_1'),
-               nullable=False,
-               index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'volume_type_id',
+            sa.String(36),
+            sa.ForeignKey(
+                'volume_types.id',
+                name='volume_type_extra_specs_ibfk_1'),
+            nullable=False,
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    quotas = Table(
+    quotas = sa.Table(
         'quotas', meta,
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('project_id', String(255)),
-        Column('resource', String(255), nullable=False),
-        Column('hard_limit', Integer),
-        Column('allocated', Integer, default=0),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('resource', sa.String(255), nullable=False),
+        sa.Column('hard_limit', sa.Integer),
+        sa.Column('allocated', sa.Integer, default=0),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    quota_classes = Table(
+    quota_classes = sa.Table(
         'quota_classes', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True,
-                                  name=None)),
-        Column('id', Integer(), primary_key=True),
-        Column('class_name', String(255), index=True),
-        Column('resource', String(255)),
-        Column('hard_limit', Integer(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('class_name', sa.String(255), index=True),
+        sa.Column('resource', sa.String(255)),
+        sa.Column('hard_limit', sa.Integer(), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    quota_usages = Table(
+    quota_usages = sa.Table(
         'quota_usages', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True,
-                                  name=None)),
-        Column('id', Integer(), primary_key=True),
-        Column('project_id', String(255), index=True),
-        Column('resource', String(255)),
-        Column('in_use', Integer(), nullable=False),
-        Column('reserved', Integer(), nullable=False),
-        Column('until_refresh', Integer(), nullable=True),
-        Index('quota_usage_project_resource_idx',
-              'project_id', 'resource'),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('project_id', sa.String(255), index=True),
+        sa.Column('resource', sa.String(255)),
+        sa.Column('in_use', sa.Integer(), nullable=False),
+        sa.Column('reserved', sa.Integer(), nullable=False),
+        sa.Column('until_refresh', sa.Integer(), nullable=True),
+        sa.Index('quota_usage_project_resource_idx', 'project_id', 'resource'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    reservations = Table(
+    reservations = sa.Table(
         'reservations', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True,
-                                  name=None)),
-        Column('id', Integer(), primary_key=True),
-        Column('uuid', String(36), nullable=False),
-        Column('usage_id',
-               Integer(),
-               ForeignKey('quota_usages.id'),
-               nullable=True,
-               index=True),
-        Column('project_id', String(255), index=True),
-        Column('resource', String(255)),
-        Column('delta', Integer(), nullable=False),
-        Column('expire', DateTime(timezone=False)),
-        Column('allocated_id', Integer, ForeignKey('quotas.id'),
-               nullable=True,
-               index=True),
-        Index('reservations_deleted_expire_idx',
-              'deleted', 'expire'),
-        Index('reservations_deleted_uuid_idx',
-              'deleted', 'uuid'),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('uuid', sa.String(36), nullable=False),
+        sa.Column(
+            'usage_id',
+            sa.Integer(),
+            sa.ForeignKey('quota_usages.id'),
+            nullable=True,
+            index=True),
+        sa.Column('project_id', sa.String(255), index=True),
+        sa.Column('resource', sa.String(255)),
+        sa.Column('delta', sa.Integer(), nullable=False),
+        sa.Column('expire', sa.DateTime(timezone=False)),
+        sa.Column(
+            'allocated_id',
+            sa.Integer,
+            sa.ForeignKey('quotas.id'),
+            nullable=True,
+            index=True),
+        sa.Index('reservations_deleted_expire_idx', 'deleted', 'expire'),
+        sa.Index('reservations_deleted_uuid_idx', 'deleted', 'uuid'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    volume_glance_metadata = Table(
+    volume_glance_metadata = sa.Table(
         'volume_glance_metadata',
         meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('id', Integer(), primary_key=True, nullable=False),
-        Column('volume_id', String(36), ForeignKey('volumes.id'), index=True),
-        Column('snapshot_id', String(36),
-               ForeignKey('snapshots.id'), index=True),
-        Column('key', String(255)),
-        Column('value', Text),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.Integer(), primary_key=True, nullable=False),
+        sa.Column(
+            'volume_id',
+            sa.String(36),
+            sa.ForeignKey('volumes.id'),
+            index=True),
+        sa.Column(
+            'snapshot_id',
+            sa.String(36),
+            sa.ForeignKey('snapshots.id'),
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.Text),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    backups = Table(
+    backups = sa.Table(
         'backups', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('volume_id', String(36), nullable=False),
-        Column('user_id', String(255)),
-        Column('project_id', String(255)),
-        Column('host', String(255)),
-        Column('availability_zone', String(255)),
-        Column('display_name', String(255)),
-        Column('display_description', String(255)),
-        Column('container', String(255)),
-        Column('status', String(255)),
-        Column('fail_reason', String(255)),
-        Column('service_metadata', String(255)),
-        Column('service', String(255)),
-        Column('size', Integer()),
-        Column('object_count', Integer()),
-        Column('parent_id', String(36)),
-        Column('temp_volume_id', String(36)),
-        Column('temp_snapshot_id', String(36)),
-        Column('num_dependent_backups', Integer, default=0),
-        Column('snapshot_id', String(36)),
-        Column('data_timestamp', DateTime),
-        Column('restore_volume_id', String(36)),
-        Column('encryption_key_id', String(36)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('volume_id', sa.String(36), nullable=False),
+        sa.Column('user_id', sa.String(255)),
+        sa.Column('project_id', sa.String(255)),
+        sa.Column('host', sa.String(255)),
+        sa.Column('availability_zone', sa.String(255)),
+        sa.Column('display_name', sa.String(255)),
+        sa.Column('display_description', sa.String(255)),
+        sa.Column('container', sa.String(255)),
+        sa.Column('status', sa.String(255)),
+        sa.Column('fail_reason', sa.String(255)),
+        sa.Column('service_metadata', sa.String(255)),
+        sa.Column('service', sa.String(255)),
+        sa.Column('size', sa.Integer()),
+        sa.Column('object_count', sa.Integer()),
+        sa.Column('parent_id', sa.String(36)),
+        sa.Column('temp_volume_id', sa.String(36)),
+        sa.Column('temp_snapshot_id', sa.String(36)),
+        sa.Column('num_dependent_backups', sa.Integer, default=0),
+        sa.Column('snapshot_id', sa.String(36)),
+        sa.Column('data_timestamp', sa.DateTime),
+        sa.Column('restore_volume_id', sa.String(36)),
+        sa.Column('encryption_key_id', sa.String(36)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    backup_metadata = Table(
+    backup_metadata = sa.Table(
         'backup_metadata', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(), default=False),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('backup_id', String(36),
-               ForeignKey('backups.id'),
-               nullable=False,
-               index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(), default=False),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'backup_id',
+            sa.String(36),
+            sa.ForeignKey('backups.id'),
+            nullable=False,
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    transfers = Table(
+    transfers = sa.Table(
         'transfers', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean),
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('volume_id', String(36), ForeignKey('volumes.id'),
-               nullable=False, index=True),
-        Column('display_name', String(255)),
-        Column('salt', String(255)),
-        Column('crypt_hash', String(255)),
-        Column('expires_at', DateTime(timezone=False)),
-        Column('no_snapshots', Boolean, default=False),
-        Column('source_project_id', String(255), nullable=True),
-        Column('destination_project_id', String(255), nullable=True),
-        Column('accepted', Boolean, default=False),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column(
+            'volume_id',
+            sa.String(36),
+            sa.ForeignKey('volumes.id'),
+            nullable=False,
+            index=True),
+        sa.Column('display_name', sa.String(255)),
+        sa.Column('salt', sa.String(255)),
+        sa.Column('crypt_hash', sa.String(255)),
+        sa.Column('expires_at', sa.DateTime(timezone=False)),
+        sa.Column('no_snapshots', sa.Boolean, default=False),
+        sa.Column('source_project_id', sa.String(255), nullable=True),
+        sa.Column('destination_project_id', sa.String(255), nullable=True),
+        sa.Column('accepted', sa.Boolean, default=False),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -535,200 +592,233 @@ def define_tables(meta):
     # Sqlite needs to handle nullable differently
     is_nullable = (meta.bind.name == 'sqlite')
 
-    encryption = Table(
+    encryption = sa.Table(
         'encryption', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        Column('cipher', String(255)),
-        Column('control_location', String(255), nullable=is_nullable),
-        Column('key_size', Integer),
-        Column('provider', String(255), nullable=is_nullable),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.Column('cipher', sa.String(255)),
+        sa.Column('control_location', sa.String(255), nullable=is_nullable),
+        sa.Column('key_size', sa.Integer),
+        sa.Column('provider', sa.String(255), nullable=is_nullable),
         # NOTE(joel-coffman): The volume_type_id must be unique or else the
         # referenced volume type becomes ambiguous. That is, specifying the
         # volume type is not sufficient to identify a particular encryption
         # scheme unless each volume type is associated with at most one
         # encryption scheme.
-        Column('volume_type_id', String(36), nullable=is_nullable),
+        sa.Column('volume_type_id', sa.String(36), nullable=is_nullable),
         # NOTE (smcginnis): nullable=True triggers this to not set a default
         # value, but since it's a primary key the resulting schema will end up
         # still being NOT NULL. This is avoiding a case in MySQL where it will
         # otherwise set this to NOT NULL DEFAULT ''. May be harmless, but
         # inconsistent with previous schema.
-        Column('encryption_id', String(36), primary_key=True, nullable=True),
+        sa.Column(
+            'encryption_id',
+            sa.String(36),
+            primary_key=True,
+            nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    volume_admin_metadata = Table(
+    volume_admin_metadata = sa.Table(
         'volume_admin_metadata', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('volume_id', String(36), ForeignKey('volumes.id'),
-               nullable=False, index=True),
-        Column('key', String(255)),
-        Column('value', String(255)),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'volume_id',
+            sa.String(36),
+            sa.ForeignKey('volumes.id'),
+            nullable=False,
+            index=True),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    initiator_data = Table(
+    initiator_data = sa.Table(
         'driver_initiator_data', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('initiator', String(255), index=True, nullable=False),
-        Column('namespace', String(255), nullable=False),
-        Column('key', String(255), nullable=False),
-        Column('value', String(255)),
-        UniqueConstraint('initiator', 'namespace', 'key'),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('initiator', sa.String(255), index=True, nullable=False),
+        sa.Column('namespace', sa.String(255), nullable=False),
+        sa.Column('key', sa.String(255), nullable=False),
+        sa.Column('value', sa.String(255)),
+        sa.UniqueConstraint('initiator', 'namespace', 'key'),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    image_volume_cache = Table(
+    image_volume_cache = sa.Table(
         'image_volume_cache_entries', meta,
-        Column('image_updated_at', DateTime(timezone=False)),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('host', String(255), index=True, nullable=False),
-        Column('image_id', String(36), index=True, nullable=False),
-        Column('volume_id', String(36), nullable=False),
-        Column('size', Integer, nullable=False),
-        Column('last_used', DateTime, nullable=False),
-        Column('cluster_name', String(255)),
+        sa.Column('image_updated_at', sa.DateTime(timezone=False)),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('host', sa.String(255), index=True, nullable=False),
+        sa.Column('image_id', sa.String(36), index=True, nullable=False),
+        sa.Column('volume_id', sa.String(36), nullable=False),
+        sa.Column('size', sa.Integer, nullable=False),
+        sa.Column('last_used', sa.DateTime, nullable=False),
+        sa.Column('cluster_name', sa.String(255)),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    messages = Table(
+    messages = sa.Table(
         'messages', meta,
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('project_id', String(255), nullable=False),
-        Column('request_id', String(255)),
-        Column('resource_type', String(36)),
-        Column('resource_uuid', String(255), nullable=True),
-        Column('event_id', String(255), nullable=False),
-        Column('message_level', String(255), nullable=False),
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean),
-        Column('expires_at', DateTime(timezone=False), index=True),
-        Column('detail_id', String(10), nullable=True),
-        Column('action_id', String(10), nullable=True),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('project_id', sa.String(255), nullable=False),
+        sa.Column('request_id', sa.String(255)),
+        sa.Column('resource_type', sa.String(36)),
+        sa.Column('resource_uuid', sa.String(255), nullable=True),
+        sa.Column('event_id', sa.String(255), nullable=False),
+        sa.Column('message_level', sa.String(255), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('expires_at', sa.DateTime(timezone=False), index=True),
+        sa.Column('detail_id', sa.String(10), nullable=True),
+        sa.Column('action_id', sa.String(10), nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
 
-    cluster = Table(
+    cluster = sa.Table(
         'clusters', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(), default=False),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('name', String(255), nullable=False),
-        Column('binary', String(255), nullable=False),
-        Column('disabled', Boolean(), default=False),
-        Column('disabled_reason', String(255)),
-        Column('race_preventer', Integer, nullable=False, default=0),
-        Column('replication_status', String(length=36), default='not-capable'),
-        Column('active_backend_id', String(length=255)),
-        Column('frozen', Boolean, nullable=False, default=False,
-               server_default=expression.false()),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(), default=False),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('name', sa.String(255), nullable=False),
+        sa.Column('binary', sa.String(255), nullable=False),
+        sa.Column('disabled', sa.Boolean(), default=False),
+        sa.Column('disabled_reason', sa.String(255)),
+        sa.Column('race_preventer', sa.Integer, nullable=False, default=0),
+        sa.Column(
+            'replication_status',
+            sa.String(length=36),
+            default='not-capable'),
+        sa.Column('active_backend_id', sa.String(length=255)),
+        sa.Column(
+            'frozen',
+            sa.Boolean,
+            nullable=False,
+            default=False,
+            server_default=expression.false()),
         # To remove potential races on creation we have a constraint set on
         # name and race_preventer fields, and we set value on creation to 0, so
         # 2 clusters with the same name will fail this constraint.  On deletion
         # we change this field to the same value as the id which will be unique
         # and will not conflict with the creation of another cluster with the
         # same name.
-        UniqueConstraint('name', 'binary', 'race_preventer'),
+        sa.UniqueConstraint('name', 'binary', 'race_preventer'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    workers = Table(
+    workers = sa.Table(
         'workers', meta,
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean(), default=False),
-        Column('id', Integer, primary_key=True),
-        Column('resource_type', String(40), nullable=False),
-        Column('resource_id', String(36), nullable=False),
-        Column('status', String(255), nullable=False),
-        Column('service_id', Integer, ForeignKey('services.id'),
-               nullable=True, index=True),
-        Column('race_preventer', Integer, nullable=False, default=0,
-               server_default=text('0')),
-        UniqueConstraint('resource_type', 'resource_id'),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean(), default=False),
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('resource_type', sa.String(40), nullable=False),
+        sa.Column('resource_id', sa.String(36), nullable=False),
+        sa.Column('status', sa.String(255), nullable=False),
+        sa.Column(
+            'service_id',
+            sa.Integer,
+            sa.ForeignKey('services.id'),
+            nullable=True,
+            index=True),
+        sa.Column(
+            'race_preventer',
+            sa.Integer,
+            nullable=False,
+            default=0,
+            server_default=sa.text('0')),
+        sa.UniqueConstraint('resource_type', 'resource_id'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    group_types = Table(
+    group_types = sa.Table(
         'group_types', meta,
-        Column('id', String(36), primary_key=True, nullable=False),
-        Column('name', String(255), nullable=False),
-        Column('description', String(255)),
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean),
-        Column('is_public', Boolean),
+        sa.Column('id', sa.String(36), primary_key=True, nullable=False),
+        sa.Column('name', sa.String(255), nullable=False),
+        sa.Column('description', sa.String(255)),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('is_public', sa.Boolean),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    group_type_specs = Table(
+    group_type_specs = sa.Table(
         'group_type_specs', meta,
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('key', String(255)),
-        Column('value', String(255)),
-        Column('group_type_id', String(36),
-               ForeignKey('group_types.id'),
-               nullable=False,
-               index=True),
-        Column('created_at', DateTime(timezone=False)),
-        Column('updated_at', DateTime(timezone=False)),
-        Column('deleted_at', DateTime(timezone=False)),
-        Column('deleted', Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('key', sa.String(255)),
+        sa.Column('value', sa.String(255)),
+        sa.Column(
+            'group_type_id',
+            sa.String(36),
+            sa.ForeignKey('group_types.id'),
+            nullable=False,
+            index=True),
+        sa.Column('created_at', sa.DateTime(timezone=False)),
+        sa.Column('updated_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted_at', sa.DateTime(timezone=False)),
+        sa.Column('deleted', sa.Boolean),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    group_type_projects = Table(
+    group_type_projects = sa.Table(
         'group_type_projects', meta,
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('group_type_id', String(36),
-               ForeignKey('group_types.id')),
-        Column('project_id', String(length=255)),
-        Column('deleted', Boolean(create_constraint=True, name=None)),
-        UniqueConstraint('group_type_id', 'project_id', 'deleted'),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column(
+            'group_type_id',
+            sa.String(36),
+            sa.ForeignKey('group_types.id')),
+        sa.Column('project_id', sa.String(length=255)),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        sa.UniqueConstraint('group_type_id', 'project_id', 'deleted'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
 
-    grp_vt_mapping = Table(
+    grp_vt_mapping = sa.Table(
         'group_volume_type_mapping', meta,
-        Column('created_at', DateTime),
-        Column('updated_at', DateTime),
-        Column('deleted_at', DateTime),
-        Column('deleted', Boolean),
-        Column('id', Integer, primary_key=True, nullable=False),
-        Column('volume_type_id', String(36), ForeignKey('volume_types.id'),
-               nullable=False,
-               index=True),
-        Column('group_id', String(36),
-               ForeignKey('groups.id'), nullable=False,
-               index=True),
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column('deleted', sa.Boolean),
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column(
+            'volume_type_id',
+            sa.String(36),
+            sa.ForeignKey('volume_types.id'),
+            nullable=False,
+            index=True),
+        sa.Column(
+            'group_id',
+            sa.String(36),
+            sa.ForeignKey('groups.id'),
+            nullable=False,
+            index=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -770,7 +860,7 @@ def define_tables(meta):
 
 
 def upgrade(migrate_engine):
-    meta = MetaData()
+    meta = sa.MetaData()
     meta.bind = migrate_engine
 
     # create all tables
@@ -818,7 +908,7 @@ def upgrade(migrate_engine):
         migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
 
     # Set default quota class values
-    quota_classes = Table('quota_classes', meta, autoload=True)
+    quota_classes = sa.Table('quota_classes', meta, autoload=True)
     qci = quota_classes.insert()
     qci.execute({'created_at': CREATED_AT,
                  'class_name': CLASS_NAME,
@@ -853,7 +943,7 @@ def upgrade(migrate_engine):
                  'hard_limit': CONF.quota_groups,
                  'deleted': False, })
 
-    workers = Table('workers', meta, autoload=True)
+    workers = sa.Table('workers', meta, autoload=True)
 
     # This is only necessary for mysql, and since the table is not in use this
     # will only be a schema update.
@@ -881,8 +971,8 @@ def upgrade(migrate_engine):
                 'status': 'OK'})
 
     # Create default group type
-    group_types = Table('group_types', meta, autoload=True)
-    group_type_specs = Table('group_type_specs', meta, autoload=True)
+    group_types = sa.Table('group_types', meta, autoload=True)
+    group_type_specs = sa.Table('group_type_specs', meta, autoload=True)
 
     now = timeutils.utcnow()
     grp_type_id = "%s" % uuid.uuid4()
@@ -916,9 +1006,9 @@ def upgrade(migrate_engine):
     # prefix such as 'volumes_' or 'gigabytes_' to volume_type_name it
     # will exceed the db length limit.
 
-    quota_usages = Table('quota_usages', meta, autoload=True)
+    quota_usages = sa.Table('quota_usages', meta, autoload=True)
     try:
-        quota_usages.c.resource.alter(type=String(300))
+        quota_usages.c.resource.alter(type=sa.String(300))
     except Exception:
         # On MariaDB, max length varies depending on the version and the InnoDB
         # page size [1], so it is possible to have error 1071 ('Specified key
@@ -930,7 +1020,7 @@ def upgrade(migrate_engine):
             raise
 
     # Create default volume type
-    vol_types = Table("volume_types", meta, autoload=True)
+    vol_types = sa.Table("volume_types", meta, autoload=True)
     volume_type_dict = {
         'id': str(uuid.uuid4()),
         'name': volume_types.DEFAULT_VOLUME_TYPE,

@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from sqlalchemy import MetaData, Table
+import sqlalchemy as sa
 
 from cinder import exception
 from cinder.i18n import _
@@ -19,11 +19,11 @@ from cinder.i18n import _
 def upgrade(migrate_engine):
     """Make volume_type columns non-nullable"""
 
-    meta = MetaData(bind=migrate_engine)
+    meta = sa.MetaData(bind=migrate_engine)
 
     # Update volume_type columns in tables to not allow null value
 
-    volumes = Table('volumes', meta, autoload=True)
+    volumes = sa.Table('volumes', meta, autoload=True)
 
     try:
         volumes.c.volume_type_id.alter(nullable=False)
@@ -34,7 +34,7 @@ def upgrade(migrate_engine):
                  'There are still untyped volumes unmigrated.'))
         raise exception.ValidationError(msg)
 
-    snapshots = Table('snapshots', meta, autoload=True)
+    snapshots = sa.Table('snapshots', meta, autoload=True)
 
     try:
         snapshots.c.volume_type_id.alter(nullable=False)
@@ -45,7 +45,7 @@ def upgrade(migrate_engine):
                  'There are still %(count)i untyped snapshots unmigrated.'))
         raise exception.ValidationError(msg)
 
-    encryption = Table('encryption', meta, autoload=True)
+    encryption = sa.Table('encryption', meta, autoload=True)
     # since volume_type is a mandatory arg when creating encryption
     # volume_type_id column won't contain any null values so we can directly
     # alter it
