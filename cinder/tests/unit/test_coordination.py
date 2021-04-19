@@ -60,6 +60,9 @@ class CoordinatorTestCase(test.TestCase):
         self.assertTrue(get_coordinator.called)
         self.assertTrue(crd.start.called)
 
+        agent.start()
+        crd.start.assert_called_once_with(start_heart=True)
+
     def test_coordinator_stop(self, get_coordinator):
         crd = get_coordinator.return_value
 
@@ -69,6 +72,9 @@ class CoordinatorTestCase(test.TestCase):
         agent.stop()
         self.assertTrue(crd.stop.called)
         self.assertIsNone(agent.coordinator)
+
+        agent.stop()
+        crd.stop.assert_called_once_with()
 
     def test_coordinator_lock(self, get_coordinator):
         crd = get_coordinator.return_value
