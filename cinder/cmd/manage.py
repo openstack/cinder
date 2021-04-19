@@ -205,7 +205,7 @@ class DbCommands(object):
     def version(self):
         """Print the current database version."""
         print(migration.db_version(db_api.get_engine(),
-                                   db_migration.MIGRATE_REPO_PATH,
+                                   db_migration.LEGACY_MIGRATIONS_PATH,
                                    db_migration.INIT_VERSION))
 
     @args('age_in_days', type=int,
@@ -1020,7 +1020,7 @@ def get_arg_string(args):
             # This is long optional arg
             args = args[2:]
         else:
-            args = args[1:]
+            args = args[1:]  # pylint: disable=E1136
 
     # We convert dashes to underscores so we can have cleaner optional arg
     # names
