@@ -907,6 +907,34 @@ def upgrade(migrate_engine):
             migrate_engine.url.database)
         migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
 
+    workers = sa.Table('workers', meta, autoload=True)
+
+    # This is only necessary for mysql, and since the table is not in use this
+    # will only be a schema update.
+    if migrate_engine.name.startswith('mysql'):
+        try:
+            workers.c.updated_at.alter(mysql.DATETIME(fsp=6))
+        except Exception:
+            # MySQL v5.5 or earlier don't support sub-second resolution so we
+            # may have cleanup races in Active-Active configurations, that's
+            # why upgrading is recommended in that case.
+            # Code in Cinder is capable of working with 5.5, so for 5.5 there's
+            # no problem
+            pass
+
+    quota_usages = sa.Table('quota_usages', meta, autoload=True)
+    try:
+        quota_usages.c.resource.alter(type=sa.String(300))
+    except Exception:
+        # On MariaDB, max length varies depending on the version and the InnoDB
+        # page size [1], so it is possible to have error 1071 ('Specified key
+        # was too long; max key length is 767 bytes").  Since this migration is
+        # to resolve a corner case, deployments with those DB versions won't be
+        # covered.
+        # [1]: https://mariadb.com/kb/en/library/innodb-limitations/#page-sizes
+        if not migrate_engine.name.startswith('mysql'):
+            raise
+
     # Set default quota class values
     quota_classes = sa.Table('quota_classes', meta, autoload=True)
     qci = quota_classes.insert()
@@ -943,24 +971,10 @@ def upgrade(migrate_engine):
                  'hard_limit': CONF.quota_groups,
                  'deleted': False, })
 
-    workers = sa.Table('workers', meta, autoload=True)
-
-    # This is only necessary for mysql, and since the table is not in use this
-    # will only be a schema update.
-    if migrate_engine.name.startswith('mysql'):
-        try:
-            workers.c.updated_at.alter(mysql.DATETIME(fsp=6))
-        except Exception:
-            # MySQL v5.5 or earlier don't support sub-second resolution so we
-            # may have cleanup races in Active-Active configurations, that's
-            # why upgrading is recommended in that case.
-            # Code in Cinder is capable of working with 5.5, so for 5.5 there's
-            # no problem
-            pass
-
     # TODO(geguileo): Once we remove support for MySQL 5.5 we have to create
     # an upgrade migration to remove this row.
     # Set workers table sub-second support sentinel
+    workers = sa.Table('workers', meta, autoload=True)
     wi = workers.insert()
     now = timeutils.utcnow().replace(microsecond=123)
     wi.execute({'created_at': now,
@@ -1005,19 +1019,6 @@ def upgrade(migrate_engine):
     # but the length of volume_type_name is limited to 255, if we add a
     # prefix such as 'volumes_' or 'gigabytes_' to volume_type_name it
     # will exceed the db length limit.
-
-    quota_usages = sa.Table('quota_usages', meta, autoload=True)
-    try:
-        quota_usages.c.resource.alter(type=sa.String(300))
-    except Exception:
-        # On MariaDB, max length varies depending on the version and the InnoDB
-        # page size [1], so it is possible to have error 1071 ('Specified key
-        # was too long; max key length is 767 bytes").  Since this migration is
-        # to resolve a corner case, deployments with those DB versions won't be
-        # covered.
-        # [1]: https://mariadb.com/kb/en/library/innodb-limitations/#page-sizes
-        if not migrate_engine.name.startswith('mysql'):
-            raise
 
     # Create default volume type
     vol_types = sa.Table("volume_types", meta, autoload=True)
