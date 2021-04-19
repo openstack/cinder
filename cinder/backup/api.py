@@ -19,6 +19,7 @@
 
 from datetime import datetime
 import random
+from typing import List, Optional  # noqa: H301
 
 from eventlet import greenthread
 from oslo_config import cfg
@@ -65,17 +66,24 @@ class API(base.Base):
         self.volume_api = cinder.volume.API()
         super().__init__()
 
-    def get(self, context, backup_id):
+    def get(self,
+            context: context.RequestContext,
+            backup_id: str) -> 'objects.Backup':
         backup = objects.Backup.get_by_id(context, backup_id)
         context.authorize(policy.GET_POLICY, target_obj=backup)
         return backup
 
-    def _check_support_to_force_delete(self, context, backup_host):
+    def _check_support_to_force_delete(self,
+                                       context: context.RequestContext,
+                                       backup_host: str) -> bool:
         result = self.backup_rpcapi.check_support_to_force_delete(context,
                                                                   backup_host)
         return result
 
-    def delete(self, context, backup, force=False):
+    def delete(self,
+               context: context.RequestContext,
+               backup: 'objects.Backup',
+               force: bool = False) -> None:
         """Make the RPC call to delete a volume backup.
 
         Call backup manager to execute backup delete or force delete operation.
@@ -109,8 +117,14 @@ class API(base.Base):
         backup.save()
         self.backup_rpcapi.delete_backup(context, backup)
 
-    def get_all(self, context, search_opts=None, marker=None, limit=None,
-                offset=None, sort_keys=None, sort_dirs=None):
+    def get_all(self,
+                context: context.RequestContext,
+                search_opts: dict = None,
+                marker: str = None,
+                limit: int = None,
+                offset: int = None,
+                sort_keys: List[str] = None,
+                sort_dirs: List[str] = None) -> 'objects.BackupList':
         context.authorize(policy.GET_ALL_POLICY)
 
         search_opts = search_opts or {}
@@ -132,11 +146,15 @@ class API(base.Base):
 
         return backups
 
-    def _az_matched(self, service, availability_zone):
+    def _az_matched(self,
+                    service: 'objects.Service',
+                    availability_zone: str) -> bool:
         return ((not availability_zone) or
                 service.availability_zone == availability_zone)
 
-    def _is_backup_service_enabled(self, availability_zone, host):
+    def _is_backup_service_enabled(self,
+                                   availability_zone: str,
+                                   host: str) -> bool:
         """Check if there is a backup service available."""
         topic = constants.BACKUP_TOPIC
         ctxt = context.get_admin_context()
@@ -148,7 +166,9 @@ class API(base.Base):
                 return True
         return False
 
-    def _get_any_available_backup_service(self, availability_zone):
+    def _get_any_available_backup_service(
+            self,
+            availability_zone: str) -> Optional[str]:
         """Get an available backup service host.
 
         Get an available backup service host in the specified
@@ -166,10 +186,10 @@ class API(base.Base):
             idx = idx + 1
         return None
 
-    def get_available_backup_service_host(self, host, az):
+    def get_available_backup_service_host(self, host: str, az: str) -> str:
         return self._get_available_backup_service_host(host, az)
 
-    def _get_available_backup_service_host(self, host, az):
+    def _get_available_backup_service_host(self, host: str, az: str) -> str:
         """Return an appropriate backup service host."""
         backup_host = None
         if not host or not CONF.backup_use_same_host:
@@ -180,7 +200,7 @@ class API(base.Base):
             raise exception.ServiceNotFound(service_id='cinder-backup')
         return backup_host
 
-    def _list_backup_services(self):
+    def _list_backup_services(self) -> List['objects.Service']:
         """List all enabled backup services.
 
         :returns: list -- hosts for services that are enabled for backup.
@@ -191,14 +211,22 @@ class API(base.Base):
             ctxt, topic, disabled=False)
         return services
 
-    def _list_backup_hosts(self):
+    def _list_backup_hosts(self) -> list:
         services = self._list_backup_services()
         return [srv.host for srv in services
                 if not srv.disabled and srv.is_up]
 
-    def create(self, context, name, description, volume_id,
-               container, incremental=False, availability_zone=None,
-               force=False, snapshot_id=None, metadata=None):
+    def create(self,
+               context: context.RequestContext,
+               name: Optional[str],
+               description: Optional[str],
+               volume_id: str,
+               container: str,
+               incremental: bool = False,
+               availability_zone: str = None,
+               force: bool = False,
+               snapshot_id: Optional[str] = None,
+               metadata: dict = None) -> 'objects.Backup':
         """Make the RPC call to create a volume backup."""
         volume = self.volume_api.get(context, volume_id)
         context.authorize(policy.CREATE_POLICY, target_obj=volume)
@@ -334,7 +362,11 @@ class API(base.Base):
 
         return backup
 
-    def restore(self, context, backup_id, volume_id=None, name=None):
+    def restore(self,
+                context: context.RequestContext,
+                backup_id: str,
+                volume_id: str = None,
+                name: str = None) -> dict:
         """Make the RPC call to restore a volume backup."""
         backup = self.get(context, backup_id)
         context.authorize(policy.RESTORE_POLICY, target_obj=backup)
@@ -410,7 +442,10 @@ class API(base.Base):
 
         return d
 
-    def reset_status(self, context, backup_id, status):
+    def reset_status(self,
+                     context: context.RequestContext,
+                     backup_id: str,
+                     status: str) -> None:
         """Make the RPC call to reset a volume backup's status.
 
         Call backup manager to execute backup status reset operation.
@@ -431,7 +466,9 @@ class API(base.Base):
         self.backup_rpcapi.reset_status(ctxt=context, backup=backup,
                                         status=status)
 
-    def export_record(self, context, backup_id):
+    def export_record(self,
+                      context: context.RequestContext,
+                      backup_id: str) -> dict:
         """Make the RPC call to export a volume backup.
 
         Call backup manager to execute backup export.
@@ -462,7 +499,9 @@ class API(base.Base):
 
         return export_data
 
-    def _get_import_backup(self, context, backup_url):
+    def _get_import_backup(self,
+                           context: context.RequestContext,
+                           backup_url: str) -> 'objects.Backup':
         """Prepare database backup record for import.
 
         This method decodes provided backup_url and expects to find the id of
@@ -553,7 +592,10 @@ class API(base.Base):
                     QUOTAS.rollback(context, reservations)
         return backup
 
-    def import_record(self, context, backup_service, backup_url):
+    def import_record(self,
+                      context: context.RequestContext,
+                      backup_service: str,
+                      backup_url: str) -> 'objects.Backup':
         """Make the RPC call to import a volume backup.
 
         :param context: running context
@@ -588,7 +630,10 @@ class API(base.Base):
 
         return backup
 
-    def update(self, context, backup_id, fields):
+    def update(self,
+               context: context.RequestContext,
+               backup_id: str,
+               fields: list) -> 'objects.Service':
         backup = self.get(context, backup_id)
         context.authorize(policy.UPDATE_POLICY, target_obj=backup)
         backup.update(fields)

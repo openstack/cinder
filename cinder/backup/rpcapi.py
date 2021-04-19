@@ -70,7 +70,7 @@ class BackupAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(server=backup.host)
         cctxt.cast(ctxt, 'delete_backup', backup=backup)
 
-    def export_record(self, ctxt, backup):
+    def export_record(self, ctxt, backup) -> dict:
         LOG.debug("export_record in rpcapi backup_id %(id)s "
                   "on host %(host)s.",
                   {'id': backup.id,
@@ -79,7 +79,7 @@ class BackupAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'export_record', backup=backup)
 
     def import_record(self, ctxt, host, backup, backup_service, backup_url,
-                      backup_hosts):
+                      backup_hosts) -> None:
         LOG.debug("import_record rpcapi backup id %(id)s "
                   "on host %(host)s for backup_url %(url)s.",
                   {'id': backup.id, 'host': host, 'url': backup_url})
@@ -97,7 +97,7 @@ class BackupAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(server=backup.host)
         return cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
 
-    def check_support_to_force_delete(self, ctxt, host):
+    def check_support_to_force_delete(self, ctxt, host) -> bool:
         LOG.debug("Check if backup driver supports force delete "
                   "on host %(host)s.", {'host': host})
         cctxt = self._get_cctxt(server=host)
