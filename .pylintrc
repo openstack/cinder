@@ -222,7 +222,7 @@ additional-builtins=_
 [TYPECHECK]
 # List of module names for which member attributes should not be checked
 ignored-modules=six.moves,_MovedItems
-signature-mutators=unittest.mock.patch,unittest.mock.patch.object
+signature-mutators=unittest.mock.patch,unittest.mock.patch.object,sqlalchemy.util._preloaded.dependencies
 
 # This is for cinder.objects.*, and requests.packages.*, but due to
 # https://github.com/PyCQA/pylint/issues/2498
