@@ -26,7 +26,7 @@ from cinder.db.sqlalchemy import api as db_api
 
 options.set_defaults(cfg.CONF)
 
-INIT_VERSION = 122
+INIT_VERSION = 134
 MIGRATE_REPO_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
     'sqlalchemy',
