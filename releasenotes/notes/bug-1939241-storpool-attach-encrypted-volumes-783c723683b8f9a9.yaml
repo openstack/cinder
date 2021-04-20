@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    StorPool driver `bug #1939241
+    <https://bugs.launchpad.net/cinder/+bug/1939241>`_: Fixed the creation of
+    encrypted StorPool volumes by dropping the needlessly and incompletely
+    overridden `_attach_volume()` and `_detach_volume()` methods.
