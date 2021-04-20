@@ -23,7 +23,6 @@ from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
-import six
 
 from cinder import context
 from cinder import db
@@ -359,7 +358,7 @@ class DbQuotaDriver(object):
         # Set up the reservation expiration
         if expire is None:
             expire = CONF.reservation_expire
-        if isinstance(expire, six.integer_types):
+        if isinstance(expire, int):
             expire = datetime.timedelta(seconds=expire)
         if isinstance(expire, datetime.timedelta):
             expire = timeutils.utcnow() + expire
@@ -590,7 +589,7 @@ class QuotaEngine(object):
             # Grab the current driver class from CONF
             self._quota_driver_class = CONF.quota_driver
 
-        if isinstance(self._quota_driver_class, six.string_types):
+        if isinstance(self._quota_driver_class, str):
             self._quota_driver_class = importutils.import_object(
                 self._quota_driver_class)
 
