@@ -380,7 +380,7 @@ class TestCinderManageCmd(test.TestCase):
             self.assertEqual(cinder_manage.OVO_VERSION,
                              service.object_current_version)
 
-    @mock.patch('oslo_db.sqlalchemy.migration.db_version')
+    @mock.patch('cinder.db.migration.db_version')
     def test_db_commands_version(self, db_version):
         db_cmds = cinder_manage.DbCommands()
         with mock.patch('sys.stdout', new=io.StringIO()):
@@ -393,7 +393,7 @@ class TestCinderManageCmd(test.TestCase):
         exit = self.assertRaises(SystemExit, db_cmds.sync, version + 1)
         self.assertEqual(1, exit.code)
 
-    @mock.patch("oslo_db.sqlalchemy.migration.db_sync")
+    @mock.patch('cinder.db.migration.db_sync')
     def test_db_commands_script_not_present(self, db_sync):
         db_sync.side_effect = oslo_exception.DBMigrationError(None)
         db_cmds = cinder_manage.DbCommands()

@@ -894,6 +894,12 @@ def create_ordereddict(adict: dict) -> OrderedDict:
                               key=operator.itemgetter(0)))
 
 
+@contextlib.contextmanager
+def nested_contexts(*contexts):
+    with contextlib.ExitStack() as stack:
+        yield [stack.enter_context(c) for c in contexts]
+
+
 class Semaphore(object):
     """Custom semaphore to workaround eventlet issues with multiprocessing."""
     def __init__(self, limit):
