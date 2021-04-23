@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    PowerMax driver : Enhancement to use an existing initiator group even if
+    there is no entry for the contained initiator(s) in the login table. This
+    is permissable so long as the initiator(s) in the connector object match.

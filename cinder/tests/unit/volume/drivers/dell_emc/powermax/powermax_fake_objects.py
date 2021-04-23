@@ -196,7 +196,7 @@ class FakeRequestsSession(object):
 
     def _sloprovisioning_ig(self, url):
         return_object = None
-        for ig in self.data.inititiatorgroup:
+        for ig in self.data.initiator_group_list:
             if ig['hostId'] in url:
                 return_object = ig
                 break

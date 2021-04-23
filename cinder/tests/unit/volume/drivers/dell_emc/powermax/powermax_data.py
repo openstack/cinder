@@ -634,12 +634,19 @@ class PowerMaxData(object):
     # vmax data
     # sloprovisioning
     compression_info = {'symmetrixId': ['000197800128']}
-    inititiatorgroup = [{'initiator': [wwpn1],
-                         'hostId': initiatorgroup_name_f,
-                         'maskingview': [masking_view_name_f]},
-                        {'initiator': [initiator],
-                         'hostId': initiatorgroup_name_i,
-                         'maskingview': [masking_view_name_i]}]
+    initiator_group_fc = {
+        'initiator': [wwpn1],
+        'hostId': initiatorgroup_name_f,
+        'maskingview': [masking_view_name_f]}
+    initiator_group_iscsi = {
+        'initiator': [initiator],
+        'hostId': initiatorgroup_name_i,
+        'maskingview': [masking_view_name_i]}
+    initiator_group_empty = {
+        'hostId': initiatorgroup_name_i,
+    }
+    initiator_group_list = [
+        initiator_group_fc, initiator_group_iscsi]
 
     initiator_list = [{'host': initiatorgroup_name_f,
                        'initiatorId': wwpn1,
