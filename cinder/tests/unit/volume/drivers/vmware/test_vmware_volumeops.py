@@ -23,6 +23,7 @@ from oslo_vmware import exceptions
 from oslo_vmware import vim_util
 
 from cinder.tests.unit import test
+from cinder.tests.unit.volume.drivers.vmware import fake as vmware_fake
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import volumeops
 
@@ -286,8 +287,7 @@ class VolumeOpsTestCase(test.TestCase):
             self.assertEqual([], hosts)
 
             summary.accessible = True
-            host = mock.Mock(spec=object)
-            host.value = mock.sentinel.host
+            host = vmware_fake.ManagedObjectReference(value=mock.sentinel.host)
             host_mounts = self._create_host_mounts("readWrite", host)
             self.session.invoke_api.return_value = host_mounts
             hosts = self.vops.get_connected_hosts(datastore)
@@ -311,7 +311,7 @@ class VolumeOpsTestCase(test.TestCase):
         get_connected_hosts.return_value = [host_1, host_2]
 
         ds = mock.sentinel.datastore
-        host = mock.Mock(value=mock.sentinel.host_1)
+        host = vmware_fake.ManagedObjectReference(value=mock.sentinel.host_1)
         self.assertTrue(self.vops.is_datastore_accessible(ds, host))
         get_connected_hosts.assert_called_once_with(ds)
 
@@ -323,22 +323,19 @@ class VolumeOpsTestCase(test.TestCase):
         get_connected_hosts.return_value = [host_1]
 
         ds = mock.sentinel.datastore
-        host = mock.Mock(value=mock.sentinel.host_2)
+        host = vmware_fake.ManagedObjectReference(value=mock.sentinel.host_2)
         self.assertFalse(self.vops.is_datastore_accessible(ds, host))
         get_connected_hosts.assert_called_once_with(ds)
 
     def test_get_parent(self):
         # Not recursive
-        child = mock.Mock(spec=object)
-        child._type = 'Parent'
+        child = vmware_fake.ManagedObjectReference('Parent')
         ret = self.vops._get_parent(child, 'Parent')
         self.assertEqual(child, ret)
 
         # Recursive
-        parent = mock.Mock(spec=object)
-        parent._type = 'Parent'
-        child = mock.Mock(spec=object)
-        child._type = 'Child'
+        parent = vmware_fake.ManagedObjectReference('Parent')
+        child = vmware_fake.ManagedObjectReference('Child')
         self.session.invoke_api.return_value = parent
         ret = self.vops._get_parent(child, 'Parent')
         self.assertEqual(parent, ret)
@@ -349,13 +346,10 @@ class VolumeOpsTestCase(test.TestCase):
 
     def test_get_dc(self):
         # set up hierarchy of objects
-        dc = mock.Mock(spec=object)
-        dc._type = 'Datacenter'
-        o1 = mock.Mock(spec=object)
-        o1._type = 'mockType1'
+        dc = vmware_fake.ManagedObjectReference('Datacenter')
+        o1 = vmware_fake.ManagedObjectReference('mockType1')
         o1.parent = dc
-        o2 = mock.Mock(spec=object)
-        o2._type = 'mockType2'
+        o2 = vmware_fake.ManagedObjectReference('mockType2')
         o2.parent = o1
 
         # mock out invoke_api behaviour to fetch parent
@@ -382,9 +376,9 @@ class VolumeOpsTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 'get_entity_name')
     def test_get_child_folder(self, get_entity_name):
-        child_entity_1 = mock.Mock(_type='Folder')
-        child_entity_2 = mock.Mock(_type='foo')
-        child_entity_3 = mock.Mock(_type='Folder')
+        child_entity_1 = vmware_fake.ManagedObjectReference('Folder')
+        child_entity_2 = vmware_fake.ManagedObjectReference('foo')
+        child_entity_3 = vmware_fake.ManagedObjectReference('Folder')
 
         prop_val = mock.Mock(ManagedObjectReference=[child_entity_1,
                                                      child_entity_2,
@@ -447,7 +441,7 @@ class VolumeOpsTestCase(test.TestCase):
         folder_1b = mock.sentinel.folder_1b
         create_folder.side_effect = [folder_1a, folder_1b]
 
-        datacenter_1 = mock.Mock(value='dc-1')
+        datacenter_1 = vmware_fake.ManagedObjectReference(value='dc-1')
         path_comp = ['a', 'b']
         ret = self.vops.create_vm_inventory_folder(datacenter_1, path_comp)
 
@@ -491,7 +485,7 @@ class VolumeOpsTestCase(test.TestCase):
         folder_2b = mock.sentinel.folder_2b
         create_folder.side_effect = [folder_2a, folder_2b]
 
-        datacenter_2 = mock.Mock(value='dc-2')
+        datacenter_2 = vmware_fake.ManagedObjectReference(value='dc-2')
         path_comp = ['a', 'b']
         ret = self.vops.create_vm_inventory_folder(datacenter_2, path_comp)
 
@@ -1947,7 +1941,7 @@ class VolumeOpsTestCase(test.TestCase):
         name = mock.sentinel.name
         size_mb = 1024
         ds_ref_val = mock.sentinel.ds_ref_val
-        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref = vmware_fake.ManagedObjectReference(value=ds_ref_val)
         disk_type = mock.sentinel.disk_type
         profile_id = mock.sentinel.profile_id
         ret = self.vops.create_fcd(
@@ -2020,7 +2014,7 @@ class VolumeOpsTestCase(test.TestCase):
 
         name = mock.sentinel.name
         dest_ds_ref_val = mock.sentinel.dest_ds_ref_val
-        dest_ds_ref = mock.Mock(value=dest_ds_ref_val)
+        dest_ds_ref = vmware_fake.ManagedObjectReference(value=dest_ds_ref_val)
         disk_type = mock.sentinel.disk_type
         profile_id = mock.sentinel.profile_id
         ret = self.vops.clone_fcd(
@@ -2075,7 +2069,7 @@ class VolumeOpsTestCase(test.TestCase):
         vmdk_url = mock.sentinel.vmdk_url
         name = mock.sentinel.name
         ds_ref_val = mock.sentinel.ds_ref_val
-        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref = vmware_fake.ManagedObjectReference(value=ds_ref_val)
         ret = self.vops.register_disk(vmdk_url, name, ds_ref)
 
         self.assertEqual(fcd_id, ret.fcd_id)
@@ -2209,7 +2203,7 @@ class VolumeOpsTestCase(test.TestCase):
         fcd_id = mock.sentinel.fcd_id
         fcd_location.id.return_value = fcd_id
         ds_ref_val = mock.sentinel.ds_ref_val
-        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref = vmware_fake.ManagedObjectReference(value=ds_ref_val)
         fcd_location.ds_ref.return_value = ds_ref
         fcd_snap_id = mock.sentinel.fcd_snap_id
         fcd_snap_loc = mock.Mock(fcd_loc=fcd_location)
@@ -2430,7 +2424,7 @@ class FcdLocationTest(test.TestCase):
         fcd_id = mock.sentinel.fcd_id
         fcd_id_obj = mock.Mock(id=fcd_id)
         ds_ref_val = mock.sentinel.ds_ref_val
-        ds_ref = mock.Mock(value=ds_ref_val)
+        ds_ref = vmware_fake.ManagedObjectReference(value=ds_ref_val)
         fcd_loc = volumeops.FcdLocation.create(fcd_id_obj, ds_ref)
         self.assertEqual(fcd_id, fcd_loc.fcd_id)
         self.assertEqual(ds_ref_val, fcd_loc.ds_ref_val)

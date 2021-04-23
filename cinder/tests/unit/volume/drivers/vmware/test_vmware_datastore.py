@@ -21,6 +21,7 @@ from unittest import mock
 from oslo_utils import units
 
 from cinder.tests.unit import test
+from cinder.tests.unit.volume.drivers.vmware import fake as vmware_fake
 from cinder.volume.drivers.vmware import datastore as ds_sel
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
@@ -68,7 +69,7 @@ class DatastoreTest(test.TestCase):
                                                        profile_name)
 
     def _create_datastore(self, value):
-        return mock.Mock(name=value, value=value)
+        return vmware_fake.ManagedObjectReference('Datastore', value)
 
     def _create_summary(
             self, ds, free_space=units.Mi, _type=ds_sel.DatastoreType.VMFS,
@@ -79,10 +80,7 @@ class DatastoreTest(test.TestCase):
         return summary
 
     def _create_host(self, value):
-        host = mock.Mock(spec=['_type', 'value'], name=value)
-        host._type = 'HostSystem'
-        host.value = value
-        return host
+        return vmware_fake.ManagedObjectReference('HostSystem', value)
 
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')

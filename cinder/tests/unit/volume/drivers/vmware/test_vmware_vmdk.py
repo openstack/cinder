@@ -34,6 +34,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
+from cinder.tests.unit.volume.drivers.vmware import fake as vmware_fake
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import vmdk
@@ -903,7 +904,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             self, vops, copy_image, get_vsphere_url, flat_extent_path,
             generate_uuid, get_temp_image_folder, copy_temp_virtual_disk,
             vsphere_url=None):
-        dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
+        dc_ref = vmware_fake.ManagedObjectReference(value=mock.sentinel.dc_ref)
         ds_name = mock.sentinel.ds_name
         folder_path = mock.sentinel.folder_path
         get_temp_image_folder.return_value = (dc_ref, ds_name, folder_path)
@@ -920,7 +921,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         image_service = mock.sentinel.image_service
         image_id = mock.sentinel.image_id
         image_size_in_bytes = 2 * units.Gi
-        dest_dc_ref = mock.sentinel.dest_dc_ref
+        dest_dc_ref = \
+            vmware_fake.ManagedObjectReference(value=mock.sentinel.dest_dc_ref)
         dest_ds_name = mock.sentinel.dest_ds_name
         dest_folder_path = mock.sentinel.dest_folder_path
         dest_disk_name = mock.sentinel.dest_disk_name
@@ -968,7 +970,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def test_create_virtual_disk_from_preallocated_image_with_no_disk_copy(
             self, vops, copy_image, get_vsphere_url, flat_extent_path,
             get_temp_image_folder, copy_temp_virtual_disk):
-        dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
+        dc_ref = vmware_fake.ManagedObjectReference(value=mock.sentinel.dc_ref)
         ds_name = mock.sentinel.ds_name
         folder_path = mock.sentinel.folder_path
         get_temp_image_folder.return_value = (dc_ref, ds_name, folder_path)
@@ -980,7 +982,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         image_service = mock.sentinel.image_service
         image_id = mock.sentinel.image_id
         image_size_in_bytes = 2 * units.Gi
-        dest_dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
+        dc_ref_value = mock.sentinel.dc_ref
+        dest_dc_ref = vmware_fake.ManagedObjectReference(value=dc_ref_value)
         dest_ds_name = ds_name
         dest_folder_path = mock.sentinel.dest_folder_path
         dest_disk_name = mock.sentinel.dest_disk_name
@@ -1012,7 +1015,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def test_create_virtual_disk_from_preallocated_image_with_copy_error(
             self, vops, copy_image, get_vsphere_url, flat_extent_path,
             generate_uuid, get_temp_image_folder, copy_temp_virtual_disk):
-        dc_ref = mock.Mock(value=mock.sentinel.dc_ref)
+        dc_ref = vmware_fake.ManagedObjectReference(value=mock.sentinel.dc_ref)
         ds_name = mock.sentinel.ds_name
         folder_path = mock.sentinel.folder_path
         get_temp_image_folder.return_value = (dc_ref, ds_name, folder_path)
@@ -1029,7 +1032,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         image_service = mock.sentinel.image_service
         image_id = mock.sentinel.image_id
         image_size_in_bytes = 2 * units.Gi
-        dest_dc_ref = mock.sentinel.dest_dc_ref
+        dest_dc_ref = \
+            vmware_fake.ManagedObjectReference(value=mock.sentinel.dest_dc_ref)
         dest_ds_name = mock.sentinel.dest_ds_name
         dest_folder_path = mock.sentinel.dest_folder_path
         dest_disk_name = mock.sentinel.dest_disk_name
@@ -1367,7 +1371,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
-        datastore = mock.Mock(value='ds1')
+        datastore = vmware_fake.ManagedObjectReference(value='ds1')
         vops.get_datastore.return_value = datastore
 
         disk_type = mock.sentinel.disk_type
@@ -1415,7 +1419,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
-        datastore = mock.Mock(value='ds1')
+        datastore = vmware_fake.ManagedObjectReference(value='ds1')
         vops.get_datastore.return_value = datastore
 
         disk_type = mock.sentinel.disk_type
@@ -1479,7 +1483,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
-        datastore = mock.Mock(value='ds1')
+        datastore = vmware_fake.ManagedObjectReference(value='ds1')
         vops.get_datastore.return_value = datastore
 
         get_disk_type.return_value = 'thin'
@@ -1568,7 +1572,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
-        datastore = mock.Mock(value='ds1')
+        datastore = vmware_fake.ManagedObjectReference(value='ds1')
         vops.get_datastore.return_value = datastore
 
         get_disk_type.return_value = 'thin'
@@ -1904,8 +1908,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_dc.side_effect = [dc_1, dc_2]
 
         # cache miss
-        rp_1 = mock.Mock(value='rp-1')
-        rp_2 = mock.Mock(value='rp-2')
+        rp_1 = vmware_fake.ManagedObjectReference(value='rp-1')
+        rp_2 = vmware_fake.ManagedObjectReference(value='rp-2')
         self.assertEqual(dc_1, self._driver._get_dc(rp_1))
         self.assertEqual(dc_2, self._driver._get_dc(rp_2))
         self.assertDictEqual({'rp-1': dc_1, 'rp-2': dc_2},
@@ -1961,7 +1965,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def _test_get_connection_info(
             self, get_storage_profile_id, vops, vmdk_connector=False):
         volume = self._create_volume_obj()
-        backing = mock.Mock(value='ref-1')
+        backing = vmware_fake.ManagedObjectReference(value='ref-1')
 
         profile_id = mock.sentinel.profile_id
         get_storage_profile_id.return_value = profile_id
@@ -1970,10 +1974,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vmdk_path = mock.sentinel.vmdk_path
             vops.get_vmdk_path.return_value = vmdk_path
 
-            datastore = mock.Mock(value='ds-1')
+            datastore = vmware_fake.ManagedObjectReference(value='ds-1')
             vops.get_datastore.return_value = datastore
 
-            datacenter = mock.Mock(value='dc-1')
+            datacenter = vmware_fake.ManagedObjectReference(value='dc-1')
             vops.get_dc.return_value = datacenter
 
             connector = {'platform': mock.sentinel.platform,
@@ -2026,7 +2030,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             get_moref, vops, backing_exists=True, instance_exists=True):
 
         backing_val = mock.sentinel.backing_val
-        backing = mock.Mock(value=backing_val)
+        backing = vmware_fake.ManagedObjectReference(value=backing_val)
         if backing_exists:
             vops.get_backing.return_value = backing
         else:
