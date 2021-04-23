@@ -474,7 +474,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         cluster_access_to_ds = not available_hosts
         for host_mount in ds_host_mounts.DatastoreHostMount:
             for avlbl_host in available_hosts:
-                if avlbl_host.value == host_mount.key.value:
+                avlbl_host_value = vim_util.get_moref_value(avlbl_host)
+                host_mount_key_value = vim_util.get_moref_value(host_mount.key)
+                if avlbl_host_value == host_mount_key_value:
                     cluster_access_to_ds = True
         return (ds_summary.accessible
                 and not self.volumeops._in_maintenance(ds_summary)
@@ -688,10 +690,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return best_candidate
 
     def _get_dc(self, resource_pool):
-        dc = self._dc_cache.get(resource_pool.value)
+        dc = self._dc_cache.get(vim_util.get_moref_value(resource_pool))
         if not dc:
             dc = self.volumeops.get_dc(resource_pool)
-            self._dc_cache[resource_pool.value] = dc
+            self._dc_cache[vim_util.get_moref_value(resource_pool)] = dc
         return dc
 
     def _select_ds_for_volume(self, volume, host=None, create_params=None):
@@ -719,7 +721,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     def _get_connection_info(self, volume, backing, connector):
         connection_info = {'driver_volume_type': 'vmdk'}
         connection_info['data'] = {
-            'volume': backing.value,
+            'volume': vim_util.get_moref_value(backing),
             'volume_id': volume.id,
             'name': volume.name,
             'profile_id': self._get_storage_profile_id(volume)
@@ -733,10 +735,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             connection_info['data']['vmdk_path'] = vmdk_path
 
             datastore = self.volumeops.get_datastore(backing)
-            connection_info['data']['datastore'] = datastore.value
+            connection_info['data']['datastore'] = \
+                vim_util.get_moref_value(datastore)
 
             datacenter = self.volumeops.get_dc(backing)
-            connection_info['data']['datacenter'] = datacenter.value
+            connection_info['data']['datacenter'] = \
+                vim_util.get_moref_value(datacenter)
 
             config = self.configuration
             vmdk_connector_config = {
@@ -1144,7 +1148,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
          folder_path) = self._get_temp_image_folder(image_size_in_bytes)
 
         # pylint: disable=E1101
-        if ds_name == dest_ds_name and dc_ref.value == dest_dc_ref.value:
+        dc_ref_value = vim_util.get_moref_value(dc_ref)
+        dest_dc_ref_value = vim_util.get_moref_value(dest_dc_ref)
+        if ds_name == dest_ds_name and dc_ref_value == dest_dc_ref_value:
             # Temporary image folder and destination path are on the same
             # datastore. We can directly download the image to the destination
             # folder to save one virtual disk copy.
@@ -1661,7 +1667,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             if need_relocate:
                 LOG.debug("Backing: %s should be relocated.", backing)
                 req[hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS] = (
-                    [datastore.value])
+                    [vim_util.get_moref_value(datastore)])
 
             if new_profile:
                 req[hub.DatastoreSelector.PROFILE_NAME] = new_profile
@@ -1680,7 +1686,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             dc = self._get_dc(rp)
             folder = self._get_volume_group_folder(dc, volume['project_id'])
             new_datastore = summary.datastore
-            if datastore.value != new_datastore.value:
+            datastore_value = vim_util.get_moref_value(datastore)
+            new_datastore_value = vim_util.get_moref_value(new_datastore)
+            if datastore_value != new_datastore_value:
                 # Datastore changed; relocate the backing.
                 LOG.debug("Backing: %s needs to be relocated for retype.",
                           backing)

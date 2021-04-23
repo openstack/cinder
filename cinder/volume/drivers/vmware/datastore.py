@@ -94,7 +94,8 @@ class DatastoreSelector(object):
         hubs = pbm.convert_datastores_to_hubs(cf, datastores)
         hubs = pbm.filter_hubs_by_profile(self._session, hubs, profile_id)
         hub_ids = [hub.hubId for hub in hubs]
-        return {k: v for k, v in datastores.items() if k.value in hub_ids}
+        return {k: v for k, v in datastores.items()
+                if vim_util.get_moref_value(k) in hub_ids}
 
     def _filter_datastores(self,
                            datastores,
@@ -118,11 +119,12 @@ class DatastoreSelector(object):
                 summary)
 
         valid_host_refs = valid_host_refs or []
-        valid_hosts = [host_ref.value for host_ref in valid_host_refs]
+        valid_hosts = [vim_util.get_moref_value(host_ref)
+                       for host_ref in valid_host_refs]
 
         def _is_ds_accessible_to_valid_host(host_mounts):
             for host_mount in host_mounts:
-                if host_mount.key.value in valid_hosts:
+                if vim_util.get_moref_value(host_mount.key) in valid_hosts:
                     return True
 
         def _is_ds_valid(ds_ref, ds_props):
@@ -135,7 +137,7 @@ class DatastoreSelector(object):
                 return False
 
             if (hard_anti_affinity_ds and
-                    ds_ref.value in hard_anti_affinity_ds):
+                    vim_util.get_moref_value(ds_ref) in hard_anti_affinity_ds):
                 return False
 
             if summary.capacity == 0 or summary.freeSpace < size_bytes:
@@ -220,10 +222,10 @@ class DatastoreSelector(object):
         host_prop_map = {}
 
         def _is_host_usable(host_ref):
-            props = host_prop_map.get(host_ref.value)
+            props = host_prop_map.get(vim_util.get_moref_value(host_ref))
             if props is None:
                 props = self._get_host_properties(host_ref)
-                host_prop_map[host_ref.value] = props
+                host_prop_map[vim_util.get_moref_value(host_ref)] = props
 
             runtime = props.get('runtime')
             parent = props.get('parent')
@@ -234,12 +236,14 @@ class DatastoreSelector(object):
                 return False
 
         valid_host_refs = valid_host_refs or []
-        valid_hosts = [host_ref.value for host_ref in valid_host_refs]
+        valid_hosts = [vim_util.get_moref_value(host_ref)
+                       for host_ref in valid_host_refs]
 
         def _select_host(host_mounts):
             random.shuffle(host_mounts)
             for host_mount in host_mounts:
-                if valid_hosts and host_mount.key.value not in valid_hosts:
+                host_mount_key_value = vim_util.get_moref_value(host_mount.key)
+                if valid_hosts and host_mount_key_value not in valid_hosts:
                     continue
                 if (self._vops._is_usable(host_mount.mountInfo) and
                         _is_host_usable(host_mount.key)):
@@ -249,8 +253,9 @@ class DatastoreSelector(object):
         for ds_props in sorted_ds_props:
             host_ref = _select_host(ds_props['host'])
             if host_ref:
+                host_ref_value = vim_util.get_moref_value(host_ref)
                 rp = self._get_resource_pool(
-                    host_prop_map[host_ref.value]['parent'])
+                    host_prop_map[host_ref_value]['parent'])
                 return (host_ref, rp, ds_props['summary'])
 
     def select_datastore(self, req, hosts=None):
