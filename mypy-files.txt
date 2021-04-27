@@ -1,6 +1,7 @@
 cinder/backup/manager.py
 cinder/common/constants.py
 cinder/context.py
+cinder/coordination.py
 cinder/i18n.py
 cinder/image/cache.py
 cinder/image/glance.py
