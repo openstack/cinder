@@ -1,5 +1,6 @@
 cinder/backup/api.py
 cinder/backup/manager.py
+cinder/backup/drivers/ceph.py
 cinder/common/constants.py
 cinder/context.py
 cinder/coordination.py
