@@ -4843,6 +4843,14 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.create_volume(vol)
         return vol
 
+    def _generate_hyperswap_vol_info(self, hyper_type, size=10):
+        pool = 'hyperswap1'
+        prop = {'host': 'openstack@svc#%s' % pool,
+                'size': size,
+                'volume_type_id': hyper_type.id}
+        vol = testutils.create_volume(self.ctxt, **prop)
+        return vol
+
     def _generate_vol_info(self, vol_type=None, size=10):
         pool = _get_test_pool()
         prop = {'size': size,
@@ -7745,6 +7753,31 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists('fcsite1' + vol.name, False)
         self._assert_vol_exists('fcsite2' + vol.name, False)
 
+        # Validate that _update_replication_properties is being called on
+        # Hyperswap volume creation
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSVCCommonDriver,
+                '_update_replication_properties') as update_rep_properties:
+            vol = self._create_hyperswap_volume(hyper_type)
+            self.assertEqual(fields.VolumeStatus.AVAILABLE, vol['status'])
+            self.assertTrue(update_rep_properties.called)
+            self.driver.delete_volume(vol)
+
+        # Validate that _update_replication_properties is handling
+        # the exception from get_relationship_info call on Hyperswap volume
+        # creation by raising an exception
+        with mock.patch.object(
+                storwize_svc_common.StorwizeHelpers,
+                'get_relationship_info') as get_relationship_info:
+            get_relationship_info.side_effect = [
+                exception.VolumeBackendAPIException]
+            volume = self._generate_hyperswap_vol_info(hyper_type)
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.create_volume, volume)
+            self.assertTrue(get_relationship_info.called)
+            self.assertEqual(3, get_relationship_info.call_count)
+            self.driver.delete_volume(volume)
+
     def test_create_snapshot_to_hyperswap_volume(self):
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
@@ -7993,6 +8026,102 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         diff, _equal = volume_types.volume_types_diff(
             self.ctxt, hyperswap_vol_type['id'], warning_type['id'])
         self.driver.retype(self.ctxt, volume, warning_type, diff, host)
+
+    def test_storwize_update_replication_properties_on_retype_hyperswap_volume(
+            self):
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_system_info') as get_system_info:
+            fake_system_info = {'code_level': (7, 7, 0, 0),
+                                'topology': 'hyperswap',
+                                'system_name': 'storwize-svc-sim',
+                                'system_id': '0123456789ABCDEF'}
+            get_system_info.return_value = fake_system_info
+            self.driver.do_setup(None)
+
+        hyperswap_vol_type = self._create_hyperswap_type('test_hyperswap_type')
+
+        spec1 = {'drivers:iogrp': '0,1'}
+        non_hyper_type = self._create_volume_type(spec1, 'non_hyper_type')
+
+        volume1 = testutils.create_volume(self.ctxt,
+                                          volume_type_id=non_hyper_type.id,
+                                          host='openstack@svc#hyperswap1')
+        self.driver.create_volume(volume1)
+        volume2 = testutils.create_volume(self.ctxt,
+                                          volume_type_id=non_hyper_type.id,
+                                          host='openstack@svc#hyperswap1')
+        self.driver.create_volume(volume2)
+        volume3 = self._create_hyperswap_volume(hyperswap_vol_type)
+        host = {'host': 'openstack@svc#hyperswap1'}
+
+        # Validate that _update_replication_properties is handling
+        # the exception from get_relationship_info call while retyping a
+        # normal volume to Hyperswap volume by raising an exception
+        with mock.patch.object(
+                storwize_svc_common.StorwizeHelpers,
+                'get_relationship_info') as get_relationship_info:
+            get_relationship_info.side_effect = [
+                exception.VolumeBackendAPIException]
+            diff, _equal = volume_types.volume_types_diff(
+                self.ctxt, non_hyper_type['id'], hyperswap_vol_type['id'])
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.retype, self.ctxt, volume1,
+                              hyperswap_vol_type, diff, host)
+            self.assertTrue(get_relationship_info.called)
+            self.assertEqual(3, get_relationship_info.call_count)
+            volume1['volume_type_id'] = hyperswap_vol_type['id']
+            volume1['volume_type'] = hyperswap_vol_type
+            self.driver.delete_volume(volume1)
+
+        # Validate that _update_replication_properties is being called while
+        # retyping a normal volume to Hyperswap volume
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSVCCommonDriver,
+                '_update_replication_properties') as update_rep_properties:
+            diff, _equal = volume_types.volume_types_diff(
+                self.ctxt, non_hyper_type['id'], hyperswap_vol_type['id'])
+            self.driver.retype(
+                self.ctxt, volume2, hyperswap_vol_type, diff, host)
+            volume2['volume_type_id'] = hyperswap_vol_type['id']
+            volume2['volume_type'] = hyperswap_vol_type
+            self._assert_vol_exists(volume2.name, True)
+            self._assert_vol_exists('site2' + volume2.name, True)
+            self._assert_vol_exists('fcsite1' + volume2.name, True)
+            self._assert_vol_exists('fcsite2' + volume2.name, True)
+            self.assertTrue(update_rep_properties.called)
+
+        # Validate that _update_replication_properties is being called while
+        # retyping a Hyperswap volume to normal volume
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSVCCommonDriver,
+                '_update_replication_properties') as update_rep_properties:
+            diff, _equal = volume_types.volume_types_diff(
+                self.ctxt, hyperswap_vol_type['id'], non_hyper_type['id'])
+            self.driver.retype(
+                self.ctxt, volume2, non_hyper_type, diff, host)
+            volume2['volume_type_id'] = non_hyper_type['id']
+            volume2['volume_type'] = non_hyper_type
+            self.assertTrue(update_rep_properties.called)
+            self.driver.delete_volume(volume2)
+
+        # Validate that _update_replication_properties is handling
+        # the exception from get_relationship_info call while retyping a
+        # Hyperswap volume to normal volume by raising an exception
+        with mock.patch.object(
+                storwize_svc_common.StorwizeHelpers,
+                'get_relationship_info') as get_relationship_info:
+            get_relationship_info.side_effect = [
+                exception.VolumeBackendAPIException]
+            diff, _equal = volume_types.volume_types_diff(
+                self.ctxt, hyperswap_vol_type['id'], non_hyper_type['id'])
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.retype,
+                              self.ctxt, volume3, non_hyper_type, diff, host)
+            self.assertTrue(get_relationship_info.called)
+            self.assertEqual(3, get_relationship_info.call_count)
+            volume3['volume_type_id'] = non_hyper_type['id']
+            volume3['volume_type'] = non_hyper_type
+            self.driver.delete_volume(volume3)
 
     def test_retype_hyperswap_volume_failure_case(self):
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,

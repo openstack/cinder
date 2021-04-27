@@ -3337,6 +3337,20 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             raise exception.VolumeDriverException(reason=msg)
 
     def _update_replication_properties(self, ctxt, volume, model_update):
+
+        @cinder_utils.retry(exception.VolumeBackendAPIException,
+                            interval=2,
+                            retries=3)
+        def _try_get_relationship_info(volume_name):
+            try:
+                rel_info = self._helpers.get_relationship_info(volume_name)
+                return rel_info
+            except Exception:
+                msg = (_('_update_replication_properties: Failed to fetch '
+                         'relationship details for the volume.'))
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(message=msg)
+
         model_update = model_update or dict()
         vol_metadata = model_update.get('metadata', {})
 
@@ -3348,7 +3362,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             del model_update['metadata']['IOThrottle_rate']
         model_update['metadata'].update(vol_metadata)
 
-        rel_info = self._helpers.get_relationship_info(volume.name)
+        rel_info = _try_get_relationship_info(volume.name)
+
         rep_properties = {
             'Id': 'id',
             'Relationship Name': 'name',
