@@ -237,11 +237,15 @@ class BackupCephTestCase(test.TestCase):
         del self.service.rbd.RBD_FEATURE_STRIPINGV2
         del self.service.rbd.RBD_FEATURE_EXCLUSIVE_LOCK
         del self.service.rbd.RBD_FEATURE_JOURNALING
+        del self.service.rbd.RBD_FEATURE_OBJECT_MAP
+        del self.service.rbd.RBD_FEATURE_FAST_DIFF
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_LAYERING'))
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_STRIPINGV2'))
         self.assertFalse(hasattr(self.service.rbd,
                                  'RBD_FEATURE_EXCLUSIVE_LOCK'))
         self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_JOURNALING'))
+        self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_OBJECT_MAP'))
+        self.assertFalse(hasattr(self.service.rbd, 'RBD_FEATURE_FAST_DIFF'))
 
         oldformat, features = self.service._get_rbd_support()
         self.assertTrue(oldformat)
@@ -280,6 +284,17 @@ class BackupCephTestCase(test.TestCase):
         oldformat, features = self.service._get_rbd_support()
         self.assertFalse(oldformat)
         self.assertEqual(1 | 2 | 4 | 64, features)
+
+        #
+        # test that FAST_DIFF is enabled if supported by RBD
+        #   this also enables OBJECT_MAP as required by Ceph
+        #
+        self.service.rbd.RBD_FEATURE_OBJECT_MAP = 8
+        self.service.rbd.RBD_FEATURE_FAST_DIFF = 16
+
+        oldformat, features = self.service._get_rbd_support()
+        self.assertFalse(oldformat)
+        self.assertEqual(1 | 2 | 4 | 8 | 16 | 64, features)
 
     @common_mocks
     def test_get_backup_snap_name(self):
