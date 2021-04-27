@@ -730,15 +730,6 @@ def fetch_to_volume_format(context, image_service,
                       run_as_root=run_as_root)
 
 
-def _validate_file_format(image_data, expected_format):
-    if image_data.file_format == expected_format:
-        return True
-    elif image_data.file_format == 'vpc' and expected_format == 'vhd':
-        # qemu-img still uses the legacy 'vpc' name for the vhd format.
-        return True
-    return False
-
-
 def upload_volume(context, image_service, image_meta, volume_path,
                   volume_format='raw', run_as_root=True, compress=True,
                   store_id=None, base_image_ref=None):
