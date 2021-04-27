@@ -38,7 +38,7 @@ class VolumeNumberWeigher(weights.BaseHostWeigher):
     number and the weighing has the opposite effect of the default.
     """
 
-    def weight_multiplier(self):
+    def weight_multiplier(self) -> float:
         """Override the weight multiplier."""
         return CONF.volume_number_multiplier
 

@@ -10,15 +10,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from typing import Any, Dict, Optional  # noqa: H301
+
 from oslo_log import log as logging
 from oslo_utils import excutils
 import taskflow.engines
+import taskflow.engines.base
 from taskflow.patterns import linear_flow
 
+from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.message import api as message_api
 from cinder.message import message_field
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder.volume.flows import common
@@ -40,7 +45,11 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
         super(ExtractSchedulerSpecTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
 
-    def _populate_request_spec(self, volume, snapshot_id, image_id, backup_id):
+    def _populate_request_spec(self,
+                               volume: objects.Volume,
+                               snapshot_id: Optional[str],
+                               image_id: Optional[str],
+                               backup_id: Optional[str]) -> Dict[str, Any]:
         # Create the full request spec using the volume object.
         #
         # NOTE(dulek): At this point, a volume can be deleted before it gets
@@ -62,8 +71,13 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
             'volume_type': list(dict(vol_type).items()),
         }
 
-    def execute(self, context, request_spec, volume, snapshot_id,
-                image_id, backup_id):
+    def execute(self,
+                context: context.RequestContext,
+                request_spec: Optional[dict],
+                volume: objects.Volume,
+                snapshot_id: Optional[str],
+                image_id: Optional[str],
+                backup_id: Optional[str]) -> Dict[str, Any]:
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
             request_spec = self._populate_request_spec(volume,
@@ -92,7 +106,10 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
         self.driver_api = driver_api
         self.message_api = message_api.API()
 
-    def _handle_failure(self, context, request_spec, cause):
+    def _handle_failure(self,
+                        context: context.RequestContext,
+                        request_spec: dict,
+                        cause: Exception) -> None:
         try:
             self._notify_failure(context, request_spec, cause)
         finally:
@@ -100,7 +117,10 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                       {'cause': cause, 'name': self.name})
 
     @utils.if_notifications_enabled
-    def _notify_failure(self, context, request_spec, cause):
+    def _notify_failure(self,
+                        context: context.RequestContext,
+                        request_spec: dict,
+                        cause: Exception) -> None:
         """When scheduling fails send out an event that it failed."""
         payload = {
             'request_spec': request_spec,
@@ -118,7 +138,11 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                           "payload %(payload)s",
                           {'topic': self.FAILURE_TOPIC, 'payload': payload})
 
-    def execute(self, context, request_spec, filter_properties, volume):
+    def execute(self,
+                context: context.RequestContext,
+                request_spec: dict,
+                filter_properties: dict,
+                volume: objects.Volume) -> None:
         try:
             self.driver_api.schedule_create_volume(context, request_spec,
                                                    filter_properties)
@@ -140,9 +164,14 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                     common.error_out(volume, reason=e)
 
 
-def get_flow(context, driver_api, request_spec=None,
-             filter_properties=None,
-             volume=None, snapshot_id=None, image_id=None, backup_id=None):
+def get_flow(context: context.RequestContext,
+             driver_api,
+             request_spec: Optional[dict] = None,
+             filter_properties: Optional[dict] = None,
+             volume: Optional[objects.Volume] = None,
+             snapshot_id: Optional[str] = None,
+             image_id: Optional[str] = None,
+             backup_id: Optional[str] = None) -> taskflow.engines.base.Engine:
 
     """Constructs and returns the scheduler entrypoint flow.
 

@@ -15,6 +15,7 @@
 
 import operator
 import re
+from typing import Callable, Dict  # noqa: H301
 
 import pyparsing
 
@@ -167,7 +168,7 @@ class EvalTernaryOp(object):
 
 
 class EvalFunction(object):
-    functions = {
+    functions: Dict[str, Callable] = {
         "abs": abs,
         "max": max,
         "min": min,

@@ -16,6 +16,8 @@
 """
 Filter support
 """
+from typing import Iterable
+
 from oslo_log import log as logging
 
 from cinder.scheduler import base_handler
@@ -25,7 +27,7 @@ LOG = logging.getLogger(__name__)
 
 class BaseFilter(object):
     """Base class for all filter classes."""
-    def _filter_one(self, obj, filter_properties):
+    def _filter_one(self, obj, filter_properties) -> bool:
         """Return True if it passes the filter, False otherwise.
 
         Override this in a subclass.
@@ -79,8 +81,8 @@ class BaseFilterHandler(base_handler.BaseHandler):
                  "volume ID '%(vol_id)s'. Filter results: %(str_results)s",
                  msg_dict)
 
-    def get_filtered_objects(self, filter_classes, objs,
-                             filter_properties, index=0):
+    def get_filtered_objects(self, filter_classes, objs: Iterable,
+                             filter_properties: dict, index: int = 0) -> list:
         """Get objects after filter
 
         :param filter_classes: filters that will be used to filter the
