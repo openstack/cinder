@@ -17,6 +17,7 @@ from oslo_utils import importutils
 
 from cinder import context
 from cinder import db
+from cinder.db.sqlalchemy import api as sqla_db
 from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
@@ -153,14 +154,16 @@ class AttachmentManagerTestCase(test.TestCase):
         attachment1.id = fake.UUID1
         attachment2.id = fake.UUID2
 
-        @mock.patch.object(self.manager.db, 'volume_admin_metadata_delete')
-        @mock.patch.object(self.manager.db, 'volume_detached')
+        @mock.patch('cinder.objects.VolumeAttachment.get_by_id',
+                    side_effect=[attachment1, attachment2])
+        @mock.patch.object(sqla_db, 'volume_admin_metadata_delete')
+        @mock.patch.object(sqla_db, 'volume_detached')
         @mock.patch.object(self.context, 'elevated')
         @mock.patch.object(self.manager, '_connection_terminate')
         @mock.patch.object(self.manager.driver, 'remove_export')
         @mock.patch.object(self.manager.driver, 'detach_volume')
-        def _test(mock_detach, mock_rm_export, mock_con_term,
-                  mock_elevated, mock_db_detached, mock_db_meta_delete):
+        def _test(mock_detach, mock_rm_export, mock_con_term, mock_elevated,
+                  mock_db_detached, mock_db_meta_delete, mock_get_attachment):
             mock_elevated.return_value = self.context
             mock_con_term.return_value = False
 
@@ -168,7 +171,7 @@ class AttachmentManagerTestCase(test.TestCase):
             # detach and remove_export
             vref.volume_attachment.objects.append(attachment1)
 
-            self.manager._do_attachment_delete(self.context, vref, attachment1)
+            self.manager.attachment_delete(self.context, attachment1.id, vref)
 
             mock_detach.assert_called_once_with(self.context, vref,
                                                 attachment1)
@@ -188,7 +191,7 @@ class AttachmentManagerTestCase(test.TestCase):
             mock_db_detached.reset_mock()
             mock_db_meta_delete.reset_mock()
 
-            self.manager._do_attachment_delete(self.context, vref, attachment2)
+            self.manager.attachment_delete(self.context, attachment2.id, vref)
 
             mock_rm_export.assert_not_called()
             mock_db_detached.called_once_with(self.context, vref,
@@ -225,25 +228,28 @@ class AttachmentManagerTestCase(test.TestCase):
                 self.assertFalse(has_shared_connection)
                 term_conn.assert_called_once_with(volume, {}, force=True)
 
+    @mock.patch('cinder.objects.VolumeAttachment.get_by_id')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 '_notify_about_volume_usage')
     @mock.patch('cinder.volume.manager.VolumeManager._connection_terminate',
                 return_value=None)
     @mock.patch('cinder.db.volume_detached')
     @mock.patch('cinder.db.volume_admin_metadata_delete')
-    def test_do_attachment_delete_none_shared_connection(self, mock_meta_del,
-                                                         mock_vol_detached,
-                                                         mock_conn_term,
-                                                         mock_notify):
-        # Tests that _do_attachment_delete does not call remove_export
+    def test_attachment_delete_none_shared_connection(self, mock_meta_del,
+                                                      mock_vol_detached,
+                                                      mock_conn_term,
+                                                      mock_notify,
+                                                      mock_get_attachment):
+        # Tests that attachment_delete does not call remove_export
         # if _connection_terminate returns None indicating there is nothing
         # to consider for the export.
         volume = mock.MagicMock()
-        attachment = mock.MagicMock()
         with mock.patch.object(self.manager.driver, '_initialized',
                                create=True, new=True):
             with mock.patch.object(self.manager.driver,
                                    'remove_export') as remove_export:
-                self.manager._do_attachment_delete(
-                    self.context, volume, attachment)
+                self.manager.attachment_delete(
+                    self.context, mock.sentinel.attachment_id, volume)
+                mock_get_attachment.assert_called_once_with(
+                    self.context, mock.sentinel.attachment_id)
                 remove_export.assert_not_called()
