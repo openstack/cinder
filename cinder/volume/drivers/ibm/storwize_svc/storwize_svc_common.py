@@ -3508,6 +3508,13 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 model_update['metadata'][key] = rel_info.get(value)
         return model_update
 
+    def _update_rccg_properties(self, ctxt, volume, group=None):
+        rccg_name = self._get_rccg_name(group) if group else ""
+        if not volume.metadata:
+            volume.metadata = dict()
+        volume.metadata['Consistency Group Name'] = rccg_name
+        volume.save()
+
     def create_volume(self, volume):
         LOG.debug('enter: create_volume: volume %s', volume['name'])
         # Create a replication or hyperswap volume with group_id is not
@@ -6341,6 +6348,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                             rccg = self._helpers.get_rccg(rccg_name)
                         added_vols.append({'id': volume.id,
                                           'group_id': group.id})
+                        # Updating RCCG properties for a volume
+                        self._update_rccg_properties(context, volume, group)
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to add the remote copy of volume %(vol)s to "
@@ -6372,6 +6381,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     self._helpers.chrcrelationship(rcrel['name'])
                     removed_vols.append({'id': volume.id,
                                          'group_id': None})
+                    # Updating RCCG properties for a volume
+                    self._update_rccg_properties(context, volume)
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to remove the remote copy of volume %(vol)s "

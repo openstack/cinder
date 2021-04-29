@@ -12235,15 +12235,19 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
         mm_vol, model_update = self._create_test_volume(self.mm_type)
         gm_vol, model_update = self._create_test_volume(self.gm_type)
-        add_vols = [mm_vol, gm_vol]
-        (model_update, add_volumes_update,
-         remove_volumes_update) = self.driver.update_group(
-            self.ctxt, group, add_vols, [])
-        self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
-        self.assertEqual([{'id': mm_vol.id, 'group_id': group.id}],
-                         add_volumes_update)
-        self.assertEqual([], remove_volumes_update)
-        self.driver.delete_group(self.ctxt, group, add_vols)
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_update_rccg_properties') as update_rccg_prop:
+            add_vols = [mm_vol, gm_vol]
+            (model_update, add_volumes_update,
+             remove_volumes_update) = self.driver.update_group(
+                self.ctxt, group, add_vols, [])
+            update_rccg_prop.assert_called()
+            self.assertEqual(1, update_rccg_prop.call_count)
+            self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+            self.assertEqual([{'id': mm_vol.id, 'group_id': group.id}],
+                             add_volumes_update)
+            self.assertEqual([], remove_volumes_update)
+            self.driver.delete_group(self.ctxt, group, add_vols)
 
         group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
         rccg_name = self.driver._get_rccg_name(group)
@@ -12261,27 +12265,41 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         rcrel = self.driver._helpers.get_relationship_info(mm_vol4.name)
         self.sim._rc_state_transition('wait', rcrel)
 
-        add_vols = [mm_vol1, mm_vol2]
-        (model_update, add_volumes_update,
-         remove_volumes_update) = self.driver.update_group(
-            self.ctxt, group, add_vols, [])
-        self.assertEqual(
-            rccg_name,
-            self.driver._helpers.get_rccg_info(mm_vol1.name)['name'])
-        self.assertEqual(
-            rccg_name,
-            self.driver._helpers.get_rccg_info(mm_vol2.name)['name'])
-        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
-        self.assertEqual([{'id': mm_vol1.id, 'group_id': group.id},
-                          {'id': mm_vol2.id, 'group_id': group.id}],
-                         add_volumes_update)
-        self.assertEqual([], remove_volumes_update)
+        with mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                               '_update_rccg_properties') as update_rccg_prop:
+            add_vols = [mm_vol1, mm_vol2]
+            (model_update, add_volumes_update,
+             remove_volumes_update) = self.driver.update_group(
+                self.ctxt, group, add_vols, [])
+            update_rccg_prop.assert_called()
+            self.assertEqual(2, update_rccg_prop.call_count)
+            self.assertEqual(
+                rccg_name,
+                self.driver._helpers.get_rccg_info(mm_vol1.name)['name'])
+            self.assertEqual(
+                rccg_name,
+                self.driver._helpers.get_rccg_info(mm_vol2.name)['name'])
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+            self.assertEqual([{'id': mm_vol1.id, 'group_id': group.id},
+                              {'id': mm_vol2.id, 'group_id': group.id}],
+                             add_volumes_update)
+            self.assertEqual([], remove_volumes_update)
 
         add_vols = [mm_vol3, mm_vol4]
         rmv_vols = [mm_vol1, mm_vol2]
         (model_update, add_volumes_update,
          remove_volumes_update) = self.driver.update_group(
             self.ctxt, group, add_volumes=add_vols, remove_volumes=rmv_vols)
+        # Validating the rccg property value from metadata of the volume
+        # mm_vol3 that is added to a group
+        self.assertEqual(rccg_name, mm_vol3.metadata['Consistency Group Name'])
+        # Validating the rccg property value from metadata of the volume
+        # mm_vol1 that is removed from a group
+        exp_rccg_name = ''
+        self.assertEqual(exp_rccg_name,
+                         mm_vol1.metadata['Consistency Group Name'])
+
         self.assertIsNone(self.driver._helpers.get_rccg_info(mm_vol1.name))
         self.assertIsNone(self.driver._helpers.get_rccg_info(mm_vol2.name))
         self.assertEqual(
@@ -12299,6 +12317,28 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          remove_volumes_update)
         self.driver.delete_group(self.ctxt, group, [mm_vol1, mm_vol2,
                                                     mm_vol3, mm_vol4])
+
+    def test_storwize_rep_volume_rccg_properties_update(self):
+        """Test rep volume rccg_properties update."""
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        group = self._create_test_rccg(self.rccg_type, [self.mm_type.id])
+        # Create metro mirror replication.
+        mm_vol, model_update = self._create_test_volume(self.mm_type)
+        # Validating the rccg property value of volume-metadata that updated
+        # during the call to the function _update_rccg_properties by passing
+        # the parameter 'group'
+        self.driver._update_rccg_properties(self.ctxt, mm_vol, group)
+        rccg_name = self.driver._get_rccg_name(group)
+        self.assertEqual(rccg_name, mm_vol.metadata['Consistency Group Name'])
+        # Validating the rccg property value of volume-metadata that updated
+        # during the call to the function _update_rccg_properties by not
+        # passing the parameter 'group'
+        self.driver._update_rccg_properties(self.ctxt, mm_vol)
+        exp_rccg_name = ""
+        self.assertEqual(exp_rccg_name,
+                         mm_vol.metadata['Consistency Group Name'])
 
     @mock.patch.object(storwize_svc_common.StorwizeSSH,
                        'startrcconsistgrp')
@@ -12939,16 +12979,20 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         clone_volumes = self.db.volume_get_all_by_generic_group(
             self.ctxt.elevated(), clone_group.id)
 
-        model_update, volumes_model_update = (
-            self.driver.create_group_from_src(self.ctxt, clone_group,
-                                              clone_volumes, None, None,
-                                              src_group,
-                                              src_volumes))
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSVCCommonDriver,
+                '_update_rccg_properties'):
+            model_update, volumes_model_update = (
+                self.driver.create_group_from_src(self.ctxt, clone_group,
+                                                  clone_volumes, None, None,
+                                                  src_group,
+                                                  src_volumes))
 
-        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
-        for vol_model_update in volumes_model_update:
-            self.assertEqual(fields.VolumeStatus.AVAILABLE,
-                             vol_model_update['status'])
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+            for vol_model_update in volumes_model_update:
+                self.assertEqual(fields.VolumeStatus.AVAILABLE,
+                                 vol_model_update['status'])
 
         src_chg_vol_storage_pool = (
             svc_src_childpool if svc_src_childpool else _get_test_pool())
@@ -12980,17 +13024,19 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         group_snapshot, snapshots = self._create_group_snapshot(
             src_group.id, group_type_id=self.rccg_type.id)
-        model_update, volumes_model_update = (
-            self.driver.create_group_from_src(self.ctxt,
-                                              group_from_src_group_snapshot,
-                                              group_volumes,
-                                              group_snapshot,
-                                              snapshots, None, None))
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSVCCommonDriver,
+                '_update_rccg_properties'):
+            model_update, volumes_model_update = (
+                self.driver.create_group_from_src(
+                    self.ctxt, group_from_src_group_snapshot, group_volumes,
+                    group_snapshot, snapshots, None, None))
 
-        self.assertEqual(fields.GroupStatus.AVAILABLE, model_update['status'])
-        for vol_model_update in volumes_model_update:
-            self.assertEqual(fields.VolumeStatus.AVAILABLE,
-                             vol_model_update['status'])
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+            for vol_model_update in volumes_model_update:
+                self.assertEqual(fields.VolumeStatus.AVAILABLE,
+                                 vol_model_update['status'])
 
         src_chg_vol_storage_pool = (
             svc_src_childpool if svc_src_childpool else _get_test_pool())
@@ -13040,7 +13086,9 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
               )
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
-    def test_create_group_from_src_grp(self, vol_spec):
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_update_rccg_properties')
+    def test_create_group_from_src_grp(self, vol_spec, update_rccg_properties):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
 
@@ -13154,9 +13202,12 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
               )
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_update_rccg_properties')
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     def test_create_group_from_grp_snapshot(self, vol_spec,
-                                            is_group_a_cg_snap_type):
+                                            is_group_a_cg_snap_type,
+                                            update_rccg_properties):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         is_group_a_cg_snap_type.return_value = False
