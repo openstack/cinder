@@ -262,14 +262,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_in_zero_age_in(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            # We're seeing issues with foreign key support in SQLite 3.6.20
-            # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
-            # It works fine in SQLite 3.7.
-            # Force foreign_key checking if running SQLite >= 3.7
-            import sqlite3
-            tup = sqlite3.sqlite_version_info
-            if tup[0] > 3 or (tup[0] == 3 and tup[1] >= 7):
-                self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.execute("PRAGMA foreign_keys = ON")
         # Purge at age_in_days=0, should delete one more row
         db.purge_deleted_rows(self.context, age_in_days=0)
 
@@ -295,14 +288,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_old(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            # We're seeing issues with foreign key support in SQLite 3.6.20
-            # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
-            # It works fine in SQLite 3.7.
-            # Force foreign_key checking if running SQLite >= 3.7
-            import sqlite3
-            tup = sqlite3.sqlite_version_info
-            if tup[0] > 3 or (tup[0] == 3 and tup[1] >= 7):
-                self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.execute("PRAGMA foreign_keys = ON")
         # Purge at 30 days old, should only delete 2 rows
         db.purge_deleted_rows(self.context, age_in_days=30)
 
@@ -328,14 +314,7 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_older(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            # We're seeing issues with foreign key support in SQLite 3.6.20
-            # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
-            # It works fine in SQLite 3.7.
-            # Force foreign_key checking if running SQLite >= 3.7
-            import sqlite3
-            tup = sqlite3.sqlite_version_info
-            if tup[0] > 3 or (tup[0] == 3 and tup[1] >= 7):
-                self.conn.execute("PRAGMA foreign_keys = ON")
+            self.conn.execute("PRAGMA foreign_keys = ON")
         # Purge at 10 days old now, should delete 2 more rows
         db.purge_deleted_rows(self.context, age_in_days=10)
 
@@ -369,15 +348,6 @@ class PurgeDeletedTest(test.TestCase):
     def test_purge_deleted_rows_integrity_failure(self):
         dialect = self.engine.url.get_dialect()
         if dialect == sqlite.dialect:
-            # We're seeing issues with foreign key support in SQLite 3.6.20
-            # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
-            # It works fine in SQLite 3.7.
-            # So return early to skip this test if running SQLite < 3.7
-            import sqlite3
-            tup = sqlite3.sqlite_version_info
-            if tup[0] < 3 or (tup[0] == 3 and tup[1] < 7):
-                self.skipTest(
-                    'sqlite version too old for reliable SQLA foreign_keys')
             self.conn.execute("PRAGMA foreign_keys = ON")
 
         # add new entry in volume and volume_admin_metadata for
