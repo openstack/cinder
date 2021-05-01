@@ -42,10 +42,6 @@ class FilterScheduler(driver.Scheduler):
         self.options = scheduler_options.SchedulerOptions()
         self.max_attempts = self._max_attempts()
 
-    def schedule(self, context, topic, method, *args, **kwargs):
-        """Schedule contract that returns best-suited host for this request."""
-        self._schedule(context, topic, *args, **kwargs)
-
     def _get_configuration_options(self):
         """Fetch options dictionary. Broken out for testing."""
         return self.options.get_configuration()
