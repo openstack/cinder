@@ -22,6 +22,7 @@ import contextlib
 import datetime
 import functools
 import inspect
+import logging as py_logging
 import math
 import multiprocessing
 import operator
@@ -32,6 +33,9 @@ import shutil
 import stat
 import sys
 import tempfile
+import typing
+from typing import Callable, Dict, Iterable, Iterator, List  # noqa: H301
+from typing import Optional, Tuple, Type, Union  # noqa: H301
 
 import eventlet
 from eventlet import tpool
@@ -59,7 +63,7 @@ INFINITE_UNKNOWN_VALUES = ('infinite', 'unknown')
 synchronized = lockutils.synchronized_with_prefix('cinder-')
 
 
-def as_int(obj, quiet=True):
+def as_int(obj: Union[int, float, str], quiet: bool = True) -> int:
     # Try "2" -> 2
     try:
         return int(obj)
@@ -73,10 +77,12 @@ def as_int(obj, quiet=True):
     # Eck, not sure what this is then.
     if not quiet:
         raise TypeError(_("Can not translate %s to integer.") % (obj))
+
+    obj = typing.cast(int, obj)
     return obj
 
 
-def check_exclusive_options(**kwargs):
+def check_exclusive_options(**kwargs: dict) -> None:
     """Checks that only one of the provided options is actually not-none.
 
     Iterates over all the kwargs passed in and checks that only one of said
@@ -99,24 +105,24 @@ def check_exclusive_options(**kwargs):
         #
         # Ex: 'the_key' -> 'the key'
         if pretty_keys:
-            names = [k.replace('_', ' ') for k in kwargs]
+            tnames = [k.replace('_', ' ') for k in kwargs]
         else:
-            names = kwargs.keys()
-        names = ", ".join(sorted(names))
+            tnames = list(kwargs.keys())
+        names = ", ".join(sorted(tnames))
         msg = (_("May specify only one of %s") % (names))
         raise exception.InvalidInput(reason=msg)
 
 
-def execute(*cmd, **kwargs):
+def execute(*cmd: str, **kwargs) -> Tuple[str, str]:
     """Convenience wrapper around oslo's execute() method."""
     if 'run_as_root' in kwargs and 'root_helper' not in kwargs:
         kwargs['root_helper'] = get_root_helper()
     return processutils.execute(*cmd, **kwargs)
 
 
-def check_ssh_injection(cmd_list):
-    ssh_injection_pattern = ['`', '$', '|', '||', ';', '&', '&&', '>', '>>',
-                             '<']
+def check_ssh_injection(cmd_list: List[str]) -> None:
+    ssh_injection_pattern: Tuple[str, ...] = ('`', '$', '|', '||', ';', '&',
+                                              '&&', '>', '>>', '<')
 
     # Check whether injection attacks exist
     for arg in cmd_list:
@@ -149,7 +155,8 @@ def check_ssh_injection(cmd_list):
                     raise exception.SSHInjectionThreat(command=cmd_list)
 
 
-def check_metadata_properties(metadata=None):
+def check_metadata_properties(
+        metadata: Optional[Dict[str, str]]) -> None:
     """Checks that the volume metadata properties are valid."""
 
     if not metadata:
@@ -175,7 +182,9 @@ def check_metadata_properties(metadata=None):
             raise exception.InvalidVolumeMetadataSize(reason=msg)
 
 
-def last_completed_audit_period(unit=None):
+def last_completed_audit_period(unit: str = None) -> \
+        Tuple[Union[datetime.datetime, datetime.timedelta],
+              Union[datetime.datetime, datetime.timedelta]]:
     """This method gives you the most recently *completed* audit period.
 
     arguments:
@@ -196,10 +205,14 @@ def last_completed_audit_period(unit=None):
     if not unit:
         unit = CONF.volume_usage_audit_period
 
-    offset = 0
+    unit = typing.cast(str, unit)
+
+    offset: Union[str, int] = 0
     if '@' in unit:
         unit, offset = unit.split("@", 1)
         offset = int(offset)
+
+    offset = typing.cast(int, offset)
 
     rightnow = timeutils.utcnow()
     if unit not in ('month', 'day', 'year', 'hour'):
@@ -262,7 +275,7 @@ def last_completed_audit_period(unit=None):
     return (begin, end)
 
 
-def monkey_patch():
+def monkey_patch() -> None:
     """Patches decorators for all functions in a specified module.
 
     If the CONF.monkey_patch set as True,
@@ -309,7 +322,7 @@ def monkey_patch():
                         decorator("%s.%s" % (module, key), func))
 
 
-def make_dev_path(dev, partition=None, base='/dev'):
+def make_dev_path(dev: str, partition: str = None, base: str = '/dev') -> str:
     """Return a path to a particular device.
 
     >>> make_dev_path('xvdc')
@@ -324,7 +337,7 @@ def make_dev_path(dev, partition=None, base='/dev'):
     return path
 
 
-def robust_file_write(directory, filename, data):
+def robust_file_write(directory: str, filename: str, data: str) -> None:
     """Robust file write.
 
     Use "write to temp file and rename" model for writing the
@@ -360,15 +373,16 @@ def robust_file_write(directory, filename, data):
         with excutils.save_and_reraise_exception():
             LOG.error("Failed to write persistence file: %(path)s.",
                       {'path': os.path.join(directory, filename)})
-            if os.path.isfile(tempname):
-                os.unlink(tempname)
+            if tempname is not None:
+                if os.path.isfile(tempname):
+                    os.unlink(tempname)
     finally:
-        if dirfd:
+        if dirfd is not None:
             os.close(dirfd)
 
 
 @contextlib.contextmanager
-def temporary_chown(path, owner_uid=None):
+def temporary_chown(path: str, owner_uid: int = None) -> Iterator[None]:
     """Temporarily chown a path.
 
     :params owner_uid: UID of temporary owner (defaults to current user)
@@ -386,16 +400,16 @@ def temporary_chown(path, owner_uid=None):
     orig_uid = os.stat(path).st_uid
 
     if orig_uid != owner_uid:
-        execute('chown', owner_uid, path, run_as_root=True)
+        execute('chown', str(owner_uid), path, run_as_root=True)
     try:
         yield
     finally:
         if orig_uid != owner_uid:
-            execute('chown', orig_uid, path, run_as_root=True)
+            execute('chown', str(orig_uid), path, run_as_root=True)
 
 
 @contextlib.contextmanager
-def tempdir(**kwargs):
+def tempdir(**kwargs) -> Iterator[str]:
     tmpdir = tempfile.mkdtemp(**kwargs)
     try:
         yield tmpdir
@@ -406,11 +420,11 @@ def tempdir(**kwargs):
             LOG.debug('Could not remove tmpdir: %s', str(e))
 
 
-def get_root_helper():
+def get_root_helper() -> str:
     return 'sudo cinder-rootwrap %s' % CONF.rootwrap_config
 
 
-def require_driver_initialized(driver):
+def require_driver_initialized(driver) -> None:
     """Verifies if `driver` is initialized
 
     If the driver is not initialized, an exception will be raised.
@@ -427,7 +441,7 @@ def require_driver_initialized(driver):
         log_unsupported_driver_warning(driver)
 
 
-def log_unsupported_driver_warning(driver):
+def log_unsupported_driver_warning(driver) -> None:
     """Annoy the log about unsupported drivers."""
     if not driver.supported:
         # Check to see if the driver is flagged as supported.
@@ -440,22 +454,24 @@ def log_unsupported_driver_warning(driver):
                               'id': driver.__class__.__name__})
 
 
-def get_file_mode(path):
+def get_file_mode(path: str) -> int:
     """This primarily exists to make unit testing easier."""
     return stat.S_IMODE(os.stat(path).st_mode)
 
 
-def get_file_gid(path):
+def get_file_gid(path: str) -> int:
     """This primarily exists to make unit testing easier."""
     return os.stat(path).st_gid
 
 
-def get_file_size(path):
+def get_file_size(path: str) -> int:
     """Returns the file size."""
     return os.stat(path).st_size
 
 
-def _get_disk_of_partition(devpath, st=None):
+def _get_disk_of_partition(
+        devpath: str,
+        st: os.stat_result = None) -> Tuple[str, os.stat_result]:
     """Gets a disk device path and status from partition path.
 
     Returns a disk device path from a partition device path, and stat for
@@ -478,7 +494,9 @@ def _get_disk_of_partition(devpath, st=None):
     return (devpath, st)
 
 
-def get_bool_param(param_string, params, default=False):
+def get_bool_param(param_string: str,
+                   params: dict,
+                   default: bool = False) -> bool:
     param = params.get(param_string, default)
     if not strutils.is_valid_boolstr(param):
         msg = _("Value '%(param)s' for '%(param_string)s' is not "
@@ -488,7 +506,8 @@ def get_bool_param(param_string, params, default=False):
     return strutils.bool_from_string(param, strict=True)
 
 
-def get_blkdev_major_minor(path, lookup_for_file=True):
+def get_blkdev_major_minor(path: str,
+                           lookup_for_file: bool = True) -> Optional[str]:
     """Get 'major:minor' number of block device.
 
     Get the device's 'major:minor' number of a block device to control
@@ -516,8 +535,9 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
         raise exception.CinderException(msg)
 
 
-def check_string_length(value, name, min_length=0, max_length=None,
-                        allow_all_spaces=True):
+def check_string_length(value: str, name: str, min_length: int = 0,
+                        max_length: int = None,
+                        allow_all_spaces: bool = True) -> None:
     """Check the length of specified string.
 
     :param value: the value of the string
@@ -537,7 +557,7 @@ def check_string_length(value, name, min_length=0, max_length=None,
         raise exception.InvalidInput(reason=msg)
 
 
-def is_blk_device(dev):
+def is_blk_device(dev: str) -> bool:
     try:
         if stat.S_ISBLK(os.stat(dev).st_mode):
             return True
@@ -548,30 +568,30 @@ def is_blk_device(dev):
 
 
 class ComparableMixin(object):
-    def _compare(self, other, method):
+    def _compare(self, other: object, method: Callable):
         try:
-            return method(self._cmpkey(), other._cmpkey())
+            return method(self._cmpkey(), other._cmpkey())  # type: ignore
         except (AttributeError, TypeError):
             # _cmpkey not implemented, or return different type,
             # so I can't compare with "other".
             return NotImplemented
 
-    def __lt__(self, other):
+    def __lt__(self, other: object):
         return self._compare(other, lambda s, o: s < o)
 
-    def __le__(self, other):
+    def __le__(self, other: object):
         return self._compare(other, lambda s, o: s <= o)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object):
         return self._compare(other, lambda s, o: s == o)
 
-    def __ge__(self, other):
+    def __ge__(self, other: object):
         return self._compare(other, lambda s, o: s >= o)
 
-    def __gt__(self, other):
+    def __gt__(self, other: object):
         return self._compare(other, lambda s, o: s > o)
 
-    def __ne__(self, other):
+    def __ne__(self, other: object):
         return self._compare(other, lambda s, o: s != o)
 
 
@@ -586,8 +606,12 @@ class retry_if_exit_code(tenacity.retry_if_exception):
                 exc.exit_code in self.codes)
 
 
-def retry(retry_param, interval=1, retries=3, backoff_rate=2,
-          wait_random=False, retry=tenacity.retry_if_exception_type):
+def retry(retry_param: Optional[Type[Exception]],
+          interval: int = 1,
+          retries: int = 3,
+          backoff_rate: int = 2,
+          wait_random: bool = False,
+          retry=tenacity.retry_if_exception_type) -> Callable:
 
     if retries < 1:
         raise ValueError('Retries must be greater than or '
@@ -599,7 +623,7 @@ def retry(retry_param, interval=1, retries=3, backoff_rate=2,
         wait = tenacity.wait_exponential(
             multiplier=interval, min=0, exp_base=backoff_rate)
 
-    def _decorator(f):
+    def _decorator(f: Callable) -> Callable:
 
         @functools.wraps(f)
         def _wrapper(*args, **kwargs):
@@ -618,7 +642,7 @@ def retry(retry_param, interval=1, retries=3, backoff_rate=2,
     return _decorator
 
 
-def convert_str(text):
+def convert_str(text: Union[str, bytes]) -> str:
     """Convert to native string.
 
     Convert bytes and Unicode strings to native strings:
@@ -633,7 +657,8 @@ def convert_str(text):
         return text
 
 
-def build_or_str(elements, str_format=None):
+def build_or_str(elements: Union[None, str, Iterable[str]],
+                 str_format: str = None) -> str:
     """Builds a string of elements joined by 'or'.
 
     Will join strings with the 'or' word and if a str_format is provided it
@@ -651,18 +676,21 @@ def build_or_str(elements, str_format=None):
     if not isinstance(elements, str):
         elements = _(' or ').join(elements)
 
+    elements = typing.cast(str, elements)
+
     if str_format:
         return str_format % elements
+
     return elements
 
 
-def calculate_virtual_free_capacity(total_capacity,
-                                    free_capacity,
-                                    provisioned_capacity,
-                                    thin_provisioning_support,
-                                    max_over_subscription_ratio,
-                                    reserved_percentage,
-                                    thin):
+def calculate_virtual_free_capacity(total_capacity: float,
+                                    free_capacity: float,
+                                    provisioned_capacity: float,
+                                    thin_provisioning_support: bool,
+                                    max_over_subscription_ratio: float,
+                                    reserved_percentage: float,
+                                    thin: bool) -> float:
     """Calculate the virtual free capacity based on thin provisioning support.
 
     :param total_capacity:  total_capacity_gb of a host_state or pool.
@@ -693,8 +721,9 @@ def calculate_virtual_free_capacity(total_capacity,
     return free
 
 
-def calculate_max_over_subscription_ratio(capability,
-                                          global_max_over_subscription_ratio):
+def calculate_max_over_subscription_ratio(
+        capability: dict,
+        global_max_over_subscription_ratio: float) -> float:
     # provisioned_capacity_gb is the apparent total capacity of
     # all the volumes created on a backend, which is greater than
     # or equal to allocated_capacity_gb, which is the apparent
@@ -752,7 +781,7 @@ def calculate_max_over_subscription_ratio(capability,
     return max_over_subscription_ratio
 
 
-def validate_dictionary_string_length(specs):
+def validate_dictionary_string_length(specs: dict) -> None:
     """Check the length of each key and value of dictionary."""
     if not isinstance(specs, dict):
         msg = _('specs must be a dictionary.')
@@ -768,7 +797,8 @@ def validate_dictionary_string_length(specs):
                                 min_length=0, max_length=255)
 
 
-def service_expired_time(with_timezone=False):
+def service_expired_time(
+        with_timezone: Optional[bool] = False) -> datetime.datetime:
     return (timeutils.utcnow(with_timezone=with_timezone) -
             datetime.timedelta(seconds=CONF.service_down_time))
 
@@ -794,7 +824,7 @@ def notifications_enabled(conf):
     return notifications_driver and notifications_driver != {'noop'}
 
 
-def if_notifications_enabled(f):
+def if_notifications_enabled(f: Callable) -> Callable:
     """Calls decorated method only if notifications are enabled."""
     @functools.wraps(f)
     def wrapped(*args, **kwargs):
@@ -807,7 +837,7 @@ def if_notifications_enabled(f):
 LOG_LEVELS = ('INFO', 'WARNING', 'ERROR', 'DEBUG')
 
 
-def get_log_method(level_string):
+def get_log_method(level_string: str) -> int:
     level_string = level_string or ''
     upper_level_string = level_string.upper()
     if upper_level_string not in LOG_LEVELS:
@@ -816,7 +846,7 @@ def get_log_method(level_string):
     return getattr(logging, upper_level_string)
 
 
-def set_log_levels(prefix, level_string):
+def set_log_levels(prefix: str, level_string: str) -> None:
     level = get_log_method(level_string)
     prefix = prefix or ''
 
@@ -825,18 +855,18 @@ def set_log_levels(prefix, level_string):
             v.logger.setLevel(level)
 
 
-def get_log_levels(prefix):
+def get_log_levels(prefix: str) -> dict:
     prefix = prefix or ''
-    return {k: logging.logging.getLevelName(v.logger.getEffectiveLevel())
+    return {k: py_logging.getLevelName(v.logger.getEffectiveLevel())
             for k, v in logging.get_loggers().items()
             if k and k.startswith(prefix)}
 
 
-def paths_normcase_equal(path_a, path_b):
+def paths_normcase_equal(path_a: str, path_b: str) -> bool:
     return os.path.normcase(path_a) == os.path.normcase(path_b)
 
 
-def create_ordereddict(adict):
+def create_ordereddict(adict: dict) -> OrderedDict:
     """Given a dict, return a sorted OrderedDict."""
     return OrderedDict(sorted(adict.items(),
                               key=operator.itemgetter(0)))
@@ -859,7 +889,9 @@ class Semaphore(object):
         return self.semaphore.__exit__(*args)
 
 
-def semaphore_factory(limit, concurrent_processes):
+def semaphore_factory(limit: int,
+                      concurrent_processes: int) -> Union[eventlet.Semaphore,
+                                                          Semaphore]:
     """Get a semaphore to limit concurrent operations.
 
     The semaphore depends on the limit we want to set and the concurrent
@@ -876,7 +908,7 @@ def semaphore_factory(limit, concurrent_processes):
     return contextlib.suppress()
 
 
-def limit_operations(func):
+def limit_operations(func: Callable) -> Callable:
     """Decorator to limit the number of concurrent operations.
 
      This method decorator expects to have a _semaphore attribute holding an

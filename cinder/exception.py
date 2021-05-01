@@ -22,6 +22,8 @@ SHOULD include dedicated exception logging.
 
 """
 
+from typing import Union
+
 from oslo_log import log as logging
 from oslo_versionedobjects import exception as obj_exc
 import webob.exc
@@ -35,7 +37,8 @@ LOG = logging.getLogger(__name__)
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
-    def __init__(self, code=500, title="", explanation=""):
+    def __init__(self, code: int = 500, title: str = "",
+                 explanation: str = ""):
         self.code = code
         # There is a strict rule about constructing status line for HTTP:
         # '...Status-Line, consisting of the protocol version followed by a
@@ -66,10 +69,10 @@ class CinderException(Exception):
     """
     message = _("An unknown exception occurred.")
     code = 500
-    headers = {}
+    headers: dict = {}
     safe = False
 
-    def __init__(self, message=None, **kwargs):
+    def __init__(self, message: Union[str, tuple] = None, **kwargs):
         self.kwargs = kwargs
         self.kwargs['message'] = message
 
@@ -112,7 +115,7 @@ class CinderException(Exception):
         # with duplicate keyword exception.
         self.kwargs.pop('message', None)
 
-    def _log_exception(self):
+    def _log_exception(self) -> None:
         # kwargs doesn't match a variable in the message
         # log the issue and the kwargs
         LOG.exception('Exception in string format operation:')
@@ -120,7 +123,7 @@ class CinderException(Exception):
             LOG.error("%(name)s: %(value)s",
                       {'name': name, 'value': value})
 
-    def _should_format(self):
+    def _should_format(self) -> bool:
         return self.kwargs['message'] is None or '%(message)' in self.message
 
 

@@ -297,12 +297,12 @@ class TemporaryChownTestCase(test.TestCase):
         mock_stat.return_value.st_uid = 5678
         test_filename = 'a_file'
         with utils.temporary_chown(test_filename):
-            mock_exec.assert_called_once_with('chown', 1234, test_filename,
+            mock_exec.assert_called_once_with('chown', '1234', test_filename,
                                               run_as_root=True)
         mock_getuid.assert_called_once_with()
         mock_stat.assert_called_once_with(test_filename)
-        calls = [mock.call('chown', 1234, test_filename, run_as_root=True),
-                 mock.call('chown', 5678, test_filename, run_as_root=True)]
+        calls = [mock.call('chown', '1234', test_filename, run_as_root=True),
+                 mock.call('chown', '5678', test_filename, run_as_root=True)]
         mock_exec.assert_has_calls(calls)
 
     @mock.patch('os.stat')
@@ -312,12 +312,12 @@ class TemporaryChownTestCase(test.TestCase):
         mock_stat.return_value.st_uid = 5678
         test_filename = 'a_file'
         with utils.temporary_chown(test_filename, owner_uid=9101):
-            mock_exec.assert_called_once_with('chown', 9101, test_filename,
+            mock_exec.assert_called_once_with('chown', '9101', test_filename,
                                               run_as_root=True)
         self.assertFalse(mock_getuid.called)
         mock_stat.assert_called_once_with(test_filename)
-        calls = [mock.call('chown', 9101, test_filename, run_as_root=True),
-                 mock.call('chown', 5678, test_filename, run_as_root=True)]
+        calls = [mock.call('chown', '9101', test_filename, run_as_root=True),
+                 mock.call('chown', '5678', test_filename, run_as_root=True)]
         mock_exec.assert_has_calls(calls)
 
     @mock.patch('os.stat')
