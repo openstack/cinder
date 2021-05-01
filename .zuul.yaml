@@ -98,6 +98,7 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3-opensuse15:
             irrelevant-files: *gate-irrelevant-files
+        - cinder-mypy
 
 - job:
     # Security testing for known issues
@@ -279,3 +280,9 @@
         CINDER_ENABLED_BACKENDS: 'lvm:lvmdriver-1,lvm:lvmdriver-2'
         CINDER_VOLUME_CLEAR: none
     irrelevant-files: *gate-irrelevant-files
+
+- job:
+    name: cinder-mypy
+    parent: openstack-tox
+    vars:
+      tox_envlist: mypy
