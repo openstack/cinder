@@ -197,9 +197,7 @@ FAKE_POSITIVE_GROUP_INFO_RESPONSE = {
     'name': 'group-nimble',
     'usage_valid': True,
     'usable_capacity_bytes': 8016883089408,
-    'compressed_vol_usage_bytes': 2938311843,
-    'compressed_snap_usage_bytes': 36189,
-    'unused_reserve_bytes': 0}
+    'free_space': 101111111901}
 
 FAKE_GET_VOL_INFO_RESPONSE = {'name': 'testvolume-cg',
                               'clone': False,
@@ -1136,7 +1134,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                         'storage_protocol': 'iSCSI',
                         'pools': [{'pool_name': 'NIMBLE',
                                    'total_capacity_gb': 7466.30419921875,
-                                   'free_capacity_gb': 7463.567649364471,
+                                   'free_capacity_gb': 94.16706105787307,
                                    'reserved_percentage': 0,
                                    'QoS_support': False,
                                    'multiattach': True,
