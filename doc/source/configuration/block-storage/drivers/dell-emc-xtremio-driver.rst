@@ -233,6 +233,16 @@ The CHAP initiator authentication and discovery credentials (username and
 password) are generated automatically by the Block Storage driver. Therefore,
 there is no need to configure the initial CHAP credentials manually in XMS.
 
+Configuring ports filtering
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The XtremIO Block Storage driver supports ports filtering to define a list
+of iSCSI IP-addresses or FC WWNs which will be used to attach volumes.
+If option is not set all ports are allowed.
+
+.. code-block:: ini
+
+    xtremio_ports = iSCSI IPs or FC WWNs
+
 .. _emc_extremio_configuration_example:
 
 Configuration example
@@ -250,6 +260,7 @@ follows:
    volume_driver = cinder.volume.drivers.dell_emc.xtremio.XtremIOFibreChannelDriver
    san_ip = XMS_IP
    xtremio_cluster_name = Cluster01
+   xtremio_ports = 21:00:00:24:ff:57:b2:36,21:00:00:24:ff:57:b2:55
    san_login = XMS_USER
    san_password = XMS_PASSWD
    volume_backend_name = XtremIOAFA

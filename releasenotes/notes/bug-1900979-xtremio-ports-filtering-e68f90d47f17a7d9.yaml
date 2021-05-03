@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `Bug #1915800 <https://bugs.launchpad.net/cinder/+bug/1915800>`_:
+    Add support for ports filtering in XtremIO driver.
