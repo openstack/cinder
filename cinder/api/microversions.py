@@ -169,6 +169,8 @@ ENCRYPTION_KEY_ID_IN_DETAILS = '3.64'
 
 USE_QUOTA = '3.65'
 
+SNAPSHOT_IN_USE = '3.66'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.

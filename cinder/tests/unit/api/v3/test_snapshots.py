@@ -17,6 +17,7 @@ from unittest import mock
 
 import ddt
 from oslo_utils import strutils
+from webob import exc
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import snapshots
@@ -400,3 +401,56 @@ class SnapshotApiTest(test.TestCase):
 
         # verify some snapshot is returned
         self.assertNotEqual(0, len(res_dict['snapshots']))
+
+    @mock.patch('cinder.volume.api.API.create_snapshot')
+    def test_snapshot_create_allow_in_use(self, mock_create):
+        req = create_snapshot_query_with_metadata(
+            '{"key2": "val2"}',
+            mv.SNAPSHOT_IN_USE)
+
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID}}
+
+        self.controller.create(req, body=body)
+        self.assertIn('allow_in_use', mock_create.call_args_list[0][1])
+        self.assertTrue(mock_create.call_args_list[0][1]['allow_in_use'])
+
+    @mock.patch('cinder.volume.api.API.create_snapshot')
+    def test_snapshot_create_allow_in_use_negative(self, mock_create):
+        req = create_snapshot_query_with_metadata(
+            '{"key2": "val2"}',
+            mv.get_prior_version(mv.SNAPSHOT_IN_USE))
+
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID}}
+
+        self.controller.create(req, body=body)
+        self.assertNotIn('allow_in_use', mock_create.call_args_list[0][1])
+
+    @ddt.data(False, 'false', 'f', 'no', 'n', '0', 'off')
+    @mock.patch('cinder.volume.api.API.create_snapshot')
+    def test_snapshot_create_force_false(self, force_flag, mock_create):
+        snapshot_name = 'Snapshot Test Name'
+        snapshot_description = 'Snapshot Test Desc'
+        snapshot = {
+            "volume_id": fake.VOLUME_ID,
+            "force": force_flag,
+            "name": snapshot_name,
+            "description": snapshot_description
+        }
+
+        body = dict(snapshot=snapshot)
+        req = create_snapshot_query_with_metadata(
+            '{"key2": "val2"}',
+            mv.SNAPSHOT_IN_USE)
+        self.assertRaises(exc.HTTPBadRequest,
+                          self.controller.create,
+                          req,
+                          body=body)
+        mock_create.assert_not_called()
+
+        # prevent regression -- shouldn't raise for pre-mv-3.66
+        req = create_snapshot_query_with_metadata(
+            '{"key2": "val2"}',
+            mv.get_prior_version(mv.SNAPSHOT_IN_USE))
+        self.controller.create(req, body=body)
+        # ... but also shouldn't allow an in-use snapshot
+        self.assertNotIn('allow_in_use', mock_create.call_args_list[0][1])

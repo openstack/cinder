@@ -16,18 +16,29 @@
 """The volumes snapshots V3 API."""
 
 import ast
+from http import HTTPStatus
 
 from oslo_log import log as logging
+from oslo_utils import strutils
+from webob import exc
 
 from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
+from cinder.api.schemas import snapshots as snapshot
 from cinder.api.v2 import snapshots as snapshots_v2
 from cinder.api.v3.views import snapshots as snapshot_views
+from cinder.api import validation
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
+
+SNAPSHOT_IN_USE_FLAG_MSG = (
+    f"Since microversion {mv.SNAPSHOT_IN_USE} the 'force' flag is "
+    "invalid for this request.  For backward compatability, however, when "
+    "the 'force' flag is passed with a value evaluating to True, it  is "
+    "silently ignored.")
 
 
 class SnapshotsController(snapshots_v2.SnapshotsController):
@@ -130,6 +141,58 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
             snapshots = self._view_builder.summary_list(req, snapshots.objects,
                                                         total_count)
         return snapshots
+
+    @wsgi.response(HTTPStatus.ACCEPTED)
+    @validation.schema(snapshot.create)
+    def create(self, req, body):
+        """Creates a new snapshot."""
+        kwargs = {}
+        context = req.environ['cinder.context']
+        snapshot = body['snapshot']
+        kwargs['metadata'] = snapshot.get('metadata', None)
+        volume_id = snapshot['volume_id']
+        volume = self.volume_api.get(context, volume_id)
+        req_version = req.api_version_request
+        force_flag = snapshot.get('force')
+        force = False
+        if force_flag is not None:
+            # note: this won't raise because it passed schema validation
+            force = strutils.bool_from_string(force_flag, strict=True)
+
+            if req_version.matches(mv.SNAPSHOT_IN_USE):
+                # strictly speaking, the 'force' flag is invalid for
+                # mv.SNAPSHOT_IN_USE, but we silently ignore a True
+                # value for backward compatibility
+                if force is False:
+                    raise exc.HTTPBadRequest(
+                        explanation=SNAPSHOT_IN_USE_FLAG_MSG)
+
+        LOG.info("Create snapshot from volume %s", volume_id)
+
+        self.validate_name_and_description(snapshot, check_length=False)
+        if 'name' in snapshot:
+            snapshot['display_name'] = snapshot.pop('name')
+
+        if force:
+            new_snapshot = self.volume_api.create_snapshot_force(
+                context,
+                volume,
+                snapshot.get('display_name'),
+                snapshot.get('description'),
+                **kwargs)
+        else:
+            if req_version.matches(mv.SNAPSHOT_IN_USE):
+                kwargs['allow_in_use'] = True
+
+            new_snapshot = self.volume_api.create_snapshot(
+                context,
+                volume,
+                snapshot.get('display_name'),
+                snapshot.get('description'),
+                **kwargs)
+        req.cache_db_snapshot(new_snapshot)
+
+        return self._view_builder.detail(req, new_snapshot)
 
 
 def create_resource(ext_mgr):
