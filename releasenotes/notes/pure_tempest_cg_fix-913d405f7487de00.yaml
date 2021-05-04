@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pure Storage FlashArray driver fix to ensure cinder_tempest_plugin consistency
+    group tests pass.
