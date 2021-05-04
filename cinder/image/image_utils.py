@@ -965,7 +965,12 @@ def decode_cipher(cipher_spec, key_size):
        documented under linux/Documentation/device-mapper/dm-crypt.txt in the
        kernel source tree.
     """
-    cipher_alg, cipher_mode, ivgen_alg = cipher_spec.split('-')
+    try:
+        cipher_alg, cipher_mode, ivgen_alg = cipher_spec.split('-')
+    except ValueError:
+        raise exception.InvalidVolumeType(
+            reason="Invalid cipher field in encryption type")
+
     cipher_alg = cipher_alg + '-' + str(key_size)
 
     return {'cipher_alg': cipher_alg,
