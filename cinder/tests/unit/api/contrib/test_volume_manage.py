@@ -205,7 +205,8 @@ class VolumeManageTest(test.TestCase):
 
     @ddt.data({'host': 'host_ok'},
               {'host': 'user@host#backend:/vol_path'},
-              {'host': 'host@backend#parts+of+pool'})
+              {'host': 'host@backend#parts+of+pool'},
+              {'host': 'host@backend#[dead:beef::cafe]:/vol01'})
     @ddt.unpack
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
     def test_manage_volume_ok(self, mock_api_manage, host):
