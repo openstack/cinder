@@ -161,8 +161,7 @@
 
 - job:
     name: cinder-plugin-ceph-tempest-mn-aa
-    nodeset: openstack-two-node-bionic
-    parent: devstack-plugin-ceph-tempest-py3
+    parent: devstack-plugin-ceph-multinode-tempest-py3
     roles:
       - zuul: opendev.org/openstack/cinderlib
       - zuul: opendev.org/openstack/cinder-tempest-plugin
@@ -173,15 +172,13 @@
     vars:
       zuul_additional_subunit_dirs:
         - "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/cinderlib'].src_dir }}"
+      devstack_localrc:
+        TEMPEST_VOLUME_REVERT_TO_SNAPSHOT: True
       devstack_local_conf:
         post-config:
           $CINDER_CONF:
             DEFAULT:
               cluster: ceph
-        test-config:
-          $TEMPEST_CONFIG:
-            volume-feature-enabled:
-              volume_revert: True
 
 - job:
     name: cinder-grenade-mn-sub-bak
