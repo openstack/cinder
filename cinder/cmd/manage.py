@@ -66,7 +66,6 @@ import tabulate
 # Need to register global_opts
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import config  # noqa
-from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
@@ -95,27 +94,6 @@ RPC_VERSIONS = {
 }
 
 OVO_VERSION = ovo_base.OBJ_VERSIONS.get_current()
-
-
-def _get_non_shared_target_hosts(ctxt):
-    hosts = []
-    numvols_needing_update = 0
-    rpc.init(CONF)
-    rpcapi = volume_rpcapi.VolumeAPI()
-
-    services = objects.ServiceList.get_all_by_topic(ctxt,
-                                                    constants.VOLUME_TOPIC)
-    for service in services:
-        capabilities = rpcapi.get_capabilities(ctxt, service.host, True)
-        # Select only non iSCSI connections and iSCSI that are explicit
-        if (capabilities.get('storage_protocol') != 'iSCSI' or
-                not capabilities.get('shared_targets', True)):
-            hosts.append(service.host)
-            numvols_needing_update += db_api.model_query(
-                ctxt, models.Volume).filter_by(
-                    shared_targets=True,
-                    service_uuid=service.uuid).count()
-    return hosts, numvols_needing_update
 
 
 # Decorators for actions
