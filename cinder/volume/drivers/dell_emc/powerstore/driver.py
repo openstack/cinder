@@ -38,9 +38,12 @@ class PowerStoreDriver(driver.VolumeDriver):
       Version history:
         1.0.0 - Initial version
         1.0.1 - Add CHAP support
+        1.0.2 - Fix iSCSI targets not being returned from the REST API call if
+                targets are used for multiple purposes
+                (iSCSI target, Replication target, etc.)
     """
 
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
     VENDOR = "Dell EMC"
 
     # ThirdPartySystems wiki page

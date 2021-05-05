@@ -384,7 +384,7 @@ class PowerStoreClient(object):
             "/ip_pool_address",
             params={
                 "appliance_id": "eq.%s" % appliance_id,
-                "purposes": "eq.{Storage_Iscsi_Target}",
+                "purposes": "cs.{Storage_Iscsi_Target}",
                 "select": "address,ip_port(target_iqn)"
 
             }
