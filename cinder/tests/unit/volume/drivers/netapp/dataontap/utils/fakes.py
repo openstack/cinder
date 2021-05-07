@@ -134,6 +134,19 @@ SSC_AGGREGATE_INFO = {
     },
 }
 
+PROVISIONING_OPTS_FLEXGROUP = {
+    'aggregate': ['fake_aggregate'],
+    'thin_provisioned': True,
+    'snapshot_policy': None,
+    'language': 'en_US',
+    'dedupe_enabled': True,
+    'compression_enabled': True,
+    'snapshot_reserve': '12',
+    'volume_type': 'rw',
+    'size': 20,
+    'is_flexgroup': True,
+}
+
 PROVISIONING_OPTS = {
     'aggregate': ['fake_aggregate'],
     'thin_provisioned': True,

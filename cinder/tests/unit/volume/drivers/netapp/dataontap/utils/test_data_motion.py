@@ -671,7 +671,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                                                   is_flexgroup):
         self.mock_object(
             self.mock_src_client, 'get_provisioning_options_from_flexvol',
-            return_value={'size': size, 'aggregate': 'aggr01',
+            return_value={'size': size, 'aggregate': ['aggr1'],
                           'is_flexgroup': is_flexgroup})
         self.mock_object(self.dm_mixin, '_get_replication_aggregate_map',
                          return_value=aggr_map)
@@ -702,11 +702,11 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 new=test_utils.ZeroIntervalWithTimeoutLoopingCall)
     def test_create_destination_flexgroup_online_timeout(self, volume_state):
         aggr_map = {
-            fakes.PROVISIONING_OPTS['aggregate'][0]: 'aggr01',
+            fakes.PROVISIONING_OPTS_FLEXGROUP['aggregate'][0]: 'aggr01',
             'aggr20': 'aggr02',
         }
-        provisioning_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
-        expected_prov_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
+        provisioning_opts = copy.deepcopy(fakes.PROVISIONING_OPTS_FLEXGROUP)
+        expected_prov_opts = copy.deepcopy(fakes.PROVISIONING_OPTS_FLEXGROUP)
         expected_prov_opts.pop('volume_type', None)
         expected_prov_opts.pop('size', None)
         expected_prov_opts.pop('aggregate', None)
@@ -745,7 +745,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         mock_create_volume_async.assert_called_once_with(
             self.dest_flexvol_name,
             ['aggr01'],
-            fakes.PROVISIONING_OPTS['size'],
+            fakes.PROVISIONING_OPTS_FLEXGROUP['size'],
             volume_type='dp', **expected_prov_opts)
         mock_volume_state.assert_called_with(
             name=self.dest_flexvol_name)
@@ -754,19 +754,16 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
 
     @ddt.data('flexvol', 'flexgroup')
     def test_create_destination_flexvol(self, volume_style):
+        provisioning_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
         aggr_map = {
-            fakes.PROVISIONING_OPTS['aggregate'][0]: 'aggr01',
+            provisioning_opts['aggregate'][0]: 'aggr01',
             'aggr20': 'aggr02',
         }
-        provisioning_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
-        expected_prov_opts = copy.deepcopy(fakes.PROVISIONING_OPTS)
+        expected_prov_opts = copy.deepcopy(provisioning_opts)
         expected_prov_opts.pop('volume_type', None)
         expected_prov_opts.pop('size', None)
         expected_prov_opts.pop('aggregate', None)
         expected_prov_opts.pop('is_flexgroup', None)
-        mock_get_provisioning_opts_call = self.mock_object(
-            self.mock_src_client, 'get_provisioning_options_from_flexvol',
-            return_value=provisioning_opts)
         mock_is_flexvol_encrypted = self.mock_object(
             self.mock_src_client, 'is_flexvol_encrypted',
             return_value=False)
@@ -782,6 +779,11 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         pool_is_flexgroup = False
         if volume_style == 'flexgroup':
             pool_is_flexgroup = True
+            provisioning_opts = copy.deepcopy(
+                fakes.PROVISIONING_OPTS_FLEXGROUP)
+            self.mock_object(self.dm_mixin,
+                             '_get_replication_volume_online_timeout',
+                             return_value=2)
             mock_create_volume_async = self.mock_object(self.mock_dest_client,
                                                         'create_volume_async')
             mock_dedupe_enabled = self.mock_object(
@@ -791,6 +793,10 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         else:
             mock_create_flexvol = self.mock_object(self.mock_dest_client,
                                                    'create_flexvol')
+
+        mock_get_provisioning_opts_call = self.mock_object(
+            self.mock_src_client, 'get_provisioning_options_from_flexvol',
+            return_value=provisioning_opts)
 
         retval = self.dm_mixin.create_destination_flexvol(
             self.src_backend, self.dest_backend,
@@ -809,7 +815,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             mock_create_volume_async.assert_called_once_with(
                 self.dest_flexvol_name,
                 ['aggr01'],
-                fakes.PROVISIONING_OPTS['size'],
+                fakes.PROVISIONING_OPTS_FLEXGROUP['size'],
                 volume_type='dp', **expected_prov_opts)
             mock_volume_state.assert_called_once_with(
                 name=self.dest_flexvol_name)

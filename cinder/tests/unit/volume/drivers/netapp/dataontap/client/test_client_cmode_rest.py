@@ -2515,7 +2515,7 @@ class NetAppRestCmodeClientTestCase(test.TestCase):
                          return_value=fake_client.VOLUME_DEDUPE_INFO_SSC)
 
         expected_prov_opts = {
-            'aggregate': 'fake_aggr1',
+            'aggregate': ['fake_aggr1'],
             'compression_enabled': False,
             'dedupe_enabled': True,
             'language': 'c.utf_8',

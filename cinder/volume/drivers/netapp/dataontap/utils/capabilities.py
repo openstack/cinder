@@ -140,7 +140,7 @@ class CapabilitiesLibrary(object):
             'netapp_thin_provisioned': six.text_type(not netapp_thick).lower(),
             'thick_provisioning_support': thick,
             'thin_provisioning_support': not thick,
-            'netapp_aggregate': volume_info.get('aggregate'),
+            'netapp_aggregate': volume_info.get('aggregate')[0],
             'netapp_is_flexgroup': six.text_type(is_flexgroup).lower(),
         }
 
