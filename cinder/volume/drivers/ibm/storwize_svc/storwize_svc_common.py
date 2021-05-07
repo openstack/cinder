@@ -2042,10 +2042,10 @@ class StorwizeHelpers(object):
             return None
         return resp[0]
 
-    def _check_vdisk_fc_mappings(self, name,
-                                 allow_snaps=True, allow_fctgt=False):
+    @cinder_utils.trace
+    def _check_delete_vdisk_fc_mappings(self, name, allow_snaps=True,
+                                        allow_fctgt=False):
         """FlashCopy mapping check helper."""
-        LOG.debug('Loopcall: _check_vdisk_fc_mappings(), vdisk %s.', name)
         mapping_ids = self._get_vdisk_fc_mappings(name)
         wait_for_copy = False
         for map_id in mapping_ids:
@@ -2058,10 +2058,23 @@ class StorwizeHelpers(object):
             target = attrs['target_vdisk_name']
             copy_rate = attrs['copy_rate']
             status = attrs['status']
+            progress = attrs['progress']
 
+            LOG.debug('Loopcall: source: %s, target: %s, copy_rate: %s, '
+                      'status: %s, progress: %s, mapid: %s', source, target,
+                      copy_rate, status, progress, map_id)
             if allow_fctgt and target == name and status == 'copying':
-                self.ssh.stopfcmap(map_id)
-                attrs = self._get_flashcopy_mapping_attributes(map_id)
+                try:
+                    self.ssh.stopfcmap(map_id)
+                except exception.VolumeBackendAPIException as ex:
+                    LOG.warning(ex)
+                    wait_for_copy = True
+                try:
+                    attrs = self._get_flashcopy_mapping_attributes(map_id)
+                except exception.VolumeBackendAPIException as ex:
+                    LOG.warning(ex)
+                    wait_for_copy = True
+                    continue
                 if attrs:
                     status = attrs['status']
                 else:
@@ -2083,27 +2096,79 @@ class StorwizeHelpers(object):
                                {'name': name, 'src': source, 'tgt': target})
                         LOG.error(msg)
                         raise exception.VolumeDriverException(message=msg)
-                    if status in ['copying', 'prepared']:
-                        self.ssh.stopfcmap(map_id)
-                        # Need to wait for the fcmap to change to
-                        # stopped state before remove fcmap
+                    try:
+                        if status in ['copying', 'prepared']:
+                            self.ssh.stopfcmap(map_id)
+                            # Need to wait for the fcmap to change to
+                            # stopped state before remove fcmap
+                            wait_for_copy = True
+                        elif status in ['stopping', 'preparing']:
+                            wait_for_copy = True
+                        else:
+                            self.ssh.rmfcmap(map_id)
+                    except exception.VolumeBackendAPIException as ex:
+                        LOG.warning(ex)
                         wait_for_copy = True
-                    elif status in ['stopping', 'preparing']:
-                        wait_for_copy = True
-                    else:
-                        self.ssh.rmfcmap(map_id)
             # Case 4: Copy in progress - wait and will autodelete
             else:
-                if status == 'prepared':
-                    self.ssh.stopfcmap(map_id)
-                    self.ssh.rmfcmap(map_id)
-                elif status in ['idle_or_copied', 'stopped']:
-                    # Prepare failed or stopped
-                    self.ssh.rmfcmap(map_id)
-                else:
+                try:
+                    if status == 'prepared':
+                        self.ssh.stopfcmap(map_id)
+                        self.ssh.rmfcmap(map_id)
+                    elif status in ['idle_or_copied', 'stopped']:
+                        # Prepare failed or stopped
+                        self.ssh.rmfcmap(map_id)
+                    elif (status in ['copying', 'prepared'] and
+                          progress == '100'):
+                        self.ssh.stopfcmap(map_id)
+                    else:
+                        wait_for_copy = True
+                except exception.VolumeBackendAPIException as ex:
+                    LOG.warning(ex)
                     wait_for_copy = True
+
         if not wait_for_copy or not len(mapping_ids):
             raise loopingcall.LoopingCallDone(retvalue=True)
+
+    @cinder_utils.trace
+    def _check_vdisk_fc_mappings(self, name, allow_snaps=True,
+                                 allow_fctgt=False):
+        """FlashCopy mapping check helper."""
+        # if this is a remove disk we need to be down to one fc clone
+        mapping_ids = self._get_vdisk_fc_mappings(name)
+        if len(mapping_ids) > 1 and allow_fctgt:
+            LOG.debug('Loopcall: vdisk %s has '
+                      'more than one fc map. Waiting.', name)
+            for map_id in mapping_ids:
+                attrs = self._get_flashcopy_mapping_attributes(map_id)
+                if not attrs:
+                    continue
+                source = attrs['source_vdisk_name']
+                target = attrs['target_vdisk_name']
+                copy_rate = attrs['copy_rate']
+                status = attrs['status']
+                progress = attrs['progress']
+                LOG.debug('Loopcall: source: %s, target: %s, copy_rate: %s, '
+                          'status: %s, progress: %s, mapid: %s',
+                          source, target, copy_rate, status, progress, map_id)
+
+                if copy_rate != '0' and source == name:
+                    try:
+                        if status in ['copying'] and progress == '100':
+                            self.ssh.stopfcmap(map_id)
+                        elif status == 'idle_or_copied' and progress == '100':
+                            # wait for auto-delete of fcmap.
+                            continue
+                        elif status in ['idle_or_copied', 'stopped']:
+                            # Prepare failed or stopped
+                            self.ssh.rmfcmap(map_id)
+                    # handle VolumeBackendAPIException to let it go through
+                    # next attempts in case of any cli exception.
+                    except exception.VolumeBackendAPIException as ex:
+                        LOG.warning(ex)
+            return
+        return self._check_delete_vdisk_fc_mappings(
+            name, allow_snaps=allow_snaps, allow_fctgt=allow_fctgt)
 
     def ensure_vdisk_no_fc_mappings(self, name, allow_snaps=True,
                                     allow_fctgt=False):
@@ -2543,7 +2608,7 @@ class StorwizeHelpers(object):
                 elif copy_rate != '0' and progress == '100':
                     LOG.debug('Split completed clone map_id=%(map_id)s fcmap',
                               {'map_id': map_id})
-                    self.ssh.stopfcmap(map_id, split=True)
+                    self.ssh.stopfcmap(map_id)
 
 
 class CLIResponse(object):
