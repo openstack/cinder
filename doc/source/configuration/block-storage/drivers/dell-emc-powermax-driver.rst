@@ -28,25 +28,33 @@ System requirements and licensing
 The Dell EMC PowerMax Cinder driver supports the VMAX-3 hybrid series, VMAX
 All-Flash series and the PowerMax arrays.
 
-The array operating system software, Solutions Enabler 9.2.x series, and
-Unisphere for PowerMax 9.2.x series are required to run Dell EMC PowerMax
-Cinder driver.
+The array operating system software, Solutions Enabler 9.2.1 series, and
+Unisphere for PowerMax 9.2.1 series are required to run Dell EMC PowerMax
+Cinder driver for the Wallaby release. Please refer to support-matrix-table_
+for the support matrix of previous OpenStack versions.
 
 Download Solutions Enabler and Unisphere from the Dell EMC's support web site
-(login is required). See the ``Dell EMC Solutions Enabler 9.2.x Installation
-and Configuration Guide`` and ``Dell EMC Unisphere for PowerMax Installation
-Guide`` at the `Dell EMC Support`_ site.
+(login is required). See the `Dell EMC Solutions Enabler 9.2.1 Installation
+and Configuration Guide` and `Dell EMC Unisphere for PowerMax Installation
+Guide` at the `Dell EMC Support`_ site.
 
 .. note::
 
-   While it is not explicitly documented  which OS versions should be
-   installed on a particular array, it is recommended to install the latest
-   PowerMax OS as supported by Unisphere for PowerMax, that the PowerMax
-   driver supports for a given OpenStack release.
+   At the time each OpenStack release, support-matrix-table_ was the
+   recommended PowerMax management software and OS combinations.  Please
+   reach out your local PowerMax representative to see if these versions
+   are still valid.
+
+
+.. _support-matrix-table:
+
+.. table:: PowerMax Management software and OS for OpenStack release
 
    +-----------+------------------------+-------------+
    | OpenStack | Unisphere for PowerMax | PowerMax OS |
    +===========+========================+=============+
+   | Wallaby   | 9.2.1                  | 5978.711    |
+   +-----------+------------------------+-------------+
    | Victoria  | 9.2.x                  | 5978.669    |
    +-----------+------------------------+-------------+
    | Ussuri    | 9.1.x                  | 5978.479    |
@@ -56,10 +64,20 @@ Guide`` at the `Dell EMC Support`_ site.
    | Stein     | 9.0.x                  | 5978.221    |
    +-----------+------------------------+-------------+
 
-   However, a Hybrid array can only run HyperMax OS 5977, and is still
-   supported until further notice. Some functionality will not be available
-   in older versions of the OS.  If in any doubt, please contact your customer
+.. note::
+
+   A Hybrid array can only run HyperMax OS 5977, and is still supported until
+   further notice. Some functionality will not be available in older versions
+   of the OS.  If in any doubt, please contact your local PowerMax
    representative.
+
+.. note::
+
+   Newer versions of Unisphere for PowerMax and PowerMax OS are not
+   retrospectively tested on older versions of OpenStack. If it is necessary
+   to upgrade, the older REST endpoints will be used. For example, in Ussuri,
+   if upgrading to Unisphere for PowerMax 9.2, the older ``91`` endpoints will
+   be used.
 
 
 
@@ -321,6 +339,22 @@ Child storage groups:
    For VMAX All Flash with PowerMax OS (5978) or greater, workload if set will
    be ignored and set to NONE.
 
+.. _my-table:
+
+.. table:: Replication storage group naming conventions
+
+    +----------------------------+---------------------------------+--------------------------------+--------------------+
+    | Default storage group      | Attached child storage group    | Management Group               | Replication Type   |
+    +============================+=================================+================================+====================+
+    | OS-[SRP]-[SL]-[WL]-SG      | OS-[HOST]-[SRP]-[SL/WL]-[PG]    | N/A                            | None               |
+    +----------------------------+---------------------------------+--------------------------------+--------------------+
+    | OS-[SRP]-[SL]-[WL]-RE-SG   | OS-[HOST]-[SRP]-[SL/WL]-[PG]-RE | N/A                            | Synchronous        |
+    +----------------------------+---------------------------------+--------------------------------+--------------------+
+    | OS-[SRP]-[SL]-[WL]-RA-SG   | OS-[HOST]-[SRP]-[SL/WL]-[PG]-RA | OS-[RDFG]-Asynchronous-rdf-sg  | Asynchronous       |
+    +----------------------------+---------------------------------+--------------------------------+--------------------+
+    | OS-[SRP]-[SL]-[WL]-RM-SG   | OS-[HOST]-[SRP]-[SL/WL]-[PG]-RM | OS-[RDFG]-Metro-rdf-sg         | Metro              |
+    +----------------------------+---------------------------------+--------------------------------+--------------------+
+
 
 PowerMax driver integration
 ===========================
@@ -336,13 +370,13 @@ PowerMax driver integration
    Appliance (a VMware ESX server VM). Additionally, starting with HYPERMAX
    OS Q3 2015, you can manage VMAX3 arrays using the Embedded Management
    (eManagement) container application. See the ``Dell EMC Solutions Enabler
-   9.2.x Installation and Configuration Guide`` on `Dell EMC Support`_ for
+   9.2.1 Installation and Configuration Guide`` on `Dell EMC Support`_ for
    more details.
 
    .. note::
 
       You must discover storage arrays before you can use the PowerMax drivers.
-      Follow instructions in ``Dell EMC Solutions Enabler 9.2.x Installation
+      Follow instructions in ``Dell EMC Solutions Enabler 9.2.1 Installation
       and Configuration Guide`` on `Dell EMC Support`_ for more details.
 
 #. Download Unisphere from `Dell EMC Support`_ and install it.
@@ -351,7 +385,7 @@ PowerMax driver integration
    - i.e., on the same server running Solutions Enabler; on a server
    connected to the Solutions Enabler server; or using the eManagement
    container application (containing Solutions Enabler and Unisphere for
-   PowerMax). See ``Dell EMC Solutions Enabler 9.2.x Installation and
+   PowerMax). See ``Dell EMC Solutions Enabler 9.2.1 Installation and
    Configuration Guide`` at `Dell EMC Support`_.
 
 
@@ -1051,10 +1085,10 @@ Prerequisites - PowerMax
 
 Volume is created against volume type and there is no QoS change.
 
-10. iSCSI multi-pathing support
--------------------------------
+10. Multi-pathing support
+-------------------------
 
-- Install ``open-iscsi`` on all nodes on your system
+- Install ``open-iscsi`` on all nodes on your system if on an iSCSI setup.
 - Do not install EMC PowerPath as they cannot co-exist with native multi-path
   software
 - Multi-path tools must be installed on all Nova compute nodes
@@ -1115,20 +1149,36 @@ performance. Log in as a privileged user and make the following changes to
 You may need to reboot the host after installing the MPIO tools or restart
 iSCSI and multi-path services.
 
-On Ubuntu:
+On Ubuntu iSCSI:
 
 .. code-block:: console
 
    # service open-iscsi restart
    # service multipath-tools restart
 
+On Ubuntu FC
+
+.. code-block:: console
+
+   # service multipath-tools restart
+
+
 On openSUSE, SUSE Linux Enterprise Server, Red Hat Enterprise Linux, and
-CentOS:
+CentOS iSCSI:
 
 .. code-block:: console
 
    # systemctl restart open-iscsi
    # systemctl restart multipath-tools
+
+
+On openSUSE, SUSE Linux Enterprise Server, Red Hat Enterprise Linux, and
+CentOS FC:
+
+.. code-block:: console
+
+   # systemctl restart multipath-tools
+
 
 .. code-block:: console
 
@@ -1622,11 +1672,15 @@ Requirements
 Configuration
 ~~~~~~~~~~~~~
 
-The following configuration changes need to be made in ``cinder.conf`` in order
-to support the failover to secondary Unisphere. Cinder services will need to
-be restarted for changes to take effect.
+The following configuration changes need to be made in ``cinder.conf`` under
+the PowerMax backend stanza in order to support the failover to secondary
+Unisphere. Cinder services will need to be restarted for changes to take
+effect.
 
 .. code-block:: console
+
+   [POWERMAX_1]
+   ...
 
    u4p_failover_timeout = 30
    u4p_failover_retries = 3
@@ -1684,6 +1738,14 @@ metadata.
    +----------------+----------------+--------------+--------------+-------------+
    | R1 uCode Level | R2 uCode Level | Sync         | Async        | Metro       |
    +================+================+==============+==============+=============+
+   | 5978.711       | 5978.711       | Y            | Y            | Y           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5978.711       | 5978.669       | Y            | Y            | Y           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5978.711       | 5978.444       | Y            | Y            | Y           |
+   +----------------+----------------+--------------+--------------+-------------+
+   | 5978.711       | 5978.221       | Y            | Y            | N           |
+   +----------------+----------------+--------------+--------------+-------------+
    | 5978.669       | 5978.669       | Y            | Y            | Y           |
    +----------------+----------------+--------------+--------------+-------------+
    | 5978.669       | 5978.444       | Y            | Y            | Y           |
@@ -1897,6 +1959,33 @@ Cinder supported operations
 Volume replication support
 --------------------------
 
+
+.. note::
+
+   A mix of ``RDF1+TDEV`` and ``TDEV`` volumes should not exist in the same
+   storage group. This can happen on a cleanup operation after breaking the
+   pair and a 'TDEV' remains in the storage group on either the local or
+   remote array. If this happens, remove the volume from the storage
+   group so that further replicated volume operations can continue.
+   For example,  Remove ``TDEV`` from ``OS-[SRP]-[SL]-[WL]-RA-SG``.
+
+.. note::
+
+   Replication storage groups should exist on both local and remote array but
+   never on just one. For example, if OS-[SRP]-[SL]-[WL]-RA-SG exists on
+   local array A it must also exist on remote array B. If this condition
+   does not hold, further replication operations will fail. This applies
+   to management storage groups in the case of ``Asynchronous`` and ``Metro``
+   modes also. See :ref:`my-table`.
+
+.. note::
+
+   The number of devices in replication storage groups in both local and
+   remote arrays should be same. This also applies to management storage
+   groups in ``Asynchronous`` and ``Metro`` modes. See :ref:`my-table`.
+
+
+
 Configure a single replication target
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2034,7 +2123,7 @@ Configure a single replication target
    ``replication_device`` parameter has been entered in the PowerMax
    backend entry in the ``cinder.conf``, a corresponding volume type
    needs to be created ``replication_enabled`` property set. See
-   above `6. Create volume types`_ for details.
+   above `Create volume types`_ for details.
 
    .. code-block:: console
 
@@ -2497,7 +2586,7 @@ retype, follow these steps:
    another, use volume retype with the migration-policy to on-demand. The
    target volume type should have the same volume_backend_name configured and
    should have the desired pool_name to which you are trying to retype to
-   (please refer to `6. Create volume types`_ for details).
+   (please refer to `Create volume types`_ for details).
 
    .. code-block:: console
 
@@ -2919,6 +3008,7 @@ List manageable volume is filtered by:
 - Volume should not be a part of an RDF session
 - Volume should not be a SnapVX Target
 - Volume identifier should not begin with ``OS-``.
+- Volume should not be in more than one storage group.
 
 Manageable snaphots
 ~~~~~~~~~~~~~~~~~~~
@@ -3146,3 +3236,4 @@ following the setup instructions above, are supported with a few exceptions:
 .. _volume backup: https://docs.openstack.org/cinder/latest/configuration/block-storage/backup-drivers.html
 .. _volume backup CLI: https://docs.openstack.org/python-openstackclient/latest/cli/command-objects/volume-backup.html
 .. _PyU4V: https://pyu4v.readthedocs.io/en/latest/
+.. _Create volume types: `6. Create volume types`_
