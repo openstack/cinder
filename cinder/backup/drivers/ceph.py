@@ -244,6 +244,11 @@ class CephBackupDriver(driver.BackupDriver):
         """Determine if journaling is supported by our version of librbd."""
         return hasattr(self.rbd, 'RBD_FEATURE_JOURNALING')
 
+    @property
+    def _supports_fast_diff(self):
+        """Determine if fast-diff is supported by our version of librbd."""
+        return hasattr(self.rbd, 'RBD_FEATURE_FAST_DIFF')
+
     def _get_rbd_support(self):
         """Determine RBD features supported by our version of librbd."""
         old_format = True
@@ -255,24 +260,22 @@ class CephBackupDriver(driver.BackupDriver):
             old_format = False
             features |= self.rbd.RBD_FEATURE_STRIPINGV2
 
-        # journaling requires exclusive_lock; check both together
         if CONF.backup_ceph_image_journals:
-            if self._supports_exclusive_lock and self._supports_journaling:
-                old_format = False
-                features |= (self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK |
-                             self.rbd.RBD_FEATURE_JOURNALING)
-            else:
-                # FIXME (tasker): when the backup manager supports loading the
-                #   driver during its initialization, this exception should be
-                #   moved to the driver's initialization so that it can stop
-                #   the service from starting when the underyling RBD does not
-                #   support the requested features.
-                LOG.error("RBD journaling not supported - unable to "
-                          "support per image mirroring in backup pool")
-                raise exception.BackupInvalidCephArgs(
-                    _("Image Journaling set but RBD backend does "
-                      "not support journaling")
-                )
+            LOG.debug("RBD journaling supported by backend and requested "
+                      "via config. Enabling it together with "
+                      "exclusive-lock")
+            old_format = False
+            features |= (self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK |
+                         self.rbd.RBD_FEATURE_JOURNALING)
+
+        # NOTE(christian_rohmann): Check for fast-diff support and enable it
+        if self._supports_fast_diff:
+            LOG.debug("RBD also supports fast-diff, enabling it "
+                      "together with exclusive-lock and object-map")
+            old_format = False
+            features |= (self.rbd.RBD_FEATURE_EXCLUSIVE_LOCK |
+                         self.rbd.RBD_FEATURE_OBJECT_MAP |
+                         self.rbd.RBD_FEATURE_FAST_DIFF)
 
         return (old_format, features)
 
@@ -293,6 +296,16 @@ class CephBackupDriver(driver.BackupDriver):
         # so no need to check for self.rados.Error here.
         with rbd_driver.RADOSClient(self, self._ceph_backup_pool):
             pass
+
+        # NOTE(christian_rohmann): Check features required for journaling
+        if CONF.backup_ceph_image_journals:
+            if not self._supports_exclusive_lock and self._supports_journaling:
+                LOG.error("RBD journaling not supported - unable to "
+                          "support per image mirroring in backup pool")
+                raise exception.BackupInvalidCephArgs(
+                    _("Image Journaling set but RBD backend does "
+                      "not support journaling")
+                )
 
     def _connect_to_rados(self, pool=None):
         """Establish connection to the backup Ceph cluster."""
