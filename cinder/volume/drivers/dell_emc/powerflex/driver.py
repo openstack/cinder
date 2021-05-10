@@ -92,9 +92,11 @@ class PowerFlexDriver(driver.VolumeDriver):
           3.5.3 - Add revert volume to snapshot support
           3.5.4 - Fix for Bug #1823200. See OSSN-0086 for details.
           3.5.5 - Rebrand VxFlex OS to PowerFlex.
+          3.5.6 - Fix for Bug #1897598 when volume can be migrated without
+                  conversion of its type.
     """
 
-    VERSION = "3.5.5"
+    VERSION = "3.5.6"
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerFlex_CI"
 
@@ -1396,13 +1398,13 @@ class PowerFlexDriver(driver.VolumeDriver):
         )
         if (
                 real_provisioning == "ThickProvisioned" and
-                (provisioning in ["thin", "compressed"] or
+                (provisioning == "ThinProvisioned" or
                  not pool_supports_thick_vols)
         ):
             params["volTypeConversion"] = "ThickToThin"
         elif (
                 real_provisioning == "ThinProvisioned" and
-                provisioning == "thick" and
+                provisioning == "ThickProvisioned" and
                 pool_supports_thick_vols
         ):
             params["volTypeConversion"] = "ThinToThick"
