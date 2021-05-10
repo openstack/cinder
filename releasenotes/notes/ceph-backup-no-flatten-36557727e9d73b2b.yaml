@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1916843
+    <https://bugs.launchpad.net/cinder/+bug/1916843>`_: Fixed
+    rpc timeout when backing up RBD snapshot. We no longer flatten temporary
+    volumes and snapshots.
