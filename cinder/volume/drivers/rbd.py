@@ -749,7 +749,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             # If dest volume is a clone and rbd_max_clone_depth reached,
             # flatten the dest after cloning. Zero rbd_max_clone_depth means
             # volumes are always flattened.
-            if depth >= self.configuration.rbd_max_clone_depth:
+            if (volume.use_quota and
+                    depth >= self.configuration.rbd_max_clone_depth):
                 LOG.info("maximum clone depth (%d) has been reached - "
                          "flattening dest volume",
                          self.configuration.rbd_max_clone_depth)
@@ -1070,7 +1071,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         """Creates a volume from a snapshot."""
         volume_update = self._clone(volume, self.configuration.rbd_pool,
                                     snapshot.volume_name, snapshot.name)
-        if self.configuration.rbd_flatten_volume_from_snapshot:
+        # Don't flatten temporary volumes
+        if (volume.use_quota and
+                self.configuration.rbd_flatten_volume_from_snapshot):
             self._flatten(self.configuration.rbd_pool, volume.name)
 
         snap_vol_size = snapshot.volume_size
