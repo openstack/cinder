@@ -224,12 +224,21 @@ class RBDTestCase(test.TestCase):
             self.context,
             **{'name': u'volume-0000000a',
                'id': '4c39c3c7-168f-4b32-b585-77f1b3bf0a38',
+               'use_quota': True,
+               'size': 10})
+
+        self.temp_volume = fake_volume.fake_volume_obj(
+            self.context,
+            **{'name': u'volume-0000000t',
+               'id': '4c39c3c7-168f-4b32-b585-77f1b3bf0a44',
+               'use_quota': False,
                'size': 10})
 
         self.volume_b = fake_volume.fake_volume_obj(
             self.context,
             **{'name': u'volume-0000000b',
                'id': '0c7d1f44-5a06-403f-bb82-ae7ad0d693a6',
+               'use_quota': True,
                'size': 10})
 
         self.volume_c = fake_volume.fake_volume_obj(
@@ -237,15 +246,17 @@ class RBDTestCase(test.TestCase):
             **{'name': u'volume-0000000a',
                'id': '55555555-222f-4b32-b585-9991b3bf0a99',
                'size': 12,
+               'use_quota': True,
                'encryption_key_id': fake.ENCRYPTION_KEY_ID})
 
         self.snapshot = fake_snapshot.fake_snapshot_obj(
-            self.context, name='snapshot-0000000a')
+            self.context, name='snapshot-0000000a', use_quota=True)
 
         self.snapshot_b = fake_snapshot.fake_snapshot_obj(
             self.context,
             **{'name': u'snapshot-0000000n',
                'expected_attrs': ['volume'],
+               'use_quota': True,
                'volume': {'id': fake.VOLUME_ID,
                           'name': 'cinder-volume',
                           'size': 128,
@@ -1054,6 +1065,40 @@ class RBDTestCase(test.TestCase):
 
     @common_mocks
     @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch.object(driver.RBDDriver, '_get_stripe_unit',
+                       mock.Mock(return_value=4194304))
+    @mock.patch.object(driver.RBDDriver, '_resize', mock.Mock())
+    @mock.patch.object(driver.RBDDriver, '_flatten')
+    def test_create_temp_vol_from_snap(self, flatten_mock, volume_get_by_id):
+        volume_get_by_id.return_value = self.temp_volume
+
+        snapshot = mock.Mock(volume_name='volume-name',
+                             volume_size=self.temp_volume.size)
+        # This is a temp vol so this option will be ignored and won't flatten
+        self.cfg.rbd_flatten_volume_from_snapshot = True
+
+        self.driver.create_volume_from_snapshot(self.temp_volume, snapshot)
+        flatten_mock.assert_not_called()
+
+    @common_mocks
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    @mock.patch.object(driver.RBDDriver, '_get_stripe_unit',
+                       mock.Mock(return_value=4194304))
+    @mock.patch.object(driver.RBDDriver, '_resize', mock.Mock())
+    @mock.patch.object(driver.RBDDriver, '_flatten')
+    def test_create_vol_from_snap(self, flatten_mock, volume_get_by_id):
+        volume_get_by_id.return_value = self.volume_a
+
+        snapshot = mock.Mock(volume_name='volume-name',
+                             volume_size=self.volume_a.size)
+        self.cfg.rbd_flatten_volume_from_snapshot = True
+
+        self.driver.create_volume_from_snapshot(self.volume_a, snapshot)
+        flatten_mock.assert_called_once_with(self.cfg.rbd_pool,
+                                             self.volume_a.name)
+
+    @common_mocks
+    @mock.patch('cinder.objects.Volume.get_by_id')
     def test_delete_snapshot(self, volume_get_by_id):
         volume_get_by_id.return_value = self.volume_a
         proxy = self.mock_proxy.return_value
@@ -1372,10 +1417,18 @@ class RBDTestCase(test.TestCase):
 
                 self.assertEqual(1, mock_resize.call_count)
 
+    @ddt.data(True, False)
     @common_mocks
     @mock.patch.object(driver.RBDDriver, '_enable_replication')
-    def test_create_cloned_volume_w_flatten(self, mock_enable_repl):
+    def test_create_cloned_volume_max_depth(self, use_quota, mock_enable_repl):
+        """Test clone when we reach max depth.
+
+        It will flatten for normal volumes and skip flattening for temporary
+        volumes.
+        """
         self.cfg.rbd_max_clone_depth = 1
+
+        dest_vol = self.volume_b if use_quota else self.temp_volume
 
         client = self.mock_client.return_value
         client.__enter__.return_value = client
@@ -1383,35 +1436,45 @@ class RBDTestCase(test.TestCase):
         with mock.patch.object(self.driver, '_get_clone_info') as \
                 mock_get_clone_info:
             mock_get_clone_info.return_value = (
-                ('fake_pool', self.volume_b.name,
-                 '.'.join((self.volume_b.name, 'clone_snap'))))
+                ('fake_pool', dest_vol.name,
+                 '.'.join((dest_vol.name, 'clone_snap'))))
             with mock.patch.object(self.driver, '_get_clone_depth') as \
                     mock_get_clone_depth:
-                # Try with no flatten required
+                # Force flatten
                 mock_get_clone_depth.return_value = 1
 
-                res = self.driver.create_cloned_volume(self.volume_b,
+                res = self.driver.create_cloned_volume(dest_vol,
                                                        self.volume_a)
 
                 self.assertEqual({}, res)
                 (self.mock_rbd.Image.return_value.create_snap
                  .assert_called_once_with('.'.join(
-                     (self.volume_b.name, 'clone_snap'))))
+                     (dest_vol.name, 'clone_snap'))))
                 (self.mock_rbd.Image.return_value.protect_snap
                  .assert_called_once_with('.'.join(
-                     (self.volume_b.name, 'clone_snap'))))
+                     (dest_vol.name, 'clone_snap'))))
                 self.assertEqual(
                     1, self.mock_rbd.RBD.return_value.clone.call_count)
-                (self.mock_rbd.Image.return_value.unprotect_snap
-                 .assert_called_once_with('.'.join(
-                     (self.volume_b.name, 'clone_snap'))))
-                (self.mock_rbd.Image.return_value.remove_snap
-                 .assert_called_once_with('.'.join(
-                     (self.volume_b.name, 'clone_snap'))))
 
-                self.mock_proxy.assert_called_once_with(
-                    self.driver, self.volume_b.name,
-                    client=client, ioctx=client.ioctx)
+                proxy = self.mock_proxy.return_value.__enter__.return_value
+                if dest_vol.use_quota:
+                    clone_snap_name = '.'.join((dest_vol.name, 'clone_snap'))
+                    self.mock_rbd.Image.return_value.unprotect_snap.\
+                        assert_called_once_with(clone_snap_name)
+                    self.mock_rbd.Image.return_value.remove_snap.\
+                        assert_called_once_with(clone_snap_name)
+                    self.mock_proxy.assert_called_once_with(
+                        self.driver, dest_vol.name,
+                        client=client, ioctx=client.ioctx)
+                    proxy.flatten.assert_called_once_with()
+
+                else:
+                    self.mock_rbd.Image.return_value.unprotect_snap.\
+                        assert_not_called()
+                    self.mock_rbd.Image.return_value.remove_snap.\
+                        assert_not_called()
+                    self.mock_proxy.assert_not_called()
+                    proxy.flatten.assert_not_called()
 
                 # Source volume is closed by direct call of close()
                 self.assertEqual(
