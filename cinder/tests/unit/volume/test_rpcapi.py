@@ -413,7 +413,24 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                                'volume_id': self.fake_volume_obj.id})
 
     @ddt.data(None, 'mycluster')
-    def test_get_backup_device(self, cluster_name):
+    def test_get_backup_device_cast(self, cluster_name):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
+        self._test_rpc_api('get_backup_device',
+                           rpc_method='cast',
+                           server=cluster_name or self.fake_volume_obj.host,
+                           backup=self.fake_backup_obj,
+                           volume=self.fake_volume_obj,
+                           expected_kwargs_diff={
+                               'want_objects': True,
+                               'async_call': True,
+                           },
+                           retval=None,
+                           version='3.17')
+
+    @ddt.data(None, 'mycluster')
+    def test_get_backup_device_call(self, cluster_name):
+        self.can_send_version_mock.side_effect = (False, False, True, False,
+                                                  True)
         self._change_cluster_name(self.fake_volume_obj, cluster_name)
         backup_device_dict = {'backup_device': self.fake_volume,
                               'is_snapshot': False,
@@ -433,7 +450,8 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
 
     @ddt.data(None, 'mycluster')
     def test_get_backup_device_old(self, cluster_name):
-        self.can_send_version_mock.side_effect = (True, False, False)
+        self.can_send_version_mock.side_effect = (False, False, False, False,
+                                                  False)
         self._change_cluster_name(self.fake_volume_obj, cluster_name)
         backup_device_dict = {'backup_device': self.fake_volume,
                               'is_snapshot': False,

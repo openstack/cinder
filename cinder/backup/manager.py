@@ -500,7 +500,7 @@ class BackupManager(manager.SchedulerDependentManager):
                         context, volume_id,
                         {'status': previous_status,
                          'previous_status': 'error_backing-up'})
-                self._update_backup_error(backup, str(err))
+                volume_utils.update_backup_error(backup, str(err))
         finally:
             with backup.as_read_deleted():
                 backup.refresh()
