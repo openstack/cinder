@@ -966,7 +966,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         with mock.patch.object(
                 self.volume_api.key_manager,
                 'delete',
-                side_effect=castellan_exception.ManagedObjectNotFoundError):
+                side_effect=castellan_exception.ManagedObjectNotFoundError(
+                    uuid=fake.ENCRYPTION_KEY_ID)):
             self.volume_api.delete(self.context, volume)
 
         volume = objects.Volume.get_by_id(self.context, volume_id)
