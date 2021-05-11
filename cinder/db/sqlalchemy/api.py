@@ -2379,7 +2379,7 @@ def calculate_resource_count(context, resource_type, filters):
             reason=_("Model %s doesn't support "
                      "counting resource.") % resource_type)
     get_query, process_filters = CALCULATE_COUNT_HELPERS[resource_type]
-    query = get_query(context, session=session)
+    query = get_query(context, session=session, joined_load=False)
     if filters:
         query = process_filters(query, filters)
         if query is None:
@@ -3077,10 +3077,13 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
     return query.all()
 
 
-def _snaps_get_query(context, session=None, project_only=False):
-    return model_query(context, models.Snapshot, session=session,
-                       project_only=project_only).\
-        options(joinedload('snapshot_metadata'))
+def _snaps_get_query(context, session=None, project_only=False,
+                     joined_load=True):
+    query = model_query(context, models.Snapshot, session=session,
+                        project_only=project_only)
+    if joined_load:
+        query = query.options(joinedload('snapshot_metadata'))
+    return query
 
 
 @apply_like_filters(model=models.Snapshot)
@@ -5263,10 +5266,14 @@ def _backup_get_all(context, filters=None, marker=None, limit=None,
         return query.all()
 
 
-def _backups_get_query(context, session=None, project_only=False):
-    return model_query(
+def _backups_get_query(context, session=None, project_only=False,
+                       joined_load=True):
+    query = model_query(
         context, models.Backup, session=session,
-        project_only=project_only).options(joinedload('backup_metadata'))
+        project_only=project_only)
+    if joined_load:
+        query = query.options(joinedload('backup_metadata'))
+    return query
 
 
 @apply_like_filters(model=models.Backup)
