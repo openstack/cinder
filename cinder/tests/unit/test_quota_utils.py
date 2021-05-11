@@ -18,6 +18,7 @@ from unittest import mock
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 
+from cinder.api import api_utils
 from cinder import context
 from cinder import exception
 from cinder import quota_utils
@@ -29,13 +30,6 @@ CONF = cfg.CONF
 
 
 class QuotaUtilsTest(test.TestCase):
-    class FakeProject(object):
-        def __init__(self, id='foo', parent_id=None):
-            self.id = id
-            self.parent_id = parent_id
-            self.subtree = None
-            self.parents = None
-            self.domain_id = 'default'
 
     def setUp(self):
         super(QuotaUtilsTest, self).setUp()
@@ -49,7 +43,7 @@ class QuotaUtilsTest(test.TestCase):
     @mock.patch('keystoneauth1.session.Session')
     def test_keystone_client_instantiation(self, ksclient_session,
                                            ksclient_class):
-        quota_utils._keystone_client(self.context)
+        api_utils._keystone_client(self.context)
         ksclient_class.assert_called_once_with(auth_url=self.auth_url,
                                                session=ksclient_session(),
                                                version=(3, 0))
@@ -61,7 +55,7 @@ class QuotaUtilsTest(test.TestCase):
             self, ks_token, ksclient_session, ksclient_class):
         system_context = context.RequestContext(
             'fake_user', 'fake_proj_id', system_scope='all')
-        quota_utils._keystone_client(system_context)
+        api_utils._keystone_client(system_context)
         ks_token.assert_called_once_with(
             auth_url=self.auth_url, token=system_context.auth_token,
             system_scope=system_context.system_scope)
@@ -73,7 +67,7 @@ class QuotaUtilsTest(test.TestCase):
             self, ks_token, ksclient_session, ksclient_class):
         domain_context = context.RequestContext(
             'fake_user', 'fake_proj_id', domain_id='default')
-        quota_utils._keystone_client(domain_context)
+        api_utils._keystone_client(domain_context)
         ks_token.assert_called_once_with(
             auth_url=self.auth_url, token=domain_context.auth_token,
             domain_id=domain_context.domain_id)
@@ -85,50 +79,10 @@ class QuotaUtilsTest(test.TestCase):
             self, ks_token, ksclient_session, ksclient_class):
         project_context = context.RequestContext(
             'fake_user', project_id=fake.PROJECT_ID)
-        quota_utils._keystone_client(project_context)
+        api_utils._keystone_client(project_context)
         ks_token.assert_called_once_with(
             auth_url=self.auth_url, token=project_context.auth_token,
             project_id=project_context.project_id)
-
-    @mock.patch('keystoneclient.client.Client')
-    def test_get_project_keystoneclient_v2(self, ksclient_class):
-        keystoneclient = ksclient_class.return_value
-        keystoneclient.version = 'v2.0'
-        expected_project = quota_utils.GenericProjectInfo(
-            self.context.project_id, 'v2.0')
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id)
-        self.assertEqual(expected_project.__dict__, project.__dict__)
-
-    @mock.patch('keystoneclient.client.Client')
-    def test_get_project_keystoneclient_v3(self, ksclient_class):
-        keystoneclient = ksclient_class.return_value
-        keystoneclient.version = 'v3'
-        returned_project = self.FakeProject(self.context.project_id, 'bar')
-        del returned_project.subtree
-        keystoneclient.projects.get.return_value = returned_project
-        expected_project = quota_utils.GenericProjectInfo(
-            self.context.project_id, 'v3', 'bar', domain_id='default')
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id)
-        self.assertEqual(expected_project.__dict__, project.__dict__)
-
-    @mock.patch('keystoneclient.client.Client')
-    def test_get_project_keystoneclient_v3_with_subtree(self, ksclient_class):
-        keystoneclient = ksclient_class.return_value
-        keystoneclient.version = 'v3'
-        returned_project = self.FakeProject(self.context.project_id, 'bar')
-        subtree_dict = {'baz': {'quux': None}}
-        returned_project.subtree = subtree_dict
-        keystoneclient.projects.get.return_value = returned_project
-        expected_project = quota_utils.GenericProjectInfo(
-            self.context.project_id, 'v3', 'bar', subtree_dict,
-            domain_id='default')
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id, subtree_as_ids=True)
-        keystoneclient.projects.get.assert_called_once_with(
-            self.context.project_id, parents_as_ids=False, subtree_as_ids=True)
-        self.assertEqual(expected_project.__dict__, project.__dict__)
 
     def _setup_mock_ksclient(self, mock_client, version='v3',
                              subtree=None, parents=None):
@@ -140,50 +94,6 @@ class QuotaUtilsTest(test.TestCase):
             proj.parents = parents
             proj.parent_id = next(iter(parents.keys()))
         keystoneclient.projects.get.return_value = proj
-
-    @mock.patch('keystoneclient.client.Client')
-    def test__filter_domain_id_from_parents_domain_as_parent(
-            self, mock_client):
-        # Test with a top level project (domain is direct parent)
-        self._setup_mock_ksclient(mock_client, parents={'default': None})
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id, parents_as_ids=True)
-        self.assertIsNone(project.parent_id)
-        self.assertIsNone(project.parents)
-
-    @mock.patch('keystoneclient.client.Client')
-    def test__filter_domain_id_from_parents_domain_as_grandparent(
-            self, mock_client):
-        # Test with a child project (domain is more than a parent)
-        self._setup_mock_ksclient(mock_client,
-                                  parents={'bar': {'default': None}})
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id, parents_as_ids=True)
-        self.assertEqual('bar', project.parent_id)
-        self.assertEqual({'bar': None}, project.parents)
-
-    @mock.patch('keystoneclient.client.Client')
-    def test__filter_domain_id_from_parents_no_domain_in_parents(
-            self, mock_client):
-        # Test that if top most parent is not a domain (to simulate an older
-        # keystone version) nothing gets removed from the tree
-        parents = {'bar': {'foo': None}}
-        self._setup_mock_ksclient(mock_client, parents=parents)
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id, parents_as_ids=True)
-        self.assertEqual('bar', project.parent_id)
-        self.assertEqual(parents, project.parents)
-
-    @mock.patch('keystoneclient.client.Client')
-    def test__filter_domain_id_from_parents_no_parents(
-            self, mock_client):
-        # Test that if top no parents are present (to simulate an older
-        # keystone version) things don't blow up
-        self._setup_mock_ksclient(mock_client)
-        project = quota_utils.get_project_hierarchy(
-            self.context, self.context.project_id, parents_as_ids=True)
-        self.assertIsNone(project.parent_id)
-        self.assertIsNone(project.parents)
 
     def _process_reserve_over_quota(self, overs, usages, quotas,
                                     expected_ex,

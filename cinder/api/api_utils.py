@@ -10,12 +10,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from keystoneauth1 import exceptions as ks_exc
+from keystoneauth1 import identity
+from keystoneauth1 import loading as ka_loading
+from keystoneclient import client
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import strutils
 import webob
 from webob import exc
 
+from cinder import exception
 from cinder.i18n import _
+
+CONF = cfg.CONF
+CONF.import_group('keystone_authtoken',
+                  'keystonemiddleware.auth_token.__init__')
 
 LOG = logging.getLogger(__name__)
 
@@ -142,3 +152,84 @@ def walk_class_hierarchy(clazz, encountered=None):
             for subsubclass in walk_class_hierarchy(subclass, encountered):
                 yield subsubclass
             yield subclass
+
+
+def _keystone_client(context, version=(3, 0)):
+    """Creates and returns an instance of a generic keystone client.
+
+    :param context: The request context
+    :param version: version of Keystone to request
+    :return: keystoneclient.client.Client object
+    """
+    if context.system_scope is not None:
+        auth_plugin = identity.Token(
+            auth_url=CONF.keystone_authtoken.auth_url,
+            token=context.auth_token,
+            system_scope=context.system_scope
+        )
+    elif context.domain_id is not None:
+        auth_plugin = identity.Token(
+            auth_url=CONF.keystone_authtoken.auth_url,
+            token=context.auth_token,
+            domain_id=context.domain_id
+        )
+    elif context.project_id is not None:
+        auth_plugin = identity.Token(
+            auth_url=CONF.keystone_authtoken.auth_url,
+            token=context.auth_token,
+            project_id=context.project_id
+        )
+    else:
+        # We're dealing with an unscoped token from keystone that doesn't
+        # carry any authoritative power outside of the user simplify proving
+        # they know their own password. This token isn't associated with any
+        # authorization target (e.g., system, domain, or project).
+        auth_plugin = context.get_auth_plugin()
+
+    client_session = ka_loading.session.Session().load_from_options(
+        auth=auth_plugin,
+        insecure=CONF.keystone_authtoken.insecure,
+        cacert=CONF.keystone_authtoken.cafile,
+        key=CONF.keystone_authtoken.keyfile,
+        cert=CONF.keystone_authtoken.certfile,
+        split_loggers=CONF.service_user.split_loggers)
+    return client.Client(auth_url=CONF.keystone_authtoken.auth_url,
+                         session=client_session, version=version)
+
+
+class GenericProjectInfo(object):
+    """Abstraction layer for Keystone V2 and V3 project objects"""
+    def __init__(self, project_id, project_keystone_api_version,
+                 domain_id=None, name=None, description=None):
+        self.id = project_id
+        self.keystone_api_version = project_keystone_api_version
+        self.domain_id = domain_id
+        self.name = name
+        self.description = description
+
+
+def get_project(context, project_id):
+    """Method to verify project exists in keystone"""
+    keystone = _keystone_client(context)
+    generic_project = GenericProjectInfo(project_id, keystone.version)
+    project = keystone.projects.get(project_id)
+    generic_project.domain_id = project.domain_id
+    generic_project.name = project.name
+    generic_project.description = project.description
+    return generic_project
+
+
+def validate_project_and_authorize(context, project_id, policy_check=None,
+                                   validate_only=False):
+    try:
+        target_project = get_project(context, project_id)
+        if not validate_only:
+            target_project = {'project_id': target_project.id}
+            context.authorize(policy_check, target=target_project)
+    except ks_exc.http.NotFound:
+        explanation = _("Project with id %s not found." % project_id)
+        raise exc.HTTPNotFound(explanation=explanation)
+    except exception.NotAuthorized:
+        explanation = _("You are not authorized to perform this "
+                        "operation.")
+        raise exc.HTTPForbidden(explanation=explanation)

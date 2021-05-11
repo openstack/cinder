@@ -79,7 +79,7 @@ class DefaultVolumeTypesApiTest(test.TestCase):
         self.type2 = self._create_volume_type(
             self.ctxt, 'volume_type2')
 
-        get_patcher = mock.patch('cinder.quota_utils.get_project_hierarchy',
+        get_patcher = mock.patch('cinder.api.api_utils.get_project',
                                  self._get_project)
         get_patcher.start()
         self.addCleanup(get_patcher.stop)

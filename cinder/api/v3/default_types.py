@@ -16,9 +16,9 @@
 """The resource filters api."""
 from http import HTTPStatus
 
-from keystoneauth1 import exceptions as ks_exc
 from webob import exc
 
+from cinder.api import api_utils as utils
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
 from cinder.api.schemas import default_types
@@ -29,29 +29,12 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.policies import default_types as policy
-from cinder import quota_utils
 
 
 class DefaultTypesController(wsgi.Controller):
     """The Default types API controller for the OpenStack API."""
 
     _view_builder_class = default_types_view.ViewBuilder
-
-    def _validate_project_and_authorize(self, context, project_id,
-                                        policy_check):
-        try:
-            target_project = quota_utils.get_project_hierarchy(context,
-                                                               project_id)
-            target_project = {'project_id': target_project.id,
-                              'domain_id': target_project.domain_id}
-            context.authorize(policy_check, target=target_project)
-        except ks_exc.http.NotFound:
-            explanation = _("Project with id %s not found." % project_id)
-            raise exc.HTTPNotFound(explanation=explanation)
-        except exception.NotAuthorized:
-            explanation = _("You are not authorized to perform this "
-                            "operation.")
-            raise exc.HTTPForbidden(explanation=explanation)
 
     @wsgi.response(HTTPStatus.OK)
     @wsgi.Controller.api_version(mv.DEFAULT_TYPE_OVERRIDES)
@@ -63,7 +46,7 @@ class DefaultTypesController(wsgi.Controller):
         project_id = id
         volume_type_id = body['default_type']['volume_type']
 
-        self._validate_project_and_authorize(context, project_id,
+        utils.validate_project_and_authorize(context, project_id,
                                              policy.CREATE_UPDATE_POLICY)
         try:
             volume_type_id = objects.VolumeType.get_by_name_or_id(
@@ -85,7 +68,7 @@ class DefaultTypesController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         project_id = id
-        self._validate_project_and_authorize(context, project_id,
+        utils.validate_project_and_authorize(context, project_id,
                                              policy.GET_POLICY)
         default_type = db.project_default_volume_type_get(context, project_id)
         if not default_type:
@@ -117,7 +100,7 @@ class DefaultTypesController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         project_id = id
-        self._validate_project_and_authorize(context, project_id,
+        utils.validate_project_and_authorize(context, project_id,
                                              policy.DELETE_POLICY)
         db.project_default_volume_type_unset(context, id)
 
