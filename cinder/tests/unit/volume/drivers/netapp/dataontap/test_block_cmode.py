@@ -353,12 +353,19 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             fake.VOLUME_ID, fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA,
             None, False)
 
-    @ddt.data({'replication_backends': [], 'cluster_credentials': False},
+    @ddt.data({'replication_backends': [], 'cluster_credentials': False,
+               'report_provisioned_capacity': False},
               {'replication_backends': ['target_1', 'target_2'],
-               'cluster_credentials': True})
+               'cluster_credentials': True,
+               'report_provisioned_capacity': True})
     @ddt.unpack
-    def test_get_pool_stats(self, replication_backends, cluster_credentials):
+    def test_get_pool_stats(self, replication_backends, cluster_credentials,
+                            report_provisioned_capacity):
         self.library.using_cluster_credentials = cluster_credentials
+        conf = self.library.configuration
+        conf.netapp_driver_reports_provisioned_capacity = (
+            report_provisioned_capacity)
+
         ssc = {
             'vola': {
                 'pool_name': 'vola',
@@ -391,9 +398,19 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'size-total': 10737418240.0,
             'size-available': 2147483648.0,
         }
+        luns_provisioned_cap = [{
+            'path': '/vol/volume-ae947c9b-2392-4956-b373-aaac4521f37e',
+            'size': 5368709120.0  # 5GB
+        }, {
+            'path': '/vol/snapshot-527eedad-a431-483d-b0ca-18995dd65b66',
+            'size': 1073741824.0  # 1GB
+        }]
         self.mock_object(self.zapi_client,
                          'get_flexvol_capacity',
                          return_value=mock_capacities)
+        self.mock_object(self.zapi_client,
+                         'get_lun_sizes_by_volume',
+                         return_value=luns_provisioned_cap)
         self.mock_object(self.zapi_client,
                          'get_flexvol_dedupe_used_percent',
                          return_value=55.0)
@@ -440,6 +457,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'online_extend_support': True,
             'netapp_is_flexgroup': 'false',
         }]
+        if report_provisioned_capacity:
+            expected[0].update({'provisioned_capacity_gb': 5.0})
 
         expected[0].update({'QoS_support': cluster_credentials})
         if not cluster_credentials:

@@ -333,6 +333,7 @@ CLONE_DESTINATION = {
 }
 
 VOLUME_NAME = 'volume-fake_volume_id'
+VOLUME_PATH = '/vol/%s/%s' % (NETAPP_VOLUME, VOLUME_NAME)
 MOUNT_PATH = '168.10.16.11:/' + VOLUME_ID
 SNAPSHOT_NAME = 'fake_snapshot_name'
 SNAPSHOT_LUN_HANDLE = 'fake_snapshot_lun_handle'

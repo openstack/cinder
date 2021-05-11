@@ -3379,6 +3379,98 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.client.connection.send_request.assert_has_calls([
             mock.call('vserver-peer-accept', vserver_peer_accept_args)])
 
+    def test_get_file_sizes_by_dir(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.FILE_SIZES_BY_DIR_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         return_value=api_response)
+
+        result = self.client.get_file_sizes_by_dir(fake.NETAPP_VOLUME)
+
+        get_get_file_sizes_by_dir_get_iter_args = {
+            'path': '/vol/%s' % fake.NETAPP_VOLUME,
+            'query': {
+                'file-info': {
+                    'file-type': 'file',
+                }
+            },
+            'desired-attributes': {
+                'file-info': {
+                    'name': None,
+                    'file-size': None
+                }
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('file-list-directory-iter',
+                      get_get_file_sizes_by_dir_get_iter_args,
+                      max_page_length=100)])
+
+        expected = [{
+            'name': fake.VOLUME_NAME,
+            'file-size': float(1024)
+        }]
+        self.assertEqual(expected, result)
+
+    def test_get_file_sizes_by_dir_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         return_value=api_response)
+
+        result = self.client.get_file_sizes_by_dir(fake.NETAPP_VOLUME)
+
+        self.assertEqual([], result)
+        self.assertTrue(self.client.send_iter_request.called)
+
+    def test_get_lun_sizes_by_volume(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.LUN_SIZES_BY_VOLUME_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         return_value=api_response)
+
+        result = self.client.get_lun_sizes_by_volume(fake.NETAPP_VOLUME)
+
+        get_lun_sizes_by_volume_get_iter_args = {
+            'query': {
+                'lun-info': {
+                    'volume': fake.NETAPP_VOLUME,
+                }
+            },
+            'desired-attributes': {
+                'lun-info': {
+                    'path': None,
+                    'size': None
+                }
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('lun-get-iter', get_lun_sizes_by_volume_get_iter_args,
+                      max_page_length=100)])
+
+        expected = [{
+            'path': fake.VOLUME_PATH,
+            'size': float(1024)
+        }]
+        self.assertEqual(expected, result)
+
+    def test_get_lun_sizes_by_volume_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         return_value=api_response)
+
+        result = self.client.get_lun_sizes_by_volume(fake.NETAPP_VOLUME)
+
+        self.assertEqual([], result)
+        self.assertTrue(self.client.send_iter_request.called)
+
     def test_get_vserver_peers(self):
 
         api_response = netapp_api.NaElement(

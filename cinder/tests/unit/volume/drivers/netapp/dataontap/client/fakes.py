@@ -1389,6 +1389,34 @@ CLUSTER_PEER_POLICY_GET_RESPONSE = etree.XML("""
   </results>
 """)
 
+FILE_SIZES_BY_DIR_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <file-info>
+        <name>%(name)s</name>
+        <file-size>1024</file-size>
+      </file-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'name': fake.VOLUME_NAME
+})
+
+LUN_SIZES_BY_VOLUME_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <lun-info>
+        <path>%(path)s</path>
+        <size>1024</size>
+      </lun-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'path': fake.VOLUME_PATH
+})
+
 VSERVER_PEER_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
