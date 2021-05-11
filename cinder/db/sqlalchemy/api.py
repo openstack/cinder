@@ -7336,7 +7336,11 @@ def conditional_update(context, model, values, expected_values, filters=(),
     unordered_list = []
     for key, value in values.items():
         if isinstance(value, db.Case):
-            value = case(value.whens, value.value, value.else_)
+            # TODO: This uses deprecated whens kwarg, so once our minimum
+            # version of SQLA is 1.4 replace with: value = case(*value.whens,
+            value = case(whens=value.whens,
+                         value=value.value,
+                         else_=value.else_)
 
         if key in order:
             order[order.index(key)] = (key, value)
