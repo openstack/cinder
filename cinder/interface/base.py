@@ -17,22 +17,17 @@
 import abc
 import inspect
 
-if hasattr(inspect, 'getfullargspec'):
-    getargspec = inspect.getfullargspec
-else:
-    getargspec = inspect.getargspec
-
 
 def _get_arg_count(method):
-    """Get the number of args for a method.
+    """Get the number of positional parameters for a method.
 
     :param method: The method to check.
-    :returns: The number of args for the method.
+    :returns: The number of positional parameters for the method.
     """
     if not method:
         return 0
 
-    arg_spec = getargspec(method)
+    arg_spec = inspect.getfullargspec(method)
     return len(arg_spec[0])
 
 
