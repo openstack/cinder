@@ -14,6 +14,7 @@
 #    under the License.
 
 """Provides common functionality for functional tests."""
+import functools
 import os.path
 import random
 import string
@@ -60,8 +61,58 @@ def generate_new_element(items, prefix, numeric=False):
 
 
 class _FunctionalTestBase(test.TestCase):
+    # Inheritors can change this attribute to change default tests microversion
+    _osapi_version = '3.0'
+
+    # These attributes are automatically set based on _osapi_version and when
+    # setting osapi_version property.
     osapi_version_major = '3'
     osapi_version_minor = '0'
+
+    @property
+    def osapi_version(self):
+        return self._osapi_version
+
+    @osapi_version.setter
+    def osapi_version(self, value):
+        self._osapi_version = value
+        self.osapi_version_major, self.osapi_version_minor = value.split('.')
+        self.api.api_version = value
+
+    @staticmethod
+    def override_mv(version, pre_call=None):
+        """Decorator that overrides the microversion for 1 test."""
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(self, *args, **kwargs):
+                original_api_version = self.osapi_version
+                self.osapi_version = version
+                try:
+                    if pre_call:
+                        pre_call(self)
+                    return func(self, *args, **kwargs)
+                finally:
+                    self.osapi_version = original_api_version
+            return wrapper
+        return decorator
+
+    @staticmethod
+    def use_versions(*versions):
+        """Class decorator to repeat tests for each provided version."""
+        def generate_methods(cls):
+            setup = getattr(cls, 'setup', None)
+
+            for name, func in list(cls.__dict__.items()):
+                if name.startswith('test_') and callable(func):
+                    for version in versions:
+                        setattr(cls,
+                                f'{name}_{version.replace(".", "_")}',
+                                _FunctionalTestBase.override_mv(version,
+                                                                setup)(func))
+                    delattr(cls, name)
+            return cls
+
+        return generate_methods
 
     def setUp(self):
         super(_FunctionalTestBase, self).setUp()
@@ -82,10 +133,11 @@ class _FunctionalTestBase(test.TestCase):
         self._start_api_service()
         self.addCleanup(self.osapi.stop)
 
-        api_version = self.osapi_version_major + '.' + self.osapi_version_minor
+        self.osapi_version_major, self.osapi_version_minor = \
+            self._osapi_version.split('.')
         self.api = client.TestOpenStackClient(fake.USER_ID,
                                               fake.PROJECT_ID, self.auth_url,
-                                              api_version)
+                                              self.osapi_version)
 
     def _update_project(self, new_project_id):
         self.api.update_project(new_project_id)

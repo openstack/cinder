@@ -23,8 +23,7 @@ from cinder.volume import configuration
 class GroupSnapshotsTest(functional_helpers._FunctionalTestBase):
     _vol_type_name = 'functional_test_type'
     _grp_type_name = 'functional_grp_test_type'
-    osapi_version_major = '3'
-    osapi_version_minor = '19'
+    _osapi_version = '3.19'
 
     def setUp(self):
         super(GroupSnapshotsTest, self).setUp()

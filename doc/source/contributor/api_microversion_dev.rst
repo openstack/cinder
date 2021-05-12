@@ -299,6 +299,31 @@ necessary to add changes to other places which describe your change:
   ``cinder/api-ref/source/v3/samples/versions/versions-response.json``
   to the latest microversion to avoid functional test failure.
 
+* If the API microversion has changed an endpoint accepted parameters or the
+  values it returns, we need to create the appropriate API samples within
+  the ``api-ref/source/v3/samples`` tree creating a new ``vX.Y`` directory
+  with our request and/or response json.
+
+* Update the functional API tests in the
+  ``cinder/tests/functional/api_sample_tests`` tree to make requests and
+  validate responses with the new microversion.  There are multiple convenience
+  methods provided for testing, such as ``use_versions`` class decorator that
+  allows us to run the same tests with different microversions (each will use
+  their respective json and templates), the ``override_mv`` method decorator to
+  change the microversion in a single test, and the ``common_api_sample``
+  context manager to use the base sample instead of a microversion specific
+  one.
+
+* Update the documentation adding any new parameter to
+  ``api-ref/source/v3/parameters.yaml`` (remember to add the ``min_version``)
+  and then making appropriate changes to the ``.inc`` file in
+  ``api-ref/source/v3/`` to reflect new possible return codes, new accepted
+  parameters and their ``Request Example (vX.Y)`` title and include file, and
+  returned values and their ``Response Example (vX.Y)`` title and include file.
+
+The Cinder project's policy is that the sample requests and responses should
+always reflect the *most recent* microversion.
+
 Allocating a microversion
 -------------------------
 

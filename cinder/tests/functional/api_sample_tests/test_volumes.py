@@ -12,69 +12,74 @@
 
 from oslo_serialization import jsonutils
 
-from cinder.api.microversions import VOLUME_TYPE_ID_IN_VOLUME_DETAIL
-from cinder.tests.functional import api_samples_test_base
+from cinder.api import microversions as mv
+from cinder.tests.functional import api_samples_test_base as test_base
 
 
-class VolumesSampleBase(api_samples_test_base.ApiSampleTestBase):
-    sample_dir = "volumes"
+@test_base.VolumesSampleBase.use_versions(
+    mv.BASE_VERSION,  # 3.0
+    mv.GROUP_VOLUME,  # 3.13
+    mv.VOLUME_DETAIL_PROVIDER_ID,  # 3.21
+    mv.VOLUME_SHARED_TARGETS_AND_SERVICE_FIELDS,  # 3.48
+    mv.VOLUME_CLUSTER_NAME,  # 3.61
+    mv.VOLUME_TYPE_ID_IN_VOLUME_DETAIL)  # 3.63
+class VolumeDetailTests(test_base.VolumesSampleBase):
+    """Test volume details returned for operations with different MVs.
 
-    def _create_volume(self, _use_common_volume_api_samples=True, subs=None):
+    The details of a volume have changed in the different microversions, and we
+    have multiple operations that return them, so we should confirm that each
+    microversion returns the right values for all these different operations.
+    """
+    def setup(self):
+        """Create a volume before we run each test.
 
-        orig_value = self.__class__._use_common_volume_api_samples
-        try:
-            self.__class__._use_common_volume_api_samples = (
-                _use_common_volume_api_samples)
-            response = self._do_post('volumes',
-                                     'volume-create-request',
-                                     subs)
-            return response
+        This method is called by _FunctionalTestBase right before each test is
+        called.
 
-        finally:
-            self.__class__._use_common_volume_api_samples = orig_value
+        We cannot create the volume on the setUp method because at that time
+        the API version is still 3.0, so we need it to be created right after
+        the microversion under test has been set.
 
-
-class VolumesSampleJsonTest(VolumesSampleBase):
-
-    def setUp(self):
-        super(VolumesSampleBase, self).setUp()
+        This way the create method is called using the right microversion,
+        which is required for some tests, like test_volume_create.
+        """
         self.response = self._create_volume()
 
     def test_volume_list_detail(self):
-        original_api_version = self.api.api_version
-
-        try:
-            self.api.api_version = VOLUME_TYPE_ID_IN_VOLUME_DETAIL
-            response = self._do_get('volumes/detail')
-            self._verify_response('volumes-list-detailed-response',
-                                  {}, response, 200)
-        finally:
-            self.api.api_version = original_api_version
-
-    def test_volume_create(self):
-
-        self._verify_response('volume-create-response',
-                              {}, self.response, 202)
-
-    def test_volume_list(self):
-
-        response = self._do_get('volumes')
-        self._verify_response('volumes-list-response',
+        response = self._do_get('volumes/detail')
+        self._verify_response('volumes-list-detailed-response',
                               {}, response, 200)
 
     def test_volume_show_detail(self):
-
         res = jsonutils.loads(self.response.content)['volume']
         response = self._do_get('volumes/%s' % res['id'])
         self._verify_response('volume-show-response',
                               {}, response, 200)
 
-    def test_volume_update(self):
+    def test_volume_create(self):
+        self._verify_response('volume-create-response',
+                              {}, self.response, 202)
 
+    def test_volume_update(self):
         res = jsonutils.loads(self.response.content)['volume']
-        response = self._do_put('volumes/%s' % res['id'],
-                                'volume-update-request')
+        # Use the request sample from the common API, since the request didn't
+        # change with the microversion, what changes is the response.
+        with self.common_api_sample():
+            response = self._do_put('volumes/%s' % res['id'],
+                                    'volume-update-request')
         self._verify_response('volume-update-response',
+                              {}, response, 200)
+
+
+class VolumesSampleJsonTest(test_base.VolumesSampleBase):
+    def setUp(self):
+        super(test_base.VolumesSampleBase, self).setUp()
+        self.response = self._create_volume()
+
+    def test_volume_list(self):
+
+        response = self._do_get('volumes')
+        self._verify_response('volumes-list-response',
                               {}, response, 200)
 
     def test_volume_metadata_create(self):

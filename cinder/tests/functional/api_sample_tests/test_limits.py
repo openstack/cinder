@@ -10,10 +10,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.tests.functional.api_sample_tests import test_volumes
+from cinder.tests.functional import api_samples_test_base as test_base
 
 
-class LimitsSampleJsonTest(test_volumes.VolumesSampleBase):
+class LimitsSampleJsonTest(test_base.VolumesSampleBase):
     sample_dir = "limits"
 
     def setUp(self):

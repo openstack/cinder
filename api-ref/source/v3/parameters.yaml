@@ -1257,6 +1257,7 @@ group_id_optional:
   in: body
   required: false
   type: string
+  min_version: 3.13
 group_name:
   description: |
     The group name.
@@ -1265,10 +1266,11 @@ group_name:
   type: string
 group_replication_status:
   description: |
-    The group replication status. Introduced with API microversion 3.38.
+    The group replication status.
   in: body
   required: false
   type: string
+  min_version: 3.38
 group_snapshot:
   description: |
     The group snapshot.
@@ -2301,6 +2303,15 @@ provider:  # required response parameter (get/create)
   in: body
   required: true
   type: string
+provider_id:
+  description: |
+    The provider ID for the volume.  The value is either a string set by the
+    driver or ``null`` if the driver doesn't use the field or if it hasn't
+    created it yet.  Only returned for administrators.
+  in: body
+  required: false
+  type: string
+  min_version: 3.21
 provider_optional:  # optional response parameter (update)
   description: |
     The class that provides encryption support.

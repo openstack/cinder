@@ -23,7 +23,7 @@ from cinder.tests.functional import functional_helpers
 
 class DefaultVolumeTypesTest(functional_helpers._FunctionalTestBase):
     _vol_type_name = 'functional_test_type'
-    osapi_version_minor = '62'
+    _osapi_version = '3.62'
 
     def setUp(self):
         super(DefaultVolumeTypesTest, self).setUp()

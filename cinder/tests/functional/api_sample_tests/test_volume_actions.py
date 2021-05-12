@@ -13,10 +13,10 @@
 from oslo_serialization import jsonutils
 
 from cinder.tests.functional.api_sample_tests import fakes
-from cinder.tests.functional.api_sample_tests import test_volumes
+from cinder.tests.functional import api_samples_test_base as test_base
 
 
-class VolumeActionsSampleJsonTest(test_volumes.VolumesSampleBase):
+class VolumeActionsSampleJsonTest(test_base.VolumesSampleBase):
     sample_dir = "volume_actions"
 
     def setUp(self):
