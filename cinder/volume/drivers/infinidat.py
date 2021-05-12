@@ -12,16 +12,17 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-INFINIDAT InfiniBox Volume Driver
-"""
+""" INFINIDAT InfiniBox Volume Driver."""
 
 from contextlib import contextmanager
 import functools
 import platform
 import socket
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
-import mock
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
