@@ -4830,6 +4830,111 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self._driver._validate_pools_exist)
 
+    @ddt.data({'node1': 'online', 'node2': 'online', 'node3': 'online',
+               'node4': 'online', 'state': 'enabled', 'reason': None},
+              {'node1': 'online', 'node2': 'online', 'node3': 'offline',
+               'node4': 'offline', 'state': 'disabled',
+               'reason': 'site2 is down'},
+              {'node1': 'offline', 'node2': 'offline', 'node3': 'online',
+               'node4': 'online', 'state': 'disabled',
+               'reason': 'site1 is down'},
+              {'node1': 'offline', 'node2': 'offline', 'node3': 'offline',
+               'node4': 'offline', 'state': 'disabled',
+               'reason': 'site1 is down'})
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_node_info')
+    def test_get_hyperswap_storage_state(self, node_data, get_node_info):
+        get_node_info.return_value = {'7': {'id': '7', 'name': 'node1',
+                                            'status': node_data['node1'],
+                                            'site_id': '1',
+                                            'site_name': 'site1'},
+                                      '8': {'id': '8', 'name': 'node2',
+                                            'status': node_data['node2'],
+                                            'site_id': '1',
+                                            'site_name': 'site1'},
+                                      '9': {'id': '9', 'name': 'node3',
+                                            'status': node_data['node3'],
+                                            'site_id': '2',
+                                            'site_name': 'site2'},
+                                      '10': {'id': '10', 'name': 'node4',
+                                             'status': node_data['node4'],
+                                             'site_id': '2',
+                                             'site_name': 'site2'}}
+
+        state, reason = self.driver.get_hyperswap_storage_state()
+
+        self.assertEqual(state, node_data['state'])
+        self.assertEqual(reason, node_data['reason'])
+
+    @ddt.data((True, 'online'),
+              (True, 'offline'),
+              (False, 'online'),
+              (False, 'offline'))
+    @mock.patch.object(storwize_svc_common.StorwizeSSH,
+                       'lsnode')
+    @ddt.unpack
+    def test_get_node_info(self, online_node, node_status, lsnode):
+        empty_nodes_info = {}
+        fake_lsnode_info = [{
+                            'id': 1,
+                            'name': 'test',
+                            'IO_group_id': 'test_io_group',
+                            'iscsi_name': 'test_iscsi',
+                            'WWNN': '123456',
+                            'status': node_status,
+                            'WWPN': '8999',
+                            'ipv4': '192.9.123.1',
+                            'ipv6': '1.2.3.4',
+                            'enabled_protocols': 'ipv6',
+                            'site_id': '1783',
+                            'site_name': 'test-sitename'
+                            }]
+        lsnode.return_value = fake_lsnode_info
+        nodes = self.driver._helpers.get_node_info(online_node)
+        if not online_node or online_node and node_status == 'online':
+            self.assertIsNotNone(nodes)
+        elif online_node and node_status == 'offline':
+            self.assertEqual(nodes, empty_nodes_info)
+
+    @ddt.data((False, 'enabled', ''),
+              (False, 'disabled', 'site 2 down'),
+              (True, '', ''))
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       'get_hyperswap_storage_state')
+    @ddt.unpack
+    def test_update_volume_stats(self, is_replica_enabled,
+                                 replication_status,
+                                 reason, get_hs_storage_state):
+        self._replica_enabled = is_replica_enabled
+        self.driver._update_volume_stats()
+        if not self._replica_enabled:
+            with mock.patch.object(
+                    storwize_svc_common.StorwizeHelpers,
+                    'is_system_topology_hyperswap') as is_hyperswap:
+                with mock.patch.object(
+                        storwize_svc_common.StorwizeHelpers,
+                        'get_node_info') as get_node_info:
+                    is_hyperswap.return_value = is_hyperswap
+                    if is_hyperswap:
+                        get_node_info.return_value = None
+                        get_hs_storage_state.side_effect =\
+                            exception.VolumeBackendAPIException(data='')
+                        self.assertRaises(exception.VolumeBackendAPIException,
+                                          get_hs_storage_state)
+                        get_hs_storage_state.return_value = (
+                            replication_status, reason)
+                        if replication_status != 'enabled':
+                            self.assertNotEqual(
+                                fields.ReplicationStatus.ENABLED,
+                                replication_status)
+                            self.assertIsNotNone(reason)
+                        else:
+                            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                                             replication_status)
+                            self.assertEqual(reason, '')
+        else:
+            self.assertFalse(get_hs_storage_state.called)
+
     def _get_pool_volumes(self, pool):
         vdisks = self.sim._cmd_lsvdisks_from_filter('mdisk_grp_name', pool)
         return vdisks
