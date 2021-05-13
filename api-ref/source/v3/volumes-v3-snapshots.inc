@@ -88,11 +88,12 @@ Response Parameters
    - count: count
    - updated_at: updated_at
    - snapshots_links: links_snap
+   - group_snapshot_id: group_snapshot_id_3_14
 
-Response Example
-----------------
+Response Example (v3.41)
+------------------------
 
-.. literalinclude:: ./samples/snapshots/snapshots-list-detailed-response.json
+.. literalinclude:: ./samples/snapshots/v3.41/snapshots-list-detailed-response.json
    :language: javascript
 
 
@@ -147,11 +148,12 @@ Response Parameters
    - id: id_snap
    - size: size
    - updated_at: updated_at
+   - group_snapshot_id: group_snapshot_id_3_14
 
-Response Example
-----------------
+Response Example (v3.41)
+------------------------
 
-.. literalinclude:: ./samples/snapshots/snapshot-create-response.json
+.. literalinclude:: ./samples/snapshots/v3.41/snapshot-create-response.json
    :language: javascript
 
 
@@ -385,11 +387,12 @@ Response Parameters
    - id: id_snap
    - metadata: metadata
    - updated_at: updated_at
+   - group_snapshot_id: group_snapshot_id_3_14
 
-Response Example
-----------------
+Response Example (v3.41)
+------------------------
 
-.. literalinclude:: ./samples/snapshots/snapshot-show-response.json
+.. literalinclude:: ./samples/snapshots/v3.41/snapshot-show-response.json
    :language: javascript
 
 
@@ -442,11 +445,12 @@ Response Parameters
    - volume_id: volume_id_snap
    - user_id: user_id_min
    - metadata: metadata
+   - group_snapshot_id: group_snapshot_id_3_14
 
-Response Example
-----------------
+Response Example (v3.41)
+------------------------
 
-.. literalinclude:: ./samples/snapshots/snapshot-update-response.json
+.. literalinclude:: ./samples/snapshots/v3.41/snapshot-update-response.json
    :language: javascript
 
 

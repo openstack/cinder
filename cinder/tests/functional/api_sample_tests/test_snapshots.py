@@ -12,21 +12,22 @@
 
 from oslo_serialization import jsonutils
 
+from cinder.api import microversions as mv
 from cinder.tests.functional import api_samples_test_base as test_base
 
 
-class VolumeSnapshotsSampleJsonTest(test_base.VolumesSampleBase):
+class SnapshotBaseTest(test_base.VolumesSampleBase):
     sample_dir = "snapshots"
 
-    def setUp(self):
-        super(VolumeSnapshotsSampleJsonTest, self).setUp()
+    def setup(self):
         res = self._create_volume()
         res = jsonutils.loads(res.content)['volume']
         self._poll_volume_while(res['id'], ['creating'])
         self.subs = {
             "volume_id": res['id']
         }
-        self.response = self._create_snapshot(self.subs)
+        with self.common_api_sample():
+            self.response = self._create_snapshot(self.subs)
 
     def _create_snapshot(self, subs=None):
         response = self._do_post('snapshots',
@@ -34,16 +35,49 @@ class VolumeSnapshotsSampleJsonTest(test_base.VolumesSampleBase):
                                  subs)
         return response
 
-    def test_snapshot_list_detail(self):
 
+@test_base.VolumesSampleBase.use_versions(
+    mv.BASE_VERSION,  # 3.0
+    mv.GROUP_SNAPSHOTS,  # 3.14
+    mv.SNAPSHOT_LIST_USER_ID)  # 3.41
+class SnapshotDetailTests(SnapshotBaseTest):
+    """Test snapshot details returned for operations with different MVs.
+
+    The details of a snapshot have changed in the different microversions, and
+    we have multiple operations that return them, so we should confirm that
+    each microversion returns the right values for all these different
+    operations.
+    """
+    def test_snapshot_list_detail(self):
         response = self._do_get('snapshots/detail')
         self._verify_response('snapshots-list-detailed-response',
                               {}, response, 200)
 
     def test_snapshot_create(self):
-
         self._verify_response('snapshot-create-response',
                               {}, self.response, 202)
+
+    def test_snapshot_show(self):
+        res = jsonutils.loads(self.response.content)['snapshot']
+        response = self._do_get('snapshots/%s' % res['id'])
+        self._verify_response('snapshot-show-response',
+                              {}, response, 200)
+
+    def test_snapshot_update(self):
+        res = jsonutils.loads(self.response.content)['snapshot']
+        # Use the request sample from the common API, since the request didn't
+        # change with the microversion, what changes is the response.
+        with self.common_api_sample():
+            response = self._do_put('snapshots/%s' % res['id'],
+                                    'snapshot-update-request')
+        self._verify_response('snapshot-update-response',
+                              {}, response, 200)
+
+
+class VolumeSnapshotsSampleJsonTest(SnapshotBaseTest):
+    def setUp(self):
+        super(VolumeSnapshotsSampleJsonTest, self).setUp()
+        self.setup()
 
     def test_snapshot_list(self):
 
@@ -72,21 +106,6 @@ class VolumeSnapshotsSampleJsonTest(test_base.VolumesSampleBase):
         response = self._do_put('snapshots/%s/metadata' % res['id'],
                                 'snapshot-metadata-update-request')
         self._verify_response('snapshot-metadata-update-response',
-                              {}, response, 200)
-
-    def test_snapshot_show(self):
-
-        res = jsonutils.loads(self.response.content)['snapshot']
-        response = self._do_get('snapshots/%s' % res['id'])
-        self._verify_response('snapshot-show-response',
-                              {}, response, 200)
-
-    def test_snapshot_update(self):
-
-        res = jsonutils.loads(self.response.content)['snapshot']
-        response = self._do_put('snapshots/%s' % res['id'],
-                                'snapshot-update-request')
-        self._verify_response('snapshot-update-response',
                               {}, response, 200)
 
     def test_snapshot_metadata_show_specific_key(self):

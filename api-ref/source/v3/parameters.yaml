@@ -1283,6 +1283,13 @@ group_snapshot_id:
   in: body
   required: false
   type: string
+group_snapshot_id_3_14:
+  description: |
+    The ID of the group snapshot.
+  in: body
+  required: true
+  type: string
+  min_version: 3.14
 group_snapshot_id_req:
   description: |
     The ID of the group snapshot.
