@@ -25,6 +25,12 @@ from cinder.tests.unit import test
 
 
 class RequestTest(test.TestCase):
+    def setUp(self):
+        super(RequestTest, self).setUp()
+        self.patch('cinder.i18n.get_available_languages',
+                   return_value=['en-GB', 'en-AU', 'de', 'zh-CN', 'en-US',
+                                 'ja-JP'])
+
     def test_content_type_missing(self):
         request = wsgi.Request.blank('/tests/123', method='POST')
         request.body = b"<body />"
@@ -71,6 +77,62 @@ class RequestTest(test.TestCase):
         request.headers["Accept"] = "application/unsupported1"
         result = request.best_match_content_type()
         self.assertEqual("application/json", result)
+
+    def test_content_type_accept_with_quality_values(self):
+        request = wsgi.Request.blank('/tests/123')
+        request.headers["Accept"] = (
+            "application/json;q=0.4,"
+            "application/vnd.openstack.volume+json;q=0.6")
+        result = request.best_match_content_type()
+        self.assertEqual("application/vnd.openstack.volume+json", result)
+
+    def test_from_request(self):
+        request = wsgi.Request.blank('/')
+        accepted = 'bogus;q=1, en-gb;q=0.7,en-us,en;q=0.5,*;q=0.7'
+        request.headers = {'Accept-Language': accepted}
+        self.assertEqual(request.best_match_language(), 'en-US')
+
+    def test_asterisk(self):
+        # In the section 3.4 of RFC4647, it says as follows:
+        # If the language range "*"(asterisk) is the only one
+        # in the language priority list or if no other language range
+        # follows, the default value is computed and returned.
+        #
+        # In this case, the default value 'None' is returned.
+        request = wsgi.Request.blank('/')
+        accepted = '*;q=0.5'
+        request.headers = {'Accept-Language': accepted}
+        self.assertIsNone(request.best_match_language())
+
+    def test_asterisk_followed_by_other_language(self):
+        request = wsgi.Request.blank('/')
+        accepted = '*,ja-jp;q=0.5'
+        request.headers = {'Accept-Language': accepted}
+        self.assertEqual('ja-JP', request.best_match_language())
+
+    def test_truncate(self):
+        request = wsgi.Request.blank('/')
+        accepted = 'de-CH'
+        request.headers = {'Accept-Language': accepted}
+        self.assertEqual('de', request.best_match_language())
+
+    def test_secondary(self):
+        request = wsgi.Request.blank('/')
+        accepted = 'nn,en-gb;q=0.5'
+        request.headers = {'Accept-Language': accepted}
+        self.assertEqual('en-GB', request.best_match_language())
+
+    def test_none_found(self):
+        request = wsgi.Request.blank('/')
+        accepted = 'nb-no'
+        request.headers = {'Accept-Language': accepted}
+        self.assertIsNone(request.best_match_language())
+
+    def test_no_lang_header(self):
+        request = wsgi.Request.blank('/')
+        accepted = ''
+        request.headers = {'Accept-Language': accepted}
+        self.assertIsNone(request.best_match_language())
 
     def test_best_match_language(self):
         # Test that we are actually invoking language negotiation by webob
