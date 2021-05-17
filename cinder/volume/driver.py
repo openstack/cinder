@@ -136,13 +136,13 @@ volume_opts = [
                     'as is to the underlying tool.'),
     cfg.StrOpt('target_protocol',
                default='iscsi',
-               choices=['iscsi', 'iser', 'nvmet_rdma'],
+               choices=['iscsi', 'iser', 'nvmet_rdma', 'nvmet_tcp'],
                help='Determines the target protocol for new volumes, '
                     'created with tgtadm, lioadm and nvmet target helpers. '
                     'In order to enable RDMA, this parameter should be set '
                     'with the value "iser". The supported iSCSI protocol '
                     'values are "iscsi" and "iser", in case of nvmet target '
-                    'set to "nvmet_rdma".'),
+                    'set to "nvmet_rdma" or "nvmet_tcp".'),
     cfg.StrOpt('driver_client_cert_key',
                help='The path to the client certificate key for verification, '
                     'if the driver supports it.'),
