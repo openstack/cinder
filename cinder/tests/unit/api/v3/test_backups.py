@@ -259,7 +259,7 @@ class BackupsControllerAPITestCase(test.TestCase):
 
         # backup update call doesn't return 'description' in response so get
         # the updated backup to assert name and description
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'

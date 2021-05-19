@@ -45,7 +45,7 @@ Controllers and actions
 Controllers live in ``cinder/api/openstack``, and inherit from
 cinder.wsgi.Controller.
 
-See ``cinder/api/v2/volumes.py`` for an example.
+See ``cinder/api/v3/volumes.py`` for an example.
 
 Action methods take parameters that are sucked out of the URL by
 mapper.connect() or .resource().  The first two parameters are self and the

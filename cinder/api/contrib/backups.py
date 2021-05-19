@@ -145,7 +145,7 @@ class BackupsController(wsgi.Controller):
     #   immediately
     # - maybe also do validation of swift container name
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(backup.create, mv.V2_BASE_VERSION,
+    @validation.schema(backup.create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.BACKUP_METADATA))
     @validation.schema(backup.create_backup_v343, mv.BACKUP_METADATA,
                        mv.get_prior_version(mv.BACKUP_AZ))

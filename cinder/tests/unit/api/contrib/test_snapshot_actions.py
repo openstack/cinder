@@ -26,13 +26,13 @@ from cinder import db
 from cinder import exception
 from cinder.objects import fields
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 
 
 def fake_snapshot_get(context, snapshot_id):
-    snapshot = v2_fakes.fake_snapshot(snapshot_id)
+    snapshot = v3_fakes.fake_snapshot(snapshot_id)
 
     if snapshot_id == fake.SNAPSHOT_ID:
         snapshot['status'] = fields.SnapshotStatus.CREATING
@@ -58,7 +58,7 @@ class SnapshotActionsTest(test.TestCase):
 
         body = {'os-update_snapshot_status':
                 {'status': fields.SnapshotStatus.AVAILABLE}}
-        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+        req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -73,7 +73,7 @@ class SnapshotActionsTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status_invalid_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
-        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+        req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -86,7 +86,7 @@ class SnapshotActionsTest(test.TestCase):
     def test_update_snapshot_status_without_status(self):
         self.mock_object(db, 'snapshot_get', fake_snapshot_get)
         body = {'os-update_snapshot_status': {}}
-        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+        req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -104,7 +104,7 @@ class SnapshotActionsTest(test.TestCase):
         body = {'os-update_snapshot_status':
                 {'status': fields.SnapshotStatus.AVAILABLE,
                  'progress': '50%'}}
-        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+        req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)

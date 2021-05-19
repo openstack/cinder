@@ -65,7 +65,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             volume_id=volume_id,
             group_snapshot_id=cgsnapshot.id)['id']
 
-        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' % (
+        req = webob.Request.blank('/v3/%s/cgsnapshots/%s' % (
             fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -87,7 +87,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_show_cgsnapshot_with_cgsnapshot_NotFound(self):
-        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' % (
+        req = webob.Request.blank('/v3/%s/cgsnapshots/%s' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -123,7 +123,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             self.context, group_id=consistencygroup.id,
             group_type_id=fake.GROUP_TYPE_ID,)
 
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
@@ -171,7 +171,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             self.context, group_id=consistencygroup.id,
             group_type_id=fake.GROUP_TYPE_ID,)
 
-        req = webob.Request.blank('/v2/%s/cgsnapshots/detail' %
+        req = webob.Request.blank('/v3/%s/cgsnapshots/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -232,7 +232,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "description":
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -270,7 +270,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "description":
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -293,7 +293,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
     def test_create_cgsnapshot_with_no_body(self):
         # omit body from the request
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -327,7 +327,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "description":
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -363,7 +363,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
 
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -393,7 +393,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
 
-        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/cgsnapshots' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -427,7 +427,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             self.context, group_id=consistencygroup.id,
             group_type_id=fake.GROUP_TYPE_ID,
             status='available')
-        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
+        req = webob.Request.blank('/v3/%s/cgsnapshots/%s' %
                                   (fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -463,7 +463,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             self.context, status='creating',
             group_snapshot_id=cgsnapshot.id,
             group_type_id=fake.GROUP_TYPE_ID)
-        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
+        req = webob.Request.blank('/v3/fake/cgsnapshots/%s' %
                                   cgsnapshot.id)
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -480,7 +480,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         cg2.destroy()
 
     def test_delete_cgsnapshot_with_cgsnapshot_NotFound(self):
-        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
+        req = webob.Request.blank('/v3/%s/cgsnapshots/%s' %
                                   (fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -511,7 +511,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             group_type_id=fake.GROUP_TYPE_ID,
             status='invalid')
 
-        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' % (
+        req = webob.Request.blank('/v3/%s/cgsnapshots/%s' % (
             fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -546,7 +546,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
             status='available')
         mock_delete.side_effect = exception.PolicyNotAuthorized(
             message='PolicyNotAuthorized')
-        req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
+        req = webob.Request.blank('/v3/%s/cgsnapshots/%s' %
                                   (fake.PROJECT_ID, cgsnapshot.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'

@@ -61,8 +61,7 @@ class VersionsControllerTestCase(test.TestCase):
                          response.headers[VERSION_HEADER_NAME])
         self.assertEqual(VERSION_HEADER_NAME, response.headers['Vary'])
 
-    @ddt.data('2.0', '3.0')
-    def test_versions_root(self, version):
+    def test_versions_root(self):
         req = self.build_request(base_url='http://localhost')
 
         response = req.get_response(versions.Versions())
@@ -71,11 +70,8 @@ class VersionsControllerTestCase(test.TestCase):
         version_list = body['versions']
 
         ids = [v['id'] for v in version_list]
-        self.assertEqual({'v2.0', 'v3.0'}, set(ids))
-
-        v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
-        self.assertEqual('', v2.get('min_version'))
-        self.assertEqual('', v2.get('version'))
+        self.assertEqual(1, len(ids))
+        self.assertIn('v3.0', ids)
 
         v3 = [v for v in version_list if v['id'] == 'v3.0'][0]
         self.assertEqual(api_version_request._MAX_API_VERSION,
@@ -83,35 +79,21 @@ class VersionsControllerTestCase(test.TestCase):
         self.assertEqual(api_version_request._MIN_API_VERSION,
                          v3.get('min_version'))
 
-    @ddt.data('2.0', '3.0')
-    def test_all_versions_excludes_disabled(self, version):
+    def test_all_versions_excludes_disabled(self):
+        version = '3.0'
         self.fixture = self.useFixture(config_fixture.Config(CONF))
-        if version == '2.0':
-            self.fixture.config(enable_v2_api=False)
-        elif version == '3.0':
-            self.fixture.config(enable_v3_api=False)
-        else:
-            return
+        self.fixture.config(enable_v3_api=False)
         vc = versions.VersionsController()
         req = self.build_request(base_url='http://localhost')
         resp = vc.all(req)
         all_versions = [x['id'] for x in resp['versions']]
         self.assertNotIn('v' + version, all_versions)
 
-    def test_versions_v2_no_header(self):
-        req = self.build_request(base_url='http://localhost/v2')
-
-        response = req.get_response(router.APIRouter())
-        self.assertEqual(HTTPStatus.OK, response.status_int)
-
-    @ddt.data('2.0', '3.0')
-    def test_versions(self, version):
+    def test_versions(self):
+        version = '3.0'
         req = self.build_request(
             base_url='http://localhost/v{}'.format(version[0]),
             header_version=version)
-
-        if version is not None:
-            req.headers = {VERSION_HEADER_NAME: VOLUME_SERVICE + version}
 
         response = req.get_response(router.APIRouter())
         self.assertEqual(HTTPStatus.OK, response.status_int)
@@ -119,17 +101,14 @@ class VersionsControllerTestCase(test.TestCase):
         version_list = body['versions']
 
         ids = [v['id'] for v in version_list]
-        self.assertEqual({'v{}'.format(version)}, set(ids))
+        self.assertEqual(1, len(ids))
+        self.assertIn('v{}'.format(version), ids)
 
-        if version == '3.0':
-            self.check_response(response, version)
-            self.assertEqual(api_version_request._MAX_API_VERSION,
-                             version_list[0].get('version'))
-            self.assertEqual(api_version_request._MIN_API_VERSION,
-                             version_list[0].get('min_version'))
-        else:
-            self.assertEqual('', version_list[0].get('min_version'))
-            self.assertEqual('', version_list[0].get('version'))
+        self.check_response(response, version)
+        self.assertEqual(api_version_request._MAX_API_VERSION,
+                         version_list[0].get('version'))
+        self.assertEqual(api_version_request._MIN_API_VERSION,
+                         version_list[0].get('min_version'))
 
     def test_versions_version_latest(self):
         req = self.build_request(header_version='latest')
@@ -147,8 +126,8 @@ class VersionsControllerTestCase(test.TestCase):
 
             self.assertEqual(HTTPStatus.BAD_REQUEST, response.status_int)
 
-    @ddt.data('2.0', '3.0')
-    def test_versions_response_fault(self, version):
+    def test_versions_response_fault(self):
+        version = '3.0'
         req = self.build_request(header_version=version)
         req.api_version_request = (
             api_version_request.APIVersionRequest(version))
@@ -157,10 +136,7 @@ class VersionsControllerTestCase(test.TestCase):
         response = req.get_response(app)
 
         self.assertEqual(HTTPStatus.BAD_REQUEST, response.status_int)
-        if version == '3.0':
-            self.check_response(response, '3.0')
-        else:
-            self.assertNotIn(VERSION_HEADER_NAME, response.headers)
+        self.check_response(response, '3.0')
 
     def test_versions_inheritance_internals_of_non_base_controller(self):
         """Test ControllerMetaclass works inheriting from non base class."""

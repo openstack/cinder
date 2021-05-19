@@ -46,13 +46,13 @@ class VolumeUnmanageTest(test.TestCase):
         super(VolumeUnmanageTest, self).setUp()
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
-        api = fakes.router.APIRouter()
+        api = fakes.router_v3.APIRouter()
         self.app = fakes.urlmap.URLMap()
-        self.app['/v2'] = api
+        self.app['/v3'] = api
 
     def _get_resp(self, volume_id):
         """Helper to build an os-unmanage req for the specified volume_id."""
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (self.ctxt.project_id, volume_id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'

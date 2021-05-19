@@ -39,15 +39,7 @@ CONF = cfg.CONF
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
-    mapper = fakes.urlmap.URLMap()
-    mapper['/v2'] = api
-    return mapper
-
-
-def app_v3():
-    # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
+    api = fakes.router_v3.APIRouter()
     mapper = fakes.urlmap.URLMap()
     mapper['/v3'] = api
     return mapper
@@ -181,17 +173,7 @@ class VolumeManageTest(test.TestCase):
                                                       is_admin=False)
         self.controller = volume_manage.VolumeManageController()
 
-    def _get_resp_post(self, body):
-        """Helper to execute a POST os-volume-manage API call."""
-        req = webob.Request.blank('/v2/%s/os-volume-manage' % fake.PROJECT_ID)
-        req.method = 'POST'
-        req.headers['Content-Type'] = 'application/json'
-        req.environ['cinder.context'] = self._admin_ctxt
-        req.body = jsonutils.dump_as_bytes(body)
-        res = req.get_response(app())
-        return res
-
-    def _get_resp_post_v3(self, body, version):
+    def _get_resp_post(self, body, version='3.11'):
         """Helper to execute a POST os-volume-manage API call."""
         req = webob.Request.blank('/v3/%s/os-volume-manage' % fake.PROJECT_ID)
         req.method = 'POST'
@@ -200,7 +182,7 @@ class VolumeManageTest(test.TestCase):
         req.headers["OpenStack-API-Version"] = "volume " + version
         req.api_version_request = api_version.APIVersionRequest(version)
         req.body = jsonutils.dump_as_bytes(body)
-        res = req.get_response(app_v3())
+        res = req.get_response(app())
         return res
 
     @ddt.data({'host': 'host_ok'},
@@ -381,7 +363,7 @@ class VolumeManageTest(test.TestCase):
         detail = ""
         if detailed:
             detail = "/detail"
-        url = "/v2/%s/os-volume-manage%s%s" % (fake.PROJECT_ID, detail,
+        url = "/v3/%s/os-volume-manage%s%s" % (fake.PROJECT_ID, detail,
                                                query_string)
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -486,29 +468,12 @@ class VolumeManageTest(test.TestCase):
         self.assertTrue(mock_is_up.called)
 
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage_new)
-    def test_manage_volume_with_creating_status_in_v3(self, mock_api_manage):
+    def test_manage_volume_with_creating_status(self, mock_api_manage):
         """Test managing volume to return 'creating' status in V3 API."""
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
-        res = self._get_resp_post_v3(body, mv.ETAGS)
+        res = self._get_resp_post(body, mv.ETAGS)
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
         self.assertEqual(1, mock_api_manage.call_count)
         self.assertEqual('creating',
                          jsonutils.loads(res.body)['volume']['status'])
-
-    @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage_new)
-    def test_manage_volume_with_creating_status_in_v2(self, mock_api_manage):
-        """Test managing volume to return 'creating' status in V2 API."""
-
-        body = {'volume': {'host': 'host_ok',
-                           'ref': 'fake_ref'}}
-        res = self._get_resp_post(body)
-        self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
-        self.assertEqual(1, mock_api_manage.call_count)
-        self.assertEqual('creating',
-                         jsonutils.loads(res.body)['volume']['status'])
-
-    @ddt.data({'volume': {}}, None)
-    def test_manage_volume_with_invalid_body(self, body):
-        res = self._get_resp_post(body)
-        self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)

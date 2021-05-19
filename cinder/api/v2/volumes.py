@@ -177,8 +177,14 @@ class VolumeController(wsgi.Controller):
                 "access requested image.")
         raise exc.HTTPBadRequest(explanation=msg)
 
+    # NOTE: using mv.BASE_VERSION (which is 3.0) is a bit nonstandard,
+    # but this class is no longer consumed by the v2 API, though it is
+    # a superclass of cinder.api.v3.volumes.  Although create() is
+    # overridden in the subclass, I didn't want to remove it from
+    # here until we are sure that the v3 unit tests for create() test
+    # everything that the v2 unit tests covered.
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volumes.create, mv.V2_BASE_VERSION)
+    @validation.schema(volumes.create, mv.BASE_VERSION)
     def create(self, req, body):
         """Creates a new volume."""
 
@@ -279,7 +285,8 @@ class VolumeController(wsgi.Controller):
         """Return volume search options allowed by non-admin."""
         return common.get_enabled_resource_filters('volume').get('volume', [])
 
-    @validation.schema(volumes.update, mv.V2_BASE_VERSION,
+    # NOTE: see NOTE for create(), above
+    @validation.schema(volumes.update, mv.BASE_VERSION,
                        mv.get_prior_version(mv.SUPPORT_VOLUME_SCHEMA_CHANGES))
     @validation.schema(volumes.update_volume_v353,
                        mv.SUPPORT_VOLUME_SCHEMA_CHANGES)

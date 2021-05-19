@@ -82,7 +82,7 @@ class BackupsAPITestCase(test.TestCase):
                                      container='volumebackups',
                                      size=1,
                                      availability_zone='az1')
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -129,7 +129,7 @@ class BackupsAPITestCase(test.TestCase):
         backup.destroy()
 
     def test_show_backup_with_backup_NotFound(self):
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'GET'
         req.headers = mv.get_mv_header(mv.BACKUP_METADATA)
@@ -150,7 +150,7 @@ class BackupsAPITestCase(test.TestCase):
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
 
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
@@ -177,7 +177,7 @@ class BackupsAPITestCase(test.TestCase):
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
 
-        req = webob.Request.blank('/v2/%s/backups?limit=2' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups?limit=2' % fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
@@ -198,7 +198,7 @@ class BackupsAPITestCase(test.TestCase):
         backup1.destroy()
 
     def test_list_backups_with_offset_out_of_range(self):
-        url = '/v2/%s/backups?offset=252452434242342434' % fake.PROJECT_ID
+        url = '/v3/%s/backups?offset=252452434242342434' % fake.PROJECT_ID
         req = webob.Request.blank(url)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -210,7 +210,7 @@ class BackupsAPITestCase(test.TestCase):
         backup1 = utils.create_backup(self.context)
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
-        url = '/v2/%s/backups?marker=%s' % (fake.PROJECT_ID, backup3.id)
+        url = '/v3/%s/backups?marker=%s' % (fake.PROJECT_ID, backup3.id)
         req = webob.Request.blank(url)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -236,7 +236,7 @@ class BackupsAPITestCase(test.TestCase):
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
 
-        url = ('/v2/%s/backups?limit=1&marker=%s' % (fake.PROJECT_ID,
+        url = ('/v3/%s/backups?limit=1&marker=%s' % (fake.PROJECT_ID,
                                                      backup3.id))
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -264,7 +264,7 @@ class BackupsAPITestCase(test.TestCase):
         backup3 = utils.create_backup(self.context, availability_zone='az1',
                                       container='volumebackups', size=1)
 
-        req = webob.Request.blank('/v2/%s/backups/detail' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
@@ -302,7 +302,7 @@ class BackupsAPITestCase(test.TestCase):
         backup3 = utils.create_backup(self.context, availability_zone='az1',
                                       container='volumebackups', size=1)
 
-        req = webob.Request.blank('/v2/%s/backups/detail' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
@@ -395,7 +395,7 @@ class BackupsAPITestCase(test.TestCase):
                                       status=fields.BackupStatus.AVAILABLE)
         backup3 = utils.create_backup(self.context, volume_id=fake.VOLUME3_ID)
 
-        req = webob.Request.blank('/v2/%s/backups/detail?name=test2' %
+        req = webob.Request.blank('/v3/%s/backups/detail?name=test2' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -408,7 +408,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(backup1.id, res_dict['backups'][0]['id'])
 
-        req = webob.Request.blank('/v2/%s/backups/detail?status=available' %
+        req = webob.Request.blank('/v3/%s/backups/detail?status=available' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -421,7 +421,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(backup2.id, res_dict['backups'][0]['id'])
 
-        req = webob.Request.blank('/v2/%s/backups/detail?volume_id=%s' % (
+        req = webob.Request.blank('/v3/%s/backups/detail?volume_id=%s' % (
             fake.PROJECT_ID, fake.VOLUME3_ID))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -442,7 +442,7 @@ class BackupsAPITestCase(test.TestCase):
         backup1 = utils.create_backup(self.context)
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
-        url = ('/v2/%s/backups/detail?limit=2&sort_key=created_at'
+        url = ('/v3/%s/backups/detail?limit=2&sort_key=created_at'
                '&sort_dir=desc' % fake.PROJECT_ID)
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -467,7 +467,7 @@ class BackupsAPITestCase(test.TestCase):
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
 
-        url = ('/v2/%s/backups/detail?marker=%s' % (
+        url = ('/v3/%s/backups/detail?marker=%s' % (
             fake.PROJECT_ID, backup3.id))
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -492,7 +492,7 @@ class BackupsAPITestCase(test.TestCase):
         backup2 = utils.create_backup(self.context)
         backup3 = utils.create_backup(self.context)
 
-        url = ('/v2/%s/backups/detail?limit=1&marker=%s' % (
+        url = ('/v3/%s/backups/detail?limit=1&marker=%s' % (
             fake.PROJECT_ID, backup3.id))
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -511,7 +511,7 @@ class BackupsAPITestCase(test.TestCase):
         backup1.destroy()
 
     def test_list_backups_detail_with_offset_out_of_range(self):
-        url = ('/v2/%s/backups/detail?offset=234534543657634523' %
+        url = ('/v3/%s/backups/detail?offset=234534543657634523' %
                fake.PROJECT_ID)
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -530,7 +530,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -560,7 +560,7 @@ class BackupsAPITestCase(test.TestCase):
 
         volume = utils.create_volume(self.context, size=5)
         body['backup']['volume_id'] = volume.id
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -570,7 +570,7 @@ class BackupsAPITestCase(test.TestCase):
 
         # create backup call doesn't return 'description' in response so get
         # the created backup to assert name and description
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, res_dict['backup']['id']))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -668,7 +668,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -698,7 +698,7 @@ class BackupsAPITestCase(test.TestCase):
                            "force": True,
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -723,7 +723,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -750,7 +750,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -777,7 +777,7 @@ class BackupsAPITestCase(test.TestCase):
                            }
                 }
 
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -802,7 +802,7 @@ class BackupsAPITestCase(test.TestCase):
                            "volume_id": volume.id,
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -825,11 +825,10 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "a" * 256
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.environ['cinder.context'] = self.context
-        req.api_version_request = api_version.APIVersionRequest()
-        req.api_version_request = api_version.APIVersionRequest("2.0")
+        req.api_version_request = api_version.APIVersionRequest("3.0")
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
@@ -868,7 +867,7 @@ class BackupsAPITestCase(test.TestCase):
                                      size=1, availability_zone='az1',
                                      host='testhost')
 
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -905,7 +904,7 @@ class BackupsAPITestCase(test.TestCase):
                            "incremental": True,
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -924,7 +923,7 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_create_backup_with_no_body(self):
         # omit body from the request
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -947,7 +946,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -969,7 +968,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -992,7 +991,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -1013,7 +1012,7 @@ class BackupsAPITestCase(test.TestCase):
                            "container": "nightlybackups",
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -1033,7 +1032,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_service_get_all.return_value = []
 
         volume = utils.create_volume(self.context, size=2)
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         body = {"backup": {"name": "nightly001",
                            "description":
                            "Nightly Backup 03-Sep-2012",
@@ -1069,7 +1068,7 @@ class BackupsAPITestCase(test.TestCase):
                            "incremental": True,
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -1095,7 +1094,7 @@ class BackupsAPITestCase(test.TestCase):
                            "snapshot_id": None,
                            }
                 }
-        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/backups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -1265,7 +1264,7 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE,
                                      availability_zone='az1', host='testhost')
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1293,7 +1292,7 @@ class BackupsAPITestCase(test.TestCase):
                                     status=fields.BackupStatus.AVAILABLE,
                                     incremental=True,
                                     availability_zone='az1', host='testhost')
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, delta.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1318,7 +1317,7 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.ERROR,
                                      availability_zone='az1', host='testhost')
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1333,7 +1332,7 @@ class BackupsAPITestCase(test.TestCase):
         backup.destroy()
 
     def test_delete_backup_with_backup_NotFound(self):
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1350,7 +1349,7 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_delete_backup_with_InvalidBackup(self):
         backup = utils.create_backup(self.context)
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1382,7 +1381,7 @@ class BackupsAPITestCase(test.TestCase):
             status=fields.BackupStatus.AVAILABLE, incremental=True,
             parent_id=backup.id)
 
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1407,7 +1406,7 @@ class BackupsAPITestCase(test.TestCase):
              'disabled': 0, 'updated_at': '1775-04-19 05:00:00',
              'uuid': 'a3a593da-7f8d-4bb7-8b4c-f2bc1e0b4824'}]
         backup = utils.create_backup(self.context, status='available')
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
 
@@ -1432,7 +1431,7 @@ class BackupsAPITestCase(test.TestCase):
                                      status=fields.BackupStatus.AVAILABLE,
                                      availability_zone='az1', host='testhost',
                                      service=None)
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -1453,7 +1452,7 @@ class BackupsAPITestCase(test.TestCase):
                                      display_name=volume_name)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1472,7 +1471,7 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE)
 
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
@@ -1495,7 +1494,7 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE)
 
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
             fake.PROJECT_ID, backup.id))
         body = {"restore": {'': ''}}
         req.method = 'POST'
@@ -1537,7 +1536,7 @@ class BackupsAPITestCase(test.TestCase):
                                      availability_zone='az1', host='testhost')
 
         body = {"restore": {}}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1572,7 +1571,7 @@ class BackupsAPITestCase(test.TestCase):
                                      availability_zone='az1', host='testhost')
 
         body = {"restore": {'name': 'vol-01'}}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' %
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' %
                                   (fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1602,7 +1601,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=5,
                                      display_name=orig_vol_name)
         body = {"restore": {'name': 'vol-01', 'volume_id': volume.id}}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1630,7 +1629,7 @@ class BackupsAPITestCase(test.TestCase):
 
         body = {"restore": {"name": None,
                             "volume_id": volume.id}}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1655,7 +1654,7 @@ class BackupsAPITestCase(test.TestCase):
         # need to create the volume referenced below first
         volume = utils.create_volume(self.context, size=0)
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
 
         req.method = 'POST'
@@ -1678,7 +1677,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=5, status='attaching')
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1704,7 +1703,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=5)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1727,7 +1726,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=5)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' %
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' %
                                   (fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1750,7 +1749,7 @@ class BackupsAPITestCase(test.TestCase):
                                      status=fields.BackupStatus.AVAILABLE)
 
         body = {"restore": {"volume_id": fake.WILL_NOT_BE_FOUND_ID, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1784,7 +1783,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=5)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
 
         req.method = 'POST'
@@ -1815,7 +1814,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=5)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
 
         req.method = 'POST'
@@ -1841,7 +1840,7 @@ class BackupsAPITestCase(test.TestCase):
         volume = utils.create_volume(self.context, size=volume_size)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1873,7 +1872,7 @@ class BackupsAPITestCase(test.TestCase):
                                      display_name=volume_name)
 
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1904,7 +1903,7 @@ class BackupsAPITestCase(test.TestCase):
 
         _mock_get_backup_host.return_value = 'testhost'
         body = {"restore": {"volume_id": volume.id, }}
-        req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1929,7 +1928,7 @@ class BackupsAPITestCase(test.TestCase):
         backup = utils.create_backup(self.context,
                                      status=fields.BackupStatus.AVAILABLE,
                                      size=10)
-        req = webob.Request.blank('/v2/%s/backups/%s/export_record' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/export_record' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['content-type'] = 'application/json'
@@ -1955,7 +1954,7 @@ class BackupsAPITestCase(test.TestCase):
             {'backup_service': backup_service,
              'backup_url': backup_url}
         _mock_get_backup_host.return_value = 'testhost'
-        req = webob.Request.blank('/v2/%s/backups/%s/export_record' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/export_record' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['content-type'] = 'application/json'
@@ -1975,7 +1974,7 @@ class BackupsAPITestCase(test.TestCase):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                      is_admin=True)
         backup_id = fake.WILL_NOT_BE_FOUND_ID
-        req = webob.Request.blank('/v2/%s/backups/%s/export_record' %
+        req = webob.Request.blank('/v3/%s/backups/%s/export_record' %
                                   (fake.PROJECT_ID, backup_id))
         req.method = 'GET'
         req.headers['content-type'] = 'application/json'
@@ -1994,7 +1993,7 @@ class BackupsAPITestCase(test.TestCase):
                                      status=fields.BackupStatus.RESTORING)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                      is_admin=True)
-        req = webob.Request.blank('/v2/%s/backups/%s/export_record' %
+        req = webob.Request.blank('/v3/%s/backups/%s/export_record' %
                                   (fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['content-type'] = 'application/json'
@@ -2022,7 +2021,7 @@ class BackupsAPITestCase(test.TestCase):
                                      status=fields.BackupStatus.AVAILABLE)
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                      is_admin=True)
-        req = webob.Request.blank('/v2/%s/backups/%s/export_record' %
+        req = webob.Request.blank('/v3/%s/backups/%s/export_record' %
                                   (fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['content-type'] = 'application/json'
@@ -2040,7 +2039,7 @@ class BackupsAPITestCase(test.TestCase):
     def test_import_record_as_non_admin(self):
         backup_service = 'fake'
         backup_url = 'fake'
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2077,7 +2076,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_import_record_rpc.return_value = None
         _mock_list_services.return_value = [backup_service]
 
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2134,7 +2133,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_import_record_rpc.return_value = None
         _mock_list_services.return_value = [backup_service]
 
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2170,7 +2169,7 @@ class BackupsAPITestCase(test.TestCase):
         backup_url = 'fake'
         _mock_list_services.return_value = []
 
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2194,7 +2193,7 @@ class BackupsAPITestCase(test.TestCase):
         backup_service = 'fake'
         backup_url = 'fake'
         _mock_list_services.return_value = ['no-match1', 'no-match2']
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2226,7 +2225,7 @@ class BackupsAPITestCase(test.TestCase):
         backup_service = 'fake'
         backup_url = backup.encode_record()
         _mock_list_services.return_value = ['no-match1', 'no-match2']
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2266,7 +2265,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_list_services.return_value = ['no-match1', 'no-match2']
         _mock_import_record.side_effect = \
             exception.ServiceNotFound(service_id='fake')
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
@@ -2291,7 +2290,7 @@ class BackupsAPITestCase(test.TestCase):
         backup_url = 'fake'
 
         # test with no backup_service
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_url': backup_url}}
         req.body = jsonutils.dump_as_bytes(body)
@@ -2309,7 +2308,7 @@ class BackupsAPITestCase(test.TestCase):
             res_dict['badRequest']['message'])
 
         # test with no backup_url
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {'backup_service': backup_service}}
         req.body = jsonutils.dump_as_bytes(body)
@@ -2328,7 +2327,7 @@ class BackupsAPITestCase(test.TestCase):
             res_dict['badRequest']['message'])
 
         # test with no backup_url and backup_url
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         body = {'backup-record': {}}
         req.body = jsonutils.dump_as_bytes(body)
@@ -2349,7 +2348,7 @@ class BackupsAPITestCase(test.TestCase):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                      is_admin=True)
 
-        req = webob.Request.blank('/v2/%s/backups/import_record' %
+        req = webob.Request.blank('/v3/%s/backups/import_record' %
                                   fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
@@ -2394,7 +2393,7 @@ class BackupsAPITestCase(test.TestCase):
             self.context, volume.id, status=fields.BackupStatus.AVAILABLE,
             incremental=True, parent_id=backup.id, snapshot_id=snapshot_id)
 
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, backup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -2407,7 +2406,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertTrue(res_dict['backup']['has_dependent_backups'])
         self.assertIsNone(res_dict['backup']['snapshot_id'])
 
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, parent_backup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -2420,7 +2419,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertTrue(res_dict['backup']['has_dependent_backups'])
         self.assertIsNone(res_dict['backup']['snapshot_id'])
 
-        req = webob.Request.blank('/v2/%s/backups/%s' % (
+        req = webob.Request.blank('/v3/%s/backups/%s' % (
                                   fake.PROJECT_ID, child_backup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'

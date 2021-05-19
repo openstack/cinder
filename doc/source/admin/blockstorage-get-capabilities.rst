@@ -120,7 +120,7 @@ API request:
 
 .. code-block:: console
 
-   GET /v2/{tenant_id}/capabilities/{hostname}
+   GET /v3/{tenant_id}/capabilities/{hostname}
 
 Example of return value:
 

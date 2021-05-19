@@ -34,9 +34,9 @@ bad_snp_id = fake.WILL_NOT_BE_FOUND_ID
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
+    api = fakes.router_v3.APIRouter()
     mapper = fakes.urlmap.URLMap()
-    mapper['/v2'] = api
+    mapper['/v3'] = api
     return mapper
 
 
@@ -76,7 +76,7 @@ class SnapshotUnmanageTest(test.TestCase):
 
     def _get_resp(self, snapshot_id):
         """Helper to build an os-unmanage req for the specified snapshot_id."""
-        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+        req = webob.Request.blank('/v3/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, snapshot_id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'

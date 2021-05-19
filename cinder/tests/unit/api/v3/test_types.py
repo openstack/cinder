@@ -11,7 +11,7 @@
 #    under the License.
 
 from cinder.api import microversions as mv
-from cinder.api.v2 import types
+from cinder.api.v3 import types
 from cinder import context
 from cinder import db
 from cinder import exception

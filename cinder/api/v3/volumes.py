@@ -147,7 +147,8 @@ class VolumeController(volumes_v2.VolumeController):
         self._process_volume_filtering(context=context, filters=filters,
                                        req_version=req_version)
 
-        # NOTE(thingee): v2 API allows name instead of display_name
+        # NOTE: it's 'name' in the REST API, but 'display_name' in the
+        # database layer, so we need to do this translation
         if 'name' in sort_keys:
             sort_keys[sort_keys.index('name')] = 'display_name'
 
@@ -302,12 +303,11 @@ class VolumeController(volumes_v2.VolumeController):
         kwargs = {}
         self.validate_name_and_description(volume, check_length=False)
 
-        # NOTE(thingee): v2 API allows name instead of display_name
+        # NOTE: it's 'name'/'description' in the REST API, but
+        # 'display_name'/display_description' in the database layer,
+        # so we need to do this translation
         if 'name' in volume:
             volume['display_name'] = volume.pop('name')
-
-        # NOTE(thingee): v2 API allows description instead of
-        #                display_description
         if 'description' in volume:
             volume['display_description'] = volume.pop('description')
 

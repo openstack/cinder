@@ -18,8 +18,8 @@ from unittest import mock
 from oslo_utils import timeutils
 import webob
 
-from cinder.api.v2 import types
-from cinder.api.v2.views import types as views_types
+from cinder.api.v3 import types
+from cinder.api.v3.views import types as views_types
 from cinder import context
 from cinder import exception
 from cinder.policies import volume_type as type_policy
@@ -109,7 +109,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.mock_object(volume_types, 'get_all_types',
                          return_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID,
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
 
@@ -126,41 +126,41 @@ class VolumeTypesApiTest(test.TestCase):
         self.mock_object(volume_types, 'get_all_types',
                          return_empty_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
 
         self.assertEqual(0, len(res_dict['volume_types']))
 
     def test_volume_types_index_with_limit(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types?limit=1' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types?limit=1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
         self.assertEqual(1, len(res['volume_types']))
         self.assertEqual(self.type_id3, res['volume_types'][0]['id'])
 
-        expect_next_link = ('http://localhost/v2/%s/types?limit=1'
+        expect_next_link = ('http://localhost/v3/%s/types?limit=1'
                             '&marker=%s' %
                             (fake.PROJECT_ID, res['volume_types'][0]['id']))
         self.assertEqual(expect_next_link, res['volume_type_links'][0]['href'])
 
     def test_volume_types_index_with_offset(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?offset=1' % fake.PROJECT_ID)
+            '/v3/%s/types?offset=1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
         self.assertEqual(3, len(res['volume_types']))
 
     def test_volume_types_index_with_offset_out_of_range(self):
-        url = '/v2/%s/types?offset=424366766556787' % fake.PROJECT_ID
+        url = '/v3/%s/types?offset=424366766556787' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index, req)
 
     def test_volume_types_index_with_limit_and_offset(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?limit=2&offset=1' % fake.PROJECT_ID)
+            '/v3/%s/types?limit=2&offset=1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
@@ -169,7 +169,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(self.type_id1, res['volume_types'][1]['id'])
 
     def test_volume_types_index_with_limit_and_marker(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types?limit=1'
+        req = fakes.HTTPRequest.blank('/v3/%s/types?limit=1'
                                       '&marker=%s' %
                                       (fake.PROJECT_ID,
                                        self.type_id2))
@@ -181,7 +181,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_valid_filter(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?is_public=True' % fake.PROJECT_ID)
+            '/v3/%s/types?is_public=True' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
@@ -192,7 +192,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_invalid_filter(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?id=%s' % (fake.PROJECT_ID, self.type_id1))
+            '/v3/%s/types?id=%s' % (fake.PROJECT_ID, self.type_id1))
         req.environ['cinder.context'] = context.RequestContext(
             user_id=fake.USER_ID, project_id=fake.PROJECT_ID, is_admin=False)
         res = self.controller.index(req)
@@ -200,7 +200,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(4, len(res['volume_types']))
 
     def test_volume_types_index_with_sort_keys(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types?sort=id' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types?sort=id' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
         expect_result = [self.default_type, self.type_id1,
@@ -215,7 +215,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_sort_and_limit(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?sort=id&limit=2' % fake.PROJECT_ID)
+            '/v3/%s/types?sort=id&limit=2' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
@@ -229,7 +229,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_sort_keys_and_sort_dirs(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?sort=id:asc' % fake.PROJECT_ID)
+            '/v3/%s/types?sort=id:asc' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
         expect_result = [self.default_type, self.type_id1,
@@ -247,7 +247,7 @@ class VolumeTypesApiTest(test.TestCase):
                          return_volume_types_get_volume_type)
 
         type_id = fake.VOLUME_TYPE_ID
-        req = fakes.HTTPRequest.blank('/v2/%s/types/' % fake.PROJECT_ID
+        req = fakes.HTTPRequest.blank('/v3/%s/types/' % fake.PROJECT_ID
                                       + type_id)
         res_dict = self.controller.show(req, type_id)
 
@@ -262,7 +262,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.mock_object(volume_types, 'get_volume_type',
                          return_volume_types_get_volume_type)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s' %
                                       (fake.PROJECT_ID,
                                        fake.WILL_NOT_BE_FOUND_ID))
         self.assertRaises(exception.VolumeTypeNotFound, self.controller.show,
@@ -271,7 +271,7 @@ class VolumeTypesApiTest(test.TestCase):
     def test_get_default(self):
         self.mock_object(volume_types, 'get_default_volume_type',
                          return_volume_types_get_default)
-        req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
         res_dict = self.controller.show(req, 'default')
         self.assertEqual(1, len(res_dict))
@@ -282,7 +282,7 @@ class VolumeTypesApiTest(test.TestCase):
     def test_get_default_not_found(self):
         self.mock_object(volume_types, 'get_default_volume_type',
                          return_value={})
-        req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
 
         self.assertRaises(exception.VolumeTypeNotFound,
@@ -305,7 +305,7 @@ class VolumeTypesApiTest(test.TestCase):
             id=42,
         )
 
-        request = fakes.HTTPRequest.blank("/v2")
+        request = fakes.HTTPRequest.blank("/v3")
         output = view_builder.show(request, raw_volume_type)
 
         self.assertIn('volume_type', output)
@@ -334,7 +334,7 @@ class VolumeTypesApiTest(test.TestCase):
             id=42,
         )
 
-        request = fakes.HTTPRequest.blank("/v2", use_admin_context=True)
+        request = fakes.HTTPRequest.blank("/v3", use_admin_context=True)
         output = view_builder.show(request, raw_volume_type)
 
         self.assertIn('volume_type', output)
@@ -366,7 +366,7 @@ class VolumeTypesApiTest(test.TestCase):
                 id=42,
             )
 
-            request = fakes.HTTPRequest.blank("/v2")
+            request = fakes.HTTPRequest.blank("/v3")
             output = view_builder.show(request, raw_volume_type)
 
             self.assertIn('volume_type', output)
@@ -397,7 +397,7 @@ class VolumeTypesApiTest(test.TestCase):
                 id=42,
             )
 
-            request = fakes.HTTPRequest.blank("/v2")
+            request = fakes.HTTPRequest.blank("/v3")
             output = view_builder.show(request, raw_volume_type)
 
             self.assertIn('volume_type', output)
@@ -427,7 +427,7 @@ class VolumeTypesApiTest(test.TestCase):
                 id=42,
             )
 
-            request = fakes.HTTPRequest.blank("/v2")
+            request = fakes.HTTPRequest.blank("/v3")
             output = view_builder.show(request, raw_volume_type)
 
             self.assertIn('volume_type', output)
@@ -457,7 +457,7 @@ class VolumeTypesApiTest(test.TestCase):
                 id=42,
             )
 
-            request = fakes.HTTPRequest.blank("/v2")
+            request = fakes.HTTPRequest.blank("/v3")
             output = view_builder.show(request, raw_volume_type)
 
             self.assertIn('volume_type', output)
@@ -492,7 +492,7 @@ class VolumeTypesApiTest(test.TestCase):
                 )
             )
 
-        request = fakes.HTTPRequest.blank("/v2")
+        request = fakes.HTTPRequest.blank("/v3")
         output = view_builder.index(request, raw_volume_types)
 
         self.assertIn('volume_types', output)
@@ -527,7 +527,7 @@ class VolumeTypesApiTest(test.TestCase):
                 )
             )
 
-        request = fakes.HTTPRequest.blank("/v2", use_admin_context=True)
+        request = fakes.HTTPRequest.blank("/v3", use_admin_context=True)
         output = view_builder.index(request, raw_volume_types)
 
         self.assertIn('volume_types', output)

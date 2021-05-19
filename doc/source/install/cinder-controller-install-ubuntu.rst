@@ -79,22 +79,7 @@ must create a database, service credentials, and API endpoints.
 
          This command provides no output.
 
-   #. Create the ``cinderv2`` and ``cinderv3`` service entities:
-
-      .. code-block:: console
-
-         $ openstack service create --name cinderv2 \
-           --description "OpenStack Block Storage" volumev2
-
-         +-------------+----------------------------------+
-         | Field       | Value                            |
-         +-------------+----------------------------------+
-         | description | OpenStack Block Storage          |
-         | enabled     | True                             |
-         | id          | eb9fd245bdbc414695952e93f29fe3ac |
-         | name        | cinderv2                         |
-         | type        | volumev2                         |
-         +-------------+----------------------------------+
+   #. Create the ``cinderv3`` service entity:
 
       .. code-block:: console
 
@@ -111,64 +96,13 @@ must create a database, service credentials, and API endpoints.
          | type        | volumev3                         |
          +-------------+----------------------------------+
 
-   .. note::
+      .. note::
 
-      The Block Storage services require two service entities.
+         Beginning with the Xena release, the Block Storage services
+         require only one service entity.  For prior releases, please
+         consult the documentation for that specific release.
 
 #. Create the Block Storage service API endpoints:
-
-   .. code-block:: console
-
-      $ openstack endpoint create --region RegionOne \
-        volumev2 public http://controller:8776/v2/%\(project_id\)s
-
-      +--------------+------------------------------------------+
-      | Field        | Value                                    |
-      +--------------+------------------------------------------+
-      | enabled      | True                                     |
-      | id           | 513e73819e14460fb904163f41ef3759         |
-      | interface    | public                                   |
-      | region       | RegionOne                                |
-      | region_id    | RegionOne                                |
-      | service_id   | eb9fd245bdbc414695952e93f29fe3ac         |
-      | service_name | cinderv2                                 |
-      | service_type | volumev2                                 |
-      | url          | http://controller:8776/v2/%(project_id)s |
-      +--------------+------------------------------------------+
-
-      $ openstack endpoint create --region RegionOne \
-        volumev2 internal http://controller:8776/v2/%\(project_id\)s
-
-      +--------------+------------------------------------------+
-      | Field        | Value                                    |
-      +--------------+------------------------------------------+
-      | enabled      | True                                     |
-      | id           | 6436a8a23d014cfdb69c586eff146a32         |
-      | interface    | internal                                 |
-      | region       | RegionOne                                |
-      | region_id    | RegionOne                                |
-      | service_id   | eb9fd245bdbc414695952e93f29fe3ac         |
-      | service_name | cinderv2                                 |
-      | service_type | volumev2                                 |
-      | url          | http://controller:8776/v2/%(project_id)s |
-      +--------------+------------------------------------------+
-
-      $ openstack endpoint create --region RegionOne \
-        volumev2 admin http://controller:8776/v2/%\(project_id\)s
-
-      +--------------+------------------------------------------+
-      | Field        | Value                                    |
-      +--------------+------------------------------------------+
-      | enabled      | True                                     |
-      | id           | e652cf84dd334f359ae9b045a2c91d96         |
-      | interface    | admin                                    |
-      | region       | RegionOne                                |
-      | region_id    | RegionOne                                |
-      | service_id   | eb9fd245bdbc414695952e93f29fe3ac         |
-      | service_name | cinderv2                                 |
-      | service_type | volumev2                                 |
-      | url          | http://controller:8776/v2/%(project_id)s |
-      +--------------+------------------------------------------+
 
    .. code-block:: console
 
@@ -223,10 +157,6 @@ must create a database, service credentials, and API endpoints.
       | url          | http://controller:8776/v3/%(project_id)s |
       +--------------+------------------------------------------+
 
-   .. note::
-
-      The Block Storage services require endpoints for each service
-      entity.
 
 Install and configure components
 --------------------------------

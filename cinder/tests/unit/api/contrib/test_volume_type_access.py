@@ -18,7 +18,7 @@ from unittest import mock
 import webob
 
 from cinder.api.contrib import volume_type_access as type_access
-from cinder.api.v2 import types as types_api_v2
+from cinder.api.v3 import types
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -113,7 +113,7 @@ class VolumeTypeAccessTest(test.TestCase):
 
     def setUp(self):
         super(VolumeTypeAccessTest, self).setUp()
-        self.type_controller_v2 = types_api_v2.VolumeTypesController()
+        self.type_controller = types.VolumeTypesController()
         self.type_access_controller = type_access.VolumeTypeAccessController()
         self.type_action_controller = type_access.VolumeTypeActionController()
         self.req = FakeRequest()
@@ -132,7 +132,7 @@ class VolumeTypeAccessTest(test.TestCase):
 
     def test_list_type_access_public(self):
         """Querying os-volume-type-access on public type should return 404."""
-        req = fakes.HTTPRequest.blank('/v2/%s/types/os-volume-type-access' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types/os-volume-type-access' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
         self.assertRaises(exception.VolumeTypeAccessNotFound,
@@ -150,7 +150,7 @@ class VolumeTypeAccessTest(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_list_with_no_context(self):
-        req = fakes.HTTPRequest.blank('/v2/flavors/%s/flavors' %
+        req = fakes.HTTPRequest.blank('/v3/flavors/%s/flavors' %
                                       fake.PROJECT_ID)
 
         def fake_authorize(context, target=None, action=None):
@@ -164,10 +164,10 @@ class VolumeTypeAccessTest(test.TestCase):
     def test_list_type_with_admin_default_proj1(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID,
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID,
                                       use_admin_context=True)
         req.environ['cinder.context'].project_id = PROJ1_UUID
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
@@ -175,41 +175,41 @@ class VolumeTypeAccessTest(test.TestCase):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID},
                                      {'id': fake.VOLUME_TYPE3_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % PROJ2_UUID,
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % PROJ2_UUID,
                                       use_admin_context=True)
         req.environ['cinder.context'].project_id = PROJ2_UUID
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_admin_ispublic_true(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=true' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=true' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_admin_ispublic_false(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE3_ID},
                                      {'id': fake.VOLUME_TYPE4_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=false' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=false' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_admin_ispublic_false_proj2(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE3_ID},
                                      {'id': fake.VOLUME_TYPE4_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=false' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=false' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
         req.environ['cinder.context'].project_id = PROJ2_UUID
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
@@ -218,49 +218,49 @@ class VolumeTypeAccessTest(test.TestCase):
                                      {'id': fake.VOLUME_TYPE2_ID},
                                      {'id': fake.VOLUME_TYPE3_ID},
                                      {'id': fake.VOLUME_TYPE4_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=none' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=none' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_no_admin_default(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID,
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID,
                                       use_admin_context=False)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_no_admin_ispublic_true(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=true' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=true' %
                                       fake.PROJECT_ID,
                                       use_admin_context=False)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_no_admin_ispublic_false(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=false' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=false' %
                                       fake.PROJECT_ID,
                                       use_admin_context=False)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
     def test_list_type_with_no_admin_ispublic_none(self):
         expected = {'volume_types': [{'id': fake.VOLUME_TYPE_ID},
                                      {'id': fake.VOLUME_TYPE2_ID}]}
-        req = fakes.HTTPRequest.blank('/v2/%s/types?is_public=none' %
+        req = fakes.HTTPRequest.blank('/v3/%s/types?is_public=none' %
                                       fake.PROJECT_ID,
                                       use_admin_context=False)
-        result = self.type_controller_v2.index(req)
+        result = self.type_controller.index(req)
         self.assertVolumeTypeListEqual(expected['volume_types'],
                                        result['volume_types'])
 
@@ -295,7 +295,7 @@ class VolumeTypeAccessTest(test.TestCase):
         self.mock_object(db, 'volume_type_access_add',
                          fake_add_volume_type_access)
         body = {'addProjectAccess': {'project': PROJ2_UUID}}
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID),
             use_admin_context=True)
         result = self.type_action_controller._addProjectAccess(
@@ -303,7 +303,7 @@ class VolumeTypeAccessTest(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, result.status_code)
 
     def test_add_project_access_with_no_admin_user(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID),
             use_admin_context=False)
         body = {'addProjectAccess': {'project': PROJ2_UUID}}
@@ -318,7 +318,7 @@ class VolumeTypeAccessTest(test.TestCase):
         self.mock_object(db, 'volume_type_access_add',
                          fake_add_volume_type_access)
         body = {'addProjectAccess': {'project': PROJ2_UUID}}
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID), use_admin_context=True)
         self.assertRaises(webob.exc.HTTPConflict,
                           self.type_action_controller._addProjectAccess,
@@ -331,14 +331,14 @@ class VolumeTypeAccessTest(test.TestCase):
         self.mock_object(db, 'volume_type_access_remove',
                          fake_remove_volume_type_access)
         body = {'removeProjectAccess': {'project': PROJ2_UUID}}
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID), use_admin_context=True)
         self.assertRaises(exception.VolumeTypeAccessNotFound,
                           self.type_action_controller._removeProjectAccess,
                           req, fake.VOLUME_TYPE4_ID, body=body)
 
     def test_remove_project_access_with_no_admin_user(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID), use_admin_context=False)
         body = {'removeProjectAccess': {'project': PROJ2_UUID}}
         self.assertRaises(exception.PolicyNotAuthorized,

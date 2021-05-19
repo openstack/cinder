@@ -36,9 +36,9 @@ CONF = cfg.CONF
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
+    api = fakes.router_v3.APIRouter()
     mapper = fakes.urlmap.URLMap()
-    mapper['/v2'] = api
+    mapper['/v3'] = api
     return mapper
 
 
@@ -100,7 +100,7 @@ class SnapshotManageTest(test.TestCase):
 
     def _get_resp_post(self, body):
         """Helper to execute an os-snapshot-manage API call."""
-        req = webob.Request.blank('/v2/%s/os-snapshot-manage' %
+        req = webob.Request.blank('/v3/%s/os-snapshot-manage' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -271,7 +271,7 @@ class SnapshotManageTest(test.TestCase):
         detail = ""
         if detailed:
             detail = "/detail"
-        url = "/v2/%s/os-snapshot-manage%s%s" % (fake.PROJECT_ID, detail,
+        url = "/v3/%s/os-snapshot-manage%s%s" % (fake.PROJECT_ID, detail,
                                                  query_string)
         req = webob.Request.blank(url)
         req.method = 'GET'

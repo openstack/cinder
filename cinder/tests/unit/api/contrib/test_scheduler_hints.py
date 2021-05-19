@@ -23,7 +23,7 @@ import cinder
 from cinder.api.openstack import wsgi
 from cinder import context
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 
@@ -36,8 +36,8 @@ class SchedulerHintsTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerHintsTestCase, self).setUp()
-        self.fake_instance = v2_fakes.create_fake_volume(fake.VOLUME_ID,
-                                                         uuid=UUID)
+        self.fake_instance = v3_fakes.create_volume(fake.VOLUME_ID,
+                                                    uuid=UUID)
         self.fake_instance['created_at'] =\
             datetime.datetime(2013, 1, 1, 1, 1, 1)
         self.fake_instance['launched_at'] =\
@@ -51,7 +51,7 @@ class SchedulerHintsTestCase(test.TestCase):
         self.app = fakes.wsgi_app(fake_auth_context=self.user_ctxt)
         self.admin_ctxt = context.get_admin_context()
         cinder.db.volume_type_create(self.admin_ctxt,
-                                     v2_fakes.fake_default_type_get(
+                                     v3_fakes.fake_default_type_get(
                                          fake.VOLUME_TYPE2_ID))
         self.vol_type = cinder.db.volume_type_get_by_name(self.admin_ctxt,
                                                           'vol_type_name')
@@ -63,10 +63,10 @@ class SchedulerHintsTestCase(test.TestCase):
             self.assertNotIn('scheduler_hints', kwargs['body'])
             return self.fake_instance
 
-        self.mock_object(cinder.api.v2.volumes.VolumeController, 'create',
+        self.mock_object(cinder.api.v3.volumes.VolumeController, 'create',
                          fake_create)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'id': UUID,
@@ -84,10 +84,10 @@ class SchedulerHintsTestCase(test.TestCase):
             self.assertEqual({"a": "b"}, kwargs['body']['scheduler_hints'])
             return self.fake_instance
 
-        self.mock_object(cinder.api.v2.volumes.VolumeController, 'create',
+        self.mock_object(cinder.api.v3.volumes.VolumeController, 'create',
                          fake_create)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'id': UUID,
@@ -100,7 +100,7 @@ class SchedulerHintsTestCase(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
     def test_create_server_bad_hints(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'volume': {
@@ -123,7 +123,7 @@ class SchedulerHintsTestCase(test.TestCase):
               {'query': {}},
               None)
     def test_scheduler_hints_with_valid_body(self, value):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'volume': {'size': 1, 'volume_type': self.vol_type['id']},
@@ -143,7 +143,7 @@ class SchedulerHintsTestCase(test.TestCase):
               {'query': None},
               {'scheduler_hints'})
     def test_scheduler_hints_with_invalid_body(self, value):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
         req.content_type = 'application/json'
         body = {'volume': {'size': 1},
