@@ -15,11 +15,11 @@
 
 import contextlib
 from distutils import version
+import fnmatch
 import functools
 import json
 
 from oslo_log import log as logging
-from oslo_utils import fnmatch
 from oslo_utils import units
 import six
 
