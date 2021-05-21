@@ -455,7 +455,8 @@ class VMwareVolumeOps(object):
         connected_hosts = []
         for host_mount in host_mounts.DatastoreHostMount:
             if self._is_usable(host_mount.mountInfo):
-                connected_hosts.append(host_mount.key.value)
+                host_mount_key_value = vim_util.get_moref_value(host_mount.key)
+                connected_hosts.append(host_mount_key_value)
 
         return connected_hosts
 
@@ -466,7 +467,7 @@ class VMwareVolumeOps(object):
         :return: True if the datastore is accessible
         """
         hosts = self.get_connected_hosts(datastore)
-        return host.value in hosts
+        return vim_util.get_moref_value(host) in hosts
 
     # TODO(vbala): move this method to datastore module
     def _in_maintenance(self, summary):
@@ -574,7 +575,7 @@ class VMwareVolumeOps(object):
                   "of datacenter: %(datacenter)s.",
                   {'path_comp': path_comp,
                    'datacenter': datacenter})
-        path = "/" + datacenter.value
+        path = "/" + vim_util.get_moref_value(datacenter)
         parent = self._folder_cache.get(path)
         if not parent:
             parent = self.get_vmfolder(datacenter)
@@ -1992,7 +1993,7 @@ class FcdLocation(object):
 
     @classmethod
     def create(cls, fcd_id_obj, ds_ref):
-        return cls(fcd_id_obj.id, ds_ref.value)
+        return cls(fcd_id_obj.id, vim_util.get_moref_value(ds_ref))
 
     def provider_location(self):
         return "%s@%s" % (self.fcd_id, self.ds_ref_val)
