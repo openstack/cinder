@@ -11,6 +11,8 @@
       jobs:
         - cinder-code-coverage:
             voting: false
+        - cinder-mypy:
+            voting: false
         - cinder-tox-bandit-baseline:
             voting: false
         - openstack-tox-functional-py36:
@@ -103,7 +105,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-full-py3-opensuse15:
             irrelevant-files: *gate-irrelevant-files
-        - cinder-mypy
 
 - job:
     # Security testing for known issues
