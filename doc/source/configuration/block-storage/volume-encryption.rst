@@ -157,13 +157,6 @@ For details, see the
 `Barbican Access Control page
 <https://docs.openstack.org/barbican/latest/admin/access_control.html>`_.
 
-.. note::
-
-   Due to the issue that some of the volume drivers do not set
-   ``encrypted`` flag, attaching of encrypted volumes to a virtual
-   guest will fail, because OpenStack Compute service will not run
-   encryption providers.
-
 Testing volume encryption
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
