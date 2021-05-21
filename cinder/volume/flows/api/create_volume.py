@@ -262,7 +262,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                     availability_zone = snapshot['volume']['availability_zone']
                 except (TypeError, KeyError):
                     pass
-            if source_volume and availability_zone is None:
+            if source_volume:
                 try:
                     availability_zone = source_volume['availability_zone']
                 except (TypeError, KeyError):
