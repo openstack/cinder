@@ -5,7 +5,7 @@
     "created_at": "%(strtime)s",
     "updated_at": null,
     "encryption_id": "%(uuid)s",
-    "key_size": 128,
+    "key_size": 256,
     "provider": "luks",
     "deleted_at": null,
     "cipher": "aes-xts-plain64"

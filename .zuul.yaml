@@ -17,7 +17,6 @@
         - openstack-tox-functional-py36:
             irrelevant-files: &functional-irrelevant-files
               - ^.*\.rst$
-              - ^api-ref/.*$
               - ^cinder/locale/.*$
               - ^cinder/tests/hacking/.*$
               - ^cinder/tests/unit.*$
@@ -31,7 +30,15 @@
         - openstack-tox-pylint:
             voting: false
             timeout: 5400
-            irrelevant-files: *functional-irrelevant-files
+            irrelevant-files:
+              - ^.*\.rst$
+              - ^api-ref/.*$
+              - ^cinder/locale/.*$
+              - ^cinder/tests/hacking/.*$
+              - ^cinder/tests/unit.*$
+              - ^contrib/block-box.*$
+              - ^doc/.*$
+              - ^releasenotes/.*$
         - cinder-plugin-ceph-tempest:
             irrelevant-files: &gate-irrelevant-files
               - ^(test-|)requirements.txt$
