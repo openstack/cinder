@@ -71,14 +71,20 @@ Communication
 ~~~~~~~~~~~~~
 
 IRC
+    We use IRC *a lot*.  You will, too.  You can find infomation about what
+    IRC network OpenStack uses for communication (and tips for using IRC)
+    in the `Setup IRC
+    <https://docs.openstack.org/contributors/common/irc.html>`_
+    section of the main `OpenStack Contributor Guide`.
+
     People working on the Cinder project may be found in the
-    ``#openstack-cinder`` channel on Freenode during working hours
+    ``#openstack-cinder`` IRC channel during working hours
     in their timezone.  The channel is logged, so if you ask a question
     when no one is around, you can check the log to see if it's been
     answered: http://eavesdrop.openstack.org/irclogs/%23openstack-cinder/
 
 weekly meeting
-    Wednesdays at 14:00 UTC in ``#openstack-meeting-alt`` on Freenode.
+    Wednesdays at 14:00 UTC in the ``#openstack-meeting-alt`` IRC channel.
     Meetings are logged: http://eavesdrop.openstack.org/meetings/cinder/
 
     More information (including some pointers on meeting etiquette and an
@@ -95,10 +101,10 @@ weekly meeting
 
     weekly bug squad meeting
         This is a half-hour meeting on Wednesdays at 15:00 UTC (right after the
-        Cinder weekly meeting) in ``#openstack-cinder`` on Freenode.  At this
-        meeting, led by the Cinder Bug Deputy, we discuss new bugs that have
-        been filed against Cinder project deliverables (and, if there's time,
-        discuss the relevance of old bugs that haven't seen any action
+        Cinder weekly meeting) in the ``#openstack-cinder`` IRC channel.  At
+        this meeting, led by the Cinder Bug Deputy, we discuss new bugs that
+        have been filed against Cinder project deliverables (and, if there's
+        time, discuss the relevance of old bugs that haven't seen any action
         recently).  Info about the meeting is here:
         http://eavesdrop.openstack.org/#Cinder_Bug_Squad_Meeting
 
