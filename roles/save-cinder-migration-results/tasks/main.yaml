@@ -1,0 +1,14 @@
+---
+- block:
+    - template:
+        src: migration_results_reporter.py.j2
+        dest: "{{ tempest_work_dir }}/migration_results_reporter.py"
+
+    - name: Generate the results using stestr
+      shell: |
+        stestr run --no-discover --test-path . migration_results_reporter
+      args:
+        chdir: "{{ tempest_work_dir }}"
+
+  become: true
+  become_user: tempest

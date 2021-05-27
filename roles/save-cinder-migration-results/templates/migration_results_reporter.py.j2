@@ -1,0 +1,10 @@
+import unittest
+
+
+class CinderMigrationsMatrixTest(unittest.TestCase):
+
+{% for test_case in migration_test_results %}
+    def test__{{ test_case.source }}_to_{{ test_case.destination }}(self):
+        self.assertEqual({{ test_case.result }}, 0)
+
+{% endfor %}
