@@ -1995,7 +1995,7 @@ class VolumeManager(manager.CleanableManager,
         # and the volume status updated.
         utils.require_driver_initialized(self.driver)
 
-        volume_ref = self.db.volume_get(context, volume_id)
+        volume_ref = objects.Volume.get_by_id(context, volume_id)
         try:
             self.driver.terminate_connection(volume_ref, connector,
                                              force=force)
