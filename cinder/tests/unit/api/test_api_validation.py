@@ -15,7 +15,6 @@
 
 from http import client as http
 import re
-import sys
 
 import fixtures
 
@@ -238,11 +237,7 @@ class PatternPropertiesTestCase(APIValidationTestCase):
         self.check_validation_error(self.post, body={'0123456789a': 'bar'},
                                     expected_detail=details)
 
-        ver_info = sys.version_info
-        if ver_info.major == 3 and ver_info.minor >= 5:
-            detail = "expected string or bytes-like object"
-        else:
-            detail = "expected string or buffer"
+        detail = "expected string or bytes-like object"
         self.check_validation_error(self.post, body={None: 'bar'},
                                     expected_detail=detail)
 
