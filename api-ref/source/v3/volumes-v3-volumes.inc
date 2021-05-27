@@ -4,7 +4,9 @@ Volumes (volumes)
 =================
 
 A volume is a detachable block storage device similar to a USB hard
-drive. You can attach a volume to one instance at a time.
+drive. You can attach a volume to an instance, and if the volume is
+of an appropriate volume type, a volume can be attached to multiple
+instances.
 
 The ``snapshot_id`` and ``source_volid`` parameters specify the ID
 of the snapshot or volume from which this volume originates. If the
