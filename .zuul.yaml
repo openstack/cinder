@@ -83,7 +83,7 @@
       jobs:
         - tempest-cinder-v2-api:
             irrelevant-files: *gate-irrelevant-files
-        - legacy-tempest-dsvm-multibackend-matrix:
+        - cinder-multibackend-matrix-migration:
             irrelevant-files: *gate-irrelevant-files
         - cinder-grenade-mn-sub-volschbak:
             irrelevant-files: *gate-irrelevant-files
@@ -273,3 +273,31 @@
         CINDER_ENABLED_BACKENDS: 'lvm:lvmdriver-1,lvm:lvmdriver-2'
         CINDER_VOLUME_CLEAR: none
     irrelevant-files: *gate-irrelevant-files
+
+- job:
+    name: cinder-multibackend-matrix-migration
+    parent: devstack-tempest
+    description: |
+      Run migration tests between several combinations of backends
+      (LVM, Ceph, NFS)
+      Former names for this job were:
+        * legacy-tempest-dsvm-multibackend-matrix
+    timeout: 10800
+    required-projects:
+      - opendev.org/openstack/devstack-plugin-ceph
+      - opendev.org/openstack/devstack-plugin-nfs
+    run: playbooks/cinder-multibackend-matrix.yaml
+    host-vars:
+      controller:
+        devstack_plugins:
+          devstack-plugin-ceph: https://opendev.org/openstack/devstack-plugin-ceph
+          devstack-plugin-nfs: https://opendev.org/openstack/devstack-plugin-nfs
+    vars:
+      devstack_localrc:
+        CINDER_ENABLED_BACKENDS: lvm:lvm,nfs:nfs,ceph:ceph
+        ENABLE_NFS_CINDER: true
+      devstack_local_conf:
+        test-config:
+          $TEMPEST_CONFIG:
+            volume:
+              build_timeout: 900

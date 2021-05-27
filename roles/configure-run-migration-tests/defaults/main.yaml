@@ -1,0 +1,6 @@
+---
+migration_source_backend: lvm
+migration_destination_backend: lvm
+migration_test_regex: "(.*test_volume_retype_with_migration.*|.*test_volume_migrate_attached.*)"
+migration_test_results: []
+tempest_run_result: {}
