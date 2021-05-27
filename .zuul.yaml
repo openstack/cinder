@@ -27,6 +27,7 @@
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
+            irrelevant-files: *functional-irrelevant-files
         - openstack-tox-pylint:
             voting: false
             timeout: 5400
