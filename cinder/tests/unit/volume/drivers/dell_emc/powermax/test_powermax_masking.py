@@ -298,6 +298,30 @@ class PowerMaxMaskingTest(test.TestCase):
         self.assertEqual(2, mock_get_sg.call_count)
         self.assertEqual(1, mock_sg.call_count)
 
+    @mock.patch.object(
+        rest.PowerMaxRest, 'update_storagegroup_qos')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        return_value=tpd.PowerMaxData.storagegroup_name_i)
+    def test_get_or_create_storage_group_is_parent_qos(
+            self, mock_sg, mock_update_sg):
+        self.driver.masking._get_or_create_storage_group(
+            self.data.array, self.maskingviewdict,
+            self.data.storagegroup_name_i, self.data.extra_specs_qos, True)
+        mock_update_sg.assert_not_called()
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'update_storagegroup_qos')
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_storage_group',
+        return_value=tpd.PowerMaxData.storagegroup_name_i)
+    def test_get_or_create_storage_group_is_child_qos(
+            self, mock_sg, mock_update_sg):
+        self.driver.masking._get_or_create_storage_group(
+            self.data.array, self.maskingviewdict,
+            self.data.storagegroup_name_i, self.data.extra_specs_qos, False)
+        mock_update_sg.assert_called_once()
+
     @mock.patch.object(masking.PowerMaxMasking, '_move_vol_from_default_sg',
                        return_value=None)
     @mock.patch.object(masking.PowerMaxMasking, '_get_or_create_storage_group',
