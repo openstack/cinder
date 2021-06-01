@@ -89,7 +89,7 @@ guide in review priorities.
 Targeting patches should be done by Cinder Core Review Team members.
 If a patch developer feels that a patch should be targeted to a
 milestone the developer should bring the request up to the Cinder
-team in a weekly meeting or on the #openstack-cinder Freenode IRC
+team in a weekly meeting or on the ``#openstack-cinder`` IRC
 channel.
 
 Reviewing Vendor Patches
