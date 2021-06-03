@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage `bug #1930748
+    <https://bugs.launchpad.net/cinder/+bug/1930748>`_: Fixed issues
+    with multiattched volumes being diconnected from a backend when
+    still listed as an attachment to an instance.
