@@ -604,6 +604,7 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
 
         vol.volume_type = voltype
         vol.volume_type_id = voltype.id
+        vol.volume_attachment = None
 
         return vol, vol_name
 
@@ -3716,9 +3717,9 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         self.driver.terminate_connection(vol, FC_CONNECTOR)
         mock_disconnect.assert_has_calls([
             mock.call(mock_secondary, vol, FC_CONNECTOR,
-                      remove_remote_hosts=False),
+                      is_multiattach=False, remove_remote_hosts=False),
             mock.call(self.array, vol, FC_CONNECTOR,
-                      remove_remote_hosts=False)
+                      is_multiattach=False, remove_remote_hosts=False)
         ])
 
 
