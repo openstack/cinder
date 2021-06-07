@@ -44,3 +44,5 @@ lsscsi
 qemu-img [platform:redhat]
 qemu-tools [platform:suse]
 qemu-utils [platform:dpkg]
+libcgroup-tools [platform:rpm]
+cgroup-tools [platform:dpkg]
