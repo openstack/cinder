@@ -4346,3 +4346,18 @@ class NetAppCmodeClientTestCase(test.TestCase):
         mock_send_request.assert_called_once_with('lun-copy-cancel',
                                                   api_args,
                                                   enable_tunneling=False)
+
+    def test_rename_file(self):
+        self.mock_object(self.client.connection, 'send_request')
+
+        orig_file_name = '/vol/fake_vol/volume-%s' % self.fake_volume
+        new_file_name = '/vol/fake_vol/new-volume-%s' % self.fake_volume
+
+        self.client.rename_file(orig_file_name, new_file_name)
+
+        api_args = {
+            'from-path': orig_file_name,
+            'to-path': new_file_name,
+        }
+        self.client.connection.send_request.assert_called_once_with(
+            'file-rename-file', api_args)

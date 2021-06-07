@@ -392,11 +392,27 @@ class NetAppNfsDriver(driver.ManageableVD,
 
         return nfs_server_ip + ':' + export_path
 
+    def revert_to_snapshot(self, context, volume, snapshot):
+        """Revert a volume to a given snapshot.
+
+        For a FlexGroup pool, the operation relies on the NFS generic driver
+        because the ONTAP clone file is not supported by FlexGroup yet.
+        """
+        if (self._is_flexgroup(vol_id=snapshot['volume_id']) and
+                not self._is_flexgroup_clone_file_supported()):
+            super(NetAppNfsDriver, self).revert_to_snapshot(context, volume,
+                                                            snapshot)
+        else:
+            self._revert_to_snapshot(volume, snapshot)
+
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
                                        volume_id, share=None,
                                        is_snapshot=False,
                                        source_snapshot=None):
         """Clone backing file for Cinder volume."""
+        raise NotImplementedError()
+
+    def _revert_to_snapshot(self, volume, snapshot):
         raise NotImplementedError()
 
     def _is_flexgroup(self, vol_id=None, host=None):

@@ -138,3 +138,6 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
 
     def migrate_volume(self, context, volume, host):
         return self.library.migrate_volume(context, volume, host)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        return self.library.revert_to_snapshot(volume, snapshot)
