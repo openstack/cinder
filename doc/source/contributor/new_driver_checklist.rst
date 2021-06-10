@@ -24,6 +24,7 @@ Review Checklist
 
 * Common gotchas
 
+  * Code should use ``volume.name_id`` instead of ``volume.id``.
   * Handles detach where ``connector == None`` for force detach
   * Create from snapshot and clone properly account for new volume size being
     larger than original volume size

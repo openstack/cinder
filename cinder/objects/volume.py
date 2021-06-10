@@ -75,7 +75,11 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
     # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
+        # id is the user facing UUID that should be passed to API calls
         'id': fields.UUIDField(),
+        # _name_id is the real volume's UUID that should be used by the driver
+        # when it is set.  This is used when migrating a volume.  Property
+        # name_id is provided for convenience.
         '_name_id': fields.UUIDField(nullable=True),
         'ec2_id': fields.UUIDField(nullable=True),
         'user_id': fields.StringField(nullable=True),
@@ -154,6 +158,22 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
 
     @property
     def name_id(self):
+        """Actual volume's UUID for driver usage.
+
+        There may be two different UUIDs for the same volume, the user facing
+        one, and the one the driver should be using.
+
+        When a volume is created these two are the same, but when doing a
+        generic migration (create new volume, then copying data) they will be
+        different if we were unable to rename the new volume in the final
+        migration steps.
+
+        So the volume will have been created using the new volume's UUID and
+        the driver will have to look for it using that UUID, but the user on
+        the other hand will keep referencing the volume with the original UUID.
+
+        This property facilitates using the right UUID in the driver's code.
+        """
         return self.id if not self._name_id else self._name_id
 
     @name_id.setter

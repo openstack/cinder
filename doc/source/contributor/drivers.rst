@@ -171,6 +171,23 @@ The LVM driver is our reference for all new driver implementations. The
 information below can provide additional documentation for the methods that
 volume drivers need to implement.
 
+Volume ID
+`````````
+
+Drivers should always get a volume's ID using the ``name_id`` attribute instead
+of the ``id`` attribute.
+
+A Cinder volume may have two different UUIDs, a user facing one, and one the
+driver should use.
+
+When a volume is created these two are the same, but when doing a generic
+migration (create new volume, then copying data) they will be different if we
+were unable to rename the new volume in the final migration steps.
+
+So the volume will have been created using the new volume's UUID and the driver
+will have to look for it using that UUID, but the user on the other hand will
+keep referencing the volume with the original UUID.
+
 Base Driver Interface
 `````````````````````
 The methods documented below are the minimum required interface for a volume
