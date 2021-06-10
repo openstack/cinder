@@ -36,7 +36,7 @@ Request
 
    - project_id: project_id_path
    - host: host_query
-   - binary: binary_query
+   - binary: service_binary_query
 
 Response Parameters
 -------------------
