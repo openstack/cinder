@@ -119,8 +119,9 @@ class PowerMaxProvision(object):
         :param volume_name: the volume name
         """
         start_time = time.time()
-        LOG.debug("Delete volume %(volume_name)s from srp.",
-                  {'volume_name': volume_name})
+        LOG.debug("Delete volume %(volume_name)s with device id %(dev)s "
+                  "from srp.", {'volume_name': volume_name,
+                                'dev': device_id})
         self.rest.delete_volume(array, device_id)
         LOG.debug("Delete volume took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(

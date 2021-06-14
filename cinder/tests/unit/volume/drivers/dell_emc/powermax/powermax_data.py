@@ -665,6 +665,13 @@ class PowerMaxData(object):
                         {'host_lun_address': '0003'}]},
                    {}]
 
+    maskingview_no_lun = {
+        'maskingViewId': masking_view_name_f,
+        'portGroupId': port_group_name_f,
+        'storageGroupId': storagegroup_name_f,
+        'hostId': initiatorgroup_name_f,
+        'maskingViewConnection': []}
+
     portgroup = [{'portGroupId': port_group_name_f,
                   'symmetrixPortKey': [
                       {'directorId': 'FA-1D',

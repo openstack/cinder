@@ -741,7 +741,9 @@ class PowerMaxRestTest(test.TestCase):
             mck_modify.assert_called_once_with(array, device_id,
                                                extend_vol_payload)
 
-    def test_legacy_delete_volume(self):
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       return_value=[])
+    def test_legacy_delete_volume(self, mock_sgs):
         device_id = self.data.device_id
         vb_except = exception.VolumeBackendAPIException
         with mock.patch.object(self.rest, 'delete_resource') as mock_delete, (
@@ -755,20 +757,27 @@ class PowerMaxRestTest(test.TestCase):
             mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'volume', device_id)
 
-    def test_delete_volume(self):
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       return_value=[])
+    def test_delete_volume(self, mock_sgs):
         device_id = self.data.device_id
         self.rest.ucode_major_level = utils.UCODE_5978
         self.rest.ucode_minor_level = utils.UCODE_5978_HICKORY
         with mock.patch.object(
-            self.rest, 'delete_resource') as mock_delete, (
-                mock.patch.object(
-                    self.rest, '_modify_volume')) as mock_modify:
-
+                self.rest, 'delete_resource') as mock_delete:
             self.rest.delete_volume(self.data.array, device_id)
-            mod_call_count = mock_modify.call_count
-            self.assertEqual(1, mod_call_count)
             mock_delete.assert_called_once_with(
                 self.data.array, 'sloprovisioning', 'volume', device_id)
+
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_groups_from_volume',
+                       return_value=['OS-SG'])
+    def test_delete_volume_in_sg(self, mock_sgs):
+        device_id = self.data.device_id
+        self.rest.ucode_major_level = utils.UCODE_5978
+        self.rest.ucode_minor_level = utils.UCODE_5978_HICKORY
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.rest.delete_volume, self.data.array, device_id)
 
     def test_rename_volume(self):
         device_id = self.data.device_id
@@ -846,6 +855,14 @@ class PowerMaxRestTest(test.TestCase):
         host_lun_id = self.rest.find_mv_connections_for_vol(
             self.data.array, self.data.masking_view_name_f, device_id)
         self.assertEqual(ref_lun_id, host_lun_id)
+
+    def test_find_mv_connections_for_vol_missing_host_lun_address(self):
+        with mock.patch.object(self.rest, 'get_resource',
+                               return_value=self.data.maskingview_no_lun):
+            host_lun_id = self.rest.find_mv_connections_for_vol(
+                self.data.array, self.data.masking_view_name_f,
+                self.data.device_id)
+            self.assertIsNone(host_lun_id)
 
     def test_find_mv_connections_for_vol_failed(self):
         # no masking view info retrieved

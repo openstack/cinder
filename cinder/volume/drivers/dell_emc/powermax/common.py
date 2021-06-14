@@ -2057,15 +2057,32 @@ class PowerMaxCommon(object):
 
         device_id = self._find_device_on_array(volume, extra_specs)
         if device_id is None:
-            LOG.error("Volume %(name)s not found on the array. "
-                      "No volume to delete.",
-                      {'name': volume_name})
+            LOG.warning("Volume %(name)s not found on the array. "
+                        "No volume to delete.",
+                        {'name': volume_name})
             return volume_name
 
         array = extra_specs[utils.ARRAY]
         if self.utils.is_replication_enabled(extra_specs):
             self._validate_rdfg_status(array, extra_specs)
 
+        self._cleanup_device_retry(array, device_id, extra_specs)
+
+        # Remove from any storage groups and cleanup replication
+        self._remove_vol_and_cleanup_replication(
+            array, device_id, volume_name, extra_specs, volume)
+        self._delete_from_srp(
+            array, device_id, volume_name, extra_specs)
+        return volume_name
+
+    @retry(retry_exc_tuple, interval=1, retries=3)
+    def _cleanup_device_retry(self, array, device_id, extra_specs):
+        """Cleanup snapvx on the device
+
+        :param array: the serial number of the array -- str
+        :param device_id: the device id -- str
+        :param extra_specs: extra specs -- dict
+        """
         # Check if the volume being deleted is a
         # source or target for copy session
         self._cleanup_device_snapvx(array, device_id, extra_specs)
@@ -2083,24 +2100,12 @@ class PowerMaxCommon(object):
         if snapvx_target_details:
             source_device = snapvx_target_details.get('source_vol_id')
             snapshot_name = snapvx_target_details.get('snap_name')
-            raise exception.VolumeBackendAPIException(_(
-                'Cannot delete device %s as it is currently a linked target '
-                'of snapshot %s. The source device of this link is %s. '
-                'Please try again once this snapshots is no longer '
-                'active.') % (device_id, snapshot_name, source_device))
-
-        # Remove from any storage groups and cleanup replication
-        self._remove_vol_and_cleanup_replication(
-            array, device_id, volume_name, extra_specs, volume)
-        # Check if volume is in any storage group
-        sg_list = self.rest.get_storage_groups_from_volume(array, device_id)
-        if sg_list:
-            LOG.error("Device %(device_id)s is in storage group(s) "
-                      "%(sg_list)s prior to delete. Delete will fail.",
-                      {'device_id': device_id, 'sg_list': sg_list})
-        self._delete_from_srp(
-            array, device_id, volume_name, extra_specs)
-        return volume_name
+            if snapshot_name:
+                raise exception.VolumeBackendAPIException(_(
+                    'Cannot delete device %s as it is currently a linked '
+                    'target of snapshot %s. The source device of this link '
+                    'is %s. Please try again once this snapshot is no longer '
+                    'active.') % (device_id, snapshot_name, source_device))
 
     def _create_volume(self, volume, volume_name, volume_size, extra_specs):
         """Create a volume.
@@ -2162,14 +2167,39 @@ class PowerMaxCommon(object):
                     array, volume, volume_name, volume_size, extra_specs,
                     storagegroup_name, rep_mode))
 
-        # Compare volume ID against identifier on array. Update if needed.
-        # This can occur in cases where multiple edits are occurring at once.
-        found_device_id = self.rest.find_volume_device_id(array, volume_name)
-        returning_device_id = volume_dict['device_id']
-        if found_device_id != returning_device_id:
-            volume_dict['device_id'] = found_device_id
+        device_id = self._get_device_id_from_identifier(
+            array, volume_name, volume_dict['device_id'])
+        if device_id:
+            volume_dict['device_id'] = device_id
 
         return volume_dict, rep_update, rep_info_dict
+
+    def _get_device_id_from_identifier(
+            self, array, volume_name, orig_device_id):
+        """Get the device(s) using the identifier name
+
+        :param array: the serial number of the array -- str
+        :param volume_name: the user supplied volume name -- str
+        :param orig_device_id: the original device id -- str
+        :returns: device id -- str
+        """
+        # Compare volume ID against identifier on array. Update if needed.
+        # This can occur in cases where multiple edits are occurring at once.
+        dev_id_from_identifier = self.rest.find_volume_device_id(
+            array, volume_name)
+        if isinstance(dev_id_from_identifier, list):
+            if orig_device_id in dev_id_from_identifier:
+                return orig_device_id
+        else:
+            if dev_id_from_identifier != orig_device_id:
+                LOG.warning(
+                    "The device id %(dev_ident)s associated with %(vol_name)s "
+                    "is not the same as device %(dev_orig)s.",
+                    {'dev_ident': dev_id_from_identifier,
+                     'vol_name': volume_name,
+                     'dev_orig': orig_device_id})
+                return dev_id_from_identifier
+        return None
 
     @coordination.synchronized("emc-nonrdf-vol-{storagegroup_name}-{array}")
     def _create_non_replicated_volume(
@@ -2195,6 +2225,7 @@ class PowerMaxCommon(object):
             return volume_dict
         except Exception as e:
             try:
+                self._reset_identifier_on_rollback(array, volume_name)
                 # Attempt cleanup of storage group post exception.
                 updated_devices = set(self.rest.get_volumes_in_storage_group(
                     array, storagegroup_name))
@@ -2518,6 +2549,7 @@ class PowerMaxCommon(object):
                 LOG.info("The tag list %(tag_list)s has been verified.",
                          {'tag_list': array_tag_list})
 
+    @retry(retry_exc_tuple, interval=3, retries=3)
     def _delete_from_srp(self, array, device_id, volume_name,
                          extra_specs):
         """Delete from srp.
@@ -2534,11 +2566,17 @@ class PowerMaxCommon(object):
             self.provision.delete_volume_from_srp(
                 array, device_id, volume_name)
         except Exception as e:
-            error_message = (_("Failed to delete volume %(volume_name)s. "
-                               "Exception received: %(e)s") %
-                             {'volume_name': volume_name,
-                              'e': six.text_type(e)})
+            error_message = (_(
+                "Failed to delete volume %(volume_name)s with device id "
+                "%(dev)s. Exception received: %(e)s.") %
+                {'volume_name': volume_name,
+                 'dev': device_id,
+                 'e': six.text_type(e)})
             LOG.error(error_message)
+            LOG.warning("Attempting device cleanup after a failed delete of: "
+                        "%(name)s. device_id: %(device_id)s.",
+                        {'name': volume_name, 'device_id': device_id})
+            self._cleanup_device_snapvx(array, device_id, extra_specs)
             raise exception.VolumeBackendAPIException(message=error_message)
 
     def _remove_vol_and_cleanup_replication(
@@ -2953,7 +2991,7 @@ class PowerMaxCommon(object):
 
         return source_device_id
 
-    @retry(retry_exc_tuple, interval=1, retries=3)
+    @retry(retry_exc_tuple, interval=10, retries=3)
     def _cleanup_device_snapvx(
             self, array, device_id, extra_specs):
         """Perform any snapvx cleanup before creating clones or snapshots
@@ -2990,17 +3028,15 @@ class PowerMaxCommon(object):
         :param array: the array serial number
         :param extra_specs: extra specifications
         """
-        try:
-            session_unlinked = self._unlink_snapshot(
-                session, array, extra_specs)
-            if session_unlinked:
-                self._delete_temp_snapshot(session, array)
-        except exception.VolumeBackendAPIException as e:
-            # Ignore and continue as snapshot has been unlinked
-            # successfully with incorrect status code returned
-            if ('404' and session['snap_name'] and
-                    'does not exist' in six.text_type(e)):
-                pass
+        session_unlinked = self._unlink_snapshot(
+            session, array, extra_specs)
+        if session_unlinked:
+            self._delete_temp_snapshot(session, array)
+        else:
+            LOG.warning(
+                "Snap name %(snap)s is still linked. The delete of "
+                "the temporary snapshot has not occurred.",
+                {'snap': session.get('snap_name')})
 
     def _unlink_snapshot(self, session, array, extra_specs):
         """Helper for unlinking temporary snapshot during cleanup.
@@ -3013,10 +3049,19 @@ class PowerMaxCommon(object):
         snap_name = session.get('snap_name')
         source = session.get('source_vol_id')
         snap_id = session.get('snapid')
+        if snap_id is None:
+            exception_message = (
+                _("Unable to get snapid from session %(session)s for source "
+                  "device %(dev)s.  Retrying...")
+                % {'dev': source, 'session': session})
+            # Warning only as there will be a retry
+            LOG.warning(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
         snap_info = self.rest.get_volume_snap(
             array, source, snap_name, snap_id)
-        is_linked = snap_info.get('linkedDevices')
+        is_linked = snap_info.get('linkedDevices') if snap_info else None
 
         target, cm_enabled = None, False
         if session.get('target_vol_id'):
@@ -3252,7 +3297,7 @@ class PowerMaxCommon(object):
         volume_identifier = None
         # Check if volume is already cinder managed
         if volume_details.get('volume_identifier'):
-            volume_identifier = volume_details['volume_identifier']
+            volume_identifier = volume_details.get('volume_identifier')
             if volume_identifier.startswith(utils.VOLUME_ELEMENT_NAME_PREFIX):
                 raise exception.ManageExistingAlreadyManaged(
                     volume_ref=volume_id)
@@ -3569,6 +3614,7 @@ class PowerMaxCommon(object):
                      "they can be managed into Cinder.")
             return manageable_vols
 
+        volumes = volumes or list()
         for device in volumes:
             # Determine if volume is valid for management
             if self.utils.is_volume_manageable(device):
@@ -3677,6 +3723,7 @@ class PowerMaxCommon(object):
                      "Cinder.")
             return manageable_snaps
 
+        volumes = volumes or list()
         for device in volumes:
             # Determine if volume is valid for management
             manageable_snaps = self._is_snapshot_valid_for_management(
@@ -4760,7 +4807,7 @@ class PowerMaxCommon(object):
             if self.rest.is_next_gen_array(target_array_serial):
                 target_workload = 'NONE'
         except IndexError:
-            LOG.error("Error parsing array, pool, SLO and workload.")
+            LOG.debug("Error parsing array, pool, SLO and workload.")
             return false_ret
 
         if self.promotion:
@@ -6092,7 +6139,7 @@ class PowerMaxCommon(object):
             # Get the volume group dict for getting the group name
             volume_group = (self._find_volume_group(array, source_group))
             if volume_group and volume_group.get('name'):
-                vol_grp_name = volume_group['name']
+                vol_grp_name = volume_group.get('name')
             if vol_grp_name is None:
                 LOG.warning("Cannot find generic volume group %(grp_ss_id)s. "
                             "on array %(array)s",
@@ -7107,6 +7154,8 @@ class PowerMaxCommon(object):
         :param device_id: the device ID
         :returns: dict -- volume metadata
         """
+        if device_id is None:
+            return dict()
         vol_info = self.rest._get_private_volume(array, device_id)
         vol_header = vol_info['volumeHeader']
         array_model, __ = self.rest.get_array_model_info(array)
@@ -7576,3 +7625,26 @@ class PowerMaxCommon(object):
                 management_sg_name, rdf_group_number, missing_volumes_str)
             is_valid = False
         return is_valid
+
+    def _reset_identifier_on_rollback(self, array, volume_name):
+        """Reset the user supplied name on a rollback
+
+        :param array: the serial number -- str
+        :param volume_name: the volume name assigned -- str
+        """
+        # Find volume based on identifier name
+        dev_id_from_identifier = self.rest.find_volume_device_id(
+            array, volume_name)
+        if dev_id_from_identifier and isinstance(
+                dev_id_from_identifier, str):
+            vol_identifier_name = self.rest.find_volume_identifier(
+                array, dev_id_from_identifier)
+            if vol_identifier_name and (
+                    vol_identifier_name == volume_name):
+                LOG.warning(
+                    "Attempting to reset name of %(vol_name)s on device "
+                    "%(dev_ident)s on a create volume rollback operation.",
+                    {'vol_name': volume_name,
+                     'dev_ident': dev_id_from_identifier})
+                self.rest.rename_volume(
+                    array, dev_id_from_identifier, None)
