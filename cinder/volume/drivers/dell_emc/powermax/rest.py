@@ -925,7 +925,8 @@ class PowerMaxRest(object):
         parent_sg = self.get_storage_group(array, parent_name)
         if parent_sg and parent_sg.get('child_storage_group'):
             child_sg_list = parent_sg['child_storage_group']
-            if child_name in child_sg_list:
+            if child_name.lower() in (
+                    child.lower() for child in child_sg_list):
                 return True
         return False
 

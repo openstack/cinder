@@ -130,9 +130,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Use of snap id instead of generation (bp powermax-snapset-ids)
               - Support for Failover Abilities (bp/powermax-failover-abilities)
         4.4.0 - Early check for status of port
+        4.4.1 - Allow for case mismatch in SGs (bug #1929429)
     """
 
-    VERSION = "4.4.0"
+    VERSION = "4.4.1"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_PowerMAX_CI"
