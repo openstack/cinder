@@ -628,6 +628,22 @@ class PowerMaxRestTest(test.TestCase):
         self.assertTrue(is_child1)
         self.assertFalse(is_child2)
 
+    def test_is_child_sg_in_parent_sg_case_not_matching(self):
+        lower_case_host = 'OS-hostx-SRP_1-DiamondDSS-os-fibre-PG'
+
+        is_child1 = self.rest.is_child_sg_in_parent_sg(
+            self.data.array, lower_case_host,
+            self.data.parent_sg_f)
+        self.assertTrue(is_child1)
+
+    def test_is_child_sg_in_parent_sg_spelling_mistake(self):
+        lower_case_host = 'OS-hosty-SRP_1-DiamondDSS-os-fiber-PG'
+
+        is_child1 = self.rest.is_child_sg_in_parent_sg(
+            self.data.array, lower_case_host,
+            self.data.parent_sg_f)
+        self.assertFalse(is_child1)
+
     def test_add_child_sg_to_parent_sg(self):
         payload = {'editStorageGroupActionParam': {
             'expandStorageGroupParam': {

@@ -131,9 +131,10 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
               - Support for Failover Abilities (bp/powermax-failover-abilities)
         4.3.1 - Fix non-temporary snapshot delete (#1887962)
         4.3.2 - Fix for create snapshot (#1939139)
+        4.3.3 - Allow for case mismatch in SGs (bug #1929429)
     """
 
-    VERSION = "4.3.2"
+    VERSION = "4.3.3"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
