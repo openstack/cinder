@@ -139,9 +139,10 @@ class PowerMaxISCSIDriver(san.SanISCSIDriver):
         4.2.10 - Replica RDFG suspend fix (#1892718)
         4.2.11 - Fix non-temporary snapshot delete (#1887962)
         4.2.12 - Fix for create snapshot (#1939139)
+        4.2.13 - Allow for case mismatch in SGs (bug #1929429)
     """
 
-    VERSION = "4.2.12"
+    VERSION = "4.2.13"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    PowerMax driver `bug #1929429
+    <https://bugs.launchpad.net/cinder/+bug/1929429>`_: Fixes
+    child/parent storage group check so that a pattern match
+    is not case sensitive. For example, myStorageGroup should
+    equal MYSTORAGEGROUP and mystoragegroup.
