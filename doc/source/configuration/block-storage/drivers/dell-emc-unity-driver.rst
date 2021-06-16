@@ -46,7 +46,7 @@ Supported operations
 Driver configuration
 ~~~~~~~~~~~~~~~~~~~~
 
-.. note:: The following instructions should all be performed on Black Storage
+.. note:: The following instructions should all be performed on Block Storage
           nodes.
 
 #. Install `storops` from pypi:
