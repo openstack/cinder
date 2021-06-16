@@ -137,4 +137,7 @@ ploop: CommandFilter, ploop, root
 mount.quobyte: CommandFilter, mount.quobyte, root
 umount.quobyte: CommandFilter, umount.quobyte, root
 
+# cinder/volume/drivers/dell_emc/powerstore/nfs.py
+dellfcopy: CommandFilter, dellfcopy, root
+
 cryptsetup: CommandFilter, cryptsetup, root
