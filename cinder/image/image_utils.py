@@ -952,9 +952,11 @@ def replace_xenserver_image_with_coalesced_vhd(image_file):
 def decode_cipher(cipher_spec, key_size):
     """Decode a dm-crypt style cipher specification string
 
-       The assumed format being cipher[:keycount]-chainmode-ivmode[:ivopts] as
-       documented under linux/Documentation/device-mapper/dm-crypt.txt in the
-       kernel source tree.
+       The assumed format being cipher-chainmode-ivmode, similar to that
+       documented under
+       linux/Documentation/admin-guide/device-mapper/dm-crypt.txt in the
+       kernel source tree.  Cinder does not support the [:keycount] or
+       [:ivopts] options.
     """
     cipher_alg, cipher_mode, ivgen_alg = cipher_spec.split('-')
     cipher_alg = cipher_alg + '-' + str(key_size)
