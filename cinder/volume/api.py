@@ -1248,10 +1248,6 @@ class API(base.Base):
                  resource=snapshot)
         return snapshot.metadata
 
-    def get_snapshot_metadata_value(self, snapshot, key):
-        LOG.info("Get snapshot metadata value not implemented.",
-                 resource=snapshot)
-
     def get_volumes_image_metadata(self, context):
         context.authorize(vol_meta_policy.GET_POLICY)
         db_data = self.db.volume_glance_metadata_get_all(context)
