@@ -689,15 +689,16 @@ class PowerMaxProvision(object):
                    'tgtGroup': target_group_name})
         # Link the snapshot
         self.rest.modify_volume_snap(
-            array, None, None, snap_name, extra_specs, link=True,
-            list_volume_pairs=list_volume_pairs)
+            array, None, None, snap_name, extra_specs, snap_id=snap_id,
+            link=True, list_volume_pairs=list_volume_pairs)
         # Unlink the snapshot
         LOG.debug("Unlinking Snap Vx snapshot: source group: %(srcGroup)s "
                   "targetGroup: %(tgtGroup)s.",
                   {'srcGroup': source_group_name,
                    'tgtGroup': target_group_name})
-        self._unlink_volume(array, None, None, snap_name, extra_specs,
-                            list_volume_pairs=list_volume_pairs)
+        self._unlink_volume(
+            array, None, None, snap_name, extra_specs, snap_id=snap_id,
+            list_volume_pairs=list_volume_pairs)
         # Delete the snapshot if necessary
         if delete_snapshot:
             LOG.debug("Deleting Snap Vx snapshot: source group: %(srcGroup)s "

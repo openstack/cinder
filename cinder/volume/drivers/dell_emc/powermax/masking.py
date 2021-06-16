@@ -765,7 +765,7 @@ class PowerMaxMasking(object):
                           'sg_name': storagegroup_name})
             else:
                 self.rest.add_vol_to_sg(serial_number, sg_name,
-                                        device_id, extra_specs, force)
+                                        device_id, extra_specs, force=force)
         do_add_volume_to_sg(storagegroup_name, serial_number)
 
         LOG.debug("Add volume to storagegroup took: %(delta)s H:MM:SS.",
