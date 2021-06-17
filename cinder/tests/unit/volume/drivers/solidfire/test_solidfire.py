@@ -151,6 +151,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                            'login': 'admin'},
               'name': 'AutoTest2-6AjG-FOR-TEST-ONLY',
               'clusterPairID': 33,
+              'clusterAPIVersion': '9.4',
               'uuid': '9c499d4b-8fff-48b4-b875-27601d5d9889',
               'svip': '10.10.23.2',
               'mvipNodeID': 1,
@@ -3327,7 +3328,17 @@ class SolidFireVolumeTestCase(test.TestCase):
             cinder_vols.append(vol)
 
         mock_map_sf_volumes.return_value = sf_vols
-        mock_create_cluster_reference.return_value = self.cluster_pairs[0]
+
+        self.configuration.replication_device = []
+
+        reset_mocks()
+        drv_args = {'active_backend_id': None}
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
+                                        **drv_args)
+
+        self.assertRaises(exception.UnableToFailOver,
+                          sfv.failover_host, ctx, cinder_vols, 'fake', None)
+        mock_map_sf_volumes.assert_not_called()
 
         fake_replication_device = {'backend_id': 'fake',
                                    'mvip': '0.0.0.0',
@@ -3345,14 +3356,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         mock_map_sf_volumes.assert_not_called()
 
         reset_mocks()
-        drv_args = {'active_backend_id': 'default'}
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration,
-                                        **drv_args)
-        self.assertRaises(exception.UnableToFailOver,
-                          sfv.failover_host, ctx, cinder_vols, 'default', None)
-        mock_map_sf_volumes.assert_not_called()
-
-        reset_mocks()
         drv_args = {'active_backend_id': None}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration,
                                         **drv_args)
@@ -3361,15 +3364,28 @@ class SolidFireVolumeTestCase(test.TestCase):
                           secondary_id='not_fake_id', groups=None)
         mock_map_sf_volumes.assert_not_called()
 
+        mock_create_cluster_reference.return_value = self.cluster_pairs[0]
+
         reset_mocks()
-        drv_args = {'active_backend_id': None}
+        drv_args = {'active_backend_id': 'secondary'}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration,
                                         **drv_args)
-        sfv.cluster_pairs = [None]
-        self.assertRaises(exception.UnableToFailOver,
-                          sfv.failover_host, ctx, cinder_vols,
-                          secondary_id='fake', groups=None)
-        mock_map_sf_volumes.assert_not_called()
+        sfv.cluster_pairs = self.cluster_pairs
+        sfv.cluster_pairs[0]['backend_id'] = 'fake'
+        sfv.replication_enabled = True
+        cluster_id, updates, _ = sfv.failover_host(
+            ctx, cinder_vols, secondary_id='default', groups=None)
+        self.assertEqual(5, len(updates))
+        for update in updates:
+            self.assertEqual(fields.ReplicationStatus.ENABLED,
+                             update['updates']['replication_status'])
+        self.assertEqual('', cluster_id)
+        mock_get_create_account.assert_called()
+        mock_failover_volume.assert_called()
+        mock_map_sf_volumes.assert_called()
+        mock_update_cluster_status.assert_called()
+        mock_set_cluster_pairs.assert_called()
+        mock_create_cluster_reference.assert_called()
 
         reset_mocks()
         drv_args = {'active_backend_id': None}
@@ -3389,11 +3405,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         mock_get_create_account.assert_called()
         mock_failover_volume.assert_called()
         mock_map_sf_volumes.assert_called()
-        mock_get_cluster_info.assert_not_called()
         mock_update_cluster_status.assert_called()
         mock_set_cluster_pairs.assert_called()
         mock_create_cluster_reference.assert_called()
-        mock_issue_api_request.assert_not_called()
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
