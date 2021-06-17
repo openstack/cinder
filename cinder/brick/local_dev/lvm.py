@@ -161,12 +161,14 @@ class LVM(executor.Executor):
                  backoff_rate=0.5)
     def _run_lvm_command(self,
                          cmd_arg_list: list,
-                         root_helper: str,
+                         root_helper: str = None,
                          run_as_root: bool = True) -> tuple:
         """Run LVM commands with a retry on code 139 to work around LVM bugs.
 
         Refer to LP bug 1901783, LP bug 1932188.
         """
+        if not root_helper:
+            root_helper = self._root_helper
 
         (out, err) = self._execute(*cmd_arg_list,
                                    root_helper=root_helper,
@@ -193,9 +195,7 @@ class LVM(executor.Executor):
         free_space = 0.0
 
         try:
-            (out, err) = self._run_lvm_command(cmd,
-                                               root_helper=self._root_helper,
-                                               run_as_root=True)
+            (out, err) = self._run_lvm_command(cmd)
             if out is not None:
                 out = out.strip()
                 data = out.split(':')
@@ -554,9 +554,7 @@ class LVM(executor.Executor):
                                       'size': size_str,
                                       'free': self.vg_free_space})
 
-        self._execute(*cmd,
-                      root_helper=self._root_helper,
-                      run_as_root=True)
+        self._run_lvm_command(cmd)
 
         self.vg_thin_pool = name
         return size_str
@@ -590,9 +588,7 @@ class LVM(executor.Executor):
                 cmd.extend(['-R', str(rsize)])
 
         try:
-            self._execute(*cmd,
-                          root_helper=self._root_helper,
-                          run_as_root=True)
+            self._run_lvm_command(cmd)
         except putils.ProcessExecutionError as err:
             LOG.exception('Error creating Volume')
             LOG.error('Cmd     :%s', err.cmd)
@@ -623,9 +619,7 @@ class LVM(executor.Executor):
             cmd.extend(['-L', '%sg' % (size)])
 
         try:
-            self._execute(*cmd,
-                          root_helper=self._root_helper,
-                          run_as_root=True)
+            self._run_lvm_command(cmd)
         except putils.ProcessExecutionError as err:
             LOG.exception('Error creating snapshot')
             LOG.error('Cmd     :%s', err.cmd)
@@ -643,9 +637,7 @@ class LVM(executor.Executor):
     def _lv_is_active(self, name):
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
                                     'Attr', '%s/%s' % (self.vg_name, name)]
-        out, _err = self._execute(*cmd,
-                                  root_helper=self._root_helper,
-                                  run_as_root=True)
+        out, _err = self._run_lvm_command(cmd)
         if out:
             out = out.strip()
             if (out[4] == 'a'):
@@ -791,9 +783,7 @@ class LVM(executor.Executor):
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
                                     'Attr', '--readonly',
                                     '%s/%s' % (self.vg_name, name)]
-        out, _err = self._execute(*cmd,
-                                  root_helper=self._root_helper,
-                                  run_as_root=True)
+        out, _err = self._run_lvm_command(cmd)
         if out:
             out = out.strip()
             if (out[0] == 'o') or (out[0] == 'O'):
@@ -804,9 +794,7 @@ class LVM(executor.Executor):
         """Return True if LV is a snapshot, False otherwise."""
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
                                     'Attr', '%s/%s' % (self.vg_name, name)]
-        out, _err = self._execute(*cmd,
-                                  root_helper=self._root_helper,
-                                  run_as_root=True)
+        out, _err = self._run_lvm_command(cmd)
         out = out.strip()
         if out:
             if (out[0] == 's'):
@@ -817,9 +805,7 @@ class LVM(executor.Executor):
         """Return True if LV is currently open, False otherwise."""
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
                                     'Attr', '%s/%s' % (self.vg_name, name)]
-        out, _err = self._execute(*cmd,
-                                  root_helper=self._root_helper,
-                                  run_as_root=True)
+        out, _err = self._run_lvm_command(cmd)
         out = out.strip()
         if out:
             if (out[5] == 'o'):
@@ -830,9 +816,7 @@ class LVM(executor.Executor):
         """Return the origin of an LV that is a snapshot, None otherwise."""
         cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
                                     'Origin', '%s/%s' % (self.vg_name, name)]
-        out, _err = self._execute(*cmd,
-                                  root_helper=self._root_helper,
-                                  run_as_root=True)
+        out, _err = self._run_lvm_command(cmd)
         out = out.strip()
         if out:
             return out
