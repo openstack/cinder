@@ -397,7 +397,7 @@ class BrickLvmTestCase(test.TestCase):
         pool_name = vg_name + "-pool"
         self.vg.create_thin_pool(pool_name, "1G")
 
-        with mock.patch.object(self.vg, '_execute'):
+        with mock.patch.object(self.vg, '_execute', return_value=(0, 0)):
             self.vg.create_volume("test", "1G", lv_type='thin')
             if self.configuration.lvm_suppress_fd_warnings is False:
                 self.vg._execute.assert_called_once_with(
@@ -473,7 +473,7 @@ class BrickLvmTestCase(test.TestCase):
                     self.vg.deactivate_lv.assert_not_called()
 
     def test_lv_deactivate(self):
-        with mock.patch.object(self.vg, '_execute'):
+        with mock.patch.object(self.vg, '_execute', return_value=(0, 0)):
             is_active_mock = mock.Mock()
             is_active_mock.return_value = False
             self.vg._lv_is_active = is_active_mock
@@ -482,7 +482,7 @@ class BrickLvmTestCase(test.TestCase):
 
     @mock.patch('time.sleep')
     def test_lv_deactivate_timeout(self, _mock_sleep):
-        with mock.patch.object(self.vg, '_execute'):
+        with mock.patch.object(self.vg, '_execute', return_value=(0, 0)):
             is_active_mock = mock.Mock()
             is_active_mock.return_value = True
             self.vg._lv_is_active = is_active_mock
