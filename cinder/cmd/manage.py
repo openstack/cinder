@@ -109,14 +109,6 @@ def args(*args, **kwargs):
     return _decorator
 
 
-def _db_error(caught_exception):
-    print('%s' % caught_exception)
-    print(_("The above error may show that the database has not "
-            "been created.\nPlease create a database using "
-            "'cinder-manage db sync' before running this command."))
-    sys.exit(1)
-
-
 class HostCommands(object):
     """List hosts."""
 
