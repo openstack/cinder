@@ -1003,6 +1003,20 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           unmanage_only=True)
         self.volume.delete_volume(self.context, volume)
 
+    def test_unmanage_cascade_delete_fails(self):
+        volume = tests_utils.create_volume(
+            self.context,
+            **self.volume_params)
+        self.volume.create_volume(self.context, volume)
+        manager = vol_manager.VolumeManager()
+        self.assertRaises(exception.Invalid,
+                          manager.delete_volume,
+                          self.context,
+                          volume,
+                          unmanage_only=True,
+                          cascade=True)
+        self.volume.delete_volume(self.context, volume)
+
     def test_get_volume_different_tenant(self):
         """Test can't get volume of another tenant when viewable_admin_meta."""
         volume = tests_utils.create_volume(self.context,
