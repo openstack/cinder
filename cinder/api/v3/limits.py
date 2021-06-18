@@ -33,8 +33,9 @@ class LimitsController(limits_v2.LimitsController):
 
         # TODO(wangxiyuan): Support "tenant_id" here to keep the backwards
         # compatibility. Remove it once we drop all support for "tenant".
-        if req_version.matches(None,
-                               mv.GROUP_REPLICATION) or not context.is_admin:
+        if (req_version.matches(None,
+                                mv.get_prior_version(mv.LIMITS_ADMIN_FILTER))
+                or not context.is_admin):
             params.pop('project_id', None)
             params.pop('tenant_id', None)
         project_id = params.get(
