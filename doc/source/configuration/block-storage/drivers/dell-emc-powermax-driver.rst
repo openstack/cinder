@@ -906,7 +906,7 @@ Prerequisites - PowerMax
 
    .. code-block:: console
 
-      $ openstack server add volume my_volume my_instance
+      $ openstack server add volume my_instance my_volume
 
 **Outcome - PowerMax (storage group)**
 
@@ -1010,14 +1010,14 @@ Prerequisites - PowerMax
       $ openstack volume qos create --consumer back-end \
                                     --property total_iops_sec=500 \
                                     --property total_bytes_sec=104857600 \
-                                    --property DistributionType=Always \
+                                    --property DistributionType=OnFailure \
                                     my_qos
 
 #. Associate QoS specifications with specified volume type:
 
    .. code-block:: console
 
-      $ openstack volume qos associate my_qos my_volume
+      $ openstack volume qos associate my_qos my_volume_type
 
 #. Create volume with the volume type indicated above:
 
