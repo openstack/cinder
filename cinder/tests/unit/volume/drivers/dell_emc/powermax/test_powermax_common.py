@@ -4782,3 +4782,56 @@ class PowerMaxCommonTest(test.TestCase):
             self.data.array, 'vol_name', self.data.device_id,
             self.data.extra_specs)
         mock_clean.assert_called_once()
+
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_create_device_pair',
+                       return_value={
+                           'tgt_device': tpd.PowerMaxData.device_id2})
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
+                       return_value=tpd.PowerMaxData.rdf_group_details)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(10, tpd.PowerMaxData.remote_array))
+    def test_configure_volume_replication_srp_same(
+            self, mock_rdf, mock_res, mock_rdf_grp, mock_pair):
+        volume = fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)
+        with mock.patch.object(
+                self.masking,
+                'get_or_create_default_storage_group') as mock_sg:
+            self.common.configure_volume_replication(
+                self.data.array, volume, self.data.device_id,
+                self.data.rep_extra_specs_rep_config)
+            mock_sg.assert_called_with(
+                self.data.remote_array, self.data.srp, 'Diamond', 'DSS',
+                self.data.rep_extra_specs_rep_config, False, is_re=True,
+                rep_mode='Synchronous')
+
+    @mock.patch.object(rest.PowerMaxRest, 'srdf_create_device_pair',
+                       return_value={
+                           'tgt_device': tpd.PowerMaxData.device_id2})
+    @mock.patch.object(rest.PowerMaxRest, 'get_rdf_group',
+                       return_value=tpd.PowerMaxData.rdf_group_details)
+    @mock.patch.object(
+        common.PowerMaxCommon, '_get_replication_extra_specs',
+        return_value=tpd.PowerMaxData.rep_extra_specs_rep_config)
+    @mock.patch.object(common.PowerMaxCommon, 'get_rdf_details',
+                       return_value=(10, tpd.PowerMaxData.remote_array))
+    def test_configure_volume_replication_srp_diff(
+            self, mock_rdf, mock_res, mock_rdf_grp, mock_pair):
+        volume = fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)
+
+        rep_extra_specs = deepcopy(self.data.rep_extra_specs_rep_config)
+        rep_extra_specs.update({'srp': 'REMOTE_SRP'})
+        with mock.patch.object(
+                self.masking,
+                'get_or_create_default_storage_group') as mock_sg:
+            self.common.configure_volume_replication(
+                self.data.array, volume, self.data.device_id,
+                self.data.rep_extra_specs_rep_config)
+            mock_sg.assert_called_with(
+                self.data.remote_array, self.data.srp, 'Diamond', 'DSS',
+                self.data.rep_extra_specs_rep_config, False, is_re=True,
+                rep_mode='Synchronous')

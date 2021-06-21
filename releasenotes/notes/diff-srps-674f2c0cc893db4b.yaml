@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1979666 <https://bugs.launchpad.net/cinder/+bug/1979666>`_:
+    PowerMax driver : Fixed rare case where the SRP in the local and
+    remote arrays are different when managing volumes into OpenStack.
+    For backward compatibility and name matching, the default storage
+    group will assume the SRP name of the local array on both arrays.
