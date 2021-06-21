@@ -569,9 +569,7 @@ def get_qemu_data(image_id, has_meta, disk_format_raw, dest, run_as_root,
     return data
 
 
-def fetch_verify_image(context, image_service, image_id, dest,
-                       user_id=None, project_id=None, size=None,
-                       run_as_root=True):
+def fetch_verify_image(context, image_service, image_id, dest):
     fetch(context, image_service, image_id, dest,
           None, None)
     image_meta = image_service.show(context, image_id)
@@ -583,7 +581,7 @@ def fetch_verify_image(context, image_service, image_id, dest,
         except TypeError:
             format_raw = False
         data = get_qemu_data(image_id, has_meta, format_raw,
-                             dest, run_as_root)
+                             dest, True)
         # We can only really do verification of the image if we have
         # qemu data to use
         if data is not None:
@@ -599,12 +597,6 @@ def fetch_verify_image(context, image_service, image_id, dest,
                     image_id=image_id,
                     reason=(_("fmt=%(fmt)s backed by: %(backing_file)s") %
                             {'fmt': fmt, 'backing_file': backing_file}))
-
-            # NOTE(xqueralt): If the image virtual size doesn't fit in the
-            # requested volume there is no point on resizing it because it will
-            # generate an unusable image.
-            if size is not None:
-                check_virtual_size(data.virtual_size, size, image_id)
 
 
 def fetch_to_vhd(context, image_service,
