@@ -1098,6 +1098,37 @@ class RBDTestCase(test.TestCase):
         self.assertFalse(volume.set_snap.called)
         volume.parent_info.assert_called_once_with()
 
+    @ddt.data(3, 2, 1, 0)
+    @common_mocks
+    def test_get_clone_depth(self, expected_depth):
+        # set the max_clone_depth option to check for Bug #1901241, where
+        # lowering the configured rbd_max_clone_depth prevented cloning of
+        # volumes that had already (legally) exceeded the new value because
+        # _get_clone_depth would raise an uncaught exception
+        self.cfg.rbd_max_clone_depth = 1
+
+        # create a list of fake parents for the expected depth
+        vols = [self.volume_a, self.volume_b, self.volume_c]
+        volume_list = vols[:expected_depth]
+
+        def fake_clone_info(volume, volume_name):
+            parent = volume_list.pop() if volume_list else None
+            return (None, parent, None)
+
+        with mock.patch.object(
+                self.driver, '_get_clone_info') as mock_get_clone_info:
+            mock_get_clone_info.side_effect = fake_clone_info
+            with mock.patch.object(
+                    self.driver.rbd.Image(),
+                    'close') as mock_rbd_image_close:
+
+                depth = self.driver._get_clone_depth(self.mock_client,
+                                                     "volume-00000000d")
+                self.assertEqual(expected_depth, depth)
+                # each parent must be closed plus the original volume
+                self.assertEqual(expected_depth + 1,
+                                 mock_rbd_image_close.call_count)
+
     @common_mocks
     @mock.patch.object(driver.RBDDriver, '_enable_replication')
     def test_create_cloned_volume_same_size(self, mock_enable_repl):
