@@ -2369,6 +2369,10 @@ class PowerMaxCommon(object):
                 extra_specs.pop(utils.DISABLECOMPRESSION, None)
         else:
             extra_specs.pop(utils.DISABLECOMPRESSION, None)
+            LOG.warning(
+                "Array %(array)s is not compression capable. Any attempt to "
+                "disable compression using an extra spec on the volume type "
+                "will be ignored.", {'array': extra_specs[utils.ARRAY]})
 
         self._check_and_add_tags_to_storage_array(
             extra_specs[utils.ARRAY], self.powermax_array_tag_list,
@@ -3836,6 +3840,11 @@ class PowerMaxCommon(object):
             # Check if old type and new type have different compression types
             do_change_compression = (self.utils.change_compression_type(
                 is_compression_disabled, new_type))
+        else:
+            LOG.warning(
+                "Array %(array)s is not compression capable. Any attempt to "
+                "disable compression using an extra spec on the volume type "
+                "will be ignored.", {'array': extra_specs[utils.ARRAY]})
         is_tgt_rep = self.utils.is_replication_enabled(
             new_type[utils.EXTRA_SPECS])
         is_valid, target_slo, target_workload = (
@@ -4737,6 +4746,9 @@ class PowerMaxCommon(object):
 
         else:
             for found_storage_group_name in found_storage_group_list:
+                if self.utils.get_rdf_group_component_dict(
+                        found_storage_group_name):
+                    continue
                 emc_fast_setting = (
                     self.provision.
                     get_slo_workload_settings_from_storage_group(
@@ -4744,7 +4756,7 @@ class PowerMaxCommon(object):
                 target_combination = ("%(targetSlo)s+%(targetWorkload)s"
                                       % {'targetSlo': target_slo,
                                          'targetWorkload': target_workload})
-                if target_combination == emc_fast_setting:
+                if target_combination.lower() == emc_fast_setting.lower():
                     # Check if migration is to change compression
                     # or replication types
                     action_rqd = (True if do_change_compression
@@ -5510,6 +5522,11 @@ class PowerMaxCommon(object):
             if not self.rest.is_compression_capable(
                     rep_extra_specs[utils.ARRAY]):
                 rep_extra_specs.pop(utils.DISABLECOMPRESSION, None)
+                LOG.warning(
+                    "Array %(array)s is not compression capable. Any attempt "
+                    "to disable compression using an extra spec on the volume "
+                    "type will be ignored.",
+                    {'array': rep_extra_specs[utils.ARRAY]})
 
         # Check to see if SLO and Workload are configured on the target array.
         rep_extra_specs['target_array_model'], next_gen = (
