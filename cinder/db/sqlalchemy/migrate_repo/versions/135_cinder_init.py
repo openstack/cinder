@@ -23,6 +23,7 @@ from sqlalchemy import MetaData, String, Table, Text, UniqueConstraint, text
 from sqlalchemy.sql import expression
 
 from cinder.volume import group_types as volume_group_types
+from cinder.volume import volume_types
 
 # Get default values via config.  The defaults will either
 # come from the default values set in the quota option
@@ -524,6 +525,9 @@ def define_tables(meta):
         Column('crypt_hash', String(255)),
         Column('expires_at', DateTime(timezone=False)),
         Column('no_snapshots', Boolean, default=False),
+        Column('source_project_id', String(255), nullable=True),
+        Column('destination_project_id', String(255), nullable=True),
+        Column('accepted', Boolean, default=False),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
@@ -904,3 +908,37 @@ def upgrade(migrate_engine):
     }
     grp_spec = group_type_specs.insert()
     grp_spec.execute(group_spec_dicts)
+
+    # Increase the resource column size to the quota_usages table.
+    #
+    # The resource value is constructed from (prefix + volume_type_name),
+    # but the length of volume_type_name is limited to 255, if we add a
+    # prefix such as 'volumes_' or 'gigabytes_' to volume_type_name it
+    # will exceed the db length limit.
+
+    quota_usages = Table('quota_usages', meta, autoload=True)
+    try:
+        quota_usages.c.resource.alter(type=String(300))
+    except Exception:
+        # On MariaDB, max length varies depending on the version and the InnoDB
+        # page size [1], so it is possible to have error 1071 ('Specified key
+        # was too long; max key length is 767 bytes").  Since this migration is
+        # to resolve a corner case, deployments with those DB versions won't be
+        # covered.
+        # [1]: https://mariadb.com/kb/en/library/innodb-limitations/#page-sizes
+        if not migrate_engine.name.startswith('mysql'):
+            raise
+
+    # Create default volume type
+    vol_types = Table("volume_types", meta, autoload=True)
+    volume_type_dict = {
+        'id': str(uuid.uuid4()),
+        'name': volume_types.DEFAULT_VOLUME_TYPE,
+        'description': 'Default Volume Type',
+        'created_at': now,
+        'updated_at': now,
+        'deleted': False,
+        'is_public': True,
+    }
+    vol_type = vol_types.insert()
+    vol_type.execute(volume_type_dict)

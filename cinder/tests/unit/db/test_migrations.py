@@ -108,12 +108,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         # manner is provided in Cinder's developer documentation.
         # Reviewers: DO NOT ALLOW THINGS TO BE ADDED HERE WITHOUT CARE
         exceptions = [
-            # NOTE(brinzhang): 127 changes size of quota_usage.resource
+            # NOTE(brinzhang): 135 changes size of quota_usage.resource
             # to 300. This should be safe for the 'quota_usage' db table,
             # because of the 255 is the length limit of volume_type_name,
             # it should be add the additional prefix before volume_type_name,
             # which we of course allow *this* size to 300.
-            127,
+            135,
             # 136 modifies the the tables having volume_type_id field to set
             # as non nullable
             136,
