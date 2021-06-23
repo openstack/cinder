@@ -173,13 +173,6 @@ class API(base.Base):
                 return False
         return True
 
-    def has_extension(self, context, extension, timeout=None):
-        try:
-            nova_exts = novaclient(context).list_extensions.show_all()
-        except request_exceptions.Timeout:
-            raise exception.APITimeout(service='Nova')
-        return extension in [e.name for e in nova_exts]
-
     def update_server_volume(self, context, server_id, src_volid,
                              new_volume_id):
         nova = novaclient(context, privileged_user=True)
