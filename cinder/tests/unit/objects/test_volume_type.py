@@ -17,7 +17,6 @@ from unittest import mock
 import ddt
 from oslo_utils import timeutils
 import pytz
-import six
 
 from cinder import db
 from cinder.db.sqlalchemy import models
@@ -155,13 +154,9 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
         # value for that field
         volume_type.refresh()
         self._compare(self, db_type2, volume_type)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         volume_type_get.assert_has_calls([mock.call(self.context,
                                                     fake.VOLUME_TYPE_ID),
-                                          call_bool,
+                                          mock.call.__bool__(),
                                           mock.call(self.context,
                                                     fake.VOLUME_TYPE_ID)])
 

@@ -16,7 +16,6 @@ from unittest import mock
 
 from oslo_utils import timeutils
 import pytz
-import six
 
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -249,12 +248,8 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         # for that field
         backup.refresh()
         self._compare(self, db_backup2, backup)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         backup_get.assert_has_calls([mock.call(self.context, fake.BACKUP_ID),
-                                     call_bool,
+                                     mock.call.__bool__(),
                                      mock.call(self.context, fake.BACKUP_ID)])
 
 

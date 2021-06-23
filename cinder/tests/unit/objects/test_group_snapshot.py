@@ -16,7 +16,6 @@ from unittest import mock
 
 from oslo_utils import timeutils
 import pytz
-import six
 
 from cinder import exception
 from cinder import objects
@@ -150,14 +149,10 @@ class TestGroupSnapshot(test_objects.BaseObjectsTestCase):
         # value for that field
         group_snapshot.refresh()
         self._compare(self, db_group_snapshot2, group_snapshot)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         group_snapshot_get.assert_has_calls(
             [mock.call(self.context,
                        fake.GROUP_SNAPSHOT_ID),
-             call_bool,
+             mock.call.__bool__(),
              mock.call(self.context,
                        fake.GROUP_SNAPSHOT_ID)])
 

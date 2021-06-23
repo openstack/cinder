@@ -15,7 +15,6 @@
 from unittest import mock
 
 import ddt
-import six
 from sqlalchemy.orm import attributes
 
 from cinder import db
@@ -93,13 +92,9 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         # new value for that field
         attachment.refresh()
         self._compare(self, attachment_obj2, attachment)
-        if six.PY3:
-            call_bool = mock.call.__bool__()
-        else:
-            call_bool = mock.call.__nonzero__()
         attachment_get.assert_has_calls([mock.call(self.context,
                                                    fake.ATTACHMENT_ID),
-                                         call_bool,
+                                         mock.call.__bool__(),
                                          mock.call(self.context,
                                                    fake.ATTACHMENT_ID)])
 
