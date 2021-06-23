@@ -47,7 +47,8 @@ class HPMSAISCSIDriver(iscsi.STXISCSIDriver):
 
     @staticmethod
     def get_driver_options():
-        return hpmsa_common.common_opts + hpmsa_common.iscsi_opts
+        return (hpmsa_common.HPMSACommon.get_driver_options() +
+                hpmsa_common.iscsi_opts)
 
     def _init_common(self):
         return hpmsa_common.HPMSACommon(self.configuration)
