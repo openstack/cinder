@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Dell PowerMax Driver Bug #1981420 <https://bugs.launchpad.net/cinder/+bug/1981420>`_:
+    Fixed issue faced while creating synchronous volume which was caused by
+    incorrect handling of the force flag. This is corrected by checking volume
+    type extra specs for the value of "force_vol_edit"  parameter along with the
+    "force" parameter.

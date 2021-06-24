@@ -1257,7 +1257,7 @@ class PowerMaxRest(object):
         if not isinstance(device_id, list):
             device_id = [device_id]
 
-        force_add = "true" if force else "false"
+        force_add = self._check_force(extra_specs, force)
 
         payload = ({"executionOption": "ASYNCHRONOUS",
                     "editStorageGroupActionParam": {
@@ -1282,8 +1282,7 @@ class PowerMaxRest(object):
         :param extra_specs: the extra specifications
         """
 
-        force_vol_edit = (
-            "true" if utils.FORCE_VOL_EDIT in extra_specs else "false")
+        force_vol_edit = self._check_force(extra_specs)
         if not isinstance(device_id, list):
             device_id = [device_id]
         payload = ({"executionOption": "ASYNCHRONOUS",
@@ -1410,7 +1409,7 @@ class PowerMaxRest(object):
         :param extra_specs: extra specifications
         :param force: force flag (necessary on a detach)
         """
-        force_flag = "true" if force else "false"
+        force_flag = self._check_force(extra_specs, force)
         payload = ({"executionOption": "ASYNCHRONOUS",
                     "editStorageGroupActionParam": {
                         "moveVolumeToStorageGroupParam": {
@@ -2200,8 +2199,7 @@ class PowerMaxRest(object):
         """
         action, operation, payload = '', '', {}
         copy = 'true' if copy else 'false'
-        force = (
-            "true" if utils.FORCE_VOL_EDIT in extra_specs else "false")
+        force = self._check_force(extra_specs)
 
         if link:
             action = "Link"
@@ -3562,3 +3560,18 @@ class PowerMaxRest(object):
         return (self.ucode_major_level >= utils.UCODE_5978 and
                 self.ucode_minor_level >= utils.UCODE_5978_HICKORY) or (
                     self.ucode_major_level >= utils.UCODE_6079)
+
+    @staticmethod
+    def _check_force(extra_specs, force_flag=False):
+        """Determine whether force should be used
+
+        Returns 'true' if force_flag is True or FORCE_VOL_EDIT is set in
+        extra_specs, otherwise returns 'false'.
+
+        :param extra_specs: extra specs dict
+        :param force_flag: force flag boolean
+
+        :returns: str (true or false)
+        """
+        return "true" if force_flag else (
+            "true" if utils.FORCE_VOL_EDIT in extra_specs else "false")
