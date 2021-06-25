@@ -773,6 +773,7 @@ class TestGlanceImageService(test.TestCase):
         self.flags(allowed_direct_url_schemes=['file'])
         self.service.download(self.context, image_id, writer)
         mock_copyfileobj.assert_called_once_with(mock.ANY, writer)
+        mock_open.assert_called_once_with('/tmp/test', 'rb')
 
     @mock.patch('six.moves.builtins.open')
     @mock.patch('shutil.copyfileobj')
