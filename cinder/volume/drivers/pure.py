@@ -189,6 +189,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4', '1.5', '1.13', '1.14']
 
+    SUPPORTS_ACTIVE_ACTIVE = True
+
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Pure_Storage_CI"
 

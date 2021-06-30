@@ -1,0 +1,7 @@
+---
+features:
+  - |
+     Pure Storage FlashArray driver: Enabled support for Active/Active
+     to both the iSCSI and FC driver. This allows users to configure
+     Pure Storage backends in clustered environments.
+
