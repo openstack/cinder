@@ -163,6 +163,12 @@ class AttachmentManagerTestCase(test.TestCase):
                   mock_elevated, mock_db_detached, mock_db_meta_delete):
             mock_elevated.return_value = self.context
             mock_con_term.return_value = False
+            mock_db_detached.return_value = (
+                {'status': 'available',
+                 'attach_status': fields.VolumeAttachStatus.DETACHED},
+                {'attach_status': fields.VolumeAttachStatus.DETACHED,
+                 'deleted': True}
+            )
 
             # test single attachment. This should call
             # detach and remove_export
