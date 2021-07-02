@@ -4696,15 +4696,11 @@ class VolumeManager(manager.CleanableManager,
             # represent a single failed attach out of multiple attachments
 
             # TODO(jdg): object method here
-            self.db.volume_attachment_update(
-                context, attachment.get('id'),
-                {'attach_status': fields.VolumeAttachStatus.ERROR_DETACHING})
+            attachment.attach_status = \
+                fields.VolumeAttachStatus.ERROR_DETACHING
+            attachment.save()
         else:
-            self.db.volume_detached(context.elevated(), vref.id,
-                                    attachment.get('id'))
-            self.db.volume_admin_metadata_delete(context.elevated(),
-                                                 vref.id,
-                                                 'attached_mode')
+            vref.finish_detach(attachment.id)
         self._notify_about_volume_usage(context, vref, "detach.end")
 
     # Replication group API (Tiramisu)
