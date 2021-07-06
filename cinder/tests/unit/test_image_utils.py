@@ -41,7 +41,8 @@ class TestQemuImgInfo(test.TestCase):
 
         output = image_utils.qemu_img_info(test_path)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', test_path, run_as_root=True,
+                                          'info', '--output=json', test_path,
+                                          run_as_root=True,
                                           prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
@@ -58,7 +59,8 @@ class TestQemuImgInfo(test.TestCase):
                                            force_share=False,
                                            run_as_root=False)
         mock_exec.assert_called_once_with('env', 'LC_ALL=C', 'qemu-img',
-                                          'info', test_path, run_as_root=False,
+                                          'info', '--output=json', test_path,
+                                          run_as_root=False,
                                           prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
@@ -73,8 +75,8 @@ class TestQemuImgInfo(test.TestCase):
         mock_os.name = 'nt'
 
         output = image_utils.qemu_img_info(test_path)
-        mock_exec.assert_called_once_with('qemu-img', 'info', test_path,
-                                          run_as_root=True,
+        mock_exec.assert_called_once_with('qemu-img', 'info', '--output=json',
+                                          test_path, run_as_root=True,
                                           prlimit=image_utils.QEMU_IMG_LIMITS)
         self.assertEqual(mock_info.return_value, output)
 
