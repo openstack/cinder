@@ -941,13 +941,14 @@ class QuobyteDriverTestCase(test.TestCase):
                                                self.TEST_QUOBYTE_VOLUME),
                                            self.VOLUME_UUID)
 
-        qemu_img_info_output = """image: volume-%s
-        file format: qcow2
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 473K
-        """ % self.VOLUME_UUID
+        qemu_img_info_output = """{
+    "filename": "volume-%s",
+    "format": "qcow2",
+    "virtual-size": 1073741824,
+    "actual-size": 473000
+}""" % self.VOLUME_UUID
 
-        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output, format='json')
 
         image_utils.qemu_img_info = mock.Mock(return_value=img_info)
         image_utils.resize_image = mock.Mock()
@@ -987,13 +988,14 @@ class QuobyteDriverTestCase(test.TestCase):
 
         size = dest_volume['size']
 
-        qemu_img_output = """image: %s
-        file format: raw
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 173K
-        backing file: %s
-        """ % (snap_file, src_volume['name'])
-        img_info = imageutils.QemuImgInfo(qemu_img_output)
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "raw",
+    "virtual-size": 1073741824,
+    "actual-size": 173000,
+    "backing-filename": "%s"
+}""" % (snap_file, src_volume['name'])
+        img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
 
         # mocking and testing starts here
         image_utils.convert_image = mock.Mock()
@@ -1043,13 +1045,14 @@ class QuobyteDriverTestCase(test.TestCase):
 
         size = dest_volume['size']
 
-        qemu_img_output = """image: %s
-        file format: raw
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 173K
-        backing file: %s
-        """ % (snap_file, src_volume['name'])
-        img_info = imageutils.QemuImgInfo(qemu_img_output)
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "raw",
+    "virtual-size": 1073741824,
+    "actual-size": 173000,
+    "backing-filename": "%s"
+}""" % (snap_file, src_volume['name'])
+        img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
 
         # mocking and testing starts here
         image_utils.convert_image = mock.Mock()
@@ -1104,13 +1107,14 @@ class QuobyteDriverTestCase(test.TestCase):
 
         size = dest_volume['size']
 
-        qemu_img_output = """image: %s
-        file format: raw
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 173K
-        backing file: %s
-        """ % (snap_file, src_volume['name'])
-        img_info = imageutils.QemuImgInfo(qemu_img_output)
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "raw",
+    "virtual-size": 1073741824,
+    "actual-size": 173000,
+    "backing-filename": "%s"
+}""" % (snap_file, src_volume['name'])
+        img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
 
         # mocking and testing starts here
         image_utils.convert_image = mock.Mock()
@@ -1168,13 +1172,14 @@ class QuobyteDriverTestCase(test.TestCase):
 
         size = dest_volume['size']
 
-        qemu_img_output = """image: %s
-        file format: raw
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 173K
-        backing file: %s
-        """ % (snap_file, src_volume['name'])
-        img_info = imageutils.QemuImgInfo(qemu_img_output)
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "raw",
+    "virtual-size": 1073741824,
+    "actual-size": 173000,
+    "backing-filename": "%s"
+}""" % (snap_file, src_volume['name'])
+        img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
 
         # mocking and testing starts here
         image_utils.convert_image = mock.Mock()
@@ -1245,12 +1250,13 @@ class QuobyteDriverTestCase(test.TestCase):
                                drv._get_hash_str(self.TEST_QUOBYTE_VOLUME))
         vol_path = os.path.join(vol_dir, volume['name'])
 
-        qemu_img_output = """image: %s
-        file format: raw
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 173K
-        """ % volume['name']
-        img_info = imageutils.QemuImgInfo(qemu_img_output)
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "raw",
+    "virtual-size": 1073741824,
+    "actual-size": 173000
+}""" % volume['name']
+        img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
 
         drv.get_active_image_from_info = mock.Mock(return_value=volume['name'])
         image_utils.qemu_img_info = mock.Mock(return_value=img_info)
@@ -1294,12 +1300,13 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_create_temporary_file.return_value = self.TEST_TMP_FILE
 
-            qemu_img_output = """image: %s
-            file format: raw
-            virtual size: 1.0G (1073741824 bytes)
-            disk size: 173K
-            """ % volume['name']
-            img_info = imageutils.QemuImgInfo(qemu_img_output)
+            qemu_img_output = """{
+    "filename": "%s",
+    "format": "raw",
+    "virtual-size": 1073741824,
+    "actual-size": 173000
+}""" % volume['name']
+            img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
             mock_qemu_img_info.return_value = img_info
 
             upload_path = volume_path
@@ -1346,12 +1353,13 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_create_temporary_file.return_value = self.TEST_TMP_FILE
 
-            qemu_img_output = """image: %s
-            file format: qcow2
-            virtual size: 1.0G (1073741824 bytes)
-            disk size: 173K
-            """ % volume['name']
-            img_info = imageutils.QemuImgInfo(qemu_img_output)
+            qemu_img_output = """{
+    "filename": "%s",
+    "format": "qcow2",
+    "virtual-size": 1073741824,
+    "actual-size": 173000
+}""" % volume['name']
+            img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
             mock_qemu_img_info.return_value = img_info
 
             upload_path = self.TEST_TMP_FILE
@@ -1401,13 +1409,14 @@ class QuobyteDriverTestCase(test.TestCase):
 
             mock_create_temporary_file.return_value = self.TEST_TMP_FILE
 
-            qemu_img_output = """image: volume-%s.%s
-            file format: qcow2
-            virtual size: 1.0G (1073741824 bytes)
-            disk size: 173K
-            backing file: %s
-            """ % (self.VOLUME_UUID, self.SNAP_UUID, volume_filename)
-            img_info = imageutils.QemuImgInfo(qemu_img_output)
+            qemu_img_output = """{
+    "filename": "volume-%s.%s",
+    "format": "qcow2",
+    "virtual-size": 1073741824,
+    "actual-size": 173000,
+    "backing-filename": "%s"
+}""" % (self.VOLUME_UUID, self.SNAP_UUID, volume_filename)
+            img_info = imageutils.QemuImgInfo(qemu_img_output, format='json')
             mock_qemu_img_info.return_value = img_info
 
             upload_path = self.TEST_TMP_FILE

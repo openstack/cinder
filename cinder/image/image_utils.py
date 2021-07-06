@@ -128,7 +128,7 @@ def qemu_img_info(path: str,
                   run_as_root: bool = True,
                   force_share: bool = False) -> imageutils.QemuImgInfo:
     """Return an object containing the parsed output from qemu-img info."""
-    cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info']
+    cmd = ['env', 'LC_ALL=C', 'qemu-img', 'info', '--output=json']
     if force_share:
         if qemu_img_supports_force_share():
             cmd.append('--force-share')
@@ -142,7 +142,7 @@ def qemu_img_info(path: str,
         cmd = cmd[2:]
     out, _err = utils.execute(*cmd, run_as_root=run_as_root,
                               prlimit=QEMU_IMG_LIMITS)
-    info = imageutils.QemuImgInfo(out)
+    info = imageutils.QemuImgInfo(out, format='json')
 
     # From Cinder's point of view, any 'luks' formatted images
     # should be treated as 'raw'.

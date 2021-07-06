@@ -335,102 +335,112 @@ NFS_CONFIG4 = {'max_over_subscription_ratio': 20.0,
                'nas_secure_file_permissions': 'false',
                'nas_secure_file_operations': 'true'}
 
-QEMU_IMG_INFO_OUT1 = """image: %(volid)s
-        file format: raw
-        virtual size: %(size_gb)sG (%(size_b)s bytes)
-        disk size: 173K
-        """
+QEMU_IMG_INFO_OUT1 = """{
+    "filename": "%(volid)s",
+    "format": "raw",
+    "virtual-size": %(size_b)s,
+    "actual-size": 173000
+}"""
 
-QEMU_IMG_INFO_OUT2 = """image: %(volid)s
-file format: qcow2
-virtual size: %(size_gb)sG (%(size_b)s bytes)
-disk size: 196K
-cluster_size: 65536
-Format specific information:
-    compat: 1.1
-    lazy refcounts: false
-    refcount bits: 16
-    corrupt: false
-    """
+QEMU_IMG_INFO_OUT2 = """{
+    "filename": "%(volid)s",
+    "format": "qcow2",
+    "virtual-size": %(size_b)s,
+    "actual-size": 196000,
+    "cluster-size": 65536,
+    "format-specific": {
+        "compat": "1.1",
+        "lazy-refcounts": false,
+        "refcount-bits": 16,
+        "corrupt": false
+    }
+}"""
 
-QEMU_IMG_INFO_OUT3 = """image: volume-%(volid)s.%(snapid)s
-file format: qcow2
-virtual size: %(size_gb)sG (%(size_b)s bytes)
-disk size: 196K
-cluster_size: 65536
-backing file: volume-%(volid)s
-backing file format: qcow2
-Format specific information:
-    compat: 1.1
-    lazy refcounts: false
-    refcount bits: 16
-    corrupt: false
-    """
+QEMU_IMG_INFO_OUT3 = """{
+    "filename": "volume-%(volid)s.%(snapid)s",
+    "format": "qcow2",
+    "virtual-size": %(size_b)s,
+    "actual-size": 196000,
+    "cluster-size": 65536,
+    "backing-filename": "volume-%(volid)s",
+    "backing-filename-format": "qcow2",
+    "format-specific": {
+        "compat": "1.1",
+        "lazy-refcounts": false,
+        "refcount-bits": 16,
+        "corrupt": false
+    }
+}"""
 
-QEMU_IMG_INFO_OUT4 = """image: volume-%(volid)s.%(snapid)s
-file format: raw
-virtual size: %(size_gb)sG (%(size_b)s bytes)
-disk size: 196K
-cluster_size: 65536
-backing file: volume-%(volid)s
-backing file format: raw
-Format specific information:
-    compat: 1.1
-    lazy refcounts: false
-    refcount bits: 16
-    corrupt: false
-    """
+QEMU_IMG_INFO_OUT4 = """{
+    "filename": "volume-%(volid)s.%(snapid)s",
+    "format": "raw",
+    "virtual-size": %(size_b)s,
+    "actual-size": 196000,
+    "cluster-size": 65536,
+    "backing-filename": "volume-%(volid)s",
+    "backing-filename-format": "raw"
+}"""
 
-QEMU_IMG_INFO_OUT5 = """image: volume-%(volid)s.%(snapid)s
-file format: qcow2
-virtual size: %(size_gb)sG (%(size_b)s bytes)
-disk size: 196K
-encrypted: yes
-cluster_size: 65536
-backing file: volume-%(volid)s
-backing file format: raw
-Format specific information:
-    compat: 1.1
-    lazy refcounts: false
-    refcount bits: 16
-    encrypt:
-        ivgen alg: plain64
-        hash alg: sha256
-        cipher alg: aes-256
-        uuid: 386f8626-33f0-4683-a517-78ddfe385e33
-        format: luks
-        cipher mode: xts
-        slots:
-            [0]:
-                active: true
-                iters: 1892498
-                key offset: 4096
-                stripes: 4000
-            [1]:
-                active: false
-                key offset: 262144
-            [2]:
-                active: false
-                key offset: 520192
-            [3]:
-                active: false
-                key offset: 778240
-            [4]:
-                active: false
-                key offset: 1036288
-            [5]:
-                active: false
-                key offset: 1294336
-            [6]:
-                active: false
-                key offset: 1552384
-            [7]:
-                active: false
-                key offset: 1810432
-        payload offset: 2068480
-        master key iters: 459347
-    corrupt: false
-"""
+QEMU_IMG_INFO_OUT5 = """{
+    "filename": "volume-%(volid)s.%(snapid)s",
+    "format": "qcow2",
+    "virtual-size": %(size_b)s,
+    "actual-size": 196000,
+    "encrypted": true,
+    "cluster-size": 65536,
+    "backing-filename": "volume-%(volid)s",
+    "backing-filename-format": "raw",
+    "format-specific": {
+        "type": "luks",
+        "data": {
+            "ivgen-alg": "plain64",
+            "hash-alg": "sha256",
+            "cipher-alg": "aes-256",
+            "uuid": "386f8626-33f0-4683-a517-78ddfe385e33",
+            "cipher-mode": "xts",
+            "slots": [
+                {
+                    "active": true,
+                    "iters": 1892498,
+                    "key offset": 4096,
+                    "stripes": 4000
+                },
+                {
+                    "active": false,
+                    "key offset": 262144
+                },
+                {
+                    "active": false,
+                    "key offset": 520192
+                },
+                {
+                    "active": false,
+                    "key offset": 778240
+                },
+                {
+                    "active": false,
+                    "key offset": 1036288
+                },
+                {
+                    "active": false,
+                    "key offset": 1294336
+                },
+                {
+                    "active": false,
+                    "key offset": 1552384
+                },
+                {
+                    "active": false,
+                    "key offset": 1810432
+                }
+            ],
+            "payload-offset": 2068480,
+            "master-key-iters": 459347
+        },
+        "corrupt": false
+    }
+}"""
 
 
 @ddt.ddt
@@ -1323,7 +1333,7 @@ class NfsDriverTestCase(test.TestCase):
                                    'size_gb': src_volume.size,
                                    'size_b': src_volume.size * units.Gi}
 
-        img_info = imageutils.QemuImgInfo(img_out)
+        img_info = imageutils.QemuImgInfo(img_out, format='json')
         mock_img_info = self.mock_object(image_utils, 'qemu_img_info')
         mock_img_info.return_value = img_info
         mock_convert_image = self.mock_object(image_utils, 'convert_image')
@@ -1404,7 +1414,7 @@ class NfsDriverTestCase(test.TestCase):
                                    'snapid': fake_snap.id,
                                    'size_gb': src_volume.size,
                                    'size_b': src_volume.size * units.Gi}
-        img_info = imageutils.QemuImgInfo(img_out)
+        img_info = imageutils.QemuImgInfo(img_out, format='json')
         mock_img_info = self.mock_object(image_utils, 'qemu_img_info')
         mock_img_info.return_value = img_info
 
@@ -1470,7 +1480,8 @@ class NfsDriverTestCase(test.TestCase):
         mock_img_utils = self.mock_object(image_utils, 'qemu_img_info')
         img_out = qemu_img_info % {'volid': volume.id, 'size_gb': volume.size,
                                    'size_b': volume.size * units.Gi}
-        mock_img_utils.return_value = imageutils.QemuImgInfo(img_out)
+        mock_img_utils.return_value = imageutils.QemuImgInfo(img_out,
+                                                             format='json')
         self.mock_object(drv, '_read_info_file',
                          return_value={'active': "volume-%s" % volume.id})
 
@@ -1490,12 +1501,14 @@ class NfsDriverTestCase(test.TestCase):
         drv = self._driver
         volume = self._simple_volume()
 
-        qemu_img_output = """image: %s
-        file format: iso
-        virtual size: 1.0G (1073741824 bytes)
-        disk size: 173K
-        """ % volume['name']
-        mock_img_info.return_value = imageutils.QemuImgInfo(qemu_img_output)
+        qemu_img_output = """{
+    "filename": "%s",
+    "format": "iso",
+    "virtual-size": 1073741824,
+    "actual-size": 173000
+}""" % volume['name']
+        mock_img_info.return_value = imageutils.QemuImgInfo(qemu_img_output,
+                                                            format='json')
 
         self.assertRaises(exception.InvalidVolume,
                           drv.initialize_connection,
