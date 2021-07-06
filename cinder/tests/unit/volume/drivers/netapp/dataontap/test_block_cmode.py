@@ -22,6 +22,7 @@ import ddt
 
 from cinder import exception
 from cinder.objects import fields
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes as\
@@ -966,3 +967,468 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertIsNone(snapshots_model_update)
 
         mock__delete_lun.assert_called_once_with(fake.VG_SNAPSHOT['name'])
+
+    def test_move_lun(self):
+        self.library.configuration.netapp_migrate_volume_timeout = 1
+        fake_job_status = {'job-status': 'complete'}
+        mock_start_lun_move = self.mock_object(self.zapi_client,
+                                               'start_lun_move',
+                                               return_value=fake.JOB_UUID)
+        mock_get_lun_move_status = self.mock_object(
+            self.zapi_client, 'get_lun_move_status',
+            return_value=fake_job_status)
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        result = self.library._move_lun(
+            fake_vol, fake.POOL_NAME, fake.DEST_POOL_NAME,
+            dest_lun_name=fake.VOLUME_NAME)
+
+        mock_start_lun_move.assert_called_with(
+            fake_vol.name, fake.DEST_POOL_NAME,
+            src_ontap_volume=fake.POOL_NAME,
+            dest_lun_name=fake.VOLUME_NAME)
+        mock_get_lun_move_status.assert_called_once_with(fake.JOB_UUID)
+        self.assertIsNone(result)
+
+    @ddt.data(('data', na_utils.NetAppDriverTimeout),
+              ('destroyed', na_utils.NetAppDriverException))
+    @ddt.unpack
+    def test_move_lun_error(self, status_on_error, move_exception):
+        self.library.configuration.netapp_migrate_volume_timeout = 1
+        fake_job_status = {
+            'job-status': status_on_error,
+            'last-failure-reason': None
+        }
+        mock_start_lun_move = self.mock_object(self.zapi_client,
+                                               'start_lun_move',
+                                               return_value=fake.JOB_UUID)
+        mock_get_lun_move_status = self.mock_object(
+            self.zapi_client, 'get_lun_move_status',
+            return_value=fake_job_status)
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.assertRaises(move_exception,
+                          self.library._move_lun,
+                          fake_vol,
+                          fake.POOL_NAME,
+                          fake.DEST_POOL_NAME,
+                          dest_lun_name=fake.VOLUME_NAME)
+
+        mock_start_lun_move.assert_called_with(
+            fake_vol.name, fake.DEST_POOL_NAME,
+            src_ontap_volume=fake.POOL_NAME,
+            dest_lun_name=fake.VOLUME_NAME)
+        mock_get_lun_move_status.assert_called_with(fake.JOB_UUID)
+
+    def test_cancel_lun_copy(self):
+        mock_cancel_lun_copy = self.mock_object(self.zapi_client,
+                                                'cancel_lun_copy')
+        mock_get_client_for_backend = self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=self.zapi_client)
+        mock_destroy_lun = self.mock_object(self.zapi_client,
+                                            'destroy_lun')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        result = self.library._cancel_lun_copy(fake.JOB_UUID,
+                                               fake_vol,
+                                               fake.DEST_POOL_NAME,
+                                               fake.DEST_BACKEND_NAME)
+
+        mock_cancel_lun_copy.assert_called_once_with(fake.JOB_UUID)
+        mock_get_client_for_backend.assert_not_called()
+        mock_destroy_lun.assert_not_called()
+        self.assertIsNone(result)
+
+    def test_cancel_lun_copy_force_destroy_lun(self):
+        mock_cancel_lun_copy = self.mock_object(
+            self.zapi_client, 'cancel_lun_copy',
+            side_effect=na_utils.NetAppDriverException)
+        mock_get_client_for_backend = self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=self.zapi_client)
+        mock_destroy_lun = self.mock_object(self.zapi_client, 'destroy_lun')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        result = self.library._cancel_lun_copy(fake.JOB_UUID,
+                                               fake_vol,
+                                               fake.DEST_POOL_NAME,
+                                               fake.DEST_BACKEND_NAME)
+
+        mock_cancel_lun_copy.assert_called_once_with(fake.JOB_UUID)
+        mock_get_client_for_backend.assert_called_once_with(
+            fake.DEST_BACKEND_NAME)
+        fake_lun_path = '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake_vol.name)
+        mock_destroy_lun.assert_called_once_with(fake_lun_path)
+        self.assertIsNone(result)
+
+    def test_cancel_lun_copy_error_on_force_destroy_lun(self):
+        mock_cancel_lun_copy = self.mock_object(
+            self.zapi_client, 'cancel_lun_copy',
+            side_effect=na_utils.NetAppDriverException)
+        mock_get_client_for_backend = self.mock_object(
+            dot_utils, 'get_client_for_backend', return_value=self.zapi_client)
+        mock_destroy_lun = self.mock_object(
+            self.zapi_client, 'destroy_lun',
+            side_effect=na_utils.NetAppDriverException)
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        result = self.library._cancel_lun_copy(fake.JOB_UUID,
+                                               fake_vol,
+                                               fake.DEST_POOL_NAME,
+                                               fake.DEST_BACKEND_NAME)
+
+        mock_cancel_lun_copy.assert_called_once_with(fake.JOB_UUID)
+        mock_get_client_for_backend.assert_called_once_with(
+            fake.DEST_BACKEND_NAME)
+        fake_lun_path = '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake_vol.name)
+        mock_destroy_lun.assert_called_once_with(fake_lun_path)
+        self.assertIsNone(result)
+
+    def test_copy_lun(self):
+        self.library.configuration.netapp_migrate_volume_timeout = 1
+        fake_job_status = {'job-status': 'complete'}
+        mock_start_lun_copy = self.mock_object(self.zapi_client,
+                                               'start_lun_copy',
+                                               return_value=fake.JOB_UUID)
+        mock_get_lun_copy_status = self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value=fake_job_status)
+        mock_cancel_lun_copy = self.mock_object(
+            self.library, '_cancel_lun_copy')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        result = self.library._copy_lun(
+            fake_vol, fake.POOL_NAME, fake.VSERVER_NAME, fake.DEST_POOL_NAME,
+            fake.DEST_VSERVER_NAME, dest_lun_name=fake.VOLUME_NAME,
+            dest_backend_name=fake.DEST_BACKEND_NAME, cancel_on_error=True)
+
+        mock_start_lun_copy.assert_called_with(
+            fake_vol.name, fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+            src_ontap_volume=fake.POOL_NAME, src_vserver=fake.VSERVER_NAME,
+            dest_lun_name=fake.VOLUME_NAME)
+        mock_get_lun_copy_status.assert_called_once_with(fake.JOB_UUID)
+        mock_cancel_lun_copy.assert_not_called()
+        self.assertIsNone(result)
+
+    @ddt.data(('data', na_utils.NetAppDriverTimeout),
+              ('destroyed', na_utils.NetAppDriverException),
+              ('destroyed', na_utils.NetAppDriverException))
+    @ddt.unpack
+    def test_copy_lun_error(self, status_on_error, copy_exception):
+        self.library.configuration.netapp_migrate_volume_timeout = 1
+        fake_job_status = {
+            'job-status': status_on_error,
+            'last-failure-reason': None
+        }
+        mock_start_lun_copy = self.mock_object(self.zapi_client,
+                                               'start_lun_copy',
+                                               return_value=fake.JOB_UUID)
+        mock_get_lun_copy_status = self.mock_object(
+            self.zapi_client, 'get_lun_copy_status',
+            return_value=fake_job_status)
+        mock_cancel_lun_copy = self.mock_object(
+            self.library, '_cancel_lun_copy')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.assertRaises(copy_exception,
+                          self.library._copy_lun,
+                          fake_vol,
+                          fake.POOL_NAME,
+                          fake.VSERVER_NAME,
+                          fake.DEST_POOL_NAME,
+                          fake.DEST_VSERVER_NAME,
+                          dest_lun_name=fake.VOLUME_NAME,
+                          dest_backend_name=fake.DEST_BACKEND_NAME,
+                          cancel_on_error=True)
+
+        mock_start_lun_copy.assert_called_with(
+            fake_vol.name, fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+            src_ontap_volume=fake.POOL_NAME, src_vserver=fake.VSERVER_NAME,
+            dest_lun_name=fake.VOLUME_NAME)
+        mock_get_lun_copy_status.assert_called_with(fake.JOB_UUID)
+        mock_cancel_lun_copy.assert_called_once_with(
+            fake.JOB_UUID, fake_vol, fake.DEST_POOL_NAME,
+            dest_backend_name=fake.DEST_BACKEND_NAME)
+
+    def test_migrate_volume_to_pool(self):
+        mock_move_lun = self.mock_object(self.library, '_move_lun')
+        mock_finish_migrate_volume_to_pool = self.mock_object(
+            self.library, '_finish_migrate_volume_to_pool')
+        ctxt = mock.Mock()
+        vol_fields = {'id': fake.VOLUME_ID, 'name': fake.VOLUME_NAME}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        updates = self.library._migrate_volume_to_pool(fake_vol,
+                                                       fake.POOL_NAME,
+                                                       fake.DEST_POOL_NAME,
+                                                       fake.VSERVER_NAME,
+                                                       fake.DEST_BACKEND_NAME)
+
+        mock_move_lun.assert_called_once_with(fake_vol, fake.POOL_NAME,
+                                              fake.DEST_POOL_NAME)
+        mock_finish_migrate_volume_to_pool.assert_called_once_with(
+            fake_vol, fake.DEST_POOL_NAME)
+        self.assertEqual({}, updates)
+
+    def test_migrate_volume_to_pool_lun_move_error(self):
+        mock_move_lun = self.mock_object(
+            self.library, '_move_lun',
+            side_effect=na_utils.NetAppDriverException)
+        mock_finish_migrate_volume_to_pool = self.mock_object(
+            self.library, '_finish_migrate_volume_to_pool')
+        ctxt = mock.Mock()
+        vol_fields = {'id': fake.VOLUME_ID, 'name': fake.VOLUME_NAME}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.library._migrate_volume_to_pool,
+                          fake_vol,
+                          fake.POOL_NAME,
+                          fake.DEST_POOL_NAME,
+                          fake.VSERVER_NAME,
+                          fake.DEST_BACKEND_NAME)
+
+        mock_move_lun.assert_called_once_with(fake_vol, fake.POOL_NAME,
+                                              fake.DEST_POOL_NAME)
+        mock_finish_migrate_volume_to_pool.assert_not_called()
+
+    def test_migrate_volume_to_pool_lun_move_timeout(self):
+        mock_move_lun = self.mock_object(
+            self.library, '_move_lun',
+            side_effect=na_utils.NetAppDriverTimeout)
+        mock_finish_migrate_volume_to_pool = self.mock_object(
+            self.library, '_finish_migrate_volume_to_pool')
+        ctxt = mock.Mock()
+        vol_fields = {'id': fake.VOLUME_ID, 'name': fake.VOLUME_NAME}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        updates = self.library._migrate_volume_to_pool(fake_vol,
+                                                       fake.POOL_NAME,
+                                                       fake.DEST_POOL_NAME,
+                                                       fake.VSERVER_NAME,
+                                                       fake.DEST_BACKEND_NAME)
+
+        mock_move_lun.assert_called_once_with(fake_vol, fake.POOL_NAME,
+                                              fake.DEST_POOL_NAME)
+        mock_finish_migrate_volume_to_pool.assert_called_once_with(
+            fake_vol, fake.DEST_POOL_NAME)
+        self.assertEqual({'status': fields.VolumeStatus.MAINTENANCE}, updates)
+
+    def test_finish_migrate_volume_to_pool(self):
+        ctxt = mock.Mock()
+        vol_fields = {'id': fake.VOLUME_ID, 'name': fake.VOLUME_NAME}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_lun_cache = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_NAME,
+                                              fake.SIZE, None)
+        mock_get_lun_from_table = self.mock_object(self.library,
+                                                   '_get_lun_from_table',
+                                                   return_value=fake_lun_cache)
+
+        self.library._finish_migrate_volume_to_pool(fake_vol,
+                                                    fake.DEST_POOL_NAME)
+
+        mock_get_lun_from_table.assert_called_once_with(fake_vol.name)
+        expected = {
+            'Path': '/vol/%s/%s' % (fake.DEST_POOL_NAME, fake_vol.name),
+            'Volume': fake.DEST_POOL_NAME
+        }
+        self.assertEqual(expected, fake_lun_cache.metadata)
+
+    def test_migrate_volume_to_vserver(self):
+        self.library.using_cluster_credentials = True
+        self.library.backend_name = fake.BACKEND_NAME
+        mock_create_vserver_peer = self.mock_object(
+            self.library, 'create_vserver_peer')
+        mock_copy_lun = self.mock_object(self.library, '_copy_lun')
+        mock_finish_migrate_volume_to_vserver = self.mock_object(
+            self.library, '_finish_migrate_volume_to_vserver')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        updates = self.library._migrate_volume_to_vserver(
+            fake_vol, fake.POOL_NAME, fake.VSERVER_NAME, fake.DEST_POOL_NAME,
+            fake.DEST_VSERVER_NAME, fake.DEST_BACKEND_NAME)
+
+        mock_create_vserver_peer.assert_called_once_with(
+            fake.VSERVER_NAME, fake.BACKEND_NAME, fake.DEST_VSERVER_NAME,
+            ['lun_copy'])
+        mock_copy_lun.assert_called_once_with(
+            fake_vol, fake.POOL_NAME, fake.VSERVER_NAME, fake.DEST_POOL_NAME,
+            fake.DEST_VSERVER_NAME, dest_backend_name=fake.DEST_BACKEND_NAME,
+            cancel_on_error=True)
+        mock_finish_migrate_volume_to_vserver.assert_called_once_with(fake_vol)
+        self.assertEqual({}, updates)
+
+    @ddt.data(na_utils.NetAppDriverException, na_utils.NetAppDriverTimeout)
+    def test_migrate_volume_to_vserver_error_on_copy(self, copy_error):
+        self.library.using_cluster_credentials = True
+        self.library.backend_name = fake.BACKEND_NAME
+        self.library.backend_name = fake.BACKEND_NAME
+        mock_create_vserver_peer = self.mock_object(
+            self.library, 'create_vserver_peer')
+        mock_copy_lun = self.mock_object(
+            self.library, '_copy_lun',
+            side_effect=copy_error)
+        mock_finish_migrate_volume_to_vserver = self.mock_object(
+            self.library, '_finish_migrate_volume_to_vserver')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.assertRaises(copy_error,
+                          self.library._migrate_volume_to_vserver,
+                          fake_vol, fake.POOL_NAME, fake.VSERVER_NAME,
+                          fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+                          fake.DEST_BACKEND_NAME)
+
+        mock_create_vserver_peer.assert_called_once_with(
+            fake.VSERVER_NAME, fake.BACKEND_NAME, fake.DEST_VSERVER_NAME,
+            ['lun_copy'])
+        mock_copy_lun.assert_called_once_with(
+            fake_vol, fake.POOL_NAME, fake.VSERVER_NAME, fake.DEST_POOL_NAME,
+            fake.DEST_VSERVER_NAME, dest_backend_name=fake.DEST_BACKEND_NAME,
+            cancel_on_error=True)
+        mock_finish_migrate_volume_to_vserver.assert_not_called()
+
+    def test_migrate_volume_to_vserver_volume_is_not_available(self):
+        self.library.using_cluster_credentials = True
+        mock_create_vserver_peer = self.mock_object(
+            self.library, 'create_vserver_peer')
+        mock_copy_lun = self.mock_object(self.library, '_copy_lun')
+        mock_finish_migrate_volume_to_vserver = self.mock_object(
+            self.library, '_finish_migrate_volume_to_vserver')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.IN_USE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.assertRaises(exception.InvalidVolume,
+                          self.library._migrate_volume_to_vserver,
+                          fake_vol, fake.POOL_NAME, fake.VSERVER_NAME,
+                          fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+                          fake.DEST_BACKEND_NAME)
+
+        mock_create_vserver_peer.assert_not_called()
+        mock_copy_lun.assert_not_called()
+        mock_finish_migrate_volume_to_vserver.assert_not_called()
+
+    def test_migrate_volume_to_vserver_invalid_vserver_peer_applications(self):
+        self.library.using_cluster_credentials = True
+        self.library.backend_name = fake.VSERVER_NAME
+        mock_create_vserver_peer = self.mock_object(
+            self.library, 'create_vserver_peer',
+            side_effect=na_utils.NetAppDriverException)
+        mock_copy_lun = self.mock_object(
+            self.library, '_copy_lun')
+        mock_finish_migrate_volume_to_vserver = self.mock_object(
+            self.library, '_finish_migrate_volume_to_vserver')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.library._migrate_volume_to_vserver,
+                          fake_vol, fake.POOL_NAME, fake.VSERVER_NAME,
+                          fake.DEST_POOL_NAME, fake.DEST_VSERVER_NAME,
+                          fake.DEST_BACKEND_NAME)
+
+        mock_create_vserver_peer.assert_called_once_with(
+            fake.VSERVER_NAME, fake.VSERVER_NAME, fake.DEST_VSERVER_NAME,
+            ['lun_copy'])
+        mock_copy_lun.assert_not_called()
+        mock_finish_migrate_volume_to_vserver.assert_not_called()
+
+    def test_finish_migrate_volume_to_vserver(self):
+        mock_delete_volume = self.mock_object(self.library, 'delete_volume')
+        mock_delete_lun_from_table = self.mock_object(
+            self.library, '_delete_lun_from_table')
+        ctxt = mock.Mock()
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+
+        self.library._finish_migrate_volume_to_vserver(fake_vol)
+
+        mock_delete_volume.assert_called_once_with(fake_vol)
+        mock_delete_lun_from_table.assert_called_once_with(fake_vol.name)
+
+    def test_migrate_volume(self):
+        ctx = mock.Mock()
+        self.library.backend_name = fake.BACKEND_NAME
+        self.library.configuration.netapp_vserver = fake.VSERVER_NAME
+        mock_migrate_volume_ontap_assisted = self.mock_object(
+            self.library, 'migrate_volume_ontap_assisted', return_value={})
+        vol_fields = {
+            'id': fake.VOLUME_ID,
+            'name': fake.VOLUME_NAME,
+            'status': fields.VolumeStatus.AVAILABLE
+        }
+        fake_vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+
+        result = self.library.migrate_volume(ctx, fake_vol,
+                                             fake.DEST_HOST_STRING)
+
+        mock_migrate_volume_ontap_assisted.assert_called_once_with(
+            fake_vol, fake.DEST_HOST_STRING, fake.BACKEND_NAME,
+            fake.VSERVER_NAME)
+        self.assertEqual({}, result)

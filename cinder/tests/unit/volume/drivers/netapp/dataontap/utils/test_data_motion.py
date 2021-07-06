@@ -17,7 +17,10 @@ from unittest import mock
 import ddt
 from oslo_config import cfg
 
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as\
+    dataontap_fakes
 from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes
 from cinder.volume import configuration
 from cinder.volume import driver
@@ -500,6 +503,85 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             self.src_vserver, self.src_flexvol_name,
             self.dest_vserver, self.dest_flexvol_name)
 
+    def test_create_vserver_peer(self):
+        mock_get_client_for_backend = self.mock_object(
+            utils, 'get_client_for_backend')
+        get_vserver_peer_response = []
+        mock_get_vserver_peers = mock_get_client_for_backend.return_value.\
+            get_vserver_peers
+        mock_get_vserver_peers.return_value = get_vserver_peer_response
+        mock_create_vserver_peer = mock_get_client_for_backend.return_value.\
+            create_vserver_peer
+        mock_create_vserver_peer.return_value = None
+        peer_applications = ['snapmirror']
+
+        result = self.dm_mixin.create_vserver_peer(
+            dataontap_fakes.VSERVER_NAME, self.src_backend,
+            dataontap_fakes.DEST_VSERVER_NAME, peer_applications)
+
+        mock_get_vserver_peers.assert_called_once_with(
+            dataontap_fakes.VSERVER_NAME, dataontap_fakes.DEST_VSERVER_NAME)
+        mock_create_vserver_peer.assert_called_once_with(
+            dataontap_fakes.VSERVER_NAME, dataontap_fakes.DEST_VSERVER_NAME,
+            vserver_peer_application=peer_applications)
+        self.assertIsNone(result)
+
+    def test_create_vserver_peer_already_exists(self):
+        mock_get_client_for_backend = self.mock_object(
+            utils, 'get_client_for_backend')
+        get_vserver_peer_response = [{
+            'vserver': dataontap_fakes.VSERVER_NAME,
+            'peer-vserver': dataontap_fakes.DEST_VSERVER_NAME,
+            'peer-state': 'peered',
+            'peer-cluster': dataontap_fakes.CLUSTER_NAME,
+            'applications': ['snapmirror']
+        }]
+        mock_get_vserver_peers = mock_get_client_for_backend.return_value. \
+            get_vserver_peers
+        mock_get_vserver_peers.return_value = get_vserver_peer_response
+        mock_create_vserver_peer = mock_get_client_for_backend.return_value. \
+            create_vserver_peer
+        mock_create_vserver_peer.return_value = None
+        peer_applications = ['snapmirror']
+
+        result = self.dm_mixin.create_vserver_peer(
+            dataontap_fakes.VSERVER_NAME, self.src_backend,
+            dataontap_fakes.DEST_VSERVER_NAME, peer_applications)
+
+        mock_get_vserver_peers.assert_called_once_with(
+            dataontap_fakes.VSERVER_NAME, dataontap_fakes.DEST_VSERVER_NAME)
+        mock_create_vserver_peer.assert_not_called()
+        self.assertIsNone(result)
+
+    def test_create_vserver_peer_application_not_defined(self):
+        mock_get_client_for_backend = self.mock_object(
+            utils, 'get_client_for_backend')
+        get_vserver_peer_response = [{
+            'vserver': dataontap_fakes.VSERVER_NAME,
+            'peer-vserver': dataontap_fakes.DEST_VSERVER_NAME,
+            'peer-state': 'peered',
+            'peer-cluster': dataontap_fakes.CLUSTER_NAME,
+            'applications': ['snapmirror']
+        }]
+        mock_get_vserver_peers = mock_get_client_for_backend.return_value. \
+            get_vserver_peers
+        mock_get_vserver_peers.return_value = get_vserver_peer_response
+        mock_create_vserver_peer = mock_get_client_for_backend.return_value. \
+            create_vserver_peer
+        mock_create_vserver_peer.return_value = None
+        peer_applications = ['not a snapmirror application']
+
+        self.assertRaises(na_utils.NetAppDriverException,
+                          self.dm_mixin.create_vserver_peer,
+                          dataontap_fakes.VSERVER_NAME,
+                          self.src_backend,
+                          dataontap_fakes.DEST_VSERVER_NAME,
+                          peer_applications)
+
+        mock_get_vserver_peers.assert_called_once_with(
+            dataontap_fakes.VSERVER_NAME, dataontap_fakes.DEST_VSERVER_NAME)
+        mock_create_vserver_peer.assert_not_called()
+
     def test_quiesce_then_abort_wait_for_quiesced(self):
         self.mock_object(time, 'sleep')
         self.mock_object(self.mock_dest_client, 'get_snapmirrors',
@@ -981,3 +1063,218 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
         self.assertEqual(expected_active_backend_name,
                          actual_active_backend_name)
         self.assertEqual(expected_volume_updates, actual_volume_updates)
+
+    def test_migrate_volume_ontap_assisted_is_same_pool(self):
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': dataontap_fakes.HOST_STRING}
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        mock_migrate_volume_to_pool = self.dm_mixin._migrate_volume_to_pool
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+        mock_migrate_volume_to_vserver = (
+            self.dm_mixin._migrate_volume_to_vserver)
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.DEST_VSERVER_NAME)
+
+        mock_migrate_volume_to_pool.assert_not_called()
+        mock_migrate_volume_to_vserver.assert_not_called()
+        self.assertTrue(migrated)
+        self.assertEqual({}, updates)
+
+    def test_migrate_volume_ontap_assisted_same_pool_different_backend(self):
+        CONF.set_override('netapp_vserver', dataontap_fakes.DEST_VSERVER_NAME,
+                          group=self.dest_backend)
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': '%s@%s#%s' % (
+            dataontap_fakes.HOST_NAME,
+            dataontap_fakes.DEST_BACKEND_NAME,
+            dataontap_fakes.POOL_NAME)}
+        self.dm_mixin.using_cluster_credentials = True
+        self.mock_src_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.mock_dest_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        mock_migrate_volume_to_pool = self.dm_mixin._migrate_volume_to_pool
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+        mock_migrate_volume_to_vserver = (
+            self.dm_mixin._migrate_volume_to_vserver)
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.DEST_VSERVER_NAME)
+
+        utils.get_backend_configuration.assert_called_once_with(
+            dataontap_fakes.DEST_BACKEND_NAME)
+        utils.get_client_for_backend.has_calls(
+            [mock.call(dataontap_fakes.DEST_BACKEND_NAME),
+             mock.call(dataontap_fakes.BACKEND_NAME)])
+        self.mock_src_client.get_cluster_name.assert_called()
+        self.mock_dest_client.get_cluster_name.assert_called()
+        mock_migrate_volume_to_pool.assert_not_called()
+        mock_migrate_volume_to_vserver.assert_not_called()
+        self.assertTrue(migrated)
+        self.assertEqual({}, updates)
+
+    def test_migrate_volume_ontap_assisted_invalid_creds(self):
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': dataontap_fakes.DEST_HOST_STRING}
+        self.dm_mixin.using_cluster_credentials = False
+        self.mock_dest_config.netapp_vserver = dataontap_fakes.VSERVER_NAME
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        mock_migrate_volume_to_pool = self.dm_mixin._migrate_volume_to_pool
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+        mock_migrate_volume_to_vserver = (
+            self.dm_mixin._migrate_volume_to_vserver)
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.DEST_VSERVER_NAME)
+
+        utils.get_backend_configuration.assert_not_called()
+        utils.get_client_for_backend.assert_not_called()
+        self.mock_src_client.get_cluster_name.assert_not_called()
+        self.mock_dest_client.get_cluster_name.assert_not_called()
+        mock_migrate_volume_to_pool.assert_not_called()
+        mock_migrate_volume_to_vserver.assert_not_called()
+        self.assertFalse(migrated)
+        self.assertEqual({}, updates)
+
+    def test_migrate_volume_ontap_assisted_dest_pool_not_in_same_cluster(self):
+        CONF.set_override('netapp_vserver', dataontap_fakes.DEST_VSERVER_NAME,
+                          group=self.dest_backend)
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': dataontap_fakes.DEST_HOST_STRING}
+        self.dm_mixin.using_cluster_credentials = True
+        self.mock_src_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.mock_dest_client.get_cluster_name.return_value = (
+            dataontap_fakes.DEST_CLUSTER_NAME)
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        mock_migrate_volume_to_pool = self.dm_mixin._migrate_volume_to_pool
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+        mock_migrate_volume_to_vserver = (
+            self.dm_mixin._migrate_volume_to_vserver)
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.DEST_VSERVER_NAME)
+
+        utils.get_backend_configuration.assert_called_once_with(
+            dataontap_fakes.DEST_BACKEND_NAME)
+        utils.get_client_for_backend.has_calls(
+            [mock.call(dataontap_fakes.DEST_BACKEND_NAME),
+             mock.call(dataontap_fakes.BACKEND_NAME)])
+        self.mock_src_client.get_cluster_name.assert_called()
+        self.mock_dest_client.get_cluster_name.assert_called()
+        mock_migrate_volume_to_pool.assert_not_called()
+        mock_migrate_volume_to_vserver.assert_not_called()
+        self.assertFalse(migrated)
+        self.assertEqual({}, updates)
+
+    @ddt.data((dataontap_fakes.BACKEND_NAME, True),
+              (dataontap_fakes.DEST_BACKEND_NAME, False))
+    @ddt.unpack
+    def test_migrate_volume_ontap_assisted_same_vserver(self,
+                                                        dest_backend_name,
+                                                        is_same_backend):
+        CONF.set_override('netapp_vserver', dataontap_fakes.VSERVER_NAME,
+                          group=self.dest_backend)
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': '%s@%s#%s' % (
+            dataontap_fakes.HOST_NAME,
+            dest_backend_name,
+            dataontap_fakes.DEST_POOL_NAME)}
+        self.dm_mixin.using_cluster_credentials = True
+        self.mock_src_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.mock_dest_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        mock_migrate_volume_to_pool = self.dm_mixin._migrate_volume_to_pool
+        mock_migrate_volume_to_pool.return_value = {}
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+        mock_migrate_volume_to_vserver = (
+            self.dm_mixin._migrate_volume_to_vserver)
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.VSERVER_NAME)
+
+        if is_same_backend:
+            utils.get_backend_configuration.assert_not_called()
+            utils.get_client_for_backend.assert_not_called()
+            self.mock_src_client.get_cluster_name.assert_not_called()
+            self.mock_dest_client.get_cluster_name.assert_not_called()
+        else:
+            utils.get_backend_configuration.assert_called_once_with(
+                dest_backend_name)
+            utils.get_client_for_backend.has_calls(
+                [mock.call(dest_backend_name),
+                 mock.call(dataontap_fakes.BACKEND_NAME)])
+            self.mock_src_client.get_cluster_name.assert_called()
+            self.mock_dest_client.get_cluster_name.assert_called()
+
+        mock_migrate_volume_to_pool.assert_called_once_with(
+            fake_vol, dataontap_fakes.POOL_NAME,
+            dataontap_fakes.DEST_POOL_NAME,
+            dataontap_fakes.VSERVER_NAME,
+            dest_backend_name)
+        mock_migrate_volume_to_vserver.assert_not_called()
+        self.assertTrue(migrated)
+        self.assertEqual({}, updates)
+
+    def test_migrate_volume_different_vserver(self):
+        CONF.set_override('netapp_vserver', dataontap_fakes.DEST_VSERVER_NAME,
+                          group=self.dest_backend)
+        ctxt = mock.Mock()
+        vol_fields = {'id': dataontap_fakes.VOLUME_ID,
+                      'host': dataontap_fakes.HOST_STRING}
+        fake_vol = fake_volume.fake_volume_obj(ctxt, **vol_fields)
+        fake_dest_host = {'host': dataontap_fakes.DEST_HOST_STRING}
+        self.dm_mixin.using_cluster_credentials = True
+        self.mock_src_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.mock_dest_client.get_cluster_name.return_value = (
+            dataontap_fakes.CLUSTER_NAME)
+        self.dm_mixin._migrate_volume_to_pool = mock.Mock()
+        mock_migrate_volume_to_pool = self.dm_mixin._migrate_volume_to_pool
+        self.dm_mixin._migrate_volume_to_vserver = mock.Mock()
+        mock_migrate_volume_to_vserver = (
+            self.dm_mixin._migrate_volume_to_vserver)
+        mock_migrate_volume_to_vserver.return_value = {}
+
+        migrated, updates = self.dm_mixin.migrate_volume_ontap_assisted(
+            fake_vol, fake_dest_host, dataontap_fakes.BACKEND_NAME,
+            dataontap_fakes.VSERVER_NAME)
+
+        utils.get_backend_configuration.assert_called_once_with(
+            dataontap_fakes.DEST_BACKEND_NAME)
+        utils.get_client_for_backend.has_calls(
+            [mock.call(dataontap_fakes.DEST_BACKEND_NAME),
+             mock.call(dataontap_fakes.BACKEND_NAME)])
+        self.mock_src_client.get_cluster_name.assert_called()
+        self.mock_dest_client.get_cluster_name.assert_called()
+        mock_migrate_volume_to_pool.assert_not_called()
+        mock_migrate_volume_to_vserver.assert_called_once_with(
+            fake_vol, dataontap_fakes.POOL_NAME, dataontap_fakes.VSERVER_NAME,
+            dataontap_fakes.DEST_POOL_NAME, dataontap_fakes.DEST_VSERVER_NAME,
+            dataontap_fakes.DEST_BACKEND_NAME)
+        self.assertTrue(migrated)
+        self.assertEqual({}, updates)

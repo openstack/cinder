@@ -49,6 +49,15 @@ NFS_EXPORT_2 = 'nfs-host2:/export'
 MOUNT_POINT = '/mnt/nfs'
 ATTACHED = 'attached'
 DETACHED = 'detached'
+DEST_POOL_NAME = 'dest-aggr'
+DEST_VSERVER_NAME = 'dest-vserver'
+DEST_BACKEND_NAME = 'dest-backend'
+DEST_HOST_STRING = '%s@%s#%s' % (HOST_NAME, DEST_BACKEND_NAME, DEST_POOL_NAME)
+DEST_EXPORT_PATH = '/fake/export/dest-path'
+DEST_NFS_SHARE = '%s:%s' % (SHARE_IP, DEST_EXPORT_PATH)
+CLUSTER_NAME = 'fake-cluster-name'
+DEST_CLUSTER_NAME = 'fake-dest-cluster-name'
+JOB_UUID = 'fb132b04-6422-43ce-9451-ee819f0131a4'
 LUN_METADATA = {
     'OsType': None,
     'SpaceReserved': 'true',

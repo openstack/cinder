@@ -93,6 +93,10 @@ class GeometryHasChangedOnDestination(NetAppDriverException):
     message = _("Geometry has changed on destination volume.")
 
 
+class NetAppDriverTimeout(NetAppDriverException):
+    message = _("Timeout in NetApp Cinder Driver.")
+
+
 def validate_instantiation(**kwargs):
     """Checks if a driver is instantiated other than by the unified driver.
 

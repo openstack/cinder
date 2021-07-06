@@ -26,7 +26,19 @@ from cinder.zonemanager import utils as fczm_utils
 @interface.volumedriver
 class NetAppCmodeFibreChannelDriver(driver.BaseVD,
                                     driver.ManageableVD):
-    """NetApp C-mode FibreChannel volume driver."""
+    """NetApp C-mode FibreChannel volume driver.
+
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0 - Driver development before Wallaby
+        2.0.0 - Wallaby driver version bump
+        3.0.0 - Add support for Intra-cluster Storage assisted volume migration
+
+    """
+
+    VERSION = "3.0.0"
 
     DRIVER_NAME = 'NetApp_FibreChannel_Cluster_direct'
 
@@ -140,3 +152,6 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         return self.library.failover_host(
             context, volumes, secondary_id=secondary_id)
+
+    def migrate_volume(self, context, volume, host):
+        return self.library.migrate_volume(context, volume, host)

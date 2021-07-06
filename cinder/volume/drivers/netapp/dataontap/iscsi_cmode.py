@@ -135,3 +135,6 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
     def failover_host(self, context, volumes, secondary_id=None, groups=None):
         return self.library.failover_host(
             context, volumes, secondary_id=secondary_id)
+
+    def migrate_volume(self, context, volume, host):
+        return self.library.migrate_volume(context, volume, host)

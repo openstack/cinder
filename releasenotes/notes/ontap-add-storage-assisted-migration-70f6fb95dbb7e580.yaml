@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    NetApp ONTAP: Added support for storage assisted migration within a
+    same ONTAP cluster (iSCSI/FC/NFS).

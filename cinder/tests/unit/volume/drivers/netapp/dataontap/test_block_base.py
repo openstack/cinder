@@ -1705,3 +1705,17 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_get_snapshots_marked.assert_called_once_with()
         mock_delete_snapshot.assert_called_once_with(
             fake.VOLUME['name'], fake.SNAPSHOT_NAME)
+
+    def test_delete_lun_from_table(self):
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
+                                        fake.LUN_SIZE, fake.LUN_METADATA)
+        self.library.lun_table = {fake_lun.name: fake_lun}
+        self.library._delete_lun_from_table(fake_lun.name)
+        self.assertEqual({}, self.library.lun_table)
+
+    def test_delete_lun_from_table_not_found(self):
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
+                                        fake.LUN_SIZE, fake.LUN_METADATA)
+        self.library.lun_table = {fake_lun.name: fake_lun}
+        self.library._delete_lun_from_table('another-fake-lun')
+        self.assertEqual({fake_lun.name: fake_lun}, self.library.lun_table)
