@@ -23,6 +23,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import fileutils
 from oslo_utils import netutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import taskflow.engines
@@ -557,7 +558,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 volume,
                 encryption)
 
-            if image_info.encrypted == 'yes':
+            # see Bug #1942682 and Change I949f07582a708 for why we do this
+            if strutils.bool_from_string(image_info.encrypted):
                 key_str = source_pass + "\n" + new_pass + "\n"
                 del source_pass
 
