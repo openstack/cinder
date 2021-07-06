@@ -1637,18 +1637,25 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
         backing_filename = self.get_active_image_from_info(
             snapshot.volume)
         new_snap_path = self._get_new_snap_path(snapshot)
+        active = os.path.basename(new_snap_path)
 
         if self._is_volume_attached(snapshot.volume):
             self._create_snapshot_online(snapshot,
                                          backing_filename,
                                          new_snap_path)
+            # Update reference in the only attachment (no multi-attach support)
+            attachment = snapshot.volume.volume_attachment[0]
+            attachment.connection_info['name'] = active
+            # Let OVO know it has been updated
+            attachment.connection_info = attachment.connection_info
+            attachment.save()
         else:
             self._do_create_snapshot(snapshot,
                                      backing_filename,
                                      new_snap_path)
 
-        snap_info['active'] = os.path.basename(new_snap_path)
-        snap_info[snapshot.id] = os.path.basename(new_snap_path)
+        snap_info['active'] = active
+        snap_info[snapshot.id] = active
         self._write_info_file(info_path, snap_info)
 
     def _create_snapshot_online(self, snapshot, backing_filename,
