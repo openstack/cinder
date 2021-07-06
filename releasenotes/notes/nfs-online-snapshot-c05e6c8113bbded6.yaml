@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    NFS driver `bug #1860913
+    <https://bugs.launchpad.net/cinder/+bug/1860913>`_: Fixed instance uses
+    base image file when it is rebooted after online snapshot creation.
