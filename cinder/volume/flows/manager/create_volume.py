@@ -1149,6 +1149,10 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         try:
             ret = self.driver.create_volume_from_backup(volume, backup)
             need_update_volume = True
+            LOG.info("Created volume %(volume_id)s from backup %(backup_id)s "
+                     "successfully.",
+                     {'volume_id': volume.id,
+                      'backup_id': backup_id})
 
         except NotImplementedError:
             LOG.info("Backend does not support creating volume from "
@@ -1170,15 +1174,15 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             backup.update(updates)
             backup.save()
 
+            LOG.info("Raw volume %(volume_id)s created.  Calling "
+                     "restore_backup %(backup_id)s to complete restoration.",
+                     {'volume_id': volume.id,
+                      'backup_id': backup_id})
             backuprpcapi = backup_rpcapi.BackupAPI()
             backuprpcapi.restore_backup(context, backup.host, backup,
                                         volume.id, volume_is_new=True)
             need_update_volume = False
 
-        LOG.info("Created volume %(volume_id)s from backup %(backup_id)s "
-                 "successfully.",
-                 {'volume_id': volume.id,
-                  'backup_id': backup_id})
         return ret, need_update_volume
 
     def _create_raw_volume(self,
