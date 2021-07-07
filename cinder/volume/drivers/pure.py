@@ -96,6 +96,20 @@ PURE_OPTS = [
                      "targets hosts are allowed to connect to. It supports "
                      "IPv4 and IPv6 subnets. This parameter supersedes "
                      "pure_iscsi_cidr."),
+    cfg.StrOpt("pure_nvme_cidr", default="0.0.0.0/0",
+               help="CIDR of FlashArray NVMe targets hosts are allowed to "
+                    "connect to. Default will allow connection to any "
+                    "IPv4 address. This parameter now supports IPv6 subnets. "
+                    "Ignored when pure_nvme_cidr_list is set."),
+    cfg.ListOpt("pure_nvme_cidr_list", default=None,
+                help="Comma-separated list of CIDR of FlashArray NVMe "
+                     "targets hosts are allowed to connect to. It supports "
+                     "IPv4 and IPv6 subnets. This parameter supersedes "
+                     "pure_nvme_cidr."),
+    cfg.StrOpt("pure_nvme_transport", default="roce",
+               choices=['roce'],
+               help="The NVMe transport layer to be used by the NVMe driver. "
+                    "This only supports RoCE at this time."),
     cfg.BoolOpt("pure_eradicate_on_delete",
                 default=False,
                 help="When enabled, all Pure volumes, snapshots, and "
@@ -138,6 +152,8 @@ EXTRA_SPECS_REPL_TYPE = "replication_type"
 MAX_VOL_LENGTH = 63
 MAX_SNAP_LENGTH = 96
 UNMANAGED_SUFFIX = '-unmanaged'
+
+NVME_PORT = 4420
 
 REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL = 5  # 5 seconds
 REPL_SETTINGS_PROPAGATE_MAX_RETRIES = 36  # 36 * 5 = 180 seconds
@@ -231,7 +247,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         additional_opts = cls._get_oslo_driver_opts(
             'san_ip', 'driver_ssl_cert_verify', 'driver_ssl_cert_path',
             'use_chap_auth', 'replication_device', 'reserved_percentage',
-            'max_over_subscription_ratio')
+            'max_over_subscription_ratio', 'pure_nvme_transport',
+            'pure_nvme_cidr_list', 'pure_nvme_cidr')
         return PURE_OPTS + additional_opts
 
     def parse_replication_configs(self):
@@ -265,6 +282,13 @@ class PureBaseVolumeDriver(san.SanDriver):
                 ssl_cert_path = replication_device.get("ssl_cert_path", None)
                 repl_type = replication_device.get("type",
                                                    REPLICATION_TYPE_ASYNC)
+                if (
+                    repl_type == REPLICATION_TYPE_SYNC
+                    and "NVMe" in self._storage_protocol
+                ):
+                    msg = _('NVMe driver does not support synchronous '
+                            'replication')
+                    raise PureDriverException(reason=msg)
                 uniform = strutils.bool_from_string(
                     replication_device.get("uniform", False))
 
@@ -1796,6 +1820,9 @@ class PureBaseVolumeDriver(san.SanDriver):
     @staticmethod
     def _connect_host_to_vol(array, host_name, vol_name):
         connection = None
+        LOG.debug("Connecting volume %(vol)s to host %(host)s.",
+                  {"vol": vol_name,
+                   "host": host_name})
         try:
             connection = array.connect_host(host_name, vol_name)
         except purestorage.PureHTTPError as err:
@@ -1834,7 +1861,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
 
         qos = None
-        # TODO(patrickeast): Can remove this once new_type is a VolumeType OVO
+        # TODO: Can remove this once new_type is a VolumeType OVO
         new_type = volume_type.VolumeType.get_by_name_or_id(context,
                                                             new_type['id'])
         previous_vol_replicated = volume.is_replicated()
@@ -2584,14 +2611,16 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         }
 
         if self.configuration.pure_iscsi_cidr_list:
-            cidrs = self.configuration.pure_iscsi_cidr_list
+            iscsi_cidrs = self.configuration.pure_iscsi_cidr_list
             if self.configuration.pure_iscsi_cidr != "0.0.0.0/0":
                 LOG.warning("pure_iscsi_cidr was ignored as "
                             "pure_iscsi_cidr_list is set")
         else:
-            cidrs = [self.configuration.pure_iscsi_cidr]
+            iscsi_cidrs = [self.configuration.pure_iscsi_cidr]
 
-        check_cidrs = [ipaddress.ip_network(item) for item in cidrs]
+        check_iscsi_cidrs = [
+            ipaddress.ip_network(item) for item in iscsi_cidrs
+        ]
 
         target_luns = []
         target_iqns = []
@@ -2606,10 +2635,10 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 # Check to ensure that the portal IP is in the iSCSI target
                 # CIDR before adding it
                 target_portal = port["portal"]
-                portal, p_sep, p_port = target_portal.rpartition(':')
+                portal, p_port = target_portal.rsplit(':', 1)
                 portal = portal.strip('[]')
                 check_ip = ipaddress.ip_address(portal)
-                for check_cidr in check_cidrs:
+                for check_cidr in check_iscsi_cidrs:
                     if check_ip in check_cidr:
                         target_luns.append(target["connection"]["lun"])
                         target_iqns.append(port["iqn"])
@@ -2725,7 +2754,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         LOG.debug('Unable to set CHAP info: %s', err.text)
                         raise PureRetryableException()
 
-        # TODO(patrickeast): Ensure that the host has the correct preferred
+        # TODO: Ensure that the host has the correct preferred
         # arrays configured for it.
 
         connection = self._connect_host_to_vol(array,
@@ -2798,7 +2827,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 target_luns.append(connection["lun"])
 
         # Build the zoning map based on *all* wwns, this could be multiple
-        # arrays connecting to the same host with a strected volume.
+        # arrays connecting to the same host with a stretched volume.
         init_targ_map = self._build_initiator_target_map(target_wwns,
                                                          connector)
 
@@ -2850,7 +2879,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             if personality:
                 self.set_personality(array, host_name, personality)
 
-        # TODO(patrickeast): Ensure that the host has the correct preferred
+        # TODO: Ensure that the host has the correct preferred
         # arrays configured for it.
 
         return self._connect_host_to_vol(array, host_name, vol_name)
@@ -2924,3 +2953,184 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
         fczm_utils.remove_fc_zone(properties)
         return properties
+
+
+@interface.volumedriver
+class PureNVMEDriver(PureBaseVolumeDriver, driver.BaseVD):
+    """OpenStack Volume Driver to support Pure Storage FlashArray.
+
+    This version of the driver enables the use of NVMe over different
+    transport types for the underlying storage connectivity with the
+    FlashArray.
+    """
+
+    VERSION = "15.0.nvme"
+
+    def __init__(self, *args, **kwargs):
+        execute = kwargs.pop("execute", utils.execute)
+        super(PureNVMEDriver, self).__init__(execute=execute,
+                                             *args, **kwargs)
+        if self.configuration.pure_nvme_transport == "roce":
+            self.transport_type = "rdma"
+            self._storage_protocol = constants.NVMEOF_ROCE
+
+    def _get_nguid(self, pure_vol_name):
+        """Return the NGUID based on the volume's serial number
+
+        The NGUID is constructed from the volume serial number and
+        3 octet OUI
+
+        // octet 0:              padding
+        // octets 1 - 7:         first 7 octets of volume serial number
+        // octets 8 - 10:        3 octet OUI (24a937)
+        // octets 11 - 15:       last 5 octets of volume serial number
+        """
+        array = self._get_current_array()
+        volume_info = array.get_volume(pure_vol_name)
+        nguid = ("00" + volume_info['serial'][0:14] +
+                 "24a937" + volume_info['serial'][-10:])
+        return nguid.lower()
+
+    def _get_host(self, array, connector, remote=False):
+        """Return a list of dicts describing existing host objects or None."""
+        hosts = array.list_hosts(remote=remote)
+        matching_hosts = [host for host in hosts
+                          if connector['nqn'] in host['nqn']]
+        return matching_hosts
+
+    @pure_driver_debug_trace
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+        pure_vol_name = self._get_vol_name(volume)
+        target_arrays = [self._get_current_array()]
+        if (
+            self._is_vol_in_pod(pure_vol_name)
+            and self._is_active_cluster_enabled
+        ):
+            target_arrays += self._uniform_active_cluster_target_arrays
+
+        targets = []
+        for array in target_arrays:
+            connection = self._connect(array, pure_vol_name, connector)
+            target_ports = self._get_target_nvme_ports(array)
+            targets.append(
+                {
+                    "connection": connection,
+                    "ports": target_ports,
+                }
+            )
+        properties = self._build_connection_properties(targets)
+
+        properties["data"]["volume_nguid"] = self._get_nguid(pure_vol_name)
+
+        return properties
+
+    def _build_connection_properties(self, targets):
+        props = {
+            "driver_volume_type": "nvmeof",
+            "data": {
+                "discard": True,
+            },
+        }
+
+        if self.configuration.pure_nvme_cidr_list:
+            nvme_cidrs = self.configuration.pure_nvme_cidr_list
+            if self.configuration.pure_nvme_cidr != "0.0.0.0/0":
+                LOG.warning(
+                    "pure_nvme_cidr was ignored as "
+                    "pure_nvme_cidr_list is set"
+                )
+        else:
+            nvme_cidrs = [self.configuration.pure_nvme_cidr]
+
+        check_nvme_cidrs = [
+            ipaddress.ip_network(item) for item in nvme_cidrs
+        ]
+
+        target_luns = []
+        target_nqns = []
+        target_portals = []
+
+        # Aggregate all targets together, we may end up with different
+        # namespaces for different target nqn/subsys sets (ie. it could
+        # be a unique namespace for each FlashArray)
+        for target in targets:
+            for port in target["ports"]:
+                # Check to ensure that the portal IP is in the NVMe target
+                # CIDR before adding it
+                target_portal = port["portal"]
+                if target_portal and port["nqn"]:
+                    portal, p_port = target_portal.rsplit(':', 1)
+                    portal = portal.strip("[]")
+                    check_ip = ipaddress.ip_address(portal)
+                    for check_cidr in check_nvme_cidrs:
+                        if check_ip in check_cidr:
+                            target_luns.append(target["connection"]["lun"])
+                            target_nqns.append(port["nqn"])
+                            target_portals.append(
+                                (portal, NVME_PORT, self.transport_type)
+                            )
+
+        LOG.debug(
+            "NVMe target portals that match CIDR range: '%s'", target_portals
+        )
+
+        # If we have multiple ports always report them.
+        if target_luns and target_nqns:
+            props["data"]["portals"] = target_portals
+            props["data"]["target_nqn"] = target_nqns[0]
+        else:
+            raise PureDriverException(
+                reason=_("No approrpiate nvme ports on target array.")
+            )
+
+        return props
+
+    def _get_target_nvme_ports(self, array):
+        """Return list of nvme-enabled port descriptions."""
+        ports = array.list_ports()
+        nvme_ports = [port for port in ports if port["nqn"]]
+        if not nvme_ports:
+            raise PureDriverException(
+                reason=_("No nvme-enabled ports on target array.")
+            )
+        return nvme_ports
+
+    @utils.retry(PureRetryableException, retries=HOST_CREATE_MAX_RETRIES)
+    def _connect(self, array, vol_name, connector):
+        """Connect the host and volume; return dict describing connection."""
+        nqn = connector["nqn"]
+        hosts = self._get_host(array, connector, remote=False)
+        host = hosts[0] if len(hosts) > 0 else None
+        if host:
+            host_name = host["name"]
+            LOG.info(
+                "Re-using existing purity host %(host_name)r",
+                {"host_name": host_name},
+            )
+        else:
+            personality = self.configuration.safe_get('pure_host_personality')
+            host_name = self._generate_purity_host_name(connector["host"])
+            LOG.info(
+                "Creating host object %(host_name)r with NQN:" " %(nqn)s.",
+                {"host_name": host_name, "nqn": connector["nqn"]},
+            )
+            try:
+                array.create_host(host_name, nqnlist=[nqn])
+            except purestorage.PureHTTPError as err:
+                if err.code == 400 and (
+                    ERR_MSG_ALREADY_EXISTS in err.text
+                    or ERR_MSG_ALREADY_IN_USE in err.text
+                ):
+                    # If someone created it before we could just retry, we will
+                    # pick up the new host.
+                    LOG.debug("Unable to create host: %s", err.text)
+                    raise PureRetryableException()
+
+            if personality:
+                self.set_personality(array, host_name, personality)
+
+        # TODO: Ensure that the host has the correct preferred
+        # arrays configured for it.
+
+        return self._connect_host_to_vol(array, host_name, vol_name)

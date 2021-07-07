@@ -1,16 +1,19 @@
-===================================================
-Pure Storage iSCSI and Fibre Channel volume drivers
-===================================================
+=========================================================
+Pure Storage iSCSI, Fibre Channel and NVMe volume drivers
+=========================================================
 
 The Pure Storage FlashArray volume drivers for OpenStack Block Storage
 interact with configured Pure Storage arrays and support various
 operations.
 
 Support for iSCSI storage protocol is available with the PureISCSIDriver
-Volume Driver class, and Fibre Channel with PureFCDriver.
+Volume Driver class, Fibre Channel with the PureFCDriver and
+NVMe-ROCE with the PureNVMEDriver.
 
-All drivers are compatible with Purity FlashArrays that support the REST
-API version 1.2, 1.3, 1.4, 1.5, 1.13, and 1.14 (Purity 4.0.0 and newer).
+iSCSI and Fibre Channel drivers are compatible with Purity FlashArrays
+that support the REST API version 1.6 and higher (Purity 4.7.0 and newer).
+The NVMe driver is compatible with Purity FlashArrays
+that support the REST API version 1.16 and higher (Purity 5.2.0 and newer).
 Some features may require newer versions of Purity.
 
 Limitations and known issues
@@ -22,6 +25,8 @@ In addition to significantly limiting the available bandwidth, this
 means you do not have the high-availability and non-disruptive upgrade
 benefits provided by FlashArray. Multipathing must be used to take advantage
 of these benefits.
+
+The NVMe driver does not support synchronous replication using ActiveCluster.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -46,7 +51,8 @@ Supported operations
 
 * Create a thin provisioned volume.
 
-* Replicate volumes to remote Pure Storage array(s).
+* Replicate volumes to remote Pure Storage array(s) - synchronous replication
+  is not supported with the NVMe driver.
 
 QoS support for the Pure Storage drivers include the ability to set the
 following capabilities in the OpenStack Block Storage API
@@ -152,9 +158,13 @@ Pure Storage FlashArray as back-end storage.
    Replace the following variables accordingly:
 
    PURE_VOLUME_DRIVER
-       Use either ``cinder.volume.drivers.pure.PureISCSIDriver`` for iSCSI or
+       Use ``cinder.volume.drivers.pure.PureISCSIDriver`` for iSCSI,
        ``cinder.volume.drivers.pure.PureFCDriver`` for Fibre Channel
-       connectivity.
+       or ``cinder.volume.drivers.pure.PureNVMEDriver`` for
+       NVME connectivity.
+
+       If using the NVME driver, specify the ``pure_nvme_transport`` value.
+       Currently only ``roce`` is supported.
 
    IP_PURE_MGMT
        The IP address of the Pure Storage array's management interface or a
@@ -256,6 +266,10 @@ of the remote array.
 
 The ``REPLICATION_TYPE`` value for the ``type`` key can be either ``sync`` or
 ``async``
+
+.. note::
+
+   Synchronous replication is not supported by the NVMe driver.
 
 If the ``type`` is ``sync`` volumes will be created in a stretched Pod. This
 requires two arrays pre-configured with Active Cluster enabled. You can

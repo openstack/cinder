@@ -39,6 +39,7 @@ from cinder.volume import volume_utils
 def fake_retry(exceptions, interval=1, retries=3, backoff_rate=2):
     def _decorator(f):
         return f
+
     return _decorator
 
 
@@ -54,6 +55,7 @@ DRIVER_PATH = "cinder.volume.drivers.pure"
 BASE_DRIVER_OBJ = DRIVER_PATH + ".PureBaseVolumeDriver"
 ISCSI_DRIVER_OBJ = DRIVER_PATH + ".PureISCSIDriver"
 FC_DRIVER_OBJ = DRIVER_PATH + ".PureFCDriver"
+NVME_DRIVER_OBJ = DRIVER_PATH + ".PureNVMEDriver"
 ARRAY_OBJ = DRIVER_PATH + ".FlashArray"
 UNMANAGED_SUFFIX = "-unmanaged"
 
@@ -78,7 +80,21 @@ PRIMARY_MANAGEMENT_IP = GET_ARRAY_PRIMARY["array_name"]
 API_TOKEN = "12345678-abcd-1234-abcd-1234567890ab"
 VOLUME_BACKEND_NAME = "Pure_iSCSI"
 ISCSI_PORT_NAMES = ["ct0.eth2", "ct0.eth3", "ct1.eth2", "ct1.eth3"]
+NVME_PORT_NAMES = ["ct0.eth8", "ct0.eth9", "ct1.eth8", "ct1.eth9"]
 FC_PORT_NAMES = ["ct0.fc2", "ct0.fc3", "ct1.fc2", "ct1.fc3"]
+# These two IP blocks should use the same prefix (see NVME_CIDR_FILTERED to
+# make sure changes make sense). Our arrays now have 4 IPv4 + 4 IPv6 ports.
+NVME_IPS = ["10.0.0." + str(i + 1) for i in range(len(NVME_PORT_NAMES))]
+NVME_IPS += ["[2001:db8::" + str(i + 1) + "]"
+             for i in range(len(NVME_PORT_NAMES))]
+NVME_CIDR = "0.0.0.0/0"
+NVME_CIDR_V6 = "::/0"
+NVME_PORT = 4420
+# Designed to filter out only one of the AC NVMe IPs, leaving the rest in
+NVME_CIDR_FILTERED = "10.0.0.0/29"
+# Include several IP / networks: 10.0.0.2, 10.0.0.3, 10.0.0.6, 10.0.0.7
+NVME_CIDRS_FILTERED = ["10.0.0.2", "10.0.0.3", "2001:db8::1:2/127"]
+
 # These two IP blocks should use the same prefix (see ISCSI_CIDR_FILTERED to
 # make sure changes make sense). Our arrays now have 4 IPv4 + 4 IPv6 ports.
 ISCSI_IPS = ["10.0.0." + str(i + 1) for i in range(len(ISCSI_PORT_NAMES))]
@@ -102,17 +118,24 @@ PURE_HOST_NAME = pure.PureBaseVolumeDriver._generate_purity_host_name(HOSTNAME)
 PURE_HOST = {
     "name": PURE_HOST_NAME,
     "hgroup": None,
+    "nqn": [],
     "iqn": [],
     "wwn": [],
 }
+INITIATOR_NQN = (
+    "nqn.2014-08.org.nvmexpress:uuid:6953a373-c3f7-4ea8-ae77-105c393012ff"
+)
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
 INITIATOR_WWN = "5001500150015081abc"
+NVME_CONNECTOR = {"nqn": INITIATOR_NQN, "host": HOSTNAME}
 ISCSI_CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
 FC_CONNECTOR = {"wwpns": {INITIATOR_WWN}, "host": HOSTNAME}
+TARGET_NQN = "nqn.2010-06.com.purestorage:flasharray.12345abc"
 TARGET_IQN = "iqn.2010-06.com.purestorage:flasharray.12345abc"
 AC_TARGET_IQN = "iqn.2018-06.com.purestorage:flasharray.67890def"
 TARGET_WWN = "21000024ff59fe94"
 TARGET_PORT = "3260"
+TARGET_ROCE_PORT = "4420"
 INITIATOR_TARGET_MAP = {
     # _build_initiator_target_map() calls list(set()) on the list,
     # we must also call list(set()) to get the exact same order
@@ -137,24 +160,34 @@ AC_DEVICE_MAPPING = {
 }
 
 # We now have IPv6 in addition to IPv4 on each interface
+NVME_PORTS = [{"name": name,
+               "nqn": TARGET_NQN,
+               "iqn": None,
+               "portal": ip + ":" + TARGET_ROCE_PORT,
+               "wwn": None,
+               } for name, ip in zip(NVME_PORT_NAMES * 2, NVME_IPS)]
 ISCSI_PORTS = [{"name": name,
                 "iqn": TARGET_IQN,
                 "portal": ip + ":" + TARGET_PORT,
+                "nqn": None,
                 "wwn": None,
                 } for name, ip in zip(ISCSI_PORT_NAMES * 2, ISCSI_IPS)]
 AC_ISCSI_PORTS = [{"name": name,
                    "iqn": AC_TARGET_IQN,
                    "portal": ip + ":" + TARGET_PORT,
+                   "nqn": None,
                    "wwn": None,
                    } for name, ip in zip(ISCSI_PORT_NAMES * 2, AC_ISCSI_IPS)]
 FC_PORTS = [{"name": name,
              "iqn": None,
+             "nqn": None,
              "portal": None,
              "wwn": wwn,
              "nqn": None,
              } for name, wwn in zip(FC_PORT_NAMES, FC_WWNS)]
 AC_FC_PORTS = [{"name": name,
                 "iqn": None,
+                "nqn": None,
                 "portal": None,
                 "wwn": wwn,
                 "nqn": None,
@@ -162,9 +195,11 @@ AC_FC_PORTS = [{"name": name,
 NON_ISCSI_PORT = {
     "name": "ct0.fc1",
     "iqn": None,
+    "nqn": None,
     "portal": None,
     "wwn": "5001500150015081",
 }
+NVME_PORTS_WITH = NVME_PORTS + [NON_ISCSI_PORT]
 PORTS_WITH = ISCSI_PORTS + [NON_ISCSI_PORT]
 PORTS_WITHOUT = [NON_ISCSI_PORT]
 TOTAL_CAPACITY = 50.0
@@ -278,6 +313,31 @@ ISCSI_CONNECTION_INFO_AC_FILTERED_LIST = {
                            AC_ISCSI_IPS[5] + ":" + TARGET_PORT,   # IPv6
                            AC_ISCSI_IPS[6] + ":" + TARGET_PORT],  # IPv6
         "wwn": "3624a93709714b5cb91634c470002b2c8",
+    },
+}
+
+NVME_CONNECTION_INFO = {
+    "driver_volume_type": "nvmeof",
+    "data": {
+        "target_nqn": TARGET_NQN,
+        "discard": True,
+        "portals": [(NVME_IPS[0], NVME_PORT, "rdma"),
+                    (NVME_IPS[1], NVME_PORT, "rdma"),
+                    (NVME_IPS[2], NVME_PORT, "rdma"),
+                    (NVME_IPS[3], NVME_PORT, "rdma")],
+        "volume_nguid": "0009714b5cb916324a9374c470002b2c8",
+    },
+}
+NVME_CONNECTION_INFO_V6 = {
+    "driver_volume_type": "nvmeof",
+    "data": {
+        "target_nqn": TARGET_NQN,
+        "discard": True,
+        "portals": [(NVME_IPS[4].strip("[]"), NVME_PORT, "rdma"),
+                    (NVME_IPS[5].strip("[]"), NVME_PORT, "rdma"),
+                    (NVME_IPS[6].strip("[]"), NVME_PORT, "rdma"),
+                    (NVME_IPS[7].strip("[]"), NVME_PORT, "rdma")],
+        "volume_nguid": "0009714b5cb916324a9374c470002b2c8",
     },
 }
 
@@ -573,6 +633,9 @@ class PureDriverTestCase(test.TestCase):
         self.mock_config.driver_ssl_cert_path = None
         self.mock_config.pure_iscsi_cidr = ISCSI_CIDR
         self.mock_config.pure_iscsi_cidr_list = None
+        self.mock_config.pure_nvme_cidr = NVME_CIDR
+        self.mock_config.pure_nvme_cidr_list = None
+        self.mock_config.pure_nvme_transport = "roce"
         self.array = mock.Mock()
         self.array.get.return_value = GET_ARRAY_PRIMARY
         self.array.array_name = GET_ARRAY_PRIMARY["array_name"]
@@ -802,6 +865,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_target.get.return_value = GET_ARRAY_PRIMARY
 
         self.purestorage_module.FlashArray.return_value = mock_target
+        self.driver._storage_protocol = 'iSCSI'
         self.driver.parse_replication_configs()
         self.assertEqual(1, len(self.driver._replication_target_arrays))
         self.assertEqual(mock_target,
@@ -838,6 +902,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_target.get.return_value = GET_ARRAY_PRIMARY
 
         self.purestorage_module.FlashArray.return_value = mock_target
+        self.driver._storage_protocol = 'iSCSI'
         self.driver.parse_replication_configs()
         self.assertEqual(1, len(self.driver._replication_target_arrays))
         self.assertEqual(mock_target,
@@ -863,6 +928,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get.return_value = GET_ARRAY_PRIMARY
         self.purestorage_module.FlashArray.side_effect = [self.array,
                                                           self.async_array2]
+        self.driver._storage_protocol = 'iSCSI'
         self.driver.do_setup(None)
         self.assertEqual(self.array, self.driver._array)
         self.assertEqual(1, len(self.driver._replication_target_arrays))
@@ -899,6 +965,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.get.return_value = GET_ARRAY_PRIMARY
         self.purestorage_module.FlashArray.side_effect = [self.array,
                                                           mock_sync_target]
+        self.driver.configuration.pure_nvme_transport = "roce"
+        self.driver._storage_protocol = 'iSCSI'
         self.driver.do_setup(None)
         self.assertEqual(self.array, self.driver._array)
 
@@ -909,6 +977,37 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_setup_pods.assert_has_calls([
             mock.call(self.array, [mock_sync_target], 'cinder-pod')
         ])
+
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pods')
+    @mock.patch(BASE_DRIVER_OBJ + '._generate_replication_retention')
+    @mock.patch(BASE_DRIVER_OBJ + '._setup_replicated_pgroups')
+    def test_do_setup_replicated_sync_rep_bad_driver(
+            self,
+            mock_setup_repl_pgroups,
+            mock_generate_replication_retention,
+            mock_setup_pods):
+        retention = mock.MagicMock()
+        mock_generate_replication_retention.return_value = retention
+        self._setup_mocks_for_replication()
+
+        self.mock_config.safe_get.return_value = [
+            {
+                "backend_id": "foo",
+                "managed_backend_name": None,
+                "san_ip": "1.2.3.4",
+                "api_token": "abc123",
+                "type": "sync",
+            }
+        ]
+        mock_sync_target = mock.MagicMock()
+        mock_sync_target.get.return_value = GET_ARRAY_SECONDARY
+        self.array.get.return_value = GET_ARRAY_PRIMARY
+        self.driver._storage_protocol = 'NVMe-RoCE'
+        self.purestorage_module.FlashArray.side_effect = [self.array,
+                                                          mock_sync_target]
+        self.assertRaises(pure.PureDriverException,
+                          self.driver.do_setup,
+                          None)
 
     def test_update_provider_info_update_all(self):
         test_vols = [
@@ -3276,6 +3375,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         self.mock_config.use_chap_auth = False
         self.driver = pure.PureISCSIDriver(configuration=self.mock_config)
         self.driver._array = self.array
+        self.driver._storage_protocol = 'iSCSI'
         self.mock_utils = mock.Mock()
         self.driver.driver_utils = self.mock_utils
 
@@ -3490,6 +3590,7 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
                                              mock_get_chap_creds,
                                              mock_get_wwn):
         vol, vol_name = self.new_fake_vol()
+        self.maxDiff = None
         auth_type = "CHAP"
         chap_username = ISCSI_CONNECTOR["host"]
         chap_password = "password"
@@ -3774,6 +3875,7 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
     def setUp(self):
         super(PureFCDriverTestCase, self).setUp()
         self.driver = pure.PureFCDriver(configuration=self.mock_config)
+        self.driver._storage_protocol = "FC"
         self.driver._array = self.array
         self.driver._lookup_service = mock.Mock()
 
@@ -4307,4 +4409,342 @@ class PureVolumeGroupsTestCase(PureBaseSharedDriverTestCase):
             self.ctxt,
             group_snapshot,
             snapshots
+        )
+
+
+class PureNVMEDriverTestCase(PureBaseSharedDriverTestCase):
+    def setUp(self):
+        super(PureNVMEDriverTestCase, self).setUp()
+        self.driver = pure.PureNVMEDriver(configuration=self.mock_config)
+        self.driver._array = self.array
+        self.driver._storage_protocol = 'NVMe-RoCE'
+        self.mock_utils = mock.Mock()
+        self.driver.transport_type = "rdma"
+        self.driver.driver_utils = self.mock_utils
+
+    def test_get_host(self):
+        good_host = PURE_HOST.copy()
+        good_host.update(nqn=["another-wrong-nqn", INITIATOR_NQN])
+        bad_host = {'name': "bad-host", "nqn": ["wrong-nqn"]}
+        self.array.list_hosts.return_value = [bad_host]
+        real_result = self.driver._get_host(self.array, NVME_CONNECTOR)
+        self.assertEqual([], real_result)
+        self.array.list_hosts.return_value.append(good_host)
+        real_result = self.driver._get_host(self.array, NVME_CONNECTOR)
+        self.assertEqual([good_host], real_result)
+        self.assert_error_propagates(
+            [self.array.list_hosts],
+            self.driver._get_host,
+            self.array,
+            NVME_CONNECTOR,
+        )
+
+    def test_get_nguid(self):
+        vol = {'created': '2019-01-28T14:16:54Z',
+               'name': 'volume-fdc9892f-5af0-47c8-9d4a-5167ac29dc98-cinder',
+               'serial': '9714B5CB91634C470002B2C8',
+               'size': 3221225472,
+               'source': 'volume-a366b1ba-ec27-4ca3-9051-c301b75bc778-cinder'}
+        self.array.get_volume.return_value = vol
+        returned_nguid = self.driver._get_nguid(vol['name'])
+        expected_nguid = '009714b5cb91634c24a937470002b2c8'
+        self.assertEqual(expected_nguid, returned_nguid)
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    def test_initialize_connection(
+        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        mock_get_nguid
+    ):
+        vol, vol_name = self.new_fake_vol()
+        mock_get_nvme_ports.return_value = NVME_PORTS
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+        lun = 1
+        connection = {
+            "vol": vol_name,
+            "lun": lun,
+        }
+        mock_connection.return_value = connection
+        result = deepcopy(NVME_CONNECTION_INFO)
+
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.maxDiff = None
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_called_with(self.array)
+        mock_connection.assert_called_with(
+            self.array, vol_name, NVME_CONNECTOR
+        )
+        self.assert_error_propagates(
+            [mock_get_nvme_ports, mock_connection],
+            self.driver.initialize_connection,
+            vol,
+            NVME_CONNECTOR,
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    def test_initialize_connection_ipv6(
+        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        mock_get_nguid
+    ):
+        vol, vol_name = self.new_fake_vol()
+        mock_get_nvme_ports.return_value = NVME_PORTS
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+        lun = 1
+        connection = {
+            "vol": vol_name,
+            "lun": lun,
+        }
+        mock_connection.return_value = connection
+
+        self.mock_config.pure_nvme_cidr = NVME_CIDR_V6
+        result = deepcopy(NVME_CONNECTION_INFO_V6)
+
+        real_result = self.driver.initialize_connection(vol, NVME_CONNECTOR)
+        self.maxDiff = None
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_called_with(self.array)
+        mock_connection.assert_called_with(
+            self.array, vol_name, NVME_CONNECTOR
+        )
+        self.assert_error_propagates(
+            [mock_get_nvme_ports, mock_connection],
+            self.driver.initialize_connection,
+            vol,
+            NVME_CONNECTOR,
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_nguid")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_wwn")
+    @mock.patch(NVME_DRIVER_OBJ + "._connect")
+    @mock.patch(NVME_DRIVER_OBJ + "._get_target_nvme_ports")
+    def test_initialize_connection_multipath(
+        self, mock_get_nvme_ports, mock_connection, mock_get_wwn,
+        mock_get_nguid
+    ):
+        self.driver.configuration.pure_nvme_transport = "roce"
+        vol, vol_name = self.new_fake_vol()
+        mock_get_nvme_ports.return_value = NVME_PORTS
+        mock_get_wwn.return_value = "3624a93709714b5cb91634c470002b2c8"
+        mock_get_nguid.return_value = "0009714b5cb916324a9374c470002b2c8"
+        lun = 1
+        connection = {
+            "vol": vol_name,
+            "lun": lun,
+        }
+        mock_connection.return_value = connection
+        multipath_connector = deepcopy(NVME_CONNECTOR)
+        multipath_connector["multipath"] = True
+        result = deepcopy(NVME_CONNECTION_INFO)
+
+        real_result = self.driver.initialize_connection(
+            vol, multipath_connector
+        )
+        self.assertDictEqual(result, real_result)
+        mock_get_nvme_ports.assert_called_with(self.array)
+        mock_connection.assert_called_with(
+            self.array, vol_name, multipath_connector
+        )
+
+        multipath_connector["multipath"] = False
+        self.driver.initialize_connection(vol, multipath_connector)
+
+    def test_get_target_nvme_ports(self):
+        self.array.list_ports.return_value = NVME_PORTS
+        ret = self.driver._get_target_nvme_ports(self.array)
+        self.assertEqual(NVME_PORTS, ret)
+
+    def test_get_target_nvme_ports_with_nvme_and_fc(self):
+        self.array.list_ports.return_value = NVME_PORTS_WITH
+        ret = self.driver._get_target_nvme_ports(self.array)
+        self.assertEqual(NVME_PORTS, ret)
+
+    def test_get_target_nvme_ports_with_no_ports(self):
+        # Should raise an exception if there are no ports
+        self.array.list_ports.return_value = []
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver._get_target_nvme_ports,
+            self.array,
+        )
+
+    def test_get_target_nvme_ports_with_only_fc_ports(self):
+        # Should raise an exception of there are no nvme ports
+        self.array.list_ports.return_value = PORTS_WITHOUT
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver._get_target_nvme_ports,
+            self.array,
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_host", autospec=True)
+    @mock.patch(NVME_DRIVER_OBJ + "._generate_purity_host_name", spec=True)
+    def test_connect(self, mock_generate, mock_host):
+        vol, vol_name = self.new_fake_vol()
+        result = {"vol": vol_name, "lun": 1}
+
+        # Branch where host already exists
+        mock_host.return_value = [PURE_HOST]
+        self.array.connect_host.return_value = {"vol": vol_name, "lun": 1}
+        real_result = self.driver._connect(
+            self.array, vol_name, NVME_CONNECTOR
+        )
+        self.assertEqual(result, real_result)
+        mock_host.assert_called_with(
+            self.driver, self.array, NVME_CONNECTOR, remote=False
+        )
+        self.assertFalse(mock_generate.called)
+        self.assertFalse(self.array.create_host.called)
+        self.array.connect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+
+        # Branch where new host is created
+        mock_host.return_value = []
+        mock_generate.return_value = PURE_HOST_NAME
+        real_result = self.driver._connect(
+            self.array, vol_name, NVME_CONNECTOR
+        )
+        mock_host.assert_called_with(
+            self.driver, self.array, NVME_CONNECTOR, remote=False
+        )
+        mock_generate.assert_called_with(HOSTNAME)
+        self.array.create_host.assert_called_with(
+            PURE_HOST_NAME, nqnlist=[INITIATOR_NQN]
+        )
+        self.assertFalse(self.array.set_host.called)
+        self.assertEqual(result, real_result)
+
+        mock_generate.reset_mock()
+        self.array.reset_mock()
+        self.assert_error_propagates(
+            [
+                mock_host,
+                mock_generate,
+                self.array.connect_host,
+                self.array.create_host,
+            ],
+            self.driver._connect,
+            self.array,
+            vol_name,
+            NVME_CONNECTOR,
+        )
+
+        self.mock_config.safe_get.return_value = "oracle-vm-server"
+
+        # Branch where personality is set
+        self.driver._connect(self.array, vol_name, NVME_CONNECTOR)
+        self.assertDictEqual(result, real_result)
+        self.array.set_host.assert_called_with(
+            PURE_HOST_NAME, personality="oracle-vm-server"
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_already_connected(self, mock_host):
+        vol, vol_name = self.new_fake_vol()
+        mock_host.return_value = [PURE_HOST]
+        expected = {"host": PURE_HOST_NAME, "lun": 1}
+        self.array.list_volume_private_connections.return_value = [
+            expected,
+            {"host": "extra", "lun": 2},
+        ]
+        self.array.connect_host.side_effect = (
+            self.purestorage_module.PureHTTPError(
+                code=http.client.BAD_REQUEST, text="Connection already exists"
+            )
+        )
+        actual = self.driver._connect(self.array, vol_name, NVME_CONNECTOR)
+        self.assertEqual(expected, actual)
+        self.assertTrue(self.array.connect_host.called)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_already_connected_list_hosts_empty(self, mock_host):
+        vol, vol_name = self.new_fake_vol()
+        mock_host.return_value = [PURE_HOST]
+        self.array.list_volume_private_connections.return_value = {}
+        self.array.connect_host.side_effect = (
+            self.purestorage_module.PureHTTPError(
+                code=http.client.BAD_REQUEST, text="Connection already exists"
+            )
+        )
+        self.assertRaises(
+            pure.PureDriverException,
+            self.driver._connect,
+            self.array,
+            vol_name,
+            NVME_CONNECTOR,
+        )
+        self.assertTrue(self.array.connect_host.called)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_already_connected_list_hosts_exception(self, mock_host):
+        vol, vol_name = self.new_fake_vol()
+        mock_host.return_value = [PURE_HOST]
+        self.array.list_volume_private_connections.side_effect = (
+            self.purestorage_module.PureHTTPError(
+                code=http.client.BAD_REQUEST, text=""
+            )
+        )
+        self.array.connect_host.side_effect = (
+            self.purestorage_module.PureHTTPError(
+                code=http.client.BAD_REQUEST, text="Connection already exists"
+            )
+        )
+        self.assertRaises(
+            self.purestorage_module.PureHTTPError,
+            self.driver._connect,
+            self.array,
+            vol_name,
+            NVME_CONNECTOR,
+        )
+        self.assertTrue(self.array.connect_host.called)
+        self.assertTrue(bool(self.array.list_volume_private_connections))
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_nqn_already_in_use(self, mock_host):
+        vol, vol_name = self.new_fake_vol()
+        mock_host.return_value = []
+
+        self.array.create_host.side_effect = (
+            self.purestorage_module.PureHTTPError(
+                code=http.client.BAD_REQUEST,
+                text="The specified NQN is already in use.",
+            )
+        )
+
+        # Because we mocked out retry make sure we are raising the right
+        # exception to allow for retries to happen.
+        self.assertRaises(
+            pure.PureRetryableException,
+            self.driver._connect,
+            self.array,
+            vol_name,
+            NVME_CONNECTOR,
+        )
+
+    @mock.patch(NVME_DRIVER_OBJ + "._get_host", autospec=True)
+    def test_connect_create_host_already_exists(self, mock_host):
+        vol, vol_name = self.new_fake_vol()
+        mock_host.return_value = []
+
+        self.array.create_host.side_effect = (
+            self.purestorage_module.PureHTTPError(
+                code=http.client.BAD_REQUEST, text="Host already exists."
+            )
+        )
+
+        # Because we mocked out retry make sure we are raising the right
+        # exception to allow for retries to happen.
+        self.assertRaises(
+            pure.PureRetryableException,
+            self.driver._connect,
+            self.array,
+            vol_name,
+            NVME_CONNECTOR,
         )
