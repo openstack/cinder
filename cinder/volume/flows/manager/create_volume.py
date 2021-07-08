@@ -1158,6 +1158,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                      {'id': backup_id})
             model_update = self._create_raw_volume(
                 context, volume, **kwargs) or {}
+            model_update['status'] = fields.VolumeStatus.RESTORING_BACKUP
             volume.update(model_update)
             volume.save()
 
