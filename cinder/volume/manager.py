@@ -2672,88 +2672,89 @@ class VolumeManager(manager.CleanableManager,
                         {'config_group': config_group},
                         resource={'type': 'driver',
                                   'id': self.driver.__class__.__name__})
-        else:
-            slowmsg = "The " + self.driver.__class__.__name__ + " volume " \
-                      "driver's get_volume_stats operation ran for " \
-                      "%(seconds).1f seconds.  This may indicate a " \
-                      "performance problem with the backend which can lead " \
-                      "to instability."
+            return
 
-            @timeutils.time_it(
-                LOG, log_level=logging.WARN, message=slowmsg,
-                min_duration=CONF.backend_stats_polling_interval / 2)
-            def get_stats():
-                return self.driver.get_volume_stats(refresh=True)
+        slowmsg = "The " + self.driver.__class__.__name__ + " volume " \
+                  "driver's get_volume_stats operation ran for " \
+                  "%(seconds).1f seconds.  This may indicate a " \
+                  "performance problem with the backend which can lead " \
+                  "to instability."
 
-            volume_stats = get_stats()
+        @timeutils.time_it(
+            LOG, log_level=logging.WARN, message=slowmsg,
+            min_duration=CONF.backend_stats_polling_interval / 2)
+        def get_stats():
+            return self.driver.get_volume_stats(refresh=True)
 
-            if self.extra_capabilities:
-                volume_stats.update(self.extra_capabilities)
-            if volume_stats:
+        volume_stats = get_stats()
 
-                # NOTE(xyang): If driver reports replication_status to be
-                # 'error' in volume_stats, get model updates from driver
-                # and update db
-                if volume_stats.get('replication_status') == (
-                        fields.ReplicationStatus.ERROR):
-                    filters = self._get_cluster_or_host_filters()
-                    groups = objects.GroupList.get_all_replicated(
-                        context, filters=filters)
-                    group_model_updates, volume_model_updates = (
-                        self.driver.get_replication_error_status(context,
-                                                                 groups))
-                    for grp_update in group_model_updates:
-                        try:
-                            grp_obj = objects.Group.get_by_id(
-                                context, grp_update['group_id'])
-                            grp_obj.update(grp_update)
-                            grp_obj.save()
-                        except exception.GroupNotFound:
-                            # Group may be deleted already. Log a warning
-                            # and continue.
-                            LOG.warning("Group %(grp)s not found while "
-                                        "updating driver status.",
-                                        {'grp': grp_update['group_id']},
-                                        resource={
-                                            'type': 'group',
-                                            'id': grp_update['group_id']})
-                    for vol_update in volume_model_updates:
-                        try:
-                            vol_obj = objects.Volume.get_by_id(
-                                context, vol_update['volume_id'])
-                            vol_obj.update(vol_update)
-                            vol_obj.save()
-                        except exception.VolumeNotFound:
-                            # Volume may be deleted already. Log a warning
-                            # and continue.
-                            LOG.warning("Volume %(vol)s not found while "
-                                        "updating driver status.",
-                                        {'vol': vol_update['volume_id']},
-                                        resource={
-                                            'type': 'volume',
-                                            'id': vol_update['volume_id']})
+        if self.extra_capabilities:
+            volume_stats.update(self.extra_capabilities)
+        if volume_stats:
 
-                # Append volume stats with 'allocated_capacity_gb'
-                self._append_volume_stats(volume_stats)
+            # NOTE(xyang): If driver reports replication_status to be
+            # 'error' in volume_stats, get model updates from driver
+            # and update db
+            if volume_stats.get('replication_status') == (
+                    fields.ReplicationStatus.ERROR):
+                filters = self._get_cluster_or_host_filters()
+                groups = objects.GroupList.get_all_replicated(
+                    context, filters=filters)
+                group_model_updates, volume_model_updates = (
+                    self.driver.get_replication_error_status(context,
+                                                             groups))
+                for grp_update in group_model_updates:
+                    try:
+                        grp_obj = objects.Group.get_by_id(
+                            context, grp_update['group_id'])
+                        grp_obj.update(grp_update)
+                        grp_obj.save()
+                    except exception.GroupNotFound:
+                        # Group may be deleted already. Log a warning
+                        # and continue.
+                        LOG.warning("Group %(grp)s not found while "
+                                    "updating driver status.",
+                                    {'grp': grp_update['group_id']},
+                                    resource={
+                                        'type': 'group',
+                                        'id': grp_update['group_id']})
+                for vol_update in volume_model_updates:
+                    try:
+                        vol_obj = objects.Volume.get_by_id(
+                            context, vol_update['volume_id'])
+                        vol_obj.update(vol_update)
+                        vol_obj.save()
+                    except exception.VolumeNotFound:
+                        # Volume may be deleted already. Log a warning
+                        # and continue.
+                        LOG.warning("Volume %(vol)s not found while "
+                                    "updating driver status.",
+                                    {'vol': vol_update['volume_id']},
+                                    resource={
+                                        'type': 'volume',
+                                        'id': vol_update['volume_id']})
 
-                # Append cacheable flag for iSCSI/FC/NVMe-oF and only when
-                # cacheable is not set in driver level
-                if volume_stats.get('storage_protocol') in [
-                        'iSCSI', 'FC', 'NVMe-oF']:
-                    if volume_stats.get('pools'):
-                        for pool in volume_stats.get('pools'):
-                            if pool.get('cacheable') is None:
-                                pool['cacheable'] = True
-                    else:
-                        if volume_stats.get('cacheable') is None:
-                            volume_stats['cacheable'] = True
+            # Append volume stats with 'allocated_capacity_gb'
+            self._append_volume_stats(volume_stats)
 
-                # Append filter and goodness function if needed
-                volume_stats = (
-                    self._append_filter_goodness_functions(volume_stats))
+            # Append cacheable flag for iSCSI/FC/NVMe-oF and only when
+            # cacheable is not set in driver level
+            if volume_stats.get('storage_protocol') in [
+                    'iSCSI', 'FC', 'NVMe-oF']:
+                if volume_stats.get('pools'):
+                    for pool in volume_stats.get('pools'):
+                        if pool.get('cacheable') is None:
+                            pool['cacheable'] = True
+                else:
+                    if volume_stats.get('cacheable') is None:
+                        volume_stats['cacheable'] = True
 
-                # queue it to be sent to the Schedulers.
-                self.update_service_capabilities(volume_stats)
+            # Append filter and goodness function if needed
+            volume_stats = (
+                self._append_filter_goodness_functions(volume_stats))
+
+            # queue it to be sent to the Schedulers.
+            self.update_service_capabilities(volume_stats)
 
     def _append_volume_stats(self, vol_stats) -> None:
         pools = vol_stats.get('pools', None)
