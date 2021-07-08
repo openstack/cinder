@@ -1,0 +1,9 @@
+---
+other:
+  - |
+    The optional driver feature "Snapshot Attachment" has been removed
+    from the `Cinder Driver Support Matrix
+    <https://docs.openstack.org/cinder/latest/reference/support-matrix.html>`_.
+    It is an enhancment used for backups, it is not exposed via the
+    Block Storage API, and its presence in the Support Matrix was
+    misleading.
