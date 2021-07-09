@@ -983,15 +983,15 @@ class VolumeUtilsTestCase(test.TestCase):
     def test_create_encryption_key_encrypted(self, create_key,
                                              get_volume_type_encryption,
                                              is_encryption):
-        enc_key = {'cipher': 'aes-xts-plain64',
-                   'key_size': 256,
-                   'provider': 'p1',
-                   'control_location': 'front-end',
-                   'encryption_id': 'uuid1'}
+        enc_spec = {'cipher': 'aes-xts-plain64',
+                    'key_size': 256,
+                    'provider': 'p1',
+                    'control_location': 'front-end',
+                    'encryption_id': 'uuid1'}
         ctxt = context.get_admin_context()
         type_ref1 = volume_types.create(ctxt, "type1")
         encryption = db.volume_type_encryption_create(
-            ctxt, type_ref1['id'], enc_key)
+            ctxt, type_ref1['id'], enc_spec)
         get_volume_type_encryption.return_value = encryption
         CONF.set_override(
             'backend',
@@ -1009,6 +1009,39 @@ class VolumeUtilsTestCase(test.TestCase):
         create_key.assert_called_once_with(ctxt,
                                            algorithm='aes',
                                            length=256)
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted', return_value=True)
+    @mock.patch('cinder.volume.volume_types.get_volume_type_encryption')
+    @mock.patch('cinder.keymgr.conf_key_mgr.ConfKeyManager.create_key')
+    def test_create_encryption_key_invalid_spec(self, create_key,
+                                                get_volume_type_encryption,
+                                                is_encryption):
+        enc_spec = {'cipher': None,
+                    'key_size': 256,
+                    'provider': 'p1',
+                    'control_location': 'front-end',
+                    'encryption_id': 'uuid1'}
+        ctxt = context.get_admin_context()
+        type_ref1 = volume_types.create(ctxt, "type1")
+        encryption = db.volume_type_encryption_create(
+            ctxt, type_ref1['id'], enc_spec)
+        get_volume_type_encryption.return_value = encryption
+        CONF.set_override(
+            'backend',
+            'cinder.keymgr.conf_key_mgr.ConfKeyManager',
+            group='key_manager')
+        km = key_manager.API()
+        self.assertRaises(exception.Invalid,
+                          volume_utils.create_encryption_key,
+                          ctxt,
+                          km,
+                          fake.VOLUME_TYPE_ID)
+        is_encryption.assert_called_once_with(ctxt,
+                                              fake.VOLUME_TYPE_ID)
+        get_volume_type_encryption.assert_called_once_with(
+            ctxt,
+            fake.VOLUME_TYPE_ID)
+        create_key.assert_not_called()
 
     @ddt.data('<is> True', '<is> true', '<is> yes')
     def test_is_replicated_spec_true(self, enabled):

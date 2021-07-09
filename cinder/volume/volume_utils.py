@@ -1010,6 +1010,9 @@ def create_encryption_key(context: context.RequestContext,
         cipher = volume_type_encryption.cipher
         length = volume_type_encryption.key_size
         algorithm = cipher.split('-')[0] if cipher else None
+        if algorithm is None:
+            raise exception.InvalidVolumeType(
+                message="Invalid encryption spec")
         try:
             encryption_key_id = key_manager.create_key(
                 context,

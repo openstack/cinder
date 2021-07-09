@@ -2163,3 +2163,9 @@ class TestImageUtils(test.TestCase):
                     'ivgen_alg': 'essiv'}
         result = image_utils.decode_cipher('aes-xts-essiv', 256)
         self.assertEqual(expected, result)
+
+    def test_decode_cipher_invalid(self):
+        self.assertRaises(exception.InvalidVolumeType,
+                          image_utils.decode_cipher,
+                          'aes',
+                          256)

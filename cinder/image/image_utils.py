@@ -1035,7 +1035,12 @@ def decode_cipher(cipher_spec: str, key_size: int) -> Dict[str, str]:
        kernel source tree.  Cinder does not support the [:keycount] or
        [:ivopts] options.
     """
-    cipher_alg, cipher_mode, ivgen_alg = cipher_spec.split('-')
+    try:
+        cipher_alg, cipher_mode, ivgen_alg = cipher_spec.split('-')
+    except ValueError:
+        raise exception.InvalidVolumeType(
+            reason="Invalid cipher field in encryption type")
+
     cipher_alg = cipher_alg + '-' + str(key_size)
 
     return {'cipher_alg': cipher_alg,
