@@ -17,8 +17,8 @@ export MYPYPATH=$ROOT_DIR/../cinder/tests/stubs/
 if [ $# -eq 0 ]; then
     # if no arguments provided, use the standard converted lists
     lines=$(grep -v '#' $ROOT_DIR/../mypy-files.txt)
-    python -m mypy ${lines[@]}
+    python -m mypy $OS_MYPY_OPTS ${lines[@]}
 else
     # else test what the user asked us to
-    python -m mypy $@
+    python -m mypy $OS_MYPY_OPTS $@
 fi
