@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    `Bug #1935688 <https://bugs.launchpad.net/cinder/+bug/1935688>`_:
+    Cinder only supports uploading a volume of an encrypted volume type as an
+    image to the Image service in ``raw`` format using a ``bare`` container
+    type.  Previously, ``os-volume_upload_image`` action requests to the Block
+    Storage API specifying different format option values were accepted, but
+    would result in a later failure.  This condition is now checked at the API
+    layer, and ``os-volume_upload_image`` action requests on a volume of an
+    encrypted type that specify unsupported values for ``disk_format`` or
+    ``container_format`` now result in a 400 (Bad Request) response.
