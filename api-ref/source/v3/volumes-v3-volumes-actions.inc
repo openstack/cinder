@@ -699,8 +699,8 @@ Request
    - os-volume_upload_image: os-volume_upload_image
    - image_name: image_name
    - force: force_upload_vol
-   - disk_format: disk_format
-   - container_format: container_format
+   - disk_format: disk_format_upload
+   - container_format: container_format_upload
    - visibility: visibility_min
    - protected: protected
 
