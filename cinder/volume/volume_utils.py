@@ -1634,3 +1634,33 @@ def setup_tracing(trace_flags):
         LOG.warning('Invalid trace flag: %s', invalid_flag)
     TRACE_METHOD = 'method' in trace_flags
     TRACE_API = 'api' in trace_flags
+
+
+def require_driver_initialized(driver):
+    """Verifies if `driver` is initialized
+
+    If the driver is not initialized, an exception will be raised.
+
+    :params driver: The driver instance.
+    :raises: `exception.DriverNotInitialized`
+    """
+    # we can't do anything if the driver didn't init
+    if not driver.initialized:
+        driver_name = driver.__class__.__name__
+        LOG.error("Volume driver %s not initialized", driver_name)
+        raise exception.DriverNotInitialized()
+    else:
+        log_unsupported_driver_warning(driver)
+
+
+def log_unsupported_driver_warning(driver):
+    """Annoy the log about unsupported drivers."""
+    if not driver.supported:
+        # Check to see if the driver is flagged as supported.
+        LOG.warning("Volume driver (%(driver_name)s %(version)s) is "
+                    "currently unsupported and may be removed in the "
+                    "next release of OpenStack.  Use at your own risk.",
+                    {'driver_name': driver.__class__.__name__,
+                     'version': driver.get_version()},
+                    resource={'type': 'driver',
+                              'id': driver.__class__.__name__})

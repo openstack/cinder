@@ -663,8 +663,10 @@ class ReplicationTestCase(base.BaseVolumeTestCase):
                                           [], [], [],
                                           self.manager.FAILBACK_SENTINEL)
 
-    @mock.patch('cinder.utils.log_unsupported_driver_warning', mock.Mock())
-    @mock.patch('cinder.utils.require_driver_initialized', mock.Mock())
+    @mock.patch('cinder.volume.volume_utils.log_unsupported_driver_warning',
+                mock.Mock())
+    @mock.patch('cinder.volume.volume_utils.require_driver_initialized',
+                mock.Mock())
     def test_init_host_with_rpc_clustered_replication(self):
         # These are not OVOs but ORM instances
         cluster = utils.create_cluster(self.context)

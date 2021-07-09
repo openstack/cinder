@@ -23,8 +23,8 @@ from unittest import mock
 
 from cinder.tests import fake_driver
 from cinder.tests.unit import test
-from cinder import utils
 from cinder.volume import configuration as conf
+from cinder.volume import volume_utils
 from cinder.zonemanager.drivers.brocade import brcd_fc_zone_driver
 from cinder.zonemanager import fc_zone_manager
 
@@ -44,7 +44,7 @@ class TestVolumeDriver(test.TestCase):
         super(TestVolumeDriver, self).__init__(*args, **kwargs)
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
-    @mock.patch.object(utils, 'require_driver_initialized')
+    @mock.patch.object(volume_utils, 'require_driver_initialized')
     def test_initialize_connection_with_decorator(self, utils_mock, opt_mock):
         utils_mock.return_value = True
         with mock.patch.object(fc_zone_manager.ZoneManager, 'add_connection')\
@@ -57,7 +57,7 @@ class TestVolumeDriver(test.TestCase):
 
     @mock.patch('cinder.zonemanager.utils.create_zone_manager')
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
-    @mock.patch.object(utils, 'require_driver_initialized')
+    @mock.patch.object(volume_utils, 'require_driver_initialized')
     def test_initialize_connection_with_decorator_and_empty_map(
             self, utils_mock, opt_mock, zm_create_mock):
         utils_mock.return_value = True
@@ -67,7 +67,7 @@ class TestVolumeDriver(test.TestCase):
             zm_create_mock.assert_not_called()
             add_zone_mock.assert_not_called()
 
-    @mock.patch.object(utils, 'require_driver_initialized')
+    @mock.patch.object(volume_utils, 'require_driver_initialized')
     def test_initialize_connection_no_decorator(self, utils_mock):
         utils_mock.return_value = True
         with mock.patch.object(fc_zone_manager.ZoneManager, 'add_connection')\
@@ -79,7 +79,7 @@ class TestVolumeDriver(test.TestCase):
                 add_zone_mock.assert_not_called()
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
-    @mock.patch.object(utils, 'require_driver_initialized')
+    @mock.patch.object(volume_utils, 'require_driver_initialized')
     def test_terminate_connection_with_decorator(self, utils_mock, opt_mock):
         utils_mock.return_value = True
         with mock.patch.object(fc_zone_manager.ZoneManager,
@@ -92,7 +92,7 @@ class TestVolumeDriver(test.TestCase):
 
     @mock.patch('cinder.zonemanager.utils.create_zone_manager')
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
-    @mock.patch.object(utils, 'require_driver_initialized')
+    @mock.patch.object(volume_utils, 'require_driver_initialized')
     def test_terminate_connection_with_decorator_and_empty_map(
             self, utils_mock, opt_mock, zm_create_mock):
         utils_mock.return_value = True
@@ -102,7 +102,7 @@ class TestVolumeDriver(test.TestCase):
             zm_create_mock.assert_not_called()
             remove_zone_mock.assert_not_called()
 
-    @mock.patch.object(utils, 'require_driver_initialized')
+    @mock.patch.object(volume_utils, 'require_driver_initialized')
     def test_terminate_connection_no_decorator(self, utils_mock):
         utils_mock.return_value = True
         with mock.patch.object(fc_zone_manager.ZoneManager,
