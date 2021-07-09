@@ -219,6 +219,14 @@ class VolumeActionsController(wsgi.Controller):
             "name": params["image_name"]}
 
         if volume.encryption_key_id:
+            # encrypted volumes cannot be converted on upload
+            if (image_metadata['disk_format'] != 'raw'
+                    or image_metadata['container_format'] != 'bare'):
+                msg = _("An encrypted volume uploaded as an image must use "
+                        "'raw' disk_format and 'bare' container_format, "
+                        "which are the defaults for these options.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
             # Clone volume encryption key: the current key cannot
             # be reused because it will be deleted when the volume is
             # deleted.

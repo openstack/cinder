@@ -863,6 +863,13 @@ container_format:
   in: body
   required: false
   type: string
+container_format_upload:
+  description: |
+    Container format for the new image. Default is bare.  (Note: Volumes
+    of an encrypted volume type must use a bare container format.)
+  in: body
+  required: false
+  type: string
 control_location:
   description: |
     Notional service where encryption is performed. Valid values are
@@ -1107,6 +1114,13 @@ disabled_required:
 disk_format:
   description: |
     Disk format for the new image. Default is raw.
+  in: body
+  required: false
+  type: string
+disk_format_upload:
+  description: |
+    Disk format for the new image. Default is raw.  (Note: volumes of an
+    encrypted volume type can only be uploaded in raw format.)
   in: body
   required: false
   type: string
