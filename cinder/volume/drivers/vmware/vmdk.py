@@ -337,6 +337,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         self._session = None
         self._stats = None
         self._volumeops = None
+        self._vcenter_instance_uuid_cache = None
         self._storage_policy_enabled = False
         self._ds_sel = None
         self._clusters = None
@@ -358,6 +359,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     @property
     def ds_sel(self):
         return self._ds_sel
+
+    @property
+    def _vcenter_instance_uuid(self):
+        if self._vcenter_instance_uuid_cache:
+            return self._vcenter_instance_uuid_cache
+        self._vcenter_instance_uuid_cache = \
+            self.session.vim.service_content.about.instanceUuid
+        return self._vcenter_instance_uuid_cache
 
     def _validate_params(self):
         # Throw error if required parameters are not set.
@@ -409,8 +418,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return self._stats
 
     def _get_connection_capabilities(self):
-        return ['vmware_service_instance_uuid:%s' %
-                self.session.vim.service_content.about.instanceUuid]
+        return [
+            'vmware_service_instance_uuid:%s' %
+            self._vcenter_instance_uuid]
 
     def _get_volume_stats(self):
         """Fetch the stats about the backend.
@@ -805,8 +815,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return {
             'url': url,
             'ssl_thumbprint': x509.digest("sha1"),
-            'instance_uuid':
-                self.session.vim.service_content.about.instanceUuid,
+            'instance_uuid': self._vcenter_instance_uuid,
             'credential': {
                 'username': self.configuration.vmware_host_username,
                 'password': self.configuration.vmware_host_password
@@ -819,7 +828,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             'volume': backing.value,
             'volume_id': volume.id,
             'name': volume.name,
-            'profile_id': self._get_storage_profile_id(volume)
+            'profile_id': self._get_storage_profile_id(volume),
+            'datastore': self.volumeops.get_datastore(backing).value,
         }
 
         # vmdk connector in os-brick needs additional connection info.
@@ -828,9 +838,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
             vmdk_path = self.volumeops.get_vmdk_path(backing)
             connection_info['data']['vmdk_path'] = vmdk_path
-
-            datastore = self.volumeops.get_datastore(backing)
-            connection_info['data']['datastore'] = datastore.value
 
             datacenter = self.volumeops.get_dc(backing)
             connection_info['data']['datacenter'] = datacenter.value
@@ -2633,12 +2640,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
 
         false_ret = (False, None)
-        allowed_statuses = ['available', 'reserved']
+        allowed_statuses = ['available', 'reserved', 'in-use']
         if volume['status'] not in allowed_statuses:
             LOG.debug('Only %s volumes can be migrated using backend '
                       'assisted migration. Falling back to generic migration.',
                       " or ".join(allowed_statuses))
             return false_ret
+
         if 'location_info' not in host['capabilities']:
             return false_ret
         info = host['capabilities']['location_info']
@@ -2660,10 +2668,21 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                      {'volume_name': volume.name, 'dest_host': dest_host})
             return (True, None)
 
-        service_locator = self._remote_api.get_service_locator_info(context,
-                                                                    dest_host)
+        if volume['status'] == 'in-use':
+            if self._vcenter_instance_uuid != vcenter:
+                return self._migrate_attached_cross_vc(context, dest_host,
+                                                       volume, backing)
+            else:
+                raise NotImplementedError()
+        else:
+            return self._migrate_unattached(context, dest_host, volume,
+                                            backing)
+
+    def _migrate_unattached(self, context, dest_host, volume, backing):
         ds_info = self._remote_api.select_ds_for_volume(context, dest_host,
                                                         volume)
+        service_locator = self._remote_api.get_service_locator_info(context,
+                                                                    dest_host)
         host_ref = vim_util.get_moref(ds_info['host'], 'HostSystem')
         rp_ref = vim_util.get_moref(ds_info['resource_pool'], 'ResourcePool')
         ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
@@ -2674,6 +2693,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         try:
             self._remote_api.move_volume_backing_to_folder(
                 context, dest_host, volume, ds_info['folder'])
+            return (True, None)
         except Exception:
             # At this point the backing has been migrated to the new host.
             # If this movement to folder fails, we let the manager know the
@@ -2686,10 +2706,30 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                            'folder': ds_info['folder']},)
             return (True, {'migration_status': 'error'})
 
-        return (True, None)
+    def _migrate_attached_cross_vc(self, context, dest_host, volume, backing):
+        try:
+            # Create a diskless backing vm, so we can attach the
+            # backing moved in a live migration back to it
+            self._remote_api.create_backing(
+                context, dest_host, volume, create_params={
+                    CREATE_PARAM_DISK_LESS: True
+                })
+            return (True, None)
+        except Exception:
+            # At this point the backing has been "migrated" to the new host.
+            # If this creation fails, return True so it will save the new host,
+            # but we update its status to 'error' so that someone can check
+            # the logs and perform a manual action.
+            LOG.exception("Failed to create the backing %(volume_id)s.",
+                          {'volume_id': volume['id'], }, )
+            return (True, {'migration_status': 'error'})
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
+        if original_volume_status == 'in-use':
+            # Everything should be taken care in nova
+            return None
+
         backing = self.volumeops.get_backing(new_volume['name'],
                                              new_volume['id'])
         if not backing:

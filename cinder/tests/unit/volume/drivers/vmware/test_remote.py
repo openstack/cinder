@@ -56,7 +56,9 @@ class VmdkDriverRemoteApiTest(test.RPCAPITestCase):
                            rpc_method='call',
                            server=self._fake_host,
                            host=self._fake_host,
-                           volume=self._fake_volume)
+                           volume=self._fake_volume,
+                           create_params=None
+                           )
 
 
 class VmdkDriverRemoteServiceTest(test.TestCase):
@@ -117,4 +119,5 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
 
     def test_create_backing(self):
         self._service.create_backing(self._ctxt, self._fake_volume)
-        self._driver._create_backing.assert_called_once_with(self._fake_volume)
+        self._driver._create_backing.assert_called_once_with(
+            self._fake_volume, create_params=None)
