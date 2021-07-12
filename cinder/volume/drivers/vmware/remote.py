@@ -50,9 +50,10 @@ class VmdkDriverRemoteApi(rpc.RPCAPI):
         return cctxt.call(ctxt, 'move_volume_backing_to_folder', volume=volume,
                           folder=folder)
 
-    def create_backing(self, ctxt, host, volume):
+    def create_backing(self, ctxt, host, volume, create_params=None):
         cctxt = self._get_cctxt(host)
-        return cctxt.call(ctxt, 'create_backing', volume=volume)
+        return cctxt.call(ctxt, 'create_backing', volume=volume,
+                          create_params=create_params)
 
 
 class VmdkDriverRemoteService(object):
@@ -86,5 +87,6 @@ class VmdkDriverRemoteService(object):
         folder_ref = vim_util.get_moref(folder, 'Folder')
         self._driver.volumeops.move_backing_to_folder(backing, folder_ref)
 
-    def create_backing(self, ctxt, volume):
-        return self._driver._create_backing(volume)
+    def create_backing(self, ctxt, volume, create_params=None):
+        return self._driver._create_backing(volume,
+                                            create_params=create_params)
