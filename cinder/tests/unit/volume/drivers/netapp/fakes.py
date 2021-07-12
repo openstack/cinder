@@ -68,8 +68,8 @@ FC_ISCSI_TARGET_INFO_DICT_IPV6 = {'target_discovered': False,
                                   'volume_id': ISCSI_FAKE_VOLUME['id']}
 
 VOLUME_NAME = 'fake_volume_name'
-VOLUME_ID = 'fake_volume_id'
-VOLUME_TYPE_ID = 'fake_volume_type_id'
+VOLUME_ID = '80113942-01fd-4114-aaee-9d73ecb536d5'
+VOLUME_TYPE_ID = '20c9718a-9256-4bf8-9f94-1c6f4e7f0c84'
 
 VOLUME = {
     'name': VOLUME_NAME,
