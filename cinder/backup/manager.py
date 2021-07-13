@@ -155,7 +155,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.publish_service_capabilities(ctxt)
 
     def _setup_backup_driver(self, ctxt):
-        backup_service = self.service(context=ctxt, db=self.db)
+        backup_service = self.service(context=ctxt)
         backup_service.check_for_setup_error()
         self.is_initialized = True
         raise loopingcall.LoopingCallDone()

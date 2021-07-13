@@ -170,16 +170,18 @@ def _wrap_exception(func):
 class S3BackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within S3."""
 
-    def __init__(self, context, db=None):
+    def __init__(self, context):
         chunk_size_bytes = CONF.backup_s3_object_size
         sha_block_size_bytes = CONF.backup_s3_block_size
         backup_bucket = CONF.backup_s3_store_bucket
         enable_progress_timer = CONF.backup_s3_enable_progress_timer
-        super(S3BackupDriver, self).__init__(context, chunk_size_bytes,
-                                             sha_block_size_bytes,
-                                             backup_bucket,
-                                             enable_progress_timer,
-                                             db)
+        super().__init__(
+            context,
+            chunk_size_bytes,
+            sha_block_size_bytes,
+            backup_bucket,
+            enable_progress_timer,
+        )
         config_args = dict(
             connect_timeout=CONF.backup_s3_timeout,
             read_timeout=CONF.backup_s3_timeout,

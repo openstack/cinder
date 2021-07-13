@@ -163,18 +163,20 @@ def _get_dist_version(name):
 class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within GCS."""
 
-    def __init__(self, context, db=None):
+    def __init__(self, context):
         global OAUTH_EXCEPTIONS
         backup_bucket = CONF.backup_gcs_bucket
         self.gcs_project_id = CONF.backup_gcs_project_id
         chunk_size_bytes = CONF.backup_gcs_object_size
         sha_block_size_bytes = CONF.backup_gcs_block_size
         enable_progress_timer = CONF.backup_gcs_enable_progress_timer
-        super(GoogleBackupDriver, self).__init__(context, chunk_size_bytes,
-                                                 sha_block_size_bytes,
-                                                 backup_bucket,
-                                                 enable_progress_timer,
-                                                 db)
+        super().__init__(
+            context,
+            chunk_size_bytes,
+            sha_block_size_bytes,
+            backup_bucket,
+            enable_progress_timer,
+        )
         self.reader_chunk_size = CONF.backup_gcs_reader_chunk_size
         self.writer_chunk_size = CONF.backup_gcs_writer_chunk_size
         self.bucket_location = CONF.backup_gcs_bucket_location

@@ -304,7 +304,6 @@ class VolumeManager(manager.CleanableManager,
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
-            db=self.db,
             host=self.host,
             cluster_name=self.cluster,
             is_vol_db_empty=vol_db_empty,

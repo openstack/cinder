@@ -1282,9 +1282,10 @@ def image_conversion_dir() -> str:
     return tmpdir
 
 
-def check_encryption_provider(db,
-                              volume: 'objects.Volume',
-                              context: context.RequestContext) -> dict:
+def check_encryption_provider(
+    volume: 'objects.Volume',
+    context: context.RequestContext,
+) -> dict:
     """Check that this is a LUKS encryption provider.
 
     :returns: encryption dict

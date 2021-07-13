@@ -53,8 +53,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                              mock_exists):
         self.configuration.volume_clear = 'zero'
         self.configuration.volume_clear_size = 0
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration)
         # Test volume without 'size' field and 'volume_size' field
         self.assertRaises(exception.InvalidParameterValue,
                           lvm_driver._delete_volume,
@@ -68,8 +67,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.configuration.volume_type = 'default'
 
         volume = dict(self.FAKE_VOLUME, size=1)
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration)
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           lvm_driver._delete_volume, volume)
@@ -87,8 +85,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.configuration.volume_clear_size = 0
         self.configuration.lvm_type = 'thin'
         self.configuration.target_helper = 'tgtadm'
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         vg_obj=vg_obj, db=db)
+        lvm_driver = lvm.LVMVolumeDriver(
+            configuration=self.configuration, vg_obj=vg_obj)
 
         uuid = '00000000-0000-0000-0000-c3aa7ee01536'
 
@@ -108,8 +106,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
                                        'auto')
 
         configuration = conf.Configuration(fake_opt, 'fake_group')
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
-                                         vg_obj=vg_obj, db=db)
+        lvm_driver = lvm.LVMVolumeDriver(
+            configuration=configuration, vg_obj=vg_obj)
 
         lvm_driver.delete_snapshot = mock.Mock()
 
@@ -210,8 +208,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     def test_create_volume_from_snapshot_sparse(self):
 
         self.configuration.lvm_type = 'thin'
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration)
 
         with mock.patch.object(lvm_driver, 'vg'):
 
@@ -227,8 +224,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
     def test_create_volume_from_snapshot_sparse_extend(self):
 
         self.configuration.lvm_type = 'thin'
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration)
 
         with mock.patch.object(lvm_driver, 'vg'), \
                 mock.patch.object(lvm_driver, 'extend_volume') as mock_extend:
@@ -342,9 +338,8 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
         self.configuration.lvm_type = 'thin'
         fake_vg = mock.Mock(fake_lvm.FakeBrickLVM('cinder-volumes', False,
                                                   None, 'default'))
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         vg_obj=fake_vg,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(
+            configuration=self.configuration, vg_obj=fake_vg)
         fake_volume = tests_utils.create_volume(self.context, size=1)
         fake_new_volume = tests_utils.create_volume(self.context, size=2)
 
@@ -528,8 +523,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
             return [{}]
 
         self.configuration.lvm_type = 'thin'
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration)
 
         with mock.patch.object(brick_lvm.LVM, 'get_all_physical_volumes',
                                return_value = [{}]), \
@@ -746,8 +740,7 @@ class LVMVolumeDriverTestCase(test_driver.BaseDriverTestCase):
 
         configuration = conf.Configuration(fake_opt, 'fake_group')
         configuration.lvm_type = 'thin'
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
-                                         db=db)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
         fake_volume = tests_utils.create_volume(self.context,
                                                 display_name='fake_volume')
         fake_snapshot = tests_utils.create_snapshot(
@@ -975,9 +968,8 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
                                        False,
                                        None,
                                        'default')
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db,
-                                         vg_obj=vg_obj)
+        lvm_driver = lvm.LVMVolumeDriver(
+            configuration=self.configuration, vg_obj=vg_obj)
         lvm_driver.check_for_setup_error()
         lvm_driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
         lvm_driver._update_volume_stats()
@@ -1034,8 +1026,8 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
         self.configuration = conf.Configuration(None)
         vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes', False, None,
                                        'default')
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db, vg_obj=vg_obj)
+        lvm_driver = lvm.LVMVolumeDriver(
+            configuration=self.configuration, vg_obj=vg_obj)
 
         with mock.patch.object(lvm_driver.target_driver,
                                'terminate_connection') as mock_term_conn:
@@ -1088,8 +1080,8 @@ class LVMISCSITestCase(test_driver.BaseDriverTestCase):
         self.configuration = conf.Configuration(None)
         vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes', False, None,
                                        'default')
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db, vg_obj=vg_obj)
+        lvm_driver = lvm.LVMVolumeDriver(
+            configuration=self.configuration, vg_obj=vg_obj)
 
         with mock.patch.object(lvm_driver.target_driver,
                                'terminate_connection') as mock_term_conn:

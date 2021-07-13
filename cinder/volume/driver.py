@@ -25,6 +25,7 @@ from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
@@ -400,8 +401,8 @@ class BaseVD(object, metaclass=abc.ABCMeta):
                                     'a/a': 'failover_completed'}
 
     def __init__(self, execute=utils.execute, *args, **kwargs):
-        # NOTE(vish): db is set by Manager
-        self.db = kwargs.get('db')
+        # TODO(stephenfin): Drop this in favour of using 'db' directly
+        self.db = db
         self.host = kwargs.get('host')
         self.cluster_name = kwargs.get('cluster_name')
         self.configuration = kwargs.get('configuration', None)

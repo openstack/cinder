@@ -1206,7 +1206,6 @@ class VolumeUtilsTestCase(test.TestCase):
             volume = fake_volume.fake_volume_obj(ctxt, **volume_data)
 
             ret = volume_utils.check_encryption_provider(
-                db,
                 volume,
                 mock.sentinel.context)
             self.assertEqual('aes-xts-plain64', ret['cipher'])
@@ -1227,11 +1226,11 @@ class VolumeUtilsTestCase(test.TestCase):
             ctxt = context.get_admin_context()
             volume = fake_volume.fake_volume_obj(ctxt, **volume_data)
 
-            self.assertRaises(exception.VolumeDriverException,
-                              volume_utils.check_encryption_provider,
-                              db,
-                              volume,
-                              mock.sentinel.context)
+            self.assertRaises(
+                exception.VolumeDriverException,
+                volume_utils.check_encryption_provider,
+                volume,
+                mock.sentinel.context)
 
     @mock.patch('cinder.volume.volume_utils.CONF.list_all_sections')
     def test_get_backend_configuration_backend_stanza_not_found(self,

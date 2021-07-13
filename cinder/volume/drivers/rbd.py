@@ -922,10 +922,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         This works by creating an encrypted image locally,
         and then uploading it to the volume.
         """
-
-        encryption = volume_utils.check_encryption_provider(self.db,
-                                                            volume,
-                                                            context)
+        encryption = volume_utils.check_encryption_provider(volume, context)
 
         # Fetch the key associated with the volume and decode the passphrase
         keymgr = key_manager.API(CONF)
@@ -1619,10 +1616,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         self._copy_image_to_volume(context, volume, image_service, image_id)
 
     def _encrypt_image(self, context, volume, tmp_dir, src_image_path):
-        encryption = volume_utils.check_encryption_provider(
-            self.db,
-            volume,
-            context)
+        encryption = volume_utils.check_encryption_provider(volume, context)
 
         # Fetch the key associated with the volume and decode the passphrase
         keymgr = key_manager.API(CONF)

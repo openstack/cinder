@@ -58,7 +58,7 @@ CONF.register_opts(nfsbackup_service_opts)
 class NFSBackupDriver(posix.PosixBackupDriver):
     """Provides backup, restore and delete using NFS supplied repository."""
 
-    def __init__(self, context, db=None):
+    def __init__(self, context):
         self.backup_mount_point_base = CONF.backup_mount_point_base
         self.backup_share = CONF.backup_share
         self.mount_options = CONF.backup_mount_options
@@ -66,8 +66,7 @@ class NFSBackupDriver(posix.PosixBackupDriver):
         self._root_helper = utils.get_root_helper()
         backup_path = self._init_backup_repo_path()
         LOG.debug("Using NFS backup repository: %s", backup_path)
-        super(NFSBackupDriver, self).__init__(context,
-                                              backup_path=backup_path)
+        super().__init__(context, backup_path=backup_path)
 
     def check_for_setup_error(self):
         """Raises error if any required configuration flag is missing."""

@@ -1036,7 +1036,6 @@ class LinstorIscsiDriver(LinstorBaseDriver):
             self.target_driver = importutils.import_object(
                 self.helper_driver,
                 configuration=self.configuration,
-                db=self.db,
                 executor=self._execute)
 
         LOG.info('START: LINSTOR DRBD driver %s', self.helper_name)

@@ -119,9 +119,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             reserved_percentage=0
         )
 
-        self._db = mock.Mock()
-        self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
-                                               db=self._db)
+        self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config)
 
         self._context = context.get_admin_context()
         self.updated_at = timeutils.utcnow()

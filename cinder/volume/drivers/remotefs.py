@@ -304,7 +304,6 @@ class RemoteFSDriver(driver.BaseVD):
 
         if encrypted:
             encryption = volume_utils.check_encryption_provider(
-                self.db,
                 volume,
                 volume.obj_context)
 
@@ -1481,7 +1480,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                 file_json = jsonutils.dumps(file_json_dict)
 
                 encryption = volume_utils.check_encryption_provider(
-                    db=db,
                     volume=snapshot.volume,
                     context=obj_context)
 

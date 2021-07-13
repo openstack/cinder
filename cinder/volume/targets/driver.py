@@ -14,6 +14,8 @@ import abc
 
 from oslo_config import cfg
 
+from cinder import db
+
 CONF = cfg.CONF
 
 
@@ -31,7 +33,8 @@ class Target(object, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, *args, **kwargs):
-        self.db = kwargs.get('db')
+        # TODO(stephenfin): Drop this in favour of using 'db' directly
+        self.db = db
         self.configuration = kwargs.get('configuration')
         self._root_helper = kwargs.get('root_helper',
                                        'sudo cinder-rootwrap %s' %

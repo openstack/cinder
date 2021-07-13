@@ -111,10 +111,11 @@ class ChunkedBackupDriver(driver.BackupDriver, metaclass=abc.ABCMeta):
         err = _('unsupported compression algorithm: %s') % algorithm
         raise ValueError(err)
 
-    def __init__(self, context, chunk_size_bytes, sha_block_size_bytes,
-                 backup_default_container, enable_progress_timer,
-                 db=None):
-        super(ChunkedBackupDriver, self).__init__(context, db)
+    def __init__(
+        self, context, chunk_size_bytes, sha_block_size_bytes,
+        backup_default_container, enable_progress_timer,
+    ):
+        super(ChunkedBackupDriver, self).__init__(context)
         self.chunk_size_bytes = chunk_size_bytes
         self.sha_block_size_bytes = sha_block_size_bytes
         self.backup_default_container = backup_default_container

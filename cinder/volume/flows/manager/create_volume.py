@@ -550,7 +550,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 raise exception.RekeyNotSupported()
 
             encryption = volume_utils.check_encryption_provider(
-                self.db,
                 volume,
                 context)
 

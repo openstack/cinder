@@ -102,9 +102,7 @@ class QuobyteDriverTestCase(test.TestCase):
         self._configuration.quobyte_volume_from_snapshot_cache = False
         self._configuration.quobyte_overlay_volumes = False
 
-        self._driver =\
-            quobyte.QuobyteDriver(configuration=self._configuration,
-                                  db=FakeDb())
+        self._driver = quobyte.QuobyteDriver(configuration=self._configuration)
         self._driver.shares = {}
         self._driver.set_nas_security_options(is_new_cinder_install=False)
         self._driver.base = self._configuration.quobyte_mount_point_base
