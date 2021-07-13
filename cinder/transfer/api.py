@@ -56,9 +56,9 @@ QUOTAS = quota.QUOTAS
 class API(base.Base):
     """API for interacting volume transfers."""
 
-    def __init__(self, db_driver=None):
+    def __init__(self):
         self.volume_api = volume_api.API()
-        super(API, self).__init__(db_driver)
+        super().__init__()
 
     def get(self, context, transfer_id):
         context.authorize(policy.GET_POLICY)

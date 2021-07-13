@@ -43,7 +43,7 @@ NON_EXISTENT_IMAGE_ID = '003f540f-ec6b-4293-a3f9-7c68646b0f5c'
 
 
 class FakeImageService(object):
-    def __init__(self, db_driver=None, image_service=None):
+    def __init__(self, image_service=None):
         pass
 
     def show(self, context, image_id):

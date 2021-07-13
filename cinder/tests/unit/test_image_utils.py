@@ -1090,7 +1090,7 @@ class TestFetchToRaw(test.TestCase):
 
 
 class FakeImageService(object):
-    def __init__(self, db_driver=None, image_service=None, disk_format='raw'):
+    def __init__(self, image_service=None, disk_format='raw'):
         self.temp_images = None
         self.disk_format = disk_format
 
@@ -1818,8 +1818,7 @@ class TestFetchToVolumeFormat(test.TestCase):
                 pass
 
         class FakeImageService(object):
-            def __init__(self, db_driver=None,
-                         image_service=None, disk_format='raw'):
+            def __init__(self, image_service=None, disk_format='raw'):
                 self.temp_images = None
                 self.disk_format = disk_format
 

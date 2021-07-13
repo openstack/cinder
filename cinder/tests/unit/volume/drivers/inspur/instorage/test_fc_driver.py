@@ -18,9 +18,9 @@
 from unittest import mock
 
 from eventlet import greenthread
-from oslo_utils import importutils
 
 from cinder import context
+import cinder.db
 from cinder import exception
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
@@ -58,8 +58,7 @@ class InStorageMCSFcDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = self.fc_driver.configuration.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self.fc_driver.db = self.db
         self.fc_driver.do_setup(None)
         self.fc_driver.check_for_setup_error()

@@ -26,12 +26,12 @@ import ddt
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_service import loopingcall
-from oslo_utils import importutils
 from oslo_utils import units
 import paramiko
 import six
 
 from cinder import context
+import cinder.db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -3119,8 +3119,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = CONF.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self.iscsi_driver.db = self.db
         self.iscsi_driver.do_setup(None)
         self.iscsi_driver.check_for_setup_error()
@@ -3758,8 +3757,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = self.fc_driver.configuration.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self.fc_driver.db = self.db
         self.fc_driver.do_setup(None)
         self.fc_driver.check_for_setup_error()
@@ -4593,8 +4591,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         else:
             self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = CONF.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self.driver.db = self.db
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
@@ -9873,10 +9870,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
-        db_driver = self.driver.configuration.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self.driver.db = self.db
-
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self._create_test_volume_types()

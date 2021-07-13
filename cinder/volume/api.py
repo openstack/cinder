@@ -102,7 +102,7 @@ class API(base.Base):
 
     AVAILABLE_MIGRATION_STATUS = (None, 'deleting', 'error', 'success')
 
-    def __init__(self, db_driver=None, image_service=None):
+    def __init__(self, image_service=None):
         self.image_service = (image_service or
                               glance.get_default_image_service())
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
@@ -111,7 +111,7 @@ class API(base.Base):
         self.availability_zones_last_fetched = None
         self.key_manager = key_manager.API(CONF)
         self.message = message_api.API()
-        super(API, self).__init__(db_driver)
+        super().__init__()
 
     def list_availability_zones(self, enable_cache=False, refresh_cache=False):
         """Describe the known availability zones

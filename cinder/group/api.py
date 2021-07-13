@@ -60,12 +60,12 @@ VALID_ADD_VOL_TO_GROUP_STATUS = (
 class API(base.Base):
     """API for interacting with the volume manager for groups."""
 
-    def __init__(self, db_driver=None):
+    def __init__(self):
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         self.volume_api = volume_api.API()
 
-        super(API, self).__init__(db_driver)
+        super().__init__()
 
     def _extract_availability_zone(self, availability_zone):
         raw_zones = self.volume_api.list_availability_zones(enable_cache=True)
