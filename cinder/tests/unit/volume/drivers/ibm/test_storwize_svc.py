@@ -13666,9 +13666,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
 
         self.driver.delete_group(self.ctxt, group, vols)
 
-    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                       'switch_rccg')
-    def test_storwize_failover_group_without_action(self, switchrccg):
+    def test_storwize_failover_group_without_action(self):
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
@@ -13684,14 +13682,12 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.assertEqual(
             {'replication_status': fields.ReplicationStatus.FAILED_OVER},
             model_update)
-        self.assertFalse(switchrccg.called)
 
         self.sim._rcconsistgrp_list[rccg_name]['primary'] = 'master'
         model_update = self.driver._rep_grp_failback(self.ctxt, group)
         self.assertEqual(
             {'replication_status': fields.ReplicationStatus.ENABLED},
             model_update)
-        self.assertFalse(switchrccg.called)
 
         self.driver.delete_group(self.ctxt, group, [])
 

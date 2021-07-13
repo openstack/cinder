@@ -672,7 +672,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_rd_delete.assert_called_once()
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_set_sp')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_volume_extend')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_resource_restore')
@@ -688,7 +687,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
                                          m_snap_rsc_restore,
                                          m_rsc_create,
                                          m_vol_extend,
-                                         m_vol_dfn,
                                          m_sp_list):
         m_rsc_dfn_create.return_value = True
         m_api_reply.return_value = True
@@ -698,7 +696,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_snap_rsc_restore.return_value = True
         m_rsc_create.return_value = True
         m_vol_extend.return_value = True
-        m_vol_dfn.return_value = True
         m_sp_list.return_value = (
             self._fake_driver.fake_api_storage_pool_list())
 
@@ -707,7 +704,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
             CINDER_VOLUME, SNAPSHOT))
 
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_set_sp')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_volume_extend')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_resource_restore')
@@ -723,7 +719,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
                                                       m_snap_rsc_restore,
                                                       m_rsc_create,
                                                       m_vol_extend,
-                                                      m_vol_dfn,
                                                       m_sp_list):
         m_rsc_dfn_create.return_value = True
         m_api_reply.return_value = True
@@ -733,7 +728,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_snap_rsc_restore.return_value = False
         m_rsc_create.return_value = True
         m_vol_extend.return_value = True
-        m_vol_dfn.return_value = True
         m_sp_list.return_value = (
             self._fake_driver.fake_api_storage_pool_list())
 
@@ -744,7 +738,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
 
     @mock.patch(DRIVER + 'LinstorBaseDriver.delete_volume')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_storage_pool_list')
-    @mock.patch(DRIVER + 'LinstorBaseDriver._api_volume_dfn_set_sp')
     @mock.patch(DRIVER + 'LinstorBaseDriver._get_api_volume_extend')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_rsc_create')
     @mock.patch(DRIVER + 'LinstorBaseDriver._api_snapshot_resource_restore')
@@ -760,7 +753,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
                                                      m_snap_rsc_restore,
                                                      m_rsc_create,
                                                      m_vol_extend,
-                                                     m_vol_dfn,
                                                      m_sp_list,
                                                      m_delete_volume):
         m_rsc_dfn_create.return_value = True
@@ -771,7 +763,6 @@ class LinstorBaseDriverTestCase(test.TestCase):
         m_snap_rsc_restore.return_value = True
         m_rsc_create.return_value = True
         m_vol_extend.return_value = True
-        m_vol_dfn.return_value = True
         m_sp_list.return_value = (
             self._fake_driver.fake_api_storage_pool_list())
         m_delete_volume.return_value = True

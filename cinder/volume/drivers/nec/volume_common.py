@@ -111,18 +111,6 @@ mstorage_opts = [
 FLAGS.register_opts(mstorage_opts, group=configuration.SHARED_CONF_GROUP)
 
 
-def convert_to_name(uuid):
-    alnum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    num = int(uuid.replace(("-"), ""), 16)
-
-    convertname = ""
-    while num != 0:
-        convertname = alnum[num % len(alnum)] + convertname
-        num = num - num % len(alnum)
-        num = num // len(alnum)
-    return convertname
-
-
 def convert_to_id(value62):
     alnum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     length = len(value62)

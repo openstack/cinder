@@ -287,19 +287,6 @@ class LinstorBaseDriver(driver.VolumeDriver):
                 size=size)
             return vol_dfn_reply
 
-    def _api_volume_dfn_set_sp(self, rsc_target_name):
-        with lin_drv(self.default_uri) as lin:
-            if not lin.connected:
-                lin.connect()
-
-            snap_reply = lin.volume_dfn_modify(
-                rsc_name=rsc_target_name,
-                volume_nr=0,
-                set_properties={
-                    'StorPoolName': self.default_pool
-                })
-            return snap_reply
-
     def _api_rsc_create(self, rsc_name, node_name, diskless=False):
         with lin_drv(self.default_uri) as lin:
             if not lin.connected:
@@ -456,7 +443,6 @@ class LinstorBaseDriver(driver.VolumeDriver):
         # Separate the diskless nodes
         sp_diskless_list = []
         sp_list = []
-        node_count = 0
 
         if sp_list_reply:
             for node in sp_list_reply:
@@ -491,7 +477,6 @@ class LinstorBaseDriver(driver.VolumeDriver):
                         sp_diskless_list.append(sp_node)
                     else:
                         sp_list.append(sp_node)
-                    node_count += 1
 
             # Add the diskless nodes to the end of the list
             if sp_diskless_list:

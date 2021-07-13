@@ -237,11 +237,6 @@ class RBDISCSIDriver(rbd.RBDDriver):
                 {'pool': self.configuration.rbd_pool,
                  'volume_name': volume_name})
 
-    def get_existing_disks(self):
-        """Get the existing list of registered volumes on the gateway."""
-        resp, disks = self.client.get_disks()
-        return disks['disks']
-
     @volume_utils.trace
     def create_disk(self, volume_name):
         """Register the volume with the iscsi gateways.

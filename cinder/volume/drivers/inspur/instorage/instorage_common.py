@@ -2372,15 +2372,6 @@ class InStorageAssistant(object):
         attrs = self.ssh.lsvdisk(vdisk)
         return attrs
 
-    def find_vdisk_copy_id(self, vdisk, pool):
-        resp = self.ssh.lsvdiskcopy(vdisk)
-        for copy_id, mdisk_grp in resp.select('copy_id', 'mdisk_grp_name'):
-            if mdisk_grp == pool:
-                return copy_id
-        msg = _('Failed to find a vdisk copy in the expected pool.')
-        LOG.error(msg)
-        raise exception.VolumeDriverException(message=msg)
-
     def get_vdisk_copy_attrs(self, vdisk, copy_id):
         return self.ssh.lsvdiskcopy(vdisk, copy_id=copy_id)[0]
 
@@ -2534,9 +2525,6 @@ class InStorageAssistant(object):
 
     def delete_lc_consistgrp(self, lc_consistgrp):
         self.ssh.rmlcconsistgrp(lc_consistgrp)
-
-    def stop_lc_consistgrp(self, lc_consistgrp):
-        self.ssh.stoplcconsistgrp(lc_consistgrp)
 
     def run_consistgrp_snapshots(self, lc_consistgrp, snapshots, state,
                                  config, timeout):
@@ -3057,9 +3045,6 @@ class InStorageAssistant(object):
     def rename_vdisk(self, vdisk, new_name):
         self.ssh.chvdisk(vdisk, ['-name', new_name])
 
-    def change_vdisk_primary_copy(self, vdisk, copy_id):
-        self.ssh.chvdisk(vdisk, ['-primary', copy_id])
-
 
 class InStorageSSH(object):
     """SSH interface to Inspur InStorage systems."""
@@ -3468,10 +3453,6 @@ class InStorageSSH(object):
 
     def startlcconsistgrp(self, lc_consist_group):
         ssh_cmd = ['mcsop', 'startlcconsistgrp', lc_consist_group]
-        self.run_ssh_assert_no_output(ssh_cmd)
-
-    def stoplcconsistgrp(self, lc_consist_group):
-        ssh_cmd = ['mcsop', 'stoplcconsistgrp', lc_consist_group]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def chlcmap(self, lc_map_id, copyrate='50', autodel='on'):

@@ -69,14 +69,6 @@ class SmbfsException(exception.RemoteFSException):
     message = _("Unknown SMBFS exception.")
 
 
-class SmbfsNoSharesMounted(exception.RemoteFSNoSharesMounted):
-    message = _("No mounted SMBFS shares found.")
-
-
-class SmbfsNoSuitableShareFound(exception.RemoteFSNoSuitableShareFound):
-    message = _("There is no share which can host %(volume_size)sG.")
-
-
 @interface.volumedriver
 class WindowsSmbfsDriver(remotefs_drv.RevertToSnapshotMixin,
                          remotefs_drv.RemoteFSPoolMixin,

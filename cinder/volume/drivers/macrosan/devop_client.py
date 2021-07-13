@@ -229,11 +229,6 @@ class Client(object):
         }
         return self.send_request(method='put', url='/lun', data=data)
 
-    def localclone_exists(self, lun):
-        """Whether localclone lun exists."""
-        return self.send_request(method='get', url='/local_clone',
-                                 data={'attr': 'existence', 'lun': lun})
-
     def localclone_completed(self, lun):
         """Whether localclone lun completed."""
         return self.send_request(method='get', url='/local_clone',
@@ -519,23 +514,6 @@ class Client(object):
         data = {
             'attr': 'snapshot_copy_task_completed',
             'lun_name': lun_name
-        }
-        return self.send_request(method='get', url='/copy_volume', data=data)
-
-    def copy_volume_from_volume(self, lun_name, src_lun_name):
-        """Copy volume from volume."""
-        data = {
-            'attr': 'from_volume',
-            'lun_name': lun_name,
-            'src_lun_name': src_lun_name
-        }
-        return self.send_request(method='post', url='/copy_volume', data=data)
-
-    def query_bcopy_task(self, task_id):
-        """Query bcopy task."""
-        data = {
-            'attr': 'bcopy_task',
-            'task_id': task_id
         }
         return self.send_request(method='get', url='/copy_volume', data=data)
 

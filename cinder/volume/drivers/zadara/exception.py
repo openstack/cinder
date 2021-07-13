@@ -33,10 +33,6 @@ class ZadaraVPSANoActiveController(exception.VolumeDriverException):
     message = _("Unable to find any active VPSA controller")
 
 
-class ZadaraVolumeNotFound(exception.VolumeDriverException):
-    message = "%(reason)s"
-
-
 class ZadaraServerCreateFailure(exception.VolumeDriverException):
     message = _("Unable to create server object for initiator %(name)s")
 

@@ -106,22 +106,6 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
             lstargetWwpns = []
         return lstargetWwpns
 
-    def _is_initiator_wwpn_active(self, targetWwpn, initiatorWwpn):
-        fActive = False
-        output = None
-        try:
-            retCode, output = self.dpl.get_sns_table(targetWwpn)
-            if retCode == 0 and output:
-                for fdwwpn, fcport in output.get('metadata',
-                                                 {}).get('sns_table',
-                                                         []):
-                    if fdwwpn == initiatorWwpn:
-                        fActive = True
-                        break
-        except Exception:
-            LOG.error('Failed to get sns table')
-        return fActive
-
     def _convertHex2String(self, wwpns):
         szwwpns = ''
         if len(str(wwpns)) == 16:

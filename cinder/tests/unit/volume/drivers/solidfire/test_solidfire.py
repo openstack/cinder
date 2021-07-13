@@ -3320,16 +3320,13 @@ class SolidFireVolumeTestCase(test.TestCase):
     @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
     @mock.patch.object(solidfire.SolidFireDriver, '_set_cluster_pairs')
     @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_cluster_info')
     @mock.patch.object(solidfire.SolidFireDriver, '_map_sf_volumes')
     @mock.patch.object(solidfire.SolidFireDriver, '_failover_volume')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_create_account')
-    @mock.patch.object(solidfire.SolidFireDriver, '_get_remote_info_by_id')
-    def test_failover(self, mock_get_remote_info_by_id,
+    def test_failover(self,
                       mock_get_create_account,
                       mock_failover_volume,
                       mock_map_sf_volumes,
-                      mock_get_cluster_info,
                       mock_update_cluster_status,
                       mock_set_cluster_pairs,
                       mock_create_cluster_reference,

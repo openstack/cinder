@@ -342,11 +342,6 @@ class NaElement(object):
         """Add the attribute to the element."""
         self._element.set(name, value)
 
-    def add_attrs(self, **attrs):
-        """Add multiple attributes to the element."""
-        for attr in attrs:
-            self._element.set(attr, attrs.get(attr))
-
     def add_child_elem(self, na_element):
         """Add the child element to the element."""
         if isinstance(na_element, NaElement):

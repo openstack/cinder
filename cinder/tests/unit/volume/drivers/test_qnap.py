@@ -33,7 +33,6 @@ from cinder.volume import driver
 from cinder.volume.drivers import qnap
 
 FAKE_LUNNAA = {'LUNNAA': 'fakeLunNaa'}
-FAKE_SNAPSHOT = {'snapshot_id': 'fakeSnapshotId'}
 
 FAKE_USER = 'admin'
 FAKE_PASSWORD = 'qnapadmin'
@@ -472,23 +471,6 @@ FAKE_RES_DETAIL_DATA_CREATE_TARGET_FAIL = """
         <result><![CDATA[-1]]></result>
      </QDocRoot>"""
 
-FAKE_RES_DETAIL_DATA_GETHOSTIDLISTBYINITIQN = """
-    <QDocRoot version="1.0">
-        <authPassed><![CDATA[1]]></authPassed>
-        <content>
-            <host_list total="4">
-                <host>
-                    <index><![CDATA[fakeIndex]]></index>
-                    <hostid><![CDATA[fakeHostId]]></hostid>
-                    <name><![CDATA[fakeHostName]]></name>
-                    <iqns>
-                        <iqn><![CDATA[fakeIqn]]></iqn>
-                    </iqns>
-                </host>
-            </host_list>
-        </content>
-    </QDocRoot>"""
-
 FAKE_RES_DETAIL_DATA_GET_ALL_ISCSI_PORTAL_SETTING = """
     <QDocRoot version="1.0">
         <authPassed><![CDATA[1]]></authPassed>
@@ -735,20 +717,6 @@ class VolumeClass(object):
         """Setitem."""
         if key == 'display_name':
             self.display_name = value
-
-
-class HostClass(object):
-    """Host Class."""
-
-    def __init__(self, host):
-        """Init."""
-        self.host = host
-
-    def __getitem__(self, arg):
-        """Getitem."""
-        return {
-            'host': 'fakeHost',
-        }[arg]
 
 
 class FakeLoginResponse(object):
@@ -1002,21 +970,6 @@ class FakeCreateTargetFailResponse(object):
     def text(self):
         """Mock response.text."""
         return FAKE_RES_DETAIL_DATA_CREATE_TARGET_FAIL
-
-
-class FakeGetIscsiPortalInfoResponse(object):
-    """Fake get iscsi portal inforesponse."""
-
-    status_code = 'fackStatus'
-
-    @property
-    def text(self):
-        """Mock response.text."""
-        return FAKE_RES_DETAIL_DATA_ISCSI_PORTAL_INFO
-
-    def __repr__(self):
-        """Repr."""
-        return six.StringIO(FAKE_RES_DETAIL_DATA_ISCSI_PORTAL_INFO)
 
 
 class FakeCreateSnapshotResponse(object):

@@ -2040,15 +2040,6 @@ class StorwizeHelpers(object):
         attrs = self.get_vdisk_attributes(vdisk_name)
         return attrs is not None
 
-    def find_vdisk_copy_id(self, vdisk, pool):
-        resp = self.ssh.lsvdiskcopy(vdisk)
-        for copy_id, mdisk_grp in resp.select('copy_id', 'mdisk_grp_name'):
-            if mdisk_grp == pool:
-                return copy_id
-        msg = _('Failed to find a vdisk copy in the expected pool.')
-        LOG.error(msg)
-        raise exception.VolumeDriverException(message=msg)
-
     def get_vdisk_copy_attrs(self, vdisk, copy_id):
         return self.ssh.lsvdiskcopy(vdisk, copy_id=copy_id)[0]
 
@@ -2698,9 +2689,6 @@ class StorwizeHelpers(object):
     def stop_rccg(self, rccg, access=False):
         self.ssh.stoprcconsistgrp(rccg, access)
 
-    def switch_rccg(self, rccg, aux=True):
-        self.ssh.switchrcconsistgrp(rccg, aux)
-
     def get_rccg_info(self, volume_name):
         vol_attrs = self.get_vdisk_attributes(volume_name)
         if not vol_attrs or not vol_attrs['RC_name']:
@@ -3005,9 +2993,6 @@ class StorwizeHelpers(object):
 
     def rename_vdisk(self, vdisk, new_name):
         self.ssh.chvdisk(vdisk, ['-name', new_name])
-
-    def change_vdisk_primary_copy(self, vdisk, copy_id):
-        self.ssh.chvdisk(vdisk, ['-primary', copy_id])
 
     def migratevdisk(self, vdisk, dest_pool, copy_id='0'):
         self.ssh.migratevdisk(vdisk, dest_pool, copy_id)

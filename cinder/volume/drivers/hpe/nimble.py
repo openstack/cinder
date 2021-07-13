@@ -108,10 +108,6 @@ class NimbleAPIException(exception.VolumeBackendAPIException):
     message = _("Unexpected response from Nimble API")
 
 
-class NimbleVolumeBusyException(exception.VolumeIsBusy):
-    message = _("Nimble Cinder Driver: Volume Busy")
-
-
 class NimbleBaseVolumeDriver(san.SanDriver):
     """OpenStack driver to enable Nimble Controller.
 
@@ -1269,9 +1265,6 @@ class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
 
         return target_wwpns
 
-    def _convert_string_to_colon_separated_wwnn(self, wwnn):
-        return ':'.join(a + b for a, b in zip(wwnn[::2], wwnn[1::2]))
-
 
 def _connection_checker(func):
     """Decorator to re-establish and re-run the api if session has expired."""
@@ -1348,15 +1341,6 @@ class NimbleRestAPIExecutor(object):
             raise NimbleAPIException(_("Unable to retrieve information for "
                                        "Folder: %s") % folder_name)
         return r.json()['data'][0]['id']
-
-    def get_folder_info(self, folder_name):
-        folder_id = self.get_folder_id(folder_name)
-        api = "folders/" + six.text_type(folder_id)
-        r = self.get(api)
-        if not r.json()['data']:
-            raise NimbleAPIException(_("Unable to retrieve Folder info for: "
-                                     "%s") % folder_id)
-        return r.json()['data']
 
     def get_performance_policy_id(self, perf_policy_name):
         api = 'performance_policies/'
