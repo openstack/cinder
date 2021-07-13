@@ -84,10 +84,6 @@ def fake_get_volume_image_metadata(*args, **kwargs):
     return fake_image_metadata
 
 
-def fake_get_volumes_image_metadata(*args, **kwargs):
-    return {'fake': fake_image_metadata}
-
-
 def return_empty_image_metadata(*args, **kwargs):
     return {}
 
@@ -114,8 +110,6 @@ class VolumeImageMetadataTest(test.TestCase):
         self.mock_object(volume.api.API, 'get_all', fake_volume_get_all)
         self.mock_object(volume.api.API, 'get_volume_image_metadata',
                          fake_get_volume_image_metadata)
-        self.mock_object(volume.api.API, 'get_volumes_image_metadata',
-                         fake_get_volumes_image_metadata)
         self.UUID = uuid.uuid4()
         self.controller = (volume_image_metadata.
                            VolumeImageMetadataController())

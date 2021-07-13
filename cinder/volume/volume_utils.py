@@ -278,46 +278,6 @@ def notify_about_capacity_usage(context: context.RequestContext,
                                             usage_info)
 
 
-@utils.if_notifications_enabled
-def notify_about_replication_usage(context: context.RequestContext,
-                                   volume: 'objects.Volume',
-                                   suffix: str,
-                                   extra_usage_info: dict = None,
-                                   host: str = None) -> None:
-    if not host:
-        host = CONF.host
-
-    if not extra_usage_info:
-        extra_usage_info = {}
-
-    usage_info = _usage_from_volume(context, volume,
-                                    **extra_usage_info)
-
-    rpc.get_notifier('replication', host).info(context,
-                                               'replication.%s' % suffix,
-                                               usage_info)
-
-
-@utils.if_notifications_enabled
-def notify_about_replication_error(context: context.RequestContext,
-                                   volume: 'objects.Volume',
-                                   suffix: str,
-                                   extra_error_info: dict = None,
-                                   host: str = None) -> None:
-    if not host:
-        host = CONF.host
-
-    if not extra_error_info:
-        extra_error_info = {}
-
-    usage_info = _usage_from_volume(context, volume,
-                                    **extra_error_info)
-
-    rpc.get_notifier('replication', host).error(context,
-                                                'replication.%s' % suffix,
-                                                usage_info)
-
-
 def _usage_from_consistencygroup(group_ref: 'objects.Group', **kw) -> dict:
     usage_info = dict(tenant_id=group_ref.project_id,
                       user_id=group_ref.user_id,
@@ -870,16 +830,6 @@ def hosts_are_equivalent(host_1: str, host_2: str) -> bool:
     if not (host_1 and host_2):
         return host_1 == host_2
     return extract_host(host_1) == extract_host(host_2)
-
-
-def read_proc_mounts() -> List[str]:
-    """Read the /proc/mounts file.
-
-    It's a dummy function but it eases the writing of unit tests as mocking
-    __builtin__open() for a specific file only is not trivial.
-    """
-    with open('/proc/mounts') as mounts:
-        return mounts.readlines()
 
 
 def extract_id_from_volume_name(vol_name: str) -> Optional[str]:
