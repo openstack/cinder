@@ -2210,3 +2210,38 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
                 image_meta,
                 self.mock_image_service,
                 update_cache=True)
+
+    @ddt.data([], ['fake_entry'])
+    @mock.patch('cinder.image.image_utils.verify_glance_image_signature')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test__create_from_image_cache_or_download(
+            self, glance_metadata, mock_qemu_img, mock_verify,
+            mock_get_internal_context, mock_create_from_img_dl,
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+        fake_db = mock.MagicMock()
+        fake_driver = mock.MagicMock()
+        fake_volume_manager = mock.MagicMock()
+        fake_db.volume_glance_metadata_get.return_value = glance_metadata
+        fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
+            fake_volume_manager, fake_db, fake_driver)
+        volume = fake_volume.fake_volume_obj(self.ctxt,
+                                             id=fakes.VOLUME_ID,
+                                             host='host@backend#pool')
+        image_location = 'someImageLocationStr'
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824', 'size': 1073741824}
+        mock_verify.return_value = True
+
+        mock_create_from_img_dl.side_effect = exception.CinderException
+        self.assertRaises(
+            exception.CinderException,
+            fake_manager._create_from_image_cache_or_download,
+            self.ctxt, volume, image_location, image_id, image_meta,
+            self.mock_image_service)
+        fake_db.volume_glance_metadata_bulk_create.assert_called_once_with(
+            self.ctxt, volume.id, {'signature_verified': True})
+        fake_db.volume_glance_metadata_get.assert_called_once_with(
+            self.ctxt, volume.id)
+        if glance_metadata:
+            fake_db.volume_glance_metadata_delete_by_volume.\
+                assert_called_once_with(self.ctxt, volume.id)

@@ -953,6 +953,13 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                               volume,
                                                               image_id,
                                                               image_meta)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                vol_glance_metadata = self.db.volume_glance_metadata_get(
+                    context, volume.id)
+                if vol_glance_metadata:
+                    self.db.volume_glance_metadata_delete_by_volume(
+                        context, volume.id)
         finally:
             # If we created the volume as the minimal size, extend it back to
             # what was originally requested. If an exception has occurred or
