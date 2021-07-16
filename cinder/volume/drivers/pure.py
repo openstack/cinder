@@ -1804,9 +1804,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         elif snapshot.cgsnapshot:
             group_snap = snapshot.cgsnapshot
 
-        pg_vol_snap_name = "%(group_snap)s.%(volume_name)s-cinder" % {
+        pg_vol_snap_name = "%(group_snap)s.%(volume_name)s" % {
             'group_snap': self._get_pgroup_snap_name(group_snap),
-            'volume_name': snapshot.volume_name
+            'volume_name': self._get_vol_name(snapshot.volume)
         }
         return pg_vol_snap_name
 
