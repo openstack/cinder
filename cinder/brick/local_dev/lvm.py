@@ -224,10 +224,8 @@ class LVM(executor.Executor):
 
         """
 
-        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--version']
-        (out, _err) = putils.execute(*cmd,
-                                     root_helper=root_helper,
-                                     run_as_root=True)
+        cmd = LVM.LVM_CMD_PREFIX + ['lvm', 'version']
+        (out, _err) = putils.execute(*cmd)
         lines = out.split('\n')
 
         for line in lines:

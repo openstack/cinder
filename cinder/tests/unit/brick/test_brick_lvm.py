@@ -71,8 +71,8 @@ class BrickLvmTestCase(test.TestCase):
         elif (_lvm_prefix + 'vgs --noheadings -o name fake-vg' ==
                 cmd_string):
             data = "  fake-vg\n"
-        elif _lvm_prefix + 'vgs --version' in cmd_string:
-            data = "  LVM version:     2.02.103(2) (2012-03-06)\n"
+        elif _lvm_prefix + 'lvm version' in cmd_string:
+            data = "  LVM version:     2.03.07(2) (2019-11-30)\n"
         elif(_lvm_prefix + 'vgs --noheadings -o uuid fake-vg' in
              cmd_string):
             data = "  kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1\n"
