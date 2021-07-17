@@ -149,6 +149,23 @@ class LVM(executor.Executor):
     def _create_vg(self, pv_list):
         cinder.privsep.lvm.create_volume(self.vg_name, pv_list)
 
+    @utils.retry(retry=utils.retry_if_exit_code, retry_param=139, interval=0.5,
+                 backoff_rate=0.5)
+    def _run_lvm_command(self,
+                         cmd_arg_list: list,
+                         root_helper: str,
+                         run_as_root: bool = True) -> tuple:
+        """Run LVM commands with a retry on code 139 to work around LVM bugs.
+
+        Refer to LP bug 1901783, LP bug 1932188.
+        """
+
+        (out, err) = self._execute(*cmd_arg_list,
+                                   root_helper=root_helper,
+                                   run_as_root=run_as_root)
+
+        return (out, err)
+
     def _get_thin_pool_free_space(self, vg_name, thin_pool_name):
         """Returns available thin pool free space.
 
@@ -168,9 +185,9 @@ class LVM(executor.Executor):
         free_space = 0.0
 
         try:
-            (out, err) = self._execute(*cmd,
-                                       root_helper=self._root_helper,
-                                       run_as_root=True)
+            (out, err) = self._run_lvm_command(cmd,
+                                               root_helper=self._root_helper,
+                                               run_as_root=True)
             if out is not None:
                 out = out.strip()
                 data = out.split(':')
