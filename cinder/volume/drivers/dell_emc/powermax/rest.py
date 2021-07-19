@@ -3072,6 +3072,44 @@ class PowerMaxRest(object):
                 'src_device': device_id, 'tgt_device': r2_device_id,
                 'session_info': session_info}
 
+    def get_or_rename_storage_group_rep(
+            self, array, storage_group_name, extra_specs, sg_filter=None):
+        """Get storage group rep info if it exist.
+
+        If a generic volume group has been renamed we also need
+        to rename it on the array based on the uuid component.
+        We check for uuid if we cannot find it based on its old name.
+
+        :param array: the array serial number
+        :param storage_group_name: the name of the storage group
+        :param extra_specs: extra specification
+        :param sg_filter: uuid substring <like>
+        :returns: storage group dict or None
+        """
+        rep_details = self.get_storage_group_rep(array, storage_group_name)
+        if not rep_details:
+            # It is possible that the group has been renamed
+            if sg_filter:
+                sg_dict = self.get_storage_group_list(
+                    array, params={
+                        'storageGroupId': sg_filter})
+                sg_list = sg_dict.get('storageGroupId') if sg_dict else None
+                if sg_list and len(sg_list) == 1:
+                    rep_details = self.get_storage_group_rep(
+                        array, sg_list[0])
+                    # Update the new storage group name
+                    if rep_details:
+                        self._rename_storage_group(
+                            array, sg_list[0], storage_group_name, extra_specs)
+                        rep_details = self.get_storage_group_rep(
+                            array, storage_group_name)
+                        LOG.warning(
+                            "Volume group %(old)s has been renamed to %(new)s "
+                            "due to a rename operation in OpenStack.",
+                            {'old': sg_list[0], 'new': storage_group_name})
+
+        return rep_details
+
     def get_storage_group_rep(self, array, storage_group_name):
         """Given a name, return storage group details wrt replication.
 
@@ -3429,3 +3467,20 @@ class PowerMaxRest(object):
         """
         return (self.ucode_major_level >= utils.UCODE_5978 and
                 self.ucode_minor_level >= utils.UCODE_5978_HICKORY)
+
+    def _rename_storage_group(
+            self, array, old_name, new_name, extra_specs):
+        """Rename the storage group.
+
+        :param array: the array serial number
+        :param old_name: the original name
+        :param new_name: the new name
+        :param extra_specs: the extra specifications
+        """
+        payload = {"editStorageGroupActionParam": {
+            "renameStorageGroupParam": {
+                "new_storage_Group_name": new_name}}}
+        status_code, job = self.modify_storage_group(
+            array, old_name, payload)
+        self.wait_for_job(
+            'Rename storage group', status_code, job, extra_specs)

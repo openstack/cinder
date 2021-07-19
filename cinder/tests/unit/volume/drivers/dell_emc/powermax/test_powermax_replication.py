@@ -695,7 +695,10 @@ class PowerMaxReplicationTest(test.TestCase):
         mck_validate.assert_called_once_with(
             self.common.rep_configs, extra_specs_list)
 
-    def test_enable_replication(self):
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
+                       side_effect=[tpd.PowerMaxData.test_group,
+                                    None])
+    def test_enable_replication(self, mock_vg):
         # Case 1: Group not replicated
         with mock.patch.object(volume_utils, 'is_group_a_type',
                                return_value=False):
@@ -720,7 +723,10 @@ class PowerMaxReplicationTest(test.TestCase):
             self.assertEqual(fields.ReplicationStatus.ERROR,
                              model_update['replication_status'])
 
-    def test_disable_replication(self):
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
+                       side_effect=[tpd.PowerMaxData.test_group,
+                                    None])
+    def test_disable_replication(self, mock_vg):
         # Case 1: Group not replicated
         with mock.patch.object(volume_utils, 'is_group_a_type',
                                return_value=False):

@@ -2866,6 +2866,8 @@ class PowerMaxCommonTest(test.TestCase):
         mck_update.assert_called_once_with(group, add_vols, remove_vols)
         self.assertEqual(ref_model_update, model_update)
 
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
+                       return_value=tpd.PowerMaxData.test_rep_group)
     @mock.patch.object(rest.PowerMaxRest, 'is_volume_in_storagegroup',
                        return_value=True)
     @mock.patch.object(
@@ -2882,7 +2884,7 @@ class PowerMaxCommonTest(test.TestCase):
         masking.PowerMaxMasking, 'remove_volumes_from_storage_group')
     def test_update_group_promotion(
             self, mck_rem, mock_cg_type, mock_type_check, mck_setup, mck_rep,
-            mck_in_sg):
+            mck_in_sg, mck_group):
         group = self.data.test_rep_group
         add_vols = []
         remove_vols = [self.data.test_volume_group_member]

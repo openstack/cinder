@@ -535,6 +535,7 @@ class PowerMaxCommon(object):
         if group_id is not None:
             if group and (volume_utils.is_group_a_cg_snapshot_type(group)
                           or group.is_replicated):
+                self._find_volume_group(extra_specs[utils.ARRAY], group)
                 extra_specs[utils.FORCE_VOL_EDIT] = True
                 group_name = self._add_new_volume_to_volume_group(
                     volume, device_id, volume_name,
@@ -6071,8 +6072,12 @@ class PowerMaxCommon(object):
         :param group: the group object
         :returns: volume group dictionary
         """
+        __, interval_retries_dict = self._get_volume_group_info(group)
         group_name = self.utils.update_volume_group_name(group)
-        volume_group = self.rest.get_storage_group_rep(array, group_name)
+        sg_name_filter = utils.LIKE_FILTER + group.id
+        volume_group = self.rest.get_or_rename_storage_group_rep(
+            array, group_name, interval_retries_dict,
+            sg_filter=sg_name_filter)
         if not volume_group:
             LOG.warning("Volume group %(group_id)s cannot be found",
                         {'group_id': group_name})
