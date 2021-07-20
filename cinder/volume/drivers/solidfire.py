@@ -286,9 +286,11 @@ class SolidFireDriver(san.SanISCSIDriver):
                    xDBConnectionLoss, xNoHandler, xSnapshotFailed,
                    xRecvTimeout, xDBNoSuchPath, xPermissionDenied to the
                    retryable exception list
+          2.2.5  - Fix bug #1934459 SolidFire Driver gets into an infinite
+                   recursion on startup while OS Profiler is enabled
     """
 
-    VERSION = '2.2.4'
+    VERSION = '2.2.5'
 
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -2879,15 +2881,8 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
         super(SolidFireISCSI, self).__init__(*args, **kwargs)
         self.sf_driver = kwargs.get('solidfire_driver')
 
-    def __getattr__(self, attr):
-        if hasattr(self.sf_driver, attr):
-            return getattr(self.sf_driver, attr)
-        else:
-            msg = _('Attribute: %s not found.') % attr
-            raise NotImplementedError(msg)
-
     def _do_iscsi_export(self, volume):
-        sfaccount = self._get_sfaccount(volume['project_id'])
+        sfaccount = self.sf_driver._get_sfaccount(volume['project_id'])
         model_update = {}
         model_update['provider_auth'] = ('CHAP %s %s'
                                          % (sfaccount['username'],
@@ -2925,8 +2920,8 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
 
             # safe_create_vag may opt to reuse vs create a vag, so we need to
             # add our vol_id.
-            vag_id = self._safe_create_vag(iqn, vol_id)
-            self._add_volume_to_vag(vol_id, iqn, vag_id)
+            vag_id = self.sf_driver._safe_create_vag(iqn, vol_id)
+            self.sf_driver._add_volume_to_vag(vol_id, iqn, vag_id)
 
         # Continue along with default behavior
         return super(SolidFireISCSI, self).initialize_connection(volume,
@@ -2944,7 +2939,7 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
 
             if properties:
                 iqn = properties['initiator']
-                vag = self._get_vags_by_name(iqn)
+                vag = self.sf_driver._get_vags_by_name(iqn)
 
                 if vag and not volume['multiattach']:
                     # Multiattach causes problems with removing volumes from
@@ -2954,11 +2949,11 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
                     vag = vag[0]
                     vag_id = vag['volumeAccessGroupID']
                     if [vol_id] == vag['volumes']:
-                        self._remove_vag(vag_id)
+                        self.sf_driver._remove_vag(vag_id)
                     elif vol_id in vag['volumes']:
-                        self._remove_volume_from_vag(vol_id, vag_id)
+                        self.sf_driver._remove_volume_from_vag(vol_id, vag_id)
             else:
-                self._remove_volume_from_vags(vol_id)
+                self.sf_driver._remove_volume_from_vags(vol_id)
 
         return super(SolidFireISCSI, self).terminate_connection(volume,
                                                                 properties,

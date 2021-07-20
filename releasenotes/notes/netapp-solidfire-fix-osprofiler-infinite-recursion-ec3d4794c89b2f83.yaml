@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp SolidFire driver `bug #1934459
+    <https://bugs.launchpad.net/cinder/+bug/1934459>`_:
+    Fixed backend initialization failing with RecursionError error when
+    OSProfiler is enabled.
