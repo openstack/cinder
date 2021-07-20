@@ -4691,16 +4691,10 @@ class VolumeManager(manager.CleanableManager,
             if has_shared_connection is not None and not has_shared_connection:
                 self.driver.remove_export(context.elevated(), vref)
         except Exception:
-            # FIXME(jdg): Obviously our volume object is going to need some
-            # changes to deal with multi-attach and figuring out how to
-            # represent a single failed attach out of multiple attachments
-
-            # TODO(jdg): object method here
-            attachment.attach_status = \
-                fields.VolumeAttachStatus.ERROR_DETACHING
-            attachment.save()
-        else:
-            vref.finish_detach(attachment.id)
+            # Failures on detach_volume and remove_export are not considered
+            # failures in terms of detaching the volume.
+            pass
+        vref.finish_detach(attachment.id)
         self._notify_about_volume_usage(context, vref, "detach.end")
 
     # Replication group API (Tiramisu)
