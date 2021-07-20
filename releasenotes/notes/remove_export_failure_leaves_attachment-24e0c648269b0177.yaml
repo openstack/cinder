@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1935057 <https://bugs.launchpad.net/cinder/+bug/1935057>`_: Fixed
+    sometimes on a detach volume may end in available and detached yet have an
+    attachment in error_detaching.
