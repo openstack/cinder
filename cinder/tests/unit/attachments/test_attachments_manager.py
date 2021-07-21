@@ -18,7 +18,6 @@ from oslo_utils import importutils
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqla_db
-from cinder import exception
 from cinder.objects import fields
 from cinder.objects import volume_attachment
 from cinder.tests.unit.api.v2 import fakes as v2_fakes
@@ -137,13 +136,21 @@ class AttachmentManagerTestCase(test.TestCase):
         attachment_ref = db.volume_attachment_get(
             self.context,
             attachment_ref['id'])
+
+        vref.refresh()
+        expected_status = (vref.status, vref.attach_status,
+                           attachment_ref.attach_status)
+
         self.manager.attachment_delete(self.context,
                                        attachment_ref['id'],
                                        vref)
-        self.assertRaises(exception.VolumeAttachmentNotFound,
-                          db.volume_attachment_get,
-                          self.context,
-                          attachment_ref.id)
+        # Manager doesn't change the resource status. It is changed on the API
+        attachment_ref = db.volume_attachment_get(self.context,
+                                                  attachment_ref.id)
+        vref.refresh()
+        self.assertEqual(
+            expected_status,
+            (vref.status, vref.attach_status, attachment_ref.attach_status))
 
     def test_attachment_delete_remove_export_fail(self):
         """attachment_delete removes attachment on remove_export failure."""
@@ -160,15 +167,18 @@ class AttachmentManagerTestCase(test.TestCase):
         attach = db.volume_attach(self.context, values)
         # Confirm the volume OVO has the attachment before the deletion
         vref.refresh()
+        expected_vol_status = (vref.status, vref.attach_status)
         self.assertEqual(1, len(vref.volume_attachment))
 
         self.manager.attachment_delete(self.context, attach.id, vref)
 
-        # Attachment has been removed from the DB
-        self.assertRaises(exception.VolumeAttachmentNotFound,
-                          db.volume_attachment_get, self.context, attach.id)
-        # Attachment has been removed from the volume OVO attachment list
-        self.assertEqual(0, len(vref.volume_attachment))
+        # Manager doesn't change the resource status. It is changed on the API
+        attachment = db.volume_attachment_get(self.context, attach.id)
+        self.assertEqual(attach.attach_status, attachment.attach_status)
+
+        vref = db.volume_get(self.context, vref.id)
+        self.assertEqual(expected_vol_status,
+                         (vref.status, vref.attach_status))
 
     def test_attachment_delete_multiple_attachments(self):
         volume_params = {'status': 'available'}
