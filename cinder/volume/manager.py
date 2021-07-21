@@ -2655,7 +2655,11 @@ class VolumeManager(manager.CleanableManager,
         volume_stats = get_stats()
 
         if self.extra_capabilities:
-            volume_stats.update(self.extra_capabilities)
+            if "pools" in volume_stats:
+                for pool in volume_stats["pools"]:
+                    pool.update(self.extra_capabilities)
+            else:
+                volume_stats.update(self.extra_capabilities)
         if volume_stats:
 
             # NOTE(xyang): If driver reports replication_status to be
