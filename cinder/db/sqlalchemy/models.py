@@ -55,8 +55,10 @@ class CinderBase(models.TimestampMixin,
     def delete(self, session):
         """Delete this object."""
         updated_values = self.delete_values()
+        updated_values['updated_at'] = self.updated_at
         self.update(updated_values)
         self.save(session=session)
+        del updated_values['updated_at']
         return updated_values
 
 
@@ -375,6 +377,14 @@ class VolumeAttachment(BASE, CinderBase):
     connection_info = Column(Text)
     # Stores a serialized json dict of host connector information from brick.
     connector = Column(Text)
+
+    @staticmethod
+    def delete_values():
+        now = timeutils.utcnow()
+        return {'deleted': True,
+                'deleted_at': now,
+                'attach_status': 'detached',
+                'detach_time': now}
 
 
 class VolumeType(BASE, CinderBase):
