@@ -203,13 +203,13 @@ class AttachmentsAPITestCase(test.TestCase):
         self.controller.delete(req, attachment.id)
 
         volume2 = objects.Volume.get_by_id(self.ctxt, volume1.id)
-        if status == 'reserved':
-            self.assertEqual('detached', volume2.attach_status)
-            self.assertRaises(
-                exception.VolumeAttachmentNotFound,
-                objects.VolumeAttachment.get_by_id, self.ctxt, attachment.id)
-        else:
-            self.assertEqual('attached', volume2.attach_status)
+        # Volume and attachment status is changed on the API service
+        self.assertEqual('detached', volume2.attach_status)
+        self.assertEqual('available', volume2.status)
+        self.assertRaises(
+            exception.VolumeAttachmentNotFound,
+            objects.VolumeAttachment.get_by_id, self.ctxt, attachment.id)
+        if status != 'reserved':
             mock_delete.assert_called_once_with(req.environ['cinder.context'],
                                                 attachment.id, mock.ANY)
 
