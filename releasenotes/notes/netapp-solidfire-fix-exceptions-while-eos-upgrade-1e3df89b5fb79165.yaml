@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp SolidFire driver `Bug #1934435
+    <https://bugs.launchpad.net/cinder/+bug/1934435>`_:
+    Fixed errors that might occur when an operation is made to a volume at the
+    same time as the Element OS upgrades.
