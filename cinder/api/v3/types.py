@@ -23,7 +23,7 @@ from cinder.api import api_utils
 from cinder.api import common
 from cinder.api import microversions as mv
 from cinder.api.openstack import wsgi
-from cinder.api.v2.views import types as views_types
+from cinder.api.v3.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
 from cinder.policies import volume_type as type_policy

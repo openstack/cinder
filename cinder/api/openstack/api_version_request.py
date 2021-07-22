@@ -153,11 +153,9 @@ REST_API_VERSION_HISTORY = """
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
-# Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
 _MAX_API_VERSION = "3.64"
-_LEGACY_API_VERSION2 = "2.0"
-UPDATED = "2021-02-03T00:00:00Z"
+UPDATED = "2021-05-30T00:00:00Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can
@@ -169,10 +167,6 @@ def min_api_version():
 
 def max_api_version():
     return APIVersionRequest(_MAX_API_VERSION)
-
-
-def legacy_api_version2():
-    return APIVersionRequest(_LEGACY_API_VERSION2)
 
 
 class APIVersionRequest(utils.ComparableMixin):

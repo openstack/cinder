@@ -38,18 +38,6 @@ _LINKS = [{
 
 
 _KNOWN_VERSIONS = {
-    "v2.0": {
-        "id": "v2.0",
-        "status": "DEPRECATED",
-        "version": "",
-        "min_version": "",
-        "updated": "2017-02-25T12:00:00Z",
-        "links": _LINKS,
-        "media-types": [{
-            "base": "application/json",
-            "type": "application/vnd.openstack.volume+json;version=2",
-        }]
-    },
     "v3.0": {
         "id": "v3.0",
         "status": "CURRENT",
@@ -93,24 +81,15 @@ class VersionsController(wsgi.Controller):
     def __init__(self):
         super(VersionsController, self).__init__(None)
 
-    @wsgi.Controller.api_version('2.0')
-    def index(self, req):  # pylint: disable=E0102
-        """Return versions supported prior to the microversions epoch."""
-        builder = views_versions.get_view_builder(req)
-        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
-        known_versions.pop('v3.0')
-        return builder.build_versions(known_versions)
-
-    @index.api_version('3.0')
+    @wsgi.Controller.api_version('3.0')
     def index(self, req):  # pylint: disable=E0102
         """Return versions supported after the start of microversions."""
         builder = views_versions.get_view_builder(req)
         known_versions = copy.deepcopy(_KNOWN_VERSIONS)
-        known_versions.pop('v2.0')
         return builder.build_versions(known_versions)
 
     # NOTE (cknight): Calling the versions API without
-    # /v2 or /v3 in the URL will lead to this unversioned
+    # /v3 in the URL will lead to this unversioned
     # method, which should always return info about all
     # available versions.
     @wsgi.response(HTTPStatus.MULTIPLE_CHOICES)
@@ -119,8 +98,8 @@ class VersionsController(wsgi.Controller):
         builder = views_versions.get_view_builder(req)
         known_versions = copy.deepcopy(_KNOWN_VERSIONS)
 
-        if not CONF.enable_v2_api:
-            known_versions.pop('v2.0')
+        # FIXME: remove this in Y ... I suppose we should honor
+        # it in Xena, even though it doesn't make any sense
         if not CONF.enable_v3_api:
             known_versions.pop('v3.0')
 

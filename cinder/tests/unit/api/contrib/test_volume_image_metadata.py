@@ -163,7 +163,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
     def test_get_volume(self):
         self._create_volume_and_glance_metadata()
-        res = self._make_request('/v2/%s/volumes/%s' % (
+        res = self._make_request('/v3/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
         self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
@@ -171,7 +171,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
     def test_list_detail_volumes(self):
         self._create_volume_and_glance_metadata()
-        res = self._make_request('/v2/%s/volumes/detail' % fake.PROJECT_ID)
+        res = self._make_request('/v3/%s/volumes/detail' % fake.PROJECT_ID)
         self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual(fake_image_metadata,
                          self._get_image_metadata_list(res.body)[0])
@@ -185,7 +185,7 @@ class VolumeImageMetadataTest(test.TestCase):
         self.mock_object(volume.api.API, 'get_all',
                          fake_volume_get_all_empty)
 
-        res = self._make_request('/v2/%s/volumes/detail' % fake.PROJECT_ID)
+        res = self._make_request('/v3/%s/volumes/detail' % fake.PROJECT_ID)
         self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertFalse(fake_dont_call_this.called)
 
@@ -199,7 +199,7 @@ class VolumeImageMetadataTest(test.TestCase):
                                          'key1', 'value1')
         db.volume_glance_metadata_create(ctxt, fake.VOLUME_ID,
                                          'key2', 'value2')
-        res = self._make_request('/v2/%s/volumes/detail?limit=1'
+        res = self._make_request('/v3/%s/volumes/detail?limit=1'
                                  % fake.PROJECT_ID)
         self.assertEqual(HTTPStatus.OK, res.status_int)
         self.assertEqual({'key1': 'value1', 'key2': 'value2'},
@@ -213,7 +213,7 @@ class VolumeImageMetadataTest(test.TestCase):
                          fake_create_volume_metadata)
 
         body = {"os-set_image_metadata": {"metadata": fake_image_metadata}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -235,7 +235,7 @@ class VolumeImageMetadataTest(test.TestCase):
         self.addCleanup(policy.reset)
         fake_get.return_value = {}
 
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID), use_admin_context=False)
 
         req.method = 'POST'
@@ -270,7 +270,7 @@ class VolumeImageMetadataTest(test.TestCase):
             },
         }
 
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(body)
@@ -284,7 +284,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
     @mock.patch('cinder.objects.Volume.get_by_id')
     def test_create_empty_body(self, fake_get):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
@@ -297,7 +297,7 @@ class VolumeImageMetadataTest(test.TestCase):
     def test_create_nonexistent_volume(self):
         self.mock_object(volume.api.API, 'get', return_volume_nonexistent)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.content_type = "application/json"
@@ -313,7 +313,7 @@ class VolumeImageMetadataTest(test.TestCase):
     def test_invalid_metadata_items_on_create(self, fake_get):
         self.mock_object(db, 'volume_metadata_update',
                          fake_create_volume_metadata)
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
@@ -355,7 +355,7 @@ class VolumeImageMetadataTest(test.TestCase):
         body = {"os-unset_image_metadata": {
             "key": "ramdisk_id"}
         }
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(body)
@@ -375,7 +375,7 @@ class VolumeImageMetadataTest(test.TestCase):
         self.addCleanup(policy.reset)
         fake_get.return_value = {}
 
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID), use_admin_context=False)
 
         req.method = 'POST'
@@ -394,7 +394,7 @@ class VolumeImageMetadataTest(test.TestCase):
         data = {"os-unset_image_metadata": {
             "key": "invalid_id"}
         }
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(data)
@@ -413,7 +413,7 @@ class VolumeImageMetadataTest(test.TestCase):
         body = {"os-unset_image_metadata": {
             "key": "fake"}
         }
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(body)
@@ -425,7 +425,7 @@ class VolumeImageMetadataTest(test.TestCase):
                           body=body)
 
     def test_delete_empty_body(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
@@ -436,7 +436,7 @@ class VolumeImageMetadataTest(test.TestCase):
 
     def test_show_image_metadata(self):
         body = {"os-show_image_metadata": None}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
         req.body = jsonutils.dump_as_bytes(body)

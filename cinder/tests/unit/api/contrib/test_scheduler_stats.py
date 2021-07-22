@@ -60,7 +60,7 @@ class SchedulerStatsAPITest(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools',
                 schedule_rpcapi_get_pools)
     def test_get_pools_summary(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/scheduler_stats' %
+        req = fakes.HTTPRequest.blank('/v3/%s/scheduler_stats' %
                                       fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.get_pools(req)
@@ -130,7 +130,7 @@ class SchedulerStatsAPITest(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.get_pools',
                 schedule_rpcapi_get_pools)
     def test_get_pools_detail(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/scheduler_stats?detail=True' %
+        req = fakes.HTTPRequest.blank('/v3/%s/scheduler_stats?detail=True' %
                                       fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.get_pools(req)
@@ -170,7 +170,7 @@ class SchedulerStatsAPITest(test.TestCase):
 
     def test_get_pools_detail_invalid_bool(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/scheduler_stats?detail=InvalidBool' %
+            '/v3/%s/scheduler_stats?detail=InvalidBool' %
             fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         self.assertRaises(exception.InvalidParameterValue,

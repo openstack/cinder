@@ -637,7 +637,7 @@ class ServicesTest(test.TestCase):
     def test_services_enable_with_service_key(self):
         body = {'host': 'host1', 'service': constants.VOLUME_BINARY}
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/os-services/enable' % fake.PROJECT_ID)
+            '/v3/%s/os-services/enable' % fake.PROJECT_ID)
         res_dict = self.controller.update(req, "enable", body)
 
         self.assertEqual('enabled', res_dict['status'])
@@ -645,14 +645,14 @@ class ServicesTest(test.TestCase):
     def test_services_enable_with_binary_key(self):
         body = {'host': 'host1', 'binary': constants.VOLUME_BINARY}
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/os-services/enable' % fake.PROJECT_ID)
+            '/v3/%s/os-services/enable' % fake.PROJECT_ID)
         res_dict = self.controller.update(req, "enable", body)
 
         self.assertEqual('enabled', res_dict['status'])
 
     def test_services_disable_with_service_key(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/os-services/disable' % fake.PROJECT_ID)
+            '/v3/%s/os-services/disable' % fake.PROJECT_ID)
         body = {'host': 'host1', 'service': constants.VOLUME_BINARY}
         res_dict = self.controller.update(req, "disable", body)
 
@@ -660,7 +660,7 @@ class ServicesTest(test.TestCase):
 
     def test_services_disable_with_binary_key(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/os-services/disable' % fake.PROJECT_ID)
+            '/v3/%s/os-services/disable' % fake.PROJECT_ID)
         body = {'host': 'host1', 'binary': constants.VOLUME_BINARY}
         res_dict = self.controller.update(req, "disable", body)
 
@@ -723,7 +723,7 @@ class ServicesTest(test.TestCase):
                           req, "disable-log-reason", body)
 
     def test_services_failover_host(self):
-        url = '/v2/%s/os-services/failover_host' % fake.PROJECT_ID
+        url = '/v3/%s/os-services/failover_host' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
         body = {'host': 'fake_host',
                 'backend_id': 'fake_backend'}
@@ -744,7 +744,7 @@ class ServicesTest(test.TestCase):
     @mock.patch('cinder.objects.ServiceList.get_all')
     def test_services_action_host_not_found(self, method, body,
                                             mock_get_all_services):
-        url = '/v2/%s/os-services/%s' % (fake.PROJECT_ID, method)
+        url = '/v3/%s/os-services/%s' % (fake.PROJECT_ID, method)
         req = fakes.HTTPRequest.blank(url)
         mock_get_all_services.return_value = []
         msg = 'No service found with host=%s' % 'fake_host'
@@ -771,7 +771,7 @@ class ServicesTest(test.TestCase):
         self.assertEqual(msg, result.msg)
 
     def test_services_freeze(self):
-        url = '/v2/%s/os-services/freeze' % fake.PROJECT_ID
+        url = '/v3/%s/os-services/freeze' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
         body = {'host': 'fake_host'}
         with mock.patch.object(self.controller.volume_api, 'freeze_host') \
@@ -782,7 +782,7 @@ class ServicesTest(test.TestCase):
         self.assertEqual(freeze_mock.return_value, res)
 
     def test_services_thaw(self):
-        url = '/v2/%s/os-services/thaw' % fake.PROJECT_ID
+        url = '/v3/%s/os-services/thaw' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
         body = {'host': 'fake_host'}
         with mock.patch.object(self.controller.volume_api, 'thaw_host') \
@@ -794,7 +794,7 @@ class ServicesTest(test.TestCase):
 
     @ddt.data('freeze', 'thaw', 'failover_host')
     def test_services_replication_calls_no_host(self, method):
-        url = '/v2/%s/os-services/%s' % (fake.PROJECT_ID, method)
+        url = '/v3/%s/os-services/%s' % (fake.PROJECT_ID, method)
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(exception.InvalidInput,
                           self.controller.update, req, method, {})

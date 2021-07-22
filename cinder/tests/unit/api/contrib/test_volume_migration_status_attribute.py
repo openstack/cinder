@@ -57,9 +57,9 @@ def fake_volume_get_all(*args, **kwargs):
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
+    api = fakes.router_v3.APIRouter()
     mapper = fakes.urlmap.URLMap()
-    mapper['/v2'] = api
+    mapper['/v3'] = api
     return mapper
 
 
@@ -73,7 +73,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
 
     def test_get_volume_allowed(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
-        req = webob.Request.blank('/v2/%s/volumes/%s' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
@@ -86,7 +86,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
 
     def test_get_volume_unallowed(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
-        req = webob.Request.blank('/v2/%s/volumes/%s' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
@@ -97,7 +97,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
 
     def test_list_detail_volumes_allowed(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
-        req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -109,7 +109,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
 
     def test_list_detail_volumes_unallowed(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
-        req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -119,7 +119,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
 
     def test_list_simple_volumes_no_migration_status(self):
         ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
-        req = webob.Request.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())

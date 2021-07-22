@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    The Block Storage API v2, which was deprecated in the Pike release,
+    has been removed.  If upgrading from a previous OpenStack release, it
+    is recommended that you edit your ``/etc/cinder/api-paste.ini`` file
+    to remove all references to v2.  Additionally, the deprecated
+    configuration option ``enable_v2_api`` has been removed.  If present
+    in a configuration file, it will be silently ignored.
+deprecations:
+  - |
+    The configuration option ``enable_v3_api`` is deprecated in this
+    release due to the fact that v3 is the only version of the Block
+    Storage API available.  It will be removed in the next release.

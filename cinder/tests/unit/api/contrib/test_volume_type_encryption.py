@@ -49,12 +49,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
     def setUp(self):
         super(VolumeTypeEncryptionTest, self).setUp()
         self.flags(host='fake')
-        self.api_path = '/v2/%s/os-volume-types/%s/encryption' % (
+        self.api_path = '/v3/%s/types/%s/encryption' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         """to reset notifier drivers left over from other api/contrib tests"""
 
     def _get_response(self, volume_type, admin=True,
-                      url='/v2/%s/types/%s/encryption',
+                      url='/v3/%s/types/%s/encryption',
                       req_method='GET', req_body=None,
                       req_headers=None):
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
@@ -113,7 +113,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         volume_type = self._default_volume_type
         self._create_type_and_encryption(volume_type)
         res = self._get_response(volume_type,
-                                 url='/v2/%s/types/%s/encryption/key_size')
+                                 url='/v3/%s/types/%s/encryption/key_size')
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(HTTPStatus.OK, res.status_code)
@@ -126,7 +126,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self._create_type_and_encryption(volume_type)
 
         res = self._get_response(volume_type,
-                                 url='/v2/%s/types/%s/encryption/provider')
+                                 url='/v3/%s/types/%s/encryption/provider')
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(HTTPStatus.OK, res.status_code)
@@ -138,7 +138,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self._create_type_and_encryption(volume_type)
 
         res = self._get_response(volume_type,
-                                 url='/v2/%s/types/%s/encryption/fake')
+                                 url='/v3/%s/types/%s/encryption/fake')
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
@@ -364,7 +364,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption')
+                                 url='/v3/%s/types/%s/encryption')
         self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
@@ -372,12 +372,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Delete, and test that get returns nothing
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption/provider')
+                                 url='/v3/%s/types/%s/encryption/provider')
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
         self.assertEqual(0, len(res.body))
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption')
+                                 url='/v3/%s/types/%s/encryption')
         self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
@@ -401,7 +401,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption')
+                                 url='/v3/%s/types/%s/encryption')
         self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
@@ -428,7 +428,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Delete, and test that there is an error since volumes exist
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption/provider')
+                                 url='/v3/%s/types/%s/encryption/provider')
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         res_dict = jsonutils.loads(res.body)
         expected = {
@@ -447,12 +447,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Delete, and test that get returns nothing
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption/provider')
+                                 url='/v3/%s/types/%s/encryption/provider')
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_code)
         self.assertEqual(0, len(res.body))
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption')
+                                 url='/v3/%s/types/%s/encryption')
         self.assertEqual(HTTPStatus.OK, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
@@ -468,7 +468,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # and check if 404 is raised.
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/%s/types/%s/encryption/provider')
+                                 url='/v3/%s/types/%s/encryption/provider')
         self.assertEqual(HTTPStatus.NOT_FOUND, res.status_code)
         expected = {
             "itemNotFound": {
@@ -498,7 +498,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
             _get_response(volume_type, req_method='PUT',
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
-                          url='/v2/%s/types/%s/encryption/' +
+                          url='/v3/%s/types/%s/encryption/' +
                               fake.ENCRYPTION_KEY_ID)
 
         res_dict = jsonutils.loads(res.body)
@@ -525,7 +525,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
             _get_response(volume_type, req_method='PUT',
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
-                          url='/v2/%s/types/%s/encryption/' +
+                          url='/v3/%s/types/%s/encryption/' +
                               fake.ENCRYPTION_KEY_ID)
         res_dict = jsonutils.loads(res.body)
 
@@ -584,7 +584,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
             _get_response(volume_type, req_method='PUT',
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
-                          url='/v2/%s/types/%s/encryption/' +
+                          url='/v3/%s/types/%s/encryption/' +
                               fake.ENCRYPTION_KEY_ID)
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_code)
         res_dict = jsonutils.loads(res.body)

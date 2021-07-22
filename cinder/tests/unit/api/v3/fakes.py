@@ -14,6 +14,7 @@ import datetime
 
 import iso8601
 
+from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import utils
@@ -115,3 +116,46 @@ def fake_volume_create(self, context, size, name, description, snapshot=None,
     if group_id:
         vol['group_id'] = group_id
     return vol
+
+
+def fake_volume_type_get(context, id, *args, **kwargs):
+    return {'id': id,
+            'name': 'vol_type_name',
+            'description': 'A fake volume type',
+            'is_public': True,
+            'projects': [],
+            'extra_specs': {},
+            'created_at': None,
+            'deleted_at': None,
+            'updated_at': None,
+            'qos_specs_id': fake.QOS_SPEC_ID,
+            'deleted': False}
+
+
+def fake_default_type_get(id=fake.VOLUME_TYPE_ID):
+    return {'id': id,
+            'name': 'vol_type_name',
+            'description': 'A fake volume type',
+            'is_public': True,
+            'projects': [],
+            'extra_specs': {},
+            'created_at': None,
+            'deleted_at': None,
+            'updated_at': None,
+            'qos_specs_id': fake.QOS_SPEC_ID,
+            'deleted': False}
+
+
+def fake_snapshot(id, **kwargs):
+    snapshot = {'id': id,
+                'volume_id': fake.VOLUME_ID,
+                'status': fields.SnapshotStatus.AVAILABLE,
+                'volume_size': 100,
+                'created_at': None,
+                'display_name': 'Default name',
+                'display_description': 'Default description',
+                'project_id': fake.PROJECT_ID,
+                'snapshot_metadata': []}
+
+    snapshot.update(kwargs)
+    return snapshot

@@ -202,7 +202,7 @@ class VolumeAdminController(AdminController):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-migrate_volume')
-    @validation.schema(admin_actions.migrate_volume, mv.V2_BASE_VERSION,
+    @validation.schema(admin_actions.migrate_volume, mv.BASE_VERSION,
                        mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
     @validation.schema(admin_actions.migrate_volume_v316,
                        mv.VOLUME_MIGRATE_CLUSTER)

@@ -89,8 +89,6 @@
             irrelevant-files: *gate-irrelevant-files
     experimental:
       jobs:
-        - tempest-cinder-v2-api:
-            irrelevant-files: *gate-irrelevant-files
         - legacy-tempest-dsvm-multibackend-matrix:
             irrelevant-files: *gate-irrelevant-files
         - cinder-grenade-mn-sub-volschbak:

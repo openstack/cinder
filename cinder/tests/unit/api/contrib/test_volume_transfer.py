@@ -28,14 +28,14 @@ from cinder import exception
 from cinder.objects import fields
 from cinder import quota
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 import cinder.transfer
 
 
 class VolumeTransferAPITestCase(test.TestCase):
-    """Test Case for transfers API."""
+    """Test Case for the "old" transfers API, still valid in 3.0."""
 
     def setUp(self):
         super(VolumeTransferAPITestCase, self).setUp()
@@ -75,7 +75,7 @@ class VolumeTransferAPITestCase(test.TestCase):
     def test_show_transfer(self):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s' % (
             fake.PROJECT_ID, transfer['id']))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -91,7 +91,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_show_transfer_with_transfer_NotFound(self):
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -112,7 +112,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer1 = self._create_transfer(volume_id_1)
         transfer2 = self._create_transfer(volume_id_2)
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -138,7 +138,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer1 = self._create_transfer(volume_id_1)
         transfer2 = self._create_transfer(volume_id_2)
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/detail' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -171,7 +171,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer1 = self._create_transfer(volume_id_1)
         transfer2 = self._create_transfer(volume_id_2)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/os-volume-transfer?'
+        req = fakes.HTTPRequest.blank('/v3/%s/os-volume-transfer?'
                                       'all_tenants=1' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
@@ -192,7 +192,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         body = {"transfer": {"name": "transfer1",
                              "volume_id": volume_id}}
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -212,7 +212,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_create_transfer_with_no_body(self):
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
@@ -228,7 +228,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
     def test_create_transfer_with_body_KeyError(self):
         body = {"transfer": {"name": "transfer1"}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -245,7 +245,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         body = {"transfer": {"name": "transfer1",
                              "volume_id": 1234}}
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -262,7 +262,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume(status='attached')
         body = {"transfer": {"name": "transfer1",
                              "volume_id": volume_id}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -284,7 +284,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         body = {"transfer": {"name": "    transfer1   ",
                              "volume_id": volume_id}}
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer' %
+        req = webob.Request.blank('/v3/%s/os-volume-transfer' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -302,7 +302,7 @@ class VolumeTransferAPITestCase(test.TestCase):
     def test_delete_transfer_awaiting_transfer(self):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -312,7 +312,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.ACCEPTED, res.status_int)
 
         # verify transfer has been deleted
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s' % (
             fake.PROJECT_ID, transfer['id']))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -331,7 +331,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_delete_transfer_with_transfer_NotFound(self):
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
@@ -347,14 +347,14 @@ class VolumeTransferAPITestCase(test.TestCase):
                          res_dict['itemNotFound']['message'])
 
     @mock.patch.object(quota.QUOTAS, 'reserve')
-    @mock.patch.object(db, 'volume_type_get', v2_fakes.fake_volume_type_get)
+    @mock.patch.object(db, 'volume_type_get', v3_fakes.fake_volume_type_get)
     def test_accept_transfer_volume_id_specified_json(self, type_get):
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
 
         svc = self.start_service('volume', host='fake_host')
         body = {"accept": {"auth_key": transfer['auth_key']}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -373,7 +373,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
@@ -394,7 +394,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_id = self._create_volume(size=5)
         transfer = self._create_transfer(volume_id)
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         body = {"": {}}
         req.method = 'POST'
@@ -418,7 +418,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
 
         body = {"accept": {"auth_key": 1}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -442,7 +442,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
 
         body = {"accept": {"auth_key": 1}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -478,7 +478,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
 
         body = {"accept": {"auth_key": transfer['auth_key']}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
 
         req.method = 'POST'
@@ -513,7 +513,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
 
         body = {"accept": {"auth_key": transfer['auth_key']}}
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
 
         req.method = 'POST'
@@ -537,7 +537,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
         body = {"accept": {"auth_key": None}}
 
-        req = webob.Request.blank('/v2/%s/os-volume-transfer/%s/accept' % (
+        req = webob.Request.blank('/v3/%s/os-volume-transfer/%s/accept' % (
                                   fake.PROJECT_ID, transfer['id']))
         req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'

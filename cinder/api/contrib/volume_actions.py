@@ -192,7 +192,7 @@ class VolumeActionsController(wsgi.Controller):
 
     @wsgi.response(HTTPStatus.ACCEPTED)
     @wsgi.action('os-volume_upload_image')
-    @validation.schema(volume_action.volume_upload_image, mv.V2_BASE_VERSION,
+    @validation.schema(volume_action.volume_upload_image, mv.BASE_VERSION,
                        mv.get_prior_version(mv.UPLOAD_IMAGE_PARAMS))
     @validation.schema(volume_action.volume_upload_image_v31,
                        mv.UPLOAD_IMAGE_PARAMS)

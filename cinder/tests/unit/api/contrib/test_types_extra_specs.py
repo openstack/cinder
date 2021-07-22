@@ -73,7 +73,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         super(VolumeTypesExtraSpecsTest, self).setUp()
         self.flags(host='fake')
         self.mock_object(cinder.db, 'volume_type_get', return_volume_type)
-        self.api_path = '/v2/%s/os-volume-types/%s/extra_specs' % (
+        self.api_path = '/v3/%s/types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
 
@@ -379,7 +379,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           req, fake.VOLUME_ID, 'bad', body=body)
 
     def _extra_specs_empty_update(self, body):
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
         req.method = 'POST'
 
@@ -394,7 +394,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self._extra_specs_empty_update(body={})
 
     def _extra_specs_create_bad_body(self, body):
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
         req.method = 'POST'
 
@@ -431,7 +431,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                 cinder.db,
                 'volume_get_all',
                 return_value=['a']):
-            req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
+            req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
                 fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
             req.method = 'POST'
 
@@ -447,7 +447,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
               {'extra_specs': {'': 'a'}},
               {'extra_specs': {'     ': 'a'}})
     def test_create_with_invalid_extra_specs(self, body):
-        req = fakes.HTTPRequest.blank('/v2/%s/types/%s/extra_specs' % (
+        req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
         req.method = 'POST'
 

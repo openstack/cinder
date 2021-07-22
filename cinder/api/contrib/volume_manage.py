@@ -46,7 +46,7 @@ class VolumeManageController(wsgi.Controller):
         self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(HTTPStatus.ACCEPTED)
-    @validation.schema(volume_manage.volume_manage_create, mv.V2_BASE_VERSION,
+    @validation.schema(volume_manage.volume_manage_create, mv.BASE_VERSION,
                        mv.get_prior_version(mv.VOLUME_MIGRATE_CLUSTER))
     @validation.schema(volume_manage.volume_manage_create_v316,
                        mv.VOLUME_MIGRATE_CLUSTER)

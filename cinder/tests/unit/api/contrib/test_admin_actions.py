@@ -35,7 +35,7 @@ from cinder.objects import base as obj_base
 from cinder.objects import fields
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -48,14 +48,7 @@ from cinder.volume import volume_types
 
 def app():
     # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
-    mapper = fakes.urlmap.URLMap()
-    mapper['/v2'] = api
-    return mapper
-
-
-def app_v3():
-    api = fakes.router.APIRouter()
+    api = fakes.router_v3.APIRouter()
     mapper = fakes.urlmap.URLMap()
     mapper['/v3'] = api
     return mapper
@@ -123,7 +116,7 @@ class AdminActionsTest(BaseAdminTest):
         super(AdminActionsTest, self).tearDown()
 
     def _issue_resource_reset(self, ctx, name, id, status):
-        req = webob.Request.blank('/v2/%s/%s/%s/action' % (
+        req = webob.Request.blank('/v3/%s/%s/%s/action' % (
             fake.PROJECT_ID, name, id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -370,7 +363,7 @@ class AdminActionsTest(BaseAdminTest):
                                    'user_id': fake.USER_ID,
                                    'project_id': fake.PROJECT_ID})
 
-        req = webob.Request.blank('/v2/%s/%s/%s/action' % (
+        req = webob.Request.blank('/v3/%s/%s/%s/action' % (
             fake.PROJECT_ID, 'backups', backup['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -405,7 +398,7 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('available', volume['status'])
 
     def test_reset_status_for_missing_volume(self):
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -541,7 +534,7 @@ class AdminActionsTest(BaseAdminTest):
         snapshot.create()
         self.addCleanup(snapshot.destroy)
 
-        req = webob.Request.blank('/v2/%s/%s/%s/action' % (
+        req = webob.Request.blank('/v3/%s/%s/%s/action' % (
             fake.PROJECT_ID, 'snapshots', snapshot['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -553,7 +546,7 @@ class AdminActionsTest(BaseAdminTest):
     def test_force_delete(self):
         # current status is creating
         volume = self._create_volume(self.ctx, {'size': 1, 'host': None})
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -573,14 +566,14 @@ class AdminActionsTest(BaseAdminTest):
     @mock.patch.object(db, 'volume_get')
     def test_force_delete_snapshot(self, volume_get, snapshot_get, get_by_id,
                                    delete_snapshot):
-        volume = v2_fakes.create_fake_volume(fake.VOLUME_ID)
-        snapshot = v2_fakes.fake_snapshot(fake.SNAPSHOT_ID)
+        volume = v3_fakes.create_volume(fake.VOLUME_ID)
+        snapshot = v3_fakes.fake_snapshot(fake.SNAPSHOT_ID)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         volume_get.return_value = volume
         snapshot_get.return_value = snapshot
         get_by_id.return_value = snapshot_obj
 
-        path = '/v2/%s/snapshots/%s/action' % (
+        path = '/v3/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, snapshot['id'])
         req = webob.Request.blank(path)
         req.method = 'POST'
@@ -633,7 +626,7 @@ class AdminActionsTest(BaseAdminTest):
             body['os-migrate_volume']['cluster'] = cluster
         req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
-        resp = req.get_response(app_v3())
+        resp = req.get_response(app())
 
         # verify status
         self.assertEqual(expected_status, resp.status_int)
@@ -676,7 +669,7 @@ class AdminActionsTest(BaseAdminTest):
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
                              force_host_copy=False, lock_volume=False):
         # build request to migrate to host
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -737,7 +730,7 @@ class AdminActionsTest(BaseAdminTest):
         host = 'test3'
         volume = self._migrate_volume_prep()
         # build request to migrate without host
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -804,7 +797,7 @@ class AdminActionsTest(BaseAdminTest):
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
                                   expected_status, expected_id, no_body=False):
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -893,7 +886,7 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID,
                                              'volume_type_id':
                                                  fake.VOLUME_TYPE_ID})
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -920,7 +913,7 @@ class AdminActionsTest(BaseAdminTest):
         backup = test_utils.create_backup(self.ctx, status=test_status,
                                           size=1, availability_zone='az1',
                                           host='testhost')
-        req = webob.Request.blank('/v2/%s/backups/%s/action' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/action' % (
             fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -957,7 +950,7 @@ class AdminActionsTest(BaseAdminTest):
         # admin context
         self.override_config('backup_driver', 'cinder.backup.drivers.ceph')
         backup = test_utils.create_backup(self.ctx, size=1)
-        req = webob.Request.blank('/v2/%s/backups/%s/action' % (
+        req = webob.Request.blank('/v3/%s/backups/%s/action' % (
             fake.PROJECT_ID, backup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1003,7 +996,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                                           connector)
         self.assertEqual('rw', conn_info['data']['access_mode'])
         # build request to force detach
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -1055,7 +1048,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                                           volume, connector)
         self.assertEqual('ro', conn_info['data']['access_mode'])
         # build request to force detach
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
             fake.PROJECT_ID, volume.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -1109,7 +1102,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             messaging.RemoteError(exc_type='VolumeAttachmentNotFound')
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
                 fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
@@ -1126,7 +1119,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             messaging.RemoteError(exc_type='VolumeBackendAPIException'))
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
                 fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
@@ -1172,7 +1165,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         volume_remote_error = messaging.RemoteError(exc_type='DBError')
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
@@ -1214,7 +1207,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         # test when missing connector
         with mock.patch.object(volume_api.API, 'detach'):
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
                 fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'

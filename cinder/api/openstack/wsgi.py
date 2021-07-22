@@ -275,16 +275,9 @@ class Request(webob.Request):
         return self.accept_language.best_match(all_languages)
 
     def set_api_version_request(self, url):
-        """Set API version request based on the request header information.
+        """Set API version request based on the request header information."""
 
-        Microversions starts with /v3, so if a client sends a request for
-        version 1.0 or 2.0 with the /v3 endpoint, throw an exception.
-        Sending a header with any microversion to a /v2 endpoint will
-        be ignored.
-        Note that a microversion must be set for the legacy endpoint. This
-        will appear as 2.0 for /v2.
-        """
-        if API_VERSION_REQUEST_HEADER in self.headers and 'v3' in url:
+        if API_VERSION_REQUEST_HEADER in self.headers:
             hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
             # 'latest' is a special keyword which is equivalent to requesting
             # the maximum version of the API supported
@@ -314,11 +307,8 @@ class Request(webob.Request):
                         max_ver=api_version.max_api_version().get_string())
 
         else:
-            if 'v2' in url:
-                self.api_version_request = api_version.legacy_api_version2()
-            else:
-                self.api_version_request = api_version.APIVersionRequest(
-                    api_version._MIN_API_VERSION)
+            self.api_version_request = api_version.APIVersionRequest(
+                api_version._MIN_API_VERSION)
 
 
 class ActionDispatcher(object):

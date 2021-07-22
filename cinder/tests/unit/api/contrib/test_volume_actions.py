@@ -31,7 +31,7 @@ from cinder import exception
 from cinder.image import glance
 from cinder import objects
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
@@ -89,7 +89,7 @@ class VolumeActionsTest(test.TestCase):
     def test_simple_api_actions(self):
         app = fakes.wsgi_app(fake_auth_context=self.context)
         for _action in self._actions:
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = 'POST'
             req.body = jsonutils.dump_as_bytes({_action: None})
@@ -103,7 +103,7 @@ class VolumeActionsTest(test.TestCase):
             init_conn.return_value = {}
             body = {'os-initialize_connection': {'connector': {
                 'fake': 'fake'}}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
             req.body = jsonutils.dump_as_bytes(body)
@@ -118,7 +118,7 @@ class VolumeActionsTest(test.TestCase):
                                'initialize_connection') as init_conn:
             init_conn.return_value = {}
             body = {'os-initialize_connection': {}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
             req.body = jsonutils.dump_as_bytes(body)
@@ -133,7 +133,7 @@ class VolumeActionsTest(test.TestCase):
                                                      _init_connection):
         _init_connection.side_effect = messaging.RemoteError('InvalidInput')
         body = {'os-initialize_connection': {'connector': 'w/o_initiator'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -150,7 +150,7 @@ class VolumeActionsTest(test.TestCase):
                 exception.VolumeBackendAPIException(data=None)
             body = {'os-initialize_connection': {'connector': {
                 'fake': 'fake'}}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
             req.body = jsonutils.dump_as_bytes(body)
@@ -166,7 +166,7 @@ class VolumeActionsTest(test.TestCase):
                                'terminate_connection') as terminate_conn:
             terminate_conn.return_value = {}
             body = {'os-terminate_connection': {'connector': 'fake'}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
             req.body = jsonutils.dump_as_bytes(body)
@@ -181,7 +181,7 @@ class VolumeActionsTest(test.TestCase):
                                'terminate_connection') as terminate_conn:
             terminate_conn.return_value = {}
             body = {'os-terminate_connection': {}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
             req.body = jsonutils.dump_as_bytes(body)
@@ -197,7 +197,7 @@ class VolumeActionsTest(test.TestCase):
             terminate_conn.side_effect = \
                 exception.VolumeBackendAPIException(data=None)
             body = {'os-terminate_connection': {'connector': 'fake'}}
-            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+            req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
             req.method = "POST"
             req.body = jsonutils.dump_as_bytes(body)
@@ -212,7 +212,7 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-attach': {'instance_uuid': fake.INSTANCE_ID,
                               'mountpoint': '/dev/vdc',
                               'mode': 'rw'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -225,7 +225,7 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-attach': {'instance_uuid': fake.INSTANCE_ID,
                               'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.headers["content-type"] = "application/json"
@@ -238,7 +238,7 @@ class VolumeActionsTest(test.TestCase):
         # using 'read-write' mode attach volume by default
         body = {'os-attach': {'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -258,7 +258,7 @@ class VolumeActionsTest(test.TestCase):
                    "mountpoint": "/dev/vdc",
                    "mode": "rw"}
             body = {"os-attach": vol}
-            req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+            req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                           (fake.PROJECT_ID, id))
             self.assertRaises(webob.exc.HTTPBadRequest,
                               self.controller._attach,
@@ -277,7 +277,7 @@ class VolumeActionsTest(test.TestCase):
                    "mountpoint": "/dev/vdc",
                    "mode": "rw"}
             body = {"os-attach": vol}
-            req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+            req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                           (fake.PROJECT_ID, id))
             self.assertRaises(messaging.RemoteError,
                               self.controller._attach,
@@ -287,7 +287,7 @@ class VolumeActionsTest(test.TestCase):
 
     def test_detach(self):
         body = {'os-detach': {'attachment_id': fake.ATTACHMENT_ID}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -299,7 +299,7 @@ class VolumeActionsTest(test.TestCase):
 
     def test_detach_null_attachment_id(self):
         body = {'os-detach': {'attachment_id': None}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -317,7 +317,7 @@ class VolumeActionsTest(test.TestCase):
             id = fake.VOLUME_ID
             vol = {"attachment_id": fake.ATTACHMENT_ID}
             body = {"os-detach": vol}
-            req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+            req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                           (fake.PROJECT_ID, id))
             self.assertRaises(webob.exc.HTTPBadRequest,
                               self.controller._detach,
@@ -334,7 +334,7 @@ class VolumeActionsTest(test.TestCase):
             id = fake.VOLUME_ID
             vol = {"attachment_id": fake.ATTACHMENT_ID}
             body = {"os-detach": vol}
-            req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+            req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                           (fake.PROJECT_ID, id))
             self.assertRaises(messaging.RemoteError,
                               self.controller._detach,
@@ -345,7 +345,7 @@ class VolumeActionsTest(test.TestCase):
     def test_attach_with_invalid_arguments(self):
         # Invalid request to attach volume an invalid target
         body = {'os-attach': {'mountpoint': '/dev/vdc'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.headers["content-type"] = "application/json"
@@ -358,7 +358,7 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-attach': {'instance_uuid': 'fake',
                               'mountpoint': '/dev/vdc',
                               'mode': 'rr'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.headers["content-type"] = "application/json"
@@ -369,7 +369,7 @@ class VolumeActionsTest(test.TestCase):
         body = {'os-attach': {'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc',
                               'mode': 'ww'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.headers["content-type"] = "application/json"
@@ -383,7 +383,7 @@ class VolumeActionsTest(test.TestCase):
         # API should fail with a 400 error.
         body = {'os-attach': {'instance_uuid': fake.INSTANCE_ID,
                               'mode': 'rw'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -400,7 +400,7 @@ class VolumeActionsTest(test.TestCase):
                          fake_begin_detaching)
 
         body = {'os-begin_detaching': {'fake': 'fake'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -417,7 +417,7 @@ class VolumeActionsTest(test.TestCase):
                          fake_roll_detaching)
 
         body = {'os-roll_detaching': {'fake': 'fake'}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -434,7 +434,7 @@ class VolumeActionsTest(test.TestCase):
                          fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -452,7 +452,7 @@ class VolumeActionsTest(test.TestCase):
                          fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -476,7 +476,7 @@ class VolumeActionsTest(test.TestCase):
         body = {"os-update_readonly_flag": {"readonly": readonly}}
         if readonly is None:
             body = {"os-update_readonly_flag": {}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -495,7 +495,7 @@ class VolumeActionsTest(test.TestCase):
         body = {"os-set_bootable": {"bootable": bootable}}
         if bootable is None:
             body = {"os-set_bootable": {}}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
@@ -528,7 +528,7 @@ class VolumeRetypeActionsTest(test.TestCase):
                             new_type=fake.VOLUME_TYPE2_ID, vol_id=None,
                             exists_mock=None):
         vol_id = vol_id or fake.VOLUME_ID
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, vol_id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -542,7 +542,7 @@ class VolumeRetypeActionsTest(test.TestCase):
         vol = utils.create_volume(self.context,
                                   status='available',
                                   testcase_instance=self)
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, vol.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -555,7 +555,7 @@ class VolumeRetypeActionsTest(test.TestCase):
         vol = utils.create_volume(self.context,
                                   status='available',
                                   testcase_instance=self)
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, vol.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -709,7 +709,7 @@ class VolumeRetypeActionsTest(test.TestCase):
                                                     name='old',
                                                     qos_specs_id=qos_old).id
         else:
-            vol_type_old = v2_fakes.fake_default_type_get()['id']
+            vol_type_old = v3_fakes.fake_default_type_get()['id']
 
         vol_type_new = utils.create_volume_type(admin_ctxt, self,
                                                 name='new',
@@ -739,7 +739,7 @@ class VolumeRetypeActionsTest(test.TestCase):
             if enc_orig:
                 utils.create_encryption(admin_ctxt, vol_type_old, self)
         else:
-            vol_type_old = v2_fakes.fake_default_type_get()['id']
+            vol_type_old = v3_fakes.fake_default_type_get()['id']
 
         vol_type_new = utils.create_volume_type(admin_ctxt, self,
                                                 name='new').id
@@ -755,7 +755,7 @@ class VolumeRetypeActionsTest(test.TestCase):
 
 
 def fake_volume_get(self, context, volume_id):
-    volume = v2_fakes.create_fake_volume(volume_id)
+    volume = v3_fakes.create_volume(volume_id)
     if volume_id == fake.VOLUME3_ID:
         volume['status'] = 'in-use'
     else:
@@ -778,7 +778,7 @@ def fake_volume_get_obj(self, context, volume_id, **kwargs):
 
     volume.volume_type = fake_volume.fake_volume_type_obj(
         context,
-        name=v2_fakes.DEFAULT_VOL_TYPE)
+        name=v3_fakes.DEFAULT_VOL_TYPE)
     return volume
 
 
@@ -867,7 +867,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": img}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
         res_dict = self.controller._volume_upload_image(req, id, body=body)
         expected = {'os-volume_upload_image':
@@ -913,7 +913,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": img}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, vol_id))
         res_dict = self.controller._volume_upload_image(req, vol_id, body=body)
 
@@ -941,7 +941,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": img}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
         res_dict = self.controller._volume_upload_image(req, id, body=body)
 
@@ -961,7 +961,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": vol}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
         self.assertRaises(exception.VolumeNotFound,
                           self.controller._volume_upload_image,
@@ -979,7 +979,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": vol}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image,
@@ -995,7 +995,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": vol}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action'
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action'
                                       % (fake.PROJECT_ID, id))
         self.assertRaises(exception.ValidationError,
                           self.controller._volume_upload_image,
@@ -1033,7 +1033,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": vol}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, fake.VOLUME_ID))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image,
@@ -1051,7 +1051,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": 'image_name',
                "force": True}
         body = {"os-volume_upload_image": vol}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image,
@@ -1090,7 +1090,7 @@ class VolumeImageActionsTest(test.TestCase):
     def test_volume_upload_image_typeerror(self):
         id = fake.VOLUME2_ID
         body = {"os-volume_upload_image_fake": "fake"}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1105,7 +1105,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": None,
                "force": True}
         body = {"": vol}
-        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1117,7 +1117,7 @@ class VolumeImageActionsTest(test.TestCase):
     def test_extend_volume_valueerror(self):
         id = fake.VOLUME2_ID
         body = {'os-extend': {'new_size': 'fake'}}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
         self.assertRaises(exception.ValidationError,
                           self.controller._extend,
@@ -1157,7 +1157,7 @@ class VolumeImageActionsTest(test.TestCase):
         vol_id = fake.WILL_NOT_BE_FOUND_ID
 
         body = {'os-extend': {'new_size': 5}}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, vol_id))
 
         self.assertRaises(exception.VolumeNotFound,
@@ -1173,7 +1173,7 @@ class VolumeImageActionsTest(test.TestCase):
                "image_name": None,
                "force": True}
         body = {"os-volume_upload_image": vol}
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
         self.assertRaises(exception.ValidationError,
                           self.controller._volume_upload_image,
@@ -1222,7 +1222,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = self.fake_image_service_create
 
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
+            '/v3/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
 
@@ -1265,7 +1265,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = self.fake_image_service_create
 
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
+            '/v3/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
         res_dict = self.controller._volume_upload_image(req, volume.id,
@@ -1291,7 +1291,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = Exception()
 
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id)
+            '/v3/fakeproject/volumes/%s/action' % volume.id)
         body = self._get_os_volume_upload_image()
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._volume_upload_image, req, volume.id,
@@ -1318,7 +1318,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = self.fake_image_service_create
 
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id)
+            '/v3/fakeproject/volumes/%s/action' % volume.id)
         body = self._get_os_volume_upload_image()
         body['os-volume_upload_image']['force'] = False
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -1346,7 +1346,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = self.fake_image_service_create
 
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id,
+            '/v3/fakeproject/volumes/%s/action' % volume.id,
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -1380,7 +1380,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = self.fake_image_service_create
 
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id,
+            '/v3/fakeproject/volumes/%s/action' % volume.id,
             use_admin_context=self.context.is_admin)
 
         body = self._get_os_volume_upload_image()
@@ -1403,7 +1403,7 @@ class VolumeImageActionsTest(test.TestCase):
         self.override_config('glance_core_properties', [])
 
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id,
+            '/v3/fakeproject/volumes/%s/action' % volume.id,
             use_admin_context=self.context.is_admin)
 
         body = self._get_os_volume_upload_image()
@@ -1429,7 +1429,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_create.side_effect = self.fake_image_service_create
 
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
+            '/v3/%s/volumes/%s/action' % (fake.PROJECT_ID, volume.id),
             use_admin_context=self.context.is_admin)
         body = self._get_os_volume_upload_image()
         res_dict = self.controller._volume_upload_image(req, volume.id,
@@ -1483,7 +1483,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_get_image_metadata.return_value = {}
         mock_create.side_effect = self.fake_image_service_create
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id)
+            '/v3/fakeproject/volumes/%s/action' % volume.id)
         body = self._get_os_volume_upload_image()
         body['os-volume_upload_image']['force'] = True
         body['os-volume_upload_image']['container_format'] = 'bare'
@@ -1507,7 +1507,7 @@ class VolumeImageActionsTest(test.TestCase):
         mock_get_image_metadata.return_value = {}
         mock_create.side_effect = self.fake_image_service_create
         req = fakes.HTTPRequest.blank(
-            '/v2/fakeproject/volumes/%s/action' % volume.id)
+            '/v3/fakeproject/volumes/%s/action' % volume.id)
         body = self._get_os_volume_upload_image()
         body['os-volume_upload_image']['force'] = True
         body['os-volume_upload_image']['container_format'] = 'bare'

@@ -30,7 +30,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import fakes as v2_fakes
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils
@@ -51,7 +51,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
         self.admin_ctxt = context.get_admin_context()
         db.volume_type_create(self.admin_ctxt,
-                              v2_fakes.fake_default_type_get(
+                              v3_fakes.fake_default_type_get(
                                   fake.VOLUME_TYPE2_ID))
         self.vol_type = db.volume_type_get_by_name(self.admin_ctxt,
                                                    'vol_type_name')
@@ -90,7 +90,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                             self, name='my_vol_type')
         consistencygroup = self._create_consistencygroup(
             volume_type_ids=[vol_type['id']])
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -113,7 +113,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroup']['volume_types'])
 
     def test_show_consistencygroup_with_consistencygroup_NotFound(self):
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s' %
                                   (fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -130,7 +130,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def test_show_consistencygroup_with_null_volume_type(self):
         consistencygroup = self._create_consistencygroup(volume_type_id=None)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -151,16 +151,14 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
-    @ddt.data(2, 3)
-    def test_list_consistencygroups_json(self, version):
+    def test_list_consistencygroups_json(self):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
         consistencygroup3 = self._create_consistencygroup()
 
-        req = webob.Request.blank('/v%(version)s/%(project_id)s/'
+        req = webob.Request.blank('/v3/%(project_id)s/'
                                   'consistencygroups'
-                                  % {'version': version,
-                                     'project_id': fake.PROJECT_ID})
+                                  % {'project_id': fake.PROJECT_ID})
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(
@@ -190,9 +188,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
         consistencygroup3 = self._create_consistencygroup()
-        url = '/v2/%s/consistencygroups?limit=1' % fake.PROJECT_ID
+        url = '/v3/%s/consistencygroups?limit=1' % fake.PROJECT_ID
         if is_detail:
-            url = '/v2/%s/consistencygroups/detail?limit=1' % fake.PROJECT_ID
+            url = '/v3/%s/consistencygroups/detail?limit=1' % fake.PROJECT_ID
         req = webob.Request.blank(url)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -205,7 +203,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(consistencygroup3.id,
                          res_dict['consistencygroups'][0]['id'])
         next_link = (
-            'http://localhost/v2/%s/consistencygroups?limit='
+            'http://localhost/v3/%s/consistencygroups?limit='
             '1&marker=%s' %
             (fake.PROJECT_ID, res_dict['consistencygroups'][0]['id']))
         self.assertEqual(next_link,
@@ -219,9 +217,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
         consistencygroup3 = self._create_consistencygroup()
-        url = '/v2/%s/consistencygroups?offset=1' % fake.PROJECT_ID
+        url = '/v3/%s/consistencygroups?offset=1' % fake.PROJECT_ID
         if is_detail:
-            url = '/v2/%s/consistencygroups/detail?offset=1' % fake.PROJECT_ID
+            url = '/v3/%s/consistencygroups/detail?offset=1' % fake.PROJECT_ID
         req = webob.Request.blank(url)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -241,10 +239,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     @ddt.data(False, True)
     def test_list_consistencygroups_with_offset_out_of_range(self, is_detail):
-        url = ('/v2/%s/consistencygroups?offset=234523423455454' %
+        url = ('/v3/%s/consistencygroups?offset=234523423455454' %
                fake.PROJECT_ID)
         if is_detail:
-            url = ('/v2/%s/consistencygroups/detail?offset=234523423455454' %
+            url = ('/v3/%s/consistencygroups/detail?offset=234523423455454' %
                    fake.PROJECT_ID)
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -258,9 +256,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
         consistencygroup3 = self._create_consistencygroup()
-        url = '/v2/%s/consistencygroups?limit=2&offset=1' % fake.PROJECT_ID
+        url = '/v3/%s/consistencygroups?limit=2&offset=1' % fake.PROJECT_ID
         if is_detail:
-            url = ('/v2/%s/consistencygroups/detail?limit=2&offset=1' %
+            url = ('/v3/%s/consistencygroups/detail?limit=2&offset=1' %
                    fake.PROJECT_ID)
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -287,11 +285,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                              auth_token=True,
                                              is_admin=False)
         consistencygroup3 = self._create_consistencygroup(ctxt=common_ctxt)
-        url = ('/v2/%s/consistencygroups?'
+        url = ('/v3/%s/consistencygroups?'
                'all_tenants=True&id=%s') % (fake.PROJECT_ID,
                                             consistencygroup3.id)
         if is_detail:
-            url = ('/v2/%s/consistencygroups/detail?'
+            url = ('/v3/%s/consistencygroups/detail?'
                    'all_tenants=True&id=%s') % (fake.PROJECT_ID,
                                                 consistencygroup3.id)
         req = webob.Request.blank(url)
@@ -314,11 +312,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup2 = self._create_consistencygroup(
             name="group", project_id=fake.PROJECT2_ID)
 
-        url = ('/v2/%s/consistencygroups?'
+        url = ('/v3/%s/consistencygroups?'
                'all_tenants=True&project_id=%s') % (fake.PROJECT_ID,
                                                     fake.PROJECT2_ID)
         if is_detail:
-            url = ('/v2/%s/consistencygroups/detail?'
+            url = ('/v3/%s/consistencygroups/detail?'
                    'all_tenants=True&project_id=%s') % (fake.PROJECT_ID,
                                                         fake.PROJECT2_ID)
         req = webob.Request.blank(url)
@@ -338,9 +336,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
         consistencygroup3 = self._create_consistencygroup()
-        url = '/v2/%s/consistencygroups?sort=id:asc' % fake.PROJECT_ID
+        url = '/v3/%s/consistencygroups?sort=id:asc' % fake.PROJECT_ID
         if is_detail:
-            url = ('/v2/%s/consistencygroups/detail?sort=id:asc' %
+            url = ('/v3/%s/consistencygroups/detail?sort=id:asc' %
                    fake.PROJECT_ID)
         req = webob.Request.blank(url)
         req.method = 'GET'
@@ -375,7 +373,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             volume_type_ids=[vol_type1['id']])
         consistencygroup3 = self._create_consistencygroup(
             volume_type_ids=[vol_type1['id'], vol_type2['id']])
-        req = webob.Request.blank('/v2/%s/consistencygroups/detail' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/detail' %
                                   fake.PROJECT_ID)
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
@@ -443,7 +441,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "volume_types": vol_type_id,
                                      "description":
                                      "Consistency Group 1", }}
-        req = webob.Request.blank('/v2/%s/consistencygroups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/consistencygroups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -462,7 +460,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def test_create_consistencygroup_with_no_body(self):
         # omit body from the request
-        req = webob.Request.blank('/v2/%s/consistencygroups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/consistencygroups' % fake.PROJECT_ID)
         req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -481,7 +479,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_available(self):
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -498,7 +496,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_available_used_as_source_success(self):
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         # The other CG used the first CG as source, but it's no longer in
         # creating status, so we should be able to delete it.
@@ -520,7 +518,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def test_delete_consistencygroup_available_no_force(self):
         consistencygroup = self._create_consistencygroup(status='available')
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -538,7 +536,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_delete_consistencygroup_with_consistencygroup_NotFound(self):
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -563,7 +561,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_invalid_force(self):
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.CREATING)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -580,7 +578,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup = self._create_consistencygroup(
             host=None,
             status=fields.ConsistencyGroupStatus.ERROR)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -634,7 +632,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_with_invalid_body(self):
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -648,7 +646,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_with_invalid_force_value_in_body(self):
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -662,7 +660,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_with_empty_force_value_in_body(self):
         consistencygroup = self._create_consistencygroup(
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -674,7 +672,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(HTTPStatus.BAD_REQUEST, res.status_int)
 
     def _assert_deleting_result_400(self, cg_id, force=False):
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, cg_id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -730,7 +728,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         utils.create_volume(self.ctxt, consistencygroup_id=consistencygroup.id,
                             testcase_instance=self)
 
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -751,7 +749,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         utils.create_snapshot(self.ctxt, vol.id, status='deleted',
                               deleted=True, testcase_instance=self)
 
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -770,7 +768,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         body = {"consistencygroup": {"name": name,
                                      "description":
                                      "Consistency Group 1", }}
-        req = webob.Request.blank('/v2/%s/consistencygroups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v3/%s/consistencygroups' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes(body)
@@ -841,7 +839,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             testcase_instance=self,
             volume_type_id=volume_type_id)['id']
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -890,7 +888,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             volume_type_id=volume_type_id,
             consistencygroup_id=consistencygroup.id)['id']
 
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -935,7 +933,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             volume_type_id=volume_type_id)['id']
 
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -961,7 +959,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup = self._create_consistencygroup(
             ctxt=self.ctxt,
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -985,7 +983,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup = self._create_consistencygroup(
             ctxt=self.ctxt,
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -1009,7 +1007,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup = self._create_consistencygroup(
             ctxt=self.ctxt,
             status=fields.ConsistencyGroupStatus.AVAILABLE)
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -1037,7 +1035,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             volume_type_id=volume_type_id,
             status='wrong_status')['id']
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -1066,7 +1064,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         add_volume_id = utils.create_volume(
             self.ctxt,
             volume_type_id=wrong_type)['id']
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -1094,7 +1092,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         add_volume_id = utils.create_volume(
             self.ctxt,
             consistencygroup_id=fake.CONSISTENCY_GROUP2_ID)['id']
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -1126,7 +1124,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             testcase_instance=self,
             volume_type_id=volume_type_id)['id']
-        req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
@@ -1151,7 +1149,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
     def test_create_consistencygroup_from_src_snap(self, mock_validate_host,
                                                    mock_validate):
-        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
+        self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         consistencygroup = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
@@ -1175,7 +1173,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "cgsnapshot_id": cgsnapshot.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1201,7 +1199,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.validate_host_capacity')
     def test_create_consistencygroup_from_src_cg(self, mock_validate):
 
-        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
+        self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         source_cg = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
@@ -1217,7 +1215,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "source_cgid": source_cg.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1237,7 +1235,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         source_cg.destroy()
 
     def test_create_consistencygroup_from_src_both_snap_cg(self):
-        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
+        self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         consistencygroup = utils.create_group(
             self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
@@ -1263,7 +1261,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "cgsnapshot_id": cgsnapshot_id,
                                               "source_cgid":
                                                   consistencygroup.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1287,7 +1285,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         body = {"invalid": {"name": name,
                             "description":
                             "Consistency Group 1", }}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1307,7 +1305,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         body = {"consistencygroup-from-src": {"name": name,
                                               "description":
                                               "Consistency Group 1", }}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1342,7 +1340,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "cgsnapshot_id": cgsnapshot.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1381,7 +1379,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "cgsnapshot_id": cgsnapshot.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1412,7 +1410,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "source_cgid": source_cg.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1445,7 +1443,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                 "source_cgid": fake.CGSNAPSHOT_ID
             }
         }
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1472,7 +1470,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                 "source_cgid": fake.CONSISTENCY_GROUP_ID
             }
         }
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1513,7 +1511,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "cgsnapshot_id": cgsnapshot.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -1554,7 +1552,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                               "description":
                                               "Consistency Group 1",
                                               "source_cgid": source_cg.id}}
-        req = webob.Request.blank('/v2/%s/consistencygroups/create_from_src' %
+        req = webob.Request.blank('/v3/%s/consistencygroups/create_from_src' %
                                   fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'

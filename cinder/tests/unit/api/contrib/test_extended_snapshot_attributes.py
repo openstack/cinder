@@ -98,7 +98,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
 
-        url = '/v2/%s/snapshots/%s' % (fake.PROJECT_ID, UUID1)
+        url = '/v3/%s/snapshots/%s' % (fake.PROJECT_ID, UUID1)
         res = self._make_request(url)
 
         self.assertEqual(HTTPStatus.OK, res.status_int)
@@ -111,7 +111,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
 
     @mock.patch('cinder.context.RequestContext.authorize')
     def test_detail(self, mock_authorize):
-        url = '/v2/%s/snapshots/detail' % fake.PROJECT_ID
+        url = '/v3/%s/snapshots/detail' % fake.PROJECT_ID
         res = self._make_request(url)
         mock_authorize.return_value = False
 
