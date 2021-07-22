@@ -6003,14 +6003,13 @@ class PowerMaxCommon(object):
             if volume_group and volume_group.get('name'):
                 vol_grp_name = volume_group['name']
             if vol_grp_name is None:
-                exception_message = (
-                    _("Cannot find generic volume group %(grp_id)s.") %
-                    {'group_id': source_group.id})
-                raise exception.VolumeBackendAPIException(
-                    message=exception_message)
-
-            self.provision.delete_group_replica(
-                array, snap_name, vol_grp_name)
+                LOG.warning("Cannot find generic volume group %(grp_ss_id)s. "
+                            "on array %(array)s",
+                            {'grp_ss_id': group_snapshot.id,
+                             'array': array})
+            else:
+                self.provision.delete_group_replica(
+                    array, snap_name, vol_grp_name)
 
             model_update = {'status': fields.GroupSnapshotStatus.DELETED}
             for snapshot in snapshots:

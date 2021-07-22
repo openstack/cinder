@@ -2774,11 +2774,13 @@ class PowerMaxCommonTest(test.TestCase):
                                                    snapshots))
             self.assertEqual(ref_model_update, model_update)
 
-    def test_delete_group_snapshot_failed(self):
-        group_snapshot = self.data.test_group_snapshot_failed
+    @mock.patch.object(common.PowerMaxCommon, '_find_volume_group',
+                       return_value=None)
+    def test_delete_group_snapshot_not_on_array(self, mock_gvg):
+        group_snapshot = self.data.test_group_snapshot_1
         snapshots = []
         ref_model_update = (
-            {'status': fields.GroupSnapshotStatus.ERROR_DELETING})
+            {'status': fields.GroupSnapshotStatus.DELETED})
         with mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type',
                                return_value=True):
             model_update, snapshots_model_update = (
