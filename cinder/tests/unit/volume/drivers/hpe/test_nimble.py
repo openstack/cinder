@@ -1370,7 +1370,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'data': {
                 'target_discovered': False,
                 'discard': True,
-                'volume_id': 12,
+                'volume_id': fake.VOLUME_ID,
                 'target_iqns': ['group_target_name', 'group_target_name'],
                 'target_luns': [0, 0],
                 'target_portals': ['12', '13']}}
@@ -1379,7 +1379,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.driver.initialize_connection(
                 {'name': 'test-volume',
                  'provider_location': '12 group_target_name',
-                 'id': 12},
+                 'id': fake.VOLUME_ID},
                 {'initiator': 'test-initiator1'}))
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -1396,7 +1396,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             'data': {
                 'target_discovered': False,
                 'discard': True,
-                'volume_id': 12,
+                'volume_id': fake.VOLUME_ID,
                 'target_iqn': '13',
                 'target_lun': 0,
                 'target_portal': '12'}}
@@ -1406,13 +1406,13 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.driver.initialize_connection(
                 {'name': 'test-volume',
                  'provider_location': '12 13',
-                 'id': 12},
+                 'id': fake.VOLUME_ID},
                 {'initiator': 'test-initiator1'}))
 
         self.driver.initialize_connection(
             {'name': 'test-volume',
              'provider_location': '12 13',
-             'id': 12},
+             'id': fake.VOLUME_ID},
             {'initiator': 'test-initiator1'})
 
         # 2 or more calls to initialize connection and add_acl for live
@@ -1421,12 +1421,12 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             mock.call.get_initiator_grp_list(),
             mock.call.add_acl({'name': 'test-volume',
                                'provider_location': '12 13',
-                               'id': 12},
+                               'id': fake.VOLUME_ID},
                               'test-igrp1'),
             mock.call.get_initiator_grp_list(),
             mock.call.add_acl({'name': 'test-volume',
                                'provider_location': '12 13',
-                               'id': 12},
+                               'id': fake.VOLUME_ID},
                               'test-igrp1')]
         self.mock_client_service.assert_has_calls(expected_calls)
 
@@ -1458,7 +1458,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.driver.initialize_connection(
                 {'name': 'test-volume',
                  'provider_location': 'array1',
-                 'id': 12},
+                 'id': fake.VOLUME_ID},
                 {'initiator': 'test-initiator1',
                  'wwpns': ['1000000000000000']}))
 
@@ -1479,7 +1479,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                 'target_discovered': False,
                 'discard': True,
                 'target_lun': 0,
-                'volume_id': 12,
+                'volume_id': fake.VOLUME_ID,
                 'target_iqn': '13',
                 'target_portal': '12'}}
         self.assertEqual(
@@ -1487,7 +1487,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.driver.initialize_connection(
                 {'name': 'test-volume',
                  'provider_location': '12 13',
-                 'id': 12},
+                 'id': fake.VOLUME_ID},
                 {'initiator': 'test-initiator3'}))
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -1524,7 +1524,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             self.driver.initialize_connection(
                 {'name': 'test-volume',
                  'provider_location': 'array1',
-                 'id': 12},
+                 'id': fake.VOLUME_ID},
                 {'initiator': 'test-initiator3',
                  'wwpns': ['1000000000000000']}))
 
@@ -1548,7 +1548,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=False)
+            id=fake.VOLUME_ID, multiattach=False)
 
         self.driver.terminate_connection(
             volume,
@@ -1573,7 +1573,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
         self.driver.terminate_connection(
             {'name': 'test-volume',
              'provider_location': '12 13',
-             'id': 12},
+             'id': fake.VOLUME_ID},
             None)
         expected_calls = [mock.call._get_igroupname_for_initiator(
             'test-initiator1'),
@@ -1598,7 +1598,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=14, multiattach=False)
+            id=fake.VOLUME_ID, multiattach=False)
 
         self.driver.terminate_connection(
             volume,
@@ -1628,7 +1628,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=False)
+            id=fake.VOLUME_ID, multiattach=False)
 
         self.assertRaises(
             exception.VolumeDriverException,
@@ -1652,7 +1652,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=False)
+            id=fake.VOLUME_ID, multiattach=False)
         self.assertRaises(
             exception.VolumeDriverException,
             self.driver.terminate_connection,
@@ -1679,7 +1679,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=True)
+            id=fake.VOLUME_ID, multiattach=True)
         volume.volume_attachment.objects = [att_1, att_2]
         self.driver.terminate_connection(
             volume,
@@ -1703,7 +1703,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=True)
+            id=fake.VOLUME_ID, multiattach=True)
         volume.volume_attachment.objects = [att_1]
         self.driver.terminate_connection(
             volume,
@@ -1737,7 +1737,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=True)
+            id=fake.VOLUME_ID, multiattach=True)
         volume.volume_attachment.objects = [att_1, att_2]
         self.driver.terminate_connection(
             volume,
@@ -1764,7 +1764,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='test-volume',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, multiattach=True)
+            id=fake.VOLUME_ID, multiattach=True)
         volume.volume_attachment.objects = [att_1]
         self.driver.terminate_connection(
             volume,
@@ -1887,7 +1887,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
             ctx, name='testvolume-cg1',
             host='fakehost@nimble#Openstack',
             provider_location='12 13',
-            id=12, consistency_group_snapshot_enabled=True)
+            id=fake.VOLUME_ID, consistency_group_snapshot_enabled=True)
         addvollist = [volume1]
         remvollist = [volume1]
         model_update = self.driver.update_group(

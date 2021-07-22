@@ -774,7 +774,7 @@ def fake_volume_get_obj(self, context, volume_id, **kwargs):
         volume.status = 'available'
 
     if volume_id == ENCRYPTED_VOLUME_ID:
-        volume['encryption_key_id'] = 'does_not_matter'
+        volume['encryption_key_id'] = fake.ENCRYPTION_KEY_ID
 
     volume.volume_type = fake_volume.fake_volume_type_obj(
         context,

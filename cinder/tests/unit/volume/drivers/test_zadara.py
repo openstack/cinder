@@ -22,6 +22,7 @@ import requests
 from six.moves.urllib import parse
 
 from cinder import exception
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
@@ -796,7 +797,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy(self):
         """Create/Delete volume."""
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.driver.create_volume(volume)
         self.driver.delete_volume(volume)
@@ -804,10 +806,14 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy_multiple(self):
         """Create/Delete multiple volumes."""
-        vol1_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 1}
-        vol2_args = {'display_name': 'test_volume_02', 'size': 2, 'id': 2}
-        vol3_args = {'display_name': 'test_volume_03', 'size': 3, 'id': 3}
-        vol4_args = {'display_name': 'test_volume_04', 'size': 4, 'id': 4}
+        vol1_args = {'display_name': 'test_volume_01', 'size': 1,
+                     'id': fake.VOLUME_ID}
+        vol2_args = {'display_name': 'test_volume_02', 'size': 2,
+                     'id': fake.VOLUME2_ID}
+        vol3_args = {'display_name': 'test_volume_03', 'size': 3,
+                     'id': fake.VOLUME3_ID}
+        vol4_args = {'display_name': 'test_volume_04', 'size': 4,
+                     'id': fake.VOLUME4_ID}
         volume1 = fake_volume.fake_volume_obj(None, **vol1_args)
         volume2 = fake_volume.fake_volume_obj(None, **vol2_args)
         volume3 = fake_volume.fake_volume_obj(None, **vol3_args)
@@ -824,7 +830,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_destroy_non_existent(self):
         """Delete non-existent volume."""
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.driver.delete_volume(volume)
 
@@ -832,7 +839,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     def test_empty_apis(self):
         """Test empty func (for coverage only)."""
         context = None
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.driver.create_export(context, volume)
         self.driver.ensure_export(context, volume)
@@ -845,7 +853,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_volume_attach_detach(self):
         """Test volume attachment and detach."""
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': '123'}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         connector = dict(initiator='test_iqn.1')
         self.driver.create_volume(volume)
@@ -866,7 +875,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_wrong_attach_params(self):
         """Test different wrong attach scenarios."""
-        vol1_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 101}
+        vol1_args = {'display_name': 'test_volume_01', 'size': 1,
+                     'id': fake.VOLUME_ID}
         volume1 = fake_volume.fake_volume_obj(None, **vol1_args)
         connector1 = dict(initiator='test_iqn.1')
         self.assertRaises(exception.VolumeDriverException,
@@ -876,7 +886,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_wrong_detach_params(self):
         """Test different wrong detachment scenarios."""
-        vol1_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 101}
+        vol1_args = {'display_name': 'test_volume_01', 'size': 1,
+                     'id': fake.VOLUME_ID}
         volume1 = fake_volume.fake_volume_obj(None, **vol1_args)
         # Volume is not created.
         self.assertRaises(exception.VolumeDriverException,
@@ -890,8 +901,10 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           self.driver.terminate_connection,
                           volume1, connector1)
 
-        vol2_args = {'display_name': 'test_volume_02', 'size': 1, 'id': 102}
-        vol3_args = {'display_name': 'test_volume_03', 'size': 1, 'id': 103}
+        vol2_args = {'display_name': 'test_volume_02', 'size': 1,
+                     'id': fake.VOLUME2_ID}
+        vol3_args = {'display_name': 'test_volume_03', 'size': 1,
+                     'id': fake.VOLUME3_ID}
         volume2 = fake_volume.fake_volume_obj(None, **vol2_args)
         volume3 = fake_volume.fake_volume_obj(None, **vol3_args)
         connector2 = dict(initiator='test_iqn.2')
@@ -963,7 +976,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
         """Coverage test for non-good HTTP response."""
         RUNTIME_VARS['status'] = 400
 
-        vol_args = {'display_name': 'test_volume_03', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'test_volume_03', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.assertRaises(exception.BadHTTPResponseStatus,
                           self.driver.create_volume, volume)
@@ -971,7 +985,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_terminate_connection_force_detach(self):
         """Test terminate connection for os-force_detach """
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 101}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         connector = dict(initiator='test_iqn.1')
 
@@ -991,7 +1006,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     def test_delete_without_detach(self):
         """Test volume deletion without detach."""
 
-        vol1_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 101}
+        vol1_args = {'display_name': 'test_volume_01', 'size': 1,
+                     'id': fake.VOLUME_ID}
         volume1 = fake_volume.fake_volume_obj(None, **vol1_args)
         connector1 = dict(initiator='test_iqn.1')
         connector2 = dict(initiator='test_iqn.2')
@@ -1005,7 +1021,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_no_active_ctrl(self):
 
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 123}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         connector = dict(initiator='test_iqn.1')
         self.driver.create_volume(volume)
@@ -1018,7 +1035,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy_snapshot(self):
         """Create/Delete snapshot test."""
-        wrong_vol_args = {'display_name': 'wrong_vol_01', 'size': 1, 'id': 2}
+        wrong_vol_args = {'display_name': 'wrong_vol_01', 'size': 1,
+                          'id': fake.VOLUME2_ID}
         wrong_volume = fake_volume.fake_volume_obj(None, **wrong_vol_args)
         wrong_snap_args = {'display_name': 'snap_01', 'volume': wrong_volume}
         wrong_snapshot = fake_snapshot.fake_snapshot_obj(None,
@@ -1028,9 +1046,11 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           wrong_snapshot)
 
         # Create cinder volume and snapshot
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
-        snap_args = {'display_name': 'test_snap_01', 'id': 1, 'volume': volume}
+        snap_args = {'display_name': 'test_snap_01', 'id': fake.SNAPSHOT_ID,
+                     'volume': volume}
         snapshot = fake_snapshot.fake_snapshot_obj(None, **snap_args)
         self.driver.create_volume(volume)
         self.driver.create_snapshot(snapshot)
@@ -1040,7 +1060,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         # Deleted should succeed for missing snap
         fake_snap_args = {'display_name': 'test_snap_02',
-                          'id': 2, 'volume': volume}
+                          'id': fake.SNAPSHOT2_ID, 'volume': volume}
         fake_snap = fake_snapshot.fake_snapshot_obj(None, **fake_snap_args)
         self.driver.delete_snapshot(fake_snap)
 
@@ -1050,8 +1070,10 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_expand_volume(self):
         """Expand volume test."""
-        vol_args = {'display_name': 'test_volume_01', 'id': 1, 'size': 10}
-        vol2_args = {'display_name': 'test_volume_02', 'id': 2, 'size': 10}
+        vol_args = {'display_name': 'test_volume_01', 'id': fake.VOLUME_ID,
+                    'size': 10}
+        vol2_args = {'display_name': 'test_volume_02', 'id': fake.VOLUME2_ID,
+                     'size': 10}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         volume2 = fake_volume.fake_volume_obj(None, **vol2_args)
 
@@ -1070,25 +1092,28 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_create_destroy_clones(self):
         """Create/Delete clones test."""
-        vol1_args = {'display_name': 'test_volume_01', 'id': 1, 'size': 1}
-        vol2_args = {'display_name': 'test_volume_02', 'id': 2, 'size': 2}
-        vol3_args = {'display_name': 'test_volume_03', 'id': 3, 'size': 1}
+        vol1_args = {'display_name': 'test_volume_01', 'id': fake.VOLUME_ID,
+                     'size': 1}
+        vol2_args = {'display_name': 'test_volume_02', 'id': fake.VOLUME2_ID,
+                     'size': 2}
+        vol3_args = {'display_name': 'test_volume_03', 'id': fake.VOLUME3_ID,
+                     'size': 1}
         volume1 = fake_volume.fake_volume_obj(None, **vol1_args)
         volume2 = fake_volume.fake_volume_obj(None, **vol2_args)
         volume3 = fake_volume.fake_volume_obj(None, **vol3_args)
 
         snap_args = {'display_name': 'test_snap_01',
-                     'id': 1, 'volume': volume1}
+                     'id': fake.SNAPSHOT_ID, 'volume': volume1}
         snapshot = fake_snapshot.fake_snapshot_obj(None, **snap_args)
         self.driver.create_volume(volume1)
         self.driver.create_snapshot(snapshot)
 
         # Test invalid vol reference
         wrong_vol_args = {'display_name': 'wrong_volume_01',
-                          'id': 4, 'size': 1}
+                          'id': fake.VOLUME4_ID, 'size': 1}
         wrong_volume = fake_volume.fake_volume_obj(None, **wrong_vol_args)
         wrong_snap_args = {'display_name': 'test_wrong_snap',
-                           'id': 2, 'volume': wrong_volume}
+                           'id': fake.SNAPSHOT2_ID, 'volume': wrong_volume}
         wrong_snapshot = fake_snapshot.fake_snapshot_obj(None,
                                                          **wrong_snap_args)
         self.assertRaises(exception.SnapshotNotFound,
@@ -1097,7 +1122,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                           wrong_snapshot)
 
         wrong_snap_args = {'display_name': 'test_wrong_snap',
-                           'id': 4, 'volume': volume1}
+                           'id': fake.SNAPSHOT3_ID, 'volume': volume1}
         wrong_snapshot = fake_snapshot.fake_snapshot_obj(None,
                                                          **wrong_snap_args)
         # Test invalid snap reference
@@ -1157,7 +1182,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_manage_existing_volume(self):
-        vol_args = {'id': 'manage-name',
+        vol_args = {'id': fake.VOLUME_ID,
                     'display_name': 'manage-name',
                     'size': 1}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
@@ -1185,7 +1210,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_manage_existing_snapshot(self):
-        vol_args = {'display_name': 'fake_name', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'fake_name', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.driver.create_volume(volume)
 
@@ -1195,7 +1221,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         # Check the failure with wrong volume for snapshot
         wrong_vol_args = {'display_name': 'wrong_volume_01',
-                          'size': 1, 'id': 2}
+                          'size': 1, 'id': fake.VOLUME2_ID}
         wrong_volume = fake_volume.fake_volume_obj(None, **wrong_vol_args)
         wrong_snap_args = {'display_name': 'snap_01', 'volume': wrong_volume}
         wrong_snapshot = fake_snapshot.fake_snapshot_obj(None,
@@ -1212,7 +1238,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         # Check the failure with wrong identifier for the snapshot
         snap_args = {'display_name': 'manage_snapname',
-                     'id': 'manage_snapname', 'volume': volume}
+                     'id': fake.SNAPSHOT_ID, 'volume': volume}
         snapshot = fake_snapshot.fake_snapshot_obj(None, **snap_args)
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_snapshot,
@@ -1236,9 +1262,9 @@ class ZadaraVPSADriverTestCase(test.TestCase):
                                                        'Available', 'NO')
 
         cinder_vol1_args = {'display_name': 'fake-volume1',
-                            'size': 3, 'id': 'fake-volume1'}
+                            'size': 3, 'id': fake.VOLUME_ID}
         cinder_vol2_args = {'display_name': 'fake-volume2',
-                            'size': 4, 'id': 'fake-volume2'}
+                            'size': 4, 'id': fake.VOLUME2_ID}
         cinder_vol1 = fake_volume.fake_volume_obj(None, **cinder_vol1_args)
         cinder_vol2 = fake_volume.fake_volume_obj(None, **cinder_vol2_args)
         self.driver.create_volume(cinder_vol1)
@@ -1258,7 +1284,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         # Try to manage the volume and delete it
         vol1_args = {'display_name': 'manage-name1',
-                     'size': 1, 'id': 'manage-name1'}
+                     'size': 1, 'id': fake.VOLUME3_ID}
         volume1 = fake_volume.fake_volume_obj(None, **vol1_args)
         identifier = {'name': 'manage_vol1'}
         self.driver.manage_existing(volume1, identifier)
@@ -1268,7 +1294,7 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
         # Manage and delete the volume
         vol2_args = {'display_name': 'manage-name2',
-                     'size': 1, 'id': 'manage-name2'}
+                     'size': 1, 'id': fake.VOLUME4_ID}
         volume2 = fake_volume.fake_volume_obj(None, **vol2_args)
         identifier = {'name': 'manage_vol2'}
         self.driver.manage_existing(volume2, identifier)
@@ -1279,10 +1305,11 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_get_manageable_snapshots(self):
         # Create a cinder volume and a snapshot
-        vol_args = {'display_name': 'test_volume_01', 'size': 1, 'id': 1}
+        vol_args = {'display_name': 'test_volume_01', 'size': 1,
+                    'id': fake.VOLUME_ID}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         snap_args = {'display_name': 'test_snap_01',
-                     'id': 1, 'volume': volume}
+                     'id': fake.SNAPSHOT_ID, 'volume': volume}
         snapshot = fake_snapshot.fake_snapshot_obj(None, **snap_args)
         self.driver.create_volume(volume)
         self.driver.create_snapshot(snapshot)
@@ -1322,7 +1349,8 @@ class ZadaraVPSADriverTestCase(test.TestCase):
 
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_manage_existing_volume_get_size(self):
-        vol_args = {'display_name': 'fake_name', 'id': 1, 'size': 1}
+        vol_args = {'display_name': 'fake_name', 'id': fake.VOLUME_ID,
+                    'size': 1}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.driver.create_volume(volume)
 
@@ -1347,17 +1375,18 @@ class ZadaraVPSADriverTestCase(test.TestCase):
     @mock.patch.object(requests.Session, 'request', FakeRequests)
     def test_manage_existing_snapshot_get_size(self):
         # Create a cinder volume and a snapshot
-        vol_args = {'display_name': 'fake_name', 'id': 1, 'size': 1}
+        vol_args = {'display_name': 'fake_name', 'id': fake.VOLUME_ID,
+                    'size': 1}
         volume = fake_volume.fake_volume_obj(None, **vol_args)
         self.driver.create_volume(volume)
         snap_args = {'display_name': 'fake_snap',
-                     'id': 1, 'volume': volume}
+                     'id': fake.SNAPSHOT_ID, 'volume': volume}
         snapshot = fake_snapshot.fake_snapshot_obj(None, **snap_args)
         self.driver.create_snapshot(snapshot)
 
         # Check with the wrong volume of the snapshot
         wrong_vol_args = {'display_name': 'wrong_volume_01',
-                          'size': 1, 'id': 2}
+                          'size': 1, 'id': fake.VOLUME2_ID}
         wrong_volume = fake_volume.fake_volume_obj(None, **wrong_vol_args)
         wrong_snap_args = {'display_name': 'wrong_snap',
                            'volume': wrong_volume}

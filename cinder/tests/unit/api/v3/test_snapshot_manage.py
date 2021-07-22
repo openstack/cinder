@@ -68,7 +68,8 @@ class SnapshotManageTest(test.TestCase):
 
     @mock.patch(
         'cinder.scheduler.rpcapi.SchedulerAPI.manage_existing_snapshot')
-    @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
+    @mock.patch('cinder.volume.api.API.create_snapshot_in_db',
+                return_value=mock.MagicMock(id=fake.SNAPSHOT_ID))
     @mock.patch('cinder.objects.service.Service.get_by_id')
     def test_manage_snapshot_route(self, mock_service_get,
                                    mock_create_snapshot, mock_rpcapi):
