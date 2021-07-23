@@ -29,6 +29,18 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
+fake_group = {
+    'id': fake.GROUP_ID,
+    'user_id': fake.USER_ID,
+    'project_id': fake.PROJECT_ID,
+    'host': 'fake_host',
+    'availability_zone': 'fake_az',
+    'name': 'fake_name',
+    'description': 'fake_description',
+    'group_type_id': fake.GROUP_TYPE_ID,
+    'status': fields.GroupStatus.CREATING,
+}
+
 
 @ddt.ddt
 class TestVolume(test_objects.BaseObjectsTestCase):
@@ -710,3 +722,21 @@ class TestVolumeList(test_objects.BaseObjectsTestCase):
         include_mock.assert_called_once_with(self.context, cluster,
                                              mock.sentinel.partial_rename,
                                              **filters)
+
+    @mock.patch('cinder.db.group_create',
+                return_value=fake_group)
+    def test_populate_consistencygroup(self, mock_db_grp_create):
+        db_volume = fake_volume.fake_db_volume()
+        volume = objects.Volume._from_db_object(self.context,
+                                                objects.Volume(), db_volume)
+
+        fake_grp = fake_group.copy()
+        del fake_grp['id']
+        group = objects.Group(context=self.context,
+                              **fake_grp)
+        group.create()
+        volume.group_id = group.id
+        volume.group = group
+        volume.populate_consistencygroup()
+        self.assertEqual(volume.group_id, volume.consistencygroup_id)
+        self.assertEqual(volume.group.id, volume.consistencygroup.id)

@@ -344,6 +344,23 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                             'False!!  Fix code here')
             updates['use_quota'] = use_quota
 
+    def populate_consistencygroup(self):
+        """Populate CG fields based on group fields.
+
+        Method assumes that consistencygroup_id and consistencygroup fields
+        have not already been set.
+
+        This is a hack to support backward compatibility of consistencygroup,
+        where we set the fields but don't want to write them to the DB, so we
+        mark them as not changed, so they won't be stored on the next save().
+        """
+        self.consistencygroup_id = self.group_id
+        if self.group_id and self.obj_attr_is_set('group'):
+            cg = objects.ConsistencyGroup()
+            cg.from_group(self.group)
+            self.consistencygroup = cg
+        self.obj_reset_changes(['consistencygroup', 'consistencygroup_id'])
+
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
