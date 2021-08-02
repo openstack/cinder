@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Pure Storage FlashArray driver `bug #1936663
+    <https://bugs.launchpad.net/cinder/+bug/1936663>`_: Fixes issue where
+    cloning a consistency group containing volumes with very long names
+    causes a crash - Required for PowerVC support
