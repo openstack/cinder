@@ -80,9 +80,12 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
         fake_rp = mock.Mock(value='fake-rp')
         fake_folder = mock.Mock(value='fake-folder')
         fake_summary = mock.Mock(datastore=mock.Mock(vlaue='fake-ds'))
+        fake_profile_id = 'fake-uuid'
 
         self._driver._select_ds_for_volume.return_value = \
             (fake_host, fake_rp, fake_folder, fake_summary)
+        self._driver._get_storage_profile_id.return_value = \
+            fake_profile_id
         ret_val = self._service.select_ds_for_volume(self._ctxt,
                                                      self._fake_volume)
         self._driver._select_ds_for_volume.assert_called_once_with(
@@ -91,7 +94,8 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
             'host': fake_host.value,
             'resource_pool': fake_rp.value,
             'folder': fake_folder.value,
-            'datastore': fake_summary.datastore.value
+            'profile_id': fake_profile_id,
+            'datastore': fake_summary.datastore.value,
         }, ret_val)
 
     @mock.patch('oslo_vmware.vim_util.get_moref')

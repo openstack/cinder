@@ -2669,6 +2669,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         ds_ref = vim_util.get_moref(ds_info['datastore'], 'Datastore')
 
         self.volumeops.relocate_backing(backing, ds_ref, rp_ref, host_ref,
+                                        profile_id=ds_info.get('profile_id'),
                                         service=service_locator)
         try:
             self._remote_api.move_volume_backing_to_folder(

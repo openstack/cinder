@@ -3566,7 +3566,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             'capabilities': capabilities
         }
         ds_info = {'host': 'fake-ds-host', 'resource_pool': 'fake-rp',
-                   'datastore': 'fake-ds-name', 'folder': 'fake-folder'}
+                   'datastore': 'fake-ds-name', 'folder': 'fake-folder',
+                   'profile_id': 'fake-profile-id',
+                   }
         get_moref.side_effect = [
             mock.sentinel.host_ref,
             mock.sentinel.rp_ref,
@@ -3614,7 +3616,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
             vops.relocate_backing.assert_called_once_with(
                 backing, mock.sentinel.ds_ref, mock.sentinel.rp_ref,
-                mock.sentinel.host_ref, service=mock.sentinel.service_locator)
+                mock.sentinel.host_ref, profile_id='fake-profile-id',
+                service=mock.sentinel.service_locator)
 
             r_api.move_volume_backing_to_folder.assert_called_once_with(
                 mock.sentinel.context, dest_host, volume, ds_info['folder'])
