@@ -5603,13 +5603,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                               'types is not supported.')
                     model_update = {'status': fields.GroupStatus.ERROR}
                     return model_update
-            if rccg_type == storwize_const.GMCV:
-                LOG.error('Unable to create group: create consistent '
-                          'replication group with GMCV replication '
-                          'volume type is not supported.')
-                model_update = {'status': fields.GroupStatus.ERROR}
-                return model_update
-
             rccg_name = self._get_rccg_name(group)
             try:
                 tgt_sys = self._aux_backend_helpers.get_system_info()
@@ -5796,6 +5789,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                 self._state,
                                                 self.configuration,
                                                 timeout))
+        if volume_utils.is_group_a_type(
+                group, "consistent_group_replication_enabled"):
+            self._validate_replication_enabled()
+            rccg_name = self._get_rccg_name(group)
+            try:
+                tgt_sys = self._aux_backend_helpers.get_system_info()
+                self._helpers.create_rccg(rccg_name,
+                                          tgt_sys.get('system_name'))
+                model_update.update({'replication_status':
+                                    fields.ReplicationStatus.ENABLED})
+            except exception.VolumeBackendAPIException as err:
+                LOG.error("Failed to create rccg  %(rccg)s. "
+                          "Exception: %(exception)s.",
+                          {'rccg': rccg_name, 'exception': err})
+                model_update = {'status': fields.GroupStatus.ERROR}
 
         for vol in volumes:
             rep_type = self._get_volume_replicated_type(context,
@@ -5821,7 +5829,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 volumes_model[volumes.index(vol)] = (
                     self._qos_model_update(
                         volumes_model[volumes.index(vol)], vol))
-
+        if volume_utils.is_group_a_type(
+                group, "consistent_group_replication_enabled"):
+            self.update_group(context, group, add_volumes=volumes,
+                              remove_volumes=[])
         LOG.debug("Leave: create_group_from_src.")
         return model_update, volumes_model
 

@@ -6852,9 +6852,29 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for each_vol in volumes_model_update:
             self.assertEqual('available', each_vol['status'])
 
+        # Delete the Group
         model_update = self.driver.delete_group(self.ctxt, group, volumes)
         self.assertEqual(fields.GroupStatus.DELETED,
                          model_update[0]['status'])
+
+        for each_vol in model_update[1]:
+            self.assertEqual('deleted', each_vol['status'])
+
+        with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+              'create_rccg')) as create_rccg:
+            # Create cg from source cg
+            model_update, volumes_model_update = (
+                self.driver.create_group_from_src(self.ctxt, group, volumes,
+                                                  None, None, source_cg,
+                                                  source_vols))
+            create_rccg.assert_not_called()
+
+        # Delete the Group
+        model_update = self.driver.delete_group(self.ctxt, group, volumes)
+
+        self.assertEqual(fields.GroupStatus.DELETED,
+                         model_update[0]['status'])
+
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
 
@@ -6874,6 +6894,15 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                          model_update[0]['status'])
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
+
+        with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+              'create_rccg')) as create_rccg:
+            # Create cg from cg snapshot
+            model_update, volumes_model_update = (
+                self.driver.create_group_from_src(self.ctxt, group, volumes,
+                                                  group_snapshot, snapshots,
+                                                  None, None))
+            create_rccg.assert_not_called()
 
         model_update = self.driver.delete_group_snapshot(self.ctxt,
                                                          group_snapshot,
@@ -9419,6 +9448,43 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.check_for_setup_error()
         self._create_test_volume_types()
         self.rccg_type = self._create_consistent_rep_grp_type()
+
+    def _create_group_snapshot_in_db(self, group_id, **kwargs):
+        group_snapshot = testutils.create_group_snapshot(self.ctxt,
+                                                         group_id=group_id,
+                                                         **kwargs)
+        snapshots = []
+        volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), group_id)
+
+        if not volumes:
+            msg = _("Group is empty. No cgsnapshot will be created.")
+            raise exception.InvalidGroup(reason=msg)
+
+        for volume in volumes:
+            snapshots.append(testutils.create_snapshot(
+                self.ctxt, volume['id'],
+                group_snapshot.id,
+                group_snapshot.name,
+                group_snapshot.id,
+                fields.SnapshotStatus.CREATING))
+        return group_snapshot, snapshots
+
+    def _create_group_snapshot(self, cg_id, **kwargs):
+        group_snapshot, snapshots = self._create_group_snapshot_in_db(
+            cg_id, **kwargs)
+
+        model_update, snapshots_model = (
+            self.driver.create_group_snapshot(self.ctxt, group_snapshot,
+                                              snapshots))
+        self.assertEqual(fields.GroupSnapshotStatus.AVAILABLE,
+                         model_update['status'],
+                         "CGSnapshot created failed")
+
+        for snapshot in snapshots_model:
+            self.assertEqual(fields.SnapshotStatus.AVAILABLE,
+                             snapshot['status'])
+        return group_snapshot, snapshots
 
     def _set_flag(self, flag, value):
         group = self.driver.configuration.config_group
@@ -12146,4 +12212,513 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                        group_type_id=gr_type.id,
                                        volume_type_ids=[vol_type_ref['id']])
         model_update = self.driver.create_group(self.ctxt, group)
-        self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+        if vol_spec['replication_enabled'] == '<is> True':
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+        elif vol_spec['replication_enabled'] == '<is> False':
+            self.assertEqual(fields.GroupStatus.ERROR, model_update['status'])
+
+    @ddt.data(({'volume_type': 'mm'}),
+              ({'volume_type': 'gm'}),
+              ({'volume_type': 'gmcv'})
+              )
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    def test_create_group_from_src_grp(self, vol_spec):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+
+        pool = _get_test_pool()
+
+        if vol_spec['volume_type'] == 'mm':
+            vol_type_id = self.mm_type.id
+        if vol_spec['volume_type'] == 'gm':
+            vol_type_id = self.gm_type.id
+        if vol_spec['volume_type'] == 'gmcv':
+            vol_type_id = self.gmcv_default_type.id
+
+        # create group in db
+        src_group = testutils.create_group(
+            self.ctxt, volume_type_ids=[vol_type_id],
+            group_type_id=self.rccg_type.id)
+
+        model_update = self.driver.create_group(self.ctxt, src_group)
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create volumes in db
+        src_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+        src_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+
+        self.driver.create_volume(src_vol1)
+        self.driver.create_volume(src_vol2)
+        src_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), src_group.id)
+
+        add_volumes = [src_vol1, src_vol2]
+        del_volumes = []
+
+        # add volumes to group
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                              src_group,
+                                                              add_volumes,
+                                                              del_volumes)
+
+        # Clone group for source group
+        clone_group = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[vol_type_id],
+                group_type_id=self.rccg_type.id))
+
+        # Create volumes in db
+        clone_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), clone_group.id)
+
+        # Create group from source group
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(self.ctxt, clone_group,
+                                              clone_volumes, None, None,
+                                              src_group,
+                                              src_volumes))
+        self.assertEqual('available', model_update['status'])
+        for each_vol in volumes_model_update:
+            self.assertEqual('available', each_vol['status'])
+        model_update = self.driver.delete_group(self.ctxt, clone_group,
+                                                [clone_vol1, clone_vol2])
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+        with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+              'create_rccg')) as create_rccg:
+            with ((mock.patch.object(
+                   storwize_svc_common.StorwizeSVCCommonDriver,
+                   'update_group'))) as update_group:
+                # Create group from source group
+                model_update, volumes_model_update = (
+                    self.driver.create_group_from_src(self.ctxt,
+                                                      clone_group,
+                                                      clone_volumes, None,
+                                                      None, src_group,
+                                                      src_volumes))
+                create_rccg.assert_called()
+                self.assertEqual(1, create_rccg.call_count)
+                update_group.assert_called()
+                self.assertEqual(1, update_group.call_count)
+                model_update = self.driver.delete_group(
+                    self.ctxt, clone_group, [clone_vol1, clone_vol2])
+                self.assertEqual(fields.GroupStatus.DELETED,
+                                 model_update[0]['status'])
+                model_update = self.driver.delete_group(self.ctxt, src_group,
+                                                        [src_vol1, src_vol2])
+                self.assertEqual(fields.GroupStatus.DELETED,
+                                 model_update[0]['status'])
+
+    @ddt.data(({'volume_type': 'mm'}),
+              ({'volume_type': 'gm'}),
+              ({'volume_type': 'gmcv'})
+              )
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_create_group_from_grp_snapshot(self, vol_spec,
+                                            is_group_a_cg_snap_type):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        is_group_a_cg_snap_type.return_value = False
+
+        pool = _get_test_pool()
+
+        if vol_spec['volume_type'] == 'mm':
+            vol_type_id = self.mm_type.id
+        if vol_spec['volume_type'] == 'gm':
+            vol_type_id = self.gm_type.id
+        if vol_spec['volume_type'] == 'gmcv':
+            vol_type_id = self.gmcv_default_type.id
+
+        # create group in db
+        src_group = testutils.create_group(
+            self.ctxt, volume_type_ids=[vol_type_id],
+            group_type_id=self.rccg_type.id)
+
+        model_update = self.driver.create_group(self.ctxt, src_group)
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create volumes in db
+        src_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+        src_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+
+        self.driver.create_volume(src_vol1)
+        self.driver.create_volume(src_vol2)
+
+        add_volumes = [src_vol1, src_vol2]
+        del_volumes = []
+
+        # add volumes to group
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                              src_group,
+                                                              add_volumes,
+                                                              del_volumes)
+
+        # Clone group for source group
+        clone_group = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[vol_type_id],
+                group_type_id=self.rccg_type.id))
+
+        # Create volumes in db
+        clone_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), clone_group.id)
+
+        # Create group snapshot
+        group_snapshot, snapshots = self._create_group_snapshot(
+            src_group.id, group_type_id=self.rccg_type.id)
+
+        # Create group from source as group snapshot
+        model_update, volumes_model_update = (
+            self.driver.create_group_from_src(self.ctxt, clone_group,
+                                              clone_volumes,
+                                              group_snapshot,
+                                              snapshots, None, None))
+        self.assertEqual(fields.GroupStatus.AVAILABLE,
+                         model_update['status'],
+                         "CG create from src created passed")
+
+        for each_vol in volumes_model_update:
+            self.assertEqual('available', each_vol['status'])
+
+        model_update = self.driver.delete_group(self.ctxt, clone_group,
+                                                [clone_vol1, clone_vol2])
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+        with (mock.patch.object(storwize_svc_common.StorwizeHelpers,
+              'create_rccg')) as create_rccg:
+            with ((mock.patch.object(
+                    storwize_svc_common.StorwizeSVCCommonDriver,
+                    'update_group'))) as update_group:
+
+                # Create group from source as group snapshot
+                model_update, volumes_model_update = (
+                    self.driver.create_group_from_src(self.ctxt,
+                                                      clone_group,
+                                                      clone_volumes,
+                                                      group_snapshot,
+                                                      snapshots, None,
+                                                      None))
+                create_rccg.assert_called()
+                self.assertEqual(1, create_rccg.call_count)
+                update_group.assert_called()
+                self.assertEqual(1, update_group.call_count)
+
+                model_update = (
+                    self.driver.delete_group(self.ctxt, clone_group,
+                                             [clone_vol1, clone_vol2]))
+                self.assertEqual(fields.GroupStatus.DELETED,
+                                 model_update[0]['status'])
+                is_group_a_cg_snap_type.return_value = True
+                model_update = (
+                    self.driver.delete_group_snapshot(self.ctxt,
+                                                      group_snapshot,
+                                                      snapshots))
+                self.assertEqual(fields.GroupSnapshotStatus.DELETED,
+                                 model_update[0]['status'])
+                for volume in model_update[1]:
+                    self.assertEqual(fields.SnapshotStatus.DELETED,
+                                     volume['status'])
+
+    @ddt.data(({'volume_type': 'mm'}),
+              ({'volume_type': 'gm'}),
+              ({'volume_type': 'gmcv'})
+              )
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    def test_create_group_from_src_grp_with_invalid_vol(self, vol_spec):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+
+        pool = _get_test_pool()
+
+        if vol_spec['volume_type'] == 'mm':
+            vol_type_id = self.mm_type.id
+        if vol_spec['volume_type'] == 'gm':
+            vol_type_id = self.gm_type.id
+        if vol_spec['volume_type'] == 'gmcv':
+            vol_type_id = self.gmcv_default_type.id
+
+        # create group in db
+        src_group = testutils.create_group(
+            self.ctxt, volume_type_ids=[vol_type_id],
+            group_type_id=self.rccg_type.id)
+
+        model_update = self.driver.create_group(self.ctxt, src_group)
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create volumes in db
+        src_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+        src_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+
+        src_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), src_group.id)
+
+        add_volumes = [src_vol1, src_vol2]
+        del_volumes = []
+
+        # add volumes to group
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                              src_group,
+                                                              add_volumes,
+                                                              del_volumes)
+
+        # Clone group for source group
+        clone_group = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[vol_type_id],
+                group_type_id=self.rccg_type.id))
+
+        # Create volumes in db
+        clone_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), clone_group.id)
+
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_group_from_src, self.ctxt,
+                          clone_group, clone_volumes, None, None,
+                          src_group, src_volumes)
+
+        # Delete group
+        model_update = self.driver.delete_group(self.ctxt, clone_group,
+                                                [clone_vol1, clone_vol2])
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+    @ddt.data(({'volume_type': 'mm'}),
+              ({'volume_type': 'gm'}),
+              ({'volume_type': 'gmcv'})
+              )
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_create_grp_from_grp_snapshot_invalid(self, vol_spec,
+                                                  is_group_a_cg_snap_type):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        is_group_a_cg_snap_type.return_value = False
+
+        pool = _get_test_pool()
+
+        if vol_spec['volume_type'] == 'mm':
+            vol_type_id = self.mm_type.id
+        if vol_spec['volume_type'] == 'gm':
+            vol_type_id = self.gm_type.id
+        if vol_spec['volume_type'] == 'gmcv':
+            vol_type_id = self.gmcv_default_type.id
+
+        # create group in db
+        src_group = testutils.create_group(
+            self.ctxt, volume_type_ids=[vol_type_id],
+            group_type_id=self.rccg_type.id)
+
+        model_update = self.driver.create_group(self.ctxt, src_group)
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create volumes in db
+        src_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+        src_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+
+        add_volumes = [src_vol1, src_vol2]
+        del_volumes = []
+
+        # add volumes to group
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                              src_group,
+                                                              add_volumes,
+                                                              del_volumes)
+
+        # Clone group for source group
+        clone_group = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[vol_type_id],
+                group_type_id=self.rccg_type.id))
+
+        # Create volumes in db
+        clone_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+
+        # Exception raised while creating group snapshot
+        self.assertRaises(exception.VolumeDriverException,
+                          self._create_group_snapshot, src_group.id,
+                          group_type_id=self.rccg_type.id)
+
+        # Delete group
+        model_update = self.driver.delete_group(self.ctxt, clone_group,
+                                                [clone_vol1, clone_vol2])
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+    @ddt.data(({'volume_type': 'mm'}),
+              ({'volume_type': 'gm'}),
+              ({'volume_type': 'gmcv'})
+              )
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
+    @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
+    def test_create_grp_from_empty_grp_snapshot_inv(self, vol_spec,
+                                                    is_group_a_cg_snap_type):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        is_group_a_cg_snap_type.return_value = False
+
+        pool = _get_test_pool()
+
+        if vol_spec['volume_type'] == 'mm':
+            vol_type_id = self.mm_type.id
+        if vol_spec['volume_type'] == 'gm':
+            vol_type_id = self.gm_type.id
+        if vol_spec['volume_type'] == 'gmcv':
+            vol_type_id = self.gmcv_default_type.id
+
+        # create group in db
+        src_group = testutils.create_group(
+            self.ctxt, volume_type_ids=[vol_type_id],
+            group_type_id=self.rccg_type.id)
+
+        model_update = self.driver.create_group(self.ctxt, src_group)
+
+        self.assertEqual(fields.ReplicationStatus.ENABLED,
+                         model_update['replication_status'])
+
+        # Create volumes in db
+        src_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+        src_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=src_group.id,
+                                    host='openstack@svc#%s' % pool))
+
+        self.driver.create_volume(src_vol1)
+        self.driver.create_volume(src_vol2)
+
+        add_volumes = [src_vol1, src_vol2]
+        del_volumes = []
+
+        # add volumes to group
+        (model_update, add_volumes_update,
+            remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                              src_group,
+                                                              add_volumes,
+                                                              del_volumes)
+
+        # Clone group for source group
+        clone_group = (
+            testutils.create_group(
+                self.ctxt, volume_type_ids=[vol_type_id],
+                group_type_id=self.rccg_type.id))
+
+        # Create volumes in db
+        clone_vol1 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_vol2 = (
+            testutils.create_volume(self.ctxt,
+                                    volume_type_id=vol_type_id,
+                                    group_id=clone_group.id,
+                                    host='openstack@svc#%s' % pool))
+        clone_volumes = self.db.volume_get_all_by_generic_group(
+            self.ctxt.elevated(), clone_group.id)
+
+        # Create group snapshot
+        group_snapshot, snapshots = self._create_group_snapshot_in_db(
+            src_group.id)
+
+        # Create group from source as group snapshot
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.create_group_from_src, self.ctxt,
+                          clone_group, clone_volumes, group_snapshot,
+                          snapshots, None, None)
+
+        # Delete group
+        model_update = self.driver.delete_group(self.ctxt, clone_group,
+                                                [clone_vol1, clone_vol2])
+        self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
