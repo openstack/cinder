@@ -69,11 +69,15 @@ class VmdkDriverRemoteService(object):
     def select_ds_for_volume(self, ctxt, volume):
         (host, rp, folder, summary) = self._driver._select_ds_for_volume(
             volume)
+
+        profile_id = self._driver._get_storage_profile_id(volume)
+
         return {
             'host': host.value,
             'resource_pool': rp.value,
             'folder': folder.value,
-            'datastore': summary.datastore.value
+            'datastore': summary.datastore.value,
+            'profile_id': profile_id,
         }
 
     def move_volume_backing_to_folder(self, ctxt, volume, folder):

@@ -1005,19 +1005,26 @@ class VMwareVolumeOps(object):
                                         'summary')
 
     def _create_relocate_spec_disk_locator(self, datastore, disk_type,
-                                           disk_device):
+                                           disk_device, profile_id=None):
         """Creates spec for disk type conversion during relocate."""
         cf = self._session.vim.client.factory
         disk_locator = cf.create("ns0:VirtualMachineRelocateSpecDiskLocator")
         disk_locator.datastore = datastore
         disk_locator.diskId = disk_device.key
-        disk_locator.diskBackingInfo = self._create_disk_backing(disk_type,
-                                                                 None)
+
+        if disk_type:
+            disk_locator.diskBackingInfo = self._create_disk_backing(disk_type,
+                                                                     None)
+        if profile_id:
+            profile_spec = cf.create("ns0:VirtualMachineDefinedProfileSpec")
+            profile_spec.profileId = profile_id
+            disk_locator.profile = [profile_spec]
+
         return disk_locator
 
     def _get_relocate_spec(self, datastore, resource_pool, host,
                            disk_move_type, disk_type=None, disk_device=None,
-                           service=None):
+                           profile_id=None, service=None):
         """Return spec for relocating volume backing.
 
         :param datastore: Reference to the datastore
@@ -1026,6 +1033,8 @@ class VMwareVolumeOps(object):
         :param disk_move_type: Disk move type option
         :param disk_type: Destination disk type
         :param disk_device: Virtual device corresponding to the disk
+        :param profile_id: ID of the profile to use (Cross vCenter Vmotion)
+        :param service: Service Locator (Cross vCenter Vmotion)
         :return: Spec for relocation
         """
         cf = self._session.vim.client.factory
@@ -1035,10 +1044,14 @@ class VMwareVolumeOps(object):
         relocate_spec.host = host
         relocate_spec.diskMoveType = disk_move_type
 
-        if disk_type is not None and disk_device is not None:
+        # Either we want to convert the disk by specifing the disk_type
+        # or we need to determine the profile-id in the disk-locator
+        if not (disk_type is None and profile_id is None) \
+                and disk_device is not None:
             disk_locator = self._create_relocate_spec_disk_locator(datastore,
                                                                    disk_type,
-                                                                   disk_device)
+                                                                   disk_device,
+                                                                   profile_id)
             relocate_spec.disk = [disk_locator]
 
         if service is not None:
@@ -1063,7 +1076,7 @@ class VMwareVolumeOps(object):
 
     def relocate_backing(
             self, backing, datastore, resource_pool, host, disk_type=None,
-            service=None):
+            profile_id=None, service=None):
         """Relocates backing to the input datastore and resource pool.
 
         The implementation uses moveAllDiskBackingsAndAllowSharing disk move
@@ -1074,6 +1087,7 @@ class VMwareVolumeOps(object):
         :param resource_pool: Reference to the resource pool
         :param host: Reference to the host
         :param disk_type: destination disk type
+        :param profile_id: Id of the profile (for cross vCenter)
         :param service: destination service (for cross vCenter)
         """
         LOG.debug("Relocating backing: %(backing)s to datastore: %(ds)s "
@@ -1091,13 +1105,17 @@ class VMwareVolumeOps(object):
         if service is not None:
             disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
 
+        # In case of a cross-vcenter vmotion with a profile-id,
+        # We need to specify the profile specifically for the disk
         disk_device = None
-        if disk_type is not None:
+        if disk_type is not None or profile_id is not None:
             disk_device = self._get_disk_device(backing)
 
         relocate_spec = self._get_relocate_spec(datastore, resource_pool, host,
                                                 disk_move_type, disk_type,
-                                                disk_device, service=service)
+                                                disk_device,
+                                                profile_id=profile_id,
+                                                service=service)
 
         task = self._session.invoke_api(self._session.vim, 'RelocateVM_Task',
                                         backing, spec=relocate_spec)

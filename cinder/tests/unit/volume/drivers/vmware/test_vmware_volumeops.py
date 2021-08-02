@@ -847,6 +847,7 @@ class VolumeOpsTestCase(test.TestCase):
         get_relocate_spec.assert_called_once_with(datastore, resource_pool,
                                                   host, disk_move_type,
                                                   disk_type, disk_device,
+                                                  profile_id=None,
                                                   service=None)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         'RelocateVM_Task',
