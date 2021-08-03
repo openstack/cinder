@@ -450,8 +450,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         global_capacity = 0
         global_free = 0
         if ds_summaries:
-            while True:
-                for ds in ds_summaries.objects:
+            with vim_util.WithRetrieval(
+                    self.session.vim, ds_summaries) as objects:
+                for ds in objects:
                     ds_props = self._get_object_properties(ds)
                     summary = ds_props['summary']
                     if self._is_datastore_accessible(summary,
@@ -459,11 +460,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                      available_hosts):
                         global_capacity += summary.capacity
                         global_free += summary.freeSpace
-                if getattr(ds_summaries, 'token', None):
-                    ds_summaries = self.volumeops.continue_retrieval(
-                        ds_summaries)
-                else:
-                    break
+
         data['total_capacity_gb'] = round(global_capacity / units.Gi)
         data['free_capacity_gb'] = round(global_free / units.Gi)
         location_info = '%(driver_name)s:%(vcenter)s' % {

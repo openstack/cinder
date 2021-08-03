@@ -125,7 +125,7 @@ class VolumeOpsTestCase(test.TestCase):
         backing.propSet = [name_prop, instance_uuid_prop, vol_id_prop]
         return backing
 
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+    @mock.patch('oslo_vmware.vim_util.'
                 'continue_retrieval', return_value=None)
     def test_build_backing_ref_cache(self, continue_retrieval):
         uuid1 = 'd68cbee0-c1f7-4886-98a4-cf2201461c6e'
@@ -163,7 +163,7 @@ class VolumeOpsTestCase(test.TestCase):
                 'name',
                 'config.instanceUuid',
                 'config.extraConfig["cinder.volume.id"]'])
-        continue_retrieval.assert_called_once_with(result)
+        continue_retrieval.assert_called_once_with(self.session.vim, result)
 
     def test_delete_backing(self):
         backing = mock.sentinel.backing
@@ -193,8 +193,10 @@ class VolumeOpsTestCase(test.TestCase):
                          inMaintenanceMode=in_maintenance)
 
     def test_get_hosts(self):
-        hosts = mock.sentinel.hosts
-        self.session.invoke_api.return_value = hosts
+        retrieve_results = mock.sentinel.retrieve_results
+        hosts = [mock.sentinel.hosts]
+        retrieve_results.objects = hosts
+        self.session.invoke_api.return_value = retrieve_results
         result = self.vops.get_hosts()
         self.assertEqual(hosts, result)
         self.session.invoke_api.assert_called_once_with(vim_util,
@@ -202,26 +204,6 @@ class VolumeOpsTestCase(test.TestCase):
                                                         self.session.vim,
                                                         'HostSystem',
                                                         self.MAX_OBJECTS)
-
-    def test_continue_retrieval(self):
-        retrieve_result = mock.sentinel.retrieve_result
-        self.session.invoke_api.return_value = retrieve_result
-        result = self.vops.continue_retrieval(retrieve_result)
-        self.assertEqual(retrieve_result, result)
-        self.session.invoke_api.assert_called_once_with(vim_util,
-                                                        'continue_retrieval',
-                                                        self.session.vim,
-                                                        retrieve_result)
-
-    def test_cancel_retrieval(self):
-        retrieve_result = mock.sentinel.retrieve_result
-        self.session.invoke_api.return_value = retrieve_result
-        result = self.vops.cancel_retrieval(retrieve_result)
-        self.assertIsNone(result)
-        self.session.invoke_api.assert_called_once_with(vim_util,
-                                                        'cancel_retrieval',
-                                                        self.session.vim,
-                                                        retrieve_result)
 
     def test_is_usable(self):
         mount_info = mock.Mock(spec=object)
@@ -1812,7 +1794,7 @@ class VolumeOpsTestCase(test.TestCase):
                                                         cluster,
                                                         'host')
 
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+    @mock.patch('oslo_vmware.vim_util.'
                 'continue_retrieval', return_value=None)
     def test_get_all_clusters(self, continue_retrieval):
         prop_1 = mock.Mock(val='test_cluster_1')
@@ -1830,7 +1812,8 @@ class VolumeOpsTestCase(test.TestCase):
         self.session.invoke_api.assert_called_once_with(
             vim_util, 'get_objects', self.session.vim,
             'ClusterComputeResource', self.MAX_OBJECTS)
-        continue_retrieval.assert_called_once_with(retrieve_result)
+        continue_retrieval.assert_called_once_with(self.session.vim,
+                                                   retrieve_result)
 
     def test_get_entity_by_inventory_path(self):
         self.session.invoke_api.return_value = mock.sentinel.ref
