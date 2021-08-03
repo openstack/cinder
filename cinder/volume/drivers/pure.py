@@ -613,8 +613,23 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         raise NotImplementedError
 
+    def _is_multiattach_to_host(self, volume_attachment, host_name):
+        # When multiattach is enabled a volume could be attached to multiple
+        # instances which are hosted on the same Nova compute.
+        # Because Purity cannot recognize the volume is attached more than
+        # one instance we should keep the volume attached to the Nova compute
+        # until the volume is detached from the last instance
+        if not volume_attachment:
+            return False
+
+        attachment = [a for a in volume_attachment
+                      if a.attach_status == "attached" and
+                      a.attached_host == host_name]
+        return len(attachment) > 1
+
     @pure_driver_debug_trace
-    def _disconnect(self, array, volume, connector, remove_remote_hosts=False):
+    def _disconnect(self, array, volume, connector, remove_remote_hosts=False,
+                    is_multiattach=False):
         """Disconnect the volume from the host described by the connector.
 
         If no connector is specified it will remove *all* attachments for
@@ -645,11 +660,16 @@ class PureBaseVolumeDriver(san.SanDriver):
                                    remote=remove_remote_hosts)
             if hosts:
                 any_in_use = False
+                host_in_use = False
                 for host in hosts:
                     host_name = host["name"]
-                    host_in_use = self._disconnect_host(array,
-                                                        host_name,
-                                                        vol_name)
+                    if not is_multiattach:
+                        host_in_use = self._disconnect_host(array,
+                                                            host_name,
+                                                            vol_name)
+                    else:
+                        LOG.warning("Unable to disconnect host from volume. "
+                                    "Volume is multi-attached.")
                     any_in_use = any_in_use or host_in_use
                 return any_in_use
             else:
@@ -662,20 +682,27 @@ class PureBaseVolumeDriver(san.SanDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
         vol_name = self._get_vol_name(volume)
+        # None `connector` indicates force detach, then delete all even
+        # if the volume is multi-attached.
+        multiattach = (connector is not None and
+                       self._is_multiattach_to_host(volume.volume_attachment,
+                                                    connector["host"]))
         if self._is_vol_in_pod(vol_name):
             # Try to disconnect from each host, they may not be online though
             # so if they fail don't cause a problem.
             for array in self._uniform_active_cluster_target_arrays:
                 try:
                     self._disconnect(array, volume, connector,
-                                     remove_remote_hosts=False)
+                                     remove_remote_hosts=False,
+                                     is_multiattach=multiattach)
                 except purestorage.PureError as err:
                     # Swallow any exception, just warn and continue
                     LOG.warning("Disconnect on secondary array failed with"
                                 " message: %(msg)s", {"msg": err.text})
         # Now disconnect from the current array
         self._disconnect(self._get_current_array(), volume,
-                         connector, remove_remote_hosts=False)
+                         connector, remove_remote_hosts=False,
+                         is_multiattach=multiattach)
 
     @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
@@ -2741,6 +2768,11 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
         vol_name = self._get_vol_name(volume)
+        # None `connector` indicates force detach, then delete all even
+        # if the volume is multi-attached.
+        multiattach = (connector is not None and
+                       self._is_multiattach_to_host(volume.volume_attachment,
+                                                    connector["host"]))
         unused_wwns = []
 
         if self._is_vol_in_pod(vol_name):
@@ -2749,7 +2781,8 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             for array in self._uniform_active_cluster_target_arrays:
                 try:
                     no_more_connections = self._disconnect(
-                        array, volume, connector, remove_remote_hosts=False)
+                        array, volume, connector, remove_remote_hosts=False,
+                        is_multiattach=multiattach)
                     if no_more_connections:
                         unused_wwns += self._get_array_wwns(array)
                 except purestorage.PureError as err:
@@ -2762,7 +2795,8 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         current_array = self._get_current_array()
         no_more_connections = self._disconnect(current_array,
                                                volume, connector,
-                                               remove_remote_hosts=False)
+                                               remove_remote_hosts=False,
+                                               is_multiattach=multiattach)
         if no_more_connections:
             unused_wwns += self._get_array_wwns(current_array)
 
