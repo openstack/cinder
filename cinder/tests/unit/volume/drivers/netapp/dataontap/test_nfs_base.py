@@ -940,3 +940,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertFalse(cloned)
         mock_call__is_share_clone_compatible.assert_not_called()
         mock_call__do_clone_rel_img_cache.assert_not_called()
+
+    def test_update_migrated_volume(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver.update_migrated_volume, self.ctxt,
+                          fake.test_volume, mock.sentinel.new_volume,
+                          mock.sentinel.original_status)
