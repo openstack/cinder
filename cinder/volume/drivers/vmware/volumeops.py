@@ -331,7 +331,6 @@ class VMwareVolumeOps(object):
             return result[0]
 
     def build_backing_ref_cache(self, name_regex=None):
-
         LOG.debug("Building backing ref cache.")
         result = self._session.invoke_api(
             vim_util,
@@ -344,8 +343,8 @@ class VMwareVolumeOps(object):
                 'config.instanceUuid',
                 'config.extraConfig["cinder.volume.id"]'])
 
-        while result:
-            for backing in result.objects:
+        with vim_util.WithRetrieval(self._session.vim, result) as objects:
+            for backing in objects:
                 instance_uuid = None
                 vol_id = None
 
@@ -365,8 +364,6 @@ class VMwareVolumeOps(object):
                     continue
 
                 self._backing_ref_cache[name] = backing.obj
-
-            result = self.continue_retrieval(result)
         LOG.debug("Backing ref cache size: %d.", len(self._backing_ref_cache))
 
     def delete_backing(self, backing):
@@ -407,27 +404,11 @@ class VMwareVolumeOps(object):
 
         :return: All the hosts from the inventory
         """
-        return self._session.invoke_api(vim_util, 'get_objects',
-                                        self._session.vim,
-                                        'HostSystem', self._max_objects)
-
-    def continue_retrieval(self, retrieve_result):
-        """Continue retrieval of results if necessary.
-
-        :param retrieve_result: Result from RetrievePropertiesEx
-        """
-
-        return self._session.invoke_api(vim_util, 'continue_retrieval',
-                                        self._session.vim, retrieve_result)
-
-    def cancel_retrieval(self, retrieve_result):
-        """Cancel retrieval of results if necessary.
-
-        :param retrieve_result: Result from RetrievePropertiesEx
-        """
-
-        self._session.invoke_api(vim_util, 'cancel_retrieval',
-                                 self._session.vim, retrieve_result)
+        result = self._session.invoke_api(vim_util, 'get_objects',
+                                          self._session.vim,
+                                          'HostSystem', self._max_objects)
+        with vim_util.WithRetrieval(self._session.vim, result) as objects:
+            return list(objects)
 
     # TODO(vbala): move this method to datastore module
     def _is_usable(self, mount_info):
@@ -1858,17 +1839,16 @@ class VMwareVolumeOps(object):
         LOG.info("Deleted vmdk file: %s.", vmdk_file_path)
 
     def _get_all_clusters(self):
+        vim = self._session.vim
         clusters = {}
         retrieve_result = self._session.invoke_api(vim_util, 'get_objects',
-                                                   self._session.vim,
+                                                   vim,
                                                    'ClusterComputeResource',
                                                    self._max_objects)
-        while retrieve_result:
-            if retrieve_result.objects:
-                for cluster in retrieve_result.objects:
-                    name = urllib.parse.unquote(cluster.propSet[0].val)
-                    clusters[name] = cluster.obj
-            retrieve_result = self.continue_retrieval(retrieve_result)
+        with vim_util.WithRetrieval(vim, retrieve_result) as objects:
+            for cluster in objects:
+                name = urllib.parse.unquote(cluster.propSet[0].val)
+                clusters[name] = cluster.obj
         return clusters
 
     def get_cluster_refs(self, names):

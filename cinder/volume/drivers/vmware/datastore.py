@@ -167,27 +167,23 @@ class DatastoreSelector(object):
         return props
 
     def _get_datastores(self):
+        vim = self._session.vim
         datastores = {}
         retrieve_result = self._session.invoke_api(
             vim_util,
             'get_objects',
-            self._session.vim,
+            vim,
             'Datastore',
             self._max_objects,
             properties_to_collect=['host', 'summary'])
 
-        while retrieve_result:
-            if retrieve_result.objects:
-                for obj_content in retrieve_result.objects:
-                    props = self._get_object_properties(obj_content)
-                    if ('host' in props and
-                            hasattr(props['host'], 'DatastoreHostMount')):
-                        props['host'] = props['host'].DatastoreHostMount
-                    datastores[obj_content.obj] = props
-            retrieve_result = self._session.invoke_api(vim_util,
-                                                       'continue_retrieval',
-                                                       self._session.vim,
-                                                       retrieve_result)
+        with vim_util.WithRetrieval(vim, retrieve_result) as objects:
+            for obj_content in objects:
+                props = self._get_object_properties(obj_content)
+                if ('host' in props and
+                        hasattr(props['host'], 'DatastoreHostMount')):
+                    props['host'] = props['host'].DatastoreHostMount
+                datastores[obj_content.obj] = props
 
         return datastores
 
