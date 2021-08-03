@@ -34,7 +34,13 @@
             "status": "creating",
             "updated_at": null,
             "user_id": "%(uuid)s",
-            "volume_type": "%(name)s"
+            "volume_type": "%(name)s",
+            "volume_type_id": "%(uuid)s",
+            "service_uuid": null,
+            "provider_id": null,
+            "group_id": null,
+            "shared_targets": true,
+            "cluster_name": null
         }
     ]
 }

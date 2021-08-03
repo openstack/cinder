@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import os
 import pprint
 import re
@@ -66,7 +67,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
     all_extensions = True
     sample_dir = None
     _project_id = True
-    _use_common_volume_api_samples = False
+    _use_common_sample = None
 
     def __init__(self, *args, **kwargs):
         super(ApiSampleTestBase, self).__init__(*args, **kwargs)
@@ -74,8 +75,6 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
 
     def setUp(self):
         super(ApiSampleTestBase, self).setUp()
-        self.api_major_version = 'v3'
-
         # this is used to generate sample docs
         self.generate_samples = os.getenv('GENERATE_SAMPLES') is not None
 
@@ -98,20 +97,21 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
 
     @classmethod
     def _get_sample_path(cls, name, dirname, suffix='', api_version=None):
-        parts = [dirname]
-        parts.append('samples')
-        # Note: if _use_common_volume_api_samples is set to True
-        # then common volume sample files present in 'volumes' directory
-        # will be used. As of now it is being used for volume POST request
-        # to avoid duplicate copy of volume req and resp sample files.
-        # Example - VolumesSampleBase's _create_volume method.
-        if cls._use_common_volume_api_samples:
-            parts.append('volumes')
-        else:
-            parts.append(cls.sample_dir)
-            if api_version:
-                parts.append('v' + api_version)
+
+        # Note: if _use_common_sample is set then common sample files from
+        # that location will be used instead of using the location from the
+        # sample_dir attribute. As of now it is being used for volume POST
+        # request to avoid duplicate copy of volume req and resp sample files.
+        # The best approach is using the context manager provided by the
+        # common_api_sample method as used in example
+        # VolumesSampleBase's _create_volume method.
+        parts = [dirname, 'samples', cls._use_common_sample or cls.sample_dir]
+        # Base version doesn't live in a specific vX.Y directory
+        if (not cls._use_common_sample
+                and api_version and api_version != cls._osapi_version):
+            parts.append('v' + api_version)
         parts.append(name + ".json" + suffix)
+
         return os.path.join(*parts)
 
     @classmethod
@@ -130,16 +130,16 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
                                     api_version=api_version)
 
     def _read_template(self, name):
-        template = self._get_template(name)
+        template = self._get_template(name, self.osapi_version)
         with open(template) as inf:
             return inf.read().strip()
 
     def _write_template(self, name, data):
-        with open(self._get_template(name), 'w') as outf:
+        with open(self._get_template(name, self.osapi_version), 'w') as outf:
             outf.write(data)
 
     def _write_sample(self, name, data):
-        with open(self._get_sample(name), 'w') as outf:
+        with open(self._get_sample(name, self.osapi_version), 'w') as outf:
             outf.write(data)
 
     def _compare_dict(self, expected, result, result_str, matched_value):
@@ -328,7 +328,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
         """Process sample data and update version specific links."""
         # replace version urls
         url_re = self._get_host() + "/v3/" + PROJECT_ID
-        new_url = self._get_host() + "/" + self.api_major_version
+        new_url = self._get_host() + "/v" + self.osapi_version_major
         if self._project_id:
             new_url += "/" + PROJECT_ID
         updated_data = re.sub(url_re, new_url, sample_data)
@@ -356,17 +356,18 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
         self.assertEqual(exp_code, response.status_code, message)
         response_data = response.content
         response_data = pretty_data(response_data)
-        if not os.path.exists(self._get_template(name)):
+        if not os.path.exists(self._get_template(name, self.osapi_version)):
             self._write_template(name, response_data)
             template_data = response_data
         else:
             template_data = self._read_template(name)
         if (self.generate_samples and
-                not os.path.exists(self._get_sample(name))):
+                not os.path.exists(self._get_sample(name,
+                                                    self.osapi_version))):
             self._write_sample(name, response_data)
             sample_data = response_data
         else:
-            with open(self._get_sample(name)) as sample:
+            with open(self._get_sample(name, self.osapi_version)) as sample:
                 sample_data = sample.read()
                 if update_links:
                     sample_data = self._update_links(sample_data)
@@ -442,7 +443,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
             'text': text,
             'int': '[0-9]+',
             'user_id': text,
-            'api_vers': self.api_major_version,
+            'api_vers': 'v' + self.osapi_version_major,
             'volume_endpoint': self._get_volume_endpoint(),
             'versioned_volume_endpoint': self._get_versioned_volume_endpoint(),
             'name': text,
@@ -486,7 +487,7 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
         body = None
         if name:
             body = self._read_template(name) % self.subs
-            sample = self._get_sample(name)
+            sample = self._get_sample(name, self.osapi_version)
             if self.generate_samples and not os.path.exists(sample):
                 self._write_sample(name, body)
         return self._get_response(url, method, body, headers=headers)
@@ -503,3 +504,24 @@ class ApiSampleTestBase(functional_helpers._FunctionalTestBase):
 
     def _do_delete(self, url, headers=None):
         return self._get_response(url, 'DELETE', headers=headers)
+
+    @contextlib.contextmanager
+    def common_api_sample(self, api=None):
+        orig_value = self.__class__._use_common_sample
+        try:
+            self.__class__._use_common_sample = api or self.sample_dir
+            yield
+        finally:
+            self.__class__._use_common_sample = orig_value
+
+
+class VolumesSampleBase(ApiSampleTestBase):
+    sample_dir = "volumes"
+
+    def _create_volume(self, subs=None):
+        # Use the samples from the common API for the request
+        with self.common_api_sample('volumes'):
+            response = self._do_post('volumes',
+                                     'volume-create-request',
+                                     subs)
+            return response
