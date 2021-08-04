@@ -146,3 +146,19 @@ Ceph RADOS Block Device driver.
    :config-target: Ceph storage
 
    cinder.volume.drivers.rbd
+
+RBD Mirroring
+~~~~~~~~~~~~~
+
+The cinder RBD driver supports mirroring between multiple clusters.
+You can configure it on the cinder side with the usual replication
+configuration. Refer to the :doc:`documentation </contributor/replication>`
+for more information.
+
+You will also have to configure replication on the Ceph side. To do so you may
+refer to the `Ceph documentation
+<https://docs.ceph.com/en/latest/rbd/rbd-mirroring/>`_.
+
+Note that with the RBD driver in cinder you need to configure the pool
+replication option in image mode. For instance, if your pool is named
+``volumes``, the command would be: ``rbd mirror pool enable volumes image``.
