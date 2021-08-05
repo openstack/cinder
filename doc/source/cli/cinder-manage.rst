@@ -243,6 +243,48 @@ Displays the current configuration parameters (options) for Cinder. The
 optional flag parameter may be used to display the configuration of one
 parameter.
 
+Cinder Util
+~~~~~~~~~~~
+
+``cinder-manage util clean_locks [-h] [--services-offline]``
+
+Clean file locks on the current host that were created and are used by drivers
+and cinder services for volumes, snapshots, and the backup service on the
+current host.
+
+Should be run on any host where we are running a Cinder service (API,
+Scheduler, Volume, Backup) and can be run with the Cinder services running or
+stopped.
+
+If the services are running it will check existing resources in the Cinder
+database in order to only remove resources that are no longer present (it's
+safe to delete the files).
+
+For backups, the way to know if we can remove the startup lock is by checking
+if the PGRP in the file name is currently running cinder-backup.
+
+Deleting locks while the services are offline is faster as there's no need to
+check the database or the running processes.
+
+Default assumes that services are online, must pass ``--services-offline`` to
+specify that they are offline.
+
+The common use case for running the command with ``--services-offline`` is to
+be called on startup as a service unit before any cinder service is started.
+Command will be usually called without the ``--services-offline`` parameter
+manually or from a cron job.
+
+.. warning::
+
+   Passing ``--services-offline`` when the Cinder services are still running
+   breaks the locking mechanism and can lead to undesired behavior in ongoing
+   Cinder operations.
+
+.. note::
+
+   This command doesn't clean DLM locks (except when using file locks), as
+   those don't leave lock leftovers.
+
 FILES
 =====
 

@@ -10,7 +10,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import datetime
+import errno
 import io
 import re
 import sys
@@ -1241,6 +1243,151 @@ class TestCinderManageCmd(test.TestCase):
                                     mock_service_destroy):
         service_commands = cinder_manage.ServiceCommands()
         self.assertIsNone(service_commands.remove('abinary', 'ahost'))
+
+    @mock.patch('glob.glob')
+    def test_util__get_resources_locks(self, mock_glob):
+        cinder_manage.cfg.CONF.set_override('lock_path', '/locks',
+                                            group='oslo_concurrency')
+        cinder_manage.cfg.CONF.set_override('backend_url', 'file:///dlm',
+                                            group='coordination')
+
+        vol1 = fake.VOLUME_ID
+        vol2 = fake.VOLUME2_ID
+        snap = fake.SNAPSHOT_ID
+        attach = fake.ATTACHMENT_ID
+
+        files = [
+            'cinder-something',  # Non UUID files are ignored
+            f'/locks/cinder-{vol1}-delete_volume',
+            f'/locks/cinder-{vol2}-delete_volume',
+            f'/locks/cinder-{vol2}',
+            f'/locks/cinder-{vol2}-detach_volume',
+            f'/locks/cinder-{snap}-delete_snapshot',
+            '/locks/cinder-cleanup_incomplete_backups_12345',
+            '/locks/cinder-unrelated-backup-named-file',
+        ]
+        dlm_locks = [
+            f'/dlm/cinder-attachment_update-{vol2}-{attach}',
+        ]
+        mock_glob.side_effect = [files, dlm_locks]
+
+        commands = cinder_manage.UtilCommands()
+        res = commands._get_resources_locks()
+
+        self.assertEqual(2, mock_glob.call_count)
+        mock_glob.assert_has_calls([
+            mock.call('/locks/cinder-*'),
+            mock.call('/dlm/cinder-*')
+        ])
+
+        expected_vols = {
+            vol1: [f'/locks/cinder-{vol1}-delete_volume'],
+            vol2: [f'/locks/cinder-{vol2}-delete_volume',
+                   f'/locks/cinder-{vol2}',
+                   f'/locks/cinder-{vol2}-detach_volume',
+                   f'/dlm/cinder-attachment_update-{vol2}-{attach}'],
+        }
+        expected_snaps = {
+            snap: [f'/locks/cinder-{snap}-delete_snapshot']
+        }
+        expected_backups = {
+            '12345': ['/locks/cinder-cleanup_incomplete_backups_12345']
+        }
+        expected = (expected_vols, expected_snaps, expected_backups)
+        self.assertEqual(expected, res)
+
+    @mock.patch.object(cinder_manage, 'open')
+    def test__exclude_running_backups(self, mock_open):
+        mock_running = mock.mock_open(read_data='cinder-backup --config-file '
+                                      '/etc/cinder/cinder.conf')
+        file_running = mock_running.return_value.__enter__.return_value
+        mock_other = mock.mock_open(read_data='python')
+        file_other = mock_other.return_value.__enter__.return_value
+
+        mock_open.side_effect = (FileNotFoundError, mock_running.return_value,
+                                 mock_other.return_value,
+                                 ValueError)
+
+        backups = {'12341': '/locks/cinder-cleanup_incomplete_backups_12341',
+                   '12342': '/locks/cinder-cleanup_incomplete_backups_12342',
+                   '12343': '/locks/cinder-cleanup_incomplete_backups_12343',
+                   '12344': '/locks/cinder-cleanup_incomplete_backups_12344'}
+
+        expected = {'12341': '/locks/cinder-cleanup_incomplete_backups_12341',
+                    '12343': '/locks/cinder-cleanup_incomplete_backups_12343'}
+
+        commands = cinder_manage.UtilCommands()
+        res = commands._exclude_running_backups(backups)
+
+        self.assertIsNone(res)
+        self.assertEqual(expected, backups)
+
+        self.assertEqual(4, mock_open.call_count)
+        mock_open.assert_has_calls([mock.call('/proc/12341/cmdline', 'r'),
+                                    mock.call('/proc/12342/cmdline', 'r'),
+                                    mock.call('/proc/12343/cmdline', 'r'),
+                                    mock.call('/proc/12344/cmdline', 'r')])
+        file_running.read.assert_called_once_with()
+        file_other.read.assert_called_once_with()
+
+    @ddt.data(True, False)
+    @mock.patch.object(cinder_manage, 'print')
+    @mock.patch.object(cinder_manage.os, 'remove')
+    @mock.patch.object(cinder_manage.UtilCommands, '_exclude_running_backups')
+    @mock.patch('cinder.objects.Snapshot.exists')
+    @mock.patch('cinder.objects.Volume.exists')
+    @mock.patch.object(cinder_manage.UtilCommands, '_get_resources_locks')
+    @mock.patch.object(cinder_manage.context, 'get_admin_context')
+    def test_clean_locks(self, online, mock_ctxt, mock_get_locks,
+                         mock_vol_exists, mock_snap_exists, mock_exclude_backs,
+                         mock_remove, mock_print):
+        vol1_files = [f'/locks/cinder-{fake.VOLUME_ID}-delete_volume']
+        vol2_files = [f'/locks/cinder-{fake.VOLUME2_ID}-delete_volume',
+                      f'/locks/cinder-{fake.VOLUME2_ID}',
+                      f'/locks/cinder-{fake.VOLUME2_ID}-detach_volume',
+                      f'/dlm/cinder-attachment_update-{fake.VOLUME2_ID}-'
+                      f'{fake.ATTACHMENT_ID}']
+        vols = collections.OrderedDict(((fake.VOLUME_ID, vol1_files),
+                                        (fake.VOLUME2_ID, vol2_files)))
+        snap_files = [f'/locks/cinder-{fake.SNAPSHOT_ID}-delete_snapshot']
+        snaps = {fake.SNAPSHOT_ID: snap_files}
+        back_files = ['/locks/cinder-cleanup_incomplete_backups_12345']
+        backs = {'12345': back_files}
+        mock_get_locks.return_value = (vols, snaps, backs)
+        mock_vol_exists.side_effect = (True, False)
+        mock_snap_exists.return_value = False
+        mock_remove.side_effect = [None, errno.ENOENT, None, None,
+                                   errno.ENOENT, ValueError, None]
+
+        commands = cinder_manage.UtilCommands()
+        commands.clean_locks(online=online)
+
+        mock_ctxt.assert_called_once_with()
+        mock_get_locks.assert_called_once_with()
+        expected_calls = ([mock.call(v) for v in vol1_files] +
+                          [mock.call(v) for v in vol2_files] +
+                          [mock.call(s) for s in snap_files] +
+                          [mock.call(b) for b in back_files])
+        if online:
+            self.assertEqual(2, mock_vol_exists.call_count)
+            mock_vol_exists.assert_has_calls((mock.call(fake.VOLUME_ID),
+                                              mock.call(fake.VOLUME2_ID)))
+            mock_snap_exists.assert_called_once_with(fake.SNAPSHOT_ID)
+            mock_exclude_backs.assert_called_once_with(backs)
+            # If services are online we'll check resources that still exist
+            # and then we won't delete those that do. In this case the files
+            # for the first volume.
+            del expected_calls[0]
+        else:
+            mock_vol_exists.assert_not_called()
+            mock_snap_exists.assert_not_called()
+            mock_exclude_backs.assert_not_called()
+
+        self.assertEqual(len(expected_calls), mock_remove.call_count)
+        mock_remove.assert_has_calls(expected_calls)
+
+        # Only the ValueError exception should be logged
+        self.assertEqual(1, mock_print.call_count)
 
 
 @test.testtools.skipIf(sys.platform == 'darwin', 'Not supported on macOS')
