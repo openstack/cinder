@@ -2789,8 +2789,19 @@ class StorwizeHelpers(object):
             raise exception.InvalidInput(
                 reason=_('The peer pool is necessary for hyperswap volume, '
                          'please configure the peer pool.'))
-        pool_attr = self.get_pool_attrs(pool)
-        peer_pool_attr = self.get_pool_attrs(peer_pool)
+        pool_attr = None
+        peer_pool_attr = None
+        for stat_pool in self.stats.get('pools', []):
+            if stat_pool['pool_name'] == pool:
+                pool_attr = stat_pool
+            elif stat_pool['pool_name'] == peer_pool:
+                peer_pool_attr = stat_pool
+
+        if pool_attr is None:
+            pool_attr = self.get_pool_attrs(pool)
+        if peer_pool_attr is None:
+            peer_pool_attr = self.get_pool_attrs(peer_pool)
+
         if not peer_pool_attr:
             raise exception.InvalidInput(
                 reason=_('The hyperswap peer pool %s '
@@ -3109,6 +3120,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         elif not self._secondary_pools:
             self._secondary_pools = [self._replica_target.get('pool_name')]
         return self._secondary_pools
+
+    def _get_backend_peer_pool(self):
+        if not self._active_backend_id:
+            return self.configuration.storwize_peer_pool
 
     def _validate_pools_exist(self):
         # Validate that the pool exists
@@ -5960,6 +5975,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         data['pools'] = [self._build_pool_stats(pool)
                          for pool in
                          self._get_backend_pools()]
+
+        if self._helpers.is_system_topology_hyperswap(self._state):
+            peer_pool = self._get_backend_peer_pool()
+            if peer_pool:
+                data['pools'].append(self._build_pool_stats(peer_pool))
+
         if self._replica_enabled:
             data['replication'] = self._replica_enabled
             data['replication_enabled'] = self._replica_enabled
@@ -6023,6 +6044,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 'consistent_group_snapshot_enabled': True,
                 'backend_state': backend_state,
                 'data_reduction': is_dr_pool,
+                'site_id': pool_data['site_id'],
+                'site_name': pool_data['site_name'],
             }
             if self._replica_enabled:
                 pool_stats.update({
@@ -6045,6 +6068,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           'max_over_subscription_ratio': 0,
                           'reserved_percentage': 0,
                           'data_reduction': is_dr_pool,
+                          'site_id': None,
+                          'site_name': None,
                           'backend_state': 'down'}
 
         return pool_stats

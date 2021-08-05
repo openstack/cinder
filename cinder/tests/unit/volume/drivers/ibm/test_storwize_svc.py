@@ -537,7 +537,7 @@ class StorwizeSVCManagementSimulator(object):
                      'vdisk_count', 'capacity', 'extent_size',
                      'free_capacity', 'virtual_capacity', 'used_capacity',
                      'real_capacity', 'overallocation', 'warning',
-                     'easy_tier', 'easy_tier_status', 'site_id',
+                     'easy_tier', 'easy_tier_status', 'site_id', 'site_name',
                      'data_reduction'])
         for i in range(pool_num):
             row_data = [str(i + 1),
@@ -546,32 +546,36 @@ class StorwizeSVCManagementSimulator(object):
                         '3573412790272', '256', '3529926246400',
                         '1693247906775',
                         '26843545600', '38203734097', '47', '80', 'auto',
-                        'inactive', '', 'no']
+                        'inactive', '', '', 'no']
             rows.append(row_data)
         rows.append([str(pool_num + 1), 'openstack2', 'online',
                      '1', '0', '3573412790272', '256',
                      '3529432325160', '1693247906775', '26843545600',
-                     '38203734097', '47', '80', 'auto', 'inactive', '', 'no'])
+                     '38203734097', '47', '80', 'auto', 'inactive', '', '',
+                     'no'])
         rows.append([str(pool_num + 2), 'openstack3', 'offline',
                      '1', '0', '3573412790272', '128',
                      '3529432325160', '1693247906775', '26843545600',
-                     '38203734097', '47', '80', 'auto', 'inactive', '', 'yes'])
+                     '38203734097', '47', '80', 'auto', 'inactive', '', '',
+                     'yes'])
         rows.append([str(pool_num + 3), 'hyperswap1', 'online',
                      '1', '0', '3573412790272', '256',
                      '3529432325160', '1693247906775', '26843545600',
-                     '38203734097', '47', '80', 'auto', 'inactive', '1', 'no'])
+                     '38203734097', '47', '80', 'auto', 'inactive', '1',
+                     'site1', 'no'])
         rows.append([str(pool_num + 4), 'hyperswap2', 'online',
                      '1', '0', '3573412790272', '128',
                      '3529432325160', '1693247906775', '26843545600',
-                     '38203734097', '47', '80', 'auto', 'inactive', '2', 'no'])
+                     '38203734097', '47', '80', 'auto', 'inactive', '2',
+                     'site2', 'no'])
         rows.append([str(pool_num + 5), 'dr_pool1', 'online',
                      '1', '0', '3573412790272', '128', '3529432325160',
                      '1693247906775', '26843545600', '38203734097', '47', '80',
-                     'auto', 'inactive', '1', 'yes'])
+                     'auto', 'inactive', '1', 'site1', 'yes'])
         rows.append([str(pool_num + 6), 'dr_pool2', 'online',
                      '1', '0', '3573412790272', '128', '3529432325160',
                      '1693247906775', '26843545600', '38203734097', '47', '80',
-                     'auto', 'inactive', '2', 'yes'])
+                     'auto', 'inactive', '2', 'site2', 'yes'])
         if 'obj' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
         else:
