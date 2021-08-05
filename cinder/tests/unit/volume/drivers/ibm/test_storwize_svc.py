@@ -8982,11 +8982,15 @@ class StorwizeHelpersTestCase(test.TestCase):
                        '_get_flashcopy_mapping_attributes')
     @mock.patch.object(storwize_svc_common.StorwizeHelpers,
                        '_get_vdisk_fc_mappings')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
     def test_check_vdisk_fc_mappings(self,
                                      fc_data,
+                                     get_relationship_info,
                                      get_vdisk_fc_mappings,
                                      get_fc_mapping_attributes,
                                      rmfcmap, stopfcmap, chfcmap):
+
         vol = 'testvol'
         get_vdisk_fc_mappings.return_value = ['4']
         get_fc_mapping_attributes.return_value = {
@@ -8996,13 +9000,72 @@ class StorwizeHelpersTestCase(test.TestCase):
             'target_vdisk_name': 'tar-testvol',
             'rc_controlled': 'no',
             'source_vdisk_name': 'testvol'}
-
+        get_relationship_info.return_value = None
         if(fc_data['copy_rate'] != '0' and fc_data['progress'] == '100'
            and fc_data['status'] == 'copying'):
             (self.assertRaises(loopingcall.LoopingCallDone,
              self.storwize_svc_common._check_vdisk_fc_mappings, vol, True,
              False))
-            stopfcmap.assert_called_with('4')
+            stopfcmap.assert_called_with('4', False)
+            self.assertEqual(1, stopfcmap.call_count)
+        else:
+            self.storwize_svc_common._check_vdisk_fc_mappings(vol, True,
+                                                              False)
+            stopfcmap.assert_not_called()
+            self.assertEqual(0, stopfcmap.call_count)
+
+        get_vdisk_fc_mappings.assert_called()
+        get_fc_mapping_attributes.assert_called_with('4')
+        rmfcmap.assert_not_called()
+        self.assertEqual(1, get_fc_mapping_attributes.call_count)
+        self.assertEqual(0, rmfcmap.call_count)
+
+        if(fc_data['copy_rate'] == '0' and fc_data['progress'] == '0'
+           and fc_data['status'] in ['copying', 'idle_or_copied']):
+            chfcmap.assert_called_with('4', copyrate='50', autodel='on')
+            self.assertEqual(1, chfcmap.call_count)
+        else:
+            chfcmap.assert_not_called()
+            self.assertEqual(0, chfcmap.call_count)
+
+    @ddt.data({'copy_rate': '50', 'progress': '3', 'status': 'copying'},
+              {'copy_rate': '50', 'progress': '100', 'status': 'copying'},
+              {'copy_rate': '0', 'progress': '0', 'status': 'copying'},
+              {'copy_rate': '50', 'progress': '0', 'status': 'copying'},
+              {'copy_rate': '0', 'progress': '0', 'status': 'idle_or_copied'})
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'chfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'stopfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'rmfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_flashcopy_mapping_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_vdisk_fc_mappings')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_check_vdisk_fc_mappings_with_rcrel(self,
+                                                fc_data,
+                                                get_relationship_info,
+                                                get_vdisk_fc_mappings,
+                                                get_fc_mapping_attributes,
+                                                rmfcmap, stopfcmap, chfcmap):
+
+        vol = 'testvol'
+        get_vdisk_fc_mappings.return_value = ['4']
+        get_fc_mapping_attributes.return_value = {
+            'copy_rate': fc_data['copy_rate'],
+            'progress': fc_data['progress'],
+            'status': fc_data['status'],
+            'target_vdisk_name': 'tar-testvol',
+            'rc_controlled': 'no',
+            'source_vdisk_name': 'testvol'}
+        rel_info = {'name': 'rcrel232'}
+        get_relationship_info.return_value = rel_info
+        if(fc_data['copy_rate'] != '0' and fc_data['progress'] == '100'
+           and fc_data['status'] == 'copying'):
+            (self.assertRaises(loopingcall.LoopingCallDone,
+             self.storwize_svc_common._check_vdisk_fc_mappings, vol, True,
+             False, rel_info))
+            stopfcmap.assert_called_with('4', True)
             self.assertEqual(1, stopfcmap.call_count)
         else:
             self.storwize_svc_common._check_vdisk_fc_mappings(vol, True,
