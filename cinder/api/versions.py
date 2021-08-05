@@ -98,11 +98,6 @@ class VersionsController(wsgi.Controller):
         builder = views_versions.get_view_builder(req)
         known_versions = copy.deepcopy(_KNOWN_VERSIONS)
 
-        # FIXME: remove this in Y ... I suppose we should honor
-        # it in Xena, even though it doesn't make any sense
-        if not CONF.enable_v3_api:
-            known_versions.pop('v3.0')
-
         return builder.build_versions(known_versions)
 
 

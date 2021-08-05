@@ -16,7 +16,6 @@ from http import HTTPStatus
 
 import ddt
 from oslo_config import cfg
-from oslo_config import fixture as config_fixture
 from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
 import webob
@@ -78,16 +77,6 @@ class VersionsControllerTestCase(test.TestCase):
                          v3.get('version'))
         self.assertEqual(api_version_request._MIN_API_VERSION,
                          v3.get('min_version'))
-
-    def test_all_versions_excludes_disabled(self):
-        version = '3.0'
-        self.fixture = self.useFixture(config_fixture.Config(CONF))
-        self.fixture.config(enable_v3_api=False)
-        vc = versions.VersionsController()
-        req = self.build_request(base_url='http://localhost')
-        resp = vc.all(req)
-        all_versions = [x['id'] for x in resp['versions']]
-        self.assertNotIn('v' + version, all_versions)
 
     def test_versions(self):
         version = '3.0'
