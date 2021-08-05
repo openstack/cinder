@@ -620,6 +620,9 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         It is imperative that this operation ensures that the data from the
         deleted volume cannot leak into new volumes when they are created, as
         new volumes are likely to belong to a different tenant/project.
+
+        If the driver uses custom file locks they should be cleaned on success
+        using cinder.utils.synchronized_remove
         """
         return
 
@@ -1953,6 +1956,50 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         return [CONF.backend_defaults._group._opts[cfg_name]['opt']
                 for cfg_name in cfg_names]
 
+    @classmethod
+    def clean_volume_file_locks(cls, volume_id):
+        """Clean up driver specific volume locks.
+
+        This method will be called when a volume has been removed from Cinder
+        or when we detect that the volume doesn't exist.
+
+        There are 3 types of locks in Cinder:
+
+        - Process locks: Don't need cleanup
+        - Node locks: Must use cinder.utils.synchronized_remove
+        - Global locks: Must use cinder.coordination.synchronized_remove
+
+        When using method cinder.utils.synchronized_remove we must pass the
+        exact lock name, whereas method cinder.coordination.synchronized_remove
+        accepts a glob.
+
+        Refer to clean_volume_file_locks, api_clean_volume_file_locks, and
+        clean_snapshot_file_locks in cinder.utils for examples.
+        """
+        pass
+
+    @classmethod
+    def clean_snapshot_file_locks(self, snapshot_id):
+        """Clean up driver specific snapshot locks.
+
+        This method will be called when a snapshot has been removed from cinder
+        or when we detect that the snapshot doesn't exist.
+
+        There are 3 types of locks in Cinder:
+
+        - Process locks: Don't need cleanup
+        - Node locks: Must use cinder.utils.synchronized_remove
+        - Global locks: Must use cinder.coordination.synchronized_remove
+
+        When using method cinder.utils.synchronized_remove we must pass the
+        exact lock name, whereas method cinder.coordination.synchronized_remove
+        accepts a glob.
+
+        Refer to clean_volume_file_locks, api_clean_volume_file_locks, and
+        clean_snapshot_file_locks in cinder.utils for examples.
+        """
+        pass
+
 
 class CloneableImageVD(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -2217,7 +2264,11 @@ class VolumeDriver(ManageableVD, CloneableImageVD, ManageableSnapshotsVD,
         raise NotImplementedError()
 
     def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
+        """Deletes a snapshot.
+
+        If the driver uses custom file locks they should be cleaned on success
+        using cinder.utils.synchronized_remove
+        """
         raise NotImplementedError()
 
     def local_path(self, volume):

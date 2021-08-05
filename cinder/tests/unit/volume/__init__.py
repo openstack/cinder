@@ -81,6 +81,10 @@ class BaseVolumeTestCase(test.TestCase):
         self.called = []
         self.volume_api = volume_api.API()
 
+        # Don't accidentaly make a call to delete a file from the system
+        self.mock_lock_remove = self.patch('cinder.utils.synchronized_remove')
+        self.mock_dlm_lock_remove = self.patch('cinder.coordination.os.remove')
+
     def _cleanup(self):
         try:
             shutil.rmtree(CONF.volumes_dir)

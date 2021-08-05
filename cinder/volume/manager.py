@@ -35,6 +35,7 @@ intact.
 
 """
 
+import functools
 import time
 import typing as ty
 
@@ -74,6 +75,7 @@ from cinder.objects import cgsnapshot
 from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder import quota
+from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
@@ -182,6 +184,37 @@ MAPPING = {
     'cinder.volume.drivers.zadara.ZadaraVPSAISCSIDriver':
         'cinder.volume.drivers.zadara.zadara.ZadaraVPSAISCSIDriver',
 }
+
+
+def clean_volume_locks(func):
+    @functools.wraps(func)
+    def wrapper(self, context, volume, *args, **kwargs):
+        try:
+            skip_clean = func(self, context, volume, *args, **kwargs)
+        except Exception:
+            # On quota failure volume will have been deleted from the DB
+            skip_clean = not volume.deleted
+            raise
+        finally:
+            if not skip_clean:
+                # Most TooZ drivers clean after themselves (like etcd3), so
+                # we clean TooZ file locks that are the same as oslo's.
+                utils.clean_volume_file_locks(volume.id, self.driver)
+    return wrapper
+
+
+def clean_snapshot_locks(func):
+    @functools.wraps(func)
+    def wrapper(self, context, snapshot, *args, **kwargs):
+        try:
+            skip_clean = func(self, context, snapshot, *args, **kwargs)
+        except Exception:
+            skip_clean = not snapshot.deleted
+            raise
+        finally:
+            if not skip_clean:
+                utils.clean_snapshot_file_locks(snapshot.id, self.driver)
+    return wrapper
 
 
 class VolumeManager(manager.CleanableManager,
@@ -772,6 +805,12 @@ class VolumeManager(manager.CleanableManager,
             else:
                 with coordination.COORDINATOR.get_lock(locked_action):
                     _run_flow()
+        except exception.VolumeNotFound:
+            with excutils.save_and_reraise_exception():
+                utils.clean_volume_file_locks(source_volid, self.driver)
+        except exception.SnapshotNotFound:
+            with excutils.save_and_reraise_exception():
+                utils.clean_snapshot_file_locks(snapshot_id, self.driver)
         finally:
             try:
                 flow_engine.storage.fetch('refreshed')
@@ -818,7 +857,19 @@ class VolumeManager(manager.CleanableManager,
                         'backend': backend})
                 raise exception.Invalid(msg)
 
-    @coordination.synchronized('{volume.id}-{f_name}')
+    def driver_delete_volume(self, volume):
+        self.driver.delete_volume(volume)
+        # Most TooZ drivers clean after themselves (like etcd3), so we don't
+        # worry about those locks, only about TooZ file locks that are the same
+        # as oslo's.
+        utils.clean_volume_file_locks(volume.id, self.driver)
+
+    def driver_delete_snapshot(self, snapshot):
+        self.driver.delete_snapshot(snapshot)
+        utils.clean_snapshot_file_locks(snapshot.id, self.driver)
+
+    @clean_volume_locks
+    @coordination.synchronized('{volume.id}-delete_volume')
     @objects.Volume.set_workers
     def delete_volume(self,
                       context: context.RequestContext,
@@ -926,7 +977,7 @@ class VolumeManager(manager.CleanableManager,
             # If this is a destination volume, we have to clear the database
             # record to avoid user confusion.
             self._clear_db(is_migrating_dest, volume, 'available')
-            return
+            return True  # Let caller know we skipped deletion
         except Exception:
             with excutils.save_and_reraise_exception():
                 # If this is a destination volume, we have to clear the
@@ -1014,7 +1065,7 @@ class VolumeManager(manager.CleanableManager,
             temp_vol = self.driver._create_temp_volume_from_snapshot(
                 ctxt, volume, snapshot, volume_options=v_options)
             self._copy_volume_data(ctxt, temp_vol, volume)
-            self.driver.delete_volume(temp_vol)
+            self.driver_delete_volume(temp_vol)
             temp_vol.destroy()
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -1025,7 +1076,7 @@ class VolumeManager(manager.CleanableManager,
                     {'snapshot': snapshot.id,
                      'volume': volume.id})
                 if temp_vol and temp_vol.status == 'available':
-                    self.driver.delete_volume(temp_vol)
+                    self.driver_delete_volume(temp_vol)
                     temp_vol.destroy()
 
     def _revert_to_snapshot(self, context, volume, snapshot) -> None:
@@ -1220,7 +1271,8 @@ class VolumeManager(manager.CleanableManager,
                  resource=snapshot)
         return snapshot.id
 
-    @coordination.synchronized('{snapshot.id}-{f_name}')
+    @clean_snapshot_locks
+    @coordination.synchronized('{snapshot.id}-delete_snapshot')
     def delete_snapshot(self,
                         context: context.RequestContext,
                         snapshot: objects.Snapshot,
@@ -1257,7 +1309,7 @@ class VolumeManager(manager.CleanableManager,
                 resource_type=message_field.Resource.VOLUME_SNAPSHOT,
                 resource_uuid=snapshot['id'],
                 exception=busy_error)
-            return
+            return True  # Let caller know we skipped deletion
         except Exception as delete_error:
             with excutils.save_and_reraise_exception():
                 snapshot.status = fields.SnapshotStatus.ERROR_DELETING
@@ -3787,7 +3839,7 @@ class VolumeManager(manager.CleanableManager,
             volume_model_update = {'id': volume_ref.id}
             try:
                 self.driver.remove_export(context, volume_ref)
-                self.driver.delete_volume(volume_ref)
+                self.driver_delete_volume(volume_ref)
                 volume_model_update['status'] = 'deleted'
             except exception.VolumeIsBusy:
                 volume_model_update['status'] = 'available'
@@ -4102,7 +4154,7 @@ class VolumeManager(manager.CleanableManager,
         for snapshot in snapshots:
             snapshot_model_update = {'id': snapshot.id}
             try:
-                self.driver.delete_snapshot(snapshot)
+                self.driver_delete_snapshot(snapshot)
                 snapshot_model_update['status'] = (
                     fields.SnapshotStatus.DELETED)
             except exception.SnapshotIsBusy:

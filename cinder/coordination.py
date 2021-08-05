@@ -15,7 +15,12 @@
 
 """Coordination and locking utilities."""
 
+import errno
+import glob
 import inspect
+import os
+import re
+import sys
 import uuid
 
 import decorator
@@ -55,16 +60,28 @@ class Coordinator(object):
         self.agent_id = agent_id or str(uuid.uuid4())
         self.started = False
         self.prefix = prefix
+        self._file_path = None
+
+    def _get_file_path(self, backend_url):
+        if backend_url.startswith('file://'):
+            path = backend_url[7:]
+            # Copied from TooZ's _normalize_path to get the same path they use
+            if sys.platform == 'win32':
+                path = re.sub(r'\\(?=\w:\\)', '', os.path.normpath(path))
+            return os.path.abspath(os.path.join(path, self.prefix))
+        return None
 
     def start(self):
         if self.started:
             return
 
+        backend_url = cfg.CONF.coordination.backend_url
+
         # NOTE(bluex): Tooz expects member_id as a byte string.
         member_id = (self.prefix + self.agent_id).encode('ascii')
-        self.coordinator = coordination.get_coordinator(
-            cfg.CONF.coordination.backend_url, member_id)
+        self.coordinator = coordination.get_coordinator(backend_url, member_id)
         self.coordinator.start(start_heart=True)
+        self._file_path = self._get_file_path(backend_url)
         self.started = True
 
     def stop(self):
@@ -87,8 +104,26 @@ class Coordinator(object):
         else:
             raise exception.LockCreationFailed(_('Coordinator uninitialized.'))
 
+    def remove_lock(self, glob_name):
+        # Most locks clean up on release, but not the file lock, so we manually
+        # clean them.
+        if self._file_path:
+            files = glob.glob(self._file_path + glob_name)
+            for file_name in files:
+                try:
+                    os.remove(file_name)
+                except Exception as exc:
+                    if not (isinstance(exc, OSError) and
+                            exc.errno == errno.ENOENT):
+                        LOG.warning('Failed to cleanup lock %(name)s: %(exc)s',
+                                    {'name': file_name, 'exc': exc})
+
 
 COORDINATOR = Coordinator(prefix='cinder-')
+
+
+def synchronized_remove(glob_name, coordinator=COORDINATOR):
+    coordinator.remove_lock(glob_name)
 
 
 def synchronized(lock_name, blocking=True, coordinator=COORDINATOR):

@@ -1443,3 +1443,65 @@ class TestKeystoneProjectGet(test.TestCase):
         project = api_utils.get_project(
             self.context, self.context.project_id)
         self.assertEqual(expected_project.__dict__, project.__dict__)
+
+
+class TestCleanFileLocks(test.TestCase):
+
+    @mock.patch('cinder.utils.LOG.warning')
+    @mock.patch('cinder.utils.synchronized_remove')
+    def test_clean_volume_file_locks(self, mock_remove, mock_log):
+        driver = mock.Mock()
+
+        utils.clean_volume_file_locks('UUID', driver)
+
+        self.assertEqual(3, mock_remove.call_count)
+        mock_remove.assert_has_calls([mock.call('UUID-delete_volume'),
+                                      mock.call('UUID'),
+                                      mock.call('UUID-detach_volume')])
+        driver.clean_volume_file_locks.assert_called_once_with('UUID')
+        mock_log.assert_not_called()
+
+    @mock.patch('cinder.utils.LOG.warning')
+    @mock.patch('cinder.utils.synchronized_remove')
+    def test_clean_volume_file_locks_errors(self, mock_remove, mock_log):
+        driver = mock.Mock()
+        driver.clean_volume_file_locks.side_effect = Exception
+        mock_remove.side_effect = [None, Exception, None]
+
+        utils.clean_volume_file_locks('UUID', driver)
+
+        self.assertEqual(3, mock_remove.call_count)
+        mock_remove.assert_has_calls([mock.call('UUID-delete_volume'),
+                                      mock.call('UUID'),
+                                      mock.call('UUID-detach_volume')])
+        driver.clean_volume_file_locks.assert_called_once_with('UUID')
+        self.assertEqual(2, mock_log.call_count)
+
+    @mock.patch('cinder.utils.LOG.warning')
+    @mock.patch('cinder.utils.synchronized_remove')
+    def test_clean_snapshot_file_locks(self, mock_remove, mock_log):
+        driver = mock.Mock()
+
+        utils.clean_snapshot_file_locks('UUID', driver)
+
+        mock_remove.assert_called_once_with('UUID-delete_snapshot')
+        driver.clean_snapshot_file_locks.assert_called_once_with('UUID')
+        mock_log.assert_not_called()
+
+    @mock.patch('cinder.utils.LOG.warning')
+    @mock.patch('cinder.utils.synchronized_remove')
+    def test_clean_snapshot_file_locks_failures(self, mock_remove, mock_log):
+        driver = mock.Mock()
+        driver.clean_snapshot_file_locks.side_effect = Exception
+        mock_remove.side_effect = Exception
+
+        utils.clean_snapshot_file_locks('UUID', driver)
+
+        mock_remove.assert_called_once_with('UUID-delete_snapshot')
+        driver.clean_snapshot_file_locks.assert_called_once_with('UUID')
+        self.assertEqual(2, mock_log.call_count)
+
+    @mock.patch('cinder.coordination.synchronized_remove')
+    def test_api_clean_volume_file_locks(self, mock_remove):
+        utils.api_clean_volume_file_locks('UUID')
+        mock_remove.assert_called_once_with('attachment_update-UUID-*')

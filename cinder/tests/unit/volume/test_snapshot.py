@@ -76,13 +76,15 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         self.vol_type = db.volume_type_get_by_name(self.context,
                                                    'vol_type_name')
 
-    def test_delete_snapshot_frozen(self):
+    @mock.patch('cinder.utils.clean_snapshot_file_locks')
+    def test_delete_snapshot_frozen(self, mock_clean):
         service = tests_utils.create_service(self.context, {'frozen': True})
         volume = tests_utils.create_volume(self.context, host=service.host)
         snapshot = tests_utils.create_snapshot(self.context, volume.id)
         self.assertRaises(exception.InvalidInput,
                           self.volume_api.delete_snapshot, self.context,
                           snapshot)
+        mock_clean.assert_not_called()
 
     @ddt.data('create_snapshot', 'create_snapshot_force')
     def test_create_snapshot_frozen(self, method):
@@ -114,8 +116,9 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_obj)
         self.volume.delete_volume(self.context, volume_src)
 
+    @mock.patch('cinder.utils.clean_snapshot_file_locks')
     @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
-    def test_create_delete_snapshot(self, mock_notify):
+    def test_create_delete_snapshot(self, mock_notify, mock_clean):
         """Test snapshot can be created and deleted."""
         volume = tests_utils.create_volume(
             self.context,
@@ -146,6 +149,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                                   any_order=True)
 
         self.volume.delete_snapshot(self.context, snapshot)
+        mock_clean.assert_called_once_with(snapshot.id, self.volume.driver)
         self.assert_notify_called(mock_notify,
                                   (['INFO', 'volume.create.start'],
                                    ['INFO', 'volume.create.end'],
@@ -514,7 +518,8 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         snapshot.destroy()
         db.volume_destroy(self.context, volume_id)
 
-    def test_delete_busy_snapshot(self):
+    @mock.patch('cinder.utils.clean_snapshot_file_locks')
+    def test_delete_busy_snapshot(self, mock_clean):
         """Test snapshot can be created and deleted."""
 
         self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
@@ -540,9 +545,11 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
             self.assertEqual(fields.SnapshotStatus.AVAILABLE,
                              snapshot_ref.status)
             mock_del_snap.assert_called_once_with(snapshot)
+        mock_clean.assert_not_called()
 
+    @mock.patch('cinder.utils.clean_snapshot_file_locks')
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
-    def test_delete_no_dev_fails(self):
+    def test_delete_no_dev_fails(self, mock_clean):
         """Test delete snapshot with no dev file fails."""
         self.mock_object(os.path, 'exists', lambda x: False)
         self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
@@ -567,6 +574,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
             self.assertEqual(fields.SnapshotStatus.AVAILABLE,
                              snapshot_ref.status)
             mock_del_snap.assert_called_once_with(snapshot)
+        mock_clean.assert_not_called()
 
     def test_force_delete_snapshot(self):
         """Test snapshot can be forced to delete."""
@@ -618,7 +626,8 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                               self.context,
                               snap)
 
-    def test_delete_snapshot_driver_not_initialized(self):
+    @mock.patch('cinder.utils.clean_snapshot_file_locks')
+    def test_delete_snapshot_driver_not_initialized(self, mock_clean):
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         snapshot = tests_utils.create_snapshot(self.context, volume.id)
 
@@ -630,6 +639,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         snapshot.refresh()
         self.assertEqual(fields.SnapshotStatus.ERROR_DELETING,
                          snapshot.status)
+        mock_clean.assert_not_called()
 
     @ddt.data({'all_tenants': '1', 'name': 'snap1'},
               {'all_tenants': 'true', 'name': 'snap1'},

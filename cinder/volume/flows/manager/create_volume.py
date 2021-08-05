@@ -75,7 +75,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
     this volume elsewhere.
     """
 
-    def __init__(self, reschedule_context, db, driver, scheduler_rpcapi,
+    def __init__(self, reschedule_context, db, manager, scheduler_rpcapi,
                  do_reschedule):
         requires = ['filter_properties', 'request_spec', 'volume',
                     'context']
@@ -84,7 +84,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         self.do_reschedule = do_reschedule
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
-        self.driver = driver
+        self.manager = manager
         self.reschedule_context = reschedule_context
         # These exception types will trigger the volume to be set into error
         # status rather than being rescheduled.
@@ -175,7 +175,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         # host field will be erased. Just in case volume was already created at
         # the backend, we attempt to delete it.
         try:
-            self.driver.delete_volume(volume)
+            self.manager.driver_delete_volume(volume)
         except Exception:
             # Most likely the volume weren't created at the backend. We can
             # safely ignore this.
@@ -1257,7 +1257,7 @@ def get_flow(context, manager, db, driver, scheduler_rpcapi, host, volume,
     # status when reverting the flow. Meanwhile, no need to revert process of
     # ExtractVolumeRefTask.
     do_reschedule = allow_reschedule and request_spec and retry
-    volume_flow.add(OnFailureRescheduleTask(reschedule_context, db, driver,
+    volume_flow.add(OnFailureRescheduleTask(reschedule_context, db, manager,
                                             scheduler_rpcapi, do_reschedule))
 
     LOG.debug("Volume reschedule parameters: %(allow)s "

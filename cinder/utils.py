@@ -57,6 +57,7 @@ from oslo_utils import strutils
 from oslo_utils import timeutils
 import tenacity
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _
 
@@ -69,6 +70,48 @@ INFINITE_UNKNOWN_VALUES = ('infinite', 'unknown')
 
 
 synchronized = lockutils.synchronized_with_prefix('cinder-')
+synchronized_remove = lockutils.remove_external_lock_file_with_prefix(
+    'cinder-')
+
+
+def clean_volume_file_locks(volume_id, driver):
+    """Remove file locks used by Cinder.
+
+    This doesn't take care of driver locks, those should be handled in driver's
+    delete_volume method.
+    """
+    for name in (volume_id + '-delete_volume', volume_id,
+                 volume_id + '-detach_volume'):
+        try:
+            synchronized_remove(name)
+        except Exception as exc:
+            LOG.warning('Failed to cleanup volume lock %(name)s: %(exc)s',
+                        {'name': name, 'exc': exc})
+
+    try:
+        driver.clean_volume_file_locks(volume_id)
+    except Exception as exc:
+        LOG.warning('Failed to cleanup driver locks for volume %(id)s: '
+                    '%(exc)s', {'id': volume_id, 'exc': exc})
+
+
+def api_clean_volume_file_locks(volume_id):
+    coordination.synchronized_remove('attachment_update-' + volume_id + '-*')
+
+
+def clean_snapshot_file_locks(snapshot_id, driver):
+    try:
+        name = snapshot_id + '-delete_snapshot'
+        synchronized_remove(name)
+    except Exception as exc:
+        LOG.warning('Failed to cleanup snapshot lock %(name)s: %(exc)s',
+                    {'name': name, 'exc': exc})
+
+    try:
+        driver.clean_snapshot_file_locks(snapshot_id)
+    except Exception as exc:
+        LOG.warning('Failed to cleanup driver locks for snapshot %(id)s: '
+                    '%(exc)s', {'id': snapshot_id, 'exc': exc})
 
 
 def as_int(obj: Union[int, float, str], quiet: bool = True) -> int:
