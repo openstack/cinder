@@ -2229,12 +2229,26 @@ class API(base.Base):
         attachment_ref = self._attachment_reserve(ctxt,
                                                   volume_ref,
                                                   instance_uuid)
-        if connector:
-            connection_info = (
-                self.volume_rpcapi.attachment_update(ctxt,
-                                                     volume_ref,
-                                                     connector,
-                                                     attachment_ref.id))
+        try:
+            if connector:
+                connection_info = (
+                    self.volume_rpcapi.attachment_update(ctxt,
+                                                         volume_ref,
+                                                         connector,
+                                                         attachment_ref.id))
+        except exception.ConnectorRejected:
+            with excutils.save_and_reraise_exception() as exc_context:
+                if CONF.allow_migration_on_attach:
+                    LOG.info("The connector was rejected by the volume "
+                             "backend while updating the attachments. "
+                             "Trying to migrate it.")
+                    exc_context.reraise = False
+                    self._migrate_by_connector(ctxt, volume_ref, connector)
+                    connection_info =\
+                        self.volume_rpcapi.attachment_update(ctxt,
+                                                             volume_ref,
+                                                             connector,
+                                                             attachment_ref.id)
         attachment_ref.connection_info = connection_info
 
         # Use of admin_metadata for RO settings is deprecated
