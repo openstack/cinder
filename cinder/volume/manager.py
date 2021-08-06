@@ -45,6 +45,7 @@ from oslo_serialization import jsonutils
 from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import units
 from oslo_utils import uuidutils
@@ -4543,6 +4544,9 @@ class VolumeManager(manager.CleanableManager,
         self.db.volume_attachment_update(ctxt, attachment.id, values)
 
         connection_info['attachment_id'] = attachment.id
+        LOG.debug("Connection info returned from driver %(connection_info)s",
+                  {'connection_info':
+                   strutils.mask_dict_password(connection_info)})
         return connection_info
 
     def attachment_update(self,
