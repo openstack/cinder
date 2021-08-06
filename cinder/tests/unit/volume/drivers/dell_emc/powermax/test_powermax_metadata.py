@@ -13,7 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
 import platform
+import time
 from unittest import mock
 
 from cinder.objects import fields
@@ -24,6 +26,9 @@ from cinder import version as openstack_version
 from cinder.volume.drivers.dell_emc.powermax import metadata
 from cinder.volume.drivers.dell_emc.powermax import rest
 from cinder.volume.drivers.dell_emc.powermax import utils
+
+mock_time = mock.MagicMock()
+mock_time.return_value = time.mktime(datetime(1970, 1, 1).timetuple())
 
 
 class PowerMaxVolumeMetadataNoDebugTest(test.TestCase):
@@ -105,6 +110,32 @@ class PowerMaxVolumeMetadataDebugTest(test.TestCase):
             self.data.test_volume, {}, self.data.device_id,
             self.data.extra_specs)
         mock_uvim.assert_called_once()
+
+    @mock.patch.object(
+        metadata.PowerMaxVolumeMetadata, 'update_volume_info_metadata',
+        return_value={})
+    @mock.patch('time.time', mock_time)
+    def test_capture_manage_existing_no_backup_id(self, mock_uvim):
+        manage_existing_metadata = (
+            {'1e5177e7-95e5-4a0f-b170-e45f4b469f6a': {
+                'volume_id': '1e5177e7-95e5-4a0f-b170-e45f4b469f6a',
+                'successful_operation': 'manage_existing_volume',
+                'volume_size': 2, 'device_id': '00001',
+                'default_sg_name': 'OS-SRP_1-Diamond-NONE-SG',
+                'serial_number': '000197800123', 'service_level': 'Diamond',
+                'workload': 'None', 'srp': 'SRP_1',
+                'identifier_name': 'OS-1e5177e7-95e5-4a0f-b170-e45f4b469f6a',
+                'rdf_group_no': '70', 'target_name': 'test_vol',
+                'remote_array': '000197800124', 'target_device_id': '00002',
+                'rep_mode': 'Metro', 'replication_status': 'Enabled',
+                'rdf_group_label': '23_24_007',
+                'volume_updated_time': '1970-01-01 00:00:00'}})
+
+        self.volume_metadata.capture_manage_existing(
+            self.data.test_volume, self.data.rep_info_dict,
+            self.data.device_id,
+            self.data.extra_specs_no_workload)
+        mock_uvim.assert_called_with(manage_existing_metadata, {})
 
     @mock.patch.object(
         metadata.PowerMaxVolumeMetadata, 'update_volume_info_metadata',
