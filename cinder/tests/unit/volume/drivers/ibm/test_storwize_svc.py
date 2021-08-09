@@ -8790,7 +8790,7 @@ class StorwizeHelpersTestCase(test.TestCase):
             {'product_key':
                 storwize_const.DEV_MODEL_STORWIZE_V3500},
             {'product_key':
-                storwize_const.DEV_MODEL_STORWIZE_V3700},
+                storwize_const.DEV_MODEL_STORWIZE_V5000E},
             {'product_key':
                 storwize_const.DEV_MODEL_SVC},
             {'product_key':
@@ -8805,10 +8805,10 @@ class StorwizeHelpersTestCase(test.TestCase):
                 storwize_const.DEV_MODEL_FLASH_V9000},
             {'product_key':
                 storwize_const.DEV_MODEL_FLEX}]
-        for i in range(3):
+        for i in range(2):
             self.assertFalse(self.storwize_svc_common.replication_licensed())
 
-        for i in range(7):
+        for i in range(8):
             self.assertTrue(self.storwize_svc_common.replication_licensed())
 
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')

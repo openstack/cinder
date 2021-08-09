@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1938212
+    <https://bugs.launchpad.net/cinder/+bug/1938212>`_: Added
+    replication license support for FlashSystem V5000E storage
+    system. Removed support for IBM Storwize V3700 as it
+    reached End Of Service.
