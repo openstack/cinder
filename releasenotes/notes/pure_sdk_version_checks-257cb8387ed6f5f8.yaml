@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    Pure Storage FlashArray minimum ``purestorage`` SDK version increased
+    to 1.17.0
+fixes:
+  - |
+    Pure Storage FlashArray driver `bug #1929219
+    <https://bugs.launchpad.net/cinder/+bug/1929219>`_: Fixes issue with
+    incorrect internal mechanism for checking REST API of backend array.
+    This has no external effect for users.

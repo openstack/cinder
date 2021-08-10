@@ -97,7 +97,6 @@ PURE_HOST = {
     "iqn": [],
     "wwn": [],
 }
-REST_VERSION = "1.2"
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
 INITIATOR_WWN = "5001500150015081abc"
 ISCSI_CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
@@ -586,9 +585,15 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         self.driver._array = self.array
         self.driver._replication_pod_name = 'cinder-pod'
         self.driver._replication_pg_name = 'cinder-group'
-        self.array.get_rest_version.return_value = '1.4'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         self.purestorage_module.FlashArray.side_effect = None
-        self.async_array2.get_rest_version.return_value = '1.4'
+        self.async_array2._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
     def new_fake_vol(self, set_provider_id=True, fake_context=None,
                      spec=None, type_extra_specs=None, type_qos_specs_id=None,
@@ -761,7 +766,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         ]
         mock_target = mock.MagicMock()
         mock_target.get.return_value = GET_ARRAY_PRIMARY
-        mock_target.get_rest_version.return_value = '1.14'
+        mock_target._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         self.purestorage_module.FlashArray.return_value = mock_target
         self.driver.parse_replication_configs()
@@ -798,7 +806,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         ]
         mock_target = mock.MagicMock()
         mock_target.get.return_value = GET_ARRAY_PRIMARY
-        mock_target.get_rest_version.return_value = '1.14'
+        mock_target._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         self.purestorage_module.FlashArray.return_value = mock_target
         self.driver.parse_replication_configs()
@@ -859,9 +870,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         ]
         mock_sync_target = mock.MagicMock()
         mock_sync_target.get.return_value = GET_ARRAY_SECONDARY
-        mock_sync_target.get_rest_version.return_value = '1.14'
+        mock_sync_target._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         self.array.get.return_value = GET_ARRAY_PRIMARY
-        self.array.get_rest_version.return_value = '1.14'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         self.purestorage_module.FlashArray.side_effect = [self.array,
                                                           mock_sync_target]
         self.driver.do_setup(None)
@@ -1211,7 +1228,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         }]
 
         self.driver.delete_volume(vol)
-        expected = [mock.call.list_volume_private_connections(vol_name),
+        expected = [mock.call.list_volume_private_connections(vol_name,
+                                                              remote=True),
                     mock.call.disconnect_host(host_name_a, vol_name),
                     mock.call.list_host_connections(host_name_a, private=True),
                     mock.call.disconnect_host(host_name_b, vol_name),
@@ -1227,7 +1245,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol(type_extra_specs=type_spec)
         self.array.list_volume_private_connections.return_value = []
         # Set the array to be in a sync-rep enabled version
-        self.array.get_rest_version.return_value = "1.14"
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         self.driver.delete_volume(vol)
 
@@ -1267,11 +1288,14 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         ]
 
         # Set the array to be in a sync-rep enabled version
-        self.array.get_rest_version.return_value = "1.14"
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         self.driver.delete_volume(vol)
         expected = [
-            mock.call.get_rest_version(),
+            mock.call._list_available_rest_versions(),
             mock.call.list_volume_private_connections(vol_name, remote=True),
             mock.call.disconnect_host(host_name_a, vol_name),
             mock.call.list_host_connections(host_name_a, private=True),
@@ -2140,7 +2164,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                           snap, snap_ref)
 
     def test_manage_existing_snapshot_bad_api_version(self):
-        self.array.get_rest_version.return_value = '1.3'
+        self.array._list_available_rest_versions.return_value = ['1.0', '1.1',
+                                                                 '1.2']
         snap, _ = self.new_fake_snap()
         self.assertRaises(pure.PureDriverException,
                           self.driver.manage_existing_snapshot,
@@ -2199,7 +2224,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_manage_existing_snapshot_get_size_bad_api_version(self):
         snap, _ = self.new_fake_snap()
-        self.array.get_rest_version.return_value = '1.3'
+        self.array._list_available_rest_versions.return_value = ['1.0', '1.1',
+                                                                 '1.2']
         self.assertRaises(pure.PureDriverException,
                           self.driver.manage_existing_snapshot_get_size,
                           snap, {'name': PURE_SNAPSHOT['name']})
@@ -2248,7 +2274,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
 
     def test_unmanage_snapshot_bad_api_version(self):
         snap, _ = self.new_fake_snap()
-        self.array.get_rest_version.return_value = '1.3'
+        self.array._list_available_rest_versions.return_value = ['1.0', '1.1',
+                                                                 '1.2']
         self.assertRaises(pure.PureDriverException,
                           self.driver.unmanage_snapshot,
                           snap)
@@ -3068,7 +3095,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         san_ip = '1.2.3.4'
         api_token = 'abcdef'
         self.purestorage_module.FlashArray.return_value = mock.MagicMock()
-        self.purestorage_module.VERSION = "1.14.0"
+        self.purestorage_module.VERSION = "1.17.0"
 
         self.driver._get_flasharray(san_ip,
                                     api_token,
@@ -3177,7 +3204,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                           type_qos_specs_id=qos.id)
 
         mock_get_volume_type.return_value = vol.volume_type
-        self.array.get_rest_version.return_value = '1.17'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         mock_get_qos_specs.return_value = qos
         mock_get_repl_type.return_value = None
 
@@ -3207,7 +3237,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                                           type_qos_specs_id=qos.id)
 
         mock_get_volume_type.return_value = vol.volume_type
-        self.array.get_rest_version.return_value = '1.17'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         mock_get_qos_specs.return_value = qos
         mock_get_repl_type.return_value = None
 
@@ -3237,7 +3270,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_get_volume_type.return_value = vol.volume_type
         mock_get_qos_specs.return_value = qos
         self.array.list_volume_private_connections.return_value = []
-        self.array.get_rest_version.return_value = '1.17'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         self.driver.manage_existing(vol, volume_ref)
         self.array.list_volume_private_connections.assert_called_with(ref_name)
@@ -3254,7 +3290,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         new_type = fake_volume.fake_volume_type_obj(mock_context)
         new_type.qos_specs_id = qos.id
 
-        self.array.get_rest_version.return_value = '1.17'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
@@ -3278,7 +3317,10 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         vol, vol_name = self.new_fake_vol()
         new_type = fake_volume.fake_volume_type_obj(mock_context)
 
-        self.array.get_rest_version.return_value = '1.17'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
         get_voltype = "cinder.objects.volume_type.VolumeType.get_by_name_or_id"
         with mock.patch(get_voltype) as mock_get_vol_type:
             mock_get_vol_type.return_value = new_type
@@ -3582,13 +3624,19 @@ class PureISCSIDriverTestCase(PureBaseSharedDriverTestCase):
         self.mock_config.use_chap_auth = False
         self.mock_config.safe_get.return_value = 'oracle-vm-server'
 
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11']
         # Branch where we fail due to invalid version for setting personality
         self.assertRaises(pure.PureDriverException, self.driver._connect,
                           self.array, vol_name, ISCSI_CONNECTOR, None, None)
         self.assertFalse(self.array.create_host.called)
         self.assertFalse(self.array.set_host.called)
 
-        self.array.get_rest_version.return_value = '1.14'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         # Branch where personality is set
         self.driver._connect(self.array, vol_name, ISCSI_CONNECTOR,
@@ -3846,6 +3894,9 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
             self.driver._connect, self.array, vol_name, FC_CONNECTOR)
 
         self.mock_config.safe_get.return_value = 'oracle-vm-server'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11']
 
         # Branch where we fail due to invalid version for setting personality
         self.assertRaises(pure.PureDriverException, self.driver._connect,
@@ -3853,7 +3904,10 @@ class PureFCDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertTrue(self.array.create_host.called)
         self.assertFalse(self.array.set_host.called)
 
-        self.array.get_rest_version.return_value = '1.14'
+        self.array._list_available_rest_versions.return_value = [
+            '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8',
+            '1.9', '1.10', '1.11', '1.12', '1.13', '1.14', '1.15', '1.16',
+            '1.17', '1.18', '1.19']
 
         # Branch where personality is set
         self.driver._connect(self.array, vol_name, FC_CONNECTOR)
