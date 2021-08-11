@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver
+    `Bug #1924568 <https://bugs.launchpad.net/cinder/+bug/1924568>`_:
+    Fixed issues that occurred while creating volume on data reduction
+    pool.

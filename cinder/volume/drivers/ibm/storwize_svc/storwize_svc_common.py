@@ -6025,10 +6025,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
             # Get the data_reduction information for pool and set
             # is_dr_pool flag.
-            if pool_data.get('data_reduction') == 'Yes':
-                is_dr_pool = True
-            elif pool_data.get('data_reduction') == 'No':
-                is_dr_pool = False
+            if pool_data.get('data_reduction'):
+                is_dr_pool = pool_data.get('data_reduction').lower() == 'yes'
 
             pool_stats = {
                 'pool_name': pool_data['name'],
