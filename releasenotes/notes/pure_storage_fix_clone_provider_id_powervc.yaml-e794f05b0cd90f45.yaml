@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Pure Storage FlashArray driver `bug #1938579
+    <https://bugs.launchpad.net/cinder/+bug/1938579>`_: Fixes issue when
+    cloning multiple volumes in PowerVC deployments.

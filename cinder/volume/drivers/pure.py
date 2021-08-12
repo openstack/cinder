@@ -446,6 +446,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         vol_updates = []
         for vol in volumes:
             if not vol.provider_id:
+                vol.provider_id = self._get_vol_name(vol)
                 vol_updates.append({
                     'id': vol.id,
                     'provider_id': self._generate_purity_vol_name(vol),
