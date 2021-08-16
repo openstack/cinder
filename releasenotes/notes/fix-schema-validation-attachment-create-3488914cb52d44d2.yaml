@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed the schema validation for attachment create API
+    to make instance uuid an optional field. It had mistakenly
+    been defined as a required field when schema validation
+    was added in an earlier release.
+    Also updated the schema to allow specification of the ``mode``
+    parameter, which has been available since microversion >= 3.54,
+    but which was not recognized as a legitimate request field.
