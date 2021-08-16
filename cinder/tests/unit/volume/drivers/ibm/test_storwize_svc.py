@@ -96,7 +96,8 @@ class StorwizeSVCManagementSimulator(object):
             'lslicense': '',
             'lsguicapabilities': '',
             'lshost': '',
-            'lsrcrelationship': ''
+            'lsrcrelationship': '',
+            'expandvdisksize': ''
         }
         self._errors = {
             'CMMVC5701E': ('', 'CMMVC5701E No object ID was specified.'),
@@ -167,6 +168,14 @@ class StorwizeSVCManagementSimulator(object):
                                'is not in a group.'),
             'CMMVC9012E': ('', 'CMMVC9012E The copy type differs from other '
                                'copies already in the consistency group.'),
+            'CMMVC9201E': ('', 'CMMVC9201E Task failed because volume has a '
+                               'copy that is fully allocated and is part of a '
+                               'Metro Mirror or Global Mirror relationship.'),
+            'CMMVC8587E': ('', 'CMMVC8587E The command failed because the '
+                               'volume is fast formatting.'),
+            'CMMVC8783E': ('', 'CMMVC8783E The volume copy was not deleted '
+                               'because the volume is part of a consistency '
+                               'group.'),
         }
         self._fc_transitions = {'begin': {'make': 'idle_or_copied'},
                                 'idle_or_copied': {'prepare': 'preparing',
@@ -1040,6 +1049,14 @@ port_speed!N/A
 
         if vol_name not in self._volumes_list:
             return self._errors['CMMVC5753E']
+
+        vol = self._volumes_list[kwargs['obj']]
+        if self._next_cmd_error['expandvdisksize'] == 'fast_formatting':
+            if vol['RC_name']:
+                rcrel = self._rcrelationship_list[vol['RC_name']]
+                if rcrel.get('copy_type', None):
+                    return self._errors['CMMVC9201E']
+            return self._errors['CMMVC8587E']
 
         curr_size = int(self._volumes_list[vol_name]['capacity'])
         addition = size * units.Gi
@@ -2968,6 +2985,11 @@ port_speed!N/A
             return self._errors['CMMVC5701E']
         vol_name = kwargs['obj'].strip('\'\"')
         site1_volume_info = self._volumes_list[vol_name]
+        if site1_volume_info['RC_name']:
+            rcrel = self._rcrelationship_list[site1_volume_info['RC_name']]
+            if rcrel.get('consistency_group_name', None):
+                return self._errors['CMMVC8783E']
+
         site2_volume_info = self._volumes_list['site2' + vol_name]
 
         del self._rcrelationship_list[self._volumes_list[vol_name]['RC_name']]
@@ -2989,6 +3011,9 @@ port_speed!N/A
             del self._fcmappings_list[site2fcmap['id']]
 
         del site2_volume_info
+        del self._volumes_list['site2' + vol_name]
+        del self._volumes_list['fcsite1' + vol_name]
+        del self._volumes_list['fcsite2' + vol_name]
         site1_volume_info['RC_name'] = ''
         site1_volume_info['RC_id'] = ''
         return ('', '')
@@ -7842,12 +7867,78 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                 'system_id': '0123456789ABCDEF'}
             get_system_info.return_value = fake_system_info
             self.driver.do_setup(None)
-
-        hyper_type = self._create_hyperswap_type('test_hyperswap_type')
-        vol = self._create_hyperswap_volume(hyper_type)
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap2'}
+        vol_type_ref = volume_types.create(self.ctxt, 'test_hyperswap_type',
+                                           spec)
+        vol = self._create_hyperswap_volume(vol_type_ref)
         self._assert_vol_exists(vol.name, True)
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.extend_volume, vol, '16')
+
+        self.driver.extend_volume(vol, '13')
+        attrs = self.driver._helpers.get_vdisk_attributes(vol['name'])
+        vol_size = int(attrs['capacity']) / units.Gi
+        self.assertAlmostEqual(vol_size, 13)
+        self.driver.delete_volume(vol)
+
+        # Extend hyperswap volume with thick_provisioning_support.
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap2',
+                'drivers:rsize': -1}
+        hs_thick_type = volume_types.create(
+            self.ctxt, 'test_hyperswap_thick_type', spec)
+        hs_vol = self._create_hyperswap_volume(hs_thick_type)
+        self._assert_vol_exists(hs_vol.name, True)
+
+        if self.USESIM:
+            # tell expandvdisksize to fail while called extend_volume
+            # because volume is fast formatting
+            self.sim.error_injection('expandvdisksize', 'fast_formatting')
+            self.assertRaises(exception.VolumeDriverException,
+                              self.driver.extend_volume, hs_vol, 15)
+            attrs = self.driver._helpers.get_vdisk_attributes(hs_vol['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 1)
+        self.driver.delete_volume(hs_vol)
+
+        # Extend hyperswap volume that added to group.
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'extend_vdisk') as extend_vdisk:
+            group_specs = {'hyperswap_group_enabled': '<is> True'}
+            group_type_ref = group_types.create(self.ctxt, 'testgroup',
+                                                group_specs)
+            hyper_group = testutils.create_group(
+                self.ctxt, name='hypergroup',
+                group_type_id=group_type_ref['id'],
+                volume_type_ids=[vol_type_ref['id']])
+            model_update = self.driver.create_group(self.ctxt, hyper_group)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+
+            vol = self._create_hyperswap_volume(vol_type_ref)
+            self.db.volume_update(context.get_admin_context(), vol['id'],
+                                  {'group_id': hyper_group.id})
+            add_volumes = [vol]
+            del_volumes = []
+
+            (model_update, add_volumes_update,
+             remove_volumes_update) = self.driver.update_group(self.ctxt,
+                                                               hyper_group,
+                                                               add_volumes,
+                                                               del_volumes)
+            self.assertEqual(fields.GroupStatus.AVAILABLE,
+                             model_update['status'])
+            self.assertEqual([{'id': vol.id, 'group_id': hyper_group.id}],
+                             add_volumes_update)
+            self.assertEqual([], remove_volumes_update)
+
+            self.assertRaises(exception.VolumeDriverException,
+                              self.driver.extend_volume, vol, 15)
+
+            self.assertFalse(extend_vdisk.called)
+            attrs = self.driver._helpers.get_vdisk_attributes(vol['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 1)
+            self.driver.delete_volume(vol)
 
     def test_migrate_hyperswap_volume(self):
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,

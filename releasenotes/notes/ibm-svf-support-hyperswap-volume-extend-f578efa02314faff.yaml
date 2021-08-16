@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added volume-extend support for
+    volumes created using a HyperSwap volume-type template.
