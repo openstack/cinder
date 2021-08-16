@@ -17,6 +17,7 @@
 Classes and utility methods for datastore selection.
 """
 
+from collections.abc import Iterable
 import random
 
 from oslo_log import log as logging
@@ -99,6 +100,43 @@ class DatastoreSelector(object):
         hub_ids = [hub.hubId for hub in hubs]
         return {k: v for k, v in datastores.items()
                 if vim_util.get_moref_value(k) in hub_ids}
+
+    def is_host_in_buildup_cluster(self, host_ref, cache=None):
+        host_cluster = self._vops._get_parent(host_ref,
+                                              "ClusterComputeResource")
+        if cache is not None and host_cluster.value in cache:
+            return cache[host_cluster.value]
+
+        attrs = self._vops.get_cluster_custom_attributes(host_cluster)
+        LOG.debug("attrs {}".format(attrs))
+
+        def bool_from_str(bool_str):
+            if bool_str.lower() == "true":
+                return True
+            else:
+                return False
+
+        result = (attrs and 'buildup' in attrs and
+                  bool_from_str(attrs['buildup']['value']))
+        if cache is not None:
+            cache[host_cluster.value] = result
+        return result
+
+    def _filter_hosts(self, hosts):
+        """Filter out any hosts that are in a cluster marked buildup."""
+
+        valid_hosts = []
+        cache = {}
+        if hosts:
+            if isinstance(hosts, Iterable):
+                for host in hosts:
+                    if not self.is_host_in_buildup_cluster(host, cache):
+                        valid_hosts.append(host)
+            else:
+                if not self.is_host_in_buildup_cluster(hosts, cache):
+                    valid_hosts.append(hosts)
+
+        return valid_hosts
 
     def _filter_datastores(self,
                            datastores,
@@ -290,13 +328,18 @@ class DatastoreSelector(object):
             profile_id = self.get_profile_id(profile_name)
 
         datastores = self._get_datastores()
+        # We don't want to use hosts in buildup
+        LOG.debug("FILTER hosts start {}".format(hosts))
+        valid_hosts = self._filter_hosts(hosts)
+        LOG.debug("FILTERED hosts valid {}".format(valid_hosts))
         datastores = self._filter_datastores(datastores,
                                              size_bytes,
                                              profile_id,
                                              hard_anti_affinity_datastores,
                                              hard_affinity_ds_types,
-                                             valid_host_refs=hosts)
-        res = self._select_best_datastore(datastores, valid_host_refs=hosts)
+                                             valid_host_refs=valid_hosts)
+        res = self._select_best_datastore(datastores,
+                                          valid_host_refs=valid_hosts)
         LOG.debug("Selected (host, resourcepool, datastore): %s", res)
         return res
 

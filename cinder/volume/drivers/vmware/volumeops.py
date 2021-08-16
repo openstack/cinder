@@ -1886,6 +1886,33 @@ class VMwareVolumeOps(object):
 
         return host_refs
 
+    def get_cluster_custom_attributes(self, cluster):
+        retrieve_fields = self._session.invoke_api(vim_util,
+                                                   'get_object_property',
+                                                   self._session.vim,
+                                                   cluster,
+                                                   'availableField')
+        if retrieve_fields:
+            custom_fields = {}
+            for field in retrieve_fields:
+                for v in field[1]:
+                    custom_fields[v.key] = v.name
+
+            retrieve_result = self._session.invoke_api(vim_util,
+                                                       'get_object_property',
+                                                       self._session.vim,
+                                                       cluster,
+                                                       'customValue')
+            if retrieve_result:
+                custom_attributes = {}
+                for val in retrieve_result:
+                    for i in val[1]:
+                        custom_attributes[custom_fields[i.key]] = {
+                            "value": i.value, 'id': i.key
+                        }
+
+                return custom_attributes
+
     def get_entity_by_inventory_path(self, path):
         """Returns the managed object identified by the given inventory path.
 
