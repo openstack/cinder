@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver
+    `Bug #1926286 <https://bugs.launchpad.net/cinder/+bug/1926286>`_:
+    Fixed an issue while fetching relationship details of a volume with
+    replication enabled.
