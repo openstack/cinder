@@ -5470,6 +5470,45 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                     if 'CMMVC7050E' not in e.stderr:
                         raise
 
+    @ddt.data(('yes'), ('Yes'), ('no'), ('NO'), (''))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_pool_attrs')
+    def test_build_pool_stats_drp(self, is_drp, get_pool_attrs):
+        get_pool_attrs.return_value = {'id': 1, 'name': 'openstack',
+                                       'data_reduction': is_drp,
+                                       'easy_tier': 'on',
+                                       'capacity': '20',
+                                       'free_capacity': '40',
+                                       'used_capacity': '0',
+                                       'real_capacity': '0',
+                                       'virtual_capacity': '0',
+                                       'status': 'online',
+                                       'site_id': '1',
+                                       'site_name': 'site1'}
+        pool = 'openstack'
+        pool_stats = self.driver._build_pool_stats(pool)
+        if is_drp in ['yes', 'Yes']:
+            self.assertTrue(pool_stats['data_reduction'])
+        else:
+            self.assertFalse(pool_stats['data_reduction'])
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_pool_attrs')
+    def test_build_pool_stats_drp_none(self, get_pool_attrs):
+        get_pool_attrs.return_value = {'id': 1, 'name': 'openstack1',
+                                       'easy_tier': 'on',
+                                       'capacity': '20',
+                                       'free_capacity': '40',
+                                       'used_capacity': '0',
+                                       'real_capacity': '0',
+                                       'virtual_capacity': '0',
+                                       'status': 'online',
+                                       'site_id': '1',
+                                       'site_name': 'site1'}
+        pool = 'openstack1'
+        pool_stats = self.driver._build_pool_stats(pool)
+        self.assertFalse(pool_stats['data_reduction'])
+
     @ddt.data(('IOPs_limit', "50"), ('bandwidth_limit_MB', "100"))
     @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_pool_volumes')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsthrottle')
