@@ -456,7 +456,7 @@ class BrickLvmTestCase(test.TestCase):
 
     @ddt.data(True, False)
     def test_lv_extend(self, has_snapshot):
-        with mock.patch.object(self.vg, '_execute'):
+        with mock.patch.object(self.vg, '_execute', return_value=('', '')):
             with mock.patch.object(self.vg, 'lv_has_snapshot'):
                 self.vg.deactivate_lv = mock.MagicMock()
                 self.vg.activate_lv = mock.MagicMock()
