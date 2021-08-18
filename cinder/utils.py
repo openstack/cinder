@@ -628,7 +628,11 @@ class retry_if_exit_code(tenacity.retry_if_exception):
                 exc.exit_code in self.codes)
 
 
-def retry(retry_param: Optional[Type[Exception]],
+def retry(retry_param: Union[None,
+                             Type[Exception],
+                             Tuple[Type[Exception], ...],
+                             int,
+                             Tuple[int, ...]],
           interval: int = 1,
           retries: int = 3,
           backoff_rate: int = 2,
