@@ -21,7 +21,6 @@ from ddt import ddt
 from ddt import unpack
 import eventlet
 from lxml import etree as ET
-from oslo_config import cfg
 from oslo_utils import units
 import requests
 import six
@@ -32,8 +31,6 @@ from cinder.tests.unit import test
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import qnap
-
-CONF = cfg.CONF
 
 FAKE_LUNNAA = {'LUNNAA': 'fakeLunNaa'}
 FAKE_SNAPSHOT = {'snapshot_id': 'fakeSnapshotId'}

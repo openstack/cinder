@@ -22,7 +22,6 @@ from unittest import mock
 
 import ddt
 import eventlet
-from oslo_config import cfg
 import requests
 
 from cinder import context
@@ -34,8 +33,6 @@ from cinder.volume import configuration
 from cinder.volume.drivers.inspur.as13000 import as13000_driver
 from cinder.volume import volume_utils
 
-
-CONF = cfg.CONF
 
 test_config = configuration.Configuration(None)
 test_config.san_ip = 'some_ip'

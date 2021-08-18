@@ -14,13 +14,10 @@ import inspect
 from itertools import chain
 
 import ddt
-from oslo_config import cfg
 
 from cinder import exception
 from cinder.message import message_field
 from cinder.tests.unit import test
-
-CONF = cfg.CONF
 
 
 @ddt.ddt

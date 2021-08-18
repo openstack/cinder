@@ -12,8 +12,6 @@
 
 from unittest import mock
 
-from oslo_config import cfg
-
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -24,8 +22,6 @@ from cinder.tests.unit import test
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf
-
-CONF = cfg.CONF
 
 
 class AttachmentManagerTestCase(test.TestCase):

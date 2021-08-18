@@ -18,7 +18,6 @@ import time
 from unittest import mock
 
 import ddt
-from oslo_config import cfg
 from oslo_utils import units
 
 from cinder import context
@@ -33,8 +32,6 @@ from cinder.volume.drivers.kaminario import kaminario_common
 from cinder.volume.drivers.kaminario import kaminario_fc
 from cinder.volume.drivers.kaminario import kaminario_iscsi
 from cinder.volume import volume_utils
-
-CONF = cfg.CONF
 
 CONNECTOR = {'initiator': 'iqn.1993-08.org.debian:01:12aa12aa12aa',
              'ip': '192.168.2.5', 'platform': 'x86_64', 'host': 'test-k2',
