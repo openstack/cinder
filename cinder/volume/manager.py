@@ -38,6 +38,7 @@ intact.
 import functools
 import time
 import typing as ty
+from typing import Optional
 
 from castellan import key_manager
 from oslo_config import cfg
@@ -261,6 +262,7 @@ class VolumeManager(manager.CleanableManager,
         self.service_uuid = None
 
         self.cluster: str
+        self.image_volume_cache: Optional[image_cache.ImageVolumeCache]
 
         if not volume_driver:
             # Get from configuration, which will get the default
@@ -1548,6 +1550,7 @@ class VolumeManager(manager.CleanableManager,
         This assumes that the image has already been downloaded and stored
         in the volume described by the volume_ref.
         """
+        assert self.image_volume_cache is not None
         cache_entry = self.image_volume_cache.get_entry(ctx,
                                                         volume_ref,
                                                         image_id,

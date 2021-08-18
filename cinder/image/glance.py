@@ -23,8 +23,10 @@ import shutil
 import sys
 import textwrap
 import time
-import typing as ty
+import typing
+from typing import Any, Dict, Tuple  # noqa: H301
 import urllib
+import urllib.parse
 
 import glanceclient.exc
 from keystoneauth1.loading import session as ks_session
@@ -304,7 +306,9 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_exception()
 
-    def show(self, context, image_id):
+    def show(self,
+             context: context.RequestContext,
+             image_id: str) -> Dict[str, Any]:
         """Returns a dict with image data for the given opaque image id."""
         try:
             image = self._client.call(context, 'get', image_id)
@@ -352,6 +356,7 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
 
+    @typing.no_type_check
     def download(self, context, image_id, data=None):
         """Calls out to Glance for data and writes data."""
         if data and 'file' in CONF.allowed_direct_url_schemes:
@@ -452,7 +457,7 @@ class GlanceImageService(object):
             raise exception.ImageNotFound(image_id=image_id)
         return True
 
-    def _translate_from_glance(self, context, image):
+    def _translate_from_glance(self, context, image) -> dict:
         """Get image metadata from glance image.
 
         Extract metadata from image and convert it's properties
@@ -595,7 +600,7 @@ def _extract_attributes(image):
                         'visibility',
                         'cinder_encryption_key_id']
 
-    output = {}
+    output: Dict[str, Any] = {}
 
     for attr in IMAGE_ATTRIBUTES:
         if attr == 'deleted_at' and not output['deleted']:
@@ -656,7 +661,7 @@ def _translate_plain_exception(exc_value):
 
 
 def get_remote_image_service(context: context.RequestContext,
-                             image_href) -> ty.Tuple[GlanceImageService, str]:
+                             image_href) -> Tuple[GlanceImageService, str]:
     """Create an image_service and parse the id from the given image_href.
 
     The image_href param can be an href of the form

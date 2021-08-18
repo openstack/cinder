@@ -12,11 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from typing import Optional
+
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from pytz import timezone
 
+from cinder import context
 from cinder import objects
 from cinder import rpc
 from cinder import utils
@@ -27,18 +30,25 @@ LOG = logging.getLogger(__name__)
 
 
 class ImageVolumeCache(object):
-    def __init__(self, db, volume_api, max_cache_size_gb=0,
-                 max_cache_size_count=0):
+    def __init__(self,
+                 db,
+                 volume_api,
+                 max_cache_size_gb: int = 0,
+                 max_cache_size_count: int = 0):
         self.db = db
         self.volume_api = volume_api
         self.max_cache_size_gb = int(max_cache_size_gb)
         self.max_cache_size_count = int(max_cache_size_count)
         self.notifier = rpc.get_notifier('volume', CONF.host)
 
-    def get_by_image_volume(self, context, volume_id):
+    def get_by_image_volume(self,
+                            context: context.RequestContext,
+                            volume_id: str):
         return self.db.image_volume_cache_get_by_volume_id(context, volume_id)
 
-    def evict(self, context, cache_entry):
+    def evict(self,
+              context: context.RequestContext,
+              cache_entry: dict) -> None:
         LOG.debug('Evicting image cache entry: %(entry)s.',
                   {'entry': self._entry_to_str(cache_entry)})
         self.db.image_volume_cache_delete(context, cache_entry['volume_id'])
@@ -46,12 +56,16 @@ class ImageVolumeCache(object):
                                     cache_entry['host'])
 
     @staticmethod
-    def _get_query_filters(volume_ref):
+    def _get_query_filters(volume_ref: objects.Volume) -> dict:
         if volume_ref.is_clustered:
             return {'cluster_name': volume_ref.cluster_name}
         return {'host': volume_ref.host}
 
-    def get_entry(self, context, volume_ref, image_id, image_meta):
+    def get_entry(self,
+                  context: context.RequestContext,
+                  volume_ref: objects.Volume,
+                  image_id: str,
+                  image_meta: dict) -> Optional[dict]:
         cache_entry = self.db.image_volume_cache_get_and_update_last_used(
             context,
             image_id,
@@ -77,7 +91,11 @@ class ImageVolumeCache(object):
                                     volume_ref['host'])
         return cache_entry
 
-    def create_cache_entry(self, context, volume_ref, image_id, image_meta):
+    def create_cache_entry(self,
+                           context: context.RequestContext,
+                           volume_ref: objects.Volume,
+                           image_id: str,
+                           image_meta: dict) -> dict:
         """Create a new cache entry for an image.
 
         This assumes that the volume described by volume_ref has already been
@@ -112,7 +130,9 @@ class ImageVolumeCache(object):
                   {'entry': self._entry_to_str(cache_entry)})
         return cache_entry
 
-    def ensure_space(self, context, volume):
+    def ensure_space(self,
+                     context: context.RequestContext,
+                     volume: objects.Volume) -> bool:
         """Makes room for a volume cache entry.
 
         Returns True if successful, false otherwise.
@@ -184,19 +204,32 @@ class ImageVolumeCache(object):
         return True
 
     @utils.if_notifications_enabled
-    def _notify_cache_hit(self, context, image_id, host):
+    def _notify_cache_hit(self,
+                          context: context.RequestContext,
+                          image_id: str,
+                          host: str) -> None:
         self._notify_cache_action(context, image_id, host, 'hit')
 
     @utils.if_notifications_enabled
-    def _notify_cache_miss(self, context, image_id, host):
+    def _notify_cache_miss(self,
+                           context: context.RequestContext,
+                           image_id: str,
+                           host: str) -> None:
         self._notify_cache_action(context, image_id, host, 'miss')
 
     @utils.if_notifications_enabled
-    def _notify_cache_eviction(self, context, image_id, host):
+    def _notify_cache_eviction(self,
+                               context: context.RequestContext,
+                               image_id: str,
+                               host: str) -> None:
         self._notify_cache_action(context, image_id, host, 'evict')
 
     @utils.if_notifications_enabled
-    def _notify_cache_action(self, context, image_id, host, action):
+    def _notify_cache_action(self,
+                             context: context.RequestContext,
+                             image_id: str,
+                             host: str,
+                             action: str) -> None:
         data = {
             'image_id': image_id,
             'host': host,
@@ -205,14 +238,18 @@ class ImageVolumeCache(object):
                   ' data=%(data)s.', {'action': action, 'data': data})
         self.notifier.info(context, 'image_volume_cache.%s' % action, data)
 
-    def _delete_image_volume(self, context, cache_entry):
+    def _delete_image_volume(self,
+                             context: context.RequestContext,
+                             cache_entry: dict) -> None:
         """Delete a volume and remove cache entry."""
         volume = objects.Volume.get_by_id(context, cache_entry['volume_id'])
 
         # Delete will evict the cache entry.
         self.volume_api.delete(context, volume)
 
-    def _should_update_entry(self, cache_entry, image_meta):
+    def _should_update_entry(self,
+                             cache_entry: dict,
+                             image_meta: dict) -> bool:
         """Ensure that the cache entry image data is still valid."""
         image_updated_utc = (image_meta['updated_at']
                              .astimezone(timezone('UTC')))
@@ -226,7 +263,7 @@ class ImageVolumeCache(object):
 
         return image_updated_utc != cache_updated_utc
 
-    def _entry_to_str(self, cache_entry):
+    def _entry_to_str(self, cache_entry: dict) -> str:
         return str({
             'id': cache_entry['id'],
             'image_id': cache_entry['image_id'],
