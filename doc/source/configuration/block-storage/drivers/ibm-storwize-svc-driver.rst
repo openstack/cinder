@@ -2,11 +2,14 @@
 IBM Spectrum Virtualize Family volume driver
 ============================================
 
-The volume management driver for Spectrum Virtualize Family
-provides OpenStack Compute instances with access to IBM Spectrum Virtualize
-Family. These products include the IBM SAN Volume Controller, IBM FlashSystem
-family members built with IBM Spectrum Virtualize (FlashSystem 5010, 5030,
-5100, 7200, 9100, 9200, 9200R), and IBM Spectrum Virtualize for Public Cloud.
+The volume management driver for Spectrum Virtualize Family offers various
+block storage services. It provides OpenStack Compute instances with access
+to IBM Spectrum Virtualize Family storage products.These products include the
+IBM SAN Volume Controller, IBM FlashSystem family members built with IBM
+Spectrum Virtualize (including FlashSystem 5xxx,7200, 9100, 9200, 9200R), and
+IBM Spectrum Virtualize for Public Cloud.
+
+For specific product publications, see IBM Documentation.
 
 .. note::
    IBM Spectrum Virtualize Family is formerly known as IBM Storwize.
@@ -291,6 +294,12 @@ use them. The following ``extra specs`` are supported:
    .. code-block:: ini
 
       capabilities:compression_support='<is> True'
+
+.. note::
+
+   Currently, the compression_enabled() API that indicates compression_license
+   support is not fully functional. It does not work on all storage types.
+   Additional functionalities will be added in a later release.
 
 -  ``capabilities:easytier_support`` - Similar semantics as the
    ``compression_support`` key, but for specifying according to support
