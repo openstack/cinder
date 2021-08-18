@@ -875,7 +875,7 @@ class VolumeManager(manager.CleanableManager,
                       context: context.RequestContext,
                       volume: objects.volume.Volume,
                       unmanage_only=False,
-                      cascade=False) -> None:
+                      cascade=False):
         """Deletes and unexports volume.
 
         1. Delete a volume(normal case)
@@ -1277,7 +1277,7 @@ class VolumeManager(manager.CleanableManager,
                         context: context.RequestContext,
                         snapshot: objects.Snapshot,
                         unmanage_only: bool = False,
-                        handle_quota: bool = True) -> None:
+                        handle_quota: bool = True):
         """Deletes and unexports snapshot."""
         context = context.elevated()
         snapshot._context = context

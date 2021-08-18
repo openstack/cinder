@@ -133,7 +133,8 @@ def as_int(obj: Union[int, float, str], quiet: bool = True) -> int:
     return obj
 
 
-def check_exclusive_options(**kwargs: dict) -> None:
+def check_exclusive_options(
+        **kwargs: Optional[Union[dict, str, bool]]) -> None:
     """Checks that only one of the provided options is actually not-none.
 
     Iterates over all the kwargs passed in and checks that only one of said

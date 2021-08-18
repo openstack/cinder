@@ -10,15 +10,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from typing import Any, Dict, List, Optional, Tuple, Type, Union  # noqa: H301
+
 from oslo_config import cfg
 from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
+from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _
+from cinder.image import glance
 from cinder import objects
 from cinder.objects import fields
 from cinder.policies import volumes as policy
@@ -68,15 +72,20 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             'refresh_az', 'backup_id', 'availability_zones',
                             'multiattach'])
 
-    def __init__(self, image_service, availability_zones, **kwargs):
+    def __init__(self,
+                 image_service: glance.GlanceImageService,
+                 availability_zones, **kwargs) -> None:
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
                                                        **kwargs)
         self.image_service = image_service
         self.availability_zones = availability_zones
 
     @staticmethod
-    def _extract_resource(resource, allowed_vals, exc, resource_name,
-                          props=('status',)):
+    def _extract_resource(resource: Optional[dict],
+                          allowed_vals: Tuple[Tuple[str, ...]],
+                          exc: Type[exception.CinderException],
+                          resource_name: str,
+                          props: Tuple[str] = ('status',)) -> Optional[str]:
         """Extracts the resource id from the provided resource.
 
         This method validates the input resource dict and checks that the
@@ -109,36 +118,51 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 resource_id = resource['id']
         return resource_id
 
-    def _extract_consistencygroup(self, consistencygroup):
+    def _extract_consistencygroup(
+            self,
+            consistencygroup: Optional[dict]) -> Optional[str]:
         return self._extract_resource(consistencygroup, (CG_PROCEED_STATUS,),
                                       exception.InvalidConsistencyGroup,
                                       'consistencygroup')
 
-    def _extract_group(self, group):
+    def _extract_group(
+            self,
+            group: Optional[dict]) -> Optional[str]:
         return self._extract_resource(group, (GROUP_PROCEED_STATUS,),
                                       exception.InvalidGroup,
                                       'group')
 
-    def _extract_cgsnapshot(self, cgsnapshot):
+    def _extract_cgsnapshot(
+            self,
+            cgsnapshot: Optional[dict]) -> Optional[str]:
         return self._extract_resource(cgsnapshot, (CGSNAPSHOT_PROCEED_STATUS,),
                                       exception.InvalidCgSnapshot,
                                       'CGSNAPSHOT')
 
-    def _extract_snapshot(self, snapshot):
+    def _extract_snapshot(
+            self,
+            snapshot: Optional[dict]) -> Optional[str]:
         return self._extract_resource(snapshot, (SNAPSHOT_PROCEED_STATUS,),
                                       exception.InvalidSnapshot, 'snapshot')
 
-    def _extract_source_volume(self, source_volume):
+    def _extract_source_volume(
+            self,
+            source_volume: Optional[dict]) -> Optional[str]:
         return self._extract_resource(source_volume, (SRC_VOL_PROCEED_STATUS,),
                                       exception.InvalidVolume, 'source volume')
 
-    def _extract_backup(self, backup):
+    def _extract_backup(
+            self,
+            backup: Optional[dict]) -> Optional[str]:
         return self._extract_resource(backup, (BACKUP_PROCEED_STATUS,),
                                       exception.InvalidBackup,
                                       'backup')
 
     @staticmethod
-    def _extract_size(size, source_volume, snapshot, backup):
+    def _extract_size(size: int,
+                      source_volume: Optional[objects.Volume],
+                      snapshot: Optional[objects.Snapshot],
+                      backup: Optional[objects.Backup]) -> int:
         """Extracts and validates the volume size.
 
         This function will validate or when not provided fill in the provided
@@ -146,7 +170,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         validation on the size that is found and returns said validated size.
         """
 
-        def validate_snap_size(size):
+        def validate_snap_size(size: int) -> None:
             if snapshot and size < snapshot.volume_size:
                 msg = _("Volume size '%(size)s'GB cannot be smaller than"
                         " the snapshot size %(snap_size)sGB. "
@@ -155,7 +179,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                              'snap_size': snapshot.volume_size}
                 raise exception.InvalidInput(reason=msg)
 
-        def validate_source_size(size):
+        def validate_source_size(size: int) -> None:
             if source_volume and size < source_volume['size']:
                 msg = _("Volume size '%(size)s'GB cannot be smaller than "
                         "original volume size  %(source_size)sGB. "
@@ -164,7 +188,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                              'source_size': source_volume['size']}
                 raise exception.InvalidInput(reason=msg)
 
-        def validate_backup_size(size):
+        def validate_backup_size(size: int) -> None:
             if backup and size < backup['size']:
                 msg = _("Volume size %(size)sGB cannot be smaller than "
                         "the backup size %(backup_size)sGB. "
@@ -173,7 +197,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                              'backup_size': backup['size']}
                 raise exception.InvalidInput(reason=msg)
 
-        def validate_int(size):
+        def validate_int(size: int) -> None:
             if not isinstance(size, int) or size <= 0:
                 msg = _("Volume size '%(size)s' must be an integer and"
                         " greater than 0") % {'size': size}
@@ -206,7 +230,10 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             func(size)
         return size
 
-    def _get_image_metadata(self, context, image_id, size):
+    def _get_image_metadata(self,
+                            context: context.RequestContext,
+                            image_id: Optional[str],
+                            size: int) -> Optional[Dict[str, Any]]:
         """Checks image existence and validates the image metadata.
 
         Returns: image metadata or None
@@ -224,8 +251,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         return image_meta
 
-    def _extract_availability_zones(self, availability_zone, snapshot,
-                                    source_volume, group, volume_type=None):
+    def _extract_availability_zones(
+            self,
+            availability_zone: Optional[str],
+            snapshot,
+            source_volume,
+            group: Optional[dict],
+            volume_type: Dict[str, Any] = None) -> Tuple[List[str], bool]:
         """Extracts and returns a validated availability zone list.
 
         This function will extract the availability zone (if not provided) from
@@ -238,6 +270,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             volume_type)
         type_az_configured = type_azs is not None
         if type_az_configured:
+            assert type_azs is not None
             safe_azs = list(
                 set(type_azs).intersection(self.availability_zones))
             if not safe_azs:
@@ -317,11 +350,17 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         else:
             return safe_azs, refresh_az
 
-    def _get_encryption_key_id(self, key_manager, context, volume_type_id,
-                               snapshot, source_volume,
-                               image_metadata):
-        encryption_key_id = None
+    def _get_encryption_key_id(
+            self,
+            key_manager,
+            context: context.RequestContext,
+            volume_type_id: str,
+            snapshot: Optional[objects.Snapshot],
+            source_volume: Optional[objects.Volume],
+            image_metadata: Optional[Dict[str, Any]]) -> Optional[str]:
         if volume_types.is_encrypted(context, volume_type_id):
+            encryption_key_id = None
+
             if snapshot is not None:  # creating from snapshot
                 encryption_key_id = snapshot['encryption_key_id']
             elif source_volume is not None:  # cloning volume
@@ -335,22 +374,29 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             # be copied because the key is deleted when the volume is deleted.
             # Clone the existing key and associate a separate -- but
             # identical -- key with each volume.
+            new_encryption_key_id: Optional[str]
             if encryption_key_id is not None:
-                encryption_key_id = volume_utils.clone_encryption_key(
+                new_encryption_key_id = volume_utils.clone_encryption_key(
                     context,
                     key_manager,
                     encryption_key_id)
             else:
-                encryption_key_id = volume_utils.create_encryption_key(
+                new_encryption_key_id = volume_utils.create_encryption_key(
                     context,
                     key_manager,
                     volume_type_id)
 
-        return encryption_key_id
+            return new_encryption_key_id
+        else:
+            return None
 
     @staticmethod
-    def _get_volume_type(context, volume_type,
-                         source_volume, snapshot, image_volume_type_id):
+    def _get_volume_type(
+            context: context.RequestContext,
+            volume_type: Optional[Any],
+            source_volume: Optional[objects.Volume],
+            snapshot: Optional[objects.Snapshot],
+            image_volume_type_id: Optional[str]) -> objects.VolumeType:
         """Returns a volume_type object or raises.  Never returns None."""
         if volume_type:
             return volume_type
@@ -380,10 +426,22 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # otherwise, use the default volume type
         return volume_types.get_default_volume_type(context)
 
-    def execute(self, context, size, snapshot, image_id, source_volume,
-                availability_zone, volume_type, metadata, key_manager,
-                consistencygroup, cgsnapshot, group, group_snapshot, backup,
-                multiattach=False):
+    def execute(self,
+                context: context.RequestContext,
+                size: int,
+                snapshot: Optional[dict],
+                image_id: Optional[str],
+                source_volume: Optional[dict],
+                availability_zone: Optional[str],
+                volume_type,
+                metadata,
+                key_manager,
+                consistencygroup,
+                cgsnapshot,
+                group,
+                group_snapshot,
+                backup: Optional[dict],
+                multiattach: bool = False) -> Dict[str, Any]:
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -443,7 +501,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         if multiattach:
             context.authorize(policy.MULTIATTACH_POLICY)
 
-        specs = {}
+        specs: Optional[Dict] = {}
         if volume_type_id:
             qos_specs = volume_types.get_volume_type_qos_specs(volume_type_id)
             if qos_specs['qos_specs']:
@@ -489,7 +547,7 @@ class EntryCreateTask(flow_utils.CinderTask):
 
     default_provides = set(['volume_properties', 'volume_id', 'volume'])
 
-    def __init__(self):
+    def __init__(self) -> None:
         requires = ['description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
@@ -498,7 +556,10 @@ class EntryCreateTask(flow_utils.CinderTask):
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
 
-    def execute(self, context, optional_args, **kwargs):
+    def execute(self,
+                context: context.RequestContext,
+                optional_args: dict,
+                **kwargs) -> Dict[str, Any]:
         """Creates a database entry for the given inputs and returns details.
 
         Accesses the database and creates a new entry for the to be created
@@ -569,7 +630,11 @@ class EntryCreateTask(flow_utils.CinderTask):
             'volume': volume,
         }
 
-    def revert(self, context, result, optional_args, **kwargs):
+    def revert(self,
+               context: context.RequestContext,
+               result: Union[dict, ft.Failure],
+               optional_args: dict,
+               **kwargs) -> None:
         if isinstance(result, ft.Failure):
             # We never produced a result and therefore can't destroy anything.
             return
@@ -610,8 +675,12 @@ class QuotaReserveTask(flow_utils.CinderTask):
     def __init__(self):
         super(QuotaReserveTask, self).__init__(addons=[ACTION])
 
-    def execute(self, context, size, volume_type_id, group_snapshot,
-                optional_args):
+    def execute(self,
+                context: context.RequestContext,
+                size: int,
+                volume_type_id,
+                group_snapshot: Optional[objects.Snapshot],
+                optional_args: dict) -> Optional[dict]:
         try:
             values = {'per_volume_gigabytes': size}
             QUOTAS.limit_check(context, project_id=context.project_id,
@@ -638,8 +707,12 @@ class QuotaReserveTask(flow_utils.CinderTask):
             quota_utils.process_reserve_over_quota(context, e,
                                                    resource='volumes',
                                                    size=size)
+        return None   # TODO: is this correct?
 
-    def revert(self, context, result, optional_args, **kwargs):
+    def revert(self,
+               context: context.RequestContext,
+               result: Union[dict, ft.Failure],
+               optional_args: dict, **kwargs) -> None:
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, ft.Failure):
             return
@@ -678,14 +751,18 @@ class QuotaCommitTask(flow_utils.CinderTask):
     def __init__(self):
         super(QuotaCommitTask, self).__init__(addons=[ACTION])
 
-    def execute(self, context, reservations, volume_properties,
-                optional_args):
+    def execute(self, context: context.RequestContext,
+                reservations, volume_properties,
+                optional_args: dict) -> dict:
         QUOTAS.commit(context, reservations)
         # updating is_quota_committed attribute of optional_args dictionary
         optional_args['is_quota_committed'] = True
         return {'volume_properties': volume_properties}
 
-    def revert(self, context, result, **kwargs):
+    def revert(self,
+               context: context.RequestContext,
+               result: Union[dict, ft.Failure],
+               **kwargs) -> None:
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, ft.Failure):
             return
@@ -717,7 +794,7 @@ class VolumeCastTask(flow_utils.CinderTask):
     created volume.
     """
 
-    def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
+    def __init__(self, scheduler_rpcapi, volume_rpcapi, db) -> None:
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume', 'volume_type',
                     'volume_properties', 'consistencygroup_id',
@@ -729,7 +806,10 @@ class VolumeCastTask(flow_utils.CinderTask):
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
 
-    def _cast_create_volume(self, context, request_spec, filter_properties):
+    def _cast_create_volume(self,
+                            context: context.RequestContext,
+                            request_spec: Dict[str, Any],
+                            filter_properties: Dict) -> None:
         source_volid = request_spec['source_volid']
         volume = request_spec['volume']
         snapshot_id = request_spec['snapshot_id']
@@ -775,7 +855,7 @@ class VolumeCastTask(flow_utils.CinderTask):
             filter_properties=filter_properties,
             backup_id=backup_id)
 
-    def execute(self, context, **kwargs):
+    def execute(self, context: context.RequestContext, **kwargs) -> None:
         scheduler_hints = kwargs.pop('scheduler_hints', None)
         db_vt = kwargs.pop('volume_type')
         kwargs['volume_type'] = None
@@ -789,7 +869,12 @@ class VolumeCastTask(flow_utils.CinderTask):
             filter_properties['scheduler_hints'] = scheduler_hints
         self._cast_create_volume(context, request_spec, filter_properties)
 
-    def revert(self, context, result, flow_failures, volume, **kwargs):
+    def revert(self,
+               context: context.RequestContext,
+               result: Union[dict, ft.Failure],
+               flow_failures,
+               volume: objects.Volume,
+               **kwargs) -> None:
         if isinstance(result, ft.Failure):
             return
 

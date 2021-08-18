@@ -16,6 +16,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from typing import Callable
+
 from oslo_log import log as logging
 
 from cinder import exception
@@ -28,7 +30,7 @@ LOG = logging.getLogger(__name__)
 REASON_LENGTH = 128
 
 
-def make_pretty_name(method):
+def make_pretty_name(method: Callable) -> str:
     """Makes a pretty name for a function/method."""
     meth_pieces = [method.__name__]
     # If its an instance method attempt to tack on the class name
