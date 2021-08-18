@@ -1,0 +1,6 @@
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1935670
+    <https://bugs.launchpad.net/cinder/+bug/1935670>`_:
+    Fixed empty attribute values issue while updating
+    volume metadata table for replicated volumes.

@@ -3440,8 +3440,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     del model_update['metadata'][key]
         else:
             for key, value in rep_properties.items():
-                if rel_info.get(value):
-                    model_update['metadata'][key] = rel_info[value]
+                model_update['metadata'][key] = rel_info.get(value)
         return model_update
 
     def create_volume(self, volume):
