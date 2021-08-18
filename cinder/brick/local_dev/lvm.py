@@ -825,8 +825,7 @@ class LVM(executor.Executor):
         try:
             cmd = LVM.LVM_CMD_PREFIX + ['lvextend', '-L', new_size,
                                         '%s/%s' % (self.vg_name, lv_name)]
-            self._execute(*cmd, root_helper=self._root_helper,
-                          run_as_root=True)
+            self._run_lvm_command(cmd)
         except putils.ProcessExecutionError as err:
             LOG.exception('Error extending Volume')
             LOG.error('Cmd     :%s', err.cmd)
