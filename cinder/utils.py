@@ -657,7 +657,7 @@ def retry(retry_param: Optional[Type[Exception]],
                 reraise=True,
                 retry=retry(retry_param),
                 wait=wait)
-            return r.call(f, *args, **kwargs)
+            return r(f, *args, **kwargs)
 
         return _wrapper
 
