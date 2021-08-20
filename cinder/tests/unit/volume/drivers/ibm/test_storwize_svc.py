@@ -10235,52 +10235,39 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         rel_info = self.driver._helpers.get_relationship_info(volume['name'])
         self.assertIsNone(rel_info)
 
-    def test_storwize_create_snapshot_volume_with_mirror_replica(self):
+    @ddt.data(({'mirror_type': 'mm_type'}),
+              ({'mirror_type': 'gm_type'}),
+              ({'mirror_type': 'gmcv_default_type'}),
+              ({'mirror_type': 'gmcv_with_cps900_type'}))
+    def test_storwize_create_snapshot_volume_with_mirror_replica(self,
+                                                                 vol_spec):
         # Set replication target
         self.driver.configuration.set_override('replication_device',
                                                [self.rep_target])
         self.driver.do_setup(self.ctxt)
+        rep_type = getattr(self, vol_spec['mirror_type'])
 
         # Create metro mirror replication volume.
-        vol1, model_update = self._create_test_volume(self.mm_type)
+        vol1, model_update = self._create_test_volume(rep_type)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
 
         snap = testutils.create_snapshot(self.ctxt, vol1.id)
         self.driver.create_snapshot(snap)
-
-        vol2 = self._generate_vol_info(self.mm_type)
+        self._assert_vol_exists(snap['name'], True)
+        vol2 = self._generate_vol_info(rep_type)
         model_update = self.driver.create_volume_from_snapshot(vol2, snap)
         self.assertEqual(fields.ReplicationStatus.ENABLED,
                          model_update['replication_status'])
-        self._validate_replic_vol_creation(vol2)
+        if "gmcv" in vol_spec['mirror_type']:
+            self._validate_replic_vol_creation(vol2, isGMCV=True)
+        else:
+            self._validate_replic_vol_creation(vol2)
 
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.delete_volume(vol2)
         self.driver.delete_snapshot(snap)
-        self.driver.delete_volume(vol1)
-
-        # Create gmcv replication volume.
-        vol1, model_update = self._create_test_volume(self.gmcv_default_type)
-        self.assertEqual(fields.ReplicationStatus.ENABLED,
-                         model_update['replication_status'])
-        self._validate_replic_vol_creation(vol1, True)
-        snap = testutils.create_snapshot(self.ctxt, vol1.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_snapshot,
-                          snap)
-        self.driver.delete_volume(vol1)
-
-        # gmcv with specified cycle_period_seconds
-        vol1, model_update = self._create_test_volume(
-            self.gmcv_with_cps900_type)
-        self.assertEqual(fields.ReplicationStatus.ENABLED,
-                         model_update['replication_status'])
-        self._validate_replic_vol_creation(vol1, True)
-        snap = testutils.create_snapshot(self.ctxt, vol1.id)
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.create_snapshot, snap)
         self.driver.delete_volume(vol1)
 
     def test_storwize_create_cloned_volume_with_mirror_replica(self):

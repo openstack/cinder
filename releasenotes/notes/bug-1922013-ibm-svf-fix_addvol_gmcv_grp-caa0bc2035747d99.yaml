@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1922013
+    <https://bugs.launchpad.net/cinder/+bug/1922013>`_: Fixed issues in
+    adding volumes to GMCV group.
