@@ -12,8 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from typing import Optional, Tuple, Union  # noqa: H301
 
 from cinder.common import constants
+from cinder import context
 from cinder import objects
 from cinder import quota
 from cinder import rpc
@@ -141,7 +143,10 @@ class VolumeAPI(rpc.RPCAPI):
     TOPIC = constants.VOLUME_TOPIC
     BINARY = constants.VOLUME_BINARY
 
-    def _get_cctxt(self, host=None, version=None, **kwargs):
+    def _get_cctxt(self,
+                   host: str = None,
+                   version: Union[str, Tuple[str, ...]] = None,
+                   **kwargs) -> rpc.RPCAPI:
         if host:
             server = volume_utils.extract_host(host)
 
@@ -158,8 +163,12 @@ class VolumeAPI(rpc.RPCAPI):
 
         return super(VolumeAPI, self)._get_cctxt(version=version, **kwargs)
 
-    def create_volume(self, ctxt, volume, request_spec, filter_properties,
-                      allow_reschedule=True):
+    def create_volume(self,
+                      ctxt: context.RequestContext,
+                      volume: 'objects.Volume',
+                      request_spec: Optional[dict],
+                      filter_properties: Optional[dict],
+                      allow_reschedule: bool = True) -> None:
         cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'create_volume',
                    request_spec=request_spec,
@@ -174,7 +183,11 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'revert_to_snapshot', volume=volume,
                    snapshot=snapshot)
 
-    def delete_volume(self, ctxt, volume, unmanage_only=False, cascade=False):
+    def delete_volume(self,
+                      ctxt: context.RequestContext,
+                      volume: 'objects.Volume',
+                      unmanage_only: bool = False,
+                      cascade: bool = False) -> None:
         volume.create_worker()
         cctxt = self._get_cctxt(volume.service_topic_queue)
         msg_args = {
@@ -184,7 +197,10 @@ class VolumeAPI(rpc.RPCAPI):
 
         cctxt.cast(ctxt, 'delete_volume', **msg_args)
 
-    def create_snapshot(self, ctxt, volume, snapshot):
+    def create_snapshot(self,
+                        ctxt: context.RequestContext,
+                        volume: 'objects.Volume',
+                        snapshot: 'objects.Snapshot') -> None:
         snapshot.create_worker()
         cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'create_snapshot', snapshot=snapshot)
@@ -393,7 +409,9 @@ class VolumeAPI(rpc.RPCAPI):
 
         return cctxt.call(ctxt, 'get_manageable_snapshots', **msg_args)
 
-    def create_group(self, ctxt, group):
+    def create_group(self,
+                     ctxt: context.RequestContext,
+                     group: 'objects.Group') -> None:
         cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'create_group', group=group)
 

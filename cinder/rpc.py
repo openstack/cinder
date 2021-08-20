@@ -26,6 +26,7 @@ __all__ = [
 ]
 
 import functools
+from typing import Tuple, Union  # noqa: H301
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -53,7 +54,7 @@ ALLOWED_EXMODS = [
 EXTRA_EXMODS = []
 
 
-def init(conf):
+def init(conf) -> None:
     global TRANSPORT, NOTIFICATION_TRANSPORT, NOTIFIER
     exmods = get_allowed_exmods()
     TRANSPORT = messaging.get_rpc_transport(conf,
@@ -73,7 +74,7 @@ def init(conf):
         NOTIFIER = utils.DO_NOTHING
 
 
-def initialized():
+def initialized() -> bool:
     return None not in [TRANSPORT, NOTIFIER]
 
 
@@ -139,7 +140,9 @@ class RequestContextSerializer(messaging.Serializer):
         return cinder.context.RequestContext.from_dict(context)
 
 
-def get_client(target, version_cap=None, serializer=None):
+def get_client(target,
+               version_cap=None,
+               serializer=None) -> messaging.RPCClient:
     if TRANSPORT is None:
         raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
@@ -149,7 +152,9 @@ def get_client(target, version_cap=None, serializer=None):
                                serializer=serializer)
 
 
-def get_server(target, endpoints, serializer=None):
+def get_server(target,
+               endpoints,
+               serializer=None) -> messaging.rpc.server.RPCServer:
     if TRANSPORT is None:
         raise AssertionError('RPC transport is not initialized.')
     serializer = RequestContextSerializer(serializer)
@@ -163,7 +168,9 @@ def get_server(target, endpoints, serializer=None):
 
 
 @utils.if_notifications_enabled
-def get_notifier(service=None, host=None, publisher_id=None):
+def get_notifier(service: str = None,
+                 host: str = None,
+                 publisher_id: str = None) -> messaging.Notifier:
     if NOTIFIER is None:
         raise AssertionError('RPC Notifier is not initialized.')
     if not publisher_id:
@@ -222,7 +229,9 @@ class RPCAPI(object):
                 return version
         return versions[-1]
 
-    def _get_cctxt(self, version=None, **kwargs):
+    def _get_cctxt(self,
+                   version: Union[str, Tuple[str, ...]] = None,
+                   **kwargs):
         """Prepare client context
 
         Version parameter accepts single version string or tuple of strings.

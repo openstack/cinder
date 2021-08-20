@@ -106,7 +106,7 @@ class Manager(base.Base, PeriodicTasks):
     def service_topic_queue(self):
         return self.cluster or self.host
 
-    def init_host(self, service_id=None, added_to_cluster=None):
+    def init_host(self, service_id, added_to_cluster=None):
         """Handle initialization if this is a standalone service.
 
         A hook point for services to execute tasks before the services are made
@@ -222,7 +222,9 @@ class SchedulerDependentManager(ThreadPoolManager):
 
 
 class CleanableManager(object):
-    def do_cleanup(self, context, cleanup_request) -> None:
+    def do_cleanup(self,
+                   context: context.RequestContext,
+                   cleanup_request: objects.CleanupRequest) -> None:
         LOG.info('Initiating service %s cleanup',
                  cleanup_request.service_id)
 
@@ -305,10 +307,10 @@ class CleanableManager(object):
 
         LOG.info('Service %s cleanup completed.', cleanup_request.service_id)
 
-    def _do_cleanup(self, ctxt, vo_resource) -> bool:
+    def _do_cleanup(self, ctxt: context.RequestContext, vo_resource) -> bool:
         return False
 
-    def init_host(self, service_id, **kwargs) -> None:
+    def init_host(self, service_id, added_to_cluster=None, **kwargs):
         ctxt = context.get_admin_context()
         self.service_id = service_id
         # TODO(geguileo): Once we don't support MySQL 5.5 anymore we can remove

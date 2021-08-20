@@ -253,7 +253,9 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             volume_rpcapi.VolumeAPI().create_snapshot(ctxt, volume,
                                                       snapshot)
 
-    def _do_cleanup(self, ctxt, vo_resource):
+    def _do_cleanup(self,
+                    ctxt: context.RequestContext,
+                    vo_resource: 'objects.base.CinderObject'):
         # We can only receive cleanup requests for volumes, but we check anyway
         # We need to cleanup the volume status for cases where the scheduler
         # died while scheduling the volume creation.
@@ -262,7 +264,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             vo_resource.status = 'error'
             vo_resource.save()
 
-    def request_service_capabilities(self, context):
+    def request_service_capabilities(self,
+                                     context: context.RequestContext) -> None:
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
         try:
             self.backup_api.publish_service_capabilities(context)
@@ -275,8 +278,11 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
             LOG.warning(msg, {'host': self.host, 'e': e})
 
     @append_operation_type()
-    def migrate_volume(self, context, volume, backend, force_copy,
-                       request_spec, filter_properties):
+    def migrate_volume(self,
+                       context: context.RequestContext,
+                       volume: objects.Volume,
+                       backend: str, force_copy: bool,
+                       request_spec, filter_properties) -> None:
         """Ensure that the backend exists and can accept the volume."""
         self._wait_for_scheduler()
 
@@ -597,7 +603,7 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         not_requested = []
 
         # To reduce DB queries we'll cache the clusters data
-        clusters = collections.defaultdict(dict)
+        clusters: collections.defaultdict = collections.defaultdict(dict)
 
         for service in services:
             cleanup_request.cluster_name = service.cluster_name
