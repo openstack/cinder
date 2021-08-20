@@ -7350,6 +7350,7 @@ def conditional_update(context, model, values, expected_values, filters=(),
                          else_=value.else_)
 
         if key in order:
+            # pylint: disable=E1137; ("order" is known to be a list, here)
             order[order.index(key)] = (key, value)
             continue
         # NOTE(geguileo): Check Case first since it's a type of orm value
