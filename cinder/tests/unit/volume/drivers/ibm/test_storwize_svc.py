@@ -13048,3 +13048,41 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         model_update = self.driver.delete_group(self.ctxt, clone_group,
                                                 [clone_vol1, clone_vol2])
         self.assertEqual(fields.GroupStatus.DELETED, model_update[0]['status'])
+
+    @ddt.data(({'volume_type': 'gm_type'}),
+              ({'volume_type': 'mm_type'}),
+              ({'volume_type': 'gmcv_default_type'}),
+              ({'volume_type': 'non_replica_type'})
+              )
+    def test_update_replication_properties_on_create_volume(self, vol_spec):
+        self.driver.configuration.set_override('replication_device',
+                                               [self.rep_target])
+        self.driver.do_setup(self.ctxt)
+        vol_type = getattr(self, vol_spec['volume_type'])
+
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSVCCommonDriver,
+                '_update_replication_properties') as update_rep_properties:
+            volume, model_update = self._create_test_volume(vol_type)
+            if vol_type == self.non_replica_type:
+                self.assertFalse(update_rep_properties.called)
+            else:
+                self.assertTrue(update_rep_properties.called)
+            self.driver.delete_volume(volume)
+
+        # Create metro mirror replication.
+        volume, model_update = self._create_test_volume(vol_type)
+        if 'metadata' in model_update:
+            expected_sync_attr_value = ''
+            expected_freeze_time = ''
+            expected_primary = 'master'
+            expected_mirroring_state = 'inconsistent_copying'
+            self.assertEqual(model_update['metadata']['Sync'],
+                             expected_sync_attr_value)
+            self.assertEqual(model_update['metadata']['Freeze Time'],
+                             expected_freeze_time)
+            self.assertEqual(model_update['metadata']['Primary'],
+                             expected_primary)
+            self.assertEqual(model_update['metadata']['Mirroring State'],
+                             expected_mirroring_state)
+        self.driver.delete_volume(volume)
