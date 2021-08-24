@@ -4574,6 +4574,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 configuration=config)
             self._driver = storwize_svc_iscsi.StorwizeSVCISCSIDriver(
                 configuration=config)
+            self.fcdriver = StorwizeSVCFcFakeDriver(
+                configuration=config)
             wwpns = [
                 six.text_type(random.randint(0, 9999999999999999)).zfill(16),
                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
@@ -4586,6 +4588,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.sim = StorwizeSVCManagementSimulator(SVC_POOLS)
 
             self.driver.set_fake_storage(self.sim)
+            self.fcdriver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
         else:
             self._reset_flags()
@@ -7695,6 +7698,28 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                        snapshot_id=snapshot.id)
         self.driver.create_volume_from_snapshot(vol6, snapshot)
 
+    @ddt.data({'pool': 'openstack2', 'peer_pool': 'openstack3'},
+              {'pool': 'openstack', 'peer_pool': None},
+              {'pool': None, 'peer_pool': 'openstack1'})
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
+    def test_storwize_svc_get_hyperswap_pool_io_grp(self, pools, lsmdiskgrp):
+        lsmdiskgrp.side_effect = [{'site_id': '1'},
+                                  {'site_id': '2'}]
+
+        if pools['pool'] and pools['peer_pool']:
+            iogrp_list = self.driver._helpers.get_hyperswap_pool_io_grp(
+                self.driver._state, pools['pool'], pools['peer_pool'])
+            lsmdiskgrp.assert_called()
+            self.assertEqual(2, lsmdiskgrp.call_count)
+            self.assertEqual(['0', '1'], iogrp_list)
+        else:
+            self.assertRaises(exception.InvalidInput,
+                              self.driver._helpers.get_hyperswap_pool_io_grp,
+                              self.driver._state, pools['pool'],
+                              pools['peer_pool'])
+            lsmdiskgrp.assert_not_called()
+            self.assertEqual(0, lsmdiskgrp.call_count)
+
     @ mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsmdiskgrp')
     def test_storwize_svc_select_iogrp_with_pool_site(self, lsmdiskgrp):
         opts = {}
@@ -8286,6 +8311,91 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             volume3['volume_type'] = non_hyper_type
             self.driver.delete_volume(volume3)
 
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_update_replication_properties')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_hyperswap_pool_io_grp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    def test_retype_hyperswap_inuse_volume_fc(self,
+                                              get_system_info,
+                                              get_hyperswap_pool_io_grp,
+                                              update_rep_prop):
+        get_system_info.return_value = {'code_level': (7, 7, 0, 0),
+                                        'topology': 'hyperswap',
+                                        'system_name': 'storwize-svc-sim',
+                                        'system_id': '0123456789ABCDEF'}
+
+        self.fcdriver.do_setup(None)
+
+        spec1 = {'drivers:iogrp': '0,1'}
+        non_hyper_type = self._create_volume_type(spec1, 'non_hyper_type')
+
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=non_hyper_type.id,
+                                         host='openstack@svc#hyperswap1')
+        self.fcdriver.create_volume(volume)
+        volume.previous_status = 'in-use'
+        host = {'host': 'openstack@svc#hyperswap1'}
+
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap2'}
+
+        hyper_type = self._create_volume_type(spec, 'hypertype')
+        diff, _equal = volume_types.volume_types_diff(self.ctxt,
+                                                      non_hyper_type['id'],
+                                                      hyper_type['id'])
+
+        self.fcdriver.retype(self.ctxt, volume, hyper_type, diff, host)
+
+        self._assert_vol_exists(volume.name, True)
+        self._assert_vol_exists('site2' + volume.name, True)
+        self._assert_vol_exists('fcsite1' + volume.name, True)
+        self._assert_vol_exists('fcsite2' + volume.name, True)
+
+        get_hyperswap_pool_io_grp.assert_called()
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_hyperswap_pool_io_grp')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    def test_retype_hyperswap_inuse_volume_iscsi(self,
+                                                 get_system_info,
+                                                 get_hyperswap_pool_io_grp):
+        get_system_info.return_value = {'code_level': (7, 7, 0, 0),
+                                        'topology': 'hyperswap',
+                                        'system_name': 'storwize-svc-sim',
+                                        'system_id': '0123456789ABCDEF'}
+
+        self.driver.do_setup(None)
+
+        spec1 = {'drivers:iogrp': '0,1'}
+        non_hyper_type = self._create_volume_type(spec1, 'non_hyper_type')
+
+        volume = testutils.create_volume(self.ctxt,
+                                         volume_type_id=non_hyper_type.id,
+                                         host='openstack@svc#hyperswap1')
+        self.driver.create_volume(volume)
+        volume.previous_status = 'in-use'
+        host = {'host': 'openstack@svc#hyperswap1'}
+
+        spec = {'drivers:volume_topology': 'hyperswap',
+                'peer_pool': 'hyperswap2'}
+
+        hyper_type = self._create_volume_type(spec, 'hypertype')
+        diff, _equal = volume_types.volume_types_diff(self.ctxt,
+                                                      non_hyper_type['id'],
+                                                      hyper_type['id'])
+
+        self.driver.retype(self.ctxt, volume, hyper_type, diff, host)
+
+        self._assert_vol_exists(volume.name, True)
+        self._assert_vol_exists('site2' + volume.name, True)
+        self._assert_vol_exists('fcsite1' + volume.name, True)
+        self._assert_vol_exists('fcsite2' + volume.name, True)
+
+        get_hyperswap_pool_io_grp.assert_not_called()
+
     def test_retype_hyperswap_volume_failure_case(self):
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_system_info') as get_system_info:
@@ -8345,10 +8455,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         diff, _equal = volume_types.volume_types_diff(
             self.ctxt, hyperswap_vol_type['id'],
             inuse_type['id'])
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.retype,
-                          self.ctxt, volume, inuse_type, diff,
-                          host)
+        self.driver.retype(self.ctxt, volume, inuse_type, diff, host)
 
         # retype from hyperswap volume to replication volume
         spec3 = {'replication_enabled': '<is> True',

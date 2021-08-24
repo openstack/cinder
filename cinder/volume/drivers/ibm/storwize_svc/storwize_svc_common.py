@@ -271,6 +271,14 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'addhostport', '-force'] + port + ['"%s"' % host]
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def addhostiogrp(self, host, iogrplist='all'):
+        ssh_cmd = ['svctask', 'addhostiogrp']
+        if iogrplist == 'all':
+            ssh_cmd += ['-iogrpall', '"%s"' % host]
+        else:
+            ssh_cmd += ['-iogrp', ':'.join(iogrplist), '"%s"' % host]
+        self.run_ssh_assert_no_output(ssh_cmd)
+
     def lshost(self, host=None):
         with_header = True
         ssh_cmd = ['svcinfo', 'lshost', '-delim', '!']
@@ -285,7 +293,11 @@ class StorwizeSSH(object):
         self.run_ssh_assert_no_output(ssh_cmd, log_cmd)
 
     def chhost(self, host, site):
-        ssh_cmd = ['svctask', 'chhost', '-site', '"%s"' % site, '"%s"' % host]
+        ssh_cmd = ['svctask', 'chhost']
+        if site:
+            ssh_cmd += ['-site', '"%s"' % site, '"%s"' % host]
+        else:
+            ssh_cmd += ['-nosite', '"%s"' % host]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsiscsiauth(self):
@@ -701,6 +713,10 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'rmvdiskaccess', '-iogrp', iogrp, '"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def lsvdiskaccess(self, vdisk):
+        ssh_cmd = ['svcinfo', 'lsvdiskaccess', '-delim', '!', '"%s"' % vdisk]
+        return self.run_ssh_info(ssh_cmd, with_header=True)
+
     def lsportfc(self, node_id):
         ssh_cmd = ['svcinfo', 'lsportfc', '-delim', '!',
                    '-filtervalue', 'node_id=%s' % node_id]
@@ -890,6 +906,43 @@ class StorwizeHelpers(object):
                        {'node': iogrp['node_count']})
                 raise exception.VolumeBackendAPIException(data=msg)
         return res
+
+    def get_hyperswap_pool_io_grp(self, state, pool, peer_pool):
+        if not peer_pool or not pool:
+            raise exception.InvalidInput(
+                reason=_('The pool and peer pool is necessary for hyperswap '
+                         'volume, please configure the pool and peer pool.'))
+        pool_data = None
+        peer_pool_data = None
+        for stat_pool in self.stats.get('pools', []):
+            if stat_pool['pool_name'] == pool:
+                pool_data = stat_pool
+            elif stat_pool['pool_name'] == peer_pool:
+                peer_pool_data = stat_pool
+
+        if pool_data is None or pool_data.get("site_id") is None:
+            pool_data = self.get_pool_attrs(pool)
+            if not pool_data['site_id']:
+                raise exception.InvalidInput(
+                    reason=_('The pool with site is necessary for hyperswap '
+                             'volume, please configure the pool with site.'))
+
+        if peer_pool_data is None or peer_pool_data.get("site_id") is None:
+            peer_pool_data = self.get_pool_attrs(peer_pool)
+            if not peer_pool_data['site_id']:
+                raise exception.InvalidInput(
+                    reason=_('The peer pool with site is necessary for '
+                             'hyperswap volume, please configure the peer '
+                             'pool with site.'))
+
+        iogrp_list = []
+        for node in state['storage_nodes'].values():
+            if ((pool_data['site_id'] == node['site_id']) or
+                    (peer_pool_data['site_id'] == node['site_id'])):
+                if node['IO_group'] not in iogrp_list:
+                    iogrp_list.append(node['IO_group'])
+
+        return iogrp_list
 
     def select_io_group(self, state, opts, pool):
         selected_iog = 0
@@ -2114,7 +2167,7 @@ class StorwizeHelpers(object):
             attrs = self._get_flashcopy_mapping_attributes(map_id)
             copy_rate = attrs['copy_rate']
             # update flashcopy rate for clone volume
-            if copy_rate != '0':
+            if copy_rate != '0' and attrs['rc_controlled'] != 'yes':
                 self.ssh.chfcmap(map_id,
                                  copyrate=six.text_type(new_flashcopy_rate))
 
@@ -5072,11 +5125,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          'support pool change.') % volume.name)
                 LOG.error(msg)
                 raise exception.InvalidInput(message=msg)
-            if volume.previous_status == 'in-use':
-                msg = _('Retype an in-use volume to a hyperswap '
-                        'volume is not allowed.')
-                LOG.error(msg)
-                raise exception.InvalidInput(message=msg)
             if not new_opts['easytier']:
                 raise exception.InvalidInput(
                     reason=_('The default easytier of hyperswap volume is '
@@ -5105,8 +5153,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 LOG.error(msg)
                 raise exception.InvalidInput(message=msg)
 
-    def _retype_hyperswap_volume(self, volume, host, old_opts, new_opts,
-                                 old_pool, new_pool, vdisk_changes,
+    def _retype_hyperswap_volume(self, ctxt, volume, host, old_opts,
+                                 new_opts, old_pool, new_pool, vdisk_changes,
                                  need_copy, new_type):
         if (old_opts['volume_topology'] != 'hyperswap' and
                 new_opts['volume_topology'] == 'hyperswap'):
@@ -5215,9 +5263,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                 change_mirror, new_rep_type,
                                                 old_rep_type, old_pool,
                                                 new_pool, old_io_grp)
-            self._retype_hyperswap_volume(volume, host, old_opts, new_opts,
-                                          old_pool, new_pool, vdisk_changes,
-                                          need_copy, new_type)
+            self._retype_hyperswap_volume(ctxt, volume, host, old_opts,
+                                          new_opts, old_pool, new_pool,
+                                          vdisk_changes, need_copy,
+                                          new_type)
             # Updating Hyperswap volume replication properties
             model_update = self._update_replication_properties(ctxt, volume,
                                                                model_update)
