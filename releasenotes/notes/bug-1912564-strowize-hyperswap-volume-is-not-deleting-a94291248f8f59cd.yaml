@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1912564
+    <https://bugs.launchpad.net/cinder/+bug/1912564>`_: Fixed HyperSwap
+    volume deletion issue.
