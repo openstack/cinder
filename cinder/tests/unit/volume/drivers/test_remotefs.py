@@ -289,6 +289,18 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             self._fake_snapshot.volume.status = 'backing-up'
             self._fake_snapshot.volume.attach_status = 'attached'
             expected_method_called = '_create_snapshot_online'
+            conn_info = ('{"driver_volume_type": "nfs",'
+                         '"export": "localhost:/srv/nfs1",'
+                         '"name": "old_name"}')
+            attachment = fake_volume.volume_attachment_ovo(
+                self.context, connection_info=conn_info)
+            snapshot.volume.volume_attachment.objects.append(attachment)
+            mock_save = self.mock_object(attachment, 'save')
+
+            # After the snapshot the connection info should change the name of
+            # the file
+            expected = copy.deepcopy(attachment.connection_info)
+            expected['name'] = snapshot.volume.name + '.' + snapshot.id
         else:
             expected_method_called = '_do_create_snapshot'
 
@@ -304,6 +316,11 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._driver._write_info_file.assert_called_with(
             mock.sentinel.fake_info_path,
             expected_snapshot_info)
+
+        if volume_in_use:
+            mock_save.assert_called_once()
+            changed_fields = attachment.cinder_obj_get_changes()
+            self.assertEqual(expected, changed_fields['connection_info'])
 
     def test_create_snapshot_volume_available(self):
         self._test_create_snapshot()
