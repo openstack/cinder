@@ -13,8 +13,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from sqlalchemy import Boolean, Column, MetaData, Table
 from migrate.changeset import constraint
+import sqlalchemy as sa
 
 
 def upgrade(migrate_engine):
@@ -25,12 +25,13 @@ def upgrade(migrate_engine):
     """
     # There's no need to set the race_preventer field for existing DB entries,
     # since the race we want to prevent is only on creation.
-    meta = MetaData(bind=migrate_engine)
-    quota_usages = Table('quota_usages', meta, autoload=True)
+    meta = sa.MetaData(bind=migrate_engine)
+    quota_usages = sa.Table('quota_usages', meta, autoload=True)
 
     if not hasattr(quota_usages.c, 'race_preventer'):
-        quota_usages.create_column(Column('race_preventer', Boolean,
-                                          nullable=True))
+        quota_usages.create_column(
+            sa.Column('race_preventer', sa.Boolean, nullable=True))
+
     unique = constraint.UniqueConstraint(
         'project_id', 'resource', 'race_preventer',
         table=quota_usages)
