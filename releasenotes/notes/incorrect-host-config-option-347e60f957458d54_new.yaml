@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1941068 <https://bugs.launchpad.net/cinder/+bug/1941068>`_: Fixed
+    type of the ``host`` configuration option.  It was limited to valid FQDN
+    values when we document that it isn't.  This may result in the
+    ``cinder-manage db sync`` command failing.
