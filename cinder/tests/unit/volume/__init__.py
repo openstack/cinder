@@ -22,7 +22,6 @@ from oslo_config import cfg
 from oslo_utils import importutils
 from stevedore import extension
 
-from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
 from cinder.image import image_utils
 from cinder import objects
@@ -66,11 +65,7 @@ class BaseVolumeTestCase(test.TestCase):
             'status': 'creating',
             'host': CONF.host,
             'size': 1}
-        self.mock_object(brick_lvm.LVM,
-                         'get_all_volume_groups',
-                         self.fake_get_all_volume_groups)
         fake_image.mock_image_service(self)
-        self.mock_object(brick_lvm.LVM, '_vg_exists', lambda x: True)
         self.mock_object(os.path, 'exists', lambda x: True)
         self.mock_object(image_utils, 'check_available_space',
                          lambda x, y, z: True)
