@@ -84,12 +84,12 @@ global_opts = [
     cfg.StrOpt('scheduler_manager',
                default='cinder.scheduler.manager.SchedulerManager',
                help='Full class name for the Manager for scheduler'),
-    cfg.HostAddressOpt('host',
-                       sample_default='localhost',
-                       default=socket.gethostname(),
-                       help='Name of this node.  This can be an opaque '
-                            'identifier. It is not necessarily a host name, '
-                            'FQDN, or IP address.'),
+    cfg.StrOpt('host',
+               sample_default='localhost',
+               default=socket.gethostname(),
+               help='Name of this node.  This can be an opaque '
+                    'identifier. It is not necessarily a host name, '
+                    'FQDN, or IP address.'),
     # NOTE(vish): default to nova for compatibility with nova installs
     cfg.StrOpt('storage_availability_zone',
                default='nova',
