@@ -1,0 +1,9 @@
+---
+
+fixes:
+  - |
+    PowerFlex driver `bug #1897598
+    <https://bugs.launchpad.net/cinder/+bug/1897598>`_: Fixed bug with
+    PowerFlex storage-assisted volume migration when volume migration was
+    performed without conversion of volume type in cases where it should have
+    been converted to/from thin/thick provisioned.
