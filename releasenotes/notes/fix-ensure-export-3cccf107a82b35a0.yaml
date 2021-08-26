@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    JovianDSS driver: `Bug #1941746 <https://bugs.launchpad.net/cinder/+bug/1941746>`_: Fixed
+    Fix ensure_export function failure in case of partial target recovery.

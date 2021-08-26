@@ -694,7 +694,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         """
         LOG.debug("create export for volume: %s.", volume.id)
 
-        self._create_target_volume(volume)
+        self._ensure_target_volume(volume)
 
         return {'provider_location': self._get_provider_location(volume.id)}
 
@@ -876,8 +876,8 @@ class JovianISCSIDriver(driver.ISCSIDriver):
             self._create_target_volume(volume)
             return
 
-        if not self.ra.is_target_lun(target_name, volume.id):
-            vname = jcom.vname(volume.id)
+        vname = jcom.vname(volume.id)
+        if not self.ra.is_target_lun(target_name, vname):
             self._attach_target_volume(target_name, vname)
 
         try:
