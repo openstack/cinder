@@ -120,17 +120,20 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-volume': '1.3'})
-    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-volume': '1.4',
-                                                 'cinder-scheduler': '1.4',
-                                                 'cinder-backup': '1.5'})
     def test_reset(self, get_min_obj, get_min_rpc):
-        mgr = self.manager_cls()
+        old_version = objects.base.OBJ_VERSIONS.versions[-2]
+
+        with mock.patch('cinder.rpc.LAST_OBJ_VERSIONS',
+                        {'cinder-volume': old_version,
+                         'cinder-scheduler': old_version,
+                         'cinder-backup': old_version}):
+            mgr = self.manager_cls()
 
         volume_rpcapi = mgr.driver.volume_rpcapi
         self.assertEqual('1.3', volume_rpcapi.client.version_cap)
-        self.assertEqual('1.4',
+        self.assertEqual(old_version,
                          volume_rpcapi.client.serializer._base.version_cap)
-        get_min_obj.return_value = objects.base.OBJ_VERSIONS.get_current()
+        get_min_obj.return_value = self.latest_ovo_version
         mgr.reset()
 
         volume_rpcapi = mgr.driver.volume_rpcapi

@@ -19,7 +19,6 @@ from unittest import mock
 from cinder import context
 from cinder import exception
 from cinder.objects import cleanable
-from cinder import rpc
 from cinder import service
 from cinder.tests.unit import objects as test_objects
 from cinder.volume import rpcapi
@@ -35,7 +34,7 @@ class Backup(cleanable.CinderCleanableObject):
 
     @staticmethod
     def _is_cleanable(status, obj_version):
-        if obj_version and obj_version <= 1003:
+        if obj_version and obj_version < 1003:
             return False
         return status == 'cleanable'
 
@@ -53,46 +52,52 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         vol_rpcapi = cleanable.CinderCleanableObject.get_rpc_api()
         self.assertEqual(rpcapi.VolumeAPI, vol_rpcapi)
 
+    def set_version(self, version):
+        self.patch('cinder.volume.rpcapi.VolumeAPI.determine_obj_version_cap',
+                   mock.Mock(return_value='1.0'))
+        self.patch('cinder.objects.base.OBJ_VERSIONS',
+                   {'1.0': {'Backup': version}})
+
     def test_get_pinned_version(self):
         """Test that we get the pinned version for this specific object."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.0'
+        self.set_version('1.3')
         version = Backup.get_pinned_version()
         self.assertEqual(1003, version)
 
     def test_is_cleanable_pinned_pinned_too_old(self):
         """Test is_cleanable with pinned version with uncleanable version."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.0'
+        self.set_version('1.0')
         backup = Backup(status='cleanable')
         self.assertFalse(backup.is_cleanable(pinned=True))
 
     def test_is_cleanable_pinned_result_true(self):
         """Test with pinned version with cleanable version and status."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.3'
+        self.set_version('1.3')
         backup = Backup(status='cleanable')
         self.assertTrue(backup.is_cleanable(pinned=True))
 
     def test_is_cleanable_pinned_result_false(self):
         """Test with pinned version with cleanable version but not status."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.3'
+        self.set_version('1.0')
         backup = Backup(status='not_cleanable')
         self.assertFalse(backup.is_cleanable(pinned=True))
 
     def test_is_cleanable_unpinned_result_false(self):
         """Test unpinned version with old version and non cleanable status."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.0'
+        self.set_version('1.0')
         backup = Backup(status='not_cleanable')
         self.assertFalse(backup.is_cleanable(pinned=False))
 
     def test_is_cleanable_unpinned_result_true(self):
         """Test unpinned version with old version and cleanable status."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.0'
+        self.set_version('1.0')
         backup = Backup(status='cleanable')
         self.assertTrue(backup.is_cleanable(pinned=False))
 
     @mock.patch('cinder.db.worker_create', autospec=True)
     def test_create_worker(self, mock_create):
         """Test worker creation as if it were from an rpc call."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.3'
+        self.set_version('1.3')
         mock_create.return_value = mock.sentinel.worker
         backup = Backup(_context=self.context, status='cleanable',
                         id=mock.sentinel.id)
@@ -106,7 +111,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.worker_create', autospec=True)
     def test_create_worker_pinned_too_old(self, mock_create):
         """Test worker creation when we are pinnned with an old version."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.0'
+        self.set_version('1.0')
         mock_create.return_value = mock.sentinel.worker
         backup = Backup(_context=self.context, status='cleanable',
                         id=mock.sentinel.id)
@@ -117,7 +122,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.worker_create', autospec=True)
     def test_create_worker_non_cleanable(self, mock_create):
         """Test worker creation when status is non cleanable."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.3'
+        self.set_version('1.3')
         mock_create.return_value = mock.sentinel.worker
         backup = Backup(_context=self.context, status='non_cleanable',
                         id=mock.sentinel.id)
@@ -129,7 +134,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.worker_create', autospec=True)
     def test_create_worker_already_exists(self, mock_create, mock_update):
         """Test worker creation when a worker for the resource exists."""
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.3'
+        self.set_version('1.3')
         mock_create.side_effect = exception.WorkerExists(type='type', id='id')
 
         backup = Backup(_context=self.context, status='cleanable',
@@ -152,7 +157,7 @@ class TestCleanable(test_objects.BaseObjectsTestCase):
         that the entry gets removed from the DB between our failure to create
         it and our try to update the entry.
         """
-        rpc.LAST_OBJ_VERSIONS[Backup.get_rpc_api().BINARY] = '1.3'
+        self.set_version('1.3')
         mock_create.side_effect = [
             exception.WorkerExists(type='type', id='id'), mock.sentinel.worker]
         mock_update.side_effect = exception.WorkerNotFound

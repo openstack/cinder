@@ -19,6 +19,7 @@ from cinder.objects import base
 
 class ManageableObject(object):
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'reference': fields.DictOfNullableStringsField(nullable=False),
         'size': fields.IntegerField(nullable=True),
@@ -58,6 +59,7 @@ class ManageableSnapshot(base.CinderObject, base.CinderObjectDictCompat,
     # Version 1.0: Initial version
     VERSION = '1.0'
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'source_reference': fields.DictOfNullableStringsField(),
     }

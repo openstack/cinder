@@ -112,8 +112,10 @@ class TestCase(testtools.TestCase):
                                         RESOURCE_FILTER_FILENAME)
     MOCK_WORKER = True
     MOCK_TOOZ = True
+    FAKE_OVO_HISTORY_VERSION = '9999.999'
 
     def __init__(self, *args, **kwargs):
+
         super(TestCase, self).__init__(*args, **kwargs)
 
         # Suppress some log messages during test runs
@@ -300,6 +302,16 @@ class TestCase(testtools.TestCase):
         # volume_type_id is non-nullable for volumes and snapshots
 
         self.vt = volume_types.get_default_volume_type()
+
+        # Create fake RPC history if we don't have enough to do tests
+        obj_versions = objects_base.OBJ_VERSIONS
+        if len(obj_versions) == 1:
+            vol_vers = obj_versions.get_current_versions()['Volume'].split('.')
+            new_volume_version = '%s.%s' % (vol_vers[0], int(vol_vers[1]) + 1)
+            obj_versions.add(self.FAKE_OVO_HISTORY_VERSION,
+                             {'Volume': new_volume_version})
+
+        self.latest_ovo_version = obj_versions.get_current()
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \

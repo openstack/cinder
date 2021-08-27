@@ -44,6 +44,7 @@ class Service(base.CinderPersistentObject, base.CinderObject,
 
     OPTIONAL_FIELDS = ('cluster',)
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.IntegerField(),
         'host': fields.StringField(nullable=True),
@@ -69,19 +70,6 @@ class Service(base.CinderPersistentObject, base.CinderObject,
 
         'uuid': fields.StringField(),
     }
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make a service representation compatible with a target version."""
-        # Convert all related objects
-        super(Service, self).obj_make_compatible(primitive, target_version)
-
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        # Before v1.4 we didn't have cluster fields so we have to remove them.
-        if target_version < (1, 4):
-            for obj_field in ('cluster', 'cluster_name'):
-                primitive.pop(obj_field, None)
-        if target_version < (1, 5) and 'uuid' in primitive:
-            del primitive['uuid']
 
     @staticmethod
     def _from_db_object(context, service, db_service, expected_attrs=None):

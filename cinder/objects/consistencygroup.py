@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -53,18 +52,6 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         'cgsnapshots': fields.ObjectField('CGSnapshotList', nullable=True),
         'volumes': fields.ObjectField('VolumeList', nullable=True),
     }
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make a CG representation compatible with a target version."""
-        # Convert all related objects
-        super(ConsistencyGroup, self).obj_make_compatible(primitive,
-                                                          target_version)
-
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        # Before v1.3 we didn't have cluster fields so we have to remove them.
-        if target_version < (1, 3):
-            for obj_field in ('cluster', 'cluster_name'):
-                primitive.pop(obj_field, None)
 
     @classmethod
     def _from_db_object(cls, context, consistencygroup, db_consistencygroup,

@@ -39,16 +39,16 @@ class RPCAPITestCase(test.TestCase):
 
     @mock.patch('cinder.objects.Service.get_minimum_rpc_version',
                 return_value='1.2')
-    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
-                return_value='1.4')
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.get_client')
     def test_init(self, get_client, get_min_obj, get_min_rpc):
         def fake_get_client(target, version_cap, serializer):
             self.assertEqual(FakeAPI.TOPIC, target.topic)
             self.assertEqual(FakeAPI.RPC_API_VERSION, target.version)
             self.assertEqual('1.2', version_cap)
-            self.assertEqual('1.4', serializer.version_cap)
+            self.assertEqual(self.latest_ovo_version, serializer.version_cap)
 
+        get_min_obj.return_value = self.latest_ovo_version
         get_client.side_effect = fake_get_client
         FakeAPI()
 
@@ -73,19 +73,20 @@ class RPCAPITestCase(test.TestCase):
     @mock.patch('cinder.objects.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.get_client')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-scheduler': '1.4'})
-    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-scheduler': '1.3'})
     def test_init_cached_caps(self, get_client, get_min_obj, get_min_rpc):
         def fake_get_client(target, version_cap, serializer):
             self.assertEqual(FakeAPI.TOPIC, target.topic)
             self.assertEqual(FakeAPI.RPC_API_VERSION, target.version)
             self.assertEqual('1.4', version_cap)
-            self.assertEqual('1.3', serializer.version_cap)
+            self.assertEqual(self.latest_ovo_version, serializer.version_cap)
 
         get_client.side_effect = fake_get_client
-        FakeAPI()
+        with mock.patch('cinder.rpc.LAST_OBJ_VERSIONS',
+                        {'cinder-scheduler': self.latest_ovo_version}):
+            FakeAPI()
 
-        self.assertFalse(get_min_obj.called)
-        self.assertFalse(get_min_rpc.called)
+        get_min_obj.assert_not_called()
+        get_min_rpc.assert_not_called()
 
     @ddt.data([], ['noop'], ['noop', 'noop'])
     @mock.patch('oslo_messaging.JsonPayloadSerializer', wraps=True)

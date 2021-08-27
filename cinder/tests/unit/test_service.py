@@ -380,19 +380,11 @@ class ServiceTestCase(test.TestCase):
 
         app.stop()
 
-    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
-                return_value='1.6')
-    def test_start_rpc_and_init_host_no_cluster(self, is_upgrading_mock):
-        """Test that without cluster we don't create rpc service."""
-        app = service.Service.create(host=self.host,
-                                     binary=constants.VOLUME_BINARY,
-                                     cluster=None, topic=self.topic)
-        self._check_rpc_servers_and_init_host(app, False, None)
-
     @mock.patch('cinder.objects.Service.get_minimum_obj_version')
     def test_start_rpc_and_init_host_cluster(self, get_min_obj_mock):
         """Test that with cluster we create the rpc service."""
-        get_min_obj_mock.return_value = '1.7'
+        # cluster was introduced in 1.7, so latest will be enough to test this
+        get_min_obj_mock.return_value = self.latest_ovo_version
         cluster = 'cluster@backend#pool'
         self.host = 'host@backend#pool'
         app = service.Service.create(host=self.host,

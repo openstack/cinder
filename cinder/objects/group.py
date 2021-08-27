@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -35,6 +34,7 @@ class Group(base.CinderPersistentObject, base.CinderObject,
 
     OPTIONAL_FIELDS = ['volumes', 'volume_types', 'group_snapshots']
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
         'user_id': fields.StringField(),
@@ -56,17 +56,6 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         'group_snapshots': fields.ObjectField('GroupSnapshotList',
                                               nullable=True),
     }
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make an object representation compatible with target version."""
-        super(Group, self).obj_make_compatible(primitive, target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        if target_version < (1, 1):
-            for key in ('group_snapshot_id', 'source_group_id',
-                        'group_snapshots'):
-                primitive.pop(key, None)
-        if target_version < (1, 2):
-            primitive.pop('replication_status', None)
 
     @staticmethod
     def _from_db_object(context, group, db_group,

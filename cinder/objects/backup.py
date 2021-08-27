@@ -15,7 +15,6 @@
 from oslo_config import cfg
 from oslo_serialization import base64
 from oslo_serialization import jsonutils
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -45,6 +44,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
     OPTIONAL_FIELDS = ('metadata', 'parent')
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
 
@@ -109,17 +109,6 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     @property
     def has_dependent_backups(self):
         return bool(self.num_dependent_backups)
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make an object representation compatible with a target version."""
-        added_fields = (((1, 7), ('parent',)),)
-
-        super(Backup, self).obj_make_compatible(primitive, target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        for version, remove_fields in added_fields:
-            if target_version < version:
-                for obj_field in remove_fields:
-                    primitive.pop(obj_field, None)
 
     @classmethod
     def _from_db_object(cls, context, backup, db_backup, expected_attrs=None):

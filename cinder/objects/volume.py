@@ -13,7 +13,6 @@
 #    under the License.
 
 from oslo_config import cfg
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -69,6 +68,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
                        'volume_type', 'volume_attachment', 'consistencygroup',
                        'snapshots', 'cluster', 'group')
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'id': fields.UUIDField(),
         '_name_id': fields.UUIDField(nullable=True),
@@ -238,21 +238,6 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             changes.add('glance_metadata')
 
         return changes
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make a Volume representation compatible with a target version."""
-        added_fields = (((1, 4), ('cluster', 'cluster_name')),
-                        ((1, 5), ('group', 'group_id')),
-                        ((1, 7), ('service_uuid')))
-
-        # Convert all related objects
-        super(Volume, self).obj_make_compatible(primitive, target_version)
-
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        for version, remove_fields in added_fields:
-            if target_version < version:
-                for obj_field in remove_fields:
-                    primitive.pop(obj_field, None)
 
     @classmethod
     def _from_db_object(cls, context, volume, db_volume, expected_attrs=None):

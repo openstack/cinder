@@ -18,7 +18,6 @@ import ddt
 
 from cinder import exception
 from cinder import objects
-from cinder.objects import base as ovo_base
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
@@ -158,22 +157,6 @@ class TestGroup(test_objects.BaseObjectsTestCase):
             self.context, objects.Group(), db_group, expected_attrs)
         self.assertEqual(len(db_volumes), len(group.volumes))
         self._compare(self, db_volumes[0], group.volumes[0])
-
-    @ddt.data('1.10', '1.11')
-    def test_obj_make_compatible(self, version):
-        extra_data = {'group_snapshot_id': fake.GROUP_SNAPSHOT_ID,
-                      'source_group_id': fake.GROUP_ID,
-                      'group_snapshots': objects.GroupSnapshotList()}
-        group = objects.Group(self.context, name='name', **extra_data)
-
-        serializer = ovo_base.CinderObjectSerializer(version)
-        primitive = serializer.serialize_entity(self.context, group)
-
-        converted_group = objects.Group.obj_from_primitive(primitive)
-        is_set = version == '1.11'
-        for key in extra_data:
-            self.assertEqual(is_set, converted_group.obj_attr_is_set(key))
-        self.assertEqual('name', converted_group.name)
 
     @mock.patch('cinder.volume.group_types.get_group_type_specs')
     def test_is_replicated_true(self, mock_get_specs):

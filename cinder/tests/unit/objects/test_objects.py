@@ -80,6 +80,10 @@ class TestObjectVersions(test.TestCase):
                          "and we just have to change the hash in this module.")
 
     def test_versions_history(self):
+        # If we inserted a fake element in history, remove it so we don't fail
+        if base.OBJ_VERSIONS.get_current() == self.FAKE_OVO_HISTORY_VERSION:
+            fake_version = base.OBJ_VERSIONS.versions.pop(-1)
+            del base.OBJ_VERSIONS[fake_version]
         classes = base.CinderObjectRegistry.obj_classes()
         versions = base.OBJ_VERSIONS.get_current_versions()
         expected = {}

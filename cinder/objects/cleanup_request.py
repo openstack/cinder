@@ -24,6 +24,7 @@ class CleanupRequest(base.CinderObject, base.ClusteredObject):
     # Version 1.0: Initial version
     VERSION = '1.0'
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'service_id': fields.IntegerField(nullable=True),
         'cluster_name': fields.StringField(nullable=True),

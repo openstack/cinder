@@ -124,19 +124,6 @@ class TestCluster(test_objects.BaseObjectsTestCase):
                                         'active_backend_id': None},
                                        {'cluster_name': cluster.name})
 
-    @ddt.data('1.0', '1.1')
-    def tests_obj_make_compatible(self, version):
-        new_fields = {'replication_status': 'error', 'frozen': True,
-                      'active_backend_id': 'replication'}
-        cluster = objects.Cluster(self.context, **new_fields)
-        primitive = cluster.obj_to_primitive(version)
-        converted_cluster = objects.Cluster.obj_from_primitive(primitive)
-        for key, value in new_fields.items():
-            if version == '1.0':
-                self.assertFalse(converted_cluster.obj_attr_is_set(key))
-            else:
-                self.assertEqual(value, getattr(converted_cluster, key))
-
 
 class TestClusterList(test_objects.BaseObjectsTestCase):
     """Test ClusterList Versioned Object methods."""

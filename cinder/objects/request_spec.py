@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import objects
@@ -30,6 +29,7 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
     # Version 1.5: Added 'availability_zones'
     VERSION = '1.5'
 
+    # NOTE: When adding a field obj_make_compatible needs to be updated
     fields = {
         'consistencygroup_id': fields.UUIDField(nullable=True),
         'group_id': fields.UUIDField(nullable=True),
@@ -94,20 +94,6 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
             setattr(spec_obj, k, v)
 
         return spec_obj
-
-    def obj_make_compatible(self, primitive, target_version):
-        """Make an object representation compatible with target version."""
-        super(RequestSpec, self).obj_make_compatible(primitive, target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        added_fields = (((1, 1), ('group_id', 'group_backend')),
-                        ((1, 2), ('resource_backend')),
-                        ((1, 3), ('backup_id')),
-                        ((1, 4), ('operation')),
-                        ((1, 5), ('availability_zones')))
-        for version, remove_fields in added_fields:
-            if target_version < version:
-                for obj_field in remove_fields:
-                    primitive.pop(obj_field, None)
 
 
 @base.CinderObjectRegistry.register
