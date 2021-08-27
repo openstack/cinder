@@ -922,9 +922,9 @@ class UtilCommands(object):
         if online:
             # We don't want to delete file locks for existing resources
             volumes = {vol_id: files for vol_id, files in volumes.items()
-                       if not objects.Volume.exists(vol_id)}
+                       if not objects.Volume.exists(self.ctxt, vol_id)}
             snapshots = {snap_id: files for snap_id, files in snapshots.items()
-                         if not objects.Snapshot.exists(snap_id)}
+                         if not objects.Snapshot.exists(self.ctxt, snap_id)}
             self._exclude_running_backups(backups)
 
         # Now clean

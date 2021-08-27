@@ -1370,9 +1370,11 @@ class TestCinderManageCmd(test.TestCase):
                           [mock.call(b) for b in back_files])
         if online:
             self.assertEqual(2, mock_vol_exists.call_count)
-            mock_vol_exists.assert_has_calls((mock.call(fake.VOLUME_ID),
-                                              mock.call(fake.VOLUME2_ID)))
-            mock_snap_exists.assert_called_once_with(fake.SNAPSHOT_ID)
+            mock_vol_exists.assert_has_calls(
+                (mock.call(mock_ctxt.return_value, fake.VOLUME_ID),
+                 mock.call(mock_ctxt.return_value, fake.VOLUME2_ID)))
+            mock_snap_exists.assert_called_once_with(mock_ctxt.return_value,
+                                                     fake.SNAPSHOT_ID)
             mock_exclude_backs.assert_called_once_with(backs)
             # If services are online we'll check resources that still exist
             # and then we won't delete those that do. In this case the files
