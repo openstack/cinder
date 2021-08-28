@@ -374,7 +374,7 @@ Response Example
 Import backup
 ~~~~~~~~~~~~~
 
-.. rest_method::  POST /v2/{project_id}/backups/{backup_id}/import_record
+.. rest_method::  POST /v2/{project_id}/backups/import_record
 
 Import information about a backup.
 
@@ -396,7 +396,6 @@ Request
 .. rest_parameters:: parameters.yaml
 
    - project_id: project_id_path
-   - backup_id: backup_id
    - backup-record: backup_record
    - backup_service: backup_service
    - backup_url: backup_url
