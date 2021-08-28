@@ -402,9 +402,9 @@ class API(base.Base):
             # Note(zhiteng): update volume quota reservation
             try:
                 reservations = None
-                if volume.status != 'error_managing':
-                    LOG.debug("Decrease volume quotas only if status is not "
-                              "error_managing.")
+                if volume.status != 'error_managing' and volume.use_quota:
+                    LOG.debug("Decrease volume quotas for non temporary volume"
+                              " in non error_managing status.")
                     reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
                     QUOTAS.add_volume_type_opts(context,
                                                 reserve_opts,

@@ -93,10 +93,10 @@ def create_volume(ctxt,
     if id:
         with mock.patch('cinder.objects.Volume.obj_attr_is_set',
                         obj_attr_is_set(objects.Volume)):
-            volume = objects.Volume(ctxt, id=id, **vol)
+            volume = objects.Volume(context=ctxt, id=id, **vol)
             volume.create()
     else:
-        volume = objects.Volume(ctxt, **vol)
+        volume = objects.Volume(context=ctxt, **vol)
         volume.create()
 
     # If we get a TestCase instance we add cleanup

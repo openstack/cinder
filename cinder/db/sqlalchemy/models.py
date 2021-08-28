@@ -252,6 +252,9 @@ class Volume(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
     _name_id = sa.Column(sa.String(36))  # Don't access/modify this directly!
+    # TODO: (Y release) Change nullable to False
+    use_quota = Column(sa.Boolean, nullable=True, default=True,
+                       doc='Ignore volume in quota usage')
 
     @property
     def name_id(self):
@@ -755,6 +758,9 @@ class Snapshot(BASE, CinderBase):
     """Represents a snapshot of volume."""
     __tablename__ = 'snapshots'
     id = sa.Column(sa.String(36), primary_key=True)
+    # TODO: (Y release) Change nullable to False
+    use_quota = Column(sa.Boolean, nullable=True, default=True,
+                       doc='Ignore volume in quota usage')
 
     @property
     def name(self):
@@ -823,6 +829,7 @@ class Backup(BASE, CinderBase):
     """Represents a backup of a volume to Swift."""
     __tablename__ = 'backups'
     id = sa.Column(sa.String(36), primary_key=True)
+    # Backups don't have use_quota field since we don't have temporary backups
 
     @property
     def name(self):

@@ -200,6 +200,14 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertFalse(snap_table.c.volume_type_id.nullable)
         self.assertFalse(encrypt_table.c.volume_type_id.nullable)
 
+    def _check_145(self, engine, data):
+        """Test add use_quota columns."""
+        for name in ('volumes', 'snapshots'):
+            resources = db_utils.get_table(engine, name)
+            self.assertIn('use_quota', resources.c)
+            # TODO: (Y release) Alter in new migration & change to assertFalse
+            self.assertTrue(resources.c.use_quota.nullable)
+
     # NOTE: this test becomes slower with each addition of new DB migration.
     # 'pymysql' works much slower on slow nodes than 'psycopg2'. And such
     # timeout mostly required for testing of 'mysql' backend.

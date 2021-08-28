@@ -147,13 +147,21 @@ class DbCommands(object):
     # NOTE: Online migrations cannot depend on having Cinder services running.
     # Migrations can be called during Fast-Forward Upgrades without having any
     # Cinder services up.
-    # NOTE; Online migrations must be removed at the beginning of the next
+    # NOTE: Online migrations must be removed at the beginning of the next
     # release to the one they've been introduced.  A comment with the release
     # a migration is introduced and the one where it must be removed must
     # preceed any element of the "online_migrations" tuple, like this:
     #    # Added in Queens remove in Rocky
     #    db.service_uuids_online_data_migration,
-    online_migrations = tuple()
+    online_migrations = (
+        # TODO: (Z Release) Remove next line and this comment
+        # TODO: (Y Release) Uncomment next line and remove this comment
+        # db.remove_temporary_admin_metadata_data_migration,
+
+        # TODO: (Y Release) Remove next 2 line and this comment
+        db.volume_use_quota_online_data_migration,
+        db.snapshot_use_quota_online_data_migration,
+    )
 
     def __init__(self):
         pass

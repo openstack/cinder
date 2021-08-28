@@ -532,7 +532,7 @@ class DBAPIVolumeTestCase(BaseTest):
                                               skip_internal=False)
 
     @ddt.data((True, THREE_HUNDREDS, THREE),
-              (False, THREE_HUNDREDS + ONE_HUNDREDS, THREE + 1))
+              (False, THREE_HUNDREDS + 2 * ONE_HUNDREDS, THREE + 2))
     @ddt.unpack
     def test__volume_data_get_for_project_migrating(self, skip_internal,
                                                     gigabytes, count):
@@ -554,6 +554,12 @@ class DBAPIVolumeTestCase(BaseTest):
                                      'host': 'h-%d' % i,
                                      'volume_type_id': fake.VOLUME_TYPE_ID,
                                      'migration_status': 'target:vol-id'})
+        # This one will not be counted
+        db.volume_create(self.ctxt, {'project_id': 'project',
+                                     'size': ONE_HUNDREDS,
+                                     'host': 'h-%d' % i,
+                                     'volume_type_id': fake.VOLUME_TYPE_ID,
+                                     'use_quota': False})
 
         result = sqlalchemy_api._volume_data_get_for_project(
             self.ctxt, 'project', skip_internal=skip_internal)
@@ -2130,6 +2136,58 @@ class DBAPISnapshotTestCase(BaseTest):
         db.snapshot_metadata_delete(self.ctxt, 1, 'c')
 
         self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+
+    @ddt.data((True, (THREE, THREE_HUNDREDS)),
+              (False, (THREE + 1, THREE_HUNDREDS + ONE_HUNDREDS)))
+    @ddt.unpack
+    def test__snapshot_data_get_for_project_temp(self, skip_internal,
+                                                 expected):
+        vol = db.volume_create(self.ctxt,
+                               {'project_id': 'project', 'size': 1,
+                                'volume_type_id': fake.VOLUME_TYPE_ID})
+
+        # Normal snapshots are always counted
+        db.snapshot_create(
+            self.ctxt,
+            {'project_id': 'project',
+             'volume_id': vol.id,
+             'volume_type_id': vol.volume_type_id,
+             'display_name': 'user snapshot',
+             'volume_size': ONE_HUNDREDS})
+
+        # Old revert temp snapshots are counted, since display_name can be
+        # forged by users
+        db.snapshot_create(
+            self.ctxt,
+            {'project_id': 'project',
+             'volume_id': vol.id,
+             'volume_type_id': vol.volume_type_id,
+             'display_name': '[revert] volume 123 backup snapshot',
+             'volume_size': ONE_HUNDREDS})
+
+        # Old backup temp snapshots are counted, since display_name can be
+        # forged by users
+        db.snapshot_create(
+            self.ctxt,
+            {'project_id': 'project',
+             'volume_id': vol.id,
+             'volume_type_id': vol.volume_type_id,
+             'display_name': 'backup-snap-123',
+             'volume_size': ONE_HUNDREDS})
+
+        # This one will not be counted is skipping internal
+        db.snapshot_create(
+            self.ctxt,
+            {'project_id': 'project',
+             'volume_id': vol.id,
+             'volume_type_id': vol.volume_type_id,
+             'display_name': 'new type of temp snapshot',
+             'use_quota': False,
+             'volume_size': ONE_HUNDREDS})
+
+        result = sqlalchemy_api._snapshot_data_get_for_project(
+            self.ctxt, 'project', skip_internal=skip_internal)
+        self.assertEqual(expected, result)
 
 
 @ddt.ddt
@@ -3765,3 +3823,98 @@ class DBAPIGroupTestCase(BaseTest):
             self.assertEqual(
                 new_cluster_name + groups[i].cluster_name[len(cluster_name):],
                 db_groups[i].cluster_name)
+
+
+class OnlineMigrationTestCase(BaseTest):
+    # TODO: (Y Release) remove method and this comment
+    @mock.patch.object(sqlalchemy_api,
+                       'snapshot_use_quota_online_data_migration')
+    def test_db_snapshot_use_quota_online_data_migration(self, migration_mock):
+        params = (mock.sentinel.ctxt, mock.sentinel.max_count)
+        db.snapshot_use_quota_online_data_migration(*params)
+        migration_mock.assert_called_once_with(*params)
+
+    # TODO: (Y Release) remove method and this comment
+    @mock.patch.object(sqlalchemy_api,
+                       'volume_use_quota_online_data_migration')
+    def test_db_volume_use_quota_online_data_migration(self, migration_mock):
+        params = (mock.sentinel.ctxt, mock.sentinel.max_count)
+        db.volume_use_quota_online_data_migration(*params)
+        migration_mock.assert_called_once_with(*params)
+
+    # TODO: (Y Release) remove method and this comment
+    @mock.patch.object(sqlalchemy_api, 'use_quota_online_data_migration')
+    def test_snapshot_use_quota_online_data_migration(self, migration_mock):
+        sqlalchemy_api.snapshot_use_quota_online_data_migration(
+            self.ctxt, mock.sentinel.max_count)
+        migration_mock.assert_called_once_with(self.ctxt,
+                                               mock.sentinel.max_count,
+                                               'Snapshot',
+                                               mock.ANY)
+        calculation_method = migration_mock.call_args[0][3]
+        # Confirm we always set the field to True regardless of what we pass
+        self.assertTrue(calculation_method(None))
+
+    # TODO: (Y Release) remove method and this comment
+    @mock.patch.object(sqlalchemy_api, 'use_quota_online_data_migration')
+    def test_volume_use_quota_online_data_migration(self, migration_mock):
+        sqlalchemy_api.volume_use_quota_online_data_migration(
+            self.ctxt, mock.sentinel.max_count)
+        migration_mock.assert_called_once_with(self.ctxt,
+                                               mock.sentinel.max_count,
+                                               'Volume',
+                                               mock.ANY)
+        calculation_method = migration_mock.call_args[0][3]
+
+        # Confirm we set use_quota field to False for temporary volumes
+        temp_volume = mock.Mock(admin_metadata={'temporary': True})
+        self.assertFalse(calculation_method(temp_volume))
+
+        # Confirm we set use_quota field to False for temporary volumes
+        migration_dest_volume = mock.Mock(migration_status='target:123')
+        self.assertFalse(calculation_method(migration_dest_volume))
+
+        # Confirm we set use_quota field to False in other cases
+        volume = mock.Mock(admin_metadata={'temporary': False},
+                           migration_status='success')
+        self.assertTrue(calculation_method(volume))
+
+    # TODO: (Y Release) remove method and this comment
+    @mock.patch.object(sqlalchemy_api, 'models')
+    @mock.patch.object(sqlalchemy_api, 'model_query')
+    @mock.patch.object(sqlalchemy_api, 'get_session')
+    def test_use_quota_online_data_migration(self, session_mock, query_mock,
+                                             models_mock):
+        calculate_method = mock.Mock()
+        resource1 = mock.Mock()
+        resource2 = mock.Mock()
+        query = query_mock.return_value.filter_by.return_value
+        query_all = query.limit.return_value.with_for_update.return_value.all
+        query_all.return_value = [resource1, resource2]
+
+        result = sqlalchemy_api.use_quota_online_data_migration(
+            self.ctxt, mock.sentinel.max_count, 'resource_name',
+            calculate_method)
+
+        session_mock.assert_called_once_with()
+        session = session_mock.return_value
+        session.begin.assert_called_once_with()
+        session.begin.return_value.__enter__.assert_called_once_with()
+        session.begin.return_value.__exit__.assert_called_once_with(
+            None, None, None)
+
+        query_mock.assert_called_once_with(self.ctxt,
+                                           models_mock.resource_name,
+                                           session=session)
+        query_mock.return_value.filter_by.assert_called_once_with(
+            use_quota=None)
+        query.count.assert_called_once_with()
+        query.limit.assert_called_once_with(mock.sentinel.max_count)
+        query.limit.return_value.with_for_update.assert_called_once_with()
+        query_all.assert_called_once_with()
+
+        calculate_method.assert_has_calls((mock.call(resource1),
+                                           mock.call(resource2)))
+        self.assertEqual(calculate_method.return_value, resource1.use_quota)
+        self.assertEqual(calculate_method.return_value, resource2.use_quota)
+        self.assertEqual((query.count.return_value, 2), result)

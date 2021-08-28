@@ -1592,10 +1592,13 @@ def _volume_data_get_for_project(context, project_id, volume_type_id=None,
     # Also skip temporary volumes that have 'temporary' admin_metadata key set
     # to True.
     if skip_internal:
+        # TODO: (Y release) replace everything inside this if with:
+        #       query = query.filter(model.use_quota)
         admin_model = models.VolumeAdminMetadata
         query = query.filter(
             and_(or_(model.migration_status.is_(None),
                      ~model.migration_status.startswith('target:')),
+                 ~model.use_quota.is_(False),
                  ~sql.exists().where(and_(model.id == admin_model.volume_id,
                                           ~admin_model.deleted,
                                           admin_model.key == 'temporary',
@@ -3271,13 +3274,19 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
 
 @require_context
 def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
-                                   session=None, host=None):
+                                   session=None, host=None,
+                                   skip_internal=True):
     authorize_project_context(context, project_id)
     query = model_query(context,
                         func.count(models.Snapshot.id),
                         func.sum(models.Snapshot.volume_size),
                         read_deleted="no",
                         session=session)
+    if skip_internal:
+        # TODO: (Y release) replace next line with:
+        #        query = query.filter(models.Snapshot.use_quota)
+        query = query.filter(~models.Snapshot.use_quota.is_(False))
+
     if volume_type_id or host:
         query = query.join('volume')
         if volume_type_id:
@@ -3294,8 +3303,11 @@ def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
 @require_context
 def snapshot_data_get_for_project(context, project_id,
                                   volume_type_id=None, host=None):
+    # This method doesn't support filtering temporary resources (use_quota
+    # field) and defaults to returning all snapshots because all callers (quota
+    # sync methods and os-host API extension) require all the snapshots.
     return _snapshot_data_get_for_project(context, project_id, volume_type_id,
-                                          host=host)
+                                          host=host, skip_internal=False)
 
 
 @require_context
@@ -7377,3 +7389,67 @@ def conditional_update(context, model, values, expected_values, filters=(),
     # Return True if we were able to change any DB entry, False otherwise
     result = query.update(values, **update_args)
     return 0 != result
+
+
+# TODO: (Y Release) remove method and this comment
+@enginefacade.writer
+def volume_use_quota_online_data_migration(context, max_count):
+    def calculate_use_quota(volume):
+        return not (volume.migration_status.startswith('target:') or
+                    volume.admin_metadata.get('temporary') == 'True')
+
+    return use_quota_online_data_migration(context, max_count, 'Volume',
+                                           calculate_use_quota)
+
+
+# TODO: (Y Release) remove method and this comment
+@enginefacade.writer
+def snapshot_use_quota_online_data_migration(context, max_count):
+    # Temp snapshots are created in
+    # - cinder.volume.manager.VolumeManager._create_backup_snapshot
+    # - cinder.volume.driver.BaseVD.driver _create_temp_snapshot
+    #
+    # But we don't have a "good" way to know which ones are temporary as the
+    # only identification is the display_name that can be "forged" by users.
+    # Most users are not doing rolling upgrades so we'll assume there are no
+    # temporary snapshots, not even volumes with display_name:
+    # - '[revert] volume %s backup snapshot' % resource.volume_id
+    # - 'backup-snap-%s' % resource.volume_id
+    return use_quota_online_data_migration(context, max_count, 'Snapshot',
+                                           lambda snapshot: True)
+
+
+# TODO: (Y Release) remove method and this comment
+@enginefacade.writer
+def use_quota_online_data_migration(context, max_count,
+                                    resource_name, calculate_use_quota):
+    updated = 0
+    session = get_session()
+    with session.begin():
+        query = model_query(context,
+                            getattr(models, resource_name),
+                            session=session).filter_by(
+                                use_quota=None)
+        total = query.count()
+        resources = query.limit(max_count).with_for_update().all()
+        for resource in resources:
+            resource.use_quota = calculate_use_quota(resource)
+            updated += 1
+
+    return total, updated
+
+
+# TODO: (Z Release) remove method and this comment
+# TODO: (Y Release) uncomment method
+# @enginefacade.writer
+# def remove_temporary_admin_metadata_data_migration(context, max_count):
+#     session = get_session()
+#     with session.begin():
+#         query = model_query(context,
+#                             models.VolumeAdminMetadata,
+#                             session=session).filter_by(key='temporary')
+#         total = query.count()
+#         updated = query.limit(max_count).update(
+#             models.VolumeAdminMetadata.delete_values)
+#
+#     return total, updated

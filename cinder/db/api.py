@@ -1940,3 +1940,19 @@ def conditional_update(context, model, values, expected_values, filters=(),
     return IMPL.conditional_update(context, model, values, expected_values,
                                    filters, include_deleted, project_only,
                                    order)
+
+
+# TODO: (Y Release) remove method and this comment
+def volume_use_quota_online_data_migration(context, max_count):
+    IMPL.volume_use_quota_online_data_migration(context, max_count)
+
+
+# TODO: (Y Release) remove method and this comment
+def snapshot_use_quota_online_data_migration(context, max_count):
+    IMPL.snapshot_use_quota_online_data_migration(context, max_count)
+
+
+# TODO: (Z Release) remove method and this comment
+# TODO: (Y Release) uncomment method
+# def remove_temporary_admin_metadata_data_migration(context, max_count):
+#     IMPL.remove_temporary_admin_metadata_data_migration(context, max_count)

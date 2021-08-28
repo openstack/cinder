@@ -1305,6 +1305,7 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             'display_description': None,
             'volume_type_id': volume['volume_type_id'],
             'encryption_key_id': volume['encryption_key_id'],
+            'use_quota': False,  # Don't count for quota
             'metadata': {},
         }
         temp_snap_ref = objects.Snapshot(context=context, **kwargs)
@@ -1337,6 +1338,8 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             'attach_status': fields.VolumeAttachStatus.DETACHED,
             'availability_zone': volume.availability_zone,
             'volume_type_id': volume.volume_type_id,
+            'use_quota': False,  # Don't count for quota
+            # TODO: (Y release) Remove admin_metadata and only use use_quota
             'admin_metadata': {'temporary': 'True'},
         }
         kwargs.update(volume_options or {})

@@ -481,14 +481,15 @@ class ImageVolumeTestCases(base.BaseVolumeTestCase):
     @mock.patch('cinder.quota.QUOTAS.reserve', return_value=["RESERVATION"])
     def test_clone_image_volume(self, mock_reserve, mock_commit,
                                 mock_rollback, mock_cloned_volume):
-        vol = tests_utils.create_volume(self.context,
+        # Confirm  cloning does not copy quota use field
+        vol = tests_utils.create_volume(self.context, use_quota=False,
                                         **self.volume_params)
         # unnecessary attributes should be removed from image volume
         vol.consistencygroup = None
         result = self.volume._clone_image_volume(self.context, vol,
                                                  {'id': fake.VOLUME_ID})
-
         self.assertNotEqual(False, result)
+        self.assertTrue(result.use_quota)  # Original was False
         mock_reserve.assert_called_once_with(self.context, volumes=1,
                                              volumes_vol_type_name=1,
                                              gigabytes=vol.size,

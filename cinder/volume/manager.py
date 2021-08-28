@@ -235,7 +235,8 @@ class VolumeManager(manager.CleanableManager,
     _VOLUME_CLONE_SKIP_PROPERTIES = {
         'id', '_name_id', 'name_id', 'name', 'status',
         'attach_status', 'migration_status', 'volume_type',
-        'consistencygroup', 'volume_attachment', 'group', 'snapshots'}
+        'consistencygroup', 'volume_attachment', 'group', 'snapshots',
+        'use_quota'}
 
     def _get_service(self,
                      host: Optional[str] = None,
@@ -928,23 +929,22 @@ class VolumeManager(manager.CleanableManager,
                 reason=_("Unmanage and cascade delete options "
                          "are mutually exclusive."))
 
-        # To backup a snapshot or a 'in-use' volume, create a temp volume
-        # from the snapshot or in-use volume, and back it up.
-        # Get admin_metadata (needs admin context) to detect temporary volume.
-        is_temp_vol = False
-        with volume.obj_as_admin():
-            if volume.admin_metadata.get('temporary', 'False') == 'True':
-                is_temp_vol = True
-                LOG.info("Trying to delete temp volume: %s", volume.id)
-
+        # We have temporary volumes that did not modify the quota on creation
+        # and should not modify it when deleted.  These temporary volumes are
+        # created for volume migration between backends and for backups (from
+        # in-use volume or snapshot).
+        # TODO: (Y release) replace until the if do_quota (including comments)
+        #       with: do_quota = volume.use_quota
         # The status 'deleting' is not included, because it only applies to
         # the source volume to be deleted after a migration. No quota
         # needs to be handled for it.
         is_migrating = volume.migration_status not in (None, 'error',
                                                        'success')
-        # If deleting source/destination volume in a migration or a temp
-        # volume for backup, we should skip quotas.
-        do_quota = not (is_migrating or is_temp_vol)
+        # Get admin_metadata (needs admin context) to detect temporary volume.
+        with volume.obj_as_admin():
+            do_quota = not (volume.use_quota is False or is_migrating or
+                            volume.admin_metadata.get('temporary') == 'True')
+
         if do_quota:
             notification = 'unmanage.' if unmanage_only else 'delete.'
             self._notify_about_volume_usage(context, volume,
@@ -992,6 +992,8 @@ class VolumeManager(manager.CleanableManager,
 
                 self._clear_db(volume, new_status)
 
+        # If deleting source/destination volume in a migration or a temp
+        # volume for backup, we should skip quotas.
         if do_quota:
             # Get reservations
             try:
@@ -1103,6 +1105,7 @@ class VolumeManager(manager.CleanableManager,
                                    'creating new volume with this snapshot.',
             'volume_type_id': volume.volume_type_id,
             'encryption_key_id': volume.encryption_key_id,
+            'use_quota': False,  # Don't use quota for temporary snapshot
             'metadata': {}
         }
         snapshot = objects.Snapshot(context=context, **kwargs)
@@ -1188,8 +1191,7 @@ class VolumeManager(manager.CleanableManager,
                     "please manually reset it.") % msg_args
             raise exception.BadResetResourceStatus(reason=msg)
         if backup_snapshot:
-            self.delete_snapshot(context,
-                                 backup_snapshot, handle_quota=False)
+            self.delete_snapshot(context, backup_snapshot)
         msg = ('Volume %(v_id)s reverted to snapshot %(snap_id)s '
                'successfully.')
         msg_args = {'v_id': volume.id, 'snap_id': snapshot.id}
@@ -1275,8 +1277,7 @@ class VolumeManager(manager.CleanableManager,
     def delete_snapshot(self,
                         context: context.RequestContext,
                         snapshot: objects.Snapshot,
-                        unmanage_only: bool = False,
-                        handle_quota: bool = True) -> Optional[bool]:
+                        unmanage_only: bool = False) -> Optional[bool]:
         """Deletes and unexports snapshot."""
         context = context.elevated()
         snapshot._context = context
@@ -1324,7 +1325,7 @@ class VolumeManager(manager.CleanableManager,
         # Get reservations
         reservations = None
         try:
-            if handle_quota:
+            if snapshot.use_quota:
                 if CONF.no_snapshot_gb_quota:
                     reserve_opts = {'snapshots': -1}
                 else:
@@ -2320,6 +2321,7 @@ class VolumeManager(manager.CleanableManager,
             status='creating',
             attach_status=fields.VolumeAttachStatus.DETACHED,
             migration_status='target:%s' % volume['id'],
+            use_quota=False,  # Don't use quota for temporary volume
             **new_vol_values
         )
         new_volume.create()
