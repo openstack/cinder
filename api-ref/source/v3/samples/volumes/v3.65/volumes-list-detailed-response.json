@@ -1,0 +1,47 @@
+{
+    "volumes": [
+        {
+            "attachments": [],
+            "availability_zone": "nova",
+            "bootable": "false",
+            "consistencygroup_id": null,
+            "created_at": "2018-11-28T06:25:15.288987",
+            "description": null,
+            "encrypted": false,
+            "id": "cb49b381-9012-40cb-b8ee-80c19a4801b5",
+            "links": [
+                {
+                    "href": "http://127.0.0.1:43543/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/cb49b381-9012-40cb-b8ee-80c19a4801b5",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://127.0.0.1:43543/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/cb49b381-9012-40cb-b8ee-80c19a4801b5",
+                    "rel": "bookmark"
+                }
+            ],
+            "metadata": {},
+            "migration_status": null,
+            "multiattach": false,
+            "name": null,
+            "os-vol-host-attr:host": null,
+            "os-vol-mig-status-attr:migstat": null,
+            "os-vol-mig-status-attr:name_id": null,
+            "os-vol-tenant-attr:tenant_id": "89afd400-b646-4bbc-b12b-c0a4d63e5bd3",
+            "replication_status": null,
+            "size": 10,
+            "snapshot_id": null,
+            "source_volid": null,
+            "status": "creating",
+            "updated_at": null,
+            "user_id": "c853ca26-e8ea-4797-8a52-ee124a013d0e",
+            "volume_type": "__DEFAULT__",
+            "volume_type_id": "5fed9d7c-401d-46e2-8e80-f30c70cb7e1d",
+            "provider_id": null,
+            "group_id": null,
+            "service_uuid": null,
+            "shared_targets": true,
+            "cluster_name": null,
+            "consumes_quota": true
+        }
+    ]
+}

@@ -53,16 +53,24 @@ class SnapshotsController(snapshots_v2.SnapshotsController):
                 LOG.debug('Could not evaluate value %s, assuming string',
                           search_opts['metadata'])
 
+        if 'use_quota' in search_opts:
+            search_opts['use_quota'] = utils.get_bool_param('use_quota',
+                                                            search_opts)
+
+    MV_ADDED_FILTERS = (
+        (mv.get_prior_version(mv.SNAPSHOT_LIST_METADATA_FILTER), 'metadata'),
+        # REST API receives consumes_quota, but process_general_filtering
+        # transforms it into use_quota
+        (mv.get_prior_version(mv.USE_QUOTA), 'use_quota'),
+    )
+
     @common.process_general_filtering('snapshot')
     def _process_snapshot_filtering(self, context=None, filters=None,
                                     req_version=None):
         """Formats allowed filters"""
-
-        # if the max version is less than SNAPSHOT_LIST_METADATA_FILTER
-        # metadata based filtering is not supported
-        if req_version.matches(
-                None, mv.get_prior_version(mv.SNAPSHOT_LIST_METADATA_FILTER)):
-            filters.pop('metadata', None)
+        for version, field in self.MV_ADDED_FILTERS:
+            if req_version.matches(None, version):
+                filters.pop(field, None)
 
         # Filter out invalid options
         allowed_search_options = self._get_snapshot_filter_options()

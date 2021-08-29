@@ -49,7 +49,8 @@ LOG = logging.getLogger(__name__)
 _FILTERS_COLLECTION = None
 
 ATTRIBUTE_CONVERTERS = {'name~': 'display_name~',
-                        'description~': 'display_description~'}
+                        'description~': 'display_description~',
+                        'consumes_quota': 'use_quota'}
 
 
 METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')

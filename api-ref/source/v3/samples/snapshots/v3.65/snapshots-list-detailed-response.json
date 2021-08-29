@@ -13,7 +13,10 @@
             "size": 10,
             "status": "creating",
             "updated_at": null,
-            "volume_id": "7acd675e-4e06-4653-af9f-2ecd546342d6"
+            "volume_id": "7acd675e-4e06-4653-af9f-2ecd546342d6",
+            "group_snapshot_id": null,
+            "user_id": "c853ca26-e8ea-4797-8a52-ee124a013d0e",
+            "consumes_quota": true
         }
     ]
 }

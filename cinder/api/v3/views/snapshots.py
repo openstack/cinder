@@ -27,9 +27,11 @@ class ViewBuilder(views_v2.ViewBuilder):
         req_version = request.api_version_request
         # Add group_snapshot_id if min version is greater than or equal
         # to GROUP_SNAPSHOTS.
+        snap = snapshot_ref['snapshot']
         if req_version.matches(mv.GROUP_SNAPSHOTS, None):
-            snapshot_ref['snapshot']['group_snapshot_id'] = (
-                snapshot.get('group_snapshot_id'))
+            snap['group_snapshot_id'] = snapshot.get('group_snapshot_id')
         if req_version.matches(mv.SNAPSHOT_LIST_USER_ID, None):
-            snapshot_ref['snapshot']['user_id'] = snapshot.get('user_id')
+            snap['user_id'] = snapshot.get('user_id')
+        if req_version.matches(mv.USE_QUOTA):
+            snap['consumes_quota'] = snapshot.get('use_quota')
         return snapshot_ref

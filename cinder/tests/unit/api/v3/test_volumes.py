@@ -343,6 +343,45 @@ class VolumeApiTest(test.TestCase):
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
 
+    @ddt.data(('true', 0), ('false', 1))
+    @ddt.unpack
+    def test_volume_list_with_quota_filter(self, use_quota, expected_index):
+        volumes = (test_utils.create_volume(self.ctxt, host='test_host1',
+                                            cluster_name='cluster1',
+                                            volume_type_id=None,
+                                            use_quota=True,
+                                            availability_zone='nova1'),
+                   test_utils.create_volume(self.ctxt, host='test_host2',
+                                            cluster_name='cluster2',
+                                            volume_type_id=None,
+                                            use_quota=False,
+                                            availability_zone='nova2'))
+        req = fakes.HTTPRequest.blank(
+            '/v3/volumes?consumes_quota=%s' % use_quota, version=mv.USE_QUOTA)
+        res_dict = self.controller.detail(req)
+        self.assertEqual(1, len(res_dict['volumes']))
+        self.assertEqual(volumes[expected_index].id,
+                         res_dict['volumes'][0]['id'])
+
+    def test_volume_list_without_quota_filter(self):
+        num_vols = 4
+        vol_ids = set()
+        # Half of the volumes will use quota, the other half won't
+        for i in range(num_vols):
+            vol = test_utils.create_volume(self.ctxt,
+                                           use_quota=bool(i % 2),
+                                           host='test_host',
+                                           cluster_name='cluster',
+                                           volume_type_id=None,
+                                           availability_zone='nova1')
+            vol_ids.add(vol.id)
+        req = fakes.HTTPRequest.blank('/v3/volumes', version=mv.USE_QUOTA)
+        res_dict = self.controller.detail(req)
+
+        res_vol_ids = {v['id'] for v in res_dict['volumes']}
+        self.assertEqual(num_vols, len(res_vol_ids))
+        self.assertEqual(vol_ids, res_vol_ids)
+
     def _fake_volumes_summary_request(self,
                                       version=mv.VOLUME_SUMMARY,
                                       all_tenant=False,
@@ -899,6 +938,27 @@ class VolumeApiTest(test.TestCase):
             self.assertIn('encryption_key_id', volume_details)
         else:
             self.assertNotIn('encryption_key_id', volume_details)
+
+    @ddt.data(
+        (True, True, mv.USE_QUOTA),
+        (True, False, mv.USE_QUOTA),
+        (False, True, mv.get_prior_version(mv.USE_QUOTA)),
+        (False, False, mv.get_prior_version(mv.USE_QUOTA)),
+    )
+    @ddt.unpack
+    def test_volume_show_with_use_quota(self, present, value, microversion):
+        volume = test_utils.create_volume(self.ctxt,
+                                          volume_type_id=None,
+                                          use_quota=value)
+
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % volume.id,
+                                      version=microversion)
+        volume_details = self.controller.show(req, volume.id)['volume']
+
+        if present:
+            self.assertIs(value, volume_details['consumes_quota'])
+        else:
+            self.assertNotIn('consumes_quota', volume_details)
 
     def _fake_create_volume(self, size=1):
         vol = {

@@ -12,6 +12,9 @@
         "size": 10,
         "status": "creating",
         "updated_at": null,
-        "volume_id": "b72c48f1-64b7-4cd8-9745-b12e0be82d37"
+        "volume_id": "b72c48f1-64b7-4cd8-9745-b12e0be82d37",
+        "group_snapshot_id": null,
+        "user_id": "c853ca26-e8ea-4797-8a52-ee124a013d0e",
+        "consumes_quota": true
     }
 }

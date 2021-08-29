@@ -148,14 +148,17 @@ REST_API_VERSION_HISTORY = """
              ("GET /v3/{project_id}/volumes/detail") and volume-show
              ("GET /v3/{project_id}/volumes/{volume_id}") calls.
     * 3.64 - Include 'encryption_key_id' in volume and backup details
+    * 3.65 - Include 'consumes_quota' in volume and snapshot details
+           - Accept 'consumes_quota' filter in volume and snapshot list
+             operation.
 """
 
 # The minimum and maximum versions of the API supported
 # The default api version request is defined to be the
 # minimum version of the API supported.
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.64"
-UPDATED = "2021-05-30T00:00:00Z"
+_MAX_API_VERSION = "3.65"
+UPDATED = "2021-08-25T00:00:00Z"
 
 
 # NOTE(cyeoh): min and max versions declared as functions so we can

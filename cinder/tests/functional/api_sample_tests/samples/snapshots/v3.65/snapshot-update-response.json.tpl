@@ -1,8 +1,8 @@
 {
     "snapshot": {
-        "created_at": "2019-03-12T04:53:53.426591",
+        "created_at": "%(strtime)s",
         "description": "This is yet, another snapshot.",
-        "id": "43666194-8e72-451a-b7bb-54fef763b2b8",
+        "id": "%(uuid)s",
         "metadata": {
             "key": "v3"
         },
@@ -10,6 +10,9 @@
         "size": 10,
         "status": "creating",
         "updated_at": null,
-        "volume_id": "070c942d-9909-42e9-a467-7a781f150c58"
+        "volume_id": "%(uuid)s",
+        "group_snapshot_id": null,
+        "user_id": "%(uuid)s",
+        "consumes_quota": true
     }
 }

@@ -80,18 +80,23 @@ class VolumeController(volumes_v2.VolumeController):
 
         return webob.Response(status_int=HTTPStatus.ACCEPTED)
 
+    MV_ADDED_FILTERS = (
+        (mv.get_prior_version(mv.VOLUME_LIST_GLANCE_METADATA),
+         'glance_metadata'),
+        (mv.get_prior_version(mv.VOLUME_LIST_GROUP), 'group_id'),
+        (mv.get_prior_version(mv.VOLUME_TIME_COMPARISON_FILTER), 'created_at'),
+        (mv.get_prior_version(mv.VOLUME_TIME_COMPARISON_FILTER), 'updated_at'),
+        # REST API receives consumes_quota, but process_general_filtering
+        # transforms it into use_quota
+        (mv.get_prior_version(mv.USE_QUOTA), 'use_quota'),
+    )
+
     @common.process_general_filtering('volume')
     def _process_volume_filtering(self, context=None, filters=None,
                                   req_version=None):
-        if req_version.matches(None, mv.MESSAGES):
-            filters.pop('glance_metadata', None)
-
-        if req_version.matches(None, mv.BACKUP_UPDATE):
-            filters.pop('group_id', None)
-
-        if req_version.matches(None, mv.SUPPORT_TRANSFER_PAGINATION):
-            filters.pop('created_at', None)
-            filters.pop('updated_at', None)
+        for version, field in self.MV_ADDED_FILTERS:
+            if req_version.matches(None, version):
+                filters.pop(field, None)
 
         api_utils.remove_invalid_filter_options(
             context, filters,
@@ -154,6 +159,9 @@ class VolumeController(volumes_v2.VolumeController):
 
         if 'name' in filters:
             filters['display_name'] = filters.pop('name')
+
+        if 'use_quota' in filters:
+            filters['use_quota'] = utils.get_bool_param('use_quota', filters)
 
         self._handle_time_comparison_filters(filters)
 

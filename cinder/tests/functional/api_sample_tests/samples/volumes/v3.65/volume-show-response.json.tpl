@@ -4,17 +4,17 @@
         "availability_zone": "nova",
         "bootable": "false",
         "consistencygroup_id": null,
-        "created_at": "2018-11-29T06:50:07.770785",
+        "created_at": "%(strtime)s",
         "description": null,
         "encrypted": false,
-        "id": "f7223234-1afc-4d19-bfa3-d19deb6235ef",
+        "id": "%(uuid)s",
         "links": [
             {
-                "href": "http://127.0.0.1:45839/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/f7223234-1afc-4d19-bfa3-d19deb6235ef",
+                "href": "%(host)s/v3/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/%(uuid)s",
                 "rel": "self"
             },
             {
-                "href": "http://127.0.0.1:45839/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/f7223234-1afc-4d19-bfa3-d19deb6235ef",
+                "href": "%(host)s/89afd400-b646-4bbc-b12b-c0a4d63e5bd3/volumes/%(uuid)s",
                 "rel": "bookmark"
             }
         ],
@@ -25,14 +25,21 @@
         "os-vol-host-attr:host": null,
         "os-vol-mig-status-attr:migstat": null,
         "os-vol-mig-status-attr:name_id": null,
-        "os-vol-tenant-attr:tenant_id": "89afd400-b646-4bbc-b12b-c0a4d63e5bd3",
+        "os-vol-tenant-attr:tenant_id": "%(uuid)s",
         "replication_status": null,
         "size": 10,
         "snapshot_id": null,
         "source_volid": null,
         "status": "creating",
         "updated_at": null,
-        "user_id": "c853ca26-e8ea-4797-8a52-ee124a013d0e",
-        "volume_type": "__DEFAULT__"
+        "user_id": "%(uuid)s",
+        "volume_type": "__DEFAULT__",
+        "provider_id": null,
+        "group_id": null,
+        "service_uuid": null,
+        "shared_targets": true,
+        "cluster_name": null,
+        "volume_type_id": "%(uuid)s",
+        "consumes_quota": true
     }
 }

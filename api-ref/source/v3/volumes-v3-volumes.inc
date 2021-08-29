@@ -98,6 +98,7 @@ Request
    - with_count: with_count
    - created_at: filter_created_at
    - updated_at: filter_updated_at
+   - consumes_quota: filter_consumes_quota
 
 
 Response Parameters
@@ -140,13 +141,14 @@ Response Parameters
    - service_uuid: service_uuid
    - shared_targets: shared_targets
    - cluster_name: cluster_name
+   - consumes_quota: consumes_quota
    - count: count
 
 
-Response Example (v3.63)
+Response Example (v3.65)
 ------------------------
 
-.. literalinclude:: ./samples/volumes/v3.63/volumes-list-detailed-response.json
+.. literalinclude:: ./samples/volumes/v3.65/volumes-list-detailed-response.json
    :language: javascript
 
 
@@ -258,11 +260,12 @@ Response Parameters
    - service_uuid: service_uuid
    - shared_targets: shared_targets
    - cluster_name: cluster_name
+   - consumes_quota: consumes_quota
 
-Response Example (v3.63)
+Response Example (v3.65)
 ------------------------
 
-.. literalinclude:: ./samples/volumes/v3.63/volume-create-response.json
+.. literalinclude:: ./samples/volumes/v3.65/volume-create-response.json
    :language: javascript
 
 
@@ -301,6 +304,7 @@ Request
    - marker: marker
    - with_count: with_count
    - created_at: filter_created_at
+   - consumes_quota: filter_consumes_quota
    - updated_at: filter_updated_at
 
 
@@ -394,12 +398,13 @@ Response Parameters
    - cluster_name: cluster_name
    - provider_id:  provider_id
    - group_id: group_id_optional
+   - consumes_quota: consumes_quota
 
 
-Response Example (v3.63)
+Response Example (v3.65)
 ------------------------
 
-.. literalinclude:: ./samples/volumes/v3.63/volume-show-response.json
+.. literalinclude:: ./samples/volumes/v3.65/volume-show-response.json
    :language: javascript
 
 
@@ -473,12 +478,13 @@ Response Parameters
    - service_uuid: service_uuid
    - shared_targets: shared_targets
    - cluster_name: cluster_name
+   - consumes_quota: consumes_quota
 
 
-Response Example (v3.63)
+Response Example (v3.65)
 ------------------------
 
-.. literalinclude:: ./samples/volumes/v3.63/volume-update-response.json
+.. literalinclude:: ./samples/volumes/v3.65/volume-update-response.json
    :language: javascript
 
 
