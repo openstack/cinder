@@ -276,9 +276,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                    by adding xNotPrimary to the retryable exception list
           2.2.2  - Fix bug #1896112 SolidFire Driver creates duplicate volume
                    when API response is lost
+          2.2.3  - Fix bug #1942090 SolidFire retype fails due to volume status
+                   as retyping.
+                   Fix bug #1932964 SolidFire duplicate volume name exception
+                   on migration and replication.
     """
 
-    VERSION = '2.2.2'
+    VERSION = '2.2.3'
 
     SUPPORTS_ACTIVE_ACTIVE = True
 
@@ -1015,10 +1019,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         params['attributes'] = attributes
         return self._issue_api_request('ModifyVolume', params)
 
-    def _list_volumes_by_name(self, sf_volume_name):
+    def _list_volumes_by_name(self, sf_volume_name, endpoint=None):
         params = {'volumeName': sf_volume_name}
-        return self._issue_api_request(
-            'ListVolumes', params, version='8.0')['result']['volumes']
+        return self._issue_api_request('ListVolumes', params, version='8.0',
+                                       endpoint=endpoint)['result']['volumes']
 
     def _wait_volume_is_active(self, sf_volume_name):
 
@@ -1046,9 +1050,10 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise SolidFireAPIException(msg)
 
     def _do_volume_create(self, sf_account, params, endpoint=None):
-
         sf_volume_name = params['name']
-        volumes_found = self._list_volumes_by_name(sf_volume_name)
+        volumes_found = self._list_volumes_by_name(sf_volume_name,
+                                                   endpoint=endpoint)
+
         if volumes_found:
             raise SolidFireDuplicateVolumeNames(vol_name=sf_volume_name)
 
@@ -2522,9 +2527,10 @@ class SolidFireDriver(san.SanISCSIDriver):
         LOG.info("Migrate volume %(vol_id)s to %(host)s.",
                  {"vol_id": volume.id, "host": host["host"]})
 
-        if volume.status != fields.VolumeStatus.AVAILABLE:
-            msg = _("Volume status must be 'available' to execute "
-                    "storage assisted migration.")
+        if (volume.status != fields.VolumeStatus.AVAILABLE and
+                volume.status != fields.VolumeStatus.RETYPING):
+            msg = _("Volume status must be 'available' or 'retyping' to "
+                    "execute storage assisted migration.")
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 

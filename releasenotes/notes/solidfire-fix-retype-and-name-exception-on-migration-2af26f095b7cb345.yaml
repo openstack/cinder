@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    NetApp SolidFire driver `Bug #1932964
+    <https://bugs.launchpad.net/cinder/+bug/1932964>`_:
+    Fixed a name exception that occurs on any volume migration.
+  - |
+    NetApp SolidFire driver `Bug #1942090
+    <https://bugs.launchpad.net/cinder/+bug/1942090>`_:
+    Fixed a status exception that occurs on volume retype with migration.
