@@ -107,8 +107,8 @@ class JovianRESTProxy(object):
         out = None
         for i in range(len(self.hosts)):
             try:
-                addr = "{base}{req}".format(base=self._get_base_url(),
-                                            req=req)
+                addr = "%(base)s%(req)s" % {'base': self._get_base_url(),
+                                            'req': req}
                 LOG.debug("Sending %(t)s to %(addr)s",
                           {'t': request_method, 'addr': addr})
                 r = None

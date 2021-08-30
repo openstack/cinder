@@ -14,7 +14,7 @@
 #    under the License.
 
 
-"""REST cmd interoperation class for JovianDSS driver."""
+"""REST cmd interoperation class for Open-E JovianDSS driver."""
 import re
 
 from oslo_log import log as logging
@@ -39,19 +39,19 @@ class JovianRESTAPI(object):
             re.compile(r'^Zfs resource: .* not found in this collection\.$'))
 
     def _general_error(self, url, resp):
-        reason = "Request {} failure".format(url)
+        reason = "Request %s failure" % url
         if 'error' in resp:
 
             eclass = resp.get('class', 'Unknown')
             code = resp.get('code', 'Unknown')
             msg = resp.get('message', 'Unknown')
 
-            reason = _("Request to {url} failed with code: {code} "
-                       "of type:{eclass} reason:{message}")
-            reason = reason.format(eclass=eclass,
-                                   code=code,
-                                   message=msg,
-                                   url=url)
+            reason = _("Request to %(url)s failed with code: %(code)s "
+                       "of type:%(eclass)s reason:%(message)s")
+            reason = (reason % {'url': url,
+                                'code': code,
+                                'eclass': eclass,
+                                'message': msg})
         raise jexc.JDSSException(reason=reason)
 
     def get_active_host(self):
@@ -140,9 +140,9 @@ class JovianRESTAPI(object):
 
         if resp["error"] is not None:
             if resp["error"]["errno"] == str(5):
-                raise jexc.JDSSRESTException(
-                    'Failed to create volume. {}.'.format(
-                        resp['error']['message']))
+                msg = _('Failed to create volume %s.' %
+                        resp['error']['message'])
+                raise jexc.JDSSRESTException(msg)
 
         raise jexc.JDSSRESTException('Failed to create volume.')
 
@@ -293,7 +293,7 @@ class JovianRESTAPI(object):
                   "property_value":"<value of a property>"}
         """
 
-        req = '/volumes/{}/properties'.format(volume_name)
+        req = '/volumes/%s/properties' % volume_name
 
         resp = self.rproxy.pool_request('PUT', req, json_data=prop)
 
@@ -469,7 +469,7 @@ class JovianRESTAPI(object):
         }
         :return:
         """
-        req = '/san/iscsi/targets/' + target_name + "/incoming-users"
+        req = "/san/iscsi/targets/%s/incoming-users" % target_name
 
         LOG.debug("add credentails to target %s", target_name)
 
@@ -491,7 +491,7 @@ class JovianRESTAPI(object):
 
         :param target_name:
         """
-        req = '/san/iscsi/targets/' + target_name + "/incoming-users"
+        req = "/san/iscsi/targets/%s/incoming-users" % target_name
 
         LOG.debug("get chap cred for target %s", target_name)
 
@@ -514,8 +514,9 @@ class JovianRESTAPI(object):
         :param target_name: target name
         :param user_name: user name
         """
-        req = '/san/iscsi/targets/{0}/incoming-users/{1}'.format(
-            target_name, user_name)
+        req = '/san/iscsi/targets/%(target)s/incoming-users/%(user)s' % {
+            'target': target_name,
+            'user': user_name}
 
         LOG.debug("remove credentails from target %s", target_name)
 
@@ -538,7 +539,9 @@ class JovianRESTAPI(object):
         :param lun_name:
         :return: Bool
         """
-        req = '/san/iscsi/targets/' + target_name + "/luns/" + lun_name
+        req = '/san/iscsi/targets/%(tar)s/luns/%(lun)s' % {
+            'tar': target_name,
+            'lun': lun_name}
 
         LOG.debug("check if volume %(vol)s is associated with %(tar)s",
                   {'vol': lun_name,
@@ -567,7 +570,7 @@ class JovianRESTAPI(object):
         :param lun_name:
         :return:
         """
-        req = '/san/iscsi/targets/{}/luns'.format(target_name)
+        req = '/san/iscsi/targets/%s/luns' % target_name
 
         jbody = {"name": lun_name, "lun": lun_id}
         LOG.debug("atach volume %(vol)s to target %(tar)s",
@@ -596,7 +599,9 @@ class JovianRESTAPI(object):
         :param lun_name:
         :return:
         """
-        req = '/san/iscsi/targets/' + target_name + "/luns/" + lun_name
+        req = '/san/iscsi/targets/%(tar)s/luns/%(lun)s' % {
+            'tar': target_name,
+            'lun': lun_name}
 
         LOG.debug("detach volume %(vol)s from target %(tar)s",
                   {'vol': lun_name,
@@ -621,7 +626,7 @@ class JovianRESTAPI(object):
         :param snapshot_name: snapshot name
         :return:
         """
-        req = '/volumes/' + volume_name + '/snapshots'
+        req = '/volumes/%s/snapshots' % volume_name
 
         jbody = {
             'snapshot_name': snapshot_name
@@ -655,7 +660,7 @@ class JovianRESTAPI(object):
         :param original_vol_name: sample copy
         :return:
         """
-        req = '/volumes/' + original_vol_name + '/clone'
+        req = '/volumes/%s/clone' % original_vol_name
 
         jbody = {
             'name': volume_name,
@@ -682,8 +687,8 @@ class JovianRESTAPI(object):
                         volume=volume_name)
                 if resp["error"]["errno"] == 1:
                     raise jexc.JDSSResourceNotFoundException(
-                        res="{vol}@{snap}".format(vol=original_vol_name,
-                                                  snap=snapshot_name))
+                        res="%(vol)s@%(snap)s" % {'vol': original_vol_name,
+                                                  'snap': snapshot_name})
 
         self._general_error(req, resp)
 
@@ -695,9 +700,9 @@ class JovianRESTAPI(object):
         :param snapshot_name: snapshot of a volume above
         :return:
         """
-        req = ('/volumes/{vol}/snapshots/'
-               '{snap}/rollback').format(vol=volume_name,
-                                         snap=snapshot_name)
+        req = ('/volumes/%(vol)s/snapshots/'
+               '%(snap)s/rollback') % {'vol': volume_name,
+                                       'snap': snapshot_name}
 
         LOG.debug("rollback volume %(vol)s to snapshot %(snap)s",
                   {'vol': volume_name,
@@ -712,8 +717,8 @@ class JovianRESTAPI(object):
             if resp["error"]:
                 if resp["error"]["errno"] == 1:
                     raise jexc.JDSSResourceNotFoundException(
-                        res="{vol}@{snap}".format(vol=volume_name,
-                                                  snap=snapshot_name))
+                        res="%(vol)s@%(snap)s" % {'vol': volume_name,
+                                                  'snap': snapshot_name})
 
         self._general_error(req, resp)
 
@@ -740,8 +745,9 @@ class JovianRESTAPI(object):
         :return:
         """
 
-        req = '/volumes/' + volume_name + '/snapshots/' + snapshot_name
-
+        req = '/volumes/%(vol)s/snapshots/%(snap)s' % {
+            'vol': volume_name,
+            'snap': snapshot_name}
         LOG.debug("delete snapshot %(snap)s of volume %(vol)s",
                   {'snap': snapshot_name,
                    'vol': volume_name})
@@ -805,7 +811,7 @@ class JovianRESTAPI(object):
             "error": null
         }
         """
-        req = '/volumes/' + volume_name + '/snapshots'
+        req = '/volumes/%s/snapshots' % volume_name
 
         LOG.debug("get snapshots for volume %s ", volume_name)
 

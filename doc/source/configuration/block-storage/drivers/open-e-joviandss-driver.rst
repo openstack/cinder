@@ -2,8 +2,8 @@
 Open-E JovianDSS iSCSI driver
 =============================
 
-The ``JovianISCSIDriver`` allows usage of Open-E Jovian Data Storage
-Solution to be used as Block Storage in OpenStack deployments.
+The ``JovianISCSIDriver`` allows usage of Open-E JovianDSS
+Data Storage Solution to be used as Block Storage in OpenStack deployments.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -24,18 +24,19 @@ Configuring
 Edit with your favourite editor Cinder config file. It can be found at
 /etc/cinder/cinder.conf
 
-Add the field enabled\_backends with value jdss-0:
+Add the field enabled\_backends with value open-e-jdss-0:
 
 ::
 
-    enabled_backends = jdss-0
+    enabled_backends = open-e-jdss-0
 
-Provide settings to JovianDSS driver by adding 'jdss-0' description:
+Provide settings to Open-E JovianDSS driver by adding 'open-e-jdss-0'
+description:
 
 ::
 
-    [jdss-0]
-    backend_name = jdss-0
+    [open-e-jdss-0]
+    backend_name = Open-EJovianDSS
     chap_password_len = 14
     driver_use_ssl = True
     driver_ssl_cert_verify = True
@@ -58,20 +59,20 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
      - Default value
      - Description
    * - ``backend_name``
-     - JovianDSS-iSCSI
+     - Open-EJovianDSS
      - Name of the back end
    * - ``chap_password_len``
      - 12
      - Length of the unique generated CHAP password.
    * - ``driver_use_ssl``
      - True
-     - Use SSL to send requests to JovianDSS[1]
+     - Use SSL to send requests to Open-E JovianDSS[1]
    * - ``driver_ssl_cert_verify``
      - True
-     - Verify authenticity of JovianDSS[1] certificate
+     - Verify authenticity of Open-E JovianDSS[1] certificate
    * - ``driver_ssl_cert_path``
      - None
-     - Path to the JovianDSS[1] certificate for verification
+     - Path to the Open-E JovianDSS[1] certificate for verification
    * - ``iscsi_target_prefix``
      - iqn.2016-04.com.open-e:01:cinder-
      - Prefix that will be used to form target name for volume
@@ -92,21 +93,21 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
      - Location of the driver source code
    * - ``san_hosts``
      -
-     - Comma separated list of IP address of the JovianDSS
+     - Comma separated list of IP address of the Open-E JovianDSS
    * - ``san_login``
      - admin
      - Must be set according to the settings in [1]
    * - ``san_password``
      - admin
-     - Jovian password [1], **should be changed** for security purposes
+     - Open-E Jovian DSS password [1], **should be changed**
    * - ``san_thin_provision``
      - False
      - Using thin provisioning for new volumes
 
 
-1. JovianDSS Web interface/System Settings/REST Access
+1. Open-E JovianDSS Web interface/System Settings/REST Access
 
-2. Pool can be created by going to JovianDSS Web interface/Storage
+2. Pool can be created by going to Open-E JovianDSS Web interface/Storage
 
 .. _interface/Storage:
 
@@ -116,18 +117,18 @@ Provide settings to JovianDSS driver by adding 'jdss-0' description:
 Multiple Pools
 ~~~~~~~~~~~~~~
 
-In order to add another JovianDSS Pool, create a copy of
-JovianDSS config in cinder.conf file.
+In order to add another Open-E JovianDSS Pool, create a copy of
+Open-E JovianDSS config in cinder.conf file.
 
 For instance if you want to add ``Pool-1`` located on the same host as
 ``Pool-0``. You extend ``cinder.conf`` file like:
 
 ::
 
-    enabled_backends = jdss-0, jdss-1
+    enabled_backends = open-e-jdss-0, open-e-jdss-1
 
-    [jdss-0]
-    backend_name = jdss-0
+    [open-e-jdss-0]
+    backend_name = open-e-jdss-0
     chap_password_len = 14
     driver_use_ssl = True
     driver_ssl_cert_verify = False
@@ -142,8 +143,8 @@ For instance if you want to add ``Pool-1`` located on the same host as
     san_password = admin
     san_thin_provision = True
 
-    [jdss-1]
-    backend_name = jdss-1
+    [open-e-jdss-1]
+    backend_name = open-e-jdss-1
     chap_password_len = 14
     driver_use_ssl = True
     driver_ssl_cert_verify = False
@@ -162,7 +163,7 @@ For instance if you want to add ``Pool-1`` located on the same host as
 HA Cluster
 ~~~~~~~~~~
 
-To utilize High Availability feature of JovianDSS:
+To utilize High Availability feature of Open-E JovianDSS:
 
 1. `Guide`_ on configuring Pool to high availability cluster
 
@@ -175,8 +176,8 @@ and 192.168.31.100 the configuration file will look like:
 
 ::
 
-    [jdss-2]
-    backend_name = jdss-2
+    [open-e-jdss-2]
+    backend_name = open-e-jdss-2
     chap_password_len = 14
     driver_use_ssl = True
     driver_ssl_cert_verify = False

@@ -84,13 +84,13 @@ def is_hidden(name):
 
 
 def origin_snapshot(origin_str):
-    """Extracts original phisical snapshot name from origin record"""
+    """Extracts original physical snapshot name from origin record"""
 
     return origin_str.split("@")[1]
 
 
 def origin_volume(origin_str):
-    """Extracts original phisical volume name from origin record"""
+    """Extracts original physical volume name from origin record"""
 
     return origin_str.split("@")[0].split("/")[1]
 
