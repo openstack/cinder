@@ -35,7 +35,10 @@ VOLUME_MIGRATION_IN_PROGRESS_ERROR = 717
 VOLUME_MIGRATION_ALREADY_ON_DESTINATION_POOL_ERROR = 718
 VOLUME_NOT_FOUND_ERROR = 79
 OLD_VOLUME_NOT_FOUND_ERROR = 78
+TOO_MANY_SNAPS_ERROR = 182
 ILLEGAL_SYNTAX = 0
+
+MAX_SNAPS_IN_VTREE = 126
 
 
 class RestClient(object):
@@ -214,6 +217,11 @@ class RestClient(object):
                    {"vol_name": volume_provider_id,
                     "response": response["message"]})
             LOG.error(msg)
+            # check if the volume reached snapshot limit
+            if ("details" in response and
+                    response["details"][0]["rc"] == TOO_MANY_SNAPS_ERROR):
+                raise exception.SnapshotLimitReached(
+                    set_limit=MAX_SNAPS_IN_VTREE)
             raise exception.VolumeBackendAPIException(data=msg)
         return response["volumeIdList"][0]
 
