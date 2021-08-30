@@ -24,6 +24,7 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.dell_emc import powerflex
 from cinder.tests.unit.volume.drivers.dell_emc.powerflex import mocks
+from cinder.volume.drivers.dell_emc.powerflex import rest_client
 from cinder.volume.drivers.dell_emc.powerflex import utils as flex_utils
 
 
@@ -84,6 +85,20 @@ class TestCreateSnapShot(powerflex.TestPowerFlexDriver):
                 'instances/System/action/snapshotVolumes':
                     self.BAD_STATUS_RESPONSE,
             },
+            self.RESPONSE_MODE.BadStatusWithDetails: {
+                'instances/System/action/snapshotVolumes':
+                    mocks.MockHTTPSResponse(
+                        {
+                            'errorCode': 0,
+                            'message': 'Error with details',
+                            'details': [
+                                {
+                                    'rc': rest_client.TOO_MANY_SNAPS_ERROR,
+                                },
+                            ],
+                        }, 500
+                    ),
+            },
             self.RESPONSE_MODE.Invalid: {
                 'types/Volume/instances/getByName::' +
                 self.volume_name_2x_enc: None,
@@ -116,3 +131,12 @@ class TestCreateSnapShot(powerflex.TestPowerFlexDriver):
     def test_create_snapshot(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.create_snapshot(self.snapshot)
+
+    def test_create_snapshot_limit_reached(self):
+        self.set_https_response_mode(
+            self.RESPONSE_MODE.BadStatusWithDetails)
+        self.assertRaises(
+            exception.SnapshotLimitReached,
+            self.driver.create_snapshot,
+            self.snapshot
+        )
