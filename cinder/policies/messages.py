@@ -23,37 +23,57 @@ GET_POLICY = 'message:get'
 GET_ALL_POLICY = 'message:get_all'
 
 
+deprecated_get_policy = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_get_all_policy = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_delete_policy = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
+
 messages_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List messages.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/messages'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show message.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/messages/{message_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete message.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/messages/{message_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_policy,
+    ),
 ]
 
 
