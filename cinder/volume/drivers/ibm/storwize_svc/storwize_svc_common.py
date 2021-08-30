@@ -3634,16 +3634,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        rep_type = self._get_volume_replicated_type(
-            ctxt, None, source_vol['volume_type_id'])
-        if rep_type == storwize_const.GMCV:
-            # GMCV volume will have problem to failback
-            # when it has flash copy relationship besides change volumes
-            msg = _('create_snapshot: Create snapshot to '
-                    'gmcv replication volume is not allowed.')
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
         pool = volume_utils.extract_host(source_vol['host'], 'pool')
         opts = self._get_vdisk_params(source_vol['volume_type_id'])
 
@@ -6285,47 +6275,71 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                               "relationship of %(vol)s does not exist in "
                               "backend.", {'vol': volume.id})
                     model_update['status'] = fields.GroupStatus.ERROR
-                elif (rccg['copy_type'] != 'empty_group' and
-                      (rccg['copy_type'] != rcrel['copy_type'] or
-                      rccg['state'] != rcrel['state'] or
-                      rccg['primary'] != rcrel['primary'] or
-                      rccg['cycling_mode'] != rcrel['cycling_mode'] or
-                      (rccg['cycle_period_seconds'] !=
-                       rcrel['cycle_period_seconds']))):
-                    LOG.error("Failed to update rccg %(rccg)s: remote copy "
-                              "type of %(vol)s is %(vol_rc_type)s, the rccg "
-                              "type is %(rccg_type)s. rcrel state is "
-                              "%(rcrel_state)s, rccg state is %(rccg_state)s. "
-                              "rcrel primary is %(rcrel_primary)s, rccg "
-                              "primary is %(rccg_primary)s. "
-                              "rcrel cycling mode is %(rcrel_cmode)s, rccg "
-                              "cycling mode is %(rccg_cmode)s. rcrel cycling "
-                              "period is %(rcrel_period)s, rccg cycling "
-                              "period is %(rccg_period)s. ",
-                              {'rccg': rccg_name,
-                               'vol': volume.id,
-                               'vol_rc_type': rcrel['copy_type'],
-                               'rccg_type': rccg['copy_type'],
-                               'rcrel_state': rcrel['state'],
-                               'rccg_state': rccg['state'],
-                               'rcrel_primary': rcrel['primary'],
-                               'rccg_primary': rccg['primary'],
-                               'rcrel_cmode': rcrel['cycling_mode'],
-                               'rccg_cmode': rccg['cycling_mode'],
-                               'rcrel_period': rcrel['cycle_period_seconds'],
-                               'rccg_period': rccg['cycle_period_seconds']})
-                    model_update['status'] = fields.GroupStatus.ERROR
                 else:
-                    self._helpers.chrcrelationship(rcrel['name'], rccg_name)
-                    if rccg['copy_type'] == 'empty_group':
-                        rccg = self._helpers.get_rccg(rccg_name)
-                    added_vols.append({'id': volume.id,
-                                       'group_id': group.id})
+                    if rccg and rccg.get('cycling_mode', None) == 'multi':
+                        self._helpers.stop_relationship(vol_name)
+                        rcrel = self._helpers.get_relationship_info(vol_name)
+                        if (rccg['state'] != 'empty' and
+                           rccg['state'] != 'consistent_stopped' or
+                           rccg['state'] != 'inconsistent_stopped'):
+                            self._helpers.stop_rccg(rccg_name)
+                            # To handle existing group updation, refresh rccg
+                            # state to avoid unnecessary stop_rccg calls.
+                            rccg = self._helpers.get_rccg(rccg_name)
+
+                    if (rccg['copy_type'] != 'empty_group' and
+                        any(k for k in ('copy_type', 'state', 'primary',
+                                        'cycling_mode', 'cycle_period_seconds')
+                            if rccg[k] != rcrel[k])):
+                        LOG.error("Failed to update rccg %(rccg)s: remote "
+                                  "copy type of %(vol)s is %(vol_rc_type)s, "
+                                  "the rccg type is %(rccg_type)s. rcrel "
+                                  "state %(rcrel_state)s, rccg state is "
+                                  "%(rccg_state)s rcrel primary is "
+                                  "%(rcrel_primary)s, rccg primary is "
+                                  "%(rccg_primary)s. rcrel cycling mode is "
+                                  "%(rcrel_cmode)s, rccg cycling mode is "
+                                  "%(rccg_cmode)s. rcrel cycling period is "
+                                  "%(rcrel_period)s, rccg cycling "
+                                  "period is %(rccg_period)s. ",
+                                  {'rccg': rccg_name,
+                                   'vol': volume.id,
+                                   'vol_rc_type': rcrel['copy_type'],
+                                   'rccg_type': rccg['copy_type'],
+                                   'rcrel_state': rcrel['state'],
+                                   'rccg_state': rccg['state'],
+                                   'rcrel_primary': rcrel['primary'],
+                                   'rccg_primary': rccg['primary'],
+                                   'rcrel_cmode': rcrel['cycling_mode'],
+                                   'rccg_cmode': rccg['cycling_mode'],
+                                   'rcrel_period':
+                                   rcrel['cycle_period_seconds'],
+                                   'rccg_period':
+                                   rccg['cycle_period_seconds']})
+                        # This rcrel updation failed ,it has to be started
+                        # explicitly.
+                        self._helpers.start_relationship(vol_name)
+                        model_update['status'] = fields.GroupStatus.ERROR
+                    else:
+                        self._helpers.chrcrelationship(rcrel['name'],
+                                                       rccg_name)
+                        if rccg['copy_type'] == 'empty_group':
+                            rccg = self._helpers.get_rccg(rccg_name)
+                        added_vols.append({'id': volume.id,
+                                          'group_id': group.id})
             except exception.VolumeBackendAPIException as err:
                 model_update['status'] = fields.GroupStatus.ERROR
                 LOG.error("Failed to add the remote copy of volume %(vol)s to "
                           "group. Exception: %(exception)s.",
                           {'vol': volume.name, 'exception': err})
+                self._helpers.start_relationship(vol_name)
+
+        if (rccg and len(add_volumes) > 0 and
+                rccg.get('cycling_mode', None) == 'multi'):
+            if rccg.get('primary', None) == 'aux':
+                self._helpers.start_rccg(rccg_name, primary='aux')
+            elif rccg.get('primary', None) == 'master':
+                self._helpers.start_rccg(rccg_name, primary='master')
 
         # Remove remote copy relationship from rccg
         removed_vols = []
