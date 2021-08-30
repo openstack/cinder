@@ -69,12 +69,14 @@ class TestPowerFlexDriver(test.TestCase):
         Invalid='1',
         BadStatus='2',
         ValidVariant='3',
+        BadStatusWithDetails='4',
     ))
     __RESPONSE_MODE_NAMES = {
         '0': 'Valid',
         '1': 'Invalid',
         '2': 'BadStatus',
         '3': 'ValidVariant',
+        '4': 'BadStatusWithDetails',
     }
 
     BAD_STATUS_RESPONSE = mocks.MockHTTPSResponse(
@@ -175,6 +177,7 @@ class TestPowerFlexDriver(test.TestCase):
         RESPONSE_MODE.Valid: Respond with valid data
         RESPONSE_MODE.Invalid: Respond with invalid data
         RESPONSE_MODE.BadStatus: Response with not-OK status code.
+        RESPONSE_MODE.BadStatusWithDetails: as BadStatus but with "details".
         """
         self.__https_response_mode = mode
 
