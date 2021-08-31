@@ -233,11 +233,29 @@ class BackupManager(manager.SchedulerDependentManager):
             self.db.volume_update(ctxt, volume['id'],
                                   {'status': 'error_restoring'})
 
+    def _cleanup_one_snapshot(self, ctxt, snapshot_id):
+        try:
+            snapshot = objects.Snapshot.get_by_id(ctxt, snapshot_id)
+        except exception.SnapshotNotFound:
+            LOG.info('Snapshot %s does not exist anymore. Ignoring.',
+                     snapshot_id)
+            return
+        if snapshot['status'] == 'backing-up':
+            LOG.info('Resetting snapshot %(snap_id)s to previous '
+                     'status %(status)s (was backing-up).',
+                     {'snap_id': snapshot['id'],
+                      'status': fields.SnapshotStatus.AVAILABLE})
+
+            snapshot.status = fields.SnapshotStatus.AVAILABLE
+            snapshot.save()
+
     def _cleanup_one_backup(self, ctxt, backup):
         if backup['status'] == fields.BackupStatus.CREATING:
             LOG.info('Resetting backup %s to error (was creating).',
                      backup['id'])
             self._cleanup_one_volume(ctxt, backup.volume_id)
+            if backup.snapshot_id:
+                self._cleanup_one_snapshot(ctxt, backup.snapshot_id)
             err = 'incomplete backup reset on manager restart'
             volume_utils.update_backup_error(backup, err)
         elif backup['status'] == fields.BackupStatus.RESTORING:
@@ -245,6 +263,8 @@ class BackupManager(manager.SchedulerDependentManager):
                      'available (was restoring).',
                      backup['id'])
             self._cleanup_one_volume(ctxt, backup.restore_volume_id)
+            if backup.snapshot_id:
+                self._cleanup_one_snapshot(ctxt, backup.snapshot_id)
             backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
         elif backup['status'] == fields.BackupStatus.DELETING:
