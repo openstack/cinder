@@ -41,7 +41,8 @@ def reset():
         _ENFORCER = None
 
 
-def init(use_conf=True):
+def init(use_conf=True,
+         suppress_deprecation_warnings=False):
     """Init an Enforcer class.
 
     :param use_conf: Whether to load rules from config file.
@@ -53,6 +54,7 @@ def init(use_conf=True):
             CONF,
             use_conf=use_conf,
             fallback_to_json_file=False)
+        _ENFORCER.suppress_deprecation_warnings = suppress_deprecation_warnings
         register_rules(_ENFORCER)
         _ENFORCER.load_rules()
 

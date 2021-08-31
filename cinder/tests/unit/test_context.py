@@ -16,8 +16,11 @@
 from unittest import mock
 
 import ddt
+from oslo_policy import policy as oslo_policy
 
 from cinder import context
+from cinder.objects import base as objects_base
+from cinder import policy
 from cinder.tests.unit import test
 
 
@@ -129,3 +132,83 @@ class ContextTestCase(test.TestCase):
                                       '222',
                                       roles=roles)
         self.assertEqual(roles, ctxt.roles)
+
+
+@ddt.ddt
+class ContextAuthorizeTestCase(test.TestCase):
+
+    def setUp(self):
+        super(ContextAuthorizeTestCase, self).setUp()
+        rules = [
+            oslo_policy.RuleDefault("test:something",
+                                    "project_id:%(project_id)s"),
+        ]
+        policy.reset()
+        policy.init()
+        # before a policy rule can be used, its default has to be registered.
+        policy._ENFORCER.register_defaults(rules)
+        self.context = context.RequestContext(user_id='me',
+                                              project_id='my_project')
+        self.addCleanup(policy.reset)
+
+    def _dict_target_obj(project_id):
+        return {
+            'user_id': 'me',
+            'project_id': project_id,
+        }
+
+    def _real_target_obj(project_id):
+        target_obj = objects_base.CinderObject()
+        target_obj.user_id = 'me'
+        target_obj.project_id = project_id
+        return target_obj
+
+    @ddt.data(
+        {
+            # PASS: target inherits 'my_project' from target_obj dict
+            'target': None,
+            'target_obj': _dict_target_obj('my_project'),
+            'expected': True,
+        },
+        {
+            # FAIL: target inherits 'other_project' from target_obj dict
+            'target': None,
+            'target_obj': _dict_target_obj('other_project'),
+            'expected': False,
+        },
+        {
+            # PASS: target inherits 'my_project' from target_obj object
+            'target': None,
+            'target_obj': _real_target_obj('my_project'),
+            'expected': True,
+        },
+        {
+            # FAIL: target inherits 'other_project' from target_obj object
+            'target': None,
+            'target_obj': _real_target_obj('other_project'),
+            'expected': False,
+        },
+        {
+            # PASS: target specifies 'my_project'
+            'target': {'project_id': 'my_project'},
+            'target_obj': None,
+            'expected': True,
+        },
+        {
+            # FAIL: target specifies 'other_project'
+            'target': {'project_id': 'other_project'},
+            'target_obj': None,
+            'expected': False,
+        },
+        {
+            # PASS: target inherits 'my_project' from the context
+            'target': None,
+            'target_obj': None,
+            'expected': True,
+        },
+    )
+    @ddt.unpack
+    def test_authorize(self, target, target_obj, expected):
+        result = self.context.authorize("test:something",
+                                        target, target_obj, fatal=False)
+        self.assertEqual(result, expected)

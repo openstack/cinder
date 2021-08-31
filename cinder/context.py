@@ -224,6 +224,19 @@ class RequestContext(context.RequestContext):
             # Turn object into dict so target.update can work
             target.update(
                 target_obj.obj_to_primitive()['versioned_object.data'] or {})
+
+            # Ensure 'project_id' and 'user_id' attributes are captured.
+            # Some objects (e.g. attachments) have a project_id attribute
+            # that isn't present in the dict. The try/except wrappers avoid
+            # lazy-load issues when the attribute doesn't exist.
+            try:
+                target['project_id'] = target_obj.project_id
+            except Exception:
+                pass
+            try:
+                target['user_id'] = target_obj.user_id
+            except Exception:
+                pass
         else:
             target.update(target_obj or {})
 
