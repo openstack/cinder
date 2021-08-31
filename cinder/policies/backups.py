@@ -28,10 +28,37 @@ IMPORT_POLICY = 'backup:backup-import'
 EXPORT_POLICY = 'backup:export-import'
 BACKUP_ATTRIBUTES_POLICY = 'backup:backup_project_attribute'
 
+
+deprecated_get_all_policy = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER,
+)
+deprecated_get_policy = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER,
+)
+deprecated_create_policy = base.CinderDeprecatedRule(
+    name=CREATE_POLICY,
+    check_str=""
+)
+deprecated_update_policy = base.CinderDeprecatedRule(
+    name=UPDATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_delete_policy = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_restore_policy = base.CinderDeprecatedRule(
+    name=RESTORE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
+
 backups_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List backups.",
         operations=[
             {
@@ -42,7 +69,9 @@ backups_policies = [
                 'method': 'GET',
                 'path': '/backups/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=BACKUP_ATTRIBUTES_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -56,57 +85,68 @@ backups_policies = [
                 'method': 'GET',
                 'path': '/backups/detail'
             }
-        ]),
+        ],
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create backup.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/backups'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show backup.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/backups/{backup_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_policy
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update backup.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/backups/{backup_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete backup.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/backups/{backup_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=RESTORE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Restore backup.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/backups/{backup_id}/restore'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_restore_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=IMPORT_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -116,7 +156,8 @@ backups_policies = [
                 'method': 'POST',
                 'path': '/backups/{backup_id}/import_record'
             }
-        ]),
+        ],
+    ),
     policy.DocumentedRuleDefault(
         name=EXPORT_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -126,7 +167,8 @@ backups_policies = [
                 'method': 'POST',
                 'path': '/backups/{backup_id}/export_record'
             }
-        ]),
+        ],
+    ),
 ]
 
 

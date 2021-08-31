@@ -19,23 +19,6 @@
 # DELETE  /snapshots/{snapshot_id}/metadata/{key}
 "volume:delete_snapshot_metadata": ""
 
-# List backups.
-# GET  /backups
-# GET  /backups/detail
-"backup:get_all": ""
-
-# Show backup.
-# GET  /backups/{backup_id}
-"backup:get": ""
-
-# Delete backup.
-# DELETE  /backups/{backup_id}
-"backup:delete": ""
-
-# Restore backup.
-# POST  /backups/{backup_id}/restore
-"backup:restore": ""
-
 # List group snapshots.
 # GET  /group_snapshots
 # GET  /group_snapshots/detail
