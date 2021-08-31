@@ -4445,3 +4445,45 @@ class PowerMaxCommonTest(test.TestCase):
         array = self.data.array
         self.common._delete_temp_snapshot(session, array)
         mck_delete.assert_not_called()
+
+    def test_get_replication_flags(self):
+        rf = self.common._get_replication_flags(
+            self.data.extra_specs, self.data.rep_extra_specs)
+        self.assertFalse(rf.was_rep_enabled)
+        self.assertTrue(rf.is_rep_enabled)
+        self.assertFalse(rf.backend_ids_differ)
+        self.assertEqual('Synchronous', rf.rep_mode)
+        self.assertEqual('Diamond', rf.target_extra_specs.get('slo'))
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'configure_volume_replication',
+        return_value=('first_vol_in_rdf_group', True,
+                      tpd.PowerMaxData.rep_info_dict,
+                      tpd.PowerMaxData.rep_extra_specs_mgmt, False))
+    def test_prep_non_rep_to_rep(self, mck_vol_rep):
+        volume = fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)
+        nrr = self.common._prep_non_rep_to_rep(
+            self.data.array, self.data.device_id, volume, False,
+            True, False, self.data.rep_extra_specs_rep_config)
+        self.assertIsInstance(nrr.model_update, dict)
+        self.assertFalse(nrr.rdf_pair_created)
+        self.assertIsInstance(nrr.rep_extra_specs, dict)
+        self.assertIsInstance(nrr.rep_info_dict, dict)
+        self.assertFalse(nrr.resume_target_sg)
+        self.assertEqual('first_vol_in_rdf_group', nrr.rep_status)
+
+    @mock.patch.object(
+        common.PowerMaxCommon, 'break_rdf_device_pair_session',
+        return_value=(tpd.PowerMaxData.rep_extra_specs_mgmt, True))
+    def test_prep_rep_to_non_rep(self, mock_break):
+        volume = fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)
+        rnr = self.common._prep_rep_to_non_rep(
+            self.data.array, self.data.device_id, 'my_vol', volume, True,
+            False, False, self.data.extra_specs)
+        self.assertIsInstance(rnr.model_update, dict)
+        self.assertIsInstance(rnr.resume_original_sg_dict, dict)
+        self.assertTrue(rnr.rdf_pair_broken)
+        self.assertTrue(rnr.resume_original_sg)
+        self.assertFalse(rnr.is_partitioned)

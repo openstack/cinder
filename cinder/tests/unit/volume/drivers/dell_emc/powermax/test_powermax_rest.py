@@ -1267,10 +1267,8 @@ class PowerMaxRestTest(test.TestCase):
             'snapshotSrcs'][0]['linkedDevices'][0]['targetDevice']
         snap_name = self.data.volume_snap_vx['snapshotSrcs'][0]['snapshotName']
         extra_specs = self.data.extra_specs
-        try:
-            extra_specs.pop(utils.FORCE_VOL_EDIT)
-        except KeyError:
-            pass
+        if extra_specs.get(utils.FORCE_VOL_EDIT):
+            del extra_specs[utils.FORCE_VOL_EDIT]
         payload = {'deviceNameListSource': [{'name': source_id}],
                    'deviceNameListTarget': [
                        {'name': target_id}],
