@@ -17,6 +17,7 @@
 Schema for V3 Attachments API.
 
 """
+import copy
 
 from cinder.api.validation import parameter_types
 
@@ -32,7 +33,7 @@ create = {
                 'connector': {'type': ['object', 'null']},
                 'volume_uuid': parameter_types.uuid,
             },
-            'required': ['instance_uuid', 'volume_uuid'],
+            'required': ['volume_uuid'],
             'additionalProperties': False,
         },
     },
@@ -56,3 +57,7 @@ update = {
     'required': ['attachment'],
     'additionalProperties': False,
 }
+
+create_v354 = copy.deepcopy(create)
+create_v354['properties']['attachment']['properties']['mode'] = (
+    {'type': 'string', 'enum': ['rw', 'ro']})
