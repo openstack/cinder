@@ -2955,6 +2955,28 @@ class PowerMaxCommonTest(test.TestCase):
             model_update, __ = self.common._delete_group(group, volumes)
             self.assertEqual(ref_model_update, model_update)
 
+    @mock.patch.object(masking.PowerMaxMasking, 'remove_and_reset_members')
+    @mock.patch.object(common.PowerMaxCommon, '_cleanup_device_snapvx')
+    @mock.patch.object(common.PowerMaxCommon, '_get_members_of_volume_group',
+                       return_value=[tpd.PowerMaxData.device_id])
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snapshot_list',
+                       return_value=[])
+    @mock.patch.object(volume_utils, 'is_group_a_type', return_value=False)
+    def test_delete_group_snapshot_and_volume_cleanup(
+            self, mock_check, mck_get_snaps, mock_members, mock_cleanup,
+            mock_remove):
+        group = self.data.test_group_1
+        volumes = [fake_volume.fake_volume_obj(
+            context='cxt', provider_location=None)]
+        with mock.patch.object(
+                volume_utils, 'is_group_a_cg_snapshot_type',
+                return_value=True), mock.patch.object(
+                    self.rest, 'get_volumes_in_storage_group',
+                return_value=[]):
+            self.common._delete_group(group, volumes)
+            mock_cleanup.assert_called_once()
+            mock_remove.assert_called_once()
+
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_snapshot_list',
                        return_value=list())
     def test_delete_group_already_deleted(self, mck_get_snaps):
@@ -2994,7 +3016,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(common.PowerMaxCommon, '_get_members_of_volume_group',
                        return_value=[tpd.PowerMaxData.device_id])
     @mock.patch.object(common.PowerMaxCommon, '_find_device_on_array',
-                       return_value= tpd.PowerMaxData.device_id)
+                       return_value=tpd.PowerMaxData.device_id)
     @mock.patch.object(masking.PowerMaxMasking,
                        'remove_volumes_from_storage_group')
     def test_delete_group_cleanup_snapvx(

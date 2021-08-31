@@ -535,6 +535,7 @@ class PowerMaxCommon(object):
         if group_id is not None:
             if group and (volume_utils.is_group_a_cg_snapshot_type(group)
                           or group.is_replicated):
+                extra_specs[utils.FORCE_VOL_EDIT] = True
                 group_name = self._add_new_volume_to_volume_group(
                     volume, device_id, volume_name,
                     extra_specs, rep_driver_data)
@@ -5661,9 +5662,8 @@ class PowerMaxCommon(object):
         # cleanup completes before doing any replication/storage group cleanup.
         remaining_device_snapshots = list()
         remaining_snapvx_targets = list()
-        for vol in volumes:
-            extra_specs = self._initial_setup(vol)
-            device_id = self._find_device_on_array(vol, extra_specs)
+
+        def _cleanup_snapshots(device_id):
             self._cleanup_device_snapvx(array, device_id, extra_specs)
             snapshots = self.rest.get_volume_snapshot_list(array, device_id)
             __, snapvx_target_details = self.rest.find_snap_vx_sessions(
@@ -5681,6 +5681,20 @@ class PowerMaxCommon(object):
                     'device_id': device_id, 'source_vol_id': source_vol_id,
                     'snapshot_name': snap_name}
                 remaining_snapvx_targets.append(target_details)
+
+        vol_not_deleted = list()
+        for vol in volumes:
+            extra_specs = self._initial_setup(vol)
+            device_id = self._find_device_on_array(vol, extra_specs)
+            if device_id:
+                _cleanup_snapshots(device_id)
+            else:
+                LOG.debug('Cannot find device id for volume.  It is '
+                          'possible this information was not persisted.')
+                vol_not_deleted.append(vol)
+        if len(vol_not_deleted) == len(volume_device_ids):
+            for volume_device_id in volume_device_ids:
+                _cleanup_snapshots(volume_device_id)
 
         # Fail out if volumes to be deleted still have snapshots.
         if remaining_device_snapshots:
@@ -5726,6 +5740,22 @@ class PowerMaxCommon(object):
                 interval_retries_dict, target_rep_config)
         try:
             if volume_device_ids:
+
+                def _delete_vol(dev_id):
+                    if group.is_replicated:
+                        # Set flag to True if replicated.
+                        extra_specs[utils.FORCE_VOL_EDIT] = True
+                    if dev_id in volume_device_ids:
+                        self.masking.remove_and_reset_members(
+                            array, vol, dev_id, vol.name,
+                            extra_specs, False)
+                        self._delete_from_srp(
+                            array, dev_id, "group vol", extra_specs)
+                    else:
+                        LOG.debug("Volume not found on the array.")
+                    # Add the device id to the deleted list
+                    deleted_volume_device_ids.append(dev_id)
+
                 # First remove all the volumes from the SG
                 self.masking.remove_volumes_from_storage_group(
                     array, volume_device_ids, vol_grp_name,
@@ -5733,16 +5763,14 @@ class PowerMaxCommon(object):
                 for vol in volumes:
                     extra_specs = self._initial_setup(vol)
                     device_id = self._find_device_on_array(vol, extra_specs)
-                    if device_id in volume_device_ids:
-                        self.masking.remove_and_reset_members(
-                            array, vol, device_id, vol.name,
-                            extra_specs, False)
-                        self._delete_from_srp(
-                            array, device_id, "group vol", extra_specs)
-                    else:
-                        LOG.debug("Volume not found on the array.")
-                    # Add the device id to the deleted list
-                    deleted_volume_device_ids.append(device_id)
+                    if device_id:
+                        _delete_vol(device_id)
+                if volume_device_ids != deleted_volume_device_ids:
+                    new_list = list(set(volume_device_ids).difference(
+                        deleted_volume_device_ids))
+                    for device_id in new_list:
+                        _delete_vol(device_id)
+
             # Once all volumes are deleted then delete the SG
             self.rest.delete_storage_group(array, vol_grp_name)
             model_update = {'status': fields.GroupStatus.DELETED}
@@ -5814,6 +5842,7 @@ class PowerMaxCommon(object):
         :param extra_specs: the extra specifications
         :param rep_config: the rep config to use for rdf operations
         """
+        extra_specs[utils.FORCE_VOL_EDIT] = True
         rdf_group_no, remote_array = self.get_rdf_details(array, rep_config)
         # Delete replication for group, if applicable
         group_details = self.rest.get_storage_group_rep(
@@ -6301,9 +6330,10 @@ class PowerMaxCommon(object):
             # Create the target devices
             list_volume_pairs = []
             for volume in volumes:
-                volumes_model_update, rollback_dict, list_volume_pairs = (
-                    self. _create_vol_and_add_to_group(
-                        volume, group.id, tgt_name, rollback_dict,
+                (volumes_model_update, rollback_dict, list_volume_pairs,
+                 extra_specs) = (
+                    self._create_vol_and_add_to_group(
+                        volume, group, tgt_name, rollback_dict,
                         source_vols, snapshots, list_volume_pairs,
                         volumes_model_update))
 
@@ -6313,10 +6343,15 @@ class PowerMaxCommon(object):
                     rollback_dict, create_snapshot))
 
             # Link and break the snapshot to the source group
-            self.provision.link_and_break_replica(
-                array, src_grp_name, tgt_name, snap_name,
-                interval_retries_dict, list_volume_pairs,
-                delete_snapshot=create_snapshot)
+            snap_id_list = self.rest.get_storage_group_snap_id_list(
+                array, src_grp_name, snap_name)
+            if snap_id_list:
+                if group.is_replicated:
+                    interval_retries_dict[utils.FORCE_VOL_EDIT] = True
+                self.provision.link_and_break_replica(
+                    array, src_grp_name, tgt_name, snap_name,
+                    interval_retries_dict, list_volume_pairs,
+                    delete_snapshot=create_snapshot, snap_id=snap_id_list[0])
 
             # Update the replication status
             if group.is_replicated:
@@ -6327,6 +6362,10 @@ class PowerMaxCommon(object):
                 volumes_model_update = self._replicate_group(
                     array, volumes_model_update,
                     tgt_name, interval_retries_dict)
+                # Add the volumes to the default storage group
+                extra_specs[utils.FORCE_VOL_EDIT] = True
+                self._add_replicated_volumes_to_default_storage_group(
+                    array, volumes_model_update, extra_specs)
                 model_update.update({
                     'replication_status': fields.ReplicationStatus.ENABLED})
         except Exception:
@@ -6342,6 +6381,48 @@ class PowerMaxCommon(object):
                 message=exception_message)
 
         return model_update, volumes_model_update
+
+    def _add_replicated_volumes_to_default_storage_group(
+            self, array, volumes_model_update, extra_specs):
+        """Add replicated volumes to the default storage group.
+
+        :param array: the serial number of the array
+        :param volumes_model_update: the list of volume updates
+        :param extra_specs: the extra specifications
+        """
+        is_re = False
+        rep_mode = None
+        if self.utils.is_replication_enabled(extra_specs):
+            is_re, rep_mode = True, extra_specs['rep_mode']
+        do_disable_compression = self.utils.is_compression_disabled(
+            extra_specs)
+        storage_group_name = self.masking.get_or_create_default_storage_group(
+            array, extra_specs[utils.SRP], extra_specs[utils.SLO],
+            extra_specs[utils.WORKLOAD], extra_specs,
+            do_disable_compression, is_re, rep_mode)
+        local_device_list = list()
+        remote_device_list = list()
+        for volume_dict in volumes_model_update:
+            if volume_dict.get('provider_location'):
+                loc = ast.literal_eval(volume_dict.get('provider_location'))
+                device_id = loc.get('device_id')
+                local_array = loc.get('array')
+                local_device_list.append(device_id)
+
+            if volume_dict.get('replication_driver_data'):
+                loc = ast.literal_eval(volume_dict.get(
+                    'replication_driver_data'))
+                remote_device_id = loc.get('device_id')
+                remote_array = loc.get('array')
+                remote_device_list.append(remote_device_id)
+        if local_device_list:
+            self.masking.add_volumes_to_storage_group(
+                local_array, local_device_list, storage_group_name,
+                extra_specs)
+        if remote_device_list:
+            self.masking.add_volumes_to_storage_group(
+                remote_array, remote_device_list, storage_group_name,
+                extra_specs)
 
     def _create_group_replica_and_get_snap_name(
             self, group_id, actual_source_grp, source_id, source_sg,
@@ -6376,12 +6457,12 @@ class PowerMaxCommon(object):
         return snap_name, rollback_dict
 
     def _create_vol_and_add_to_group(
-            self, volume, group_id, tgt_name, rollback_dict, source_vols,
+            self, volume, group, tgt_name, rollback_dict, source_vols,
             snapshots, list_volume_pairs, volumes_model_update):
         """Creates the volume group from source.
 
         :param volume: volume object
-        :param group_id: the group id
+        :param group: the group object
         :param tgt_name: target name
         :param rollback_dict: rollback dict
         :param source_vols: source volumes
@@ -6389,18 +6470,27 @@ class PowerMaxCommon(object):
         :param list_volume_pairs: volume pairs list
         :param volumes_model_update: volume model update
         :returns: volumes_model_update, rollback_dict, list_volume_pairs
+                  extra_specs
         """
 
         src_dev_id, extra_specs, vol_size, tgt_vol_name = (
             self._get_clone_vol_info(
                 volume, source_vols, snapshots))
-        volume_dict, __, __, = self._create_volume(
-            volume, tgt_vol_name, vol_size, extra_specs)
-        device_id = volume_dict['device_id']
-        # Add the volume to the volume group SG
-        self.masking.add_volume_to_storage_group(
-            extra_specs[utils.ARRAY], device_id, tgt_name,
-            tgt_vol_name, extra_specs)
+        array = extra_specs[utils.ARRAY]
+        volume_name = self.utils.get_volume_element_name(volume.id)
+        if group.is_replicated:
+            volume_dict = self._create_non_replicated_volume(
+                array, volume, volume_name, tgt_name,
+                vol_size, extra_specs)
+            device_id = volume_dict['device_id']
+        else:
+            volume_dict, __, __, = self._create_volume(
+                volume, tgt_vol_name, vol_size, extra_specs)
+            device_id = volume_dict['device_id']
+            # Add the volume to the volume group SG
+            self.masking.add_volume_to_storage_group(
+                extra_specs[utils.ARRAY], device_id, tgt_name,
+                tgt_vol_name, extra_specs)
         # Record relevant information
         list_volume_pairs.append((src_dev_id, device_id))
         # Add details to rollback dict
@@ -6411,11 +6501,12 @@ class PowerMaxCommon(object):
             (device_id, extra_specs, volume))
         volumes_model_update.append(
             self.utils.get_grp_volume_model_update(
-                volume, volume_dict, group_id,
+                volume, volume_dict, group.id,
                 meta=self.get_volume_metadata(volume_dict['array'],
                                               volume_dict['device_id'])))
 
-        return volumes_model_update, rollback_dict, list_volume_pairs
+        return (volumes_model_update, rollback_dict, list_volume_pairs,
+                extra_specs)
 
     def _get_clone_vol_info(self, volume, source_vols, snapshots):
         """Get the clone volume info.
