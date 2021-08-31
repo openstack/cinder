@@ -3231,8 +3231,10 @@ class PowerMaxRest(object):
         resource_name = ('%(sg_name)s/rdf_group/%(rdf_num)s'
                          % {'sg_name': storagegroup_name,
                             'rdf_num': rdf_group_num})
+        query_params = {'force': 'true'}
         self.delete_resource(
-            array, REPLICATION, 'storagegroup', resource_name=resource_name)
+            array, REPLICATION, 'storagegroup', resource_name=resource_name,
+            params=query_params)
 
     def list_pagination(self, list_info):
         """Process lists under or over the maxPageSize

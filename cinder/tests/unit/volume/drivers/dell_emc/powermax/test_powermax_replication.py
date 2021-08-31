@@ -1449,6 +1449,11 @@ class PowerMaxReplicationTest(test.TestCase):
             self.common.cleanup_rdf_device_pair, array, rdf_group_no,
             device_id, extra_specs)
 
+    @mock.patch.object(rest.PowerMaxRest, 'get_storage_group_rdf_group_state',
+                       return_value=['activebias'])
+    @mock.patch.object(
+        rest.PowerMaxRest, 'is_volume_in_storagegroup',
+        return_value=True)
     @mock.patch.object(
         rest.PowerMaxRest, 'srdf_resume_replication')
     @mock.patch.object(
@@ -1484,7 +1489,8 @@ class PowerMaxReplicationTest(test.TestCase):
     def test_cleanup_rdf_device_pair(
             self, mck_get_rdf, mck_get_rep, mck_get_rdf_pair, mck_get_sg_list,
             mck_wait, mck_get_mgmt_grp, mck_get_num_vols, mck_suspend,
-            mck_srdf_remove, mck_remove, mck_delete, mck_cleanup, mck_resume):
+            mck_srdf_remove, mck_remove, mck_delete, mck_cleanup, mck_resume,
+            mock_is_vol, mock_states):
         array = self.data.array
         rdf_group_no = self.data.rdf_group_no_1
         device_id = self.data.device_id

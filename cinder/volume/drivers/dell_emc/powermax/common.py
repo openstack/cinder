@@ -5819,14 +5819,13 @@ class PowerMaxCommon(object):
         group_details = self.rest.get_storage_group_rep(
             array, vol_grp_name)
         if group_details and group_details.get('rdf', False):
-            if extra_specs['rep_mode'] in [utils.REP_ASYNC, utils.REP_METRO]:
-                self.rest.srdf_suspend_replication(
-                    array, vol_grp_name, rdf_group_no, extra_specs)
-        if volume_device_ids:
-            LOG.debug("Deleting remote replication for group %(sg)s", {
-                'sg': vol_grp_name})
-            self.rest.delete_storagegroup_rdf(array, vol_grp_name,
-                                              rdf_group_no)
+            self.rest.srdf_suspend_replication(
+                array, vol_grp_name, rdf_group_no, extra_specs)
+            if volume_device_ids:
+                LOG.debug("Deleting remote replication for group %(sg)s", {
+                    'sg': vol_grp_name})
+                self.rest.delete_storagegroup_rdf(array, vol_grp_name,
+                                                  rdf_group_no)
         remote_device_ids = self._get_members_of_volume_group(
             remote_array, vol_grp_name)
         # Remove volumes from remote replication group
@@ -5841,7 +5840,8 @@ class PowerMaxCommon(object):
             self._delete_from_srp(
                 remote_array, device_id, "group vol", extra_specs)
         # Once all volumes are deleted then delete the SG
-        self.rest.delete_storage_group(remote_array, vol_grp_name)
+        if self.rest.get_storage_group(remote_array, vol_grp_name):
+            self.rest.delete_storage_group(remote_array, vol_grp_name)
 
     def create_group_snapshot(self, context, group_snapshot, snapshots):
         """Creates a generic volume group snapshot.
