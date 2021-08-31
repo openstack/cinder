@@ -98,12 +98,6 @@ powermax_opts = [
     cfg.MultiOpt(utils.U4P_FAILOVER_TARGETS,
                  item_type=types.Dict(),
                  help='Dictionary of Unisphere failover target info.'),
-    cfg.IntOpt(utils.POWERMAX_SNAPVX_UNLINK_LIMIT,
-               default=3,
-               help='Use this value to specify '
-                    'the maximum number of unlinks '
-                    'for the temporary snapshots '
-                    'before a clone operation.'),
     cfg.StrOpt(utils.POWERMAX_ARRAY,
                help='Serial number of the array to connect to.'),
     cfg.StrOpt(utils.POWERMAX_SRP,
@@ -242,8 +236,6 @@ class PowerMaxCommon(object):
         """Get relevent details from configuration file."""
         self.interval = self.configuration.safe_get('interval')
         self.retries = self.configuration.safe_get('retries')
-        self.snapvx_unlink_limit = self.configuration.safe_get(
-            utils.POWERMAX_SNAPVX_UNLINK_LIMIT)
         self.powermax_array_tag_list = self.configuration.safe_get(
             utils.POWERMAX_ARRAY_TAG_LIST)
         self.powermax_short_host_name_template = self.configuration.safe_get(
@@ -626,11 +618,7 @@ class PowerMaxCommon(object):
         source_device_id = self._find_device_on_array(
             source_volume, extra_specs)
 
-        if not self.next_gen and (
-                extra_specs.get('rep_mode', None) == utils.REP_METRO):
-            self._sync_check(array, source_device_id, extra_specs)
-        else:
-            self._clone_check(array, source_device_id, extra_specs)
+        self._cleanup_device_snapvx(array, source_device_id, extra_specs)
 
         clone_dict, rep_update, rep_info_dict = self._create_cloned_volume(
             clone_volume, source_volume, extra_specs)
@@ -1219,7 +1207,7 @@ class PowerMaxCommon(object):
 
         # 2 - Check if volume is part of an on-going clone operation or if vol
         # has source snapshots but not next-gen array
-        self._sync_check(array, device_id, ex_specs)
+        self._cleanup_device_snapvx(array, device_id, ex_specs)
         __, snapvx_src, __ = self.rest.is_vol_in_rep_session(array, device_id)
         if snapvx_src:
             if not self.next_gen:
@@ -1946,7 +1934,7 @@ class PowerMaxCommon(object):
 
         # Perform any snapvx cleanup if required before creating the clone
         if is_snapshot or from_snapvx:
-            self._clone_check(array, source_device_id, extra_specs)
+            self._cleanup_device_snapvx(array, source_device_id, extra_specs)
 
         if not is_snapshot:
             clone_dict, rep_update, rep_info_dict = self._create_replica(
@@ -2047,14 +2035,8 @@ class PowerMaxCommon(object):
         :param volume: volume object to be deleted
         :returns: volume_name (string vol name)
         """
-        source_device_id = None
         volume_name = volume.name
         extra_specs = self._initial_setup(volume)
-        prov_loc = volume.provider_location
-
-        if isinstance(prov_loc, six.string_types):
-            name = ast.literal_eval(prov_loc)
-            source_device_id = name.get('source_device_id')
 
         device_id = self._find_device_on_array(volume, extra_specs)
         if device_id is None:
@@ -2069,8 +2051,27 @@ class PowerMaxCommon(object):
 
         # Check if the volume being deleted is a
         # source or target for copy session
-        self._sync_check(array, device_id, extra_specs,
-                         source_device_id=source_device_id)
+        self._cleanup_device_snapvx(array, device_id, extra_specs)
+        # Confirm volume has no more snapshots associated and is not a target
+        snapshots = self.rest.get_volume_snapshot_list(array, device_id)
+        __, snapvx_target_details = self.rest.find_snap_vx_sessions(
+            array, device_id, tgt_only=True)
+        if snapshots:
+            snapshot_names = ', '.join(
+                snap.get('snapshotName') for snap in snapshots)
+            raise exception.VolumeBackendAPIException(_(
+                'Cannot delete device %s as it currently has the following '
+                'active snapshots: %s. Please try again once these snapshots '
+                'are no longer active.') % (device_id, snapshot_names))
+        if snapvx_target_details:
+            source_device = snapvx_target_details.get('source_vol_id')
+            snapshot_name = snapvx_target_details.get('snap_name')
+            raise exception.VolumeBackendAPIException(_(
+                'Cannot delete device %s as it is currently a linked target '
+                'of snapshot %s. The source device of this link is %s. '
+                'Please try again once this snapshots is no longer '
+                'active.') % (device_id, snapshot_name, source_device))
+
         # Remove from any storage groups and cleanup replication
         self._remove_vol_and_cleanup_replication(
             array, device_id, volume_name, extra_specs, volume)
@@ -2910,111 +2911,6 @@ class PowerMaxCommon(object):
         self._delete_from_srp(
             array, target_device_id, clone_name, extra_specs)
 
-    @retry(retry_exc_tuple, interval=1, retries=3)
-    def _sync_check(self, array, device_id, extra_specs,
-                    tgt_only=False, source_device_id=None):
-        """Check if volume is part of a SnapVx sync process.
-
-        :param array: the array serial number
-        :param device_id: volume instance
-        :param tgt_only: Flag - return only sessions where device is target
-        :param extra_specs: extra specifications
-        :param tgt_only: Flag to specify if it is a target
-        :param source_device_id: source_device_id if it has one
-        """
-        if not source_device_id and tgt_only:
-            source_device_id = self._get_target_source_device(
-                array, device_id)
-        if source_device_id:
-            @coordination.synchronized("emc-source-{src_device_id}")
-            def do_unlink_and_delete_snap(src_device_id):
-                LOG.debug("Locking on source device %(device_id)s.",
-                          {'device_id': src_device_id})
-                self._do_sync_check(
-                    array, device_id, extra_specs, tgt_only)
-
-            do_unlink_and_delete_snap(source_device_id)
-        else:
-            self._do_sync_check(
-                array, device_id, extra_specs, tgt_only)
-
-    def _do_sync_check(
-            self, array, device_id, extra_specs, tgt_only=False):
-        """Check if volume is part of a SnapVx sync process.
-
-        :param array: the array serial number
-        :param device_id: volume instance
-        :param tgt_only: Flag - return only sessions where device is target
-        :param extra_specs: extra specifications
-        :param tgt_only: Flag to specify if it is a target
-        """
-        snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
-            array, device_id)
-        get_sessions = True if snapvx_tgt or snapvx_src else False
-
-        if get_sessions:
-            src_sessions, tgt_session = self.rest.find_snap_vx_sessions(
-                array, device_id, tgt_only)
-            if tgt_session:
-                self._unlink_targets_and_delete_temp_snapvx(
-                    tgt_session, array, extra_specs)
-            if src_sessions and not tgt_only:
-                if not self.rest.is_snap_id:
-                    src_sessions.sort(key=lambda k: k['snapid'], reverse=True)
-                for session in src_sessions:
-                    self._unlink_targets_and_delete_temp_snapvx(
-                        session, array, extra_specs)
-
-    def _unlink_targets_and_delete_temp_snapvx(
-            self, session, array, extra_specs):
-        """Unlink target and delete the temporary snapvx if valid candidate.
-
-        :param session: the snapvx session
-        :param array: the array serial number
-        :param extra_specs: extra specifications
-        """
-        snap_name = session.get('snap_name')
-        if not snap_name:
-            msg = _("Snap_name not present in volume's snapvx session. "
-                    "Unable to perform unlink and cleanup.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(msg)
-        source = session.get('source_vol_id')
-        snap_id = session.get('snapid')
-        is_legacy = 'EMC_SMI' in snap_name
-        is_temp = utils.CLONE_SNAPSHOT_NAME in snap_name
-
-        target, cm_enabled = None, False
-        if session.get('target_vol_id'):
-            target = session.get('target_vol_id')
-            cm_enabled = session.get('copy_mode')
-
-        if target and snap_name:
-            loop = True if cm_enabled else False
-            LOG.debug(
-                "Unlinking source from target. Source: %(vol)s, Target: "
-                "%(tgt)s, Snap id: %(snapid)s.", {'vol': source, 'tgt': target,
-                                                  'snapid': snap_id})
-            self.provision.unlink_snapvx_tgt_volume(
-                array, target, source, snap_name, extra_specs, snap_id,
-                loop)
-
-        # Candidates for deletion:
-        # 1. If legacy snapshot with 'EMC_SMI' in snapshot name
-        # 2. If snapVX snapshot is temporary
-        # If a target is present in the snap session it will be unlinked by
-        # the provision.unlink_snapvx_tgt_volume call above. This accounts
-        # for both CM enabled and disabled, as such by this point there will
-        # either be no target or it would have been unlinked, therefore
-        # delete if it is legacy or temp.
-        if is_legacy or is_temp:
-            LOG.debug(
-                "Deleting temporary snapshot. Source: %(vol)s, snap name: "
-                "%(name)s, snap id: %(snapid)s.", {
-                    'vol': source, 'name': snap_name, 'snapid': snap_id})
-            self.provision.delete_temp_volume_snap(
-                array, snap_name, source, snap_id)
-
     def _get_target_source_device(self, array, device_id):
         """Get the source device id of the target.
 
@@ -3036,14 +2932,14 @@ class PowerMaxCommon(object):
 
         return source_device_id
 
-    def _clone_check(
-            self, array, device_id, extra_specs, force_unlink=False):
+    @retry(retry_exc_tuple, interval=1, retries=3)
+    def _cleanup_device_snapvx(
+            self, array, device_id, extra_specs):
         """Perform any snapvx cleanup before creating clones or snapshots
 
         :param array: the array serial
         :param device_id: the device ID of the volume
         :param extra_specs: extra specifications
-        :param force_unlink: force unlink even if not expired
         """
         snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
             array, device_id)
@@ -3053,47 +2949,109 @@ class PowerMaxCommon(object):
             def do_unlink_and_delete_snap(src_device_id):
                 src_sessions, tgt_session = self.rest.find_snap_vx_sessions(
                     array, src_device_id)
-                count = 0
-                if tgt_session and count < self.snapvx_unlink_limit:
-                    self._delete_valid_snapshot(
-                        array, tgt_session, extra_specs, force_unlink)
-                    count += 1
+                if tgt_session:
+                    self._unlink_and_delete_temporary_snapshots(
+                        tgt_session, array, extra_specs)
                 if src_sessions:
-                    for session in src_sessions:
-                        if count < self.snapvx_unlink_limit:
-                            self._delete_valid_snapshot(
-                                array, session, extra_specs, force_unlink)
-                            count += 1
-                        else:
-                            break
-
+                    if not self.rest.is_snap_id:
+                        src_sessions.sort(
+                            key=lambda k: k['snapid'], reverse=True)
+                    for src_session in src_sessions:
+                        self._unlink_and_delete_temporary_snapshots(
+                            src_session, array, extra_specs)
             do_unlink_and_delete_snap(device_id)
 
-    def _delete_valid_snapshot(
-            self, array, session, extra_specs, force_unlink=False):
-        """Delete a snapshot if valid candidate for deletion.
+    def _unlink_and_delete_temporary_snapshots(
+            self, session, array, extra_specs):
+        """Helper for unlinking and deleting temporary snapshot sessions
 
-        :param array: the array serial
-        :param session: the snapvx session
+        :param session: snapvx session
+        :param array: the array serial number
         :param extra_specs: extra specifications
-        :param force_unlink: force unlink even if not expired
         """
-        is_legacy = 'EMC_SMI' in session['snap_name']
-        is_temp = utils.CLONE_SNAPSHOT_NAME in session['snap_name']
-        is_expired = session['expired']
-        if force_unlink:
-            is_expired = True
-        is_valid = True if is_legacy or (is_temp and is_expired) else False
-        if is_valid:
-            try:
-                self._unlink_targets_and_delete_temp_snapvx(
-                    session, array, extra_specs)
-            except exception.VolumeBackendAPIException as e:
-                # Ignore and continue as snapshot has been unlinked
-                # successfully with incorrect status code returned
-                if ('404' and session['snap_name'] and
-                        'does not exist' in six.text_type(e)):
-                    pass
+        try:
+            session_unlinked = self._unlink_snapshot(
+                session, array, extra_specs)
+            if session_unlinked:
+                self._delete_temp_snapshot(session, array)
+        except exception.VolumeBackendAPIException as e:
+            # Ignore and continue as snapshot has been unlinked
+            # successfully with incorrect status code returned
+            if ('404' and session['snap_name'] and
+                    'does not exist' in six.text_type(e)):
+                pass
+
+    def _unlink_snapshot(self, session, array, extra_specs):
+        """Helper for unlinking temporary snapshot during cleanup.
+
+        :param session: session that contains snapshot
+        :param array: the array serial number
+        :param extra_specs: extra specifications
+        :return:
+        """
+        snap_name = session.get('snap_name')
+        source = session.get('source_vol_id')
+        snap_id = session.get('snapid')
+
+        snap_info = self.rest.get_volume_snap(
+            array, source, snap_name, snap_id)
+        is_linked = snap_info.get('linkedDevices')
+
+        target, cm_enabled = None, False
+        if session.get('target_vol_id'):
+            target = session.get('target_vol_id')
+            cm_enabled = session.get('copy_mode')
+
+        if target and snap_name and is_linked:
+            loop = True if cm_enabled else False
+            LOG.debug(
+                "Unlinking source from target. Source: %(vol)s, Target: "
+                "%(tgt)s, Snap id: %(snapid)s.",
+                {'vol': source, 'tgt': target, 'snapid': snap_id})
+            self.provision.unlink_snapvx_tgt_volume(
+                array, target, source, snap_name, extra_specs, snap_id,
+                loop)
+
+        is_unlinked = True
+        snap_info = self.rest.get_volume_snap(
+            array, source, snap_name, snap_id)
+        if snap_info and snap_info.get('linkedDevices'):
+            is_unlinked = False
+        return is_unlinked
+
+    def _delete_temp_snapshot(self, session, array):
+        """Helper for deleting temporary snapshot during cleanup.
+
+        :param session: Session that contains snapshot
+        :param array: the array serial number
+        """
+        snap_name = session.get('snap_name')
+        source = session.get('source_vol_id')
+        snap_id = session.get('snapid')
+        LOG.debug(
+            "Deleting temp snapshot if it exists. Snap name is: "
+            "%(snap_name)s, Source is: %(source)s, "
+            "Snap id: %(snap_id)s.",
+            {'snap_name': snap_name, 'source': source,
+             'snap_id': snap_id})
+        is_legacy = 'EMC_SMI' in snap_name if snap_name else False
+        is_temp = (
+            utils.CLONE_SNAPSHOT_NAME in snap_name if snap_name else False)
+        snap_info = self.rest.get_volume_snap(
+            array, source, snap_name, snap_id)
+        is_linked = snap_info.get('linkedDevices') if snap_info else False
+
+        # Candidates for deletion:
+        # 1. If legacy snapshot with 'EMC_SMI' in snapshot name
+        # 2. If snapVX snapshot is temporary
+        # 3. Snapshot is unlinked. Call _unlink_snapshot before delete.
+        if (is_legacy or is_temp) and not is_linked:
+            LOG.debug(
+                "Deleting temporary snapshot. Source: %(vol)s, snap name: "
+                "%(name)s, snap id: %(snapid)s.", {
+                    'vol': source, 'name': snap_name, 'snapid': snap_id})
+            self.provision.delete_temp_volume_snap(
+                array, snap_name, source, snap_id)
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing PowerMax/VMAX Volume (import to Cinder).
@@ -3367,7 +3325,7 @@ class PowerMaxCommon(object):
                       {'id': volume_id})
         else:
             # Check if volume is snap source
-            self._clone_check(array, device_id, extra_specs)
+            self._cleanup_device_snapvx(array, device_id, extra_specs)
             snapvx_tgt, snapvx_src, __ = self.rest.is_vol_in_rep_session(
                 array, device_id)
             if snapvx_src or snapvx_tgt:
@@ -3933,13 +3891,7 @@ class PowerMaxCommon(object):
         :param extra_specs: the extra specifications
         :returns: bool
         """
-        model_update, success = None, False
-        rep_info_dict, rep_extra_specs, rep_mode, rep_status = (
-            None, None, None, False)
-        resume_target_sg, resume_original_sg = False, False
-        resume_original_sg_dict = dict()
-        orig_mgmt_sg_name = ''
-        is_partitioned = False
+        orig_mgmt_sg_name = None
 
         target_extra_specs = dict(new_type['extra_specs'])
         target_extra_specs.update({
@@ -3952,30 +3904,10 @@ class PowerMaxCommon(object):
             target_extra_specs)
         target_extra_specs.update(
             {utils.DISABLECOMPRESSION: compression_disabled})
-
-        was_rep_enabled = self.utils.is_replication_enabled(extra_specs)
-        if self.utils.is_replication_enabled(target_extra_specs):
-            target_backend_id = target_extra_specs.get(
-                utils.REPLICATION_DEVICE_BACKEND_ID,
-                utils.BACKEND_ID_LEGACY_REP)
-            target_rep_config = self.utils.get_rep_config(
-                target_backend_id, self.rep_configs)
-            rep_mode = target_rep_config['mode']
-            target_extra_specs[utils.REP_MODE] = rep_mode
-            target_extra_specs[utils.REP_CONFIG] = target_rep_config
-            is_rep_enabled = True
-        else:
-            is_rep_enabled = False
-
-        backend_ids_differ = False
-        if was_rep_enabled and is_rep_enabled:
-            curr_backend_id = extra_specs.get(
-                utils.REPLICATION_DEVICE_BACKEND_ID,
-                utils.BACKEND_ID_LEGACY_REP)
-            tgt_backend_id = target_extra_specs.get(
-                utils.REPLICATION_DEVICE_BACKEND_ID,
-                utils.BACKEND_ID_LEGACY_REP)
-            backend_ids_differ = curr_backend_id != tgt_backend_id
+        (was_rep_enabled, is_rep_enabled, backend_ids_differ, rep_mode,
+         target_extra_specs) = (
+            self._get_replication_flags(
+                extra_specs, target_extra_specs))
 
         if was_rep_enabled and not self.promotion:
             self._validate_rdfg_status(array, extra_specs)
@@ -3992,51 +3924,26 @@ class PowerMaxCommon(object):
         rdf_pair_broken, rdf_pair_created, vol_retyped, remote_retyped = (
             False, False, False, False)
 
+        self._perform_snapshot_cleanup(
+            array, device_id, was_rep_enabled, is_rep_enabled,
+            backend_ids_differ, extra_specs, target_extra_specs)
+
         try:
             # Scenario 1: Rep -> Non-Rep
             # Scenario 2: Cleanup for Rep -> Diff Rep type
-            if (was_rep_enabled and not is_rep_enabled) or backend_ids_differ:
-                if self.promotion:
-                    resume_original_sg = False
-                    rdf_group = extra_specs['rdf_group_no']
-                    is_partitioned = self._rdf_vols_partitioned(
-                        array, [volume], rdf_group)
-                    if not is_partitioned:
-                        self.break_rdf_device_pair_session_promotion(
-                            array, device_id, volume_name, extra_specs)
-                else:
-                    rep_extra_specs, resume_original_sg = (
-                        self.break_rdf_device_pair_session(
-                            array, device_id, volume_name, extra_specs,
-                            volume))
-                status = (REPLICATION_ERROR if self.promotion else
-                          REPLICATION_DISABLED)
-                model_update = {
-                    'replication_status': status,
-                    'replication_driver_data': None}
-                rdf_pair_broken = True
-                if resume_original_sg:
-                    resume_original_sg_dict = {
-                        utils.ARRAY: array,
-                        utils.SG_NAME: rep_extra_specs['mgmt_sg_name'],
-                        utils.RDF_GROUP_NO: rep_extra_specs['rdf_group_no'],
-                        utils.EXTRA_SPECS: rep_extra_specs}
+            (model_update, resume_original_sg_dict, rdf_pair_broken,
+             resume_original_sg, is_partitioned) = (
+                self._prep_rep_to_non_rep(
+                    array, device_id, volume_name, volume, was_rep_enabled,
+                    is_rep_enabled, backend_ids_differ, extra_specs))
 
             # Scenario 1: Non-Rep -> Rep
             # Scenario 2: Rep -> Diff Rep type
-            if (not was_rep_enabled and is_rep_enabled) or backend_ids_differ:
-                self._sync_check(array, device_id, extra_specs)
-                (rep_status, rep_driver_data, rep_info_dict,
-                 rep_extra_specs, resume_target_sg) = (
-                    self.configure_volume_replication(
-                        array, volume, device_id, target_extra_specs))
-                if rep_status != 'first_vol_in_rdf_group':
-                    rdf_pair_created = True
-                model_update = {
-                    'replication_status': rep_status,
-                    'replication_driver_data': six.text_type(
-                        {'device_id': rep_info_dict['target_device_id'],
-                         'array': rep_info_dict['remote_array']})}
+            (model_update, rdf_pair_created, rep_status, rep_driver_data,
+             rep_info_dict, rep_extra_specs, resume_target_sg) = (
+                self._prep_non_rep_to_rep(
+                    array, device_id, volume, was_rep_enabled,
+                    is_rep_enabled, backend_ids_differ, target_extra_specs))
 
             success, target_sg_name = self._retype_volume(
                 array, srp, device_id, volume, volume_name, extra_specs,
@@ -4127,6 +4034,185 @@ class PowerMaxCommon(object):
                     'previous state post volume migrate exception.')
             finally:
                 raise e
+
+    def _get_replication_flags(self, extra_specs, target_extra_specs):
+        """Get replication flags from extra specifications.
+
+        :param extra_specs: extra specification -- dict
+        :param target_extra_specs: target extra specification -- dict
+        :returns: was_rep_enabled -- bool, is_rep_enabled -- bool,
+                  backend_ids_differ -- bool, rep_mode -- str,
+                  target_extra_specs  -- dict
+        """
+        rep_mode = None
+        was_rep_enabled = self.utils.is_replication_enabled(extra_specs)
+        if self.utils.is_replication_enabled(target_extra_specs):
+            target_backend_id = target_extra_specs.get(
+                utils.REPLICATION_DEVICE_BACKEND_ID,
+                utils.BACKEND_ID_LEGACY_REP)
+            target_rep_config = self.utils.get_rep_config(
+                target_backend_id, self.rep_configs)
+            rep_mode = target_rep_config['mode']
+            target_extra_specs[utils.REP_MODE] = rep_mode
+            target_extra_specs[utils.REP_CONFIG] = target_rep_config
+            is_rep_enabled = True
+        else:
+            is_rep_enabled = False
+
+        backend_ids_differ = False
+        if was_rep_enabled and is_rep_enabled:
+            curr_backend_id = extra_specs.get(
+                utils.REPLICATION_DEVICE_BACKEND_ID,
+                utils.BACKEND_ID_LEGACY_REP)
+            tgt_backend_id = target_extra_specs.get(
+                utils.REPLICATION_DEVICE_BACKEND_ID,
+                utils.BACKEND_ID_LEGACY_REP)
+            backend_ids_differ = curr_backend_id != tgt_backend_id
+
+        return (was_rep_enabled, is_rep_enabled, backend_ids_differ, rep_mode,
+                target_extra_specs)
+
+    def _prep_non_rep_to_rep(
+            self, array, device_id, volume, was_rep_enabled,
+            is_rep_enabled, backend_ids_differ, target_extra_specs):
+        """Prepare for non rep to rep retype.
+
+        :param array: the array serial number -- str
+        :param device_id: the device id -- str
+        :param volume: the volume object -- objects.Volume
+        :param was_rep_enabled: flag -- bool
+        :param is_rep_enabled: flag -- bool
+        :param backend_ids_differ:  flag -- bool
+        :param target_extra_specs: target extra specs -- dict
+        :returns: model_update -- dict, rdf_pair_created -- bool,
+                  rep_status -- str, rep_driver_data -- dict,
+                  rep_info_dict -- dict, rep_extra_specs -- dict,
+                  resume_target_sg -- bool
+        """
+        model_update, rep_status = None, None
+        resume_target_sg = False
+        rdf_pair_created = False
+        rep_driver_data, rep_info_dict = dict(), dict()
+        rep_extra_specs = dict()
+        if (not was_rep_enabled and is_rep_enabled) or backend_ids_differ:
+            (rep_status, rep_driver_data, rep_info_dict,
+             rep_extra_specs, resume_target_sg) = (
+                self.configure_volume_replication(
+                    array, volume, device_id, target_extra_specs))
+            if rep_status != 'first_vol_in_rdf_group':
+                rdf_pair_created = True
+            model_update = {
+                'replication_status': rep_status,
+                'replication_driver_data': six.text_type(
+                    {'device_id': rep_info_dict['target_device_id'],
+                     'array': rep_info_dict['remote_array']})}
+
+        return (model_update, rdf_pair_created, rep_status, rep_driver_data,
+                rep_info_dict, rep_extra_specs, resume_target_sg)
+
+    def _prep_rep_to_non_rep(
+            self, array, device_id, volume_name, volume, was_rep_enabled,
+            is_rep_enabled, backend_ids_differ, extra_specs):
+        """Preparation for replication to non-replicated.
+
+        :param array: the array serial number -- str
+        :param device_id: device_id: the device id -- str
+        :param volume_name: the volume name -- str
+        :param volume: the volume object -- objects.Volume
+        :param was_rep_enabled: flag -- bool
+        :param is_rep_enabled: flag -- bool
+        :param backend_ids_differ: flag -- bool
+        :param extra_specs: extra specs -- dict
+        :returns: model_update --dict , resume_original_sg_dict -- dict,
+                  rdf_pair_broken -- bool, resume_original_sg -- bool,
+                  is_partitioned -- bool
+        """
+        model_update = dict()
+        resume_original_sg_dict = dict()
+        rdf_pair_broken = False
+        resume_original_sg = False
+        is_partitioned = False
+        if (was_rep_enabled and not is_rep_enabled) or backend_ids_differ:
+            if self.promotion:
+                resume_original_sg = False
+                rdf_group = extra_specs['rdf_group_no']
+                is_partitioned = self._rdf_vols_partitioned(
+                    array, [volume], rdf_group)
+                if not is_partitioned:
+                    self.break_rdf_device_pair_session_promotion(
+                        array, device_id, volume_name, extra_specs)
+            else:
+                rep_extra_specs, resume_original_sg = (
+                    self.break_rdf_device_pair_session(
+                        array, device_id, volume_name, extra_specs,
+                        volume))
+            status = (REPLICATION_ERROR if self.promotion else
+                      REPLICATION_DISABLED)
+            model_update = {
+                'replication_status': status,
+                'replication_driver_data': None}
+            rdf_pair_broken = True
+            if resume_original_sg:
+                resume_original_sg_dict = {
+                    utils.ARRAY: array,
+                    utils.SG_NAME: rep_extra_specs['mgmt_sg_name'],
+                    utils.RDF_GROUP_NO: rep_extra_specs['rdf_group_no'],
+                    utils.EXTRA_SPECS: rep_extra_specs}
+        return (model_update, resume_original_sg_dict, rdf_pair_broken,
+                resume_original_sg, is_partitioned)
+
+    def _perform_snapshot_cleanup(
+            self, array, device_id, was_rep_enabled, is_rep_enabled,
+            backend_ids_differ, extra_specs, target_extra_specs):
+        """Perform snapshot cleanup.
+
+        Perform snapshot cleanup before any other changes. If retyping
+        to either async or metro then there should be no linked snapshots
+        on the volume.
+        :param array: the array serial number -- str
+        :param device_id: device_id: the device id -- str
+        :param was_rep_enabled: flag -- bool
+        :param is_rep_enabled: flag -- bool
+        :param backend_ids_differ: flag -- bool
+        :param extra_specs: extra specs -- dict
+        :param target_extra_specs: target extra specs -- dict
+        """
+        if (not was_rep_enabled and is_rep_enabled) or backend_ids_differ:
+            target_rep_mode = target_extra_specs.get(utils.REP_MODE)
+            target_is_async = target_rep_mode == utils.REP_ASYNC
+            target_is_metro = target_rep_mode == utils.REP_METRO
+            if target_is_async or target_is_metro:
+                self._cleanup_device_snapvx(array, device_id, extra_specs)
+                snapshots = self.rest.get_volume_snapshot_list(
+                    array, device_id)
+                __, snapvx_target_details = self.rest.find_snap_vx_sessions(
+                    array, device_id, tgt_only=True)
+
+                linked_snapshots = list()
+                for snapshot in snapshots:
+                    linked_devices = snapshot.get('linkedDevices')
+                    if linked_devices:
+                        snapshot_name = snapshot.get('snapshotName')
+                        linked_snapshots.append(snapshot_name)
+                if linked_snapshots:
+                    snapshot_names = ', '.join(linked_snapshots)
+                    raise exception.VolumeBackendAPIException(_(
+                        'Unable to complete retype as volume has active'
+                        'snapvx links. Cannot retype to Asynchronous or '
+                        'Metro modes while the volume has active links. '
+                        'Please wait until these snapvx operations have '
+                        'completed and try again. Snapshots: '
+                        '%s') % snapshot_names)
+                if snapvx_target_details:
+                    source_vol_id = snapvx_target_details.get('source_vol_id')
+                    snap_name = snapvx_target_details.get('snap_name')
+                    raise exception.VolumeBackendAPIException(_(
+                        'Unable to complete retype as volume is a snapvx '
+                        'target. Cannot retype to Asynchronous or Metro '
+                        'modes in this state. Please wait until these snapvx '
+                        'operations complete and try again. Volume %s is '
+                        'currently a target of snapshot %s with source device '
+                        '%s') % (device_id, snap_name, source_vol_id))
 
     def _cleanup_on_migrate_failure(
             self, rdf_pair_broken, rdf_pair_created, vol_retyped,
@@ -5168,7 +5254,7 @@ class PowerMaxCommon(object):
             {'sourceName': volume_name})
         device_id = volume_dict['device_id']
         # Check if volume is snap target (e.g. if clone volume)
-        self._sync_check(array, device_id, extra_specs)
+        self._cleanup_device_snapvx(array, device_id, extra_specs)
         # Remove from any storage groups and cleanup replication
         self._remove_vol_and_cleanup_replication(
             array, device_id, volume_name, extra_specs, volume)
@@ -5571,6 +5657,61 @@ class PowerMaxCommon(object):
             array, vol_grp_name)
         deleted_volume_device_ids = []
 
+        # If volumes are being deleted along with the group, ensure snapshot
+        # cleanup completes before doing any replication/storage group cleanup.
+        remaining_device_snapshots = list()
+        remaining_snapvx_targets = list()
+        for vol in volumes:
+            extra_specs = self._initial_setup(vol)
+            device_id = self._find_device_on_array(vol, extra_specs)
+            self._cleanup_device_snapvx(array, device_id, extra_specs)
+            snapshots = self.rest.get_volume_snapshot_list(array, device_id)
+            __, snapvx_target_details = self.rest.find_snap_vx_sessions(
+                array, device_id, tgt_only=True)
+            if snapshots:
+                snapshot_names = ', '.join(
+                    snap.get('snapshotName') for snap in snapshots)
+                snap_details = {
+                    'device_id': device_id, 'snapshot_names': snapshot_names}
+                remaining_device_snapshots.append(snap_details)
+            if snapvx_target_details:
+                source_vol_id = snapvx_target_details.get('source_vol_id')
+                snap_name = snapvx_target_details.get('snap_name')
+                target_details = {
+                    'device_id': device_id, 'source_vol_id': source_vol_id,
+                    'snapshot_name': snap_name}
+                remaining_snapvx_targets.append(target_details)
+
+        # Fail out if volumes to be deleted still have snapshots.
+        if remaining_device_snapshots:
+            for details in remaining_device_snapshots:
+                device_id = details.get('device_id')
+                snapshot_names = details.get('snapshot_names')
+                LOG.error('Cannot delete device %s, it has the '
+                          'following active snapshots, %s.',
+                          device_id, snapshot_names)
+            raise exception.VolumeBackendAPIException(_(
+                'Group volumes have active snapshots. Cannot perform group '
+                'delete. Wait for snapvx sessions to complete their '
+                'processes or remove volumes from group before attempting '
+                'to delete again. Please see previously logged error '
+                'message for device and snapshot details.'))
+
+        if remaining_snapvx_targets:
+            for details in remaining_snapvx_targets:
+                device_id = details.get('device_id')
+                snap_name = details.get('snapshot_name')
+                source_vol_id = details.get('source_vol_id')
+                LOG.error('Cannot delete device %s, it is current a target '
+                          'of snapshot %s with source device id %s',
+                          device_id, snap_name, source_vol_id)
+            raise exception.VolumeBackendAPIException(_(
+                'Some group volumes are targets of a snapvx session. Cannot '
+                'perform group delete. Wait for snapvx sessions to complete '
+                'their processes or remove volumes from group before '
+                'attempting to delete again. Please see previously logged '
+                'error message for device and snapshot details.'))
+
         # Remove replication for group, if applicable
         if group.is_replicated:
             vt_extra_specs = self.utils.get_volumetype_extra_specs(
@@ -5591,11 +5732,8 @@ class PowerMaxCommon(object):
                     interval_retries_dict)
                 for vol in volumes:
                     extra_specs = self._initial_setup(vol)
-                    device_id = self._find_device_on_array(
-                        vol, extra_specs)
+                    device_id = self._find_device_on_array(vol, extra_specs)
                     if device_id in volume_device_ids:
-                        self._clone_check(
-                            array, device_id, extra_specs, force_unlink=True)
                         self.masking.remove_and_reset_members(
                             array, vol, device_id, vol.name,
                             extra_specs, False)
@@ -6706,7 +6844,7 @@ class PowerMaxCommon(object):
                 message=exception_message)
         else:
             snap_id = snap_id_list[0]
-        self._clone_check(array, sourcedevice_id, extra_specs)
+        self._cleanup_device_snapvx(array, sourcedevice_id, extra_specs)
         try:
             LOG.info("Reverting device: %(deviceid)s "
                      "to snapshot: %(snapname)s.",
