@@ -45,11 +45,13 @@ class JovianISCSIDriver(driver.ISCSIDriver):
         1.0.0 - Open-E JovianDSS driver with basic functionality
         1.0.1 - Added certificate support
                 Added revert to snapshot support
-    """
+        1.0.2 - Added multi-attach support
+                Added 16K block support
+ """
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Open-E_JovianDSS_CI"
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -117,7 +119,7 @@ class JovianISCSIDriver(driver.ISCSIDriver):
             msg = (_("Unable to identify pool %s") % self._pool)
             raise exception.VolumeDriverException(msg)
 
-        valid_bsize = ['32K', '64K', '128K', '256K', '512K', '1M']
+        valid_bsize = ['16K', '32K', '64K', '128K', '256K', '512K', '1M']
         if self.block_size not in valid_bsize:
             raise exception.InvalidConfigurationValue(
                 value=self.block_size,
@@ -747,7 +749,8 @@ class JovianISCSIDriver(driver.ISCSIDriver):
             'reserved_percentage': int(reserved_percentage),
             'volume_backend_name': self.backend_name,
             'QoS_support': False,
-            'location_info': location_info
+            'location_info': location_info,
+            'multiattach': True
         }
 
         LOG.debug('Total capacity: %d, '

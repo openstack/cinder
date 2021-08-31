@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Open-E JovianDSS driver: Added multiattach support.
+  - |
+    Open-E JovianDSS driver: Added 16K block size support.
