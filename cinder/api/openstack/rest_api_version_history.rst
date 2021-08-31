@@ -490,3 +490,11 @@ in the volume details.
 -------------------------
 Include the ``encryption_key_id`` in volume and backup details when the
 associated volume is encrypted.
+
+3.65
+----
+Include a ``consumes_quota`` field in volume and snapshot details to indicate
+whether the resource is consuming quota or not.  Also, accept a
+``consumes_quota`` filter, which takes a boolean value, in the volume and
+snapshot list requests.  (The default listing behavior is not to use this
+filter.)
