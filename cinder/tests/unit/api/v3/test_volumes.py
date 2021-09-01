@@ -1032,6 +1032,7 @@ class VolumeApiTest(test.TestCase):
         req.headers = mv.get_mv_header(mv.VOLUME_REVERT)
         req.api_version_request = mv.get_api_version(
             mv.VOLUME_REVERT)
+        req.environ['cinder.context'] = self.ctxt
         # update volume's status failed
         mock_update.side_effect = [False, True]
 

@@ -14,20 +14,706 @@
 from http import HTTPStatus
 from unittest import mock
 
+import ddt
+
+from cinder.api.contrib import admin_actions
+from cinder.api.contrib import volume_actions
+from cinder.api import extensions
 from cinder.api import microversions as mv
+from cinder.api.v3 import volumes
+from cinder import exception
+from cinder.objects import fields
+from cinder.policies import volume_actions as policy
+from cinder.policies import volumes as volume_policy
+from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit import fake_constants
+from cinder.tests.unit.policies import base
 from cinder.tests.unit.policies import test_base
+from cinder.tests.unit import utils as test_utils
 from cinder.volume import api as volume_api
+from cinder.volume import manager as volume_manager
 
 
-# TODO(yikun): The below policy test cases should be added:
-# * REVERT_POLICY
-# * RESET_STATUS
-# * FORCE_DETACH_POLICY
-# * UPLOAD_PUBLIC_POLICY
-# * UPLOAD_IMAGE_POLICY
-# * MIGRATE_POLICY
-# * MIGRATE_COMPLETE_POLICY
+@ddt.ddt
+class VolumeActionsPolicyTest(base.BasePolicyTest):
+    authorized_users = [
+        'legacy_admin',
+        'legacy_owner',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+        'project_foo',
+    ]
+    unauthorized_users = [
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    authorized_admins = [
+        'legacy_admin',
+        'system_admin',
+        'project_admin',
+    ]
+
+    unauthorized_admins = [
+        'legacy_owner',
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'project_member',
+        'project_reader',
+        'project_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    # Basic policy test is without enforcing scope (which cinder doesn't
+    # yet support) and deprecated rules enabled.
+    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+              *args, **kwargs):
+        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+
+        self.ext_mgr = extensions.ExtensionManager()
+        self.controller = volume_actions.VolumeActionsController(self.ext_mgr)
+        self.admin_controller = admin_actions.VolumeAdminController(
+            self.ext_mgr)
+        self.volume_controller = volumes.VolumeController(self.ext_mgr)
+        self.manager = volume_manager.VolumeManager()
+        self.manager.driver = mock.MagicMock()
+        self.manager.driver.initialize_connection = mock.MagicMock()
+        self.manager.driver.initialize_connection.side_effect = (
+            self._initialize_connection)
+        self.api_path = '/v3/%s/volumes' % (self.project_id)
+        self.api_version = mv.BASE_VERSION
+
+    def _initialize_connection(self, volume, connector):
+        return {'data': connector}
+
+    def _create_volume(self, attached=False, **kwargs):
+        vol_type = test_utils.create_volume_type(self.project_admin_context,
+                                                 name='fake_vol_type',
+                                                 testcase_instance=self)
+        volume = test_utils.create_volume(self.project_member_context,
+                                          volume_type_id=vol_type.id,
+                                          testcase_instance=self, **kwargs)
+
+        if attached:
+            volume = test_utils.attach_volume(self.project_member_context,
+                                              volume.id,
+                                              fake_constants.INSTANCE_ID,
+                                              'fake_host',
+                                              'fake_mountpoint')
+        return volume
+
+    @ddt.data(*base.all_users)
+    def test_extend_policy(self, user_id):
+        volume = self._create_volume()
+        rule_name = policy.EXTEND_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-extend": {
+                "new_size": 3
+            }
+        }
+
+        # DB validations will throw VolumeNotFound for some contexts
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._extend, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_extend_attached_policy(self, user_id):
+        volume = self._create_volume(attached=True)
+        rule_name = policy.EXTEND_ATTACHED_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=mv.VOLUME_EXTEND_INUSE)
+        req.method = 'POST'
+        body = {
+            "os-extend": {
+                "new_size": 3
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._extend, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_revert_policy(self, user_id):
+        volume = self._create_volume()
+        snap = test_utils.create_snapshot(
+            self.project_member_context,
+            volume.id,
+            status=fields.SnapshotStatus.AVAILABLE,
+            testcase_instance=self)
+        rule_name = policy.REVERT_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=mv.VOLUME_REVERT)
+        req.method = 'POST'
+        body = {
+            "revert": {
+                "snapshot_id": snap.id
+            }
+        }
+
+        # Relax the volume:GET_POLICY in order to get past that check.
+        self.policy.set_rules({volume_policy.GET_POLICY: ""},
+                              overwrite=False)
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.volume_controller.revert, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_reset_policy(self, user_id):
+        volume = self._create_volume(attached=True)
+        rule_name = policy.RESET_STATUS
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-reset_status": {
+                "status": "available",
+                "attach_status": "detached",
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_admins,
+                                 self.unauthorized_admins,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.admin_controller._reset_status, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_retype_policy(self, user_id):
+        volume = self._create_volume()
+        test_utils.create_volume_type(self.project_admin_context,
+                                      name='another_vol_type',
+                                      testcase_instance=self)
+        rule_name = policy.RETYPE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-retype": {
+                "new_type": "another_vol_type",
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._retype, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_update_readonly_policy(self, user_id):
+        volume = self._create_volume()
+        rule_name = policy.UPDATE_READONLY_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-update_readonly_flag": {
+                "readonly": True
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller._volume_readonly_update, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_force_delete_policy(self, user_id):
+        volume = self._create_volume()
+        rule_name = policy.FORCE_DELETE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-force_delete": {}
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_admins,
+                                 self.unauthorized_admins,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.admin_controller._force_delete, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.detach_volume')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.terminate_connection')
+    def test_force_detach_policy(self, user_id,
+                                 mock_terminate_connection,
+                                 mock_detach_volume):
+        # Redirect the RPC calls directly to the volume manager.
+        # The volume manager needs the volume.id, not the volume.
+        def detach_volume(ctxt, volume, connector, force=False):
+            return self.manager.detach_volume(ctxt, volume.id,
+                                              attachment_id=None,
+                                              volume=None)
+
+        def terminate_connection(ctxt, volume, connector, force=False):
+            return self.manager.terminate_connection(ctxt, volume.id,
+                                                     connector, force)
+
+        mock_detach_volume.side_effect = detach_volume
+        mock_terminate_connection.side_effect = terminate_connection
+
+        volume = self._create_volume(attached=True)
+        rule_name = policy.FORCE_DETACH_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-force_detach": {}
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_admins,
+                                 self.unauthorized_admins,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.admin_controller._force_detach, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.copy_volume_to_image')
+    @mock.patch('cinder.image.glance.GlanceImageService.create')
+    def test_upload_image_policy(self, user_id,
+                                 mock_image_create,
+                                 mock_copy_volume_to_image):
+        # Redirect the RPC calls directly to the volume manager.
+        # The volume manager needs the volume.id, not the volume.
+        def copy_volume_to_image(ctxt, volume, image_meta):
+            return self.manager.copy_volume_to_image(ctxt, volume.id,
+                                                     image_meta)
+
+        mock_copy_volume_to_image.side_effect = copy_volume_to_image
+
+        volume = self._create_volume(status='available')
+        rule_name = policy.UPLOAD_IMAGE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-volume_upload_image": {
+                "image_name": "test",
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller._volume_upload_image, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.copy_volume_to_image')
+    @mock.patch('cinder.image.glance.GlanceImageService.create')
+    def test_upload_public_policy(self, user_id,
+                                  mock_image_create,
+                                  mock_copy_volume_to_image):
+        # Redirect the RPC calls directly to the volume manager.
+        # The volume manager needs the volume.id, not the volume.
+        def copy_volume_to_image(ctxt, volume, image_meta):
+            return self.manager.copy_volume_to_image(ctxt, volume.id,
+                                                     image_meta)
+
+        mock_copy_volume_to_image.side_effect = copy_volume_to_image
+
+        volume = self._create_volume(status='available')
+        rule_name = policy.UPLOAD_PUBLIC_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=mv.UPLOAD_IMAGE_PARAMS)
+        req.method = 'POST'
+        body = {
+            "os-volume_upload_image": {
+                "image_name": "test",
+                "visibility": "public",
+            }
+        }
+
+        # Relax the UPLOAD_IMAGE_POLICY in order to get past that check.
+        self.policy.set_rules({policy.UPLOAD_IMAGE_POLICY: ""},
+                              overwrite=False)
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_admins,
+                                 self.unauthorized_admins,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller._volume_upload_image, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.objects.Service.get_by_id')
+    def test_migrate_policy(self, user_id, mock_get_service_by_id):
+        volume = self._create_volume()
+        rule_name = policy.MIGRATE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-migrate_volume": {
+                "host": "node1@lvm"
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_admins,
+                                 self.unauthorized_admins,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.admin_controller._migrate_volume, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_migrate_complete_policy(self, user_id):
+        volume = self._create_volume()
+        # Can't use self._create_volume() because it would fail when
+        # trying to create the volume type a second time.
+        new_volume = test_utils.create_volume(self.project_member_context,
+                                              testcase_instance=self)
+        rule_name = policy.MIGRATE_COMPLETE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-migrate_volume_completion": {
+                "new_volume": new_volume.id
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(
+            user_id, self.authorized_admins, self.unauthorized_admins,
+            unauthorized_exceptions, rule_name,
+            self.admin_controller._migrate_volume_completion, req,
+            id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.attach_volume')
+    def test_attach_policy(self, user_id, mock_attach_volume):
+        def attach_volume(context, volume, instance_uuid, host_name,
+                          mountpoint, mode):
+            return self.manager.attach_volume(context, volume.id,
+                                              instance_uuid, host_name,
+                                              mountpoint, mode)
+
+        mock_attach_volume.side_effect = attach_volume
+
+        volume = self._create_volume(status='available')
+        rule_name = policy.ATTACH_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-attach": {
+                "instance_uuid": fake_constants.INSTANCE_ID,
+                "mountpoint": "/dev/vdc"
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._attach, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.detach_volume')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.terminate_connection')
+    def test_detach_policy(self, user_id,
+                           mock_terminate_connection,
+                           mock_detach_volume):
+        # Redirect the RPC calls directly to the volume manager.
+        # The volume manager needs the volume.id, not the volume.
+        def detach_volume(ctxt, volume, connector, force=False):
+            return self.manager.detach_volume(ctxt, volume.id,
+                                              attachment_id=None,
+                                              volume=None)
+
+        def terminate_connection(ctxt, volume, connector, force=False):
+            return self.manager.terminate_connection(ctxt, volume.id,
+                                                     connector, force)
+
+        mock_detach_volume.side_effect = detach_volume
+        mock_terminate_connection.side_effect = terminate_connection
+
+        volume = self._create_volume(attached=True)
+        rule_name = policy.DETACH_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-detach": {
+                "attachment_id": volume.volume_attachment[0].id
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._detach, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_begin_detaching_policy(self, user_id):
+        volume = self._create_volume(status='in-use', attach_status='attached')
+        rule_name = policy.BEGIN_DETACHING_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-begin_detaching": {}
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._begin_detaching,
+                                 req, id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_reserve_policy(self, user_id):
+        volume = self._create_volume(status='available')
+        rule_name = policy.RESERVE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-reserve": {}
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._reserve, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_unreserve_policy(self, user_id):
+        volume = self._create_volume(status='reserved')
+        rule_name = policy.UNRESERVE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-unreserve": {}
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._unreserve, req,
+                                 id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    def test_roll_detaching_policy(self, user_id):
+        volume = self._create_volume(status='detaching')
+        rule_name = policy.ROLL_DETACHING_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-roll_detaching": {}
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name, self.controller._roll_detaching,
+                                 req, id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.initialize_connection')
+    def test_initialize_policy(self, user_id, mock_initialize_connection):
+        def initialize_connection(*args):
+            return self.manager.initialize_connection(*args)
+
+        mock_initialize_connection.side_effect = initialize_connection
+
+        volume = self._create_volume()
+        rule_name = policy.INITIALIZE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-initialize_connection": {
+                "connector": {
+                    "platform": "x86_64",
+                    "host": "node2",
+                    "do_local_attach": False,
+                    "ip": "192.168.13.101",
+                    "os_type": "linux2",
+                    "multipath": False,
+                    "initiator": "iqn.1994-05.com.redhat:d16cbb5d31e5"
+                }
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller._initialize_connection,
+                                 req, id=volume.id, body=body)
+
+    @ddt.data(*base.all_users)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.terminate_connection')
+    def test_terminate_policy(self, user_id, mock_terminate_connection):
+        def terminate_connection(ctxt, volume, connector, force=False):
+            return self.manager.terminate_connection(ctxt, volume.id,
+                                                     connector, force=False)
+
+        mock_terminate_connection.side_effect = terminate_connection
+
+        volume = self._create_volume()
+        rule_name = policy.TERMINATE_POLICY
+        url = '%s/%s/action' % (self.api_path, volume.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'POST'
+        body = {
+            "os-terminate_connection": {
+                "connector": {
+                    "platform": "x86_64",
+                    "host": "node2",
+                    "do_local_attach": False,
+                    "ip": "192.168.13.101",
+                    "os_type": "linux2",
+                    "multipath": False,
+                    "initiator": "iqn.1994-05.com.redhat:d16cbb5d31e5"
+                }
+            }
+        }
+
+        unauthorized_exceptions = [
+            exception.VolumeNotFound,
+        ]
+
+        self.common_policy_check(user_id, self.authorized_users,
+                                 self.unauthorized_users,
+                                 unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller._terminate_connection,
+                                 req, id=volume.id, body=body)
+
+
+class VolumeActionsPolicySecureRbacTest(VolumeActionsPolicyTest):
+    authorized_users = [
+        'legacy_admin',
+        'system_admin',
+        'project_admin',
+        'project_member',
+    ]
+    unauthorized_users = [
+        'legacy_owner',
+        'system_member',
+        'system_foo',
+        'project_reader',
+        'project_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    def setUp(self, *args, **kwargs):
+        # Test secure RBAC by disabling deprecated policy rules (scope
+        # is still not enabled).
+        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+                      *args, **kwargs)
+
+
 class VolumeProtectionTests(test_base.CinderPolicyTests):
     def test_admin_can_extend_volume(self):
         admin_context = self.admin_context

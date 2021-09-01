@@ -43,26 +43,31 @@ class VolumeTransferTestCase(test.TestCase):
                                            project_id=fake.PROJECT_ID)
         self.updated_at = timeutils.utcnow()
 
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_volume_create_delete(self, mock_notify):
+    def test_transfer_volume_create_delete(self):
         tx_api = transfer_api.API()
         volume = utils.create_volume(self.ctxt, updated_at=self.updated_at)
-        response = tx_api.create(self.ctxt, volume.id, 'Description')
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            response = tx_api.create(self.ctxt, volume.id, 'Description')
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(2, mock_notify.call_count)
+
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual('awaiting-transfer', volume['status'],
                          'Unexpected state')
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
-                 mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
-        mock_notify.assert_has_calls(calls)
-        self.assertEqual(2, mock_notify.call_count)
 
-        tx_api.delete(self.ctxt, response['id'])
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            tx_api.delete(self.ctxt, response['id'])
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.delete.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.delete.end")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(2, mock_notify.call_count)
+
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual('available', volume['status'], 'Unexpected state')
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.delete.start"),
-                 mock.call(self.ctxt, mock.ANY, "transfer.delete.end")]
-        mock_notify.assert_has_calls(calls)
-        self.assertEqual(4, mock_notify.call_count)
 
     def test_transfer_invalid_volume(self):
         tx_api = transfer_api.API()
@@ -84,8 +89,7 @@ class VolumeTransferTestCase(test.TestCase):
                           tx_api.create,
                           self.ctxt, volume.id, 'Description')
 
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_invalid_authkey(self, mock_notify):
+    def test_transfer_accept_invalid_authkey(self):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
@@ -103,39 +107,42 @@ class VolumeTransferTestCase(test.TestCase):
                           tx_api.accept,
                           self.ctxt, transfer['id'], 'wrong')
 
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_invalid_volume(self, mock_notify):
+    def test_transfer_accept_invalid_volume(self):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
         volume = utils.create_volume(self.ctxt, updated_at=self.updated_at,
                                      volume_type_id=self.vt['id'])
-        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(2, mock_notify.call_count)
+
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual('awaiting-transfer', volume['status'],
                          'Unexpected state')
 
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
-                 mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
-        mock_notify.assert_has_calls(calls)
-        self.assertEqual(2, mock_notify.call_count)
-
         volume.status = 'wrong'
         volume.save()
-        self.assertRaises(exception.InvalidVolume,
-                          tx_api.accept,
-                          self.ctxt, transfer['id'], transfer['auth_key'])
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            self.assertRaises(exception.InvalidVolume,
+                              tx_api.accept,
+                              self.ctxt, transfer['id'], transfer['auth_key'])
+            # Because the InvalidVolume exception is raised in tx_api, so
+            # there is only transfer.accept.start called and missing
+            # transfer.accept.end.
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(1, mock_notify.call_count)
+
         volume.status = 'awaiting-transfer'
         volume.save()
 
-        # Because the InvalidVolume exception is raised in tx_api, so there is
-        # only transfer.accept.start called and missing transfer.accept.end.
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start")]
-        mock_notify.assert_has_calls(calls)
-        self.assertEqual(3, mock_notify.call_count)
-
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_volume_in_consistencygroup(self, mock_notify):
+    def test_transfer_accept_volume_in_consistencygroup(self):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
@@ -153,8 +160,7 @@ class VolumeTransferTestCase(test.TestCase):
     @mock.patch.object(QUOTAS, "limit_check")
     @mock.patch.object(QUOTAS, "reserve")
     @mock.patch.object(QUOTAS, "add_volume_type_opts")
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept(self, mock_notify, mock_quota_voltype,
+    def test_transfer_accept(self, mock_quota_voltype,
                              mock_quota_reserve, mock_quota_limit):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
@@ -162,13 +168,26 @@ class VolumeTransferTestCase(test.TestCase):
         volume = utils.create_volume(self.ctxt,
                                      volume_type_id=fake.VOLUME_TYPE_ID,
                                      updated_at=self.updated_at)
-        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(2, mock_notify.call_count)
 
         self.ctxt.user_id = fake.USER2_ID
         self.ctxt.project_id = fake.PROJECT2_ID
-        response = tx_api.accept(self.ctxt,
-                                 transfer['id'],
-                                 transfer['auth_key'])
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            response = tx_api.accept(self.ctxt,
+                                     transfer['id'],
+                                     transfer['auth_key'])
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.accept.end")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(2, mock_notify.call_count)
+
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual(fake.PROJECT2_ID, volume.project_id)
         self.assertEqual(fake.USER2_ID, volume.user_id)
@@ -177,13 +196,6 @@ class VolumeTransferTestCase(test.TestCase):
                          'Unexpected volume id in response.')
         self.assertEqual(response['id'], transfer['id'],
                          'Unexpected transfer id in response.')
-
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start"),
-                 mock.call(self.ctxt, mock.ANY, "transfer.accept.end")]
-        mock_notify.assert_has_calls(calls)
-        # The notify_about_volume_usage is called twice at create(),
-        # and twice at accept().
-        self.assertEqual(4, mock_notify.call_count)
 
         # Check QUOTAS reservation calls
         # QUOTAS.add_volume_type_opts
@@ -207,8 +219,7 @@ class VolumeTransferTestCase(test.TestCase):
 
     @mock.patch.object(QUOTAS, "reserve")
     @mock.patch.object(QUOTAS, "add_volume_type_opts")
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_over_quota(self, mock_notify, mock_quota_voltype,
+    def test_transfer_accept_over_quota(self, mock_quota_voltype,
                                         mock_quota_reserve):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
@@ -216,7 +227,11 @@ class VolumeTransferTestCase(test.TestCase):
         volume = utils.create_volume(self.ctxt,
                                      volume_type_id=fake.VOLUME_TYPE_ID,
                                      updated_at=self.updated_at)
-        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+            self.assertEqual(2, mock_notify.call_count)
+
         fake_overs = ['volumes_lvmdriver-3']
         fake_quotas = {'gigabytes_lvmdriver-3': 1,
                        'volumes_lvmdriver-3': 10}
@@ -230,19 +245,19 @@ class VolumeTransferTestCase(test.TestCase):
 
         self.ctxt.user_id = fake.USER2_ID
         self.ctxt.project_id = fake.PROJECT2_ID
-        self.assertRaises(exception.VolumeLimitExceeded,
-                          tx_api.accept,
-                          self.ctxt,
-                          transfer['id'],
-                          transfer['auth_key'])
-        # notification of transfer.accept is sent only after quota check
-        # passes
-        self.assertEqual(2, mock_notify.call_count)
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            self.assertRaises(exception.VolumeLimitExceeded,
+                              tx_api.accept,
+                              self.ctxt,
+                              transfer['id'],
+                              transfer['auth_key'])
+            # notification of transfer.accept is sent only after quota check
+            # passes
+            self.assertEqual(0, mock_notify.call_count)
 
     @mock.patch.object(QUOTAS, "limit_check")
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_over_quota_check_limit(self, mock_notify,
-                                                    mock_quota_limit):
+    def test_transfer_accept_over_quota_check_limit(self, mock_quota_limit):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
@@ -261,14 +276,16 @@ class VolumeTransferTestCase(test.TestCase):
 
         self.ctxt.user_id = fake.USER2_ID
         self.ctxt.project_id = fake.PROJECT2_ID
-        self.assertRaises(exception.VolumeSizeExceedsLimit,
-                          tx_api.accept,
-                          self.ctxt,
-                          transfer['id'],
-                          transfer['auth_key'])
-        # notification of transfer.accept is sent only after quota check
-        # passes
-        self.assertEqual(2, mock_notify.call_count)
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            self.assertRaises(exception.VolumeSizeExceedsLimit,
+                              tx_api.accept,
+                              self.ctxt,
+                              transfer['id'],
+                              transfer['auth_key'])
+            # notification of transfer.accept is sent only after quota check
+            # passes
+            self.assertEqual(0, mock_notify.call_count)
 
     def test_transfer_get(self):
         tx_api = transfer_api.API()
@@ -323,20 +340,22 @@ class VolumeTransferTestCase(test.TestCase):
             sort_keys=mock.sentinel.sort_keys)
         self.assertEqual(get_all_by_project.return_value, res)
 
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_delete_transfer_with_deleted_volume(self, mock_notify):
+    def test_delete_transfer_with_deleted_volume(self):
         # create a volume
         volume = utils.create_volume(self.ctxt, updated_at=self.updated_at)
         # create a transfer
         tx_api = transfer_api.API()
-        transfer = tx_api.create(self.ctxt, volume['id'], 'Description')
-        t = tx_api.get(self.ctxt, transfer['id'])
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            transfer = tx_api.create(self.ctxt, volume['id'], 'Description')
+            t = tx_api.get(self.ctxt, transfer['id'])
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
+            mock_notify.assert_has_calls(calls)
+            self.assertEqual(2, mock_notify.call_count)
+
         self.assertEqual(t['id'], transfer['id'], 'Unexpected transfer id')
 
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
-                 mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
-        mock_notify.assert_has_calls(calls)
-        self.assertEqual(2, mock_notify.call_count)
         # force delete volume
         volume.destroy()
         # Make sure transfer has been deleted.
@@ -345,8 +364,7 @@ class VolumeTransferTestCase(test.TestCase):
                           self.ctxt,
                           transfer['id'])
 
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_with_snapshots(self, mock_notify):
+    def test_transfer_accept_with_snapshots(self):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
@@ -356,7 +374,14 @@ class VolumeTransferTestCase(test.TestCase):
         utils.create_volume_type(self.ctxt.elevated(),
                                  id=fake.VOLUME_TYPE_ID, name="test_type")
         utils.create_snapshot(self.ctxt, volume.id, status='available')
-        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.create.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.create.end")]
+            mock_notify.assert_has_calls(calls)
+            # The notify_about_volume_usage is called twice at create().
+            self.assertEqual(2, mock_notify.call_count)
 
         # Get volume and snapshot quota before accept
         self.ctxt.user_id = fake.USER2_ID
@@ -366,17 +391,18 @@ class VolumeTransferTestCase(test.TestCase):
         self.assertEqual(0, usages.get('volumes', {}).get('in_use', 0))
         self.assertEqual(0, usages.get('snapshots', {}).get('in_use', 0))
 
-        tx_api.accept(self.ctxt, transfer['id'], transfer['auth_key'])
+        with mock.patch('cinder.volume.volume_utils.notify_about_volume_usage'
+                        ) as mock_notify:
+            tx_api.accept(self.ctxt, transfer['id'], transfer['auth_key'])
+            calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start"),
+                     mock.call(self.ctxt, mock.ANY, "transfer.accept.end")]
+            mock_notify.assert_has_calls(calls)
+            # The notify_about_volume_usage is called twice at accept().
+            self.assertEqual(2, mock_notify.call_count)
+
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
         self.assertEqual(fake.PROJECT2_ID, volume.project_id)
         self.assertEqual(fake.USER2_ID, volume.user_id)
-
-        calls = [mock.call(self.ctxt, mock.ANY, "transfer.accept.start"),
-                 mock.call(self.ctxt, mock.ANY, "transfer.accept.end")]
-        mock_notify.assert_has_calls(calls)
-        # The notify_about_volume_usage is called twice at create(),
-        # and twice at accept().
-        self.assertEqual(4, mock_notify.call_count)
 
         # Get volume and snapshot quota after accept
         self.ctxt.user_id = fake.USER2_ID
@@ -386,8 +412,7 @@ class VolumeTransferTestCase(test.TestCase):
         self.assertEqual(1, usages.get('volumes', {}).get('in_use', 0))
         self.assertEqual(1, usages.get('snapshots', {}).get('in_use', 0))
 
-    @mock.patch('cinder.volume.volume_utils.notify_about_volume_usage')
-    def test_transfer_accept_with_snapshots_invalid(self, mock_notify):
+    def test_transfer_accept_with_snapshots_invalid(self):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()

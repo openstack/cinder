@@ -118,14 +118,6 @@
 # DELETE  /types
 "volume_extension:types_manage": ""
 
-# Revert a volume to a snapshot.
-# POST  /volumes/{volume_id}/action (revert)
-"volume:revert_to_snapshot": ""
-
-# Upload a volume to image.
-# POST  /volumes/{volume_id}/action (os-volume_upload_image)
-"volume_extension:volume_actions:upload_image": ""
-
 # List type extra specs.
 # GET  /types/{type_id}/extra_specs
 "volume_extension:types_extra_specs:index": ""
