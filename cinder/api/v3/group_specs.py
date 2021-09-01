@@ -49,7 +49,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     def index(self, req, group_type_id):
         """Returns the list of group specs for a given group type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.SPEC_POLICY)
+        context.authorize(policy.SPEC_GET_ALL_POLICY)
         self._check_type(context, group_type_id)
         return self._get_group_specs(context, group_type_id)
 
@@ -58,7 +58,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     @validation.schema(group_specs.create)
     def create(self, req, group_type_id, body):
         context = req.environ['cinder.context']
-        context.authorize(policy.SPEC_POLICY)
+        context.authorize(policy.SPEC_CREATE_POLICY)
 
         self._check_type(context, group_type_id)
         specs = body['group_specs']
@@ -75,7 +75,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     @validation.schema(group_specs.update)
     def update(self, req, group_type_id, id, body):
         context = req.environ['cinder.context']
-        context.authorize(policy.SPEC_POLICY)
+        context.authorize(policy.SPEC_UPDATE_POLICY)
 
         self._check_type(context, group_type_id)
         if id not in body:
@@ -96,7 +96,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     def show(self, req, group_type_id, id):
         """Return a single extra spec item."""
         context = req.environ['cinder.context']
-        context.authorize(policy.SPEC_POLICY)
+        context.authorize(policy.SPEC_GET_POLICY)
 
         self._check_type(context, group_type_id)
         specs = self._get_group_specs(context, group_type_id)
@@ -111,7 +111,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     def delete(self, req, group_type_id, id):
         """Deletes an existing group spec."""
         context = req.environ['cinder.context']
-        context.authorize(policy.SPEC_POLICY)
+        context.authorize(policy.SPEC_DELETE_POLICY)
 
         self._check_type(context, group_type_id)
 

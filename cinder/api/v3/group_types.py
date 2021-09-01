@@ -57,7 +57,7 @@ class GroupTypesController(wsgi.Controller):
     def create(self, req, body):
         """Creates a new group type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.CREATE_POLICY)
 
         grp_type = body['group_type']
         name = grp_type['name']
@@ -93,7 +93,7 @@ class GroupTypesController(wsgi.Controller):
     def update(self, req, id, body):
         # Update description for a given group type.
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.UPDATE_POLICY)
 
         grp_type = body['group_type']
         description = grp_type.get('description')
@@ -142,7 +142,7 @@ class GroupTypesController(wsgi.Controller):
     def delete(self, req, id):
         """Deletes an existing group type."""
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.DELETE_POLICY)
 
         try:
             grp_type = group_types.get_group_type(context, id)
