@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 SNAPSHOT_IN_USE_FLAG_MSG = (
     f"Since microversion {mv.SNAPSHOT_IN_USE} the 'force' flag is "
     "invalid for this request.  For backward compatability, however, when "
-    "the 'force' flag is passed with a value evaluating to True, it  is "
+    "the 'force' flag is passed with a value evaluating to True, it is "
     "silently ignored.")
 
 
