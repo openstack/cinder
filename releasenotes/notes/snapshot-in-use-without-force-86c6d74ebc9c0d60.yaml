@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    As of API version 3.66, volume snapshots of in-use volumes can be created
+    without passing the 'force' flag, and the 'force' flag is considered
+    invalid for this request.  For backward compatability, however, when the
+    'force' flag is passed with a value evaluating to True, it is silently
+    ignored.

@@ -850,12 +850,13 @@ class API(base.Base):
                          volume, name, description,
                          force=False, metadata=None,
                          cgsnapshot_id=None,
-                         group_snapshot_id=None):
+                         group_snapshot_id=None,
+                         allow_in_use=False):
         volume.assert_not_frozen()
         snapshot = self.create_snapshot_in_db(
             context, volume, name,
             description, force, metadata, cgsnapshot_id,
-            True, group_snapshot_id)
+            True, group_snapshot_id, allow_in_use)
         # NOTE(tommylikehu): We only wrap the 'size' attribute here
         # because only the volume's host is passed and only capacity is
         # validated in the scheduler now.
@@ -872,12 +873,15 @@ class API(base.Base):
                               force, metadata,
                               cgsnapshot_id,
                               commit_quota=True,
-                              group_snapshot_id=None):
+                              group_snapshot_id=None,
+                              allow_in_use=False):
         self._create_snapshot_in_db_validate(context, volume)
 
         utils.check_metadata_properties(metadata)
 
-        valid_status = ["available", "in-use"] if force else ["available"]
+        valid_status = ('available',)
+        if force or allow_in_use:
+            valid_status = ('available', 'in-use')
 
         if volume['status'] not in valid_status:
             msg = _("Volume %(vol_id)s status must be %(status)s, "
@@ -1063,10 +1067,11 @@ class API(base.Base):
     def create_snapshot(self, context,
                         volume, name, description,
                         metadata=None, cgsnapshot_id=None,
-                        group_snapshot_id=None):
+                        group_snapshot_id=None,
+                        allow_in_use=False):
         result = self._create_snapshot(context, volume, name, description,
                                        False, metadata, cgsnapshot_id,
-                                       group_snapshot_id)
+                                       group_snapshot_id, allow_in_use)
         LOG.info("Snapshot create request issued successfully.",
                  resource=result)
         return result

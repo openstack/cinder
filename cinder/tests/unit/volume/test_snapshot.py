@@ -335,7 +335,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
     def test_create_snapshot_force(self):
         """Test snapshot in use can be created forcibly."""
 
-        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        instance_uuid = '12345678-1234-4678-1234-567812345678'
         # create volume and attach to the instance
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.volume.create_volume(self.context, volume)
@@ -359,6 +359,7 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
         snapshot_ref.destroy()
         db.volume_destroy(self.context, volume['id'])
 
+    def test_create_snapshot_force_host(self):
         # create volume and attach to the host
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.volume.create_volume(self.context, volume)
@@ -379,6 +380,58 @@ class SnapshotTestCase(base.BaseVolumeTestCase):
                                                         volume,
                                                         'fake_name',
                                                         'fake_description')
+        snapshot_ref.destroy()
+        db.volume_destroy(self.context, volume['id'])
+
+    def test_create_snapshot_in_use(self):
+        """Test snapshot in use can be created forcibly."""
+
+        instance_uuid = 'a14dc210-d43b-4792-a608-09fe0824de54'
+        # create volume and attach to the instance
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        self.volume.create_volume(self.context, volume)
+        values = {'volume_id': volume['id'],
+                  'instance_uuid': instance_uuid,
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
+        attachment = db.volume_attach(self.context, values)
+        db.volume_attached(self.context, attachment['id'], instance_uuid,
+                           None, '/dev/sda1')
+
+        volume_api = cinder.volume.api.API()
+        volume = volume_api.get(self.context, volume['id'])
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.create_snapshot,
+                          self.context, volume,
+                          'fake_name', 'fake_description')
+        snapshot_ref = volume_api.create_snapshot(self.context,
+                                                  volume,
+                                                  'fake_name',
+                                                  'fake_description',
+                                                  allow_in_use=True)
+        snapshot_ref.destroy()
+        db.volume_destroy(self.context, volume['id'])
+
+        # create volume and attach to the host
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        self.volume.create_volume(self.context, volume)
+        values = {'volume_id': volume['id'],
+                  'attached_host': 'fake_host',
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
+        attachment = db.volume_attach(self.context, values)
+        db.volume_attached(self.context, attachment['id'], None,
+                           'fake_host', '/dev/sda1')
+
+        volume_api = cinder.volume.api.API()
+        volume = volume_api.get(self.context, volume['id'])
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.create_snapshot,
+                          self.context, volume,
+                          'fake_name', 'fake_description')
+        snapshot_ref = volume_api.create_snapshot(self.context,
+                                                  volume,
+                                                  'fake_name',
+                                                  'fake_description',
+                                                  allow_in_use=True)
         snapshot_ref.destroy()
         db.volume_destroy(self.context, volume['id'])
 

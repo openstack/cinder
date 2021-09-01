@@ -107,6 +107,12 @@ Create a snapshot
 Creates a volume snapshot, which is a point-in-time, complete copy of a volume.
 You can create a volume from a snapshot.
 
+Prior to API version 3.66, a 'force' flag was required to create a snapshot of
+an in-use volume, but this is no longer the case.  From API version 3.66, the
+'force' flag is invalid when passed in a volume snapshot request.  (For
+backward compatibility, however, a 'force' flag with a value evaluating to
+True is silently ignored.)
+
 Response codes
 --------------
 
