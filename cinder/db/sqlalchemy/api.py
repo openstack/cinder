@@ -7395,8 +7395,15 @@ def conditional_update(context, model, values, expected_values, filters=(),
 @enginefacade.writer
 def volume_use_quota_online_data_migration(context, max_count):
     def calculate_use_quota(volume):
-        return not (volume.migration_status.startswith('target:') or
-                    volume.admin_metadata.get('temporary') == 'True')
+        is_migrating = (volume.migration_status or '').startswith('target:')
+        is_temporary = False
+        if volume.volume_admin_metadata:
+            for admin_meta in volume.volume_admin_metadata:
+                if (admin_meta.key == 'temporary') and (
+                        admin_meta.value == 'True'):
+                    is_temporary = True
+                    break
+        return not (is_migrating or is_temporary)
 
     return use_quota_online_data_migration(context, max_count, 'Volume',
                                            calculate_use_quota)
@@ -7430,6 +7437,8 @@ def use_quota_online_data_migration(context, max_count,
                             getattr(models, resource_name),
                             session=session).filter_by(
                                 use_quota=None)
+        if resource_name == 'Volume':
+            query = query.options(joinedload('volume_admin_metadata'))
         total = query.count()
         resources = query.limit(max_count).with_for_update().all()
         for resource in resources:

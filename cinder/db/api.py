@@ -1944,12 +1944,12 @@ def conditional_update(context, model, values, expected_values, filters=(),
 
 # TODO: (Y Release) remove method and this comment
 def volume_use_quota_online_data_migration(context, max_count):
-    IMPL.volume_use_quota_online_data_migration(context, max_count)
+    return IMPL.volume_use_quota_online_data_migration(context, max_count)
 
 
 # TODO: (Y Release) remove method and this comment
 def snapshot_use_quota_online_data_migration(context, max_count):
-    IMPL.snapshot_use_quota_online_data_migration(context, max_count)
+    return IMPL.snapshot_use_quota_online_data_migration(context, max_count)
 
 
 # TODO: (Z Release) remove method and this comment
