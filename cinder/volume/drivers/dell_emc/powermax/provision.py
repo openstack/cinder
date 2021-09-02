@@ -461,7 +461,7 @@ class PowerMaxProvision(object):
             LOG.error("Unable to retrieve srp instance of %(srpName)s on "
                       "array %(array)s.",
                       {'srpName': srp, 'array': array})
-            return 0, 0, 0, 0, False
+            return 0, 0, 0, 0
         try:
             srp_capacity = srp_details['srp_capacity']
             total_capacity_gb = srp_capacity['usable_total_tb'] * units.Ki

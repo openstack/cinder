@@ -324,7 +324,7 @@ class PowerMaxProvisionTest(test.TestCase):
         # cannot retrieve srp
         array = self.data.array
         array_info = {'srpName': self.data.failed_resource}
-        ref_stats = (0, 0, 0, 0, False)
+        ref_stats = (0, 0, 0, 0)
         stats = self.provision.get_srp_pool_stats(array, array_info)
         self.assertEqual(ref_stats, stats)
         # cannot report on all stats

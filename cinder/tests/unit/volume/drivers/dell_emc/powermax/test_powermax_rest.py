@@ -2431,22 +2431,31 @@ class PowerMaxRestTest(test.TestCase):
     @mock.patch.object(
         rest.PowerMaxRest, 'get_request',
         side_effect=[tpd.PowerMaxData.director_port_keys_empty,
-                     tpd.PowerMaxData.director_port_keys_multiple])
+                     tpd.PowerMaxData.director_port_keys_multiple,
+                     {}])
     def test_get_ip_interface_physical_port_exceptions(self, mck_get):
         array_id = self.data.array
         virtual_port = self.data.iscsi_dir_virtual_port
         ip_address = self.data.ip
 
         # No physical port keys returned
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.rest.get_ip_interface_physical_port,
-            array_id, virtual_port, ip_address)
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                'are not associated a physical director:port.'):
+            self.rest.get_ip_interface_physical_port(
+                array_id, virtual_port, ip_address)
         # Multiple physical port keys returned
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.rest.get_ip_interface_physical_port,
-            array_id, virtual_port, ip_address)
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                'associated with more than one physical director:port.'):
+            self.rest.get_ip_interface_physical_port(
+                array_id, virtual_port, ip_address)
+        # Empty response
+        with self.assertRaisesRegex(
+                exception.VolumeBackendAPIException,
+                'Unable to get port IP interface from Virtual port'):
+            self.rest.get_ip_interface_physical_port(
+                array_id, virtual_port, ip_address)
 
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_snaps',
                        return_value=[{'snap_name': 'snap_name',
