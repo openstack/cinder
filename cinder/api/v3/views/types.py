@@ -15,6 +15,7 @@
 #    under the License.
 
 from cinder.api import common
+from cinder.policies import type_extra_specs as extra_specs_policy
 from cinder.policies import volume_type as policy
 
 
@@ -27,10 +28,24 @@ class ViewBuilder(common.ViewBuilder):
                        name=volume_type.get('name'),
                        is_public=volume_type.get('is_public'),
                        description=volume_type.get('description'))
+
         if context.authorize(policy.EXTRA_SPEC_POLICY, fatal=False):
-            trimmed['extra_specs'] = volume_type.get('extra_specs')
+            extra_specs = volume_type.get('extra_specs', {})
+            if context.authorize(extra_specs_policy.READ_SENSITIVE_POLICY,
+                                 fatal=False):
+                trimmed_specs = extra_specs
+            else:
+                # Limit the response to contain only user visible specs.
+                trimmed_specs = {}
+                for uv_spec in extra_specs_policy.USER_VISIBLE_EXTRA_SPECS:
+                    if uv_spec in extra_specs:
+                        trimmed_specs[uv_spec] = extra_specs[uv_spec]
+
+            trimmed['extra_specs'] = trimmed_specs
+
         if context.authorize(policy.QOS_POLICY, fatal=False):
             trimmed['qos_specs_id'] = volume_type.get('qos_specs_id')
+
         return trimmed if brief else dict(volume_type=trimmed)
 
     def index(self, request, volume_types):

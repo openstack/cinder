@@ -38,9 +38,14 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
 
     def _get_extra_specs(self, context, type_id):
         extra_specs = db.volume_type_extra_specs_get(context, type_id)
-        specs_dict = {}
-        for key, value in extra_specs.items():
-            specs_dict[key] = value
+        if context.authorize(policy.READ_SENSITIVE_POLICY, fatal=False):
+            specs_dict = extra_specs
+        else:
+            # Limit the response to contain only user visible specs.
+            specs_dict = {}
+            for uv_spec in policy.USER_VISIBLE_EXTRA_SPECS:
+                if uv_spec in extra_specs:
+                    specs_dict[uv_spec] = extra_specs[uv_spec]
         return dict(extra_specs=specs_dict)
 
     def _check_type(self, context, type_id):

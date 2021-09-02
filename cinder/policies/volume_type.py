@@ -147,7 +147,7 @@ volume_type_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=EXTRA_SPEC_POLICY,
-        check_str=base.RULE_ADMIN_API,
+        check_str="",
         description="List or show volume type with access type extra "
                     "specs attribute.",
         operations=[

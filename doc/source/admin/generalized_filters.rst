@@ -79,5 +79,5 @@ in the table.
        project_id
    * - get pools
      - name, volume_type
-   * - list types (3.51)
+   * - list types (3.52)
      - is_public, extra_specs

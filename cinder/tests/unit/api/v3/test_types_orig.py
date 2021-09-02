@@ -15,6 +15,7 @@
 
 from unittest import mock
 
+import ddt
 from oslo_utils import timeutils
 import webob
 
@@ -22,6 +23,7 @@ from cinder.api.v3 import types
 from cinder.api.v3.views import types as views_types
 from cinder import context
 from cinder import exception
+from cinder.policies import type_extra_specs as extra_specs_policy
 from cinder.policies import volume_type as type_policy
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -77,6 +79,7 @@ def return_volume_types_get_default(context):
     return fake_volume_type(1)
 
 
+@ddt.ddt
 class VolumeTypesApiTest(test.TestCase):
 
     def _create_volume_type(self, volume_type_name, extra_specs=None,
@@ -288,9 +291,50 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertRaises(exception.VolumeTypeNotFound,
                           self.controller.show, req, 'default')
 
-    def test_view_builder_show(self):
+    @ddt.data(
+        {
+            'extra_spec_policy': False,
+            'read_sensitive_policy': False,
+            'qos_policy': False,
+        },
+        {
+            'extra_spec_policy': True,
+            'read_sensitive_policy': False,
+            'qos_policy': False,
+        },
+        {
+            'extra_spec_policy': True,
+            'read_sensitive_policy': True,
+            'qos_policy': False,
+        },
+        {
+            'extra_spec_policy': False,
+            'read_sensitive_policy': False,
+            'qos_policy': True,
+        },
+        {
+            'extra_spec_policy': True,
+            'read_sensitive_policy': True,
+            'qos_policy': True,
+        },
+    )
+    @ddt.unpack
+    def test_view_builder_show(self,
+                               extra_spec_policy,
+                               read_sensitive_policy,
+                               qos_policy):
+        # This function returns the authorization result supplied by the
+        # DDT data for the associated policy.
+        def authorize(policy, fatal):
+            policy_data = {
+                type_policy.EXTRA_SPEC_POLICY: extra_spec_policy,
+                extra_specs_policy.READ_SENSITIVE_POLICY: (
+                    read_sensitive_policy),
+                type_policy.QOS_POLICY: qos_policy,
+            }
+            return policy_data[policy]
+
         view_builder = views_types.ViewBuilder()
-        self.mock_authorize.return_value = False
         now = timeutils.utcnow().isoformat()
         raw_volume_type = dict(
             name='new_type',
@@ -300,13 +344,15 @@ class VolumeTypesApiTest(test.TestCase):
             deleted=False,
             created_at=now,
             updated_at=now,
-            extra_specs={},
+            extra_specs={'multiattach': True, 'sensitive': 'secret'},
             deleted_at=None,
             id=42,
         )
 
         request = fakes.HTTPRequest.blank("/v3")
-        output = view_builder.show(request, raw_volume_type)
+        with mock.patch('cinder.context.RequestContext.authorize',
+                        side_effect=authorize):
+            output = view_builder.show(request, raw_volume_type)
 
         self.assertIn('volume_type', output)
         expected_volume_type = dict(
@@ -315,165 +361,19 @@ class VolumeTypesApiTest(test.TestCase):
             is_public=True,
             id=42,
         )
+        if extra_spec_policy:
+            expected_volume_type['extra_specs'] = {'multiattach': True}
+            if read_sensitive_policy:
+                expected_volume_type['extra_specs']['sensitive'] = 'secret'
+        if qos_policy:
+            expected_volume_type['qos_specs_id'] = 'new_id'
+
         self.assertDictEqual(expected_volume_type, output['volume_type'])
 
-    def test_view_builder_show_admin(self):
+    @ddt.data(False, True)
+    def test_view_builder_list(self, is_admin):
         view_builder = views_types.ViewBuilder()
-        self.mock_authorize.return_value = True
-        now = timeutils.utcnow().isoformat()
-        raw_volume_type = dict(
-            name='new_type',
-            description='new_type_desc',
-            qos_specs_id='new_id',
-            is_public=True,
-            deleted=False,
-            created_at=now,
-            updated_at=now,
-            extra_specs={},
-            deleted_at=None,
-            id=42,
-        )
-
-        request = fakes.HTTPRequest.blank("/v3", use_admin_context=True)
-        output = view_builder.show(request, raw_volume_type)
-
-        self.assertIn('volume_type', output)
-        expected_volume_type = dict(
-            name='new_type',
-            description='new_type_desc',
-            qos_specs_id='new_id',
-            is_public=True,
-            extra_specs={},
-            id=42,
-        )
-        self.assertDictEqual(expected_volume_type, output['volume_type'])
-
-    def test_view_builder_show_qos_specs_id_policy(self):
-        with mock.patch('cinder.context.RequestContext.authorize',
-                        side_effect=[False, True]):
-            view_builder = views_types.ViewBuilder()
-            now = timeutils.utcnow().isoformat()
-            raw_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                is_public=True,
-                deleted=False,
-                created_at=now,
-                updated_at=now,
-                extra_specs={},
-                deleted_at=None,
-                id=42,
-            )
-
-            request = fakes.HTTPRequest.blank("/v3")
-            output = view_builder.show(request, raw_volume_type)
-
-            self.assertIn('volume_type', output)
-            expected_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                is_public=True,
-                id=42,
-            )
-            self.assertDictEqual(expected_volume_type, output['volume_type'])
-
-    def test_view_builder_show_extra_specs_policy(self):
-        with mock.patch('cinder.context.RequestContext.authorize',
-                        side_effect=[True, False]):
-            view_builder = views_types.ViewBuilder()
-            now = timeutils.utcnow().isoformat()
-            raw_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                is_public=True,
-                deleted=False,
-                created_at=now,
-                updated_at=now,
-                extra_specs={},
-                deleted_at=None,
-                id=42,
-            )
-
-            request = fakes.HTTPRequest.blank("/v3")
-            output = view_builder.show(request, raw_volume_type)
-
-            self.assertIn('volume_type', output)
-            expected_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                extra_specs={},
-                is_public=True,
-                id=42,
-            )
-            self.assertDictEqual(expected_volume_type, output['volume_type'])
-
-        with mock.patch('cinder.context.RequestContext.authorize',
-                        side_effect=[False, False]):
-            view_builder = views_types.ViewBuilder()
-            now = timeutils.utcnow().isoformat()
-            raw_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                is_public=True,
-                deleted=False,
-                created_at=now,
-                updated_at=now,
-                extra_specs={},
-                deleted_at=None,
-                id=42,
-            )
-
-            request = fakes.HTTPRequest.blank("/v3")
-            output = view_builder.show(request, raw_volume_type)
-
-            self.assertIn('volume_type', output)
-            expected_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                is_public=True,
-                id=42,
-            )
-            self.assertDictEqual(expected_volume_type, output['volume_type'])
-
-    def test_view_builder_show_pass_all_policy(self):
-        with mock.patch('cinder.context.RequestContext.authorize',
-                        side_effect=[True, True]):
-            view_builder = views_types.ViewBuilder()
-            now = timeutils.utcnow().isoformat()
-            raw_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                is_public=True,
-                deleted=False,
-                created_at=now,
-                updated_at=now,
-                extra_specs={},
-                deleted_at=None,
-                id=42,
-            )
-
-            request = fakes.HTTPRequest.blank("/v3")
-            output = view_builder.show(request, raw_volume_type)
-
-            self.assertIn('volume_type', output)
-            expected_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                extra_specs={},
-                is_public=True,
-                id=42,
-            )
-            self.assertDictEqual(expected_volume_type, output['volume_type'])
-
-    def test_view_builder_list(self):
-        view_builder = views_types.ViewBuilder()
-        self.mock_authorize.return_value = False
+        self.mock_authorize.return_value = is_admin
         now = timeutils.utcnow().isoformat()
         raw_volume_types = []
         for i in range(0, 10):
@@ -486,7 +386,7 @@ class VolumeTypesApiTest(test.TestCase):
                     deleted=False,
                     created_at=now,
                     updated_at=now,
-                    extra_specs={},
+                    extra_specs={'multiattach': True, 'sensitive': 'secret'},
                     deleted_at=None,
                     id=42 + i
                 )
@@ -503,42 +403,9 @@ class VolumeTypesApiTest(test.TestCase):
                 is_public=True,
                 id=42 + i
             )
-            self.assertDictEqual(expected_volume_type,
-                                 output['volume_types'][i])
-
-    def test_view_builder_list_admin(self):
-        view_builder = views_types.ViewBuilder()
-
-        now = timeutils.utcnow().isoformat()
-        raw_volume_types = []
-        for i in range(0, 10):
-            raw_volume_types.append(
-                dict(
-                    name='new_type',
-                    description='new_type_desc',
-                    qos_specs_id='new_id',
-                    is_public=True,
-                    deleted=False,
-                    created_at=now,
-                    updated_at=now,
-                    extra_specs={},
-                    deleted_at=None,
-                    id=42 + i
-                )
-            )
-
-        request = fakes.HTTPRequest.blank("/v3", use_admin_context=True)
-        output = view_builder.index(request, raw_volume_types)
-
-        self.assertIn('volume_types', output)
-        for i in range(0, 10):
-            expected_volume_type = dict(
-                name='new_type',
-                description='new_type_desc',
-                qos_specs_id='new_id',
-                is_public=True,
-                extra_specs={},
-                id=42 + i
-            )
+            if is_admin:
+                expected_volume_type['qos_specs_id'] = 'new_id'
+                expected_volume_type['extra_specs'] = {'multiattach': True,
+                                                       'sensitive': 'secret'}
             self.assertDictEqual(expected_volume_type,
                                  output['volume_types'][i])
