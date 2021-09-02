@@ -18,52 +18,49 @@
 from unittest import mock
 
 import ddt
-from oslo_config import cfg
 from oslo_utils import timeutils
 import webob
 
 from cinder.api.contrib import types_extra_specs
 from cinder import exception
 from cinder.image import glance as image_store
+from cinder.policies import type_extra_specs as extra_specs_policy
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 import cinder.wsgi
 
-CONF = cfg.CONF
+user_visible_extra_specs = {
+    k: '%s_value' % k for k in extra_specs_policy.USER_VISIBLE_EXTRA_SPECS
+}
+
+volume_type_extra_specs = {
+    **user_visible_extra_specs,
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3",
+    "key4": "value4",
+    "key5": "value5",
+}
 
 
 def return_create_volume_type_extra_specs(context, volume_type_id,
                                           extra_specs):
-    return fake_volume_type_extra_specs()
+    return volume_type_extra_specs
 
 
 def return_volume_type_extra_specs(context, volume_type_id):
-    return fake_volume_type_extra_specs()
+    return volume_type_extra_specs
 
 
 def return_volume_type(context, volume_type_id, expected_fields=None):
-    specs = {"key1": "value1",
-             "key2": "value2",
-             "key3": "value3",
-             "key4": "value4",
-             "key5": "value5"}
     return dict(id=id,
                 name='vol_type_%s' % id,
                 description='vol_type_desc_%s' % id,
-                extra_specs=specs,
+                extra_specs=volume_type_extra_specs,
                 created_at=timeutils.utcnow(),
                 updated_at=timeutils.utcnow(),
                 deleted_at=timeutils.utcnow())
-
-
-def fake_volume_type_extra_specs():
-    specs = {"key1": "value1",
-             "key2": "value2",
-             "key3": "value3",
-             "key4": "value4",
-             "key5": "value5"}
-    return specs
 
 
 @ddt.ddt
@@ -77,34 +74,51 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
 
-        """to reset notifier drivers left over from other api/contrib tests"""
-
-    def test_index(self):
+    @ddt.data(
+        {'is_admin': True, 'visible_specs': volume_type_extra_specs},
+        {'is_admin': False, 'visible_specs': user_visible_extra_specs},
+    )
+    @ddt.unpack
+    def test_index(self, is_admin, visible_specs):
         self.mock_object(cinder.db, 'volume_type_extra_specs_get',
                          return_volume_type_extra_specs)
 
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=is_admin)
         res_dict = self.controller.index(req, fake.VOLUME_TYPE_ID)
 
-        self.assertEqual('value1', res_dict['extra_specs']['key1'])
+        self.assertEqual(visible_specs, res_dict['extra_specs'])
 
     def test_index_no_data(self):
         self.mock_object(cinder.db, 'volume_type_extra_specs_get',
                          return_value={})
 
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         res_dict = self.controller.index(req, fake.VOLUME_TYPE_ID)
 
         self.assertEqual(0, len(res_dict['extra_specs']))
 
-    def test_show(self):
+    @ddt.data(
+        {'is_admin': True, 'spec': 'key5', 'is_sensitive': True},
+        {'is_admin': False, 'spec': 'key5', 'is_sensitive': True},
+        # multiattach is a user visible extra spec (not sensitve)
+        {'is_admin': True, 'spec': 'multiattach', 'is_sensitive': False},
+        {'is_admin': False, 'spec': 'multiattach', 'is_sensitive': False},
+    )
+    @ddt.unpack
+    def test_show(self, is_admin, spec, is_sensitive):
         self.mock_object(cinder.db, 'volume_type_extra_specs_get',
                          return_volume_type_extra_specs)
 
-        req = fakes.HTTPRequest.blank(self.api_path + '/key5')
-        res_dict = self.controller.show(req, fake.VOLUME_TYPE_ID, 'key5')
-
-        self.assertEqual('value5', res_dict['key5'])
+        req = fakes.HTTPRequest.blank(self.api_path + '/' + spec,
+                                      use_admin_context=is_admin)
+        if is_sensitive and not is_admin:
+            self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
+                              self.controller.show, req, fake.VOLUME_ID, spec)
+        else:
+            res_dict = self.controller.show(req, fake.VOLUME_TYPE_ID, spec)
+            self.assertEqual(volume_type_extra_specs[spec], res_dict[spec])
 
     def test_show_spec_not_found(self):
         self.mock_object(cinder.db, 'volume_type_extra_specs_get',

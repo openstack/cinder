@@ -67,6 +67,7 @@ troubleshoot your installation and back up your Compute volumes.
    blockstorage-image-volume-cache.rst
    blockstorage-volume-backed-image.rst
    blockstorage-get-capabilities.rst
+   blockstorage-user-visible-extra-specs.rst
    blockstorage-groups.rst
 
 .. note::

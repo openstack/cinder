@@ -26,6 +26,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.v3.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
+from cinder.policies import type_extra_specs as extra_specs_policy
 from cinder.policies import volume_type as type_policy
 from cinder.volume import volume_types
 
@@ -100,6 +101,18 @@ class VolumeTypesController(wsgi.Controller):
             except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate "extra_specs" %s, assuming '
                           'dictionary string.', filters['extra_specs'])
+
+            # Do not allow sensitive extra specs to be used in a filter if
+            # the context only allows access to user visible extra specs.
+            # Removing the filter would yield inaccurate results, so an
+            # empty result is returned because as far as an unauthorized
+            # user goes, the list of volume-types meeting their filtering
+            # criteria is empty.
+            if not context.authorize(extra_specs_policy.READ_SENSITIVE_POLICY,
+                                     fatal=False):
+                for k in filters['extra_specs'].keys():
+                    if k not in extra_specs_policy.USER_VISIBLE_EXTRA_SPECS:
+                        return []
         limited_types = volume_types.get_all_types(context,
                                                    filters=filters,
                                                    marker=marker, limit=limit,

@@ -58,40 +58,50 @@ class VolumeTypesApiTest(test.TestCase):
         self.type3.destroy()
 
     def test_volume_types_index_with_extra_specs(self):
-        req = fakes.HTTPRequest.blank(
-            '/v3/%s/types?extra_specs={"key1":"value1"}' % fake.PROJECT_ID,
-            use_admin_context=False)
-        req.api_version_request = mv.get_api_version(mv.get_prior_version(
-            mv.SUPPORT_VOLUME_TYPE_FILTER))
-        res_dict = self.controller.index(req)
+        def _get_volume_types(extra_specs,
+                              use_admin_context=True,
+                              microversion=mv.SUPPORT_VOLUME_TYPE_FILTER):
+            req = fakes.HTTPRequest.blank(
+                '/v3/%s/types?extra_specs=%s' % (fake.PROJECT_ID, extra_specs),
+                use_admin_context=use_admin_context)
+            req.api_version_request = mv.get_api_version(microversion)
+            res_dict = self.controller.index(req)
+            return res_dict['volume_types']
 
         # since __DEFAULT__ type always exists, total number of volume types
         # is total_types_created + 1. In this case it's 4
-        self.assertEqual(4, len(res_dict['volume_types']))
+        volume_types = _get_volume_types('{"key1":"value1"}',
+                                         use_admin_context=False,
+                                         microversion=mv.get_prior_version(
+                                             mv.SUPPORT_VOLUME_TYPE_FILTER))
+        self.assertEqual(4, len(volume_types))
 
         # Test filter volume type with extra specs
-        req = fakes.HTTPRequest.blank(
-            '/v3/%s/types?extra_specs={"key1":"value1"}' % fake.PROJECT_ID,
-            use_admin_context=True)
-        req.api_version_request = mv.get_api_version(
-            mv.SUPPORT_VOLUME_TYPE_FILTER)
-        res_dict = self.controller.index(req)
-        self.assertEqual(1, len(res_dict['volume_types']))
+        volume_types = _get_volume_types('{"key1":"value1"}')
+        self.assertEqual(1, len(volume_types))
         self.assertDictEqual({'key1': 'value1',
                               'RESKEY:availability_zones': 'az1,az2'},
-                             res_dict['volume_types'][0]['extra_specs'])
+                             volume_types[0]['extra_specs'])
 
         # Test filter volume type with 'availability_zones'
-        req = fakes.HTTPRequest.blank(
-            '/v3/%s/types?extra_specs={"RESKEY:availability_zones":"az1"}'
-            % fake.PROJECT_ID, use_admin_context=True)
-        req.api_version_request = mv.get_api_version(
-            mv.SUPPORT_VOLUME_TYPE_FILTER)
-        res_dict = self.controller.index(req)
-        self.assertEqual(2, len(res_dict['volume_types']))
+        volume_types = _get_volume_types('{"RESKEY:availability_zones":"az1"}')
+        self.assertEqual(2, len(volume_types))
         self.assertEqual(
             ['volume_type1', 'volume_type2'],
-            sorted([az['name'] for az in res_dict['volume_types']]))
+            sorted([az['name'] for az in volume_types]))
+
+        # Test ability for non-admin to filter with user visible extra specs
+        volume_types = _get_volume_types('{"RESKEY:availability_zones":"az1"}',
+                                         use_admin_context=False)
+        self.assertEqual(2, len(volume_types))
+        self.assertEqual(
+            ['volume_type1', 'volume_type2'],
+            sorted([az['name'] for az in volume_types]))
+
+        # Test inability for non-admin to filter with sensitive extra specs
+        volume_types = _get_volume_types('{"key1":"value1"}',
+                                         use_admin_context=False)
+        self.assertEqual(0, len(volume_types))
 
     def test_delete_non_project_default_type(self):
         type = self._create_volume_type(self.ctxt, 'type1')
