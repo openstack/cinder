@@ -1223,7 +1223,7 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         patches = [
             mock.patch.object(
                 jdssd,
-                "_create_target_volume",
+                "_ensure_target_volume",
                 return_value=None),
             mock.patch.object(
                 jdssd,
@@ -1233,7 +1233,7 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         self.start_patches(patches)
 
         ret = jdssd.create_export(ctx, vol, "connector")
-        jdssd._create_target_volume.assert_called_once_with(vol)
+        jdssd._ensure_target_volume.assert_called_once_with(vol)
 
         self.stop_patches(patches)
 
@@ -1397,6 +1397,8 @@ class TestOpenEJovianDSSDriver(test.TestCase):
 
         vol = fake_volume.fake_volume_obj(ctx)
         vol.id = UUID_1
+        vname = jcom.vname(UUID_1)
+
         target_name = CONFIG_OK['target_prefix'] + UUID_1
         vol.provider_auth = 'chap user_name 123456789012'
 
@@ -1417,7 +1419,8 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         jdssd._ensure_target_volume(vol)
 
         jdssd.ra.is_target.assert_called_once_with(target_name)
-        jdssd.ra.is_target_lun.assert_called_once_with(target_name, UUID_1)
+
+        jdssd.ra.is_target_lun.assert_called_once_with(target_name, vname)
 
         jdssd.ra.get_target_user.assert_called_once_with(target_name)
 
@@ -1452,7 +1455,7 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         jdssd._ensure_target_volume(vol)
 
         jdssd.ra.is_target.assert_called_once_with(target_name)
-        jdssd.ra.is_target_lun.assert_called_once_with(target_name, UUID_1)
+        jdssd.ra.is_target_lun.assert_called_once_with(target_name, vname)
 
         jdssd._attach_target_volume.assert_called_once_with(
             target_name, vname)

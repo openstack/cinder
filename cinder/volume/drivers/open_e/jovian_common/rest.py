@@ -20,6 +20,7 @@ import re
 from oslo_log import log as logging
 
 from cinder import exception
+from cinder.i18n import _
 from cinder.volume.drivers.open_e.jovian_common import exception as jexc
 from cinder.volume.drivers.open_e.jovian_common import rest_proxy
 
@@ -45,8 +46,8 @@ class JovianRESTAPI(object):
             code = resp.get('code', 'Unknown')
             msg = resp.get('message', 'Unknown')
 
-            reason = ("Request to {url} failed with code: {code} "
-                      "of type:{eclass} reason:{message}")
+            reason = _("Request to {url} failed with code: {code} "
+                       "of type:{eclass} reason:{message}")
             reason = reason.format(eclass=eclass,
                                    code=code,
                                    message=msg,
@@ -166,7 +167,7 @@ class JovianRESTAPI(object):
 
         if resp["error"]:
             raise jexc.JDSSRESTException(
-                'Failed to extend volume {}'.format(resp['error']['message']))
+                _('Failed to extend volume %s' % resp['error']['message']))
 
         raise jexc.JDSSRESTException('Failed to extend volume.')
 
