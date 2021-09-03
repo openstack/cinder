@@ -1,16 +1,16 @@
 ---
 features:
   - |
-    A small list volume type extra specs are now visible to regular users, and
-    not just to cloud administrators. This allows users to see non-senstive
+    A small list of volume type extra specs are now visible to regular users,
+    and not just to cloud administrators. This allows users to see non-senstive
     extra specs, which may help them choose a particular volume type when
     creating volumes. Sensitive extra specs are still only visible to cloud
-    administrators. See the ``User visible extra specs`` section in the Cinder
+    administrators. See the "User visible extra specs" section in the Cinder
     Administration guide for more information.
 security:
   - |
-    A small list volume type extra specs are now visible to regular users, and
-    not just to cloud administrators. Cloud administrators that wish to opt
-    out of this feature should consult the ``Security considerations``
-    portion of the ``User visible extra specs`` section in the Cinder
+    A small list of volume type extra specs are now visible to regular users,
+    and not just to cloud administrators. Cloud administrators that wish to opt
+    out of this feature should consult the "Security considerations"
+    portion of the "User visible extra specs" section in the Cinder
     Administration guide.
