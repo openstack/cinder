@@ -182,6 +182,14 @@ netapp_support_opts = [
                      'all APIs will be traced.')),
 ]
 
+netapp_migration_opts = [
+    cfg.IntOpt('netapp_migrate_volume_timeout',
+               default=3600,
+               min=30,
+               help='Sets time in seconds to wait for storage assisted volume '
+                    'migration to complete.'),
+]
+
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_connection_opts, group=conf.SHARED_CONF_GROUP)
@@ -194,3 +202,4 @@ CONF.register_opts(netapp_nfs_extra_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_san_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_replication_opts, group=conf.SHARED_CONF_GROUP)
 CONF.register_opts(netapp_support_opts, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(netapp_migration_opts, group=conf.SHARED_CONF_GROUP)

@@ -71,7 +71,11 @@ FAKE_NA_SERVER_API_1_20.set_api_version(1, 20)
 VOLUME_VSERVER_NAME = 'fake_vserver'
 VOLUME_NAMES = ('volume1', 'volume2')
 VOLUME_NAME = 'volume1'
-
+DEST_VOLUME_NAME = 'volume-dest'
+LUN_NAME = 'fake-lun-name'
+DEST_LUN_NAME = 'new-fake-lun-name'
+FILE_NAME = 'fake-file-name'
+DEST_FILE_NAME = 'new-fake-file-name'
 
 FAKE_QUERY = {'volume-attributes': None}
 
@@ -1337,6 +1341,7 @@ REMOTE_CLUSTER_NAME = 'fake_cluster_2'
 CLUSTER_ADDRESS_1 = 'fake_cluster_address'
 CLUSTER_ADDRESS_2 = 'fake_cluster_address_2'
 VSERVER_NAME = 'fake_vserver'
+DEST_VSERVER_NAME = 'fake_dest_vserver'
 VSERVER_NAME_2 = 'fake_vserver_2'
 ADMIN_VSERVER_NAME = 'fake_admin_vserver'
 NODE_VSERVER_NAME = 'fake_node_vserver'
@@ -1481,3 +1486,70 @@ VSERVER_DATA_LIST_RESPONSE = etree.XML("""
     <num-records>1</num-records>
   </results>
 """ % {'vserver': VSERVER_NAME})
+
+GET_CLUSTER_NAME_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <cluster-identity-info>
+        <cluster-name>%(cluster)s</cluster-name>
+      </cluster-identity-info>
+    </attributes>
+  </results>
+""" % {'cluster': CLUSTER_NAME})
+
+START_LUN_MOVE_RESPONSE = etree.XML("""
+  <results status="passed">
+    <job-uuid>%(job_uuid)s</job-uuid>
+  </results>
+""" % {'job_uuid': fake.JOB_UUID})
+
+GET_LUN_MOVE_STATUS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <lun-move-info>
+        <job-status>complete</job-status>
+      </lun-move-info>
+    </attributes-list>
+  </results>
+""")
+
+START_LUN_COPY_RESPONSE = etree.XML("""
+  <results status="passed">
+    <job-uuid>%(job_uuid)s</job-uuid>
+  </results>
+""" % {'job_uuid': fake.JOB_UUID})
+
+GET_LUN_COPY_STATUS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <lun-move-info>
+        <job-status>complete</job-status>
+      </lun-move-info>
+    </attributes-list>
+  </results>
+""")
+
+CANCEL_LUN_COPY_RESPONSE = etree.XML("""
+    <results status="passed" />
+""")
+
+START_FILE_COPY_RESPONSE = etree.XML("""
+  <results status="passed">
+    <job-uuid>%(job_uuid)s</job-uuid>
+  </results>
+""" % {'job_uuid': fake.JOB_UUID})
+
+GET_FILE_COPY_STATUS_RESPONSE = etree.XML("""
+    <results status="passed">
+    <attributes-list>
+      <file-copy-info>
+        <scanner-status>complete</scanner-status>
+      </file-copy-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+DESTROY_FILE_COPY_RESPONSE = etree.XML("""
+    <results status="passed" />
+""")

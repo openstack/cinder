@@ -607,6 +607,36 @@ class DataMotionMixin(object):
                     # unreachable
                     pass
 
+    def create_vserver_peer(self, src_vserver, src_backend_name, dest_vserver,
+                            peer_applications):
+        """Create a vserver peer relationship"""
+        src_client = config_utils.get_client_for_backend(
+            src_backend_name, vserver_name=src_vserver)
+
+        vserver_peers = src_client.get_vserver_peers(src_vserver, dest_vserver)
+        if not vserver_peers:
+            src_client.create_vserver_peer(
+                src_vserver, dest_vserver,
+                vserver_peer_application=peer_applications)
+            LOG.debug("Vserver peer relationship created between %(src)s "
+                      "and %(dest)s. Peering application set to %(app)s.",
+                      {'src': src_vserver, 'dest': dest_vserver,
+                       'app': peer_applications})
+            return None
+
+        for vserver_peer in vserver_peers:
+            if all(app in vserver_peer['applications'] for app in
+                   peer_applications):
+                LOG.debug("Found vserver peer relationship between %s and %s.",
+                          src_vserver, dest_vserver)
+                return None
+
+        msg = _("Vserver peer relationship found between %(src)s and %(dest)s "
+                "but peering application %(app)s isn't defined.")
+        raise na_utils.NetAppDriverException(msg % {'src': src_vserver,
+                                                    'dest': dest_vserver,
+                                                    'app': peer_applications})
+
     def _choose_failover_target(self, backend_name, flexvols,
                                 replication_targets):
         target_lag_times = []
@@ -740,3 +770,75 @@ class DataMotionMixin(object):
 
     def _get_replication_volume_online_timeout(self):
         return self.configuration.netapp_replication_volume_online_timeout
+
+    def migrate_volume_ontap_assisted(self, volume, host, src_backend_name,
+                                      src_vserver):
+        """Migrate Cinder volume using ONTAP capabilities"""
+        _, src_pool = volume.host.split('#')
+        dest_backend, dest_pool = host["host"].split('#')
+        _, dest_backend_name = dest_backend.split('@')
+
+        # Check if migration occurs in the same backend. If so, a migration
+        # between Cinder pools in the same vserver will be performed.
+        if src_backend_name == dest_backend_name:
+            # We should skip the operation in case source and destination pools
+            # are the same.
+            if src_pool == dest_pool:
+                LOG.info('Skipping volume migration as source and destination '
+                         'are the same.')
+                return True, {}
+
+            updates = self._migrate_volume_to_pool(
+                volume, src_pool, dest_pool, src_vserver, dest_backend_name)
+        else:
+            if not self.using_cluster_credentials:
+                LOG.info('Storage assisted volume migration across backends '
+                         'requires ONTAP cluster-wide credentials. Falling '
+                         'back to host assisted migration.')
+                return False, {}
+
+            dest_backend_config = config_utils.get_backend_configuration(
+                dest_backend_name)
+            dest_vserver = dest_backend_config.netapp_vserver
+            dest_client = config_utils.get_client_for_backend(
+                dest_backend_name)
+            src_client = config_utils.get_client_for_backend(
+                src_backend_name)
+
+            # In case origin and destination backends are not pointing to the
+            # same cluster, a host copy strategy using is required. Otherwise,
+            # an intra-cluster operation can be done to complete the migration.
+            src_cluster_name = src_client.get_cluster_name()
+            dest_cluster_name = dest_client.get_cluster_name()
+            if src_cluster_name != dest_cluster_name:
+                LOG.info('Driver only supports storage assisted migration '
+                         'between pools in a same cluster. Falling back to '
+                         'host assisted migration.')
+                return False, {}
+
+            # if origin and destination vservers are the same, simply move
+            # the cinder volume from one pool to the other.
+            # Otherwise, an intra-cluster Vserver peer relationship
+            # followed by a volume copy operation are required.
+            # Both operations will copy data between ONTAP volumes
+            # and won't finish in constant time as volume clones.
+            if src_vserver == dest_vserver:
+                # We should skip the operation in case source and
+                # destination pools are the same
+                if src_pool == dest_pool:
+                    LOG.info('Skipping volume migration as source and '
+                             'destination are the same.')
+                    return True, {}
+
+                updates = self._migrate_volume_to_pool(
+                    volume, src_pool, dest_pool, src_vserver,
+                    dest_backend_name)
+            else:
+                updates = self._migrate_volume_to_vserver(
+                    volume, src_pool, src_vserver, dest_pool,
+                    dest_backend_config.netapp_vserver,
+                    dest_backend_name)
+
+        LOG.info('Successfully migrated volume %s to host %s.',
+                 volume.id, host['host'])
+        return True, updates

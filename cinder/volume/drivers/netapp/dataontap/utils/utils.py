@@ -56,6 +56,7 @@ def get_backend_configuration(backend_name):
     config.append_config_values(na_opts.netapp_san_opts)
     config.append_config_values(na_opts.netapp_replication_opts)
     config.append_config_values(na_opts.netapp_support_opts)
+    config.append_config_values(na_opts.netapp_migration_opts)
 
     return config
 

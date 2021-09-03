@@ -3350,7 +3350,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
             ],
         }
         self.client.connection.send_request.assert_has_calls([
-            mock.call('vserver-peer-create', vserver_peer_create_args)])
+            mock.call('vserver-peer-create', vserver_peer_create_args,
+                      enable_tunneling=False)])
 
     def test_delete_vserver_peer(self):
 
@@ -3396,16 +3397,18 @@ class NetAppCmodeClientTestCase(test.TestCase):
                     'vserver': fake_client.VSERVER_NAME,
                     'peer-vserver': fake_client.VSERVER_NAME_2,
                 }
-            },
+            }
         }
         self.client.send_iter_request.assert_has_calls([
-            mock.call('vserver-peer-get-iter', vserver_peer_get_iter_args)])
+            mock.call('vserver-peer-get-iter', vserver_peer_get_iter_args,
+                      enable_tunneling=False)])
 
         expected = [{
             'vserver': 'fake_vserver',
             'peer-vserver': 'fake_vserver_2',
             'peer-state': 'peered',
-            'peer-cluster': 'fake_cluster'
+            'peer-cluster': 'fake_cluster',
+            'applications': ['snapmirror'],
         }]
         self.assertEqual(expected, result)
 
@@ -4094,3 +4097,252 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.client.get_unique_volume,
                           api_response)
+
+    def test_get_cluster_name(self):
+        api_response = netapp_api.NaElement(
+            fake_client.GET_CLUSTER_NAME_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        api_args = {
+            'desired-attributes': {
+                'cluster-identity-info': {
+                    'cluster-name': None,
+                }
+            }
+        }
+        result = self.client.get_cluster_name()
+        mock_send_request.assert_called_once_with('cluster-identity-get',
+                                                  api_args,
+                                                  enable_tunneling=False)
+        self.assertEqual(fake_client.CLUSTER_NAME, result)
+
+    @ddt.data((fake_client.LUN_NAME, fake_client.DEST_VOLUME_NAME, None,
+               fake_client.VOLUME_NAME),
+              (fake_client.LUN_NAME, None, fake_client.DEST_LUN_NAME,
+               fake_client.DEST_VOLUME_NAME))
+    @ddt.unpack
+    def test_start_lun_move(self, src_lun_name, src_ontap_vol, dest_lun_name,
+                            dest_ontap_vol):
+        api_response = netapp_api.NaElement(
+            fake_client.START_LUN_MOVE_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.start_lun_move(src_lun_name,
+                                            dest_ontap_vol,
+                                            src_ontap_volume=src_ontap_vol,
+                                            dest_lun_name=dest_lun_name)
+        api_args = {
+            'paths': [{
+                'lun-path-pair': {
+                    'destination-path': '/vol/%s/%s' % (dest_ontap_vol,
+                                                        src_lun_name if
+                                                        dest_lun_name is None
+                                                        else dest_lun_name),
+                    'source-path': '/vol/%s/%s' % (dest_ontap_vol
+                                                   if src_ontap_vol is None
+                                                   else src_ontap_vol,
+                                                   src_lun_name)
+                }
+            }]
+        }
+        mock_send_request.assert_called_once_with('lun-move-start', api_args)
+        self.assertEqual(fake.JOB_UUID, result)
+
+    def test_get_lun_move_status(self):
+        api_response = netapp_api.NaElement(
+            fake_client.GET_LUN_MOVE_STATUS_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.get_lun_move_status(fake.JOB_UUID)
+        api_args = {
+            'query': {
+                'lun-move-info': {
+                    'job-uuid': fake.JOB_UUID
+                }
+            }
+        }
+        mock_send_request.assert_called_once_with('lun-move-get-iter',
+                                                  api_args)
+        expected = {
+            'job-status': 'complete',
+            'last-failure-reason': None
+        }
+        self.assertEqual(expected, result)
+
+    @ddt.data((fake_client.LUN_NAME, None, fake_client.VSERVER_NAME,
+               fake_client.DEST_LUN_NAME, fake_client.DEST_VOLUME_NAME,
+               fake_client.DEST_VSERVER_NAME),
+              (fake_client.LUN_NAME, fake_client.VOLUME_NAME, None,
+               fake_client.DEST_LUN_NAME, fake_client.DEST_VOLUME_NAME,
+               fake_client.DEST_VSERVER_NAME),
+              (fake_client.LUN_NAME, fake_client.VOLUME_NAME,
+               fake_client.VSERVER_NAME, None, fake_client.DEST_VOLUME_NAME,
+               fake_client.DEST_VSERVER_NAME))
+    @ddt.unpack
+    def test_start_lun_copy(self, src_lun_name, src_ontap_vol, src_vserver,
+                            dest_lun_name, dest_ontap_vol, dest_vserver):
+        api_response = netapp_api.NaElement(
+            fake_client.START_LUN_COPY_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.start_lun_copy(src_lun_name,
+                                            dest_ontap_vol,
+                                            dest_vserver,
+                                            src_ontap_volume=src_ontap_vol,
+                                            src_vserver=src_vserver,
+                                            dest_lun_name=dest_lun_name)
+        api_args = {
+            'source-vserver': (dest_vserver if not src_vserver
+                               else src_vserver),
+            'destination-vserver': dest_vserver,
+            'paths': [{
+                'lun-path-pair': {
+                    'destination-path': '/vol/%s/%s' % (dest_ontap_vol,
+                                                        src_lun_name if
+                                                        dest_lun_name is None
+                                                        else dest_lun_name),
+                    'source-path': '/vol/%s/%s' % (dest_ontap_vol
+                                                   if src_ontap_vol is None
+                                                   else src_ontap_vol,
+                                                   src_lun_name)
+                }
+            }]
+        }
+        mock_send_request.assert_called_once_with('lun-copy-start', api_args,
+                                                  enable_tunneling=False)
+        self.assertEqual(fake.JOB_UUID, result)
+
+    def test_get_lun_copy_status(self):
+        api_response = netapp_api.NaElement(
+            fake_client.GET_LUN_COPY_STATUS_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.get_lun_copy_status(fake.JOB_UUID)
+        api_args = {
+            'query': {
+                'lun-copy-info': {
+                    'job-uuid': fake.JOB_UUID
+                }
+            }
+        }
+        mock_send_request.assert_called_once_with('lun-copy-get-iter',
+                                                  api_args,
+                                                  enable_tunneling=False)
+        expected = {
+            'job-status': 'complete',
+            'last-failure-reason': None
+        }
+        self.assertEqual(expected, result)
+
+    @ddt.data((fake_client.FILE_NAME, None, fake_client.DEST_VOLUME_NAME,
+               fake_client.DEST_VOLUME_NAME),
+              (fake_client.FILE_NAME, fake_client.VOLUME_NAME, None,
+               fake_client.DEST_VOLUME_NAME))
+    @ddt.unpack
+    def test_start_file_copy(self, src_file_name, src_ontap_vol,
+                             dest_file_name, dest_ontap_vol):
+        api_response = netapp_api.NaElement(
+            fake_client.START_FILE_COPY_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.start_file_copy(src_file_name,
+                                             dest_ontap_vol,
+                                             src_ontap_volume=src_ontap_vol,
+                                             dest_file_name=dest_file_name)
+        api_args = {
+            'source-paths': [{
+                'sfod-operation-path': '%s/%s' % (dest_ontap_vol if
+                                                  src_ontap_vol is None else
+                                                  src_ontap_vol,
+                                                  src_file_name)
+            }],
+            'destination-paths': [{
+                'sfod-operation-path': '%s/%s' % (dest_ontap_vol,
+                                                  src_file_name if
+                                                  dest_file_name is None else
+                                                  dest_file_name)
+            }],
+        }
+        mock_send_request.assert_called_once_with('file-copy-start', api_args,
+                                                  enable_tunneling=False)
+        self.assertEqual(fake.JOB_UUID, result)
+
+    def test_get_file_copy_status(self):
+        api_response = netapp_api.NaElement(
+            fake_client.GET_FILE_COPY_STATUS_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.get_file_copy_status(fake.JOB_UUID)
+        api_args = {
+            'query': {
+                'file-copy-info': {
+                    'job-uuid': fake.JOB_UUID
+                }
+            }
+        }
+        mock_send_request.assert_called_once_with('file-copy-get-iter',
+                                                  api_args,
+                                                  enable_tunneling=False)
+        expected = {
+            'job-status': 'complete',
+            'last-failure-reason': None
+        }
+        self.assertEqual(expected, result)
+
+    def test_destroy_file_copy(self):
+        api_response = netapp_api.NaElement(
+            fake_client.DESTROY_FILE_COPY_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.destroy_file_copy(fake.JOB_UUID)
+        api_args = {
+            'job-uuid': fake.JOB_UUID,
+            'file-index': 0
+        }
+        mock_send_request.assert_called_once_with('file-copy-destroy',
+                                                  api_args,
+                                                  enable_tunneling=False)
+        self.assertIsNone(result)
+
+    def test_destroy_file_copy_error(self):
+        mock_send_request = self.mock_object(self.client.connection,
+                                             'send_request',
+                                             side_effect=netapp_api.NaApiError)
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.destroy_file_copy,
+                          fake.JOB_UUID)
+        api_args = {
+            'job-uuid': fake.JOB_UUID,
+            'file-index': 0
+        }
+        mock_send_request.assert_called_once_with('file-copy-destroy',
+                                                  api_args,
+                                                  enable_tunneling=False)
+
+    def test_cancel_lun_copy(self):
+        api_response = netapp_api.NaElement(
+            fake_client.CANCEL_LUN_COPY_RESPONSE)
+        mock_send_request = self.mock_object(
+            self.client.connection, 'send_request', return_value=api_response)
+        result = self.client.cancel_lun_copy(fake.JOB_UUID)
+        api_args = {
+            'job-uuid': fake.JOB_UUID
+        }
+        mock_send_request.assert_called_once_with('lun-copy-cancel',
+                                                  api_args,
+                                                  enable_tunneling=False)
+        self.assertIsNone(result)
+
+    def test_cancel_lun_copy_error(self):
+        mock_send_request = self.mock_object(self.client.connection,
+                                             'send_request',
+                                             side_effect=netapp_api.NaApiError)
+        self.assertRaises(netapp_utils.NetAppDriverException,
+                          self.client.cancel_lun_copy,
+                          fake.JOB_UUID)
+        api_args = {
+            'job-uuid': fake.JOB_UUID
+        }
+        mock_send_request.assert_called_once_with('lun-copy-cancel',
+                                                  api_args,
+                                                  enable_tunneling=False)

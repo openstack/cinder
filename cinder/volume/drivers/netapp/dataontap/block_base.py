@@ -503,6 +503,11 @@ class NetAppBlockStorageLibrary(object):
             self.zapi_client.add_igroup_initiator(igroup_name, initiator)
         return igroup_name
 
+    def _delete_lun_from_table(self, name):
+        """Deletes LUN from cache table."""
+        if self.lun_table.get(name, None):
+            self.lun_table.pop(name)
+
     def _add_lun_to_table(self, lun):
         """Adds LUN to cache table."""
         if not isinstance(lun, NetAppLun):
