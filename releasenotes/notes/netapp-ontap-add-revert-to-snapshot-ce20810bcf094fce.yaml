@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: Added support to Revert to Snapshot for the iSCSI, FC
+    and NFS drivers with FlexVol pool. This feature does not support FlexGroups
+    and is limited to revert only to the most recent snapshot of a given
+    Cinder volume.

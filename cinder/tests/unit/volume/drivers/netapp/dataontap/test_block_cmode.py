@@ -19,6 +19,7 @@
 from unittest import mock
 
 import ddt
+import six
 
 from cinder import exception
 from cinder.objects import fields
@@ -1432,3 +1433,247 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             fake_vol, fake.DEST_HOST_STRING, fake.BACKEND_NAME,
             fake.VSERVER_NAME)
         self.assertEqual({}, result)
+
+    def test_revert_to_snapshot(self):
+        mock__revert_to_snapshot = self.mock_object(self.library,
+                                                    '_revert_to_snapshot')
+
+        self.library.revert_to_snapshot(fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+
+        mock__revert_to_snapshot.assert_called_once_with(fake.SNAPSHOT_VOLUME,
+                                                         fake.SNAPSHOT)
+
+        self.library.revert_to_snapshot(fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+
+    def test_revert_to_snapshot_revert_failed(self):
+        self.mock_object(self.library, '_revert_to_snapshot',
+                         side_effect=Exception)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library.revert_to_snapshot,
+                          fake.SNAPSHOT_VOLUME,
+                          fake.SNAPSHOT)
+
+    def test__revert_to_snapshot(self):
+        lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
+                                       fake.LUN_WITH_METADATA['name'],
+                                       fake.LUN_WITH_METADATA['size'],
+                                       fake.LUN_WITH_METADATA['metadata'])
+        lun_name = lun_obj.name
+        new_lun_name = 'new-%s' % fake.SNAPSHOT['name']
+        flexvol_name = lun_obj.metadata['Volume']
+
+        mock__clone_snapshot = self.mock_object(
+            self.library, '_clone_snapshot', return_value=new_lun_name)
+        mock__get_lun_from_table = self.mock_object(
+            self.library, '_get_lun_from_table', return_value=lun_obj)
+        mock__swap_luns = self.mock_object(self.library, '_swap_luns')
+        mock_destroy_lun = self.mock_object(self.library.zapi_client,
+                                            'destroy_lun')
+
+        self.library._revert_to_snapshot(fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+
+        mock__clone_snapshot.assert_called_once_with(fake.SNAPSHOT['name'])
+        mock__get_lun_from_table.assert_called_once_with(
+            fake.SNAPSHOT_VOLUME['name'])
+        mock__swap_luns.assert_called_once_with(lun_name, new_lun_name,
+                                                flexvol_name)
+        mock_destroy_lun.assert_not_called()
+
+    @ddt.data(False, True)
+    def test__revert_to_snapshot_swap_exception(self, delete_lun_exception):
+        lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
+                                       fake.LUN_WITH_METADATA['name'],
+                                       fake.LUN_WITH_METADATA['size'],
+                                       fake.LUN_WITH_METADATA['metadata'])
+        new_lun_name = 'new-%s' % fake.SNAPSHOT['name']
+        flexvol_name = lun_obj.metadata['Volume']
+        new_lun_path = '/vol/%s/%s' % (flexvol_name, new_lun_name)
+        side_effect = Exception if delete_lun_exception else lambda: True
+
+        self.mock_object(
+            self.library, '_clone_snapshot', return_value=new_lun_name)
+        self.mock_object(
+            self.library, '_get_lun_from_table', return_value=lun_obj)
+        swap_exception = exception.VolumeBackendAPIException(data="data")
+        self.mock_object(self.library, '_swap_luns',
+                         side_effect=swap_exception)
+        mock_destroy_lun = self.mock_object(self.library.zapi_client,
+                                            'destroy_lun',
+                                            side_effect=side_effect)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library._revert_to_snapshot,
+                          fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+
+        mock_destroy_lun.assert_called_once_with(new_lun_path)
+
+    def test__clone_snapshot(self):
+        lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
+                                       fake.LUN_WITH_METADATA['name'],
+                                       fake.LUN_WITH_METADATA['size'],
+                                       fake.LUN_WITH_METADATA['metadata'])
+        new_snap_name = 'new-%s' % fake.SNAPSHOT['name']
+        snapshot_path = lun_obj.metadata['Path']
+        flexvol_name = lun_obj.metadata['Volume']
+        block_count = 40960
+
+        mock__get_lun_from_table = self.mock_object(
+            self.library, '_get_lun_from_table', return_value=lun_obj)
+        mock__get_lun_block_count = self.mock_object(
+            self.library, '_get_lun_block_count', return_value=block_count)
+        mock_create_lun = self.mock_object(self.library.zapi_client,
+                                           'create_lun')
+        mock__clone_lun = self.mock_object(self.library, '_clone_lun')
+
+        self.library._clone_snapshot(fake.SNAPSHOT['name'])
+
+        mock__get_lun_from_table.assert_called_once_with(fake.SNAPSHOT['name'])
+        mock__get_lun_block_count.assert_called_once_with(snapshot_path)
+        mock_create_lun.assert_called_once_with(flexvol_name, new_snap_name,
+                                                six.text_type(lun_obj.size),
+                                                lun_obj.metadata)
+        mock__clone_lun.assert_called_once_with(fake.SNAPSHOT['name'],
+                                                new_snap_name,
+                                                block_count=block_count)
+
+    def test__clone_snapshot_invalid_block_count(self):
+        lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
+                                       fake.LUN_WITH_METADATA['name'],
+                                       fake.LUN_WITH_METADATA['size'],
+                                       fake.LUN_WITH_METADATA['metadata'])
+
+        self.mock_object(self.library, '_get_lun_from_table',
+                         return_value=lun_obj)
+        self.mock_object(self.library, '_get_lun_block_count',
+                         return_value=0)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library._clone_snapshot,
+                          fake.SNAPSHOT['name'])
+
+    def test__clone_snapshot_clone_exception(self):
+        lun_obj = block_base.NetAppLun(fake.LUN_WITH_METADATA['handle'],
+                                       fake.LUN_WITH_METADATA['name'],
+                                       fake.LUN_WITH_METADATA['size'],
+                                       fake.LUN_WITH_METADATA['metadata'])
+        new_snap_name = 'new-%s' % fake.SNAPSHOT['name']
+        snapshot_path = lun_obj.metadata['Path']
+        flexvol_name = lun_obj.metadata['Volume']
+        new_lun_path = '/vol/%s/%s' % (flexvol_name, new_snap_name)
+        block_count = 40960
+
+        mock__get_lun_from_table = self.mock_object(
+            self.library, '_get_lun_from_table', return_value=lun_obj)
+        mock__get_lun_block_count = self.mock_object(
+            self.library, '_get_lun_block_count', return_value=block_count)
+        mock_create_lun = self.mock_object(self.library.zapi_client,
+                                           'create_lun')
+        side_effect = exception.VolumeBackendAPIException(data='data')
+        mock__clone_lun = self.mock_object(self.library, '_clone_lun',
+                                           side_effect=side_effect)
+        mock_destroy_lun = self.mock_object(self.library.zapi_client,
+                                            'destroy_lun')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library._clone_snapshot,
+                          fake.SNAPSHOT['name'])
+
+        mock__get_lun_from_table.assert_called_once_with(fake.SNAPSHOT['name'])
+        mock__get_lun_block_count.assert_called_once_with(snapshot_path)
+        mock_create_lun.assert_called_once_with(flexvol_name, new_snap_name,
+                                                six.text_type(lun_obj.size),
+                                                lun_obj.metadata)
+        mock__clone_lun.assert_called_once_with(fake.SNAPSHOT['name'],
+                                                new_snap_name,
+                                                block_count=block_count)
+        mock_destroy_lun.assert_called_once_with(new_lun_path)
+
+    def test__swap_luns(self):
+        original_lun = fake.LUN_WITH_METADATA['name']
+        new_lun = 'new-%s' % fake.SNAPSHOT['name']
+        flexvol = fake.LUN_WITH_METADATA['metadata']['Volume']
+
+        tmp_lun = 'tmp-%s' % original_lun
+
+        path = "/vol/%s/%s" % (flexvol, original_lun)  # original path
+        tmp_path = "/vol/%s/%s" % (flexvol, tmp_lun)
+        new_path = "/vol/%s/%s" % (flexvol, new_lun)
+
+        mock_move_lun = self.mock_object(
+            self.library.zapi_client, 'move_lun', return_value=True)
+        mock_destroy_lun = self.mock_object(
+            self.library.zapi_client, 'destroy_lun', return_value=True)
+
+        self.library._swap_luns(original_lun, new_lun, flexvol)
+
+        mock_move_lun.assert_has_calls([
+            mock.call(path, tmp_path),
+            mock.call(new_path, path)
+        ])
+        mock_destroy_lun.assert_called_once_with(tmp_path)
+
+    @ddt.data((True, False), (False, False), (False, True))
+    @ddt.unpack
+    def test__swap_luns_move_exception(self, first_move_exception,
+                                       move_back_exception):
+        original_lun = fake.LUN_WITH_METADATA['name']
+        new_lun = 'new-%s' % fake.SNAPSHOT['name']
+        flexvol = fake.LUN_WITH_METADATA['metadata']['Volume']
+        side_effect = Exception
+
+        def _side_effect_skip():
+            return True
+
+        if not first_move_exception and not move_back_exception:
+            side_effect = [_side_effect_skip, Exception, _side_effect_skip]
+        elif not first_move_exception:
+            side_effect = [_side_effect_skip, Exception, Exception]
+
+        tmp_lun = 'tmp-%s' % original_lun
+
+        path = "/vol/%s/%s" % (flexvol, original_lun)  # original path
+        tmp_path = "/vol/%s/%s" % (flexvol, tmp_lun)
+        new_path = "/vol/%s/%s" % (flexvol, new_lun)
+
+        mock_move_lun = self.mock_object(self.library.zapi_client,
+                                         'move_lun',
+                                         side_effect=side_effect)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.library._swap_luns,
+                          original_lun,
+                          new_lun,
+                          flexvol)
+
+        if first_move_exception:
+            mock_move_lun.assert_called_once_with(path, tmp_path)
+        else:
+            mock_move_lun.assert_has_calls([
+                mock.call(path, tmp_path),
+                mock.call(new_path, path),
+                mock.call(tmp_path, path)
+            ])
+
+    def test__swap_luns_destroy_exception(self):
+        original_lun = fake.LUN_WITH_METADATA['name']
+        new_lun = 'new-%s' % fake.SNAPSHOT['name']
+        flexvol = fake.LUN_WITH_METADATA['metadata']['Volume']
+
+        tmp_lun = 'tmp-%s' % original_lun
+
+        path = "/vol/%s/%s" % (flexvol, original_lun)
+        tmp_path = "/vol/%s/%s" % (flexvol, tmp_lun)
+        new_path = "/vol/%s/%s" % (flexvol, new_lun)
+
+        mock_move_lun = self.mock_object(
+            self.library.zapi_client, 'move_lun', return_value=True)
+        mock_destroy_lun = self.mock_object(
+            self.library.zapi_client, 'destroy_lun', side_effect=Exception)
+
+        self.library._swap_luns(original_lun, new_lun, flexvol)
+
+        mock_move_lun.assert_has_calls([
+            mock.call(path, tmp_path),
+            mock.call(new_path, path)
+        ])
+        mock_destroy_lun.assert_called_once_with(tmp_path)

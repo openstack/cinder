@@ -60,6 +60,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         2.0.0 - Add support for QoS minimums specs
                 Add support for dynamic Adaptive QoS policy group creation
         3.0.0 - Add support for Intra-cluster Storage assisted volume migration
+                Add support for revert to snapshot
 
     """
 
@@ -809,3 +810,127 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
         """Migrate Cinder volume to the specified pool or vserver."""
         return self.migrate_volume_ontap_assisted(
             volume, host, self.backend_name, self.configuration.netapp_vserver)
+
+    def revert_to_snapshot(self, volume, snapshot):
+        """Driver entry point for reverting volume to snapshot."""
+        try:
+            self._revert_to_snapshot(volume, snapshot)
+        except Exception:
+            raise exception.VolumeBackendAPIException(
+                "Revert snapshot failed.")
+
+    def _revert_to_snapshot(self, volume, snapshot):
+        """Sets up all required resources for _swap_luns.
+
+        If _swap_luns fails, the cloned LUN is destroyed.
+        """
+        new_lun_name = self._clone_snapshot(snapshot["name"])
+
+        LOG.debug("Cloned from snapshot: %s.", new_lun_name)
+
+        lun = self._get_lun_from_table(volume["name"])
+        volume_path = lun.metadata["Path"]
+        seg = volume_path.split("/")
+        lun_name = seg[-1]
+        flexvol_name = seg[2]
+
+        try:
+            self._swap_luns(lun_name, new_lun_name, flexvol_name)
+        except Exception:
+            LOG.error("Swapping LUN from %s to %s failed.", lun_name,
+                      new_lun_name)
+            with excutils.save_and_reraise_exception():
+                try:
+                    LOG.debug("Deleting temporary reverted LUN %s.",
+                              new_lun_name)
+                    new_lun_path = "/vol/%s/%s" % (flexvol_name, new_lun_name)
+                    self.zapi_client.destroy_lun(new_lun_path)
+                except Exception:
+                    LOG.error("Failure deleting temporary reverted LUN %s. "
+                              "A manual deletion is required.", new_lun_name)
+
+    def _clone_snapshot(self, snapshot_name):
+        """Returns the name of the LUN cloned from snapshot.
+
+        Creates a LUN with same metadata as original LUN and then clones
+        from snapshot. If clone operation fails, the new LUN is deleted.
+        """
+        snapshot_lun = self._get_lun_from_table(snapshot_name)
+        snapshot_path = snapshot_lun.metadata["Path"]
+        lun_name = snapshot_path.split("/")[-1]
+        flexvol_name = snapshot_path.split("/")[2]
+
+        LOG.info("Cloning LUN %s from snapshot %s in volume %s.", lun_name,
+                 snapshot_name, flexvol_name)
+
+        metadata = snapshot_lun.metadata
+
+        block_count = self._get_lun_block_count(snapshot_path)
+        if block_count == 0:
+            msg = _("%s cannot be reverted using clone operation"
+                    " as it contains no blocks.")
+            raise exception.VolumeBackendAPIException(data=msg % snapshot_name)
+
+        new_snap_name = "new-%s" % snapshot_name
+
+        self.zapi_client.create_lun(
+            flexvol_name, new_snap_name,
+            six.text_type(snapshot_lun.size), metadata)
+        try:
+            self._clone_lun(snapshot_name, new_snap_name,
+                            block_count=block_count)
+            return new_snap_name
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    new_lun_path = "/vol/%s/%s" % (flexvol_name, new_snap_name)
+                    self.zapi_client.destroy_lun(new_lun_path)
+                except Exception:
+                    LOG.error("Failure deleting temporary reverted LUN %s. "
+                              "A manual deletion is required.", new_snap_name)
+
+    def _swap_luns(self, original_lun, new_lun, flexvol_name):
+        """Swaps cloned and original LUNs using a temporary LUN.
+
+        Moves the original LUN to a temporary path, then moves the cloned LUN
+        to the original path (if this fails, moves the temporary LUN back as
+        original LUN) and finally destroys the LUN with temporary path.
+        """
+        tmp_lun = "tmp-%s" % original_lun
+
+        original_path = "/vol/%s/%s" % (flexvol_name, original_lun)
+        tmp_path = "/vol/%s/%s" % (flexvol_name, tmp_lun)
+        new_path = "/vol/%s/%s" % (flexvol_name, new_lun)
+
+        LOG.debug("Original Path: %s.", original_path)
+        LOG.debug("Temporary Path: %s.", tmp_path)
+        LOG.debug("New Path %s.", new_path)
+
+        try:
+            self.zapi_client.move_lun(original_path, tmp_path)
+        except Exception:
+            msg = _("Failure moving original LUN from %s to %s." %
+                    (original_path, tmp_path))
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            self.zapi_client.move_lun(new_path, original_path)
+        except Exception:
+            LOG.debug("Move temporary reverted LUN failed. Moving back "
+                      "original LUN to original path.")
+            try:
+                self.zapi_client.move_lun(tmp_path, original_path)
+            except Exception:
+                LOG.error("Could not move original LUN path from %s to %s. "
+                          "Cinder may lose the volume management. Please, you "
+                          "should move it back manually.",
+                          tmp_path, original_path)
+
+            msg = _("Failure moving temporary reverted LUN from %s to %s.")
+            raise exception.VolumeBackendAPIException(
+                data=msg % (new_path, original_path))
+        try:
+            self.zapi_client.destroy_lun(tmp_path)
+        except Exception:
+            LOG.error("Failure deleting old LUN %s. A manual deletion "
+                      "is required.", tmp_lun)

@@ -2200,3 +2200,131 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_migrate_volume_ontap_assisted.assert_not_called()
         self.assertFalse(migrated)
         self.assertEqual({}, updates)
+
+    def test__revert_to_snapshot(self):
+        mock_clone_backing_file_for_volume = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+        mock_get_export_ip_path = self.mock_object(
+            self.driver, '_get_export_ip_path',
+            return_value=(fake.SHARE_IP, fake.EXPORT_PATH))
+        mock_get_vserver_for_ip = self.mock_object(
+            self.driver, '_get_vserver_for_ip', return_value=fake.VSERVER_NAME)
+        mock_get_vol_by_junc_vserver = self.mock_object(
+            self.driver.zapi_client, 'get_vol_by_junc_vserver',
+            return_value=fake.FLEXVOL)
+        mock_swap_files = self.mock_object(self.driver, '_swap_files')
+        mock_delete_file = self.mock_object(self.driver.zapi_client,
+                                            'delete_file')
+
+        self.driver._revert_to_snapshot(fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+
+        mock_clone_backing_file_for_volume.assert_called_once_with(
+            fake.SNAPSHOT['name'],
+            'new-%s' % fake.SNAPSHOT['name'],
+            fake.SNAPSHOT_VOLUME['id'],
+            is_snapshot=False)
+        mock_get_export_ip_path.assert_called_once_with(
+            volume_id=fake.SNAPSHOT_VOLUME['id'])
+        mock_get_vserver_for_ip.assert_called_once_with(fake.SHARE_IP)
+        mock_get_vol_by_junc_vserver.assert_called_once_with(
+            fake.VSERVER_NAME, fake.EXPORT_PATH)
+        mock_swap_files.assert_called_once_with(
+            fake.FLEXVOL, fake.SNAPSHOT_VOLUME['name'],
+            'new-%s' % fake.SNAPSHOT['name'])
+        mock_delete_file.assert_not_called()
+
+    @ddt.data(False, True)
+    def test__revert_to_snapshot_swap_exception(self, delete_exception):
+        new_snap_name = 'new-%s' % fake.SNAPSHOT['name']
+        new_file_path = '/vol/%s/%s' % (fake.FLEXVOL, new_snap_name)
+
+        self.mock_object(self.driver, '_clone_backing_file_for_volume')
+        self.mock_object(self.driver, '_get_export_ip_path',
+                         return_value=(fake.SHARE_IP, fake.EXPORT_PATH))
+        self.mock_object(self.driver, '_get_vserver_for_ip',
+                         return_value=fake.VSERVER_NAME)
+        self.mock_object(self.driver.zapi_client, 'get_vol_by_junc_vserver',
+                         return_value=fake.FLEXVOL)
+        swap_exception = exception.VolumeBackendAPIException(data="data")
+        self.mock_object(self.driver, '_swap_files',
+                         side_effect=swap_exception)
+        side_effect = Exception if delete_exception else lambda: True
+        mock_delete_file = self.mock_object(self.driver.zapi_client,
+                                            'delete_file',
+                                            side_effect=side_effect)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._revert_to_snapshot,
+                          fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+
+        mock_delete_file.assert_called_once_with(new_file_path)
+
+    def test__swap_files(self):
+        new_file = 'new-%s' % fake.SNAPSHOT['name']
+        new_file_path = '/vol/%s/%s' % (fake.FLEXVOL, new_file)
+        original_file_path = '/vol/%s/%s' % (fake.FLEXVOL, fake.VOLUME_NAME)
+        tmp_file_path = '/vol/%s/tmp-%s' % (fake.FLEXVOL, fake.VOLUME_NAME)
+
+        mock_rename_file = self.mock_object(
+            self.driver.zapi_client, 'rename_file')
+        mock_delete_file = self.mock_object(
+            self.driver.zapi_client, 'delete_file')
+
+        self.driver._swap_files(fake.FLEXVOL, fake.VOLUME_NAME, new_file)
+
+        mock_rename_file.assert_has_calls([
+            mock.call(original_file_path, tmp_file_path),
+            mock.call(new_file_path, original_file_path)])
+
+        mock_delete_file.assert_called_once_with(tmp_file_path)
+
+    @ddt.data((True, False), (False, False), (False, True))
+    @ddt.unpack
+    def test__swap_files_rename_exception(self, first_exception,
+                                          rollback_exception):
+        new_file = 'new-%s' % fake.SNAPSHOT['name']
+        new_file_path = '/vol/%s/%s' % (fake.FLEXVOL, new_file)
+        original_file_path = '/vol/%s/%s' % (fake.FLEXVOL, fake.VOLUME_NAME)
+        tmp_file_path = '/vol/%s/tmp-%s' % (fake.FLEXVOL, fake.VOLUME_NAME)
+        side_effect = None
+
+        def _skip_side_effect():
+            return True
+
+        if not first_exception and not rollback_exception:
+            side_effect = [_skip_side_effect,
+                           exception.VolumeBackendAPIException(data="data"),
+                           _skip_side_effect]
+        elif not first_exception and rollback_exception:
+            side_effect = [_skip_side_effect,
+                           exception.VolumeBackendAPIException(data="data"),
+                           exception.VolumeBackendAPIException(data="data")]
+        else:
+            side_effect = exception.VolumeBackendAPIException(data="data")
+
+        mock_rename_file = self.mock_object(self.driver.zapi_client,
+                                            'rename_file',
+                                            side_effect=side_effect)
+
+        self.assertRaises(
+            na_utils.NetAppDriverException,
+            self.driver._swap_files, fake.FLEXVOL, fake.VOLUME_NAME, new_file)
+
+        if not first_exception:
+            mock_rename_file.assert_has_calls([
+                mock.call(original_file_path, tmp_file_path),
+                mock.call(new_file_path, original_file_path),
+                mock.call(tmp_file_path, original_file_path)])
+        else:
+            mock_rename_file.assert_called_once_with(original_file_path,
+                                                     tmp_file_path)
+
+    def test__swap_files_delete_exception(self):
+        new_file = 'new-%s' % fake.SNAPSHOT['name']
+
+        self.mock_object(self.driver.zapi_client, 'rename_file')
+        side_effect = exception.VolumeBackendAPIException(data="data")
+        self.mock_object(self.driver.zapi_client, 'delete_file',
+                         side_effect=side_effect)
+
+        self.driver._swap_files(fake.FLEXVOL, fake.VOLUME_NAME, new_file)

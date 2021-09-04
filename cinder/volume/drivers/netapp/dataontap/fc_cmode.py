@@ -35,6 +35,7 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
         1.0.0 - Driver development before Wallaby
         2.0.0 - Wallaby driver version bump
         3.0.0 - Add support for Intra-cluster Storage assisted volume migration
+                Add support for revert to snapshot
 
     """
 
@@ -155,3 +156,6 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
 
     def migrate_volume(self, context, volume, host):
         return self.library.migrate_volume(context, volume, host)
+
+    def revert_to_snapshot(self, context, volume, snapshot):
+        return self.library.revert_to_snapshot(volume, snapshot)

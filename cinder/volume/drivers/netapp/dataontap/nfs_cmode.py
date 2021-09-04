@@ -63,6 +63,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 Add support for dynamic Adaptive QoS policy group creation
                 Implement FlexGroup pool
         3.0.0 - Add support for Intra-cluster Storage assisted volume migration
+                Add support for revert to snapshot
 
     """
 
@@ -223,6 +224,80 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                                          qos_policy_group_name,
                                          qos_policy_group_is_adaptive,
                                          target_path)
+
+    def _revert_to_snapshot(self, volume, snapshot):
+        """Clone volume from snapshot to perform the file name swap."""
+        new_snap_name = 'new-%s' % snapshot['name']
+        self._clone_backing_file_for_volume(snapshot['name'],
+                                            new_snap_name,
+                                            snapshot['volume_id'],
+                                            is_snapshot=False)
+
+        (host_ip, junction_path) = self._get_export_ip_path(
+            volume_id=volume['id'])
+        vserver = self._get_vserver_for_ip(host_ip)
+        flexvol_name = self.zapi_client.get_vol_by_junc_vserver(vserver,
+                                                                junction_path)
+
+        try:
+            self._swap_files(flexvol_name, volume['name'], new_snap_name)
+        except Exception:
+            LOG.error("Swapping temporary reverted volume name from %s to %s "
+                      "failed.", new_snap_name, volume['name'])
+            with excutils.save_and_reraise_exception():
+                try:
+                    LOG.debug("Deleting temporary reverted volume file %s.",
+                              new_snap_name)
+                    file_path = '/vol/%s/%s' % (flexvol_name, new_snap_name)
+                    self.zapi_client.delete_file(file_path)
+                except Exception:
+                    LOG.error("Could not delete temporary reverted volume %s. "
+                              "A manual deletion is required.", new_snap_name)
+
+    def _swap_files(self, flexvol_name, original_file, new_file):
+        """Swaps cloned and original files using a temporary file.
+
+        Renames the original file path to a temporary path, then changes the
+        cloned file path to the original path (if this fails, change the
+        temporary file path back as original path) and finally deletes the
+        file with temporary path.
+        """
+        prefix_path_on_backend = '/vol/' + flexvol_name + '/'
+
+        new_file_path = prefix_path_on_backend + new_file
+        original_file_path = prefix_path_on_backend + original_file
+        tmp_file_path = prefix_path_on_backend + 'tmp-%s' % original_file
+
+        try:
+            self.zapi_client.rename_file(original_file_path, tmp_file_path)
+        except exception.VolumeBackendAPIException:
+            msg = _("Could not rename original volume from %s to %s.")
+            raise na_utils.NetAppDriverException(msg % (original_file_path,
+                                                        tmp_file_path))
+
+        try:
+            self.zapi_client.rename_file(new_file_path, original_file_path)
+        except exception.VolumeBackendAPIException:
+            try:
+                LOG.debug("Revert volume failed. Rolling back to its original"
+                          " name.")
+                self.zapi_client.rename_file(tmp_file_path, original_file_path)
+            except exception.VolumeBackendAPIException:
+                LOG.error("Could not rollback original volume name from %s "
+                          "to %s. Cinder may lose the volume management. "
+                          "Please, you should rename it back manually.",
+                          tmp_file_path, original_file_path)
+
+            msg = _("Could not rename temporary reverted volume from %s "
+                    "to original volume name %s.")
+            raise na_utils.NetAppDriverException(msg % (new_file_path,
+                                                        original_file_path))
+
+        try:
+            self.zapi_client.delete_file(tmp_file_path)
+        except exception.VolumeBackendAPIException:
+            LOG.error("Could not delete old volume %s. A manual deletion is "
+                      "required.", tmp_file_path)
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
                                        volume_id, share=None,

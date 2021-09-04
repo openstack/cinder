@@ -348,6 +348,26 @@ SNAPSHOT = {
     'id': 'fake_id'
 }
 
+SNAPSHOT_VOLUME = {
+    'id': VOLUME_ID,
+    'name': VOLUME_NAME
+}
+
+LUN_WITH_METADATA = {
+    'handle': 'vserver_fake:/vol/fake_flexvol/volume-fake-uuid',
+    'name': 'volume-fake-uuid',
+    'size': 20971520,
+    'metadata': {
+        'Vserver': 'vserver_fake',
+        'Volume': 'fake_flexvol',
+        'Qtree': None,
+        'Path': '/vol/fake_flexvol/volume-fake-uuid',
+        'OsType': 'linux',
+        'SpaceReserved': 'false',
+        'UUID': 'fake-uuid'
+    }
+}
+
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
 
 FAKE_CMODE_VOLUMES = ['open123', 'mixed', 'open321']

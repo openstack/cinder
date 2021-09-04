@@ -1696,6 +1696,17 @@ class Client(client_base.Client):
         }
         self.connection.send_request('volume-rename', api_args)
 
+    def rename_file(self, orig_file_name, new_file_name):
+        """Rename a volume file."""
+        LOG.debug("Renaming the file %(original)s to %(new)s.",
+                  {'original': orig_file_name, 'new': new_file_name})
+
+        api_args = {
+            'from-path': orig_file_name,
+            'to-path': new_file_name,
+        }
+        self.connection.send_request('file-rename-file', api_args)
+
     def mount_flexvol(self, flexvol_name, junction_path=None):
         """Mounts a volume on a junction path."""
         api_args = {

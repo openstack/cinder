@@ -1167,3 +1167,38 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           self.driver.update_migrated_volume, self.ctxt,
                           fake.test_volume, mock.sentinel.new_volume,
                           mock.sentinel.original_status)
+
+    @ddt.data({'is_flexgroup': False, 'is_flexgroup_supported': False},
+              {'is_flexgroup': False, 'is_flexgroup_supported': True},
+              {'is_flexgroup': True, 'is_flexgroup_supported': False},
+              {'is_flexgroup': True, 'is_flexgroup_supported': True})
+    @ddt.unpack
+    def test_revert_to_snapshot(self, is_flexgroup, is_flexgroup_supported):
+        context = {}
+
+        self.mock_object(self.driver,
+                         '_is_flexgroup',
+                         return_value=is_flexgroup)
+        self.mock_object(self.driver,
+                         '_is_flexgroup_clone_file_supported',
+                         return_value=is_flexgroup_supported)
+        mock_revert_to_snapshot = self.mock_object(
+            remotefs.RemoteFSSnapDriverDistributed, 'revert_to_snapshot')
+        mock__revert_to_snapshot = self.mock_object(self.driver,
+                                                    '_revert_to_snapshot')
+
+        self.driver.revert_to_snapshot(context, fake.SNAPSHOT_VOLUME,
+                                       fake.SNAPSHOT)
+
+        if is_flexgroup and not is_flexgroup_supported:
+            mock_revert_to_snapshot.assert_called_once_with(
+                context, fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+            mock__revert_to_snapshot.assert_not_called()
+        else:
+            mock__revert_to_snapshot.assert_called_once_with(
+                fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
+            mock_revert_to_snapshot.assert_not_called()
+
+    def test__revert_to_snapshot(self):
+        self.assertRaises(NotImplementedError, self.driver._revert_to_snapshot,
+                          fake.SNAPSHOT_VOLUME, fake.SNAPSHOT)
