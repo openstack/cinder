@@ -117,6 +117,9 @@ class RequestContext(context.RequestContext):
             timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class
+        self.message_resource_id = None
+        self.message_resource_type = None
+        self.message_action = None
 
         if service_catalog:
             # Only include required parts of service_catalog

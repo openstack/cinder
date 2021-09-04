@@ -51,6 +51,8 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.keymgr import migration as key_migration
 from cinder import manager
+from cinder.message import api as message_api
+from cinder.message import message_field
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
@@ -135,6 +137,7 @@ class BackupManager(manager.SchedulerDependentManager):
                         self.driver_name, new_name)
             self.driver_name = new_name
         self.service = importutils.import_class(self.driver_name)
+        self.message_api = message_api.API()
 
     def init_host(self, **kwargs):
         """Run initialization needed for a standalone service."""
@@ -340,6 +343,9 @@ class BackupManager(manager.SchedulerDependentManager):
             context, snapshot_id) if snapshot_id else None
         previous_status = volume.get('previous_status', None)
         updates = {}
+        context.message_resource_id = backup.id
+        context.message_resource_type = message_field.Resource.VOLUME_BACKUP
+        context.message_action = message_field.Action.BACKUP_CREATE
         if snapshot_id:
             log_message = ('Create backup started, backup: %(backup_id)s '
                            'volume: %(volume_id)s snapshot: %(snapshot_id)s.'
@@ -386,12 +392,18 @@ class BackupManager(manager.SchedulerDependentManager):
                 'actual_status': actual_status,
             }
             volume_utils.update_backup_error(backup, err)
+            self.message_api.create_from_request_context(
+                context,
+                detail=message_field.Detail.BACKUP_INVALID_STATE)
             raise exception.InvalidBackup(reason=err)
 
         try:
             if not self.is_working():
                 err = _('Create backup aborted due to backup service is down.')
                 volume_utils.update_backup_error(backup, err)
+                self.message_api.create_from_request_context(
+                    context,
+                    detail=message_field.Detail.BACKUP_SERVICE_DOWN)
                 raise exception.InvalidBackup(reason=err)
 
             backup.service = self.driver_name
@@ -444,6 +456,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self._notify_about_backup_usage(context, backup, "create.end")
 
     def _run_backup(self, context, backup, volume):
+        message_created = False
         # Save a copy of the encryption key ID in case the volume is deleted.
         if (volume.encryption_key_id is not None and
                 backup.encryption_key_id is None):
@@ -461,13 +474,33 @@ class BackupManager(manager.SchedulerDependentManager):
         # context switching and may end up blocking the greenthread, so we go
         # with native threads proxy-wrapping the device file object.
         try:
-            backup_device = self.volume_rpcapi.get_backup_device(context,
-                                                                 backup,
-                                                                 volume)
-            attach_info = self._attach_device(context,
-                                              backup_device.device_obj,
-                                              properties,
-                                              backup_device.is_snapshot)
+            try:
+                backup_device = self.volume_rpcapi.get_backup_device(context,
+                                                                     backup,
+                                                                     volume)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    # We set message_create to True before creating the
+                    # message because if the message create call fails
+                    # and is catched by the base/outer exception handler
+                    # then we will end up storing a wrong message
+                    message_created = True
+                    self.message_api.create_from_request_context(
+                        context,
+                        detail=
+                        message_field.Detail.BACKUP_CREATE_DEVICE_ERROR)
+            try:
+                attach_info = self._attach_device(context,
+                                                  backup_device.device_obj,
+                                                  properties,
+                                                  backup_device.is_snapshot)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    if not message_created:
+                        message_created = True
+                        self.message_api.create_from_request_context(
+                            context,
+                            detail=message_field.Detail.ATTACH_ERROR)
             try:
                 device_path = attach_info['device']['path']
                 if (isinstance(device_path, str) and
@@ -485,17 +518,41 @@ class BackupManager(manager.SchedulerDependentManager):
                 else:
                     updates = backup_service.backup(backup,
                                                     tpool.Proxy(device_path))
-
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    if not message_created:
+                        message_created = True
+                        self.message_api.create_from_request_context(
+                            context,
+                            detail=
+                            message_field.Detail.BACKUP_CREATE_DRIVER_ERROR)
             finally:
-                self._detach_device(context, attach_info,
-                                    backup_device.device_obj, properties,
-                                    backup_device.is_snapshot, force=True,
-                                    ignore_errors=True)
+                try:
+                    self._detach_device(context, attach_info,
+                                        backup_device.device_obj, properties,
+                                        backup_device.is_snapshot, force=True,
+                                        ignore_errors=True)
+                except Exception:
+                    with excutils.save_and_reraise_exception():
+                        if not message_created:
+                            message_created = True
+                            self.message_api.create_from_request_context(
+                                context,
+                                detail=
+                                message_field.Detail.DETACH_ERROR)
         finally:
             with backup.as_read_deleted():
                 backup.refresh()
-            self._cleanup_temp_volumes_snapshots_when_backup_created(
-                context, backup)
+            try:
+                self._cleanup_temp_volumes_snapshots_when_backup_created(
+                    context, backup)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    if not message_created:
+                        self.message_api.create_from_request_context(
+                            context,
+                            detail=
+                            message_field.Detail.BACKUP_CREATE_CLEANUP_ERROR)
         return updates
 
     def _is_our_backup(self, backup):
@@ -523,6 +580,9 @@ class BackupManager(manager.SchedulerDependentManager):
     @utils.limit_operations
     def restore_backup(self, context, backup, volume_id):
         """Restore volume backups from configured backup service."""
+        context.message_resource_id = backup.id
+        context.message_resource_type = message_field.Resource.VOLUME_BACKUP
+        context.message_action = message_field.Action.BACKUP_RESTORE
         LOG.info('Restore backup started, backup: %(backup_id)s '
                  'volume: %(volume_id)s.',
                  {'backup_id': backup.id, 'volume_id': volume_id})
@@ -546,6 +606,12 @@ class BackupManager(manager.SchedulerDependentManager):
                  (fields.VolumeStatus.ERROR if
                   volume_previous_status == fields.VolumeStatus.CREATING else
                   fields.VolumeStatus.ERROR_RESTORING)})
+            self.message_api.create(
+                context,
+                action=message_field.Action.BACKUP_RESTORE,
+                resource_type=message_field.Resource.VOLUME_BACKUP,
+                resource_uuid=volume.id,
+                detail=message_field.Detail.VOLUME_INVALID_STATE)
             raise exception.InvalidVolume(reason=err)
 
         expected_status = fields.BackupStatus.RESTORING
@@ -558,6 +624,9 @@ class BackupManager(manager.SchedulerDependentManager):
             volume_utils.update_backup_error(backup, err)
             self.db.volume_update(context, volume_id,
                                   {'status': fields.VolumeStatus.ERROR})
+            self.message_api.create_from_request_context(
+                context,
+                detail=message_field.Detail.BACKUP_INVALID_STATE)
             raise exception.InvalidBackup(reason=err)
 
         if volume['size'] > backup['size']:
@@ -628,6 +697,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self._notify_about_backup_usage(context, backup, "restore.end")
 
     def _run_restore(self, context, backup, volume):
+        message_created = False
         orig_key_id = volume.encryption_key_id
         backup_service = self.service(context)
 
@@ -635,7 +705,13 @@ class BackupManager(manager.SchedulerDependentManager):
         secure_enabled = (
             self.volume_rpcapi.secure_file_operations_enabled(context,
                                                               volume))
-        attach_info = self._attach_device(context, volume, properties)
+        try:
+            attach_info = self._attach_device(context, volume, properties)
+        except Exception:
+            self.message_api.create_from_request_context(
+                context,
+                detail=message_field.Detail.ATTACH_ERROR)
+            raise
 
         # NOTE(geguileo): Not all I/O disk operations properly do greenthread
         # context switching and may end up blocking the greenthread, so we go
@@ -664,10 +740,25 @@ class BackupManager(manager.SchedulerDependentManager):
             LOG.exception('Restoring backup %(backup_id)s to volume '
                           '%(volume_id)s failed.', {'backup_id': backup.id,
                                                     'volume_id': volume.id})
+            # We set message_create to True before creating the
+            # message because if the message create call fails
+            # and is catched by the base/outer exception handler
+            # then we will end up storing a wrong message
+            message_created = True
+            self.message_api.create_from_request_context(
+                context,
+                detail=message_field.Detail.BACKUP_RESTORE_ERROR)
             raise
         finally:
-            self._detach_device(context, attach_info, volume, properties,
-                                force=True)
+            try:
+                self._detach_device(context, attach_info, volume, properties,
+                                    force=True)
+            except Exception:
+                if not message_created:
+                    self.message_api.create_from_request_context(
+                        context,
+                        detail=message_field.Detail.DETACH_ERROR)
+                raise
 
         # Regardless of whether the restore was successful, do some
         # housekeeping to ensure the restored volume's encryption key ID is
@@ -717,6 +808,9 @@ class BackupManager(manager.SchedulerDependentManager):
 
         self._notify_about_backup_usage(context, backup, "delete.start")
 
+        context.message_resource_id = backup.id
+        context.message_resource_type = message_field.Resource.VOLUME_BACKUP
+        context.message_action = message_field.Action.BACKUP_DELETE
         expected_status = fields.BackupStatus.DELETING
         actual_status = backup.status
         if actual_status != expected_status:
@@ -725,12 +819,18 @@ class BackupManager(manager.SchedulerDependentManager):
                 % {'expected_status': expected_status,
                    'actual_status': actual_status}
             volume_utils.update_backup_error(backup, err)
+            self.message_api.create_from_request_context(
+                context,
+                detail=message_field.Detail.BACKUP_INVALID_STATE)
             raise exception.InvalidBackup(reason=err)
 
         if backup.service and not self.is_working():
             err = _('Delete backup is aborted due to backup service is down.')
             status = fields.BackupStatus.ERROR_DELETING
             volume_utils.update_backup_error(backup, err, status)
+            self.message_api.create_from_request_context(
+                context,
+                detail=message_field.Detail.BACKUP_SERVICE_DOWN)
             raise exception.InvalidBackup(reason=err)
 
         if not self._is_our_backup(backup):
@@ -750,6 +850,9 @@ class BackupManager(manager.SchedulerDependentManager):
             except Exception as err:
                 with excutils.save_and_reraise_exception():
                     volume_utils.update_backup_error(backup, str(err))
+                    self.message_api.create_from_request_context(
+                        context,
+                        detail=message_field.Detail.BACKUP_DELETE_DRIVER_ERROR)
 
         # Get reservations
         try:

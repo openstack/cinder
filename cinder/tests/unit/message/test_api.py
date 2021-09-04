@@ -279,6 +279,35 @@ class MessageApiTest(test.TestCase):
         self.message_api.db.message_create.assert_called_once_with(
             self.ctxt, mock.ANY)
 
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_create_from_request_context(self, mock_utcnow):
+        CONF.set_override('message_ttl', 300)
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+        expected_expires_at = timeutils.utcnow() + datetime.timedelta(
+            seconds=300)
+
+        self.ctxt.message_resource_id = 'fake-uuid'
+        self.ctxt.message_resource_type = 'fake_resource_type'
+        self.ctxt.message_action = message_field.Action.BACKUP_CREATE
+        expected_message_record = {
+            'project_id': 'fakeproject',
+            'request_id': 'fakerequestid',
+            'resource_type': 'fake_resource_type',
+            'resource_uuid': 'fake-uuid',
+            'action_id': message_field.Action.BACKUP_CREATE[0],
+            'detail_id': message_field.Detail.BACKUP_INVALID_STATE[0],
+            'message_level': 'ERROR',
+            'expires_at': expected_expires_at,
+            'event_id': "VOLUME_fake_resource_type_013_017",
+        }
+        self.message_api.create_from_request_context(
+            self.ctxt,
+            detail=message_field.Detail.BACKUP_INVALID_STATE)
+
+        self.message_api.db.message_create.assert_called_once_with(
+            self.ctxt, expected_message_record)
+        mock_utcnow.assert_called_with()
+
     def test_get(self):
         self.message_api.get(self.ctxt, 'fake_id')
 

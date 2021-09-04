@@ -111,6 +111,40 @@ class API(base.Base):
             LOG.exception("Failed to create message record "
                           "for request_id %s", context.request_id)
 
+    def create_from_request_context(self, context, exception=None,
+                                    detail=None, level="ERROR"):
+        """Create a message record with the specified information.
+
+        :param context:
+            current context object which we must have populated with the
+            message_action, message_resource_type and message_resource_id
+            fields
+        :param exception:
+            if an exception has occurred, you can pass it in and it will be
+            translated into an appropriate message detail ID (possibly
+            message_field.Detail.UNKNOWN_ERROR).  The message
+            in the exception itself is ignored in order not to expose
+            sensitive information to end users.  Default is None
+        :param detail:
+            a message_field.Detail field describing the event the message
+            is about.  Default is None, in which case
+            message_field.Detail.UNKNOWN_ERROR will be used for the message
+            unless an exception in the message_field.EXCEPTION_DETAIL_MAPPINGS
+            is passed; in that case the message_field.Detail field that's
+            mapped to the exception is used.
+        :param level:
+            a string describing the severity of the message.  Suggested
+            values are 'INFO', 'ERROR', 'WARNING'.  Default is 'ERROR'.
+        """
+
+        self.create(context=context,
+                    action=context.message_action,
+                    resource_type=context.message_resource_type,
+                    resource_uuid=context.message_resource_id,
+                    exception=exception,
+                    detail=detail,
+                    level=level)
+
     def get(self, context, id):
         """Return message with the specified id."""
         return self.db.message_get(context, id)
