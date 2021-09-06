@@ -115,9 +115,9 @@ def attach_volume(ctxt, volume_id, instance_uuid, attached_host,
     values['mountpoint'] = mountpoint
     values['attach_time'] = now
 
-    attachment = db.volume_attach(ctxt, values)
+    attachment = db.volume_attach(ctxt.elevated(), values)
     volume, updated_values = db.volume_attached(
-        ctxt, attachment['id'], instance_uuid,
+        ctxt.elevated(), attachment['id'], instance_uuid,
         attached_host, mountpoint, mode)
     return volume
 

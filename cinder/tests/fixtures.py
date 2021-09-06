@@ -21,8 +21,13 @@ import os
 import warnings
 
 import fixtures
+from oslo_config import cfg
+from oslo_policy import policy as oslo_policy
 from oslo_privsep import daemon as privsep_daemon
 
+import cinder.policy
+
+CONF = cfg.CONF
 _TRUE_VALUES = ('True', 'true', '1', 'yes')
 
 
@@ -158,3 +163,23 @@ class PrivsepNoHelperFixture(fixtures.Fixture):
         self.useFixture(fixtures.MonkeyPatch(
             'oslo_privsep.daemon.RootwrapClientChannel',
             UnHelperfulClientChannel))
+
+
+class PolicyFixture(fixtures.Fixture):
+    """Load the live policy for tests.
+
+    A base policy fixture that starts with the assumption that you'd
+    like to load and enforce the shipped default policy in tests.
+
+    """
+    def setUp(self):
+        super().setUp()
+        cinder.policy.reset()
+        # Suppress deprecation warnings for unit tests.
+        cinder.policy.init(suppress_deprecation_warnings=True)
+        self.addCleanup(cinder.policy.reset)
+
+    def set_rules(self, rules, overwrite=True):
+        policy = cinder.policy._ENFORCER
+        policy.set_rules(oslo_policy.Rules.from_dict(rules),
+                         overwrite=overwrite)
