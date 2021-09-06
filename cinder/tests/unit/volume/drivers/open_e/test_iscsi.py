@@ -1282,14 +1282,15 @@ class TestOpenEJovianDSSDriver(test.TestCase):
         location_info = 'JovianISCSIDriver:192.168.0.2:Pool-0'
         correct_out = {
             'vendor_name': 'Open-E',
-            'driver_version': "1.0.1",
+            'driver_version': "1.0.2",
             'storage_protocol': 'iSCSI',
             'total_capacity_gb': 100,
             'free_capacity_gb': 50,
             'reserved_percentage': 10,
             'volume_backend_name': CONFIG_BACKEND_NAME['volume_backend_name'],
             'QoS_support': False,
-            'location_info': location_info
+            'location_info': location_info,
+            'multiattach': True
         }
         jdssd.ra.get_pool_stats.return_value = {
             'size': 100 * o_units.Gi,
