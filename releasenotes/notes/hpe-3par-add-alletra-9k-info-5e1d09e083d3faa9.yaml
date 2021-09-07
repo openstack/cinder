@@ -1,0 +1,5 @@
+other:
+  - |
+    HPE 3PAR: Documented that existing driver supports the new Alletra 9k
+    backend. HPE Alletra 9k is newer version of existing HPE Primera backend.
+
