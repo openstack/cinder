@@ -633,9 +633,9 @@ def retry(retry_param: Union[None,
                              Tuple[Type[Exception], ...],
                              int,
                              Tuple[int, ...]],
-          interval: int = 1,
+          interval: float = 1,
           retries: int = 3,
-          backoff_rate: int = 2,
+          backoff_rate: float = 2,
           wait_random: bool = False,
           retry=tenacity.retry_if_exception_type) -> Callable:
 
