@@ -127,6 +127,57 @@ to the submitter with a request for the addition of unit test.
    Vendor CI's run the tempest volume tests against a change which
    does not include a unit test execution.
 
+CI Job rechecks
+---------------
+
+CI job runs may result in false negatives for a considerable number of causes:
+
+- Network failures.
+- Not enough resources on the job runner.
+- Storage timeouts caused by the array running nigthly maintenance jobs.
+- External service failure: pypi, package repositories, etc.
+- Non cinder components spurious bugs.
+
+And the list goes on and on.
+
+When we detect one of these cases the normal procedure is to run a recheck
+writing a comment with ``recheck`` for core Zuul jobs, or the specific third
+party CI recheck command, for example ``run-DellEMC PowerStore CI``.
+
+These false negative have periods of time where they spike, for example when
+there are spurious failures, and a lot of rechecks are necessary until a valid
+result is posted by the CI job.  And it's in these periods of time where people
+acquire the tendency to blindly issue rechecks without locking at the errors
+reported by the jobs.
+
+When these blind checks happen on real patch failures or with external services
+that are going to be out for a while, they lead to wasted resources as well as
+longer result times for patches in other projects.
+
+The Cinder community has noticed this tendency and wants to fix it, so now it
+is strongly encouraged to avoid issuing naked rechecks and instead issue them
+with additional information to indicate that we have looked at the failure and
+confirmed it is unrelated to the patch.
+
+Here are some real examples of proper rechecks:
+
+- Spurious issue in other component: ``recheck tempest-integrated-storage :
+  intermittent failure nova bug #1836754``
+
+- Deployment issue on the job: ``recheck cinder-plugin-ceph-tempest timed out,
+  errors all over the place``
+
+- External service failure: ``Third party recheck grenade : Failed to retrieve
+  .deb packages``
+
+Another common case for blindly rechecking a patch is when it is only changing
+a specific driver but there are failures on jobs that don't use that driver.
+In such cases we still have to look at the failures, because they can be
+failures that are going to take a while to fix, and issuing a recheck will be
+futile at that time and we should wait for a couple of hours, or maybe even a
+day, before issuing a recheck that can yield the desired result.
+
+
 .. _Review guidelines: https://docs.openstack.org/doc-contrib-guide/docs-review-guidelines.html
 .. _Gerrit: https://review.opendev.org/#/q/project:openstack/cinder+status:open
 .. _Quick Reference: https://docs.openstack.org/infra/manual/developers.html#quick-reference
