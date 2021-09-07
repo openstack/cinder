@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver
+    `Bug #1926491 <https://bugs.launchpad.net/cinder/+bug/1926491>`_:
+    Updating volume metadata with rccg properties for the volumes with
+    replication enabled and added to a group or removed from a group.
