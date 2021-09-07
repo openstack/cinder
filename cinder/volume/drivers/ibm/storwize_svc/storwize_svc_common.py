@@ -1026,13 +1026,13 @@ class StorwizeHelpers(object):
                     return int(iogrp['id'])
         return None
 
-    def get_node_info(self):
+    def get_node_info(self, online_node=True):
         """Return dictionary containing information on system's nodes."""
         nodes = {}
         resp = self.ssh.lsnode()
         for node_data in resp:
             try:
-                if node_data['status'] != 'online':
+                if online_node and node_data['status'] != 'online':
                     continue
                 node = {}
                 node['id'] = node_data['id']
@@ -1048,6 +1048,8 @@ class StorwizeHelpers(object):
                 nodes[node['id']] = node
                 node['site_id'] = (node_data['site_id']
                                    if 'site_id' in node_data else None)
+                node['site_name'] = (node_data['site_name']
+                                     if 'site_name' in node_data else None)
             except KeyError:
                 self.handle_keyerror('lsnode', node_data)
         return nodes
@@ -6080,6 +6082,34 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         return attr['mdisk_grp_name']
 
+    def get_hyperswap_storage_state(self):
+        storage_state = fields.ReplicationStatus.ENABLED
+        disabled_reason = None
+        site_node_info = {}
+        site_node_down_info = {}
+
+        storage_nodes = self._helpers.get_node_info(online_node=False)
+
+        for node, node_info in storage_nodes.items():
+            if node_info['site_id']:
+                site = node_info['site_id']
+                if site not in site_node_info:
+                    site_node_info[site] = []
+                    site_node_down_info[site] = {'nodes_down': 0}
+
+                site_node_info[site].append(node_info)
+                if node_info['status'] not in ['online', 'degraded']:
+                    site_node_down_info[site]['nodes_down'] += 1
+
+        for site, site_info in site_node_down_info.items():
+            if len(site_node_info[site]) == site_info['nodes_down']:
+                storage_state = fields.ReplicationStatus.DISABLED
+                site_name = site_node_info[site][0]['site_name']
+                disabled_reason = "{0} is down".format(site_name)
+                break
+
+        return storage_state, disabled_reason
+
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
@@ -6109,6 +6139,18 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             data['replication_enabled'] = self._replica_enabled
             data['replication_targets'] = self._get_replication_targets()
             data['consistent_group_replication_enabled'] = True
+
+        if self._helpers.is_system_topology_hyperswap(self._state):
+            data['replication_enabled'] = True
+            try:
+                state, reason = self.get_hyperswap_storage_state()
+                if state != fields.ReplicationStatus.ENABLED:
+                    data['replication_enabled'] = False
+                    data['disabled_reason'] = reason
+            except exception.VolumeBackendAPIException as exc:
+                LOG.warning("Failed to get node info. "
+                            "Exception: %(ex)s.", {'ex': exc.msg})
+
         self._stats = data
 
     def _build_pool_stats(self, pool):

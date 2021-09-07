@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver `Bug #1931968
+    <https://bugs.launchpad.net/cinder/+bug/1931968>`_: Fixed
+    issue in updating the replication status of HyperSwap volume
+    service based on status of nodes during initialization and
+    periodic calls.
