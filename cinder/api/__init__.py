@@ -26,12 +26,12 @@ LOG = logging.getLogger(__name__)
 
 def root_app_factory(loader, global_conf, **local_conf):
     # To support upgrades from previous api-paste config files, we need
-    # to check for and remove any legacy references to the v1 API
+    # to check for and remove any legacy references to the v1 or v2 API
     if '/v1' in local_conf:
         LOG.warning('The v1 API has been removed and is no longer '
                     'available. Client applications should be '
-                    'using v3. Ensure enable_v3_api=true in your '
-                    'cinder.conf file.')
+                    'using v3, which is currently the only supported '
+                    'version of the Block Storage API.')
         del local_conf['/v1']
 
     if '/v2' in local_conf:

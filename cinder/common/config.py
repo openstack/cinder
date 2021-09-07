@@ -47,13 +47,6 @@ core_opts = [
 CONF.register_cli_opts(core_opts)
 
 api_opts = [
-    cfg.BoolOpt('enable_v3_api',
-                default=True,
-                deprecated_for_removal=True,
-                deprecated_reason=('This is the only API version available, '
-                                   'so disabling it is not an option.'),
-                deprecated_since="Xena",
-                help="Deploy v3 of the Cinder API."),
     cfg.BoolOpt('api_rate_limit',
                 default=True,
                 help='Enables or disables rate limit of the API.'),

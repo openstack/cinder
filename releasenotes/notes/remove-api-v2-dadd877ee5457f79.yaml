@@ -7,8 +7,8 @@ upgrade:
     to remove all references to v2.  Additionally, the deprecated
     configuration option ``enable_v2_api`` has been removed.  If present
     in a configuration file, it will be silently ignored.
-deprecations:
-  - |
-    The configuration option ``enable_v3_api`` is deprecated in this
-    release due to the fact that v3 is the only version of the Block
-    Storage API available.  It will be removed in the next release.
+
+    The configuration option ``enable_v3_api`` has been removed from this
+    release due to the fact that v3 is now the only version of the Block
+    Storage API available.  If present in a configuration file, it will
+    be silently ignored as the v3 API is now enabled unconditionally.
