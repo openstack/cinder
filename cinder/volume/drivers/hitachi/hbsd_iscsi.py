@@ -14,6 +14,8 @@
 #
 """iSCSI module for Hitachi HBSD Driver."""
 
+from oslo_utils import excutils
+
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common as common
@@ -49,6 +51,7 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
         1.1.0 - Add manage_existing/manage_existing_get_size/unmanage methods
         2.0.0 - Major redesign of the driver. This version requires the REST
                 API for communication with the storage backend.
+        2.1.0 - Add Cinder generic volume groups.
 
     """
 
@@ -212,3 +215,37 @@ class HBSDISCSIDriver(driver.ISCSIDriver):
     def revert_to_snapshot(self, context, volume, snapshot):
         """Rollback the specified snapshot"""
         return self.common.revert_to_snapshot(volume, snapshot)
+
+    @volume_utils.trace
+    def create_group(self, context, group):
+        return self.common.create_group()
+
+    @volume_utils.trace
+    def delete_group(self, context, group, volumes):
+        return self.common.delete_group(group, volumes)
+
+    @volume_utils.trace
+    def create_group_from_src(
+            self, context, group, volumes, group_snapshot=None, snapshots=None,
+            source_group=None, source_vols=None):
+        return self.common.create_group_from_src(
+            context, group, volumes, snapshots, source_vols)
+
+    @volume_utils.trace
+    def update_group(
+            self, context, group, add_volumes=None, remove_volumes=None):
+        try:
+            return self.common.update_group(group, add_volumes)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                for remove_volume in remove_volumes:
+                    utils.cleanup_cg_in_volume(remove_volume)
+
+    @volume_utils.trace
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        return self.common.create_group_snapshot(
+            context, group_snapshot, snapshots)
+
+    @volume_utils.trace
+    def delete_group_snapshot(self, context, group_snapshot, snapshots):
+        return self.common.delete_group_snapshot(group_snapshot, snapshots)

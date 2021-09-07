@@ -26,7 +26,7 @@ from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
 
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 
 _STR_VOLUME = 'volume'
 _STR_SNAPSHOT = 'snapshot'
@@ -318,7 +318,9 @@ class HBSDCommon():
             reserved_percentage=self.conf.safe_get('reserved_percentage'),
             QoS_support=False,
             thick_provisioning_support=False,
-            multiattach=True
+            multiattach=True,
+            consistencygroup_support=True,
+            consistent_group_snapshot_enabled=True
         ))
         try:
             (total_capacity, free_capacity,
@@ -779,3 +781,22 @@ class HBSDCommon():
             self.restore_ldev(pvol, svol)
         else:
             raise NotImplementedError()
+
+    def create_group(self):
+        raise NotImplementedError()
+
+    def delete_group(self, group, volumes):
+        raise NotImplementedError()
+
+    def create_group_from_src(
+            self, context, group, volumes, snapshots=None, source_vols=None):
+        raise NotImplementedError()
+
+    def update_group(self, group, add_volumes=None):
+        raise NotImplementedError()
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        raise NotImplementedError()
+
+    def delete_group_snapshot(self, group_snapshot, snapshots):
+        raise NotImplementedError()

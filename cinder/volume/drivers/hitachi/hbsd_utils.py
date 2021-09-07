@@ -344,6 +344,21 @@ class HBSDMsg(enum.Enum):
                'to manage the volume.',
         'suffix': ERROR_SUFFIX,
     }
+    FAILED_CREATE_CTG_SNAPSHOT = {
+        'msg_id': 712,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create a consistency group snapshot. '
+               'The number of pairs in the consistency group or the number of '
+               'consistency group snapshots has reached the limit.',
+        'suffix': ERROR_SUFFIX,
+    }
+    LDEV_NOT_EXIST_FOR_ADD_GROUP = {
+        'msg_id': 716,
+        'loglevel': base_logging.ERROR,
+        'msg': 'No logical device exists in the storage system for the volume '
+               '%(volume_id)s to be added to the %(group)s %(group_id)s.',
+        'suffix': ERROR_SUFFIX,
+    }
     SNAPSHOT_UNMANAGE_FAILED = {
         'msg_id': 722,
         'loglevel': base_logging.ERROR,
@@ -393,6 +408,23 @@ class HBSDMsg(enum.Enum):
                'response body: %(response_body)s, '
                'method: %(method)s, url: %(url)s, params: %(params)s, '
                'body: %(body)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    GROUP_OBJECT_DELETE_FAILED = {
+        'msg_id': 736,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to delete a %(obj)s in a %(group)s. (%(group)s: '
+               '%(group_id)s, %(obj)s: %(obj_id)s, LDEV: %(ldev)s, reason: '
+               '%(reason)s)',
+        'suffix': ERROR_SUFFIX,
+    }
+    GROUP_SNAPSHOT_CREATE_FAILED = {
+        'msg_id': 737,
+        'loglevel': base_logging.ERROR,
+        'msg': 'Failed to create a volume snapshot in a group snapshot that '
+               'does not guarantee consistency. (group: %(group)s, '
+               'group snapshot: %(group_snapshot)s, group type: '
+               '%(group_type)s, volume: %(volume)s, snapshot: %(snapshot)s)',
         'suffix': ERROR_SUFFIX,
     }
 
@@ -526,3 +558,20 @@ def is_shared_connection(volume, connector):
             if attachment.attached_host == host:
                 connection_count += 1
     return connection_count > 1
+
+
+def cleanup_cg_in_volume(volume):
+    if ('group_id' in volume and volume.group_id and
+            'consistencygroup_id' in volume and
+            volume.consistencygroup_id):
+        volume.consistencygroup_id = None
+        if 'consistencygroup' in volume:
+            volume.consistencygroup = None
+
+
+def get_exception_msg(exc):
+    if exc.args:
+        return exc.msg if isinstance(
+            exc, exception.CinderException) else exc.args[0]
+    else:
+        return ""

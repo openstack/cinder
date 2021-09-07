@@ -750,6 +750,14 @@ class RestApiClient():
         }
         self._invoke(url, body=body)
 
+    def split_snapshotgroup(self, snapshot_group_id):
+        url = '%(url)s/snapshot-groups/%(id)s/actions/%(action)s/invoke' % {
+            'url': self.object_url,
+            'id': snapshot_group_id,
+            'action': 'split',
+        }
+        self._invoke(url)
+
     def discard_zero_page(self, ldev_id):
         """Return the ldev's no-data pages to the storage pool."""
         url = '%(url)s/ldevs/%(id)s/actions/%(action)s/invoke' % {

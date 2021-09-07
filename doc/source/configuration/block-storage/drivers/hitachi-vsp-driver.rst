@@ -63,6 +63,8 @@ Supported operations
 * Create, delete, attach, and detach volumes.
 * Create, list, and delete volume snapshots.
 * Create a volume from a snapshot.
+* Create, list, update, and delete consistency groups.
+* Create, list, and delete consistency group snapshots.
 * Copy a volume to an image.
 * Copy an image to a volume.
 * Clone a volume.
