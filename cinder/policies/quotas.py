@@ -22,11 +22,15 @@ SHOW_POLICY = 'volume_extension:quotas:show'
 UPDATE_POLICY = 'volume_extension:quotas:update'
 DELETE_POLICY = 'volume_extension:quotas:delete'
 
+deprecated_show_policy = policy.DeprecatedRule(
+    name=SHOW_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
 
 quota_policies = [
     policy.DocumentedRuleDefault(
         name=SHOW_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show project quota (including usage and default).",
         operations=[
             {
@@ -41,7 +45,9 @@ quota_policies = [
                 'method': 'GET',
                 'path': '/os-quota-sets/{project_id}?usage=True'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_show_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -51,7 +57,8 @@ quota_policies = [
                 'method': 'PUT',
                 'path': '/os-quota-sets/{project_id}'
             }
-        ]),
+        ]
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -61,7 +68,8 @@ quota_policies = [
                 'method': 'DELETE',
                 'path': '/os-quota-sets/{project_id}'
             }
-        ]),
+        ]
+    ),
 ]
 
 

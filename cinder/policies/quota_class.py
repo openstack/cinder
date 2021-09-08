@@ -18,24 +18,45 @@ from oslo_policy import policy
 from cinder.policies import base
 
 
+# MANAGE_POLICY is deprecated
 MANAGE_POLICY = 'volume_extension:quota_classes'
+GET_POLICY = 'volume_extension:quota_classes:get'
+UPDATE_POLICY = 'volume_extension:quota_classes:update'
 
+
+deprecated_manage_policy = base.CinderDeprecatedRule(
+    name=MANAGE_POLICY,
+    check_str=base.RULE_ADMIN_API,
+    deprecated_reason=(f'{MANAGE_POLICY} has been replaced by more granular '
+                       'policies that separately govern GET and PUT '
+                       'operations.'),
+)
 
 quota_class_policies = [
     policy.DocumentedRuleDefault(
-        name=MANAGE_POLICY,
+        name=GET_POLICY,
         check_str=base.RULE_ADMIN_API,
-        description="Show or update project quota class.",
+        description="Show project quota class.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/os-quota-class-sets/{project_id}'
-            },
+            }
+        ],
+        deprecated_rule=deprecated_manage_policy,
+    ),
+    policy.DocumentedRuleDefault(
+        name=UPDATE_POLICY,
+        check_str=base.RULE_ADMIN_API,
+        description="Update project quota class.",
+        operations=[
             {
                 'method': 'PUT',
                 'path': '/os-quota-class-sets/{project_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_manage_policy,
+    ),
 ]
 
 
