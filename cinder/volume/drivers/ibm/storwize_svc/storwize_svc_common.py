@@ -796,6 +796,7 @@ class StorwizeHelpers(object):
         self.check_fcmapping_interval = 3
         self.code_level = None
         self.stats = {}
+        self.Host_connector_info = {"FC": {}, "ISCSI": {}}
 
     @staticmethod
     def handle_keyerror(cmd, out):
@@ -1131,28 +1132,48 @@ class StorwizeHelpers(object):
                 wwpns.add(wwpn)
         return list(wwpns)
 
+    def initialize_host_info(self):
+        """Get the host,wwpn,iscsi and store in Host_connector_info."""
+        if (not self.Host_connector_info['FC'] and
+                not self.Host_connector_info['ISCSI']):
+            hosts_info = self.ssh.lshost()
+            host_list = list(hosts_info.select('name'))
+            for eachhost in host_list:
+                resp = self.ssh.lshost(host=eachhost)
+                if list(resp.select("WWPN")) != [None]:
+                    for wwpn in resp.select('WWPN'):
+                        if wwpn not in self.Host_connector_info['FC'].keys():
+                            self.Host_connector_info['FC'][wwpn] = eachhost
+                elif list(resp.select('iscsi_name')) != [None]:
+                    for iscsi_name in resp.select('iscsi_name'):
+                        if (iscsi_name not in
+                                self.Host_connector_info['ISCSI'].keys()):
+                            self.Host_connector_info['ISCSI'][iscsi_name] = (
+                                eachhost)
+
+    def get_host_from_host_info(self, connector, iscsi=False):
+        host_name = None
+        new_wwpn = []
+        if iscsi and 'initiator' in connector:
+            if connector['initiator'] in self.Host_connector_info['ISCSI']:
+                iqn = connector['initiator']
+                host_name = self.Host_connector_info['ISCSI'][iqn]
+        elif 'wwpns' in connector:
+            for wwpn in connector['wwpns']:
+                if wwpn.upper() in self.Host_connector_info['FC']:
+                    host_name = self.Host_connector_info['FC'][wwpn.upper()]
+                else:
+                    new_wwpn.append(['wwpn', '%s' % wwpn])
+
+        return host_name, new_wwpn
+
     def get_host_from_connector(self, connector, volume_name=None,
                                 iscsi=False):
         """Return the Storwize host described by the connector."""
         LOG.debug('Enter: get_host_from_connector: %s.', connector)
 
         # If we have FC information, we have a faster lookup option
-        host_name = None
-        if 'wwpns' in connector and not iscsi:
-            for wwpn in connector['wwpns']:
-                resp = self.ssh.lsfabric(wwpn=wwpn)
-                for wwpn_info in resp:
-                    try:
-                        if (wwpn_info['remote_wwpn'] and
-                                wwpn_info['name'] and
-                                wwpn_info['remote_wwpn'].lower() ==
-                                wwpn.lower()):
-                            host_name = wwpn_info['name']
-                            break
-                    except KeyError:
-                        self.handle_keyerror('lsfabric', wwpn_info)
-                if host_name:
-                    break
+        host_name, new_wwpn = self.get_host_from_host_info(connector, iscsi)
 
         if host_name and volume_name:
             hosts_map_info = self.ssh.lsvdiskhostmap(volume_name)
@@ -1168,6 +1189,11 @@ class StorwizeHelpers(object):
                 host_name = None
 
         if host_name:
+            for port in new_wwpn:
+                LOG.debug('update wwpn %(wwpn)s to  host %(host)s.',
+                          {'wwpn': port, 'host': host_name})
+                self.ssh.addhostport(host_name, port[0], port[1])
+
             LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
             return host_name
 
@@ -1298,6 +1324,13 @@ class StorwizeHelpers(object):
         for port in ports:
             self.ssh.addhostport(host_name, port[0], port[1])
 
+        if iscsi and 'initiator' in connector:
+            iqn = connector['initiator']
+            self.Host_connector_info['ISCSI'][iqn] = host_name
+        elif 'wwpns' in connector:
+            for wwpn in connector['wwpns']:
+                self.Host_connector_info['FC'][wwpn.upper()] = host_name
+
         LOG.debug('Leave: create_host: host %(host)s - %(host_name)s.',
                   {'host': connector['host'], 'host_name': host_name})
         return host_name
@@ -1307,6 +1340,23 @@ class StorwizeHelpers(object):
 
     def delete_host(self, host_name):
         self.ssh.rmhost(host_name)
+
+        if host_name in self.Host_connector_info['ISCSI'].values():
+            host_iqn = None
+            for iqn, host in self.Host_connector_info['ISCSI'].items():
+                if host == host_name:
+                    host_iqn = iqn
+                    break
+            if host_iqn:
+                self.Host_connector_info['ISCSI'].pop(host_iqn)
+        elif host_name in self.Host_connector_info['FC'].values():
+            host_wwpn = []
+            for wwpn, host in self.Host_connector_info['FC'].items():
+                if host == host_name:
+                    host_wwpn.append(wwpn)
+
+            for wwpn in host_wwpn:
+                self.Host_connector_info['FC'].pop(wwpn)
 
     def _get_unused_lun_id(self, host_name):
         luns_used = []
@@ -4862,6 +4912,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         else:
             vol_name, backend_helper, node_state = self._get_vol_sys_info(
                 volume)
+
+        backend_helper.initialize_host_info()
 
         info = {}
         if 'host' in connector:

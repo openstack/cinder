@@ -172,6 +172,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                 volume)
 
         host_site = None
+        backend_helper.initialize_host_info()
+
         is_hyper_volume = self.is_volume_hyperswap(volume)
         if is_hyper_volume:
             host_site = self._get_volume_host_site_from_conf(volume,
@@ -183,12 +185,24 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        # Check if a host object is defined for this host name
-        host_name = backend_helper.get_host_from_connector(connector)
-        if host_name is None:
-            # Host does not exist - add a new host to Storwize/SVC
+        # Try creating the host, if host creation is successfull continue
+        # with intialization flow, else search for host object defined for
+        # this connector info.
+        host_name = None
+        try:
             host_name = backend_helper.create_host(connector, site=host_site)
-        elif is_hyper_volume:
+        except exception.VolumeBackendAPIException as excp:
+            if "CMMVC6035E" in excp.msg:
+                msg = (_('Host already exists for connector '
+                         '%(conn)s'), {'conn': connector})
+                LOG.info(msg)
+                host_name = backend_helper.get_host_from_connector(connector)
+            else:
+                msg = (_('Error creating host %(ex)s'), {'ex': excp.msg})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+        if is_hyper_volume:
             self._update_host_site_for_hyperswap_volume(host_name, host_site)
 
         volume_attributes = backend_helper.get_vdisk_attributes(volume_name)
