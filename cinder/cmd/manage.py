@@ -63,7 +63,6 @@ import time
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
-from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 from oslo_utils import timeutils
 import tabulate
@@ -204,9 +203,7 @@ class DbCommands(object):
 
     def version(self):
         """Print the current database version."""
-        print(migration.db_version(db_api.get_engine(),
-                                   db_migration.LEGACY_MIGRATIONS_PATH,
-                                   db_migration.INIT_VERSION))
+        print(db_migration.db_version())
 
     @args('age_in_days', type=int,
           help='Purge deleted rows older than age in days')
