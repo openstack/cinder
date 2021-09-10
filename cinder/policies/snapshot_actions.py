@@ -23,6 +23,12 @@ FORCE_DELETE_POLICY = 'volume_extension:snapshot_admin_actions:force_delete'
 UPDATE_STATUS_POLICY = \
     'snapshot_extension:snapshot_actions:update_snapshot_status'
 
+deprecated_update_status = base.CinderDeprecatedRule(
+    name=UPDATE_STATUS_POLICY,
+    check_str=""
+)
+
+
 snapshot_actions_policies = [
     policy.DocumentedRuleDefault(
         name=RESET_STATUS_POLICY,
@@ -33,10 +39,11 @@ snapshot_actions_policies = [
                 'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/action (os-reset_status)'
             }
-        ]),
+        ],
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_STATUS_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update database fields of snapshot.",
         operations=[
             {
@@ -44,7 +51,9 @@ snapshot_actions_policies = [
                 'path': '/snapshots/{snapshot_id}/action '
                         '(update_snapshot_status)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_status,
+    ),
     policy.DocumentedRuleDefault(
         name=FORCE_DELETE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -54,7 +63,8 @@ snapshot_actions_policies = [
                 'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/action (os-force_delete)'
             }
-        ])
+        ],
+    )
 ]
 
 
