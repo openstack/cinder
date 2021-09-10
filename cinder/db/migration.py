@@ -27,10 +27,9 @@ from cinder.db.sqlalchemy import api as db_api
 options.set_defaults(cfg.CONF)
 
 INIT_VERSION = 134
-MIGRATE_REPO_PATH = os.path.join(
+LEGACY_MIGRATIONS_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
-    'sqlalchemy',
-    'migrate_repo',
+    'legacy_migrations',
 )
 
 
@@ -42,6 +41,6 @@ def db_sync(version=None, engine=None):
 
     return migration.db_sync(
         engine=engine,
-        abs_path=MIGRATE_REPO_PATH,
+        abs_path=LEGACY_MIGRATIONS_PATH,
         version=version,
         init_version=INIT_VERSION)

@@ -32,8 +32,8 @@ from oslotest import base as test_base
 import sqlalchemy
 from sqlalchemy.engine import reflection
 
+import cinder.db.legacy_migrations
 from cinder.db import migration
-import cinder.db.sqlalchemy.migrate_repo
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import volume_types
 
@@ -53,7 +53,7 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
 
     @property
     def REPOSITORY(self):
-        migrate_file = cinder.db.sqlalchemy.migrate_repo.__file__
+        migrate_file = cinder.db.legacy_migrations.__file__
         return repository.Repository(
             os.path.abspath(os.path.dirname(migrate_file)))
 

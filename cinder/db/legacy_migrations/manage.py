@@ -17,9 +17,8 @@ import os
 
 from migrate.versioning.shell import main
 
-from cinder.db.sqlalchemy import migrate_repo
+REPOSITORY = os.path.abspath(os.path.dirname(__file__))
 
 
 if __name__ == '__main__':
-    main(debug='False',
-         repository=os.path.abspath(os.path.dirname(migrate_repo.__file__)))
+    main(debug='False', repository=REPOSITORY)
