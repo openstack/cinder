@@ -24,11 +24,13 @@ from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
+from cinder.objects import fields
 from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_common as common
 from cinder.volume.drivers.hitachi import hbsd_rest_api as rest_api
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume.drivers.san import san
+from cinder.volume import volume_utils
 
 _LU_PATH_DEFINED = ('B958', '015A')
 NORMAL_STS = 'NML'
@@ -86,6 +88,9 @@ EX_ENLDEV = 'EX_ENLDEV'
 EX_INVARG = 'EX_INVARG'
 _INVALID_RANGE = [EX_ENLDEV, EX_INVARG]
 
+_MAX_COPY_GROUP_NAME = 29
+_MAX_CTG_COUNT_EXCEEDED_ADD_SNAPSHOT = ('2E10', '2302')
+_MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT = ('2E13', '9900')
 
 REST_VOLUME_OPTS = [
     cfg.BoolOpt(
@@ -789,3 +794,277 @@ class HBSDREST(common.HBSDCommon):
             return False
         return (result[0]['primaryOrSecondary'] == "S-VOL" and
                 int(result[0]['pvolLdevId']) == pvol)
+
+    def create_group(self):
+        return None
+
+    def _delete_group(self, group, objs, is_snapshot):
+        model_update = {'status': group.status}
+        objs_model_update = []
+        events = []
+
+        def _delete_group_obj(group, obj, is_snapshot):
+            obj_update = {'id': obj.id}
+            try:
+                if is_snapshot:
+                    self.delete_snapshot(obj)
+                else:
+                    self.delete_volume(obj)
+                obj_update['status'] = 'deleted'
+            except (utils.HBSDError, exception.VolumeIsBusy,
+                    exception.SnapshotIsBusy) as exc:
+                obj_update['status'] = 'available' if isinstance(
+                    exc, (exception.VolumeIsBusy,
+                          exception.SnapshotIsBusy)) else 'error'
+                utils.output_log(
+                    MSG.GROUP_OBJECT_DELETE_FAILED,
+                    obj='snapshot' if is_snapshot else 'volume',
+                    group='group snapshot' if is_snapshot else 'group',
+                    group_id=group.id, obj_id=obj.id, ldev=utils.get_ldev(obj),
+                    reason=exc.msg)
+            raise loopingcall.LoopingCallDone(obj_update)
+
+        for obj in objs:
+            loop = loopingcall.FixedIntervalLoopingCall(
+                _delete_group_obj, group, obj, is_snapshot)
+            event = loop.start(interval=0)
+            events.append(event)
+        for e in events:
+            obj_update = e.wait()
+            if obj_update['status'] != 'deleted':
+                model_update['status'] = 'error'
+            objs_model_update.append(obj_update)
+        return model_update, objs_model_update
+
+    def delete_group(self, group, volumes):
+        return self._delete_group(group, volumes, False)
+
+    def delete_group_snapshot(self, group_snapshot, snapshots):
+        return self._delete_group(group_snapshot, snapshots, True)
+
+    def create_group_from_src(
+            self, context, group, volumes, snapshots=None, source_vols=None):
+        volumes_model_update = []
+        new_ldevs = []
+        events = []
+
+        def _create_group_volume_from_src(context, volume, src, from_snapshot):
+            volume_model_update = {'id': volume.id}
+            try:
+                ldev = utils.get_ldev(src)
+                if ldev is None:
+                    msg = utils.output_log(
+                        MSG.INVALID_LDEV_FOR_VOLUME_COPY,
+                        type='snapshot' if from_snapshot else 'volume',
+                        id=src.id)
+                    raise utils.HBSDError(msg)
+                volume_model_update.update(
+                    self.create_volume_from_snapshot(volume, src) if
+                    from_snapshot else self.create_cloned_volume(volume,
+                                                                 src))
+            except Exception as exc:
+                volume_model_update['msg'] = utils.get_exception_msg(exc)
+            raise loopingcall.LoopingCallDone(volume_model_update)
+
+        try:
+            from_snapshot = True if snapshots else False
+            for volume, src in zip(volumes,
+                                   snapshots if snapshots else source_vols):
+                loop = loopingcall.FixedIntervalLoopingCall(
+                    _create_group_volume_from_src, context, volume, src,
+                    from_snapshot)
+                event = loop.start(interval=0)
+                events.append(event)
+            is_success = True
+            for e in events:
+                volume_model_update = e.wait()
+                if 'msg' in volume_model_update:
+                    is_success = False
+                    msg = volume_model_update['msg']
+                else:
+                    volumes_model_update.append(volume_model_update)
+                ldev = utils.get_ldev(volume_model_update)
+                if ldev is not None:
+                    new_ldevs.append(ldev)
+            if not is_success:
+                raise utils.HBSDError(msg)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                for new_ldev in new_ldevs:
+                    try:
+                        self.delete_ldev(new_ldev)
+                    except utils.HBSDError:
+                        utils.output_log(MSG.DELETE_LDEV_FAILED, ldev=new_ldev)
+        return None, volumes_model_update
+
+    def update_group(self, group, add_volumes=None):
+        if add_volumes and volume_utils.is_group_a_cg_snapshot_type(group):
+            for volume in add_volumes:
+                ldev = utils.get_ldev(volume)
+                if ldev is None:
+                    msg = utils.output_log(MSG.LDEV_NOT_EXIST_FOR_ADD_GROUP,
+                                           volume_id=volume.id,
+                                           group='consistency group',
+                                           group_id=group.id)
+                    raise utils.HBSDError(msg)
+        return None, None, None
+
+    def _create_non_cgsnapshot(self, group_snapshot, snapshots):
+        model_update = {'status': fields.GroupSnapshotStatus.AVAILABLE}
+        snapshots_model_update = []
+        events = []
+
+        def _create_non_cgsnapshot_snapshot(group_snapshot, snapshot):
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                snapshot_model_update.update(self.create_snapshot(snapshot))
+                snapshot_model_update['status'] = (
+                    fields.SnapshotStatus.AVAILABLE)
+            except Exception:
+                snapshot_model_update['status'] = fields.SnapshotStatus.ERROR
+                utils.output_log(
+                    MSG.GROUP_SNAPSHOT_CREATE_FAILED,
+                    group=group_snapshot.group_id,
+                    group_snapshot=group_snapshot.id,
+                    group_type=group_snapshot.group_type_id,
+                    volume=snapshot.volume_id, snapshot=snapshot.id)
+            raise loopingcall.LoopingCallDone(snapshot_model_update)
+
+        for snapshot in snapshots:
+            loop = loopingcall.FixedIntervalLoopingCall(
+                _create_non_cgsnapshot_snapshot, group_snapshot, snapshot)
+            event = loop.start(interval=0)
+            events.append(event)
+        for e in events:
+            snapshot_model_update = e.wait()
+            if (snapshot_model_update['status'] ==
+                    fields.SnapshotStatus.ERROR):
+                model_update['status'] = fields.GroupSnapshotStatus.ERROR
+            snapshots_model_update.append(snapshot_model_update)
+        return model_update, snapshots_model_update
+
+    def _create_ctg_snapshot_group_name(self, ldev):
+        now = timeutils.utcnow()
+        strnow = now.strftime("%y%m%d%H%M%S%f")
+        ctg_name = '%(prefix)sC%(ldev)s%(time)s' % {
+            'prefix': utils.DRIVER_PREFIX,
+            'ldev': "{0:06X}".format(ldev),
+            'time': strnow[:len(strnow) - 3],
+        }
+        return ctg_name[:_MAX_COPY_GROUP_NAME]
+
+    def _delete_pairs_from_storage(self, pairs):
+        for pair in pairs:
+            try:
+                self._delete_pair_from_storage(pair['pvol'], pair['svol'])
+            except utils.HBSDError:
+                utils.output_log(MSG.DELETE_PAIR_FAILED, pvol=pair['pvol'],
+                                 svol=pair['svol'])
+
+    def _create_ctg_snap_pair(self, pairs):
+        snapshotgroup_name = self._create_ctg_snapshot_group_name(
+            pairs[0]['pvol'])
+        try:
+            for pair in pairs:
+                try:
+                    body = {"snapshotGroupName": snapshotgroup_name,
+                            "snapshotPoolId":
+                                self.storage_info['snap_pool_id'],
+                            "pvolLdevId": pair['pvol'],
+                            "svolLdevId": pair['svol'],
+                            "isConsistencyGroup": True,
+                            "canCascade": True,
+                            "isDataReductionForceCopy": True}
+                    self.client.add_snapshot(body)
+                except utils.HBSDError as ex:
+                    if ((utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
+                         _MAX_CTG_COUNT_EXCEEDED_ADD_SNAPSHOT) or
+                        (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
+                         _MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT)):
+                        msg = utils.output_log(MSG.FAILED_CREATE_CTG_SNAPSHOT)
+                        raise utils.HBSDError(msg)
+                    elif (utils.safe_get_err_code(ex.kwargs.get('errobj')) ==
+                            rest_api.INVALID_SNAPSHOT_POOL and
+                            not self.conf.hitachi_snap_pool):
+                        msg = utils.output_log(
+                            MSG.INVALID_PARAMETER, param='hitachi_snap_pool')
+                        raise utils.HBSDError(msg)
+                    raise
+                self._wait_copy_pair_status(pair['svol'], PAIR)
+            self.client.split_snapshotgroup(snapshotgroup_name)
+            for pair in pairs:
+                self._wait_copy_pair_status(pair['svol'], PSUS)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                self._delete_pairs_from_storage(pairs)
+
+    def _create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        pairs = []
+        events = []
+        snapshots_model_update = []
+
+        def _create_cgsnapshot_volume(snapshot):
+            pair = {'snapshot': snapshot}
+            try:
+                pair['pvol'] = utils.get_ldev(snapshot.volume)
+                if pair['pvol'] is None:
+                    msg = utils.output_log(
+                        MSG.INVALID_LDEV_FOR_VOLUME_COPY,
+                        type='volume', id=snapshot.volume_id)
+                    raise utils.HBSDError(msg)
+                size = snapshot.volume_size
+                pair['svol'] = self.create_ldev(size)
+            except Exception as exc:
+                pair['msg'] = utils.get_exception_msg(exc)
+            raise loopingcall.LoopingCallDone(pair)
+
+        try:
+            for snapshot in snapshots:
+                ldev = utils.get_ldev(snapshot.volume)
+                if ldev is None:
+                    msg = utils.output_log(
+                        MSG.INVALID_LDEV_FOR_VOLUME_COPY, type='volume',
+                        id=snapshot.volume_id)
+                    raise utils.HBSDError(msg)
+            for snapshot in snapshots:
+                loop = loopingcall.FixedIntervalLoopingCall(
+                    _create_cgsnapshot_volume, snapshot)
+                event = loop.start(interval=0)
+                events.append(event)
+            is_success = True
+            for e in events:
+                pair = e.wait()
+                if 'msg' in pair:
+                    is_success = False
+                    msg = pair['msg']
+                pairs.append(pair)
+            if not is_success:
+                raise utils.HBSDError(msg)
+            self._create_ctg_snap_pair(pairs)
+        except Exception:
+            for pair in pairs:
+                if 'svol' in pair and pair['svol'] is not None:
+                    try:
+                        self.delete_ldev(pair['svol'])
+                    except utils.HBSDError:
+                        utils.output_log(
+                            MSG.DELETE_LDEV_FAILED, ldev=pair['svol'])
+            model_update = {'status': fields.GroupSnapshotStatus.ERROR}
+            for snapshot in snapshots:
+                snapshot_model_update = {'id': snapshot.id,
+                                         'status': fields.SnapshotStatus.ERROR}
+                snapshots_model_update.append(snapshot_model_update)
+            return model_update, snapshots_model_update
+        for pair in pairs:
+            snapshot_model_update = {
+                'id': pair['snapshot'].id,
+                'status': fields.SnapshotStatus.AVAILABLE,
+                'provider_location': str(pair['svol'])}
+            snapshots_model_update.append(snapshot_model_update)
+        return None, snapshots_model_update
+
+    def create_group_snapshot(self, context, group_snapshot, snapshots):
+        if volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+            return self._create_cgsnapshot(context, group_snapshot, snapshots)
+        else:
+            return self._create_non_cgsnapshot(group_snapshot, snapshots)

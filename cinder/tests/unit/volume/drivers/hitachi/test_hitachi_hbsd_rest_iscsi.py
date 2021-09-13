@@ -22,17 +22,21 @@ import requests
 from cinder import context as cinder_context
 from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
+from cinder.objects import group_snapshot as obj_group_snap
 from cinder.objects import snapshot as obj_snap
+from cinder.tests.unit import fake_group
+from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test
-from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hbsd_common
 from cinder.volume.drivers.hitachi import hbsd_iscsi
 from cinder.volume.drivers.hitachi import hbsd_rest
+from cinder.volume.drivers.hitachi import hbsd_utils
 from cinder.volume import volume_types
+from cinder.volume import volume_utils
 
 # Configuration parameter values
 CONFIG_MAP = {
@@ -63,11 +67,14 @@ DEFAULT_CONNECTOR = {
 CTXT = cinder_context.get_admin_context()
 
 TEST_VOLUME = []
-for i in range(3):
+for i in range(4):
     volume = {}
     volume['id'] = '00000000-0000-0000-0000-{0:012d}'.format(i)
     volume['name'] = 'test-volume{0:d}'.format(i)
-    volume['provider_location'] = '{0:d}'.format(i)
+    if i == 3:
+        volume['provider_location'] = None
+    else:
+        volume['provider_location'] = '{0:d}'.format(i)
     volume['size'] = 128
     if i == 2:
         volume['status'] = 'in-use'
@@ -96,6 +103,23 @@ snapshot = obj_snap.Snapshot._from_db_object(
     CTXT, obj_snap.Snapshot(),
     fake_snapshot.fake_db_snapshot(**snapshot))
 TEST_SNAPSHOT.append(snapshot)
+
+TEST_GROUP = []
+for i in range(2):
+    group = {}
+    group['id'] = '20000000-0000-0000-0000-{0:012d}'.format(i)
+    group['status'] = 'available'
+    group = fake_group.fake_group_obj(CTXT, **group)
+    TEST_GROUP.append(group)
+
+TEST_GROUP_SNAP = []
+group_snapshot = {}
+group_snapshot['id'] = '30000000-0000-0000-0000-{0:012d}'.format(0)
+group_snapshot['status'] = 'available'
+group_snapshot = obj_group_snap.GroupSnapshot._from_db_object(
+    CTXT, obj_group_snap.GroupSnapshot(),
+    fake_group_snapshot.fake_db_group_snapshot(**group_snapshot))
+TEST_GROUP_SNAP.append(group_snapshot)
 
 # Dummy response for REST API
 POST_SESSIONS_RESULT = {
@@ -205,6 +229,18 @@ GET_SNAPSHOTS_RESULT = {
     ],
 }
 
+GET_SNAPSHOTS_RESULT_PAIR = {
+    "data": [
+        {
+            "primaryOrSecondary": "S-VOL",
+            "status": "PAIR",
+            "pvolLdevId": 0,
+            "muNumber": 1,
+            "svolLdevId": 1,
+        },
+    ],
+}
+
 GET_LDEVS_RESULT = {
     "data": [
         {
@@ -301,6 +337,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
             'rest_server_ip_port']
         self.configuration.hitachi_rest_tcp_keepalive = True
         self.configuration.hitachi_discard_zero_page = True
+        self.configuration.hitachi_rest_number = "0"
 
         self.configuration.use_chap_auth = True
         self.configuration.chap_username = CONFIG_MAP['auth_user']
@@ -330,7 +367,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
-        utils, 'brick_get_connector_properties',
+        volume_utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     def _setup_driver(
             self, brick_get_connector_properties=None, request=None):
@@ -360,7 +397,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
     # API test cases
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
-        utils, 'brick_get_connector_properties',
+        volume_utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     def test_do_setup(self, brick_get_connector_properties, request):
         drv = hbsd_iscsi.HBSDISCSIDriver(
@@ -386,7 +423,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
 
     @mock.patch.object(requests.Session, "request")
     @mock.patch.object(
-        utils, 'brick_get_connector_properties',
+        volume_utils, 'brick_get_connector_properties',
         side_effect=_brick_get_connector_properties)
     def test_do_setup_create_hg(self, brick_get_connector_properties, request):
         """Normal case: The host group not exists."""
@@ -700,3 +737,143 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         self.driver.revert_to_snapshot(
             self.ctxt, TEST_VOLUME[0], TEST_SNAPSHOT[0])
         self.assertEqual(5, request.call_count)
+
+    def test_create_group(self):
+        ret = self.driver.create_group(self.ctxt, TEST_GROUP[0])
+        self.assertIsNone(ret)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_group(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        ret = self.driver.delete_group(
+            self.ctxt, TEST_GROUP[0], [TEST_VOLUME[0]])
+        self.assertEqual(4, request.call_count)
+        actual = (
+            {'status': TEST_GROUP[0]['status']},
+            [{'id': TEST_VOLUME[0]['id'], 'status': 'deleted'}]
+        )
+        self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_create_group_from_src_volume(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        ret = self.driver.create_group_from_src(
+            self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
+            source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[0]]
+        )
+        self.assertEqual(5, request.call_count)
+        actual = (
+            None, [{'id': TEST_VOLUME[1]['id'], 'provider_location': '1'}])
+        self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_create_group_from_src_snapshot(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        ret = self.driver.create_group_from_src(
+            self.ctxt, TEST_GROUP[0], [TEST_VOLUME[0]],
+            group_snapshot=TEST_GROUP_SNAP[0], snapshots=[TEST_SNAPSHOT[0]]
+        )
+        self.assertEqual(5, request.call_count)
+        actual = (
+            None, [{'id': TEST_VOLUME[0]['id'], 'provider_location': '1'}])
+        self.assertTupleEqual(actual, ret)
+
+    def test_create_group_from_src_volume_error(self):
+        self.assertRaises(
+            hbsd_utils.HBSDError, self.driver.create_group_from_src,
+            self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
+            source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[3]]
+        )
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_update_group(self, is_group_a_cg_snapshot_type):
+        is_group_a_cg_snapshot_type.return_value = False
+        ret = self.driver.update_group(
+            self.ctxt, TEST_GROUP[0], add_volumes=[TEST_VOLUME[0]])
+        self.assertTupleEqual((None, None, None), ret)
+
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_update_group_error(self, is_group_a_cg_snapshot_type):
+        is_group_a_cg_snapshot_type.return_value = True
+        self.assertRaises(
+            hbsd_utils.HBSDError, self.driver.update_group,
+            self.ctxt, TEST_GROUP[0], add_volumes=[TEST_VOLUME[3]],
+            remove_volumes=[TEST_VOLUME[0]]
+        )
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_create_group_snapshot_non_cg(
+            self, is_group_a_cg_snapshot_type, volume_get, request):
+        is_group_a_cg_snapshot_type.return_value = False
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        ret = self.driver.create_group_snapshot(
+            self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
+        )
+        self.assertEqual(4, request.call_count)
+        actual = (
+            {'status': 'available'},
+            [{'id': TEST_SNAPSHOT[0]['id'],
+              'provider_location': '1',
+              'status': 'available'}]
+        )
+        self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(requests.Session, "request")
+    @mock.patch.object(sqlalchemy_api, 'volume_get', side_effect=_volume_get)
+    @mock.patch.object(volume_utils, 'is_group_a_cg_snapshot_type')
+    def test_create_group_snapshot_cg(
+            self, is_group_a_cg_snapshot_type, volume_get, request):
+        is_group_a_cg_snapshot_type.return_value = True
+        request.side_effect = [FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT_PAIR),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT)]
+        ret = self.driver.create_group_snapshot(
+            self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]]
+        )
+        self.assertEqual(5, request.call_count)
+        actual = (
+            None,
+            [{'id': TEST_SNAPSHOT[0]['id'],
+              'provider_location': '1',
+              'status': 'available'}]
+        )
+        self.assertTupleEqual(actual, ret)
+
+    @mock.patch.object(requests.Session, "request")
+    def test_delete_group_snapshot(self, request):
+        request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_PAIR),
+                               FakeResponse(200, NOTFOUND_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(200, GET_SNAPSHOTS_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(200, GET_LDEV_RESULT),
+                               FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
+        ret = self.driver.delete_group_snapshot(
+            self.ctxt, TEST_GROUP_SNAP[0], [TEST_SNAPSHOT[0]])
+        self.assertEqual(10, request.call_count)
+        actual = (
+            {'status': TEST_GROUP_SNAP[0]['status']},
+            [{'id': TEST_SNAPSHOT[0]['id'], 'status': 'deleted'}]
+        )
+        self.assertTupleEqual(actual, ret)
