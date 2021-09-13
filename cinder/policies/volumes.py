@@ -31,40 +31,84 @@ MIG_ATTRIBUTE_POLICY = "volume_extension:volume_mig_status_attribute"
 ENCRYPTION_METADATA_POLICY = "volume_extension:volume_encryption_metadata"
 MULTIATTACH_POLICY = "volume:multiattach"
 
+deprecated_create_volume = base.CinderDeprecatedRule(
+    name=CREATE_POLICY,
+    check_str=""
+)
+deprecated_create_volume_from_image = base.CinderDeprecatedRule(
+    name=CREATE_FROM_IMAGE_POLICY,
+    check_str=""
+)
+deprecated_get_volume = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_get_all_volumes = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_update_volume = base.CinderDeprecatedRule(
+    name=UPDATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_delete_volume = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_get_tenant_attributes = base.CinderDeprecatedRule(
+    name=TENANT_ATTRIBUTE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_get_encryption_metadata = base.CinderDeprecatedRule(
+    name=ENCRYPTION_METADATA_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_create_multiattach_volume = base.CinderDeprecatedRule(
+    name=MULTIATTACH_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
+
 volumes_policies = [
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create volume.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/volumes'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_volume
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_FROM_IMAGE_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create volume from image.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/volumes'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_volume_from_image
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show volume.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/volumes/{volume_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_volume
+    ),
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List volumes or get summary of volumes.",
         operations=[
             {
@@ -79,10 +123,12 @@ volumes_policies = [
                 'method': 'GET',
                 'path': '/volumes/summary'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_volumes
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update volume or update a volume's bootable status.",
         operations=[
             {
@@ -95,17 +141,21 @@ volumes_policies = [
                 'method': 'POST',
                 'path': '/volumes/{volume_id}/action (os-set_bootable)'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_volume
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete volume.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/volumes/{volume_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_volume
+    ),
     policy.DocumentedRuleDefault(
         name=FORCE_DELETE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -115,7 +165,8 @@ volumes_policies = [
                 'method': 'DELETE',
                 'path': '/volumes/{volume_id}'
             }
-        ]),
+        ],
+    ),
     policy.DocumentedRuleDefault(
         name=HOST_ATTRIBUTE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -132,7 +183,7 @@ volumes_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=TENANT_ATTRIBUTE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List or show volume with tenant attribute.",
         operations=[
             {
@@ -143,7 +194,9 @@ volumes_policies = [
                 'method': 'GET',
                 'path': '/volumes/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_tenant_attributes
+    ),
     policy.DocumentedRuleDefault(
         name=MIG_ATTRIBUTE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -160,7 +213,7 @@ volumes_policies = [
         ]),
     policy.DocumentedRuleDefault(
         name=ENCRYPTION_METADATA_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show volume's encryption metadata.",
         operations=[
             {
@@ -171,17 +224,21 @@ volumes_policies = [
                 'method': 'GET',
                 'path': '/volumes/{volume_id}/encryption/{encryption_key}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_encryption_metadata
+    ),
     policy.DocumentedRuleDefault(
         name=MULTIATTACH_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create multiattach capable volume.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/volumes'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_multiattach_volume
+    ),
 ]
 
 
