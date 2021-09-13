@@ -157,16 +157,22 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(expected_stats, self.driver._stats)
 
     @ddt.data({'replication_backends': [],
-               'cluster_credentials': False, 'is_fg': False},
+               'cluster_credentials': False, 'is_fg': False,
+               'report_provisioned_capacity': True},
               {'replication_backends': ['target_1', 'target_2'],
-               'cluster_credentials': True, 'is_fg': False},
+               'cluster_credentials': True, 'is_fg': False,
+               'report_provisioned_capacity': False},
               {'replication_backends': ['target_1', 'target_2'],
-               'cluster_credentials': True, 'is_fg': True}
+               'cluster_credentials': True, 'is_fg': True,
+               'report_provisioned_capacity': False}
               )
     @ddt.unpack
     def test_get_pool_stats(self, replication_backends, cluster_credentials,
-                            is_fg):
+                            is_fg, report_provisioned_capacity):
         self.driver.using_cluster_credentials = cluster_credentials
+        conf = self.driver.configuration
+        conf.netapp_driver_reports_provisioned_capacity = (
+            report_provisioned_capacity)
         self.driver.zapi_client = mock.Mock()
         ssc = {
             'vola': {
@@ -204,9 +210,19 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
         }
+        files_provisioned_cap = [{
+            'name': 'volume-ae947c9b-2392-4956-b373-aaac4521f37e',
+            'file-size': 5368709120.0  # 5GB
+        }, {
+            'name': 'snapshot-527eedad-a431-483d-b0ca-18995dd65b66',
+            'file-size': 1073741824.0  # 1GB
+        }]
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
                          return_value=capacity)
+        self.mock_object(self.driver.zapi_client,
+                         'get_file_sizes_by_dir',
+                         return_value=files_provisioned_cap)
         self.mock_object(self.driver.zapi_client,
                          'get_flexvol_dedupe_used_percent',
                          return_value=55.0)
@@ -255,6 +271,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'online_extend_support': False,
             'netapp_is_flexgroup': 'false',
         }]
+        if report_provisioned_capacity:
+            expected[0].update({'provisioned_capacity_gb': 5.0})
 
         expected[0].update({'QoS_support': cluster_credentials})
         if not cluster_credentials:

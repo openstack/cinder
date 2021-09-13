@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    NetApp ONTAP driver: added option
+    ´netapp_driver_reports_provisioned_capacity´, which enables the driver
+    to calculate and report provisioned capacity to Cinder Scheduler based
+    on volumes sizes in the storage system.

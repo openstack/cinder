@@ -333,6 +333,19 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             size_available_gb = capacity['size-available'] / units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
+            if self.configuration.netapp_driver_reports_provisioned_capacity:
+                luns = self.zapi_client.get_lun_sizes_by_volume(
+                    ssc_vol_name)
+                provisioned_cap = 0
+                for lun in luns:
+                    lun_name = lun['path'].split('/')[-1]
+                    # Filtering luns that matches the volume name template to
+                    # exclude snapshots
+                    if volume_utils.extract_id_from_volume_name(lun_name):
+                        provisioned_cap = provisioned_cap + lun['size']
+                pool['provisioned_capacity_gb'] = na_utils.round_down(
+                    float(provisioned_cap) / units.Gi)
+
             if self.using_cluster_credentials:
                 dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
                     ssc_vol_name)

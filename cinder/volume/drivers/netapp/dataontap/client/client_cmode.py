@@ -390,6 +390,71 @@ class Client(client_base.Client):
         LOG.debug('No iSCSI service found for vserver %s', self.vserver)
         return None
 
+    def get_lun_sizes_by_volume(self, volume_name):
+        """"Gets the list of LUNs and their sizes from a given volume name"""
+
+        api_args = {
+            'query': {
+                'lun-info': {
+                    'volume': volume_name
+                }
+            },
+            'desired-attributes': {
+                'lun-info': {
+                    'path': None,
+                    'size': None
+                }
+            }
+        }
+        result = self.send_iter_request(
+            'lun-get-iter', api_args, max_page_length=100)
+
+        if not self._has_records(result):
+            return []
+
+        attributes_list = result.get_child_by_name('attributes-list')
+
+        luns = []
+        for lun_info in attributes_list.get_children():
+            luns.append({
+                'path': lun_info.get_child_content('path'),
+                'size': float(lun_info.get_child_content('size'))
+            })
+        return luns
+
+    def get_file_sizes_by_dir(self, dir_path):
+        """Gets the list of files and their sizes from a given directory."""
+
+        api_args = {
+            'path': '/vol/%s' % dir_path,
+            'query': {
+                'file-info': {
+                    'file-type': 'file'
+                }
+            },
+            'desired-attributes': {
+                'file-info': {
+                    'name': None,
+                    'file-size': None
+                }
+            }
+        }
+        result = self.send_iter_request(
+            'file-list-directory-iter', api_args, max_page_length=100)
+
+        if not self._has_records(result):
+            return []
+
+        attributes_list = result.get_child_by_name('attributes-list')
+
+        files = []
+        for file_info in attributes_list.get_children():
+            files.append({
+                'name': file_info.get_child_content('name'),
+                'file-size': float(file_info.get_child_content('file-size'))
+            })
+        return files
+
     def get_lun_list(self):
         """Gets the list of LUNs on filer.
 

@@ -27,6 +27,7 @@ import uuid
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import excutils
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -390,6 +391,14 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             nfs_share = ssc_vol_info['pool_name']
             capacity = self._get_share_capacity_info(nfs_share)
             pool.update(capacity)
+            if self.configuration.netapp_driver_reports_provisioned_capacity:
+                files = self.zapi_client.get_file_sizes_by_dir(ssc_vol_name)
+                provisioned_cap = 0
+                for f in files:
+                    if volume_utils.extract_id_from_volume_name(f['name']):
+                        provisioned_cap = provisioned_cap + f['file-size']
+                pool['provisioned_capacity_gb'] = na_utils.round_down(
+                    float(provisioned_cap) / units.Gi)
 
             if self.using_cluster_credentials and not is_flexgroup:
                 dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
