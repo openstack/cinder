@@ -19,18 +19,25 @@ from cinder.policies import base
 
 EXTEND_LIMIT_ATTRIBUTE_POLICY = "limits_extension:used_limits"
 
+deprecated_limits = base.CinderDeprecatedRule(
+    name=EXTEND_LIMIT_ATTRIBUTE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
 
 limits_policies = [
     policy.DocumentedRuleDefault(
         name=EXTEND_LIMIT_ATTRIBUTE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show limits with used limit attributes.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/limits'
             }
-        ])
+        ],
+        deprecated_rule=deprecated_limits,
+    )
 ]
 
 

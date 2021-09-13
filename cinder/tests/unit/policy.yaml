@@ -129,10 +129,6 @@
 # PUT  /os-services/{action}
 #"volume_extension:services:update": "rule:admin_api"
 
-# Show limits with used limit attributes.
-# GET  /limits
-"limits_extension:used_limits": ""
-
 # Create, update and delete volume type.
 # POST  /types
 # PUT  /types
