@@ -703,3 +703,62 @@ class STXClient(object):
             LOG.debug("Array firmware is %s (%s%d)\n",
                       s, self._fw_type, self._fw_rev)
         return s
+
+    def get_volumes(self, filter_type=None):
+        """Get a list of volumes and snapshots"""
+
+        serial_number_to_name = {}
+        result = {}
+
+        # first get volume mappings so we note which volumes are mapped
+        mapping_list = self._request("/show/maps").xpath(
+            "//OBJECT[@name='volume-view']")
+        maps = {}
+        for m in mapping_list:
+            for el in m:
+                if el.attrib['name'] == 'volume-name':
+                    maps[el.text] = 1
+
+        volume_list = self._request("/show/volumes").xpath(
+            "//OBJECT[@name='volume']")
+        for v in volume_list:
+            vol = {}
+            for el in v:
+                key = el.attrib['name']
+                value = el.text
+                vol[key] = value
+
+            name = vol['volume-name']
+            type = vol['volume-type']
+            if type == 'base':
+                type = 'volume'
+            sn = vol['serial-number']
+            wwn = vol['wwn']
+            pool = vol['storage-pool-name']
+            size = int((int(vol['size-numeric']) * 512) / 2**30)
+            mapped = name in maps
+            parent_sn = vol['volume-parent']
+
+            serial_number_to_name[sn] = name
+
+            if filter_type:
+                if type != filter_type:
+                    continue
+
+            result[name] = {
+                'name': name,                 # 32-byte array volume name
+                'type': type,                 # 'volume' or 'snapshot'
+                'size': size,                 # size in GiB (int)
+                'serial': sn,                 # serial number
+                'wwn': wwn,                   # world wide name
+                'pool': pool,                 # storage pool name
+                'mapped': mapped,             # is mapped?
+                'parent_serial': parent_sn,   # parent serial number, or None
+            }
+
+        # Now that we've seen all the volumes, we can map the parent serial
+        # number to a name.
+        for v in result.values():
+            v['parent'] = serial_number_to_name.get(v['parent_serial'], None)
+
+        return result

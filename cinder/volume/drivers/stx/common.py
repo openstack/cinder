@@ -127,6 +127,10 @@ class STXCommon(object):
         snapshot_name = self._encode_name(snapshot_id)
         return "s%s" % snapshot_name
 
+    def _get_backend_volume_name(self, id, type='volume'):
+        name = self._encode_name(id)
+        return "%s%s" % (type[0], name)
+
     def _encode_name(self, name):
         """Get converted array volume name.
 
@@ -509,12 +513,34 @@ class STXCommon(object):
         finally:
             self.client_logout()
 
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Import an existing snapshot into Cinder."""
+
+        old_snap_name = existing_ref['source-name']
+        new_snap_name = self._get_snap_name(snapshot.id)
+        LOG.info("Renaming existing snapshot %(old_name)s to "
+                 "%(new_name)s", {"old_name": old_snap_name,
+                                  "new_name": new_snap_name})
+
+        self.client_login()
+        try:
+            self.client.modify_volume_name(old_snap_name,
+                                           new_snap_name)
+        except stx_exception.RequestError as ex:
+            LOG.exception("Error managing existing snapshot.")
+            raise exception.Invalid(ex)
+        finally:
+            self.client_logout()
+
+        return None
+
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
 
         existing_ref is a dictionary of the form:
         {'source-name': <name of the volume>}
         """
+
         target_vol_name = existing_ref['source-name']
 
         self.client_login()
@@ -526,3 +552,69 @@ class STXCommon(object):
             raise exception.Invalid(ex)
         finally:
             self.client_logout()
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of volume to be managed by manage_existing."""
+        return self.manage_existing_get_size(snapshot, existing_ref)
+
+    def _get_manageable_vols(self, cinder_resources, resource_type,
+                             marker, limit, offset, sort_keys,
+                             sort_dirs):
+        """List volumes or snapshots on the backend."""
+
+        # We can't translate a backend volume name into a Cinder id
+        # directly, so we create a map to do it.
+        volume_name_to_id = {}
+        for resource in cinder_resources:
+            key = self._get_backend_volume_name(resource['id'], resource_type)
+            value = resource['id']
+            volume_name_to_id[key] = value
+
+        self.client_login()
+        try:
+            vols = self.client.get_volumes(filter_type=resource_type)
+        except stx_exception.RequestError as ex:
+            LOG.exception("Error getting manageable volumes.")
+            raise exception.Invalid(ex)
+        finally:
+            self.client_logout()
+
+        entries = []
+        for vol in vols.values():
+            vol_info = {'reference': {'source-name': vol['name']},
+                        'size': vol['size'],
+                        'cinder_id': None,
+                        'extra_info': None}
+
+            potential_id = volume_name_to_id.get(vol['name'])
+            if potential_id:
+                vol_info['safe_to_manage'] = False
+                vol_info['reason_not_safe'] = 'already managed'
+                vol_info['cinder_id'] = potential_id
+            elif vol['mapped']:
+                vol_info['safe_to_manage'] = False
+                vol_info['reason_not_safe'] = '%s in use' % resource_type
+            else:
+                vol_info['safe_to_manage'] = True
+                vol_info['reason_not_safe'] = None
+
+            if resource_type == 'snapshot':
+                origin = vol['parent']
+                vol_info['source_reference'] = {'source-name': origin}
+
+            entries.append(vol_info)
+
+        return volume_utils.paginate_entries_list(entries, marker, limit,
+                                                  offset, sort_keys, sort_dirs)
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        return self._get_manageable_vols(cinder_volumes, 'volume',
+                                         marker, limit,
+                                         offset, sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        return self._get_manageable_vols(cinder_snapshots, 'snapshot',
+                                         marker, limit,
+                                         offset, sort_keys, sort_dirs)
