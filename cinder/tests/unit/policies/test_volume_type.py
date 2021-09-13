@@ -14,17 +14,108 @@
 import http.client
 from unittest import mock
 
+import ddt
+
 from cinder.api.contrib import volume_type_encryption as vol_type_enc
+from cinder.api import microversions as mv
+from cinder.api.v3 import types
 from cinder import db
+from cinder.policies import volume_type as type_policy
+from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit import fake_constants
+from cinder.tests.unit.policies import base
 from cinder.tests.unit.policies import test_base
 
 
-class VolumeTypePolicyTests(test_base.CinderPolicyTests):
+@ddt.ddt
+class VolumeTypePolicyTest(base.BasePolicyTest):
     """Verify default policy settings for the types API"""
 
-    # TODO: add some tests!
-    pass
+    # legacy: everyone can make these calls
+    authorized_readers = [
+        'legacy_admin',
+        'legacy_owner',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+        'project_foo',
+        'system_member',
+        'system_reader',
+        'system_foo',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    unauthorized_readers = []
+
+    unauthorized_exceptions = []
+
+    # Basic policy test is without enforcing scope (which cinder doesn't
+    # yet support) and deprecated rules enabled.
+    def setUp(self, enforce_scope=False, enforce_new_defaults=False,
+              *args, **kwargs):
+        super().setUp(enforce_scope, enforce_new_defaults, *args, **kwargs)
+        self.controller = types.VolumeTypesController()
+        self.api_path = '/v3/%s/types' % (self.project_id)
+        self.api_version = mv.BASE_VERSION
+
+    @ddt.data(*base.all_users)
+    def test_type_get_all_policy(self, user_id):
+        rule_name = type_policy.GET_ALL_POLICY
+        url = self.api_path
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        self.common_policy_check(user_id,
+                                 self.authorized_readers,
+                                 self.unauthorized_readers,
+                                 self.unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller.index,
+                                 req)
+
+    @ddt.data(*base.all_users)
+    def test_type_get_policy(self, user_id):
+        rule_name = type_policy.GET_POLICY
+        # the default type is guaranteed to exist
+        url = self.api_path + '/default'
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        self.common_policy_check(user_id,
+                                 self.authorized_readers,
+                                 self.unauthorized_readers,
+                                 self.unauthorized_exceptions,
+                                 rule_name,
+                                 self.controller.show,
+                                 req,
+                                 'default')
+
+
+class VolumeTypePolicySecureRbacTest(VolumeTypePolicyTest):
+
+    authorized_readers = [
+        'legacy_admin',
+        'system_admin',
+        'project_admin',
+        'project_member',
+        'project_reader',
+        'system_member',
+        'system_reader',
+        'other_project_member',
+        'other_project_reader',
+    ]
+
+    unauthorized_readers = [
+        'legacy_owner',
+        'project_foo',
+        'system_foo',
+    ]
+
+    unauthorized_exceptions = []
+
+    def setUp(self, *args, **kwargs):
+        # Test secure RBAC by disabling deprecated policy rules (scope
+        # is still not enabled).
+        super().setUp(enforce_scope=False, enforce_new_defaults=True,
+                      *args, **kwargs)
 
 
 class VolumeTypeEncryptionTypePolicyTests(test_base.CinderPolicyTests):
