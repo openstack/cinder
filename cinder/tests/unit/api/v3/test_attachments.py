@@ -18,16 +18,12 @@
 from unittest import mock
 
 import ddt
-from oslo_policy import policy as oslo_policy
 
 from cinder.api import microversions as mv
 from cinder.api.v3 import attachments as v3_attachments
 from cinder import context
 from cinder import exception
 from cinder import objects
-from cinder.policies import attachments as attachments_policies
-from cinder.policies import base as base_policy
-from cinder import policy
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
@@ -143,33 +139,6 @@ class AttachmentsAPITestCase(test.TestCase):
         self.assertRaises(exception.ValidationError,
                           self.controller.update, req,
                           self.attachment1.id, body=body)
-
-    @mock.patch('cinder.coordination.synchronized')
-    @mock.patch.object(objects.VolumeAttachment, 'get_by_id')
-    def test_attachment_operations_not_authorized(self, mock_get, mock_synch):
-        mock_get.return_value = self.attachment1
-        req = fakes.HTTPRequest.blank('/v3/%s/attachments/%s' %
-                                      (fake.PROJECT2_ID, self.attachment1.id),
-                                      version=mv.NEW_ATTACH,
-                                      use_admin_context=False)
-        body = {
-            "attachment":
-                {
-                    "connector": {'fake_key': 'fake_value',
-                                  'host': 'somehost'},
-                },
-        }
-        rules = {attachments_policies.UPDATE_POLICY:
-                 base_policy.RULE_ADMIN_OR_OWNER}
-        policy.set_rules(oslo_policy.Rules.from_dict(rules))
-        self.addCleanup(policy.reset)
-
-        self.assertRaises(exception.NotAuthorized,
-                          self.controller.update, req,
-                          self.attachment1.id, body=body)
-        self.assertRaises(exception.NotAuthorized,
-                          self.controller.delete, req,
-                          self.attachment1.id)
 
     @ddt.data(mv.get_prior_version(mv.RESOURCE_FILTER),
               mv.RESOURCE_FILTER, mv.LIKE_FILTER)
