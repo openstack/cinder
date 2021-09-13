@@ -40,7 +40,7 @@ class QuotaClassSetsController(wsgi.Controller):
 
     def show(self, req, id):
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.GET_POLICY)
         try:
             db.sqlalchemy.api.authorize_quota_class_context(context, id)
         except exception.NotAuthorized:
@@ -54,7 +54,7 @@ class QuotaClassSetsController(wsgi.Controller):
     @validation.schema(quota_class.update_quota_class)
     def update(self, req, id, body):
         context = req.environ['cinder.context']
-        context.authorize(policy.MANAGE_POLICY)
+        context.authorize(policy.UPDATE_POLICY)
         self.validate_string_length(id, 'quota_class_name',
                                     min_length=1, max_length=255)
 

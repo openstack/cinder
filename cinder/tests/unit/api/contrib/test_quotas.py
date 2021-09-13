@@ -134,6 +134,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         self.req.environ['cinder.context'].is_admin = False
         self.req.environ['cinder.context'].user_id = fake.USER_ID
         self.req.environ['cinder.context'].project_id = fake.PROJECT_ID
+        self.req.environ['cinder.context'].roles = ['member', 'reader']
         self.assertRaises(exception.PolicyNotAuthorized, self.controller.show,
                           self.req, fake.PROJECT2_ID)
 
