@@ -15,8 +15,6 @@
 
 from unittest import mock
 
-import webob
-
 from cinder.api import microversions as mv
 from cinder.api.v3 import default_types
 from cinder import context
@@ -190,38 +188,3 @@ class DefaultVolumeTypesApiTest(test.TestCase):
         self.controller.delete(req, fake.PROJECT_ID)
         res_dict_new = self.controller.index(req_admin)
         self.assertEqual(0, len(res_dict_new['default_types']))
-
-    def test_default_volume_types_create_update_other_project(self):
-        body = {
-            'default_type':
-                {'volume_type': 'volume_type1'}
-        }
-        req = fakes.HTTPRequest.blank('/v3/default-types/%s' %
-                                      fake.PROJECT_ID,
-                                      use_admin_context=True,
-                                      version=mv.DEFAULT_TYPE_OVERRIDES)
-        self.assertRaises(webob.exc.HTTPForbidden,
-                          self.controller.create_update, req,
-                          id=fake.PROJECT2_ID, body=body)
-
-    def test_default_volume_types_detail_other_project(self):
-        req = fakes.HTTPRequest.blank('/v3/default-types/%s' % fake.PROJECT_ID,
-                                      use_admin_context=True,
-                                      version=mv.DEFAULT_TYPE_OVERRIDES)
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.detail, req,
-                          fake.PROJECT2_ID)
-
-    def test_default_volume_types_index_no_system_scope(self):
-        self._set_default_type_system_scope(project_id=fake.PROJECT2_ID,
-                                            volume_type='volume_type2')
-        req = fakes.HTTPRequest.blank('/v3/default-types/',
-                                      use_admin_context=True,
-                                      version=mv.DEFAULT_TYPE_OVERRIDES)
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.index, req)
-
-    def test_default_volume_types_delete_other_project(self):
-        req = fakes.HTTPRequest.blank('/v3/default-types/',
-                                      use_admin_context=True,
-                                      version=mv.DEFAULT_TYPE_OVERRIDES)
-        self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete, req,
-                          fake.PROJECT2_ID)

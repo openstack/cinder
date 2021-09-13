@@ -22,33 +22,51 @@ GET_POLICY = "volume_extension:default_get"
 GET_ALL_POLICY = "volume_extension:default_get_all"
 DELETE_POLICY = "volume_extension:default_unset"
 
+deprecated_create_update_policy = base.CinderDeprecatedRule(
+    name=CREATE_UPDATE_POLICY,
+    check_str=base.SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN
+)
+deprecated_get_policy = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN
+)
+deprecated_get_all_policy = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.SYSTEM_ADMIN
+)
+deprecated_delete_policy = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN
+)
+
 default_type_policies = [
     policy.DocumentedRuleDefault(
         name=CREATE_UPDATE_POLICY,
-        check_str=base.SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN,
-        scope_types=['system'],
+        check_str=base.RULE_ADMIN_API,
         description="Set or update default volume type.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/default-types'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_update_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN,
-        scope_types=['system'],
+        check_str=base.RULE_ADMIN_API,
         description="Get default types.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/default-types/{project-id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.SYSTEM_ADMIN,
-        scope_types=['system'],
+        check_str=base.RULE_ADMIN_API,
         description="Get all default types. "
                     "WARNING: Changing this might open up too much "
                     "information regarding cloud deployment.",
@@ -57,18 +75,21 @@ default_type_policies = [
                 'method': 'GET',
                 'path': '/default-types/'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN,
-        scope_types=['system'],
+        check_str=base.RULE_ADMIN_API,
         description="Unset default type.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/default-types/{project-id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_policy,
+    ),
 ]
 
 

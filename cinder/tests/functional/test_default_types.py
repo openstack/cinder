@@ -90,27 +90,12 @@ class DefaultVolumeTypesTest(functional_helpers._FunctionalTestBase):
         default_types = self.api.get_default_type()
         self.assertEqual(0, len(default_types))
 
-    def test_default_type_set_not_authorized(self):
-        self.assertRaises(client.OpenStackApiException403,
-                          self.api.set_default_type,
-                          self.project.id,
-                          {'volume_type': self._vol_type_name})
-
     @mock.patch.object(context.RequestContext, 'authorize')
     def test_default_type_set_volume_type_not_found(self, mock_authorize):
         self.assertRaises(client.OpenStackApiException400,
                           self.api.set_default_type,
                           self.project.id,
                           {'volume_type': 'fake_type'})
-
-    def test_default_type_get_not_authorized(self):
-        self.assertRaises(client.OpenStackApiException403,
-                          self.api.get_default_type)
-
-    def test_default_type_unset_not_authorized(self):
-        self.assertRaises(client.OpenStackApiException403,
-                          self.api.unset_default_type,
-                          self.project.id)
 
     @mock.patch.object(context.RequestContext, 'authorize')
     def test_cannot_delete_project_default_type(self, mock_authorize):
