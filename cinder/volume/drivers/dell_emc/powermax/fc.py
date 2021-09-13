@@ -496,7 +496,7 @@ class PowerMaxFCDriver(san.SanDriver, driver.FibreChannelDriver):
                 # Get target WWN
                 port_details = self.rest.get_port(array_id, port)
                 port_info = port_details.get('symmetrixPort')
-                port_wwn = port_info.get('wwn_node')
+                port_wwn = port_info.get('identifier')
                 LOG.info("Port %(p)s WWN: %(wwn)s",
                          {'p': port, 'wwn': port_wwn})
                 # Set lowest load port WWN as FC target for connection
