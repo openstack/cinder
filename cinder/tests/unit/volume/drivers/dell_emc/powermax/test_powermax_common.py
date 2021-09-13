@@ -1708,7 +1708,7 @@ class PowerMaxCommonTest(test.TestCase):
     @mock.patch.object(common.PowerMaxCommon, '_get_replication_extra_specs',
                        return_value=tpd.PowerMaxData.rep_extra_specs)
     def test_get_target_wwns_from_masking_view(self, mock_rep_specs, mock_fo):
-        ref_wwns = [self.data.wwnn1]
+        ref_wwns = [self.data.wwpn1]
         for x in range(0, 2):
             target_wwns = self.common._get_target_wwns_from_masking_view(
                 self.data.device_id, self.data.connector['host'],

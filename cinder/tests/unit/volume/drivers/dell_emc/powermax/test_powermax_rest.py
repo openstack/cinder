@@ -997,7 +997,7 @@ class PowerMaxRestTest(test.TestCase):
     def test_get_target_wwns(self):
         array = self.data.array
         pg_name = self.data.port_group_name_f
-        ref_wwns = [self.data.wwnn1]
+        ref_wwns = [self.data.wwpn1]
         target_wwns = self.rest.get_target_wwns(array, pg_name)
         self.assertEqual(ref_wwns, target_wwns)
 

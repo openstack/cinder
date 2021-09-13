@@ -114,9 +114,9 @@ class PowerMaxData(object):
                  'host': 'HostX'}
 
     fabric_name_prefix = 'fakeFabric'
-    end_point_map = {connector['wwpns'][0]: [wwnn1],
-                     connector['wwpns'][1]: [wwnn1]}
-    target_wwns = [wwnn1]
+    end_point_map = {connector['wwpns'][0]: [wwpn1],
+                     connector['wwpns'][1]: [wwpn1]}
+    target_wwns = [wwpn1]
     target_wwns_multi = [wwnn1, wwnn2]
     zoning_mappings = {
         'array': u'000197800123',
@@ -674,7 +674,7 @@ class PowerMaxData(object):
     port_list = [
         {'symmetrixPort': {'num_of_masking_views': 1,
                            'maskingview': [masking_view_name_f],
-                           'identifier': wwnn1,
+                           'identifier': wwpn1,
                            'symmetrixPortKey': {
                                'directorId': 'FA-1D',
                                'portId': '4'},
