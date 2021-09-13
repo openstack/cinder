@@ -62,19 +62,6 @@
 # POST  /backups/{backup_id}/restore
 "backup:restore": ""
 
-# List groups.
-# GET  /groups
-# GET  /groups/detail
-"group:get_all": ""
-
-# Show group.
-# GET  /groups/{group_id}
-"group:get": ""
-
-# Update group.
-# PUT  /groups/{group_id}
-"group:update": ""
-
 # List group snapshots.
 # GET  /group_snapshots
 # GET  /group_snapshots/detail
@@ -95,10 +82,6 @@
 # Reset status of group snapshot.
 # POST  /group_snapshots/{g_snapshot_id}/action (reset_status)
 "group:reset_group_snapshot_status": ""
-
-# Delete group.
-# POST  /groups/{group_id}/action (delete)
-"group:delete": ""
 
 # Reset status of group.
 # POST  /groups/{group_id}/action (reset_status)

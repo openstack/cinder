@@ -23,11 +23,28 @@ GET_POLICY = 'group:get'
 GET_ALL_POLICY = 'group:get_all'
 GROUP_ATTRIBUTES_POLICY = 'group:group_project_attribute'
 
+deprecated_get_all_groups = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_create_group = base.CinderDeprecatedRule(
+    name=CREATE_POLICY,
+    check_str=""
+)
+deprecated_get_group = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_update_group = base.CinderDeprecatedRule(
+    name=UPDATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER,
+)
+
 
 groups_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List groups.",
         operations=[
             {
@@ -38,37 +55,45 @@ groups_policies = [
                 'method': 'GET',
                 'path': '/groups/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_groups,
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create group.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/groups'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_group,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show group.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/groups/{group_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_group,
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update group.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/groups/{group_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_group,
+    ),
     policy.DocumentedRuleDefault(
         name=GROUP_ATTRIBUTES_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -82,7 +107,8 @@ groups_policies = [
                 'method': 'GET',
                 'path': '/groups/detail'
             }
-        ]),
+        ]
+    ),
 ]
 
 
