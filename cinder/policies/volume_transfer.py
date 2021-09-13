@@ -24,11 +24,32 @@ DELETE_POLICY = "volume:delete_transfer"
 GET_POLICY = "volume:get_transfer"
 GET_ALL_POLICY = "volume:get_all_transfers"
 
+deprecated_get_all_transfers = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_create_transfer = base.CinderDeprecatedRule(
+    name=CREATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_get_transfer = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_accept_transfer = base.CinderDeprecatedRule(
+    name=ACCEPT_POLICY,
+    check_str=""
+)
+deprecated_delete_transfer = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
 
 volume_transfer_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List volume transfer.",
         operations=[
             {
@@ -47,10 +68,12 @@ volume_transfer_policies = [
                 'method': 'GET',
                 'path': '/volume-transfers/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_transfers
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create a volume transfer.",
         operations=[
             {
@@ -61,10 +84,12 @@ volume_transfer_policies = [
                 'method': 'POST',
                 'path': '/volume_transfers'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_transfer
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show one specified volume transfer.",
         operations=[
             {
@@ -75,10 +100,12 @@ volume_transfer_policies = [
                 'method': 'GET',
                 'path': '/volume-transfers/{transfer_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_transfer
+    ),
     policy.DocumentedRuleDefault(
         name=ACCEPT_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Accept a volume transfer.",
         operations=[
             {
@@ -89,10 +116,12 @@ volume_transfer_policies = [
                 'method': 'POST',
                 'path': '/volume-transfers/{transfer_id}/accept'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_accept_transfer
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete volume transfer.",
         operations=[
             {
@@ -103,7 +132,9 @@ volume_transfer_policies = [
                 'method': 'DELETE',
                 'path': '/volume-transfers/{transfer_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_transfer
+    ),
 ]
 
 

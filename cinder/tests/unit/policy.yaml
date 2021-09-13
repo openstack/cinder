@@ -154,28 +154,6 @@
 # POST  /volumes/{volume_id}/action (os-volume_upload_image)
 "volume_extension:volume_actions:upload_image": ""
 
-# List volume transfer.
-# GET  /os-volume-transfer
-# GET  /os-volume-transfer/detail
-# GET  /volume_transfers
-# GET  /volume-transfers/detail
-"volume:get_all_transfers": ""
-
-# Create a volume transfer.
-# POST  /os-volume-transfer
-# POST  /volume_transfers
-"volume:create_transfer": ""
-
-# Show one specified volume transfer.
-# GET  /os-volume-transfer/{transfer_id}
-# GET  /volume-transfers/{transfer_id}
-"volume:get_transfer": ""
-
-# Delete volume transfer.
-# DELETE  /os-volume-transfer/{transfer_id}
-# DELETE  /volume-transfers/{transfer_id}
-"volume:delete_transfer": ""
-
 # List type extra specs.
 # GET  /types/{type_id}/extra_specs
 "volume_extension:types_extra_specs:index": ""
