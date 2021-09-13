@@ -122,6 +122,7 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
         attachment_id = self._create_attachment()
         url = '%s/%s' % (self.api_path, attachment_id)
         req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'PUT'
         body = {
             "attachment": {
                 "connector": {
@@ -158,6 +159,7 @@ class AttachmentsPolicyTest(base.BasePolicyTest):
         attachment_id = self._create_attachment()
         url = '%s/%s' % (self.api_path, attachment_id)
         req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+        req.method = 'DELETE'
 
         unauthorized_exceptions = []
 
