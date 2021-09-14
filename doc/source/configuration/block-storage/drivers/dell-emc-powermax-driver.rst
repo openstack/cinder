@@ -2676,30 +2676,69 @@ commands are not listed in the latest Cinder CLI documentation so will
 remain here until added to the latest Cinder CLI version or deprecated
 from Cinder.
 
+This is how to create a replication group.
+Please refer to the official OpenStack `block-storage groups`_ documentation
+for the most up to date group operations.
+
+- Make sure there is a `replication_device` for Synchronous in `cinder.conf`
+
+.. code-block:: console
+
+   replication_device = backend_id:backend_id_legacy_rep,target_device_id:0001234567890,remote_port_group:PG1,remote_pool:SRP_1,rdf_group_label:os-sync,mode:Synchronous
+
+- Create a volume type with property `replication_enabled=’<is> True’`.
+
+.. code-block:: console
+
+   $ openstack volume type create --property replication_enabled='<is> True' SYNC_REP_VT
+
+- Create a Generic group type with extra specs
+  `consistent_group_snapshot_enabled=’<is> True’` and
+  `consistent_group_replication_enabled=’<is> True’`.
+
+.. code-block:: console
+
+  $ cinder --os-volume-api-version 3.38 group-type-create GROUP_REP_VT
+  $ cinder --os-volume-api-version 3.38 group-type-key GROUP_REP_VT set \
+    consistent_group_snapshot_enabled='<is> True' \
+    consistent_group_replication_enabled='<is> True'
+
+- Create a Generic group with synchronous volume type SYNC_REP_VT
+
+.. code-block:: console
+
+  $ cinder --os-volume-api-version 3.13 group-create --name GROUP_REP GROUP_REP_VT GROUP_REP_VT
+
+- Create a volume in the Generic group
+
+.. code-block:: console
+
+  $ cinder --os-volume-api-version 3.38 create --volume-type SYNC_REP_VT --group-id GROUP_REP \
+    --name VOL_REP_GROUP 1
 
 - Enable group replication
 
 .. code-block:: console
 
-   cinder --os-volume-api-version 3.38 group-enable-replication GROUP
+  $ cinder --os-volume-api-version 3.38 group-enable-replication GROUP_REP
 
 - Disable group replication
 
 .. code-block:: console
 
-   cinder --os-volume-api-version 3.38 group-disable-replication GROUP
+  $ cinder --os-volume-api-version 3.38 group-disable-replication GROUP_REP
 
 - Failover group
 
 .. code-block:: console
 
-   cinder --os-volume-api-version 3.38 group-failover-replication GROUP
+  $ cinder --os-volume-api-version 3.38 group-failover-replication GROUP_REP
 
 - Failback group
 
 .. code-block:: console
 
-   cinder --os-volume-api-version 3.38 group-failover-replication GROUP /
+  $ cinder --os-volume-api-version 3.38 group-failover-replication GROUP_REP \
        --secondary-backend-id default
 
 
