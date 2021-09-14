@@ -35,6 +35,12 @@ model Cinder employs and how it can be modified by adjusting policies.
   run Cinder with a custom policy configuration, however, you'll need to write
   your changes into a policy file.
 
+.. only:: html
+
+   * Elsewhere in this documentation, you can find a copy of the :doc:`sample
+     policy file <./samples/policy.yaml>` that contains all the default
+     settings.
+
 * Instructions for generating a sample ``policy.yaml`` file directly from the
   Cinder source code can be found in the file ``README-policy.generate.md``
   in the ``etc/cinder`` directory in the Cinder `source code repository
