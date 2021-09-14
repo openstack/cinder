@@ -366,10 +366,21 @@ class StorwizeSSH(object):
         ssh_cmd.append(rc_rel)
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def ch_rcrelationship_cyclingmode(self, relationship,
+                                      cyclingmode):
+        # Note: Can only change one attribute at a time,
+        # so define three ch_rcrelationship_xxx here
+        if cyclingmode:
+            ssh_cmd = ['svctask', 'chrcrelationship']
+            ssh_cmd.extend(['-cyclingmode',
+                            str(cyclingmode)])
+            ssh_cmd.append(relationship)
+            self.run_ssh_assert_no_output(ssh_cmd)
+
     def ch_rcrelationship_cycleperiod(self, relationship,
                                       cycle_period_seconds):
         # Note: Can only change one attribute at a time,
-        # so define two ch_rcrelationship_xxx here
+        # so define three ch_rcrelationship_xxx here
         if cycle_period_seconds:
             ssh_cmd = ['svctask', 'chrcrelationship']
             ssh_cmd.extend(['-cycleperiodseconds',
@@ -380,7 +391,7 @@ class StorwizeSSH(object):
     def ch_rcrelationship_changevolume(self, relationship,
                                        changevolume, master):
         # Note: Can only change one attribute at a time,
-        # so define two ch_rcrelationship_xxx here
+        # so define three ch_rcrelationship_xxx here
         if changevolume:
             ssh_cmd = ['svctask', 'chrcrelationship']
             if master:
@@ -2530,6 +2541,12 @@ class StorwizeHelpers(object):
             self.ssh.ch_rcrelationship_cycleperiod(vol_attrs['RC_name'],
                                                    cycle_period_seconds)
 
+    def change_relationship_cyclingmode(self, volume_name, cyclingmode):
+        vol_attrs = self.get_vdisk_attributes(volume_name)
+        if vol_attrs['RC_name'] and cyclingmode:
+            self.ssh.ch_rcrelationship_cyclingmode(vol_attrs['RC_name'],
+                                                   cyclingmode)
+
     def delete_relationship(self, volume_name):
         vol_attrs = self.get_vdisk_attributes(volume_name)
         if vol_attrs['RC_name']:
@@ -3851,6 +3868,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
     def _extend_volume_op(self, volume, new_size, old_size=None):
         LOG.debug('enter: _extend_volume_op: volume %s', volume['id'])
+        if self._state['code_level'] < (7, 7, 0, 0):
+            force_unmap = False
+        else:
+            force_unmap = True
         volume_name = self._get_target_vol(volume)
 
         rel_info = self._helpers.get_relationship_info(volume_name)
@@ -3911,41 +3932,55 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                         raise exception.VolumeDriverException(message=msg)
             else:
                 try:
-                    master_helper.delete_relationship(volume.name)
                     tgt_vol = (storwize_const.REPLICA_AUX_VOL_PREFIX +
                                volume.name)
-                    master_helper.extend_vdisk(volume.name, extend_amt)
-                    target_helper.extend_vdisk(tgt_vol, extend_amt)
-                    tgt_sys = target_helper.get_system_info()
-                    if storwize_const.GMCV_MULTI == cyclingmode:
+                    if storwize_const.GMCV_MULTI != cyclingmode:
+                        target_helper.extend_vdisk(tgt_vol, extend_amt)
+                        master_helper.extend_vdisk(volume.name, extend_amt)
+                    else:
+                        # Update gmcv volume cyclingmode to 'none'
+                        master_helper.stop_relationship(volume.name)
+                        master_helper.change_relationship_cyclingmode(
+                            volume.name, 'none')
+                        master_helper.start_relationship(volume.name)
+
                         tgt_change_vol = (
-                            storwize_const.REPLICA_CHG_VOL_PREFIX +
-                            tgt_vol)
+                            storwize_const.REPLICA_CHG_VOL_PREFIX + tgt_vol)
                         source_change_vol = (
                             storwize_const.REPLICA_CHG_VOL_PREFIX +
                             volume.name)
-                        master_helper.extend_vdisk(source_change_vol,
-                                                   extend_amt)
-                        target_helper.extend_vdisk(tgt_change_vol, extend_amt)
-                        src_change_opts = self._get_vdisk_params(
-                            volume.volume_type_id)
-                        cycle_period_seconds = src_change_opts.get(
-                            'cycle_period_seconds')
-                        master_helper.create_relationship(
-                            volume.name, tgt_vol, tgt_sys.get('system_name'),
-                            True, True, source_change_vol,
-                            cycle_period_seconds)
-                        target_helper.change_relationship_changevolume(
-                            tgt_vol, tgt_change_vol, False)
-                        master_helper.start_relationship(volume.name)
-                    else:
-                        master_helper.create_relationship(
-                            volume.name, tgt_vol, tgt_sys.get('system_name'),
-                            True if cyclingmode == 'none' else False)
+
+                        # Delete source_change_volume and target_change_volume
+                        master_helper.delete_vdisk(source_change_vol,
+                                                   force_unmap=force_unmap,
+                                                   force_delete=True)
+                        target_helper.delete_vdisk(tgt_change_vol,
+                                                   force_unmap=force_unmap,
+                                                   force_delete=True)
+
+                        # Extend primary volume and auxiliary volume
+                        target_helper.extend_vdisk(tgt_vol, extend_amt)
+                        master_helper.extend_vdisk(volume.name, extend_amt)
+
+                        # Convert global mirror volume to GMCV volume with
+                        # the new volume-size
+                        self._convert_global_mirror_volume_to_gmcv(
+                            volume, tgt_vol, new_size)
                 except Exception as e:
                     msg = (_('Failed to extend a volume with remote copy '
                              '%(volume)s. Exception: '
-                             '%(err)s.') % {'volume': volume.id, 'err': e})
+                             '%(err)s.') % {'volume': volume.id,
+                                            'err': e})
+                    rel_info = self._helpers.get_relationship_info(volume_name)
+                    new_cyclingmode = (
+                        rel_info['cycling_mode'] if rel_info else 'multi')
+                    if (storwize_const.GMCV_MULTI == cyclingmode and
+                            cyclingmode != new_cyclingmode):
+                        # Convert global mirror volume to GMCV volume with
+                        # the current volume-size
+                        self._convert_global_mirror_volume_to_gmcv(
+                            volume, tgt_vol, volume['size'])
+
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
         else:
@@ -3968,6 +4003,48 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 self.db.volume_metadata_update(
                     context.get_admin_context(),
                     volume['id'], model_update['metadata'], False)
+
+    def _convert_global_mirror_volume_to_gmcv(self, volume, target_vol, size):
+        master_helper = self._master_backend_helpers
+        target_helper = self._aux_backend_helpers
+        tgt_change_vol = (storwize_const.REPLICA_CHG_VOL_PREFIX + target_vol)
+        src_change_vol = (storwize_const.REPLICA_CHG_VOL_PREFIX + volume.name)
+
+        # Create source change volume if it doesn't exist
+        src_attr = master_helper.get_vdisk_attributes(volume.name)
+        src_change_attr = master_helper.get_vdisk_attributes(src_change_vol)
+        if not src_change_attr:
+            src_change_opts = self._get_vdisk_params(volume.volume_type_id)
+            src_change_opts['iogrp'] = src_attr['IO_group_id']
+            # Change volumes would usually be thin-provisioned
+            src_change_opts['autoexpand'] = True
+            master_helper.create_vdisk(src_change_vol, str(int(size)), 'gb',
+                                       src_attr['mdisk_grp_name'],
+                                       src_change_opts)
+
+        # Create target change volume if it doesn't exist
+        target_change_attr = (
+            target_helper.get_vdisk_attributes(tgt_change_vol))
+        if not target_change_attr:
+            target_change_opts = self._get_vdisk_params(
+                volume.volume_type_id)
+            target_change_pool = self._replica_target.get('pool_name')
+            target_change_opts['iogrp'] = src_attr['IO_group_id']
+            # Change Volumes would usually be thin-provisioned
+            target_change_opts['autoexpand'] = True
+            target_helper.create_vdisk(tgt_change_vol, str(int(size)), 'gb',
+                                       target_change_pool, target_change_opts)
+
+        # Update volume cyclingmode to 'multi'
+        master_helper.stop_relationship(volume.name)
+        master_helper.change_relationship_cyclingmode(volume.name, 'multi')
+        # Set source_change_volume and target_change_volume
+        master_helper.change_relationship_changevolume(volume.name,
+                                                       src_change_vol, True)
+        target_helper.change_relationship_changevolume(target_vol,
+                                                       tgt_change_vol, False)
+        # Start gmcv volume relationship
+        master_helper.start_relationship(volume.name)
 
     def _qos_model_update(self, model_update, volume):
         """add volume wwn and IOThrottle_rate to the metadata of the volume"""
