@@ -3708,12 +3708,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         pool = volume_utils.extract_host(source_vol['host'], 'pool')
         opts = self._get_vdisk_params(source_vol['volume_type_id'])
 
-        if opts['volume_topology'] == 'hyperswap':
-            msg = _('create_snapshot: Create snapshot to a '
-                    'hyperswap volume is not allowed.')
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
         self._helpers.create_copy(snapshot['volume_name'], snapshot['name'],
                                   snapshot['volume_id'], self.configuration,
                                   opts, False, self._state, pool=pool)
@@ -3769,6 +3763,20 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             # enabled.
             model_update = self._update_replication_properties(ctxt, volume,
                                                                model_update)
+
+        if opts['volume_topology'] == 'hyperswap':
+            LOG.debug('The volume %s to be created is a hyperswap '
+                      'volume.', volume.name)
+            # Ensures the vdisk is not part of FC mapping.
+            # Otherwize convert it to hyperswap volume will be failed.
+            self._helpers.ensure_vdisk_no_fc_mappings(volume['name'],
+                                                      allow_snaps=True,
+                                                      allow_fctgt=False)
+
+            self._helpers.convert_volume_to_hyperswap(volume['name'],
+                                                      opts,
+                                                      self._state)
+
         return model_update
 
     def create_cloned_volume(self, tgt_volume, src_volume):
@@ -5832,15 +5840,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     model_update = {'status': fields.GroupStatus.ERROR}
                     return model_update
 
-            rccg_name = self._get_rccg_name(group, hyper_grp=True)
-            try:
-                self._helpers.create_rccg(
-                    rccg_name, self._state['system_name'])
-            except exception.VolumeBackendAPIException as err:
-                LOG.error("Failed to create rccg  %(rccg)s. "
-                          "Exception: %(exception)s.",
-                          {'rccg': group.name, 'exception': err})
-                model_update = {'status': fields.GroupStatus.ERROR}
         return model_update
 
     def delete_group(self, context, group, volumes):
@@ -5950,16 +5949,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """
         LOG.debug('Enter: create_group_from_src.')
 
+        is_hyper_group = False
         if volume_utils.is_group_a_type(group, "hyperswap_group_enabled"):
-            # An unsupported configuration
-            msg = _('Unable to create hyperswap group: create hyperswap '
-                    'group from a hyperswap group is not supported.')
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            is_hyper_group = True
 
         if (not volume_utils.is_group_a_cg_snapshot_type(group) and
                 not volume_utils.is_group_a_type
-                (group, "consistent_group_replication_enabled")):
+                (group, "consistent_group_replication_enabled")
+                and not volume_utils.is_group_a_type(
+                group, "hyperswap_group_enabled")):
             # we'll rely on the generic volume groups implementation if it is
             # not a consistency group request.
             raise NotImplementedError()
@@ -6028,10 +6026,23 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 volumes_model[volumes.index(vol)] = (
                     self._qos_model_update(
                         volumes_model[volumes.index(vol)], vol))
+
+            if is_hyper_group:
+                self._helpers.ensure_vdisk_no_fc_mappings(vol['name'],
+                                                          allow_snaps=True,
+                                                          allow_fctgt=False)
+                opts = self._get_vdisk_params(vol['volume_type_id'],
+                                              volume_metadata=
+                                              vol.get('volume_metadata'))
+                self._helpers.convert_volume_to_hyperswap(vol['name'],
+                                                          opts,
+                                                          self._state)
+
         if volume_utils.is_group_a_type(
                 group, "consistent_group_replication_enabled"):
             self.update_group(context, group, add_volumes=volumes,
                               remove_volumes=[])
+
         LOG.debug("Leave: create_group_from_src.")
         return model_update, volumes_model
 
@@ -6045,7 +6056,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """
         if (not volume_utils.is_group_a_cg_snapshot_type(group_snapshot) and
                 not volume_utils.is_group_a_type
-                (group_snapshot, "consistent_group_replication_enabled")):
+                (group_snapshot, "consistent_group_replication_enabled")
+                and not volume_utils.is_group_a_type(
+                group_snapshot, "hyperswap_group_enabled")):
             # we'll rely on the generic group implementation if it is not a
             # consistency group request.
             raise NotImplementedError()
@@ -6074,7 +6087,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         :returns: model_update, snapshots_model_update
         """
 
-        if not volume_utils.is_group_a_cg_snapshot_type(group_snapshot):
+        if (not volume_utils.is_group_a_cg_snapshot_type(group_snapshot) and
+                not volume_utils.is_group_a_type(
+                group_snapshot, "hyperswap_group_enabled")):
             # we'll rely on the generic group implementation if it is not a
             # consistency group request.
             raise NotImplementedError()
@@ -6487,14 +6502,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def _delete_hyperswap_grp(self, group, volumes):
         model_update = {'status': fields.GroupStatus.DELETED}
         volumes_model_update = []
-        try:
-            rccg_name = self._get_rccg_name(group, hyper_grp=True)
-            self._helpers.delete_rccg(rccg_name)
-        except exception.VolumeBackendAPIException as err:
-            LOG.error("Failed to delete rccg  %(rccg)s. "
-                      "Exception: %(exception)s.",
-                      {'rccg': group.name, 'exception': err})
-            model_update = {'status': fields.GroupStatus.ERROR_DELETING}
 
         for volume in volumes:
             try:
@@ -6516,14 +6523,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                 add_volumes=None, remove_volumes=None):
         LOG.info("Update hyperswap group: %(group)s. ", {'group': group.id})
         model_update = {'status': fields.GroupStatus.AVAILABLE}
-        rccg_name = self._get_rccg_name(group, hyper_grp=True)
-        if not self._helpers.get_rccg(rccg_name):
-            LOG.error("Failed to update rccg: %(grp)s does not exist in "
-                      "backend.", {'grp': group.id})
-            model_update['status'] = fields.GroupStatus.ERROR
-            return model_update, None, None
 
-        # Add remote copy relationship to rccg
         added_vols = []
         for volume in add_volumes:
             hyper_volume = self.is_volume_hyperswap(volume)
@@ -6533,42 +6533,19 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           {'vol': volume.id})
                 model_update['status'] = fields.GroupStatus.ERROR
                 continue
-            try:
-                rcrel = self._helpers.get_relationship_info(volume.name)
-                if not rcrel:
-                    LOG.error("Failed to update rccg: remote copy relationship"
-                              " of %(vol)s does not exist in backend.",
-                              {'vol': volume.id})
-                    model_update['status'] = fields.GroupStatus.ERROR
-                else:
-                    self._helpers.chrcrelationship(rcrel['name'], rccg_name)
-                    added_vols.append({'id': volume.id,
-                                       'group_id': group.id})
-            except exception.VolumeBackendAPIException as err:
-                model_update['status'] = fields.GroupStatus.ERROR
-                LOG.error("Failed to add the remote copy of volume %(vol)s to "
-                          "rccg. Exception: %(exception)s.",
-                          {'vol': volume.name, 'exception': err})
+            added_vols.append({'id': volume.id, 'group_id': group.id})
 
-        # Remove remote copy relationship from rccg
         removed_vols = []
         for volume in remove_volumes:
-            try:
-                rcrel = self._helpers.get_relationship_info(volume.name)
-                if not rcrel:
-                    LOG.error("Failed to update rccg: remote copy relationship"
-                              " of %(vol)s does not exit in backend.",
-                              {'vol': volume.id})
-                    model_update['status'] = fields.GroupStatus.ERROR
-                else:
-                    self._helpers.chrcrelationship(rcrel['name'])
-                    removed_vols.append({'id': volume.id,
-                                         'group_id': None})
-            except exception.VolumeBackendAPIException as err:
+            hyper_volume = self.is_volume_hyperswap(volume)
+            if not hyper_volume:
+                LOG.error("Failed to update rccg: the non hyperswap volume"
+                          " of %(vol)s can't be added to hyperswap group.",
+                          {'vol': volume.id})
                 model_update['status'] = fields.GroupStatus.ERROR
-                LOG.error("Failed to remove the remote copy of volume %(vol)s "
-                          "from rccg. Exception: %(exception)s.",
-                          {'vol': volume.name, 'exception': err})
+                continue
+            removed_vols.append({'id': volume.id, 'group_id': None})
+
         return model_update, added_vols, removed_vols
 
     def _get_volume_host_site_from_conf(self, volume, connector, iscsi=False):
