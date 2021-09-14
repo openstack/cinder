@@ -195,7 +195,7 @@ def upgrade():
         sa.Column('provider_location', sa.String(256)),
         sa.Column('provider_auth', sa.String(256)),
         sa.Column('snapshot_id', sa.String(36)),
-        sa.Column('volume_type_id', sa.String(36)),
+        sa.Column('volume_type_id', sa.String(36), nullable=False),
         sa.Column('source_volid', sa.String(36)),
         sa.Column('bootable', sa.Boolean),
         sa.Column('provider_geometry', sa.String(255)),
@@ -228,6 +228,7 @@ def upgrade():
             nullable=True,
         ),
         sa.Column('shared_targets', sa.Boolean, default=True),
+        sa.Column('use_quota', sa.Boolean, nullable=True),
         sa.Index('volumes_service_uuid_idx', 'service_uuid', 'deleted'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
@@ -304,7 +305,7 @@ def upgrade():
         sa.Column('display_description', sa.String(255)),
         sa.Column('provider_location', sa.String(255)),
         sa.Column('encryption_key_id', sa.String(36)),
-        sa.Column('volume_type_id', sa.String(36)),
+        sa.Column('volume_type_id', sa.String(36), nullable=False),
         sa.Column(
             'cgsnapshot_id',
             sa.String(36),
@@ -319,6 +320,7 @@ def upgrade():
             sa.ForeignKey('group_snapshots.id'),
             index=True,
         ),
+        sa.Column('use_quota', sa.Boolean, nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -482,7 +484,9 @@ def upgrade():
         sa.Column('in_use', sa.Integer(), nullable=False),
         sa.Column('reserved', sa.Integer(), nullable=False),
         sa.Column('until_refresh', sa.Integer(), nullable=True),
+        sa.Column('race_preventer', sa.Boolean, nullable=True),
         sa.Index('quota_usage_project_resource_idx', 'project_id', 'resource'),
+        sa.UniqueConstraint('project_id', 'resource', 'race_preventer'),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
     )
@@ -641,7 +645,7 @@ def upgrade():
         # volume type is not sufficient to identify a particular encryption
         # scheme unless each volume type is associated with at most one
         # encryption scheme.
-        sa.Column('volume_type_id', sa.String(36), nullable=is_nullable),
+        sa.Column('volume_type_id', sa.String(36), nullable=False),
         # NOTE (smcginnis): nullable=True triggers this to not set a default
         # value, but since it's a primary key the resulting schema will end up
         # still being NOT NULL. This is avoiding a case in MySQL where it will
@@ -863,6 +867,26 @@ def upgrade():
         ),
         mysql_engine='InnoDB',
         mysql_charset='utf8',
+    )
+
+    op.create_table(
+        'default_volume_types',
+        sa.Column('created_at', sa.DateTime),
+        sa.Column('updated_at', sa.DateTime),
+        sa.Column('deleted_at', sa.DateTime),
+        sa.Column(
+            'volume_type_id',
+            sa.String(36),
+            sa.ForeignKey('volume_types.id'),
+            index=True),
+        sa.Column(
+            'project_id',
+            sa.String(length=255),
+            primary_key=True,
+            nullable=False),
+        sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
+        mysql_engine='InnoDB',
+        mysql_charset='utf8'
     )
 
     if connection.engine.name == "mysql":
