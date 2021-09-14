@@ -40,7 +40,7 @@ class VolumeTypeAccessController(object):
 
     def index(self, req, type_id):
         context = req.environ['cinder.context']
-        context.authorize(policy.TYPE_ACCESS_POLICY)
+        context.authorize(policy.TYPE_ACCESS_WHO_POLICY)
 
         # Not found exception will be handled at the wsgi level
         vol_type = volume_types.get_volume_type(
@@ -77,6 +77,7 @@ class VolumeTypeActionController(wsgi.Controller):
                 vol_type = req.cached_resource_by_id(type_id, name='types')
                 self._extend_vol_type(vol_type_rval, vol_type)
 
+    # TODO: remove this, there is no /types/detail call for this to extend
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
