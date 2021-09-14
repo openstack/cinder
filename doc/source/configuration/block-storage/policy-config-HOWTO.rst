@@ -35,9 +35,6 @@ model Cinder employs and how it can be modified by adjusting policies.
   run Cinder with a custom policy configuration, however, you'll need to write
   your changes into a policy file.
 
-* Elsewhere in this documentation, you can find a copy of the :doc:`sample
-  policy file <./samples/policy.yaml>` that contains all the default settings.
-
 * Instructions for generating a sample ``policy.yaml`` file directly from the
   Cinder source code can be found in the file ``README-policy.generate.md``
   in the ``etc/cinder`` directory in the Cinder `source code repository
@@ -134,8 +131,8 @@ of policy file configuration.
 
 "context_is_admin"
     This defines the administrative context in Cinder.  You'll notice that it's
-    defined once at the beginning of the :doc:`sample policy file
-    <./samples/policy.yaml>` and isn't referred to anywhere else in that file.
+    defined once at the beginning of the sample policy file
+    and isn't referred to anywhere else in that file.
     To understand what this does, it's helpful to know something about the API
     implementation.
 
