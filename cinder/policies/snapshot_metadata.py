@@ -22,11 +22,24 @@ GET_POLICY = 'volume:get_snapshot_metadata'
 DELETE_POLICY = 'volume:delete_snapshot_metadata'
 UPDATE_POLICY = 'volume:update_snapshot_metadata'
 
+deprecated_get_snapshot_metadata = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_update_snapshot_metadata = base.CinderDeprecatedRule(
+    name=UPDATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_delete_snapshot_metadata = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
 
 snapshot_metadata_policies = [
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show snapshot's metadata or one specified metadata "
                     "with a given key.",
         operations=[
@@ -38,25 +51,29 @@ snapshot_metadata_policies = [
                 'method': 'GET',
                 'path': '/snapshots/{snapshot_id}/metadata/{key}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_snapshot_metadata,
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update snapshot's metadata or one specified "
                     "metadata with a given key.",
         operations=[
             {
-                'method': 'PUT',
+                'method': 'POST',
                 'path': '/snapshots/{snapshot_id}/metadata'
             },
             {
                 'method': 'PUT',
                 'path': '/snapshots/{snapshot_id}/metadata/{key}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_snapshot_metadata,
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete snapshot's specified metadata "
                     "with a given key.",
         operations=[
@@ -64,7 +81,9 @@ snapshot_metadata_policies = [
                 'method': 'DELETE',
                 'path': '/snapshots/{snapshot_id}/metadata/{key}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_snapshot_metadata,
+    ),
 ]
 
 

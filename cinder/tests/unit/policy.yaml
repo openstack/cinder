@@ -4,21 +4,6 @@
 # Default rule for most Admin APIs.
 "admin_api": "is_admin:True"
 
-# Show snapshot's metadata or one specified metadata with a given key.
-# GET  /snapshots/{snapshot_id}/metadata
-# GET  /snapshots/{snapshot_id}/metadata/{key}
-"volume:get_snapshot_metadata": ""
-
-# Update snapshot's metadata or one specified metadata with a given
-# key.
-# PUT  /snapshots/{snapshot_id}/metadata
-# PUT  /snapshots/{snapshot_id}/metadata/{key}
-"volume:update_snapshot_metadata": ""
-
-# Delete snapshot's specified metadata with a given key.
-# DELETE  /snapshots/{snapshot_id}/metadata/{key}
-"volume:delete_snapshot_metadata": ""
-
 # Reset status of group snapshot.
 # POST  /group_snapshots/{g_snapshot_id}/action (reset_status)
 "group:reset_group_snapshot_status": ""
