@@ -57,26 +57,6 @@
 # POST  /group_snapshots/{g_snapshot_id}/action (reset_status)
 "group:reset_group_snapshot_status": ""
 
-# Reset status of group.
-# POST  /groups/{group_id}/action (reset_status)
-"group:reset_status": ""
-
-# Enable replication.
-# POST  /groups/{group_id}/action (enable_replication)
-"group:enable_replication": ""
-
-# Disable replication.
-# POST  /groups/{group_id}/action (disable_replication)
-"group:disable_replication": ""
-
-# Fail over replication.
-# POST  /groups/{group_id}/action (failover_replication)
-"group:failover_replication": ""
-
-# List failover replication.
-# POST  /groups/{group_id}/action (list_replication_targets)
-"group:list_replication_targets": ""
-
 # List all services.
 # GET  /os-services
 "volume_extension:services:index": ""

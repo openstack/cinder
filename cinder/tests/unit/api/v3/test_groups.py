@@ -1074,6 +1074,7 @@ class GroupsAPITestCase(test.TestCase):
         req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
                                       (fake.PROJECT_ID, self.group2.id),
                                       version=mv.GROUP_VOLUME_RESET_STATUS)
+        req.environ['cinder.context'] = self.ctxt
         body = {"reset_status": {
             "status": fields.GroupStatus.AVAILABLE
         }}
