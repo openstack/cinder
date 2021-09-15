@@ -20,7 +20,6 @@ from oslo_config import cfg
 import requests
 
 from cinder import context as cinder_context
-from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder.objects import group_snapshot as obj_group_snap
 from cinder.objects import snapshot as obj_snap
@@ -373,7 +372,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
             self, brick_get_connector_properties=None, request=None):
         """Set up the driver environment."""
         self.driver = hbsd_iscsi.HBSDISCSIDriver(
-            configuration=self.configuration, db=db)
+            configuration=self.configuration)
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
                                FakeResponse(200, GET_PORT_RESULT),
@@ -401,7 +400,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
         side_effect=_brick_get_connector_properties)
     def test_do_setup(self, brick_get_connector_properties, request):
         drv = hbsd_iscsi.HBSDISCSIDriver(
-            configuration=self.configuration, db=db)
+            configuration=self.configuration)
         self._setup_config()
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),
@@ -428,7 +427,7 @@ class HBSDRESTISCSIDriverTest(test.TestCase):
     def test_do_setup_create_hg(self, brick_get_connector_properties, request):
         """Normal case: The host group not exists."""
         drv = hbsd_iscsi.HBSDISCSIDriver(
-            configuration=self.configuration, db=db)
+            configuration=self.configuration)
         self._setup_config()
         request.side_effect = [FakeResponse(200, POST_SESSIONS_RESULT),
                                FakeResponse(200, GET_PORTS_RESULT),

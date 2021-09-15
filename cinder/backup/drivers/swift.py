@@ -151,16 +151,18 @@ CONF.register_opts(swiftbackup_service_opts)
 class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within Swift."""
 
-    def __init__(self, context, db=None):
+    def __init__(self, context):
         chunk_size_bytes = CONF.backup_swift_object_size
         sha_block_size_bytes = CONF.backup_swift_block_size
         backup_default_container = CONF.backup_swift_container
         enable_progress_timer = CONF.backup_swift_enable_progress_timer
-        super(SwiftBackupDriver, self).__init__(context, chunk_size_bytes,
-                                                sha_block_size_bytes,
-                                                backup_default_container,
-                                                enable_progress_timer,
-                                                db)
+        super().__init__(
+            context,
+            chunk_size_bytes,
+            sha_block_size_bytes,
+            backup_default_container,
+            enable_progress_timer,
+        )
 
         # Do not intialize the instance created when the backup service
         # starts up. The context will be missing information to do things

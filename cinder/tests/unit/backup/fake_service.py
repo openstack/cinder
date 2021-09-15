@@ -17,8 +17,8 @@ from cinder.backup import driver
 
 
 class FakeBackupService(driver.BackupDriver):
-    def __init__(self, context, db=None):
-        super(FakeBackupService, self).__init__(context, db)
+    def __init__(self, context):
+        super().__init__(context)
 
     def backup(self, backup, volume_file):
         pass

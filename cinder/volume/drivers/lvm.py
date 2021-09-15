@@ -107,7 +107,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
         self.target_driver = importutils.import_object(
             target_driver,
             configuration=self.configuration,
-            db=self.db,
             executor=self._execute)
         self.protocol = self.target_driver.protocol
         self._sparse_copy_volume = False

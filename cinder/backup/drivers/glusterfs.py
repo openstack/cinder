@@ -46,14 +46,13 @@ CONF.register_opts(glusterfsbackup_service_opts)
 class GlusterfsBackupDriver(posix.PosixBackupDriver):
     """Provides backup, restore and delete using GlusterFS repository."""
 
-    def __init__(self, context, db=None):
+    def __init__(self, context):
         self.backup_mount_point_base = CONF.glusterfs_backup_mount_point
         self.backup_share = CONF.glusterfs_backup_share
         self._execute = putils.execute
         self._root_helper = utils.get_root_helper()
         backup_path = self._init_backup_repo_path()
-        super(GlusterfsBackupDriver, self).__init__(context,
-                                                    backup_path=backup_path)
+        super().__init__(context, backup_path=backup_path)
 
     @staticmethod
     def get_driver_options():

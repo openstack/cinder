@@ -52,7 +52,6 @@ class BackupMetadataAPI(base.Base):
     TYPE_TAG_VOL_META = 'volume-metadata'
     TYPE_TAG_VOL_GLANCE_META = 'volume-glance-metadata'
 
-    # TODO(stephenfin): The 'db' kwarg is unused; remove it
     def __init__(self, context):
         super().__init__()
         self.context = context
@@ -348,8 +347,7 @@ class BackupMetadataAPI(base.Base):
 
 class BackupDriver(base.Base, metaclass=abc.ABCMeta):
 
-    # TODO(stephenfin): The 'db' kwarg is unused; remove it
-    def __init__(self, context, db=None):
+    def __init__(self, context):
         super().__init__()
         self.context = context
         self.backup_meta_api = BackupMetadataAPI(context)

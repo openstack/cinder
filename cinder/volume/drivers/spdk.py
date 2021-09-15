@@ -57,7 +57,6 @@ class SPDKDriver(driver.VolumeDriver):
         self.target_driver = importutils.import_object(
             target_driver,
             configuration=self.configuration,
-            db=self.db,
             executor=self._execute)
 
     @staticmethod

@@ -59,12 +59,11 @@ IMPORT_VOLUME_ID = '00000000-0000-0000-0000-000000000000'
 class API(base.Base):
     """API for interacting with the volume backup manager."""
 
-    # TODO(stephenfin): The 'db' kwarg is unused; remove it
-    def __init__(self, db=None):
+    def __init__(self):
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self.volume_api = cinder.volume.API()
-        super(API, self).__init__()
+        super().__init__()
 
     def get(self, context, backup_id):
         backup = objects.Backup.get_by_id(context, backup_id)

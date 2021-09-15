@@ -136,6 +136,7 @@ class API(base.Base):
 
     def __init__(self):
         self.message_api = message_api.API()
+        super().__init__()
 
     def _get_volume_extended_event(self, server_id, volume_id):
         return {'name': 'volume-extended',
