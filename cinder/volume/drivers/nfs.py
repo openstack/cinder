@@ -585,7 +585,6 @@ class NfsDriver(remotefs.RemoteFSSnapDriverDistributed):
     def delete_snapshot(self, snapshot):
         """Apply locking to the delete snapshot operation."""
 
-        self._check_snapshot_support()
         return self._delete_snapshot(snapshot)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size,
