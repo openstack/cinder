@@ -72,13 +72,13 @@ class VolumeImageMetadataController(wsgi.Controller):
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
-        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
+        if context.authorize(policy.IMAGE_METADATA_SHOW_POLICY, fatal=False):
             self._add_image_metadata(context, [resp_obj.obj['volume']])
 
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
-        if context.authorize(policy.IMAGE_METADATA_POLICY, fatal=False):
+        if context.authorize(policy.IMAGE_METADATA_SHOW_POLICY, fatal=False):
             # Just get the image metadata of those volumes in response.
             volumes = list(resp_obj.obj.get('volumes', []))
             if volumes:
@@ -89,7 +89,7 @@ class VolumeImageMetadataController(wsgi.Controller):
     def create(self, req, id, body):
         context = req.environ['cinder.context']
         volume = objects.Volume.get_by_id(context, id)
-        if context.authorize(policy.IMAGE_METADATA_POLICY,
+        if context.authorize(policy.IMAGE_METADATA_SET_POLICY,
                              target_obj=volume):
             metadata = body['os-set_image_metadata']['metadata']
             new_metadata = self._update_volume_image_metadata(context,
@@ -131,7 +131,8 @@ class VolumeImageMetadataController(wsgi.Controller):
         """Deletes an existing image metadata."""
         context = req.environ['cinder.context']
         volume = objects.Volume.get_by_id(context, id)
-        if context.authorize(policy.IMAGE_METADATA_POLICY, target_obj=volume):
+        if context.authorize(policy.IMAGE_METADATA_REMOVE_POLICY,
+                             target_obj=volume):
             key = body['os-unset_image_metadata']['key']
 
             vol, metadata = self._get_image_metadata(context, id)
