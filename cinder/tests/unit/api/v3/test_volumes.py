@@ -1036,9 +1036,11 @@ class VolumeApiTest(test.TestCase):
         # update volume's status failed
         mock_update.side_effect = [False, True]
 
-        self.assertRaises(webob.exc.HTTPConflict, self.controller.revert,
-                          req, fake_volume['id'], {'revert': {'snapshot_id':
-                                                   fake_snapshot['id']}})
+        self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller.revert,
+                          req,
+                          fake_volume['id'],
+                          {'revert': {'snapshot_id': fake_snapshot['id']}})
 
         # update snapshot's status failed
         mock_update.side_effect = [True, False]

@@ -19,23 +19,6 @@
 # DELETE  /snapshots/{snapshot_id}/metadata/{key}
 "volume:delete_snapshot_metadata": ""
 
-# List group snapshots.
-# GET  /group_snapshots
-# GET  /group_snapshots/detail
-"group:get_all_group_snapshots": ""
-
-# Show group snapshot.
-# GET  /group_snapshots/{group_snapshot_id}
-"group:get_group_snapshot": ""
-
-# Delete group snapshot.
-# DELETE  /group_snapshots/{group_snapshot_id}
-"group:delete_group_snapshot": ""
-
-# Update group snapshot.
-# PUT  /group_snapshots/{group_snapshot_id}
-"group:update_group_snapshot": ""
-
 # Reset status of group snapshot.
 # POST  /group_snapshots/{g_snapshot_id}/action (reset_status)
 "group:reset_group_snapshot_status": ""
