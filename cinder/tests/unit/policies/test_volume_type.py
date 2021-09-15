@@ -25,6 +25,7 @@ from cinder.tests.unit.api import fakes as fake_api
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.policies import base
 from cinder.tests.unit.policies import test_base
+from cinder.tests.unit import utils as test_utils
 
 
 @ddt.ddt
@@ -75,9 +76,11 @@ class VolumeTypePolicyTest(base.BasePolicyTest):
 
     @ddt.data(*base.all_users)
     def test_type_get_policy(self, user_id):
+        vol_type = test_utils.create_volume_type(self.project_admin_context,
+                                                 testcase_instance=self,
+                                                 name='fake_vol_type')
         rule_name = type_policy.GET_POLICY
-        # the default type is guaranteed to exist
-        url = self.api_path + '/default'
+        url = '%s/%s' % (self.api_path, vol_type.id)
         req = fake_api.HTTPRequest.blank(url, version=self.api_version)
         self.common_policy_check(user_id,
                                  self.authorized_readers,
@@ -86,7 +89,48 @@ class VolumeTypePolicyTest(base.BasePolicyTest):
                                  rule_name,
                                  self.controller.show,
                                  req,
-                                 'default')
+                                 id=vol_type.id)
+
+    @ddt.data(*base.all_users)
+    def test_extra_spec_policy(self, user_id):
+        vol_type = test_utils.create_volume_type(
+            self.project_admin_context,
+            testcase_instance=self,
+            name='fake_vol_type',
+            extra_specs={'multiattach': '<is> True'})
+        rule_name = type_policy.EXTRA_SPEC_POLICY
+        url = '%s/%s' % (self.api_path, vol_type.id)
+        req = fake_api.HTTPRequest.blank(url, version=self.api_version)
+
+        # Relax the GET_POLICY in order to get past that check.
+        self.policy.set_rules({type_policy.GET_POLICY: ""},
+                              overwrite=False)
+
+        # With the relaxed GET_POLICY, all users are authorized because
+        # failing the policy check is not fatal.
+        authorized_readers = [user_id]
+        unauthorized_readers = []
+
+        response = self.common_policy_check(user_id,
+                                            authorized_readers,
+                                            unauthorized_readers,
+                                            self.unauthorized_exceptions,
+                                            rule_name,
+                                            self.controller.show,
+                                            req,
+                                            id=vol_type.id)
+
+        # Check whether the response should contain extra_specs. The logic
+        # is a little unusual:
+        #   - The new rule is SYSTEM_READER_OR_PROJECT_READER (i.e. users
+        #     with the 'reader' role)
+        #   - The deprecated rule is RULE_ADMIN_API (i.e. users with the
+        #     'admin' role)
+        context = self.create_context(user_id)
+        if 'reader' in context.roles or 'admin' in context.roles:
+            self.assertIn('extra_specs', response['volume_type'])
+        else:
+            self.assertNotIn('extra_specs', response['volume_type'])
 
 
 class VolumeTypePolicySecureRbacTest(VolumeTypePolicyTest):

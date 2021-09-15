@@ -1693,13 +1693,13 @@ matrix is validated by human beings.
        | ``GET  /types``
        | The ability to make these API calls is governed by other policies.
      - volume_extension:access_types_extra_specs
-     - rule:admin_api
-     - no
-     - no
-     - no
-     - no
+     - empty
      - yes
-     - no
+     - yes
+     - yes
+     - yes
+     - yes
+     - yes
      - yes
    * - List or show volume type with access type qos specs id attribute
      - | Adds ``qos_specs_id`` to the following responses:
@@ -2237,13 +2237,13 @@ matrix is validated by human beings.
    * - List type extra specs
      - ``GET  /types/{type_id}/extra_specs``
      - volume_extension:types_extra_specs:index
-     - rule:admin_api
-     - no
-     - no
-     - no
-     - no
+     - empty
      - yes
-     - no
+     - yes
+     - yes
+     - yes
+     - yes
+     - yes
      - yes
    * - Create type extra specs
      - ``POST  /types/{type_id}/extra_specs``
@@ -2259,13 +2259,13 @@ matrix is validated by human beings.
    * - Show one specified type extra specs
      - ``GET  /types/{type_id}/extra_specs/{extra_spec_key}``
      - volume_extension:types_extra_specs:show
-     - rule:admin_api
-     - no
-     - no
-     - no
-     - no
+     - empty
      - yes
-     - no
+     - yes
+     - yes
+     - yes
+     - yes
+     - yes
      - yes
    * - Update type extra specs
      - ``PUT  /types/{type_id}/extra_specs/{extra_spec_key}``
@@ -2281,6 +2281,23 @@ matrix is validated by human beings.
    * - Delete type extra specs
      - ``DELETE  /types/{type_id}/extra_specs/{extra_spec_key}``
      - volume_extension:types_extra_specs:delete
+     - rule:admin_api
+     - no
+     - no
+     - no
+     - no
+     - yes
+     - no
+     - yes
+   * - Include extra_specs fields that may reveal sensitive information about
+       the deployment that should not be exposed to end users in various
+       volume-type responses that show extra_specs.
+     - | ``GET  /types``
+       | ``GET  /types/{type_id}``
+       | ``GET  /types/{type_id}/extra_specs``
+       | ``GET  /types/{type_id}/extra_specs/{extra_spec_key}``
+       | The ability to make these API calls is governed by other policies.
+     - volume_extension:types_extra_specs:read_sensitive
      - rule:admin_api
      - no
      - no

@@ -50,6 +50,10 @@ deprecated_manage_policy = base.CinderDeprecatedRule(
                        'policies that separately govern POST, PUT, and DELETE '
                        'operations.'),
 )
+deprecated_extra_spec_policy = base.CinderDeprecatedRule(
+    name=EXTRA_SPEC_POLICY,
+    check_str=base.RULE_ADMIN_API
+)
 deprecated_encryption_create_policy = base.CinderDeprecatedRule(
     name=CREATE_ENCRYPTION_POLICY,
     # TODO: change to base.RULE_ADMIN_API in Yoga & remove dep_reason
@@ -150,7 +154,7 @@ volume_type_policies = [
     ),
     policy.DocumentedRuleDefault(
         name=EXTRA_SPEC_POLICY,
-        check_str=base.RULE_ADMIN_API,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description=(
             "Include the volume type's extra_specs attribute in the volume "
             "type list or show requests.  The ability to make these calls "
@@ -164,7 +168,9 @@ volume_type_policies = [
                 'method': 'GET',
                 'path': '/types'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_extra_spec_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=QOS_POLICY,
         check_str=base.RULE_ADMIN_API,

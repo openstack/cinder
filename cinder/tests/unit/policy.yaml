@@ -16,30 +16,3 @@
 # enable, set-log and get-log actions.
 # PUT  /os-services/{action}
 #"volume_extension:services:update": "rule:admin_api"
-
-# Create, update and delete volume type.
-# POST  /types
-# PUT  /types
-# DELETE  /types
-"volume_extension:types_manage": ""
-
-# List type extra specs.
-# GET  /types/{type_id}/extra_specs
-"volume_extension:types_extra_specs:index": ""
-
-# Create type extra specs.
-# POST  /types/{type_id}/extra_specs
-"volume_extension:types_extra_specs:create": ""
-
-# Show one specified type extra specs.
-# GET  /types/{type_id}/extra_specs/{extra_spec_key}
-"volume_extension:types_extra_specs:show": ""
-
-# Update type extra specs.
-# PUT  /types/{type_id}/extra_specs/{extra_spec_key}
-"volume_extension:types_extra_specs:update": ""
-
-# Delete type extra specs.
-# DELETE  /types/{type_id}/extra_specs/{extra_spec_key}
-"volume_extension:types_extra_specs:delete": ""
-
