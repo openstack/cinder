@@ -250,9 +250,8 @@ class SnapshotApiTest(test.TestCase):
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
-        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
-        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get.return_value = fake_volume_obj
 
@@ -261,6 +260,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req.environ['cinder.context'] = self.ctx
         res_dict = self.controller.update(req, UUID, body=body)
         expected = {
             'snapshot': {
@@ -297,9 +297,8 @@ class SnapshotApiTest(test.TestCase):
             'description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
-        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
-        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get.return_value = fake_volume_obj
 
@@ -309,6 +308,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req.environ['cinder.context'] = self.ctx
         res_dict = self.controller.update(req, UUID, body=body)
 
         self.assertEqual(fields.SnapshotStatus.AVAILABLE,
@@ -356,9 +356,8 @@ class SnapshotApiTest(test.TestCase):
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
-        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
-        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get.return_value = fake_volume_obj
 
@@ -368,6 +367,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req.environ['cinder.context'] = self.ctx
         res_dict = self.controller.update(req, UUID, body=body)
         expected = {
             'snapshot': {
@@ -402,14 +402,14 @@ class SnapshotApiTest(test.TestCase):
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
-        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
-        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
 
         snapshot_id = UUID
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
+        req.environ['cinder.context'] = self.ctx
         resp = self.controller.delete(req, snapshot_id)
         self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
 
@@ -435,12 +435,12 @@ class SnapshotApiTest(test.TestCase):
             'display_description': 'Default description',
             'expected_attrs': ['metadata'],
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
-        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
-        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req.environ['cinder.context'] = self.ctx
         resp_dict = self.controller.show(req, UUID)
 
         self.assertIn('snapshot', resp_dict)

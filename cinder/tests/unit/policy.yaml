@@ -19,32 +19,6 @@
 # DELETE  /snapshots/{snapshot_id}/metadata/{key}
 "volume:delete_snapshot_metadata": ""
 
-# List snapshots.
-# GET  /snapshots
-# GET  /snapshots/detail
-"volume:get_all_snapshots": ""
-
-# List or show snapshots with extended attributes.
-# GET  /snapshots/{snapshot_id}
-# GET  /snapshots/detail
-"volume_extension:extended_snapshot_attributes": ""
-
-# Create snapshot.
-# POST  /snapshots
-"volume:create_snapshot": ""
-
-# Show snapshot.
-# GET  /snapshots/{snapshot_id}
-"volume:get_snapshot": ""
-
-# Update snapshot.
-# PUT  /snapshots/{snapshot_id}
-"volume:update_snapshot": ""
-
-# Delete snapshot.
-# DELETE  /snapshots/{snapshot_id}
-"volume:delete_snapshot": ""
-
 # List backups.
 # GET  /backups
 # GET  /backups/detail

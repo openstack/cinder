@@ -95,12 +95,12 @@ class SnapshotApiTest(test.TestCase):
             'expected_attrs': ['metadata'],
             'group_snapshot_id': None,
         }
-        ctx = context.RequestContext(fake.PROJECT_ID, fake.USER_ID, True)
-        snapshot_obj = fake_snapshot.fake_snapshot_obj(ctx, **snapshot)
-        fake_volume_obj = fake_volume.fake_volume_obj(ctx)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
+        fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
         req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
+        req.environ['cinder.context'] = self.ctx
         req.api_version_request = mv.get_api_version(max_ver)
         resp_dict = self.controller.show(req, UUID)
 
@@ -147,6 +147,7 @@ class SnapshotApiTest(test.TestCase):
     def _create_snapshot(self, name=None, metadata=None):
         """Creates test snapshopt with provided metadata"""
         req = fakes.HTTPRequest.blank('/v3/snapshots')
+        req.environ['cinder.context'] = self.ctx
         snap = {"volume_id": fake.VOLUME_ID,
                 "display_name": name or "Volume Test Name",
                 "description": "Volume Test Desc"

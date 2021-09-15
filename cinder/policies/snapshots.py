@@ -26,11 +26,36 @@ DELETE_POLICY = 'volume:delete_snapshot'
 UPDATE_POLICY = 'volume:update_snapshot'
 EXTEND_ATTRIBUTE = 'volume_extension:extended_snapshot_attributes'
 
+deprecated_get_all_snapshots = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_extend_snapshot_attribute = base.CinderDeprecatedRule(
+    name=EXTEND_ATTRIBUTE,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_create_snapshot = base.CinderDeprecatedRule(
+    name=CREATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_get_snapshot = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_update_snapshot = base.CinderDeprecatedRule(
+    name=UPDATE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+deprecated_delete_snapshot = base.CinderDeprecatedRule(
+    name=DELETE_POLICY,
+    check_str=base.RULE_ADMIN_OR_OWNER
+)
+
 
 snapshots_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List snapshots.",
         operations=[
             {
@@ -41,10 +66,12 @@ snapshots_policies = [
                 'method': 'GET',
                 'path': '/snapshots/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_snapshots,
+    ),
     policy.DocumentedRuleDefault(
         name=EXTEND_ATTRIBUTE,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List or show snapshots with extended attributes.",
         operations=[
             {
@@ -55,47 +82,57 @@ snapshots_policies = [
                 'method': 'GET',
                 'path': '/snapshots/detail'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_extend_snapshot_attribute,
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Create snapshot.",
         operations=[
             {
                 'method': 'POST',
                 'path': '/snapshots'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_create_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show snapshot.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/snapshots/{snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Update snapshot.",
         operations=[
             {
                 'method': 'PUT',
                 'path': '/snapshots/{snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_update_snapshot,
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
-        check_str=base.RULE_ADMIN_OR_OWNER,
+        check_str=base.SYSTEM_ADMIN_OR_PROJECT_MEMBER,
         description="Delete snapshot.",
         operations=[
             {
                 'method': 'DELETE',
                 'path': '/snapshots/{snapshot_id}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_delete_snapshot,
+    ),
 ]
 
 
