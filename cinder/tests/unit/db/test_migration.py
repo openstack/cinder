@@ -10,243 +10,177 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import os
-import tempfile
 from unittest import mock
 
-from migrate import exceptions as migrate_exception
+from alembic import command as alembic_api
+from alembic.runtime import migration as alembic_migration
+from migrate import exceptions as migrate_exceptions
 from migrate.versioning import api as migrate_api
-from migrate.versioning import repository as migrate_repository
-from oslo_db import exception as db_exception
-from oslo_db.sqlalchemy import enginefacade
-from oslo_db.sqlalchemy import test_fixtures as db_fixtures
 from oslotest import base as test_base
-import sqlalchemy
 
 from cinder.db import migration
-from cinder import utils
+from cinder.db.sqlalchemy import api as db_api
 
 
-class TestMigrationCommon(
-    db_fixtures.OpportunisticDBTestMixin, test_base.BaseTestCase,
-):
+class TestDBSync(test_base.BaseTestCase):
 
-    def setUp(self):
-        super().setUp()
+    def test_db_sync_legacy_version(self):
+        """We don't allow users to request legacy versions."""
+        self.assertRaises(ValueError, migration.db_sync, '402')
 
-        self.engine = enginefacade.writer.get_engine()
-
-        self.path = tempfile.mkdtemp('test_migration')
-        self.path1 = tempfile.mkdtemp('test_migration')
-        self.return_value = '/home/openstack/migrations'
-        self.return_value1 = '/home/extension/migrations'
-        self.init_version = 1
-        self.test_version = 123
-
-        self.patcher_repo = mock.patch.object(migrate_repository, 'Repository')
-        self.repository = self.patcher_repo.start()
-        self.repository.side_effect = [self.return_value, self.return_value1]
-
-        self.mock_api_db = mock.patch.object(migrate_api, 'db_version')
-        self.mock_api_db_version = self.mock_api_db.start()
-        self.mock_api_db_version.return_value = self.test_version
-
-    def tearDown(self):
-        os.rmdir(self.path)
-        self.mock_api_db.stop()
-        self.patcher_repo.stop()
-        super().tearDown()
-
-    def test_find_migrate_repo_path_not_found(self):
-        self.assertRaises(
-            db_exception.DBMigrationError,
-            migration._find_migrate_repo,
-            "/foo/bar/",
+    @mock.patch.object(migration, '_upgrade_alembic')
+    @mock.patch.object(migration, '_init_alembic_on_legacy_database')
+    @mock.patch.object(migration, '_is_database_under_alembic_control')
+    @mock.patch.object(migration, '_is_database_under_migrate_control')
+    @mock.patch.object(migration, '_find_alembic_conf')
+    @mock.patch.object(migration, '_find_migrate_repo')
+    @mock.patch.object(db_api, 'get_engine')
+    def _test_db_sync(
+        self, has_migrate, has_alembic, mock_get_engine, mock_find_repo,
+        mock_find_conf, mock_is_migrate, mock_is_alembic, mock_init,
+        mock_upgrade,
+    ):
+        mock_is_migrate.return_value = has_migrate
+        mock_is_alembic.return_value = has_alembic
+        migration.db_sync()
+        mock_get_engine.assert_called_once_with()
+        mock_find_repo.assert_called_once_with()
+        mock_find_conf.assert_called_once_with()
+        mock_find_conf.return_value.set_main_option.assert_called_once_with(
+            'sqlalchemy.url', str(mock_get_engine.return_value.url),
         )
+        mock_is_migrate.assert_called_once_with(
+            mock_get_engine.return_value, mock_find_repo.return_value)
+        if has_migrate:
+            mock_is_alembic.assert_called_once_with(
+                mock_get_engine.return_value)
+        else:
+            mock_is_alembic.assert_not_called()
 
-    def test_find_migrate_repo_called_once(self):
-        my_repository = migration._find_migrate_repo(self.path)
-        self.repository.assert_called_once_with(self.path)
-        self.assertEqual(self.return_value, my_repository)
+        # we should only attempt the upgrade of the remaining
+        # sqlalchemy-migrate-based migrations and fake apply of the initial
+        # alembic migrations if sqlalchemy-migrate is in place but alembic
+        # hasn't been used yet
+        if has_migrate and not has_alembic:
+            mock_init.assert_called_once_with(
+                mock_get_engine.return_value,
+                mock_find_repo.return_value, mock_find_conf.return_value)
+        else:
+            mock_init.assert_not_called()
 
-    def test_find_migrate_repo_called_few_times(self):
-        repo1 = migration._find_migrate_repo(self.path)
-        repo2 = migration._find_migrate_repo(self.path1)
-        self.assertNotEqual(repo1, repo2)
+        # however, we should always attempt to upgrade the requested migration
+        # to alembic
+        mock_upgrade.assert_called_once_with(
+            mock_get_engine.return_value, mock_find_conf.return_value, None)
 
-    def test_db_version_control(self):
-        with utils.nested_contexts(
-            mock.patch.object(migration, '_find_migrate_repo'),
-            mock.patch.object(migrate_api, 'version_control'),
-        ) as (mock_find_repo, mock_version_control):
-            mock_find_repo.return_value = self.return_value
+    def test_db_sync_new_deployment(self):
+        """Mimic a new deployment without existing sqlalchemy-migrate cruft."""
+        has_migrate = False
+        has_alembic = False
+        self._test_db_sync(has_migrate, has_alembic)
 
-            version = migration._migrate_db_version_control(
-                self.engine, self.path, self.test_version)
+    def test_db_sync_with_existing_migrate_database(self):
+        """Mimic a deployment currently managed by sqlalchemy-migrate."""
+        has_migrate = True
+        has_alembic = False
+        self._test_db_sync(has_migrate, has_alembic)
 
-            self.assertEqual(self.test_version, version)
-            mock_version_control.assert_called_once_with(
-                self.engine, self.return_value, self.test_version)
+    def test_db_sync_with_existing_alembic_database(self):
+        """Mimic a deployment that's already switched to alembic."""
+        has_migrate = True
+        has_alembic = True
+        self._test_db_sync(has_migrate, has_alembic)
 
-    @mock.patch.object(migration, '_find_migrate_repo')
-    @mock.patch.object(migrate_api, 'version_control')
-    def test_db_version_control_version_less_than_actual_version(
-        self, mock_version_control, mock_find_repo,
+
+@mock.patch.object(alembic_api, 'current')
+@mock.patch.object(migrate_api, 'db_version')
+@mock.patch.object(migration, '_is_database_under_alembic_control')
+@mock.patch.object(migration, '_is_database_under_migrate_control')
+@mock.patch.object(db_api, 'get_engine')
+@mock.patch.object(migration, '_find_migrate_repo')
+class TestDBVersion(test_base.BaseTestCase):
+
+    def test_db_version_migrate(
+        self, mock_find_repo, mock_get_engine, mock_is_migrate,
+        mock_is_alembic, mock_migrate_version, mock_alembic_version,
     ):
-        mock_find_repo.return_value = self.return_value
-        mock_version_control.side_effect = \
-            migrate_exception.DatabaseAlreadyControlledError
-        self.assertRaises(
-            db_exception.DBMigrationError,
-            migration._migrate_db_version_control, self.engine,
-            self.path, self.test_version - 1)
+        """Database is controlled by sqlalchemy-migrate."""
+        mock_is_migrate.return_value = True
+        mock_is_alembic.return_value = False
+        ret = migration.db_version()
+        self.assertEqual(mock_migrate_version.return_value, ret)
+        mock_find_repo.assert_called_once_with()
+        mock_get_engine.assert_called_once_with()
+        mock_is_migrate.assert_called_once()
+        mock_is_alembic.assert_called_once()
+        mock_migrate_version.assert_called_once_with(
+            mock_get_engine.return_value, mock_find_repo.return_value)
+        mock_alembic_version.assert_not_called()
 
-    @mock.patch.object(migration, '_find_migrate_repo')
-    @mock.patch.object(migrate_api, 'version_control')
-    def test_db_version_control_version_greater_than_actual_version(
-        self, mock_version_control, mock_find_repo,
+    def test_db_version_alembic(
+        self, mock_find_repo, mock_get_engine, mock_is_migrate,
+        mock_is_alembic, mock_migrate_version, mock_alembic_version,
     ):
-        mock_find_repo.return_value = self.return_value
-        mock_version_control.side_effect = \
-            migrate_exception.InvalidVersionError
-        self.assertRaises(
-            db_exception.DBMigrationError,
-            migration._migrate_db_version_control, self.engine,
-            self.path, self.test_version + 1)
+        """Database is controlled by alembic."""
+        mock_is_migrate.return_value = False
+        mock_is_alembic.return_value = True
+        ret = migration.db_version()
+        self.assertEqual(mock_alembic_version.return_value, ret)
+        mock_find_repo.assert_called_once_with()
+        mock_get_engine.assert_called_once_with()
+        mock_is_migrate.assert_called_once()
+        mock_is_alembic.assert_called_once()
+        mock_migrate_version.assert_not_called()
+        mock_alembic_version.assert_called_once_with(
+            mock_get_engine.return_value)
 
-    def test_db_version_return(self):
-        ret_val = migration._migrate_db_version(
-            self.engine, self.path, self.init_version)
-        self.assertEqual(self.test_version, ret_val)
+    def test_db_version_not_controlled(
+        self, mock_find_repo, mock_get_engine, mock_is_migrate,
+        mock_is_alembic, mock_migrate_version, mock_alembic_version,
+    ):
+        """Database is not controlled."""
+        mock_is_migrate.return_value = False
+        mock_is_alembic.return_value = False
+        ret = migration.db_version()
+        self.assertIsNone(ret)
+        mock_find_repo.assert_called_once_with()
+        mock_get_engine.assert_called_once_with()
+        mock_is_migrate.assert_called_once()
+        mock_is_alembic.assert_called_once()
+        mock_migrate_version.assert_not_called()
+        mock_alembic_version.assert_not_called()
 
-    def test_db_version_raise_not_controlled_error_first(self):
-        with mock.patch.object(
-            migration, '_migrate_db_version_control',
-        ) as mock_ver:
-            self.mock_api_db_version.side_effect = [
-                migrate_exception.DatabaseNotControlledError('oups'),
-                self.test_version]
 
-            ret_val = migration._migrate_db_version(
-                self.engine, self.path, self.init_version)
-            self.assertEqual(self.test_version, ret_val)
-            mock_ver.assert_called_once_with(
-                self.engine, self.path, version=self.init_version)
+class TestDatabaseUnderVersionControl(test_base.BaseTestCase):
 
-    def test_db_version_raise_not_controlled_error_tables(self):
-        with mock.patch.object(sqlalchemy, 'MetaData') as mock_meta:
-            self.mock_api_db_version.side_effect = \
-                migrate_exception.DatabaseNotControlledError('oups')
-            my_meta = mock.MagicMock()
-            my_meta.tables = {'a': 1, 'b': 2}
-            mock_meta.return_value = my_meta
+    @mock.patch.object(migrate_api, 'db_version')
+    def test__is_database_under_migrate_control__true(self, mock_db_version):
+        ret = migration._is_database_under_migrate_control('engine', 'repo')
+        self.assertTrue(ret)
+        mock_db_version.assert_called_once_with('engine', 'repo')
 
-            self.assertRaises(
-                db_exception.DBMigrationError, migration._migrate_db_version,
-                self.engine, self.path, self.init_version)
+    @mock.patch.object(migrate_api, 'db_version')
+    def test__is_database_under_migrate_control__false(self, mock_db_version):
+        mock_db_version.side_effect = \
+            migrate_exceptions.DatabaseNotControlledError()
+        ret = migration._is_database_under_migrate_control('engine', 'repo')
+        self.assertFalse(ret)
+        mock_db_version.assert_called_once_with('engine', 'repo')
 
-    @mock.patch.object(migrate_api, 'version_control')
-    def test_db_version_raise_not_controlled_error_no_tables(self, mock_vc):
-        with mock.patch.object(sqlalchemy, 'MetaData') as mock_meta:
-            self.mock_api_db_version.side_effect = (
-                migrate_exception.DatabaseNotControlledError('oups'),
-                self.init_version)
-            my_meta = mock.MagicMock()
-            my_meta.tables = {}
-            mock_meta.return_value = my_meta
+    @mock.patch.object(alembic_migration.MigrationContext, 'configure')
+    def test__is_database_under_alembic_control__true(self, mock_configure):
+        context = mock_configure.return_value
+        context.get_current_revision.return_value = 'foo'
+        engine = mock.MagicMock()
+        ret = migration._is_database_under_alembic_control(engine)
+        self.assertTrue(ret)
+        context.get_current_revision.assert_called_once_with()
 
-            migration._migrate_db_version(
-                self.engine, self.path, self.init_version)
-
-            mock_vc.assert_called_once_with(
-                self.engine, self.return_value1, self.init_version)
-
-    @mock.patch.object(migrate_api, 'version_control')
-    def test_db_version_raise_not_controlled_alembic_tables(self, mock_vc):
-        # When there are tables but the alembic control table
-        # (alembic_version) is present, attempt to version the db.
-        # This simulates the case where there is are multiple repos (different
-        # abs_paths) and a different path has been versioned already.
-        with mock.patch.object(sqlalchemy, 'MetaData') as mock_meta:
-            self.mock_api_db_version.side_effect = [
-                migrate_exception.DatabaseNotControlledError('oups'), None]
-            my_meta = mock.MagicMock()
-            my_meta.tables = {'alembic_version': 1, 'b': 2}
-            mock_meta.return_value = my_meta
-
-            migration._migrate_db_version(
-                self.engine, self.path, self.init_version)
-
-            mock_vc.assert_called_once_with(
-                self.engine, self.return_value1, self.init_version)
-
-    @mock.patch.object(migrate_api, 'version_control')
-    def test_db_version_raise_not_controlled_migrate_tables(self, mock_vc):
-        # When there are tables but the sqlalchemy-migrate control table
-        # (migrate_version) is present, attempt to version the db.
-        # This simulates the case where there is are multiple repos (different
-        # abs_paths) and a different path has been versioned already.
-        with mock.patch.object(sqlalchemy, 'MetaData') as mock_meta:
-            self.mock_api_db_version.side_effect = [
-                migrate_exception.DatabaseNotControlledError('oups'), None]
-            my_meta = mock.MagicMock()
-            my_meta.tables = {'migrate_version': 1, 'b': 2}
-            mock_meta.return_value = my_meta
-
-            migration._migrate_db_version(
-                self.engine, self.path, self.init_version)
-
-            mock_vc.assert_called_once_with(
-                self.engine, self.return_value1, self.init_version)
-
-    def test_db_sync_wrong_version(self):
-        self.assertRaises(
-            db_exception.DBMigrationError,
-            migration._migrate_db_sync, self.engine, self.path, 'foo')
-
-    @mock.patch.object(migrate_api, 'upgrade')
-    def test_db_sync_script_not_present(self, upgrade):
-        # For non existent migration script file sqlalchemy-migrate will raise
-        # VersionNotFoundError which will be wrapped in DBMigrationError.
-        upgrade.side_effect = migrate_exception.VersionNotFoundError
-        self.assertRaises(
-            db_exception.DBMigrationError,
-            migration._migrate_db_sync, self.engine, self.path,
-            self.test_version + 1)
-
-    @mock.patch.object(migrate_api, 'upgrade')
-    def test_db_sync_known_error_raised(self, upgrade):
-        upgrade.side_effect = migrate_exception.KnownError
-        self.assertRaises(
-            db_exception.DBMigrationError,
-            migration._migrate_db_sync, self.engine, self.path,
-            self.test_version + 1)
-
-    def test_db_sync_upgrade(self):
-        init_ver = 55
-        with utils.nested_contexts(
-            mock.patch.object(migration, '_find_migrate_repo'),
-            mock.patch.object(migrate_api, 'upgrade')
-        ) as (mock_find_repo, mock_upgrade):
-            mock_find_repo.return_value = self.return_value
-            self.mock_api_db_version.return_value = self.test_version - 1
-
-            migration._migrate_db_sync(
-                self.engine, self.path, self.test_version, init_ver)
-
-            mock_upgrade.assert_called_once_with(
-                self.engine, self.return_value, self.test_version)
-
-    def test_db_sync_downgrade(self):
-        with utils.nested_contexts(
-            mock.patch.object(migration, '_find_migrate_repo'),
-            mock.patch.object(migrate_api, 'downgrade')
-        ) as (mock_find_repo, mock_downgrade):
-            mock_find_repo.return_value = self.return_value
-            self.mock_api_db_version.return_value = self.test_version + 1
-
-            migration._migrate_db_sync(
-                self.engine, self.path, self.test_version)
-
-            mock_downgrade.assert_called_once_with(
-                self.engine, self.return_value, self.test_version)
+    @mock.patch.object(alembic_migration.MigrationContext, 'configure')
+    def test__is_database_under_alembic_control__false(self, mock_configure):
+        context = mock_configure.return_value
+        context.get_current_revision.return_value = None
+        engine = mock.MagicMock()
+        ret = migration._is_database_under_alembic_control(engine)
+        self.assertFalse(ret)
+        context.get_current_revision.assert_called_once_with()

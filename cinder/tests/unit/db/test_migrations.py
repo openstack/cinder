@@ -11,18 +11,17 @@
 #    under the License.
 
 """
-Tests for database migrations. This test case reads the configuration
-file test_migrations.conf for database connection settings
-to use in the tests. For each connection found in the config file,
+Tests for database migrations. For each database backend supported by cinder,
 the test case runs a series of test cases to ensure that migrations work
-properly both upgrading and downgrading, and that no data loss occurs
-if possible.
+properly and that no data loss occurs if possible.
 """
 
 import os
 
+from alembic import command as alembic_api
+from alembic import script as alembic_script
 import fixtures
-from migrate.versioning import api as migration_api
+from migrate.versioning import api as migrate_api
 from migrate.versioning import repository
 from oslo_db.sqlalchemy import enginefacade
 from oslo_db.sqlalchemy import test_fixtures
@@ -38,7 +37,83 @@ from cinder.tests.unit import utils as test_utils
 from cinder.volume import volume_types
 
 
-class MigrationsMixin(test_migrations.WalkVersionsMixin):
+class MigrationsWalk(
+    test_fixtures.OpportunisticDBTestMixin, test_base.BaseTestCase,
+):
+    def setUp(self):
+        super().setUp()
+        self.engine = enginefacade.writer.get_engine()
+        self.config = migration._find_alembic_conf()
+        self.init_version = migration.ALEMBIC_INIT_VERSION
+
+    def _migrate_up(self, revision):
+        if revision == self.init_version:  # no tests for the initial revision
+            return
+
+        self.assertIsNotNone(
+            getattr(self, '_check_%s' % revision, None),
+            (
+                'API DB Migration %s does not have a test; you must add one'
+            ) % revision,
+        )
+        alembic_api.upgrade(self.config, revision)
+
+    def test_single_base_revision(self):
+        """Ensure we only have a single base revision.
+
+        There's no good reason for us to have diverging history, so validate
+        that only one base revision exists. This will prevent simple errors
+        where people forget to specify the base revision. If this fail for your
+        change, look for migrations that do not have a 'revises' line in them.
+        """
+        script = alembic_script.ScriptDirectory.from_config(self.config)
+        self.assertEqual(1, len(script.get_bases()))
+
+    def test_single_head_revision(self):
+        """Ensure we only have a single head revision.
+
+        There's no good reason for us to have diverging history, so validate
+        that only one head revision exists. This will prevent merge conflicts
+        adding additional head revision points. If this fail for your change,
+        look for migrations with the same 'revises' line in them.
+        """
+        script = alembic_script.ScriptDirectory.from_config(self.config)
+        self.assertEqual(1, len(script.get_heads()))
+
+    def test_walk_versions(self):
+        with self.engine.begin() as connection:
+            self.config.attributes['connection'] = connection
+            script = alembic_script.ScriptDirectory.from_config(self.config)
+            for revision_script in script.walk_revisions():
+                revision = revision_script.revision
+                self._migrate_up(revision)
+
+
+class TestMigrationsWalkSQLite(
+    MigrationsWalk,
+    test_fixtures.OpportunisticDBTestMixin,
+    test_base.BaseTestCase,
+):
+    pass
+
+
+class TestMigrationsWalkMySQL(
+    MigrationsWalk,
+    test_fixtures.OpportunisticDBTestMixin,
+    test_base.BaseTestCase,
+):
+    FIXTURE = test_fixtures.MySQLOpportunisticFixture
+
+
+class TestMigrationsWalkPostgreSQL(
+    MigrationsWalk,
+    test_fixtures.OpportunisticDBTestMixin,
+    test_base.BaseTestCase,
+):
+    FIXTURE = test_fixtures.PostgresqlOpportunisticFixture
+
+
+class LegacyMigrationsWalk(test_migrations.WalkVersionsMixin):
     """Test sqlalchemy-migrate migrations."""
 
     BOOL_TYPE = sqlalchemy.types.BOOLEAN
@@ -47,9 +122,13 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
     VARCHAR_TYPE = sqlalchemy.types.VARCHAR
     TEXT_TYPE = sqlalchemy.types.Text
 
+    def setUp(self):
+        super().setUp()
+        self.engine = enginefacade.writer.get_engine()
+
     @property
     def INIT_VERSION(self):
-        return migration.INIT_VERSION
+        return migration.MIGRATE_INIT_VERSION
 
     @property
     def REPOSITORY(self):
@@ -59,16 +138,7 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
 
     @property
     def migration_api(self):
-        return migration_api
-
-    def setUp(self):
-        super(MigrationsMixin, self).setUp()
-
-        # (zzzeek) This mixin states that it uses the
-        # "self.engine" attribute in the migrate_engine() method.
-        # So the mixin must set that up for itself, oslo_db no longer
-        # makes these assumptions for you.
-        self.engine = enginefacade.writer.get_engine()
+        return migrate_api
 
     @property
     def migrate_engine(self):
@@ -81,7 +151,7 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
     class BannedDBSchemaOperations(fixtures.Fixture):
         """Ban some operations for migrations"""
         def __init__(self, banned_resources=None):
-            super(MigrationsMixin.BannedDBSchemaOperations, self).__init__()
+            super().__init__()
             self._banned_resources = banned_resources or []
 
         @staticmethod
@@ -92,7 +162,7 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                     resource, op))
 
         def setUp(self):
-            super(MigrationsMixin.BannedDBSchemaOperations, self).setUp()
+            super().setUp()
             for thing in self._banned_resources:
                 self.useFixture(fixtures.MonkeyPatch(
                     'sqlalchemy.%s.drop' % thing,
@@ -123,8 +193,9 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             banned = ['Table', 'Column']
         else:
             banned = None
-        with MigrationsMixin.BannedDBSchemaOperations(banned):
-            super(MigrationsMixin, self).migrate_up(version, with_data)
+
+        with LegacyMigrationsWalk.BannedDBSchemaOperations(banned):
+            super().migrate_up(version, with_data)
 
     def __check_cinderbase_fields(self, columns):
         """Check fields inherited from CinderBase ORM class."""
@@ -217,9 +288,11 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assert_each_foreign_key_is_part_of_an_index()
 
 
-class TestSqliteMigrations(test_fixtures.OpportunisticDBTestMixin,
-                           MigrationsMixin,
-                           test_base.BaseTestCase):
+class TestLegacyMigrationsWalkSQLite(
+    test_fixtures.OpportunisticDBTestMixin,
+    LegacyMigrationsWalk,
+    test_base.BaseTestCase,
+):
 
     def assert_each_foreign_key_is_part_of_an_index(self):
         # Skip the test for SQLite because SQLite does not list
@@ -228,9 +301,11 @@ class TestSqliteMigrations(test_fixtures.OpportunisticDBTestMixin,
         pass
 
 
-class TestMysqlMigrations(test_fixtures.OpportunisticDBTestMixin,
-                          MigrationsMixin,
-                          test_base.BaseTestCase):
+class TestLegacyMigrationsWalkMySQL(
+    test_fixtures.OpportunisticDBTestMixin,
+    LegacyMigrationsWalk,
+    test_base.BaseTestCase,
+):
 
     FIXTURE = test_fixtures.MySQLOpportunisticFixture
     BOOL_TYPE = sqlalchemy.dialects.mysql.TINYINT
@@ -241,7 +316,10 @@ class TestMysqlMigrations(test_fixtures.OpportunisticDBTestMixin,
         # add this to the global lists to make reset work with it, it's removed
         # automatically in tearDown so no need to clean it up here.
         # sanity check
-        migration.db_sync(engine=self.migrate_engine)
+        repo = migration._find_migrate_repo()
+        migrate_api.version_control(
+            self.migrate_engine, repo, migration.MIGRATE_INIT_VERSION)
+        migrate_api.upgrade(self.migrate_engine, repo)
 
         total = self.migrate_engine.execute(
             "SELECT count(*) "
@@ -268,13 +346,14 @@ class TestMysqlMigrations(test_fixtures.OpportunisticDBTestMixin,
         # Depending on the MariaDB version, and the page size, we may not have
         # been able to change quota_usage_resource to 300 chars, it could still
         # be 255.
-        self.assertIn(quota_usage_resource.c.resource.type.length,
-                      (255, 300))
+        self.assertIn(quota_usage_resource.c.resource.type.length, (255, 300))
 
 
-class TestPostgresqlMigrations(test_fixtures.OpportunisticDBTestMixin,
-                               MigrationsMixin,
-                               test_base.BaseTestCase):
+class TestLegacyMigrationsWalkPostgreSQL(
+    test_fixtures.OpportunisticDBTestMixin,
+    LegacyMigrationsWalk,
+    test_base.BaseTestCase,
+):
 
     FIXTURE = test_fixtures.PostgresqlOpportunisticFixture
     TIME_TYPE = sqlalchemy.types.TIMESTAMP
