@@ -3858,6 +3858,11 @@ class OnlineMigrationTestCase(BaseTest):
     # TODO: (Y Release) remove method and this comment
     @mock.patch.object(sqlalchemy_api, 'use_quota_online_data_migration')
     def test_volume_use_quota_online_data_migration(self, migration_mock):
+
+        class FakeAdminMeta:
+            def __init__(self, value):
+                self.key = 'temporary'
+                self.value = value
         sqlalchemy_api.volume_use_quota_online_data_migration(
             self.ctxt, mock.sentinel.max_count)
         migration_mock.assert_called_once_with(self.ctxt,
@@ -3867,15 +3872,21 @@ class OnlineMigrationTestCase(BaseTest):
         calculation_method = migration_mock.call_args[0][3]
 
         # Confirm we set use_quota field to False for temporary volumes
-        temp_volume = mock.Mock(admin_metadata={'temporary': True})
+        temp_volume = mock.Mock(volume_admin_metadata=[FakeAdminMeta('True')])
         self.assertFalse(calculation_method(temp_volume))
 
-        # Confirm we set use_quota field to False for temporary volumes
-        migration_dest_volume = mock.Mock(migration_status='target:123')
+        # Confirm we set use_quota field to False for migrating volumes
+        migration_dest_volume = mock.Mock(migration_status='target:123',
+                                          volume_admin_metadata=[])
         self.assertFalse(calculation_method(migration_dest_volume))
 
-        # Confirm we set use_quota field to False in other cases
-        volume = mock.Mock(admin_metadata={'temporary': False},
+        # Confirm we set use_quota field to True for non-migrating volumes
+        non_migrating_volume = mock.Mock(migration_status=None,
+                                         volume_admin_metadata=[])
+        self.assertTrue(calculation_method(non_migrating_volume))
+
+        # Confirm we set use_quota field to True in other cases
+        volume = mock.Mock(volume_admin_metadata=[FakeAdminMeta('False')],
                            migration_status='success')
         self.assertTrue(calculation_method(volume))
 
