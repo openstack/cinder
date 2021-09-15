@@ -49,7 +49,6 @@ from cinder.compute import nova as cinder_compute_nova
 from cinder import context as cinder_context
 from cinder import coordination as cinder_coordination
 from cinder.db import api as cinder_db_api
-from cinder.db import base as cinder_db_base
 from cinder.image import glance as cinder_image_glance
 from cinder.image import image_utils as cinder_image_imageutils
 from cinder.keymgr import conf_key_mgr as cinder_keymgr_confkeymgr
@@ -242,7 +241,6 @@ def list_opts():
                 cinder_context.context_opts,
                 cinder_db_api.db_opts,
                 cinder_db_api.backup_opts,
-                [cinder_db_base.db_driver_opt],
                 cinder_image_glance.image_opts,
                 cinder_image_glance.glance_core_properties_opts,
                 cinder_image_imageutils.image_opts,

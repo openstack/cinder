@@ -21,11 +21,11 @@ import ddt
 from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
-from oslo_utils import importutils
 from oslo_utils import units
 import paramiko
 
 from cinder import context
+from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -77,9 +77,7 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
         self.ctxt = context.get_admin_context()
 
         self.ctxt = context.get_admin_context()
-        db_driver = CONF.db_driver
-        self.db = importutils.import_module(db_driver)
-        self.driver.db = self.db
+        self.driver.db = db
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self.driver._assistant.check_lcmapping_interval = 0
@@ -319,7 +317,7 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
 
     def _delete_volume(self, volume):
         self.driver.delete_volume(volume)
-        self.db.volume_destroy(self.ctxt, volume['id'])
+        db.volume_destroy(self.ctxt, volume['id'])
 
     def _create_group_in_db(self, **kwargs):
         group = testutils.create_group(self.ctxt, **kwargs)
@@ -340,8 +338,7 @@ class InStorageMCSCommonDriverTestCase(test.TestCase):
                                                          **kwargs)
         snapshots = []
         grp_id = group_snapshot['group_id']
-        volumes = self.db.volume_get_all_by_group(self.ctxt.elevated(),
-                                                  grp_id)
+        volumes = db.volume_get_all_by_group(self.ctxt.elevated(), grp_id)
 
         if not volumes:
             msg = "Group is empty. No group snapshot will be created."

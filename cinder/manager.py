@@ -84,18 +84,19 @@ class Manager(base.Base, PeriodicTasks):
 
     target = messaging.Target(version=RPC_API_VERSION)
 
-    def __init__(self,
-                 host: oslo_config.types.HostAddress = None,
-                 db_driver=None,
-                 cluster=None,
-                 **_kwargs):
+    def __init__(
+        self,
+        host: oslo_config.types.HostAddress = None,
+        cluster=None,
+        **_kwargs,
+    ):
         if not host:
             host = CONF.host
         self.host: oslo_config.types.HostAddress = host
         self.cluster = cluster
         self.additional_endpoints: list = []
         self.availability_zone = CONF.storage_availability_zone
-        super(Manager, self).__init__(db_driver)  # type: ignore
+        super().__init__()  # type: ignore
 
     def _set_tpool_size(self, nthreads: int) -> None:
         # NOTE(geguileo): Until PR #472 is merged we have to be very careful
@@ -178,14 +179,18 @@ class SchedulerDependentManager(ThreadPoolManager):
 
     """
 
-    def __init__(self, host=None, db_driver=None, service_name='undefined',
-                 cluster=None, *args, **kwargs):
+    def __init__(
+        self,
+        host=None,
+        service_name='undefined',
+        cluster=None,
+        *args,
+        **kwargs,
+    ):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
-        super(SchedulerDependentManager, self).__init__(host, db_driver,
-                                                        cluster=cluster,
-                                                        *args, **kwargs)
+        super().__init__(host, cluster=cluster, *args, **kwargs)
 
     def update_service_capabilities(self, capabilities):
         """Remember these capabilities to send on next periodic update."""

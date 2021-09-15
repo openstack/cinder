@@ -27,11 +27,11 @@ from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import excutils
-from oslo_utils import importutils
 from oslo_utils import units
 import paramiko
 
 from cinder import context
+import cinder.db
 from cinder import exception
 from cinder import ssh_utils
 from cinder.tests.unit import test
@@ -675,8 +675,7 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.set_fake_storage(self.sim)
         self.ctxt = context.get_admin_context()
 
-        db_driver = CONF.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self.iscsi_driver.db = self.db
         self.iscsi_driver.get_driver_options()
         self.iscsi_driver.do_setup(None)
@@ -835,8 +834,7 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self._driver.set_fake_storage(self.sim)
         self.ctxt = context.get_admin_context()
 
-        db_driver = CONF.db_driver
-        self.db = importutils.import_module(db_driver)
+        self.db = cinder.db
         self._driver.db = self.db
         self._driver.do_setup(None)
         self._driver.check_for_setup_error()

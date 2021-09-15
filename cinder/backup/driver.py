@@ -52,8 +52,9 @@ class BackupMetadataAPI(base.Base):
     TYPE_TAG_VOL_META = 'volume-metadata'
     TYPE_TAG_VOL_GLANCE_META = 'volume-glance-metadata'
 
-    def __init__(self, context, db=None):
-        super(BackupMetadataAPI, self).__init__(db)
+    # TODO(stephenfin): The 'db' kwarg is unused; remove it
+    def __init__(self, context):
+        super().__init__()
         self.context = context
         self._key_mgr = None
 
@@ -347,10 +348,11 @@ class BackupMetadataAPI(base.Base):
 
 class BackupDriver(base.Base, metaclass=abc.ABCMeta):
 
+    # TODO(stephenfin): The 'db' kwarg is unused; remove it
     def __init__(self, context, db=None):
-        super(BackupDriver, self).__init__(db)
+        super().__init__()
         self.context = context
-        self.backup_meta_api = BackupMetadataAPI(context, db)
+        self.backup_meta_api = BackupMetadataAPI(context)
         # This flag indicates if backup driver supports force
         # deletion. So it should be set to True if the driver that inherits
         # from BackupDriver supports the force deletion function.

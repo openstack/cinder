@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The ``[DEFAULT] db_driver`` config option has been removed. This was
+    intended to allow configuration of the database driver, however, there
+    is only one database driver present in-tree and out-of-tree database
+    drivers are not supported.

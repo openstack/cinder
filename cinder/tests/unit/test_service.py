@@ -52,11 +52,8 @@ CONF.register_opts(test_service_opts)
 
 class FakeManager(manager.Manager):
     """Fake manager for tests."""
-    def __init__(self, host=None,
-                 db_driver=None, service_name=None, cluster=None):
-        super(FakeManager, self).__init__(host=host,
-                                          db_driver=db_driver,
-                                          cluster=cluster)
+    def __init__(self, host=None, service_name=None, cluster=None):
+        super().__init__(host=host, cluster=cluster)
 
     def test_method(self):
         return 'manager'
