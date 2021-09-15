@@ -1068,20 +1068,6 @@ class InstanceLocalityFilterTestCase(BackendFiltersTestCase):
                           filt_cls.backend_passes, host, filter_properties)
 
     @mock.patch('cinder.compute.nova.novaclient')
-    def test_nova_no_extended_server_attributes(self, _mock_novaclient):
-        _mock_novaclient.return_value = fakes.FakeNovaClient(
-            ext_srv_attr=False)
-        filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeBackendState('host1', {})
-        uuid = nova.novaclient().servers.create('host1')
-
-        filter_properties = {'context': self.context,
-                             'scheduler_hints': {'local_to_instance': uuid},
-                             'request_spec': {'volume_id': fake.VOLUME_ID}}
-        self.assertRaises(exception.CinderException,
-                          filt_cls.backend_passes, host, filter_properties)
-
-    @mock.patch('cinder.compute.nova.novaclient')
     def test_nova_down_does_not_alter_other_filters(self, _mock_novaclient):
         # Simulate Nova API is not available
         _mock_novaclient.side_effect = Exception
@@ -1096,8 +1082,8 @@ class InstanceLocalityFilterTestCase(BackendFiltersTestCase):
     @mock.patch('cinder.compute.nova.novaclient')
     def test_nova_timeout(self, mock_novaclient):
         # Simulate a HTTP timeout
-        mock_show_all = mock_novaclient.return_value.list_extensions.show_all
-        mock_show_all.side_effect = request_exceptions.Timeout
+        mock_get = mock_novaclient.return_value.servers.get
+        mock_get.side_effect = request_exceptions.Timeout
 
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeBackendState('host1', {})
