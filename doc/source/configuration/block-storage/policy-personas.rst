@@ -2,10 +2,6 @@
 Policy Personas and Permissions
 ===============================
 
-.. warning::
-   This describes work in progress.  Until this warning is removed,
-   you should regard the permissions described here as NOT IMPLEMENTED.
-
 Beginning with the Xena release, the Block Storage service API v3 takes
 advantage of the default authentication and authorization apparatus supplied
 by the Keystone project to give operators a rich set of default policies to
@@ -485,8 +481,7 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - | **NEEDS REVIEW**
-       | Update status (and optionally progress) of snapshot
+   * - Update status (and optionally progress) of snapshot
      - ``POST  /snapshots/{snapshot_id}/action`` (os-update_snapshot_status)
      - snapshot_extension:snapshot_actions:update_snapshot_status
      - empty
@@ -829,7 +824,7 @@ matrix is validated by human beings.
      - system-admin
      - (old "owner")
      - (old "admin")
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | Create, update or delete a group type
      - | (NOTE: new policies split POST, PUT, DELETE)
        | ``POST /group_types/``
@@ -895,7 +890,7 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | Create, show, update and delete group type spec
      - | (NOTE: new policies split GET, POST, PUT, DELETE)
        | ``GET /group_types/{group_type_id}/group_specs``
@@ -1251,7 +1246,7 @@ matrix is validated by human beings.
      - system-admin
      - (old "owner")
      - (old "admin")
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | Show or update project quota class
      - | (NOTE: new policies split GET and PUT)
        | ``GET  /os-quota-class-sets/{project_id}``
@@ -1443,7 +1438,7 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | List, update or show hosts for a project
      - | (NOTE: new policies split GETs and PUT)
        | ``GET  /os-hosts``
@@ -1554,7 +1549,7 @@ matrix is validated by human beings.
      - system-admin
      - (old "owner")
      - (old "admin")
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | Create, update and delete volume type
        | (new policies for create/update/delete)
      - | ``POST  /types``
@@ -1627,7 +1622,7 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | Base policy for all volume type encryption type operations
        | (NOTE: can't use this anymore, because it gives GET and POST same
          permissions)
@@ -1715,9 +1710,7 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - | **REVISE** (it also governs listing all the projects with access,
-         which should be governed by a different policy)
-       | Volume type access related APIs.
+   * - Show whether a volume type is public in the type response
      - | Adds ``os-volume-type-access:is_public`` to the following responses:
        | ``GET  /types``
        | ``GET  /types/{type_id}``
@@ -2144,7 +2137,7 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-   * - | **DEPRECATE**
+   * - | **DEPRECATED**
        | Volume's image metadata related operation, create, delete, show and
          list
      - | (NOTE: new policies are introduced below to split GET and POST)
@@ -2484,7 +2477,7 @@ matrix is validated by human beings.
      - system-admin
      - (old "owner")
      - (old "admin")
-   * - Set or update default volume type
+   * - Set or update default volume type for a project
      - ``PUT  /default-types``
      - volume_extension:default_set_or_update
      - rule:system_or_domain_or_project_admin
@@ -2495,7 +2488,7 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - Get default types
+   * - Get default type for a project
      - | ``GET  /default-types/{project-id}``
        | (Note: a project-\* persona can always determine their effective
          default-type by making the ``GET /v3/{project_id}/types/default``
@@ -2520,7 +2513,7 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - Unset default type
+   * - Unset default type for a project
      - ``DELETE  /default-types/{project-id}``
      - volume_extension:default_unset
      - rule:system_or_domain_or_project_admin
