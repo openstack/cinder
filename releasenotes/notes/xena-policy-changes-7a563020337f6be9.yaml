@@ -27,6 +27,7 @@ features:
 
       * ``rule:admin_or_owner``
       * ``rule:system_or_domain_or_project_admin``
+      * ``rule:volume_extension:volume_type_encryption``
 
     * Some current policies that were over-general (that is, they governed both
       read and write operations on a resource) are being replaced by a set of
@@ -41,6 +42,8 @@ features:
 
       * ``group:group_types_specs`` is replaced by:
 
+        * ``group:group_types_specs:get``
+        * ``group:group_types_specs:get_all``
         * ``group:group_types:create``
         * ``group:group_types:update``
         * ``group:group_types:delete``
@@ -102,6 +105,7 @@ deprecations:
 
     * ``rule:admin_or_owner``
     * ``rule:system_or_domain_or_project_admin``
+    * ``rule:volume_extension:volume_type_encryption``
 
     For more information, see the 'New Features' section of this document and
     `Policy Personas and Permissions
