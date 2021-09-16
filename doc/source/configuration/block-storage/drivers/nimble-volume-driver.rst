@@ -1,10 +1,10 @@
-============================
-Nimble Storage volume driver
-============================
+=========================================
+Nimble & Alletra 6k Storage volume driver
+=========================================
 
 Nimble Storage fully integrates with the OpenStack platform through
 the Nimble Cinder driver, allowing a host to configure and manage Nimble
-Storage array features through Block Storage interfaces.
+and Alletra 6k Storage array features through Block Storage interfaces.
 
 Support for iSCSI storage protocol is available with NimbleISCSIDriver
 Volume Driver class and Fibre Channel with NimbleFCDriver.
@@ -15,9 +15,12 @@ Support for the Liberty release and above is available from Nimble OS
 Support for the Ocata release and above is available from Nimble OS 3.6 or
 later.
 
-Nimble Storage Cinder driver does not support port binding with multiple
-interfaces on the same subnet due to existing limitation in os-brick. This
-is partially referenced in the bug
+For Xena release, Nimble OS 5.3 or later is used and Alletra OS 6.0
+or later is used.
+
+Nimble and Alletra 6k Storage Cinder driver does not support port binding
+with multiple interfaces on the same subnet due to existing limitation in
+os-brick. This is partially referenced in the bug
 https://bugs.launchpad.net/os-brick/+bug/1722432 but does not resolve
 for multiple software iscsi ifaces.
 
@@ -42,10 +45,11 @@ Supported operations
 * Create, list, update, and delete consistency groups
 * Create, list, and delete consistency group snapshots
 
-Nimble Storage driver configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Nimble and Alletra 6k Storage driver configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Update the file ``/etc/cinder/cinder.conf`` with the given configuration.
+Note: These parameters apply to Alletra 6k Storage as well.
 
 In case of a basic (single back-end) configuration, add the parameters
 within the ``[default]`` section as follows.
@@ -92,14 +96,14 @@ is created and associated with a back-end name as follows.
 This section explains the variables used above:
 
 NIMBLE_MGMT_IP
-  Management IP address of Nimble Storage array/group.
+  Management IP address of Nimble/Alletra 6k Storage array/group.
 
 NIMBLE_USER
-  Nimble Storage account login with minimum ``power user`` (admin) privilege
-  if RBAC is used.
+  Nimble/Alletra 6k Storage account login with minimum ``power user``
+  (admin) privilege if RBAC is used.
 
 NIMBLE_PASSWORD
-  Password of the admin account for nimble array.
+  Password of the admin account for Nimble/Alletra 6k array.
 
 NIMBLE_VOLUME_DRIVER
   Use either cinder.volume.drivers.nimble.NimbleISCSIDriver for iSCSI or
@@ -128,7 +132,8 @@ The Nimble volume driver also supports the following extra spec options:
 
 'nimble:perfpol-name'=PERF_POL_NAME
   PERF_POL_NAME is the name of a performance policy which exists on the
-  Nimble array and should be enabled for every volume in a volume type.
+  Nimble/Alletra 6k array and should be enabled for every volume in a
+  volume type.
 
 .. note::
 
@@ -143,8 +148,8 @@ nimble:dedupe'='true'
   volumes created for this volume-type.
 
 'nimble:folder'=FOLDER_NAME
-  FOLDER_NAME is the name of the folder which exists on the Nimble array
-  and should be enabled for every volume in a volume type
+  FOLDER_NAME is the name of the folder which exists on the Nimble/Alletra 6k
+  array and should be enabled for every volume in a volume type
 
 These extra-specs can be enabled by using the following command:
 
@@ -158,7 +163,7 @@ the options mentioned above.
 Configuration options
 ~~~~~~~~~~~~~~~~~~~~~
 
-The Nimble storage driver supports these configuration options:
+The Nimble/Alletra 6k storage driver supports these configuration options:
 
 .. config-table::
    :config-target: Nimble

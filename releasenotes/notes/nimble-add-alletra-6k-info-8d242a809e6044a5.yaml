@@ -1,0 +1,5 @@
+other:
+  - |
+    Nimble: Documented that existing driver supports the new Alletra 6k
+    backend. Alletra 6k is newer version of existing Nimble backend.
+
