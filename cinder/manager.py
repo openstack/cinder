@@ -96,7 +96,7 @@ class Manager(base.Base, PeriodicTasks):
         self.cluster = cluster
         self.additional_endpoints: list = []
         self.availability_zone = CONF.storage_availability_zone
-        super().__init__()  # type: ignore
+        super().__init__()
 
     def _set_tpool_size(self, nthreads: int) -> None:
         # NOTE(geguileo): Until PR #472 is merged we have to be very careful
