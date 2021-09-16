@@ -132,7 +132,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.mock_object(cinder.db, 'volume_type_extra_specs_delete')
 
         self.assertEqual(0, len(self.notifier.notifications))
-        req = fakes.HTTPRequest.blank(self.api_path + '/key5')
+        req = fakes.HTTPRequest.blank(self.api_path + '/key5',
+                                      use_admin_context=True)
         self.controller.delete(req, fake.VOLUME_ID, 'key5')
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertIn('created_at', self.notifier.notifications[0]['payload'])
@@ -144,7 +145,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                          side_effect=exception.VolumeTypeExtraSpecsNotFound(
                              "Not Found"))
 
-        req = fakes.HTTPRequest.blank(self.api_path + '/key6')
+        req = fakes.HTTPRequest.blank(self.api_path + '/key6',
+                                      use_admin_context=True)
         self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
                           self.controller.delete, req, fake.VOLUME_ID, 'key6')
 
@@ -155,7 +157,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         body = {"extra_specs": {"key1": "value1"}}
 
         self.assertEqual(0, len(self.notifier.notifications))
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertIn('created_at', self.notifier.notifications[0]['payload'])
@@ -179,7 +182,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         body = {"extra_specs": {"image_service:store_id": "cheap"}}
 
         self.assertEqual(0, len(self.notifier.notifications))
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertIn('created_at', self.notifier.notifications[0]['payload'])
@@ -199,7 +203,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
             }]
         }
         body = {"extra_specs": {"image_service:store_id": "fast"}}
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         self.assertRaises(cinder.exception.GlanceStoreNotFound,
                           self.controller.create,
                           req, fake.VOLUME_ID, body=body)
@@ -216,7 +221,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
             }]
         }
         body = {"extra_specs": {"image_service:store_id": "read_only_store"}}
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         self.assertRaises(cinder.exception.GlanceStoreReadOnly,
                           self.controller.create,
                           req, fake.VOLUME_ID, body=body)
@@ -236,7 +242,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
 
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertEqual('value1',
@@ -259,7 +266,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
 
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         res_dict = self.controller.create(req, fake.VOLUME_ID, body=body)
         self.assertEqual(1, len(self.notifier.notifications))
         self.assertEqual('value1',
@@ -290,7 +298,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(
-            self.api_path + "/image_service:store_id")
+            self.api_path + "/image_service:store_id",
+            use_admin_context=True)
         res_dict = self.controller.update(req, fake.VOLUME_ID,
                                           "image_service:store_id",
                                           body=body)
@@ -321,7 +330,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(
-            self.api_path + "/image_service:store_id")
+            self.api_path + "/image_service:store_id",
+            use_admin_context=True)
         self.assertRaises(cinder.exception.GlanceStoreNotFound,
                           self.controller.update,
                           req, fake.VOLUME_ID,
@@ -349,7 +359,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(
-            self.api_path + "/image_service:store_id")
+            self.api_path + "/image_service:store_id",
+            use_admin_context=True)
         self.assertRaises(cinder.exception.GlanceStoreReadOnly,
                           self.controller.update,
                           req, fake.VOLUME_ID,
@@ -363,7 +374,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         body = {"key1": "value1"}
 
         self.assertEqual(0, len(self.notifier.notifications))
-        req = fakes.HTTPRequest.blank(self.api_path + '/key1')
+        req = fakes.HTTPRequest.blank(self.api_path + '/key1',
+                                      use_admin_context=True)
         res_dict = self.controller.update(req, fake.VOLUME_ID, 'key1',
                                           body=body)
         self.assertEqual(1, len(self.notifier.notifications))
@@ -378,7 +390,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                          return_create_volume_type_extra_specs)
         body = {"key1": "value1", "key2": "value2"}
 
-        req = fakes.HTTPRequest.blank(self.api_path + '/key1')
+        req = fakes.HTTPRequest.blank(self.api_path + '/key1',
+                                      use_admin_context=True)
         self.assertRaises(exception.ValidationError, self.controller.update,
                           req, fake.VOLUME_ID, 'key1', body=body)
 
@@ -388,13 +401,15 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                          return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
-        req = fakes.HTTPRequest.blank(self.api_path + '/bad')
+        req = fakes.HTTPRequest.blank(self.api_path + '/bad',
+                                      use_admin_context=True)
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           req, fake.VOLUME_ID, 'bad', body=body)
 
     def _extra_specs_empty_update(self, body):
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
-            fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
+            fake.PROJECT_ID, fake.VOLUME_TYPE_ID),
+            use_admin_context=True)
         req.method = 'POST'
 
         self.assertRaises(exception.ValidationError,
@@ -409,7 +424,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
     def _extra_specs_create_bad_body(self, body):
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
-            fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
+            fake.PROJECT_ID, fake.VOLUME_TYPE_ID),
+            use_admin_context=True)
         req.method = 'POST'
 
         self.assertRaises(exception.ValidationError,
@@ -440,17 +456,20 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                          'volume_type_extra_specs_update_or_create',
                          return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
-        req = fakes.HTTPRequest.blank(self.api_path)
+        req = fakes.HTTPRequest.blank(self.api_path,
+                                      use_admin_context=True)
         with mock.patch.object(
                 cinder.db,
                 'volume_get_all',
                 return_value=['a']):
             req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
-                fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
+                fake.PROJECT_ID, fake.VOLUME_TYPE_ID),
+                use_admin_context=True)
             req.method = 'POST'
 
             body = {"extra_specs": {"key1": "value1"}}
-            req = fakes.HTTPRequest.blank(self.api_path)
+            req = fakes.HTTPRequest.blank(self.api_path,
+                                          use_admin_context=True)
             self.assertRaises(webob.exc.HTTPBadRequest,
                               self.controller.create,
                               req,
@@ -462,7 +481,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
               {'extra_specs': {'     ': 'a'}})
     def test_create_with_invalid_extra_specs(self, body):
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s/extra_specs' % (
-            fake.PROJECT_ID, fake.VOLUME_TYPE_ID))
+            fake.PROJECT_ID, fake.VOLUME_TYPE_ID),
+            use_admin_context=True)
         req.method = 'POST'
 
         self.assertRaises(exception.ValidationError,

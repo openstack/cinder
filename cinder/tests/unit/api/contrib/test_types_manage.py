@@ -151,7 +151,8 @@ class VolumeTypesManageApiTest(test.TestCase):
                          return_volume_types_destroy)
 
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         self.assertEqual(0, len(self.notifier.notifications))
         self.controller._delete(req, DEFAULT_VOLUME_TYPE)
         self.assertEqual(1, len(self.notifier.notifications))
@@ -164,7 +165,8 @@ class VolumeTypesManageApiTest(test.TestCase):
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, NOT_FOUND_VOLUME_TYPE))
+            fake.PROJECT_ID, NOT_FOUND_VOLUME_TYPE),
+            use_admin_context=True)
         self.assertRaises(exception.VolumeTypeNotFound,
                           self.controller._delete, req, NOT_FOUND_VOLUME_TYPE)
         self.assertEqual(1, len(self.notifier.notifications))
@@ -175,7 +177,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.mock_object(volume_types, 'destroy',
                          return_volume_types_with_volumes_destroy)
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         self.assertEqual(0, len(self.notifier.notifications))
         self.controller._delete(req, DEFAULT_VOLUME_TYPE)
         self.assertEqual(1, len(self.notifier.notifications))
@@ -217,7 +220,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         body = {"volume_type": {"name": "vol_type_1",
                                 "os-volume-type-access:is_public": True,
                                 "extra_specs": {"key1": "value1"}}}
-        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID,
+                                      use_admin_context=True)
 
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._create(req, body=body)
@@ -242,7 +246,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         body = {"volume_type": {"name": "vol_type_1",
                                 "description": type_description,
                                 "extra_specs": {"key1": "value1"}}}
-        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID,
+                                      use_admin_context=True)
 
         res_dict = self.controller._create(req, body=body)
 
@@ -274,7 +279,8 @@ class VolumeTypesManageApiTest(test.TestCase):
 
         body = {"volume_type": {"name": "vol_type_1",
                                 "extra_specs": {"key1": "value1"}}}
-        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/types' % fake.PROJECT_ID,
+                                      use_admin_context=True)
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller._create, req, body=body)
 
@@ -382,7 +388,8 @@ class VolumeTypesManageApiTest(test.TestCase):
             DEFAULT_VOLUME_TYPE, is_public=False)
         body = {"volume_type": {"is_public": False}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -407,7 +414,8 @@ class VolumeTypesManageApiTest(test.TestCase):
             mock_get, mock_update):
         body = {"volume_type": {"is_public": is_public}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
         ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req.environ['cinder.context'] = ctxt
@@ -430,7 +438,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         type_description = ""
         body = {"volume_type": {"description": type_description}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
         resp = self.controller._update(req, DEFAULT_VOLUME_TYPE, body=body)
         self._check_test_results(resp,
@@ -466,7 +475,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         body = {"volume_type": {"name": "vol_type_1_1",
                                 "description": "vol_type_desc_1_1"}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, NOT_FOUND_VOLUME_TYPE))
+            fake.PROJECT_ID, NOT_FOUND_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -486,7 +496,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         body = {"volume_type": {"name": "vol_type_1_1",
                                 "description": "vol_type_desc_1_1"}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -498,7 +509,8 @@ class VolumeTypesManageApiTest(test.TestCase):
     def test_update_no_name_no_description(self):
         body = {"volume_type": {}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -509,7 +521,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         body = {"volume_type": {"name": "  ",
                                 "description": "something"}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -554,7 +567,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         updated_desc = "%s_%s" % (desc, UPDATE_DESC_ONLY_TYPE)
         body = {"volume_type": {"description": updated_desc}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, UPDATE_DESC_ONLY_TYPE))
+            fake.PROJECT_ID, UPDATE_DESC_ONLY_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -577,7 +591,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         updated_desc = "%s_%s" % (desc, DEFAULT_VOLUME_TYPE)
         body = {"volume_type": {"is_public": is_public}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -614,7 +629,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         # first attempt fail
         body = {"volume_type": {"name": name}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE))
+            fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -629,7 +645,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.mock_object(volume_types, 'destroy',
                          return_volume_types_destroy)
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE))
+            fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE),
+            use_admin_context=True)
         self.assertEqual(0, len(self.notifier.notifications))
         self.controller._delete(req, UPDATE_NAME_AFTER_DELETE_TYPE)
         self.assertEqual(1, len(self.notifier.notifications))
@@ -638,7 +655,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         mock_update.side_effect = mock.MagicMock()
         body = {"volume_type": {"name": updated_name}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE))
+            fake.PROJECT_ID, UPDATE_NAME_AFTER_DELETE_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.notifier.reset()
@@ -702,7 +720,8 @@ class VolumeTypesManageApiTest(test.TestCase):
     def test_update_with_name_null(self):
         body = {"volume_type": {"name": None}}
         req = fakes.HTTPRequest.blank('/v3/%s/types/%s' % (
-            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE))
+            fake.PROJECT_ID, DEFAULT_VOLUME_TYPE),
+            use_admin_context=True)
         req.method = 'PUT'
 
         self.assertRaises(webob.exc.HTTPBadRequest,

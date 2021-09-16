@@ -31,17 +31,29 @@ GET_POLICY = "volume_extension:types_extra_specs:show"
 READ_SENSITIVE_POLICY = "volume_extension:types_extra_specs:read_sensitive"
 UPDATE_POLICY = "volume_extension:types_extra_specs:update"
 
+deprecated_get_all_policy = base.CinderDeprecatedRule(
+    name=GET_ALL_POLICY,
+    check_str=""
+)
+
+deprecated_get_policy = base.CinderDeprecatedRule(
+    name=GET_POLICY,
+    check_str=""
+)
+
 type_extra_specs_policies = [
     policy.DocumentedRuleDefault(
         name=GET_ALL_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="List type extra specs.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/types/{type_id}/extra_specs'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_all_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=CREATE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -51,17 +63,20 @@ type_extra_specs_policies = [
                 'method': 'POST',
                 'path': '/types/{type_id}/extra_specs'
             }
-        ]),
+        ]
+    ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
-        check_str="",
+        check_str=base.SYSTEM_READER_OR_PROJECT_READER,
         description="Show one specified type extra specs.",
         operations=[
             {
                 'method': 'GET',
                 'path': '/types/{type_id}/extra_specs/{extra_spec_key}'
             }
-        ]),
+        ],
+        deprecated_rule=deprecated_get_policy,
+    ),
     policy.DocumentedRuleDefault(
         name=READ_SENSITIVE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -87,7 +102,8 @@ type_extra_specs_policies = [
                 'method': 'GET',
                 'path': '/types/{type_id}/extra_specs/{extra_spec_key}'
             }
-        ]),
+        ]
+    ),
     policy.DocumentedRuleDefault(
         name=UPDATE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -97,7 +113,8 @@ type_extra_specs_policies = [
                 'method': 'PUT',
                 'path': '/types/{type_id}/extra_specs/{extra_spec_key}'
             }
-        ]),
+        ]
+    ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
         check_str=base.RULE_ADMIN_API,
@@ -107,7 +124,8 @@ type_extra_specs_policies = [
                 'method': 'DELETE',
                 'path': '/types/{type_id}/extra_specs/{extra_spec_key}'
             }
-        ]),
+        ]
+    ),
 ]
 
 
