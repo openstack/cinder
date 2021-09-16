@@ -1,0 +1,123 @@
+---
+features:
+  - |
+    **Policy configuration changes**
+
+    Over the Xena and Yoga development cycles, cinder's default policy
+    configuration is being modified to take advantage of the default
+    authentication and authorization apparatus supplied by the Keystone
+    project.  This will give operators a rich set of default policies to
+    control how users interact with the Block Storage service API.
+
+    The details of this project are described in `Policy Personas and
+    Permissions
+    <https://docs.openstack.org/cinder/xena/configuration/block-storage/policy-personas.html>`_
+    in the `Cinder Service Configuration Guide`.  We encourage you to
+    read through that document.  The following is only a summary.
+
+    The primary change in the Xena release is that cinder's default policy
+    configuration will recognize the ``reader`` role on a project.
+    Additionally,
+
+    * Some current rules defined in the policy file are being DEPRECATED
+      and will be removed in the Yoga release.  You only need to worry
+      about this if you have used any of these rules yourself in when
+      writing custom policies, as you cannot rely on the following rules
+      being pre-defined in the Yoga release.
+
+      * ``rule:admin_or_owner``
+      * ``rule:system_or_domain_or_project_admin``
+
+    * Some current policies that were over-general (that is, they governed both
+      read and write operations on a resource) are being replaced by a set of
+      new policies that provide greater granularity.  The following policies
+      are DEPRECATED and will be removed in the Yoga release:
+
+      * ``group:group_types_manage`` is replaced by:
+
+        * ``group:group_types:create``
+        * ``group:group_types:update``
+        * ``group:group_types:delete``
+
+      * ``group:group_types_specs`` is replaced by:
+
+        * ``group:group_types:create``
+        * ``group:group_types:update``
+        * ``group:group_types:delete``
+
+      * ``volume_extension:quota_classes`` is replaced by:
+
+        * ``volume_extension:quota_classes:get``
+        * ``volume_extension:quota_classes:update``
+
+      * ``volume_extension:types_manage`` is replaced by:
+
+        * ``volume_extension:type_create``
+        * ``volume_extension:type_update``
+        * ``volume_extension:type_delete``
+
+      * ``volume_extension:volume_image_metadata`` is replaced by:
+
+        * ``volume_extension:volume_image_metadata:show``
+        * ``volume_extension:volume_image_metadata:set``
+        * ``volume_extension:volume_image_metadata:remove``
+
+    * A new policy was introduced to govern an operation previously
+      controlled by a policy that is not being removed, but whose other
+      governed actions are conceptually different:
+
+      * ``volume_extension:volume_type_access:get_all_for_type``
+
+    * A new policy was introduced as part of the feature described
+      in the `User visible extra specs
+      <https://docs.openstack.org/cinder/xena/admin/blockstorage-user-visible-extra-specs.html>`_
+      section of the `Cinder Administration Guide`:
+
+      * ``volume_extension:types_extra_specs:read_sensitive``
+
+    * Many policies had their default values changed and their previous
+      values deprecated.  These are indicated in the sample policy
+      configuration file, which you can view in the `policy.yaml
+      <https://docs.openstack.org/cinder/xena/configuration/block-storage/samples/policy.yaml.html>`_
+      section of the `Cinder Service Configuration Guide`.
+
+      * In particular, we direct your attention to the default values
+        for the policies associated with the Default Volume Types API
+        (introduced with microversion 3.62 of the Block Storage API).
+        These had experimentally recognized "scope", but for consistency
+        with the other rules, their default values no longer recognize
+        scope.  (Scope will be introduced to all cinder policy defaults
+        in the Yoga release.)
+
+      * When a policy value is deprecated, the oslo.policy engine will
+        check the new value, and if that fails, it will evaluate the
+        deprecated value.  This behavior may be modified so *only*
+        the new policy value is used by setting the configuration option
+        ``enforce_new_defaults=True`` in the ``[oslo_policy]`` section of
+        the cinder configuration file.
+deprecations:
+  - |
+    The following policy rules have been DEPRECATED in this release and will be
+    removed in Yoga:
+
+    * ``rule:admin_or_owner``
+    * ``rule:system_or_domain_or_project_admin``
+
+    For more information, see the 'New Features' section of this document and
+    `Policy Personas and Permissions
+    <https://docs.openstack.org/cinder/xena/configuration/block-storage/policy-personas.html>`_
+    in the `Cinder Service Configuration Guide`.
+  - |
+    The following policies have been DEPRECATED in this release and will be
+    removed in Yoga:
+
+    * ``group:group_types_manage``
+    * ``group:group_types_specs``
+    * ``volume_extension:quota_classes``
+    * ``volume_extension:types_manage``
+    * ``volume_extension:volume_image_metadata``
+
+    For more information, see the 'New Features' section of this document and
+    `Policy Personas and Permissions
+    <https://docs.openstack.org/cinder/xena/configuration/block-storage/policy-personas.html>`_
+    in the `Cinder Service Configuration Guide`.
