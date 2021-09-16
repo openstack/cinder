@@ -1,0 +1,30 @@
+---
+prelude: |
+    Welcome to the Xena release of the OpenStack Block Storage service
+    (cinder).  With this release, the Block Storage API version 3 has
+    reached microversion **3.66**.  The cinder team would like to
+    bring the following points to your attention.  Details may be
+    found below.
+
+    * The Block Storage API v2, which was deprecated way back in the
+      Pike release, has been removed.  We gently remind you that Pike
+      was a long time ago, and that version 3.0 of the Block Storage
+      API was designed to be completely compatible with version 2.
+
+    * Microversion 3.65 includes the display of information in the
+      volume or snapshot detail response to indicate whether that
+      resource consumes quota, and adds the ability to filter a
+      requested list of resources according to whether they consume
+      quota or not.
+
+    * Microversion 3.66 removes the necessity to add a 'force' flag
+      when requesting a snapshot of an in-use volume, given that this
+      is not a problem for modern storage systems.
+
+    * The volume-type detail response has been enhanced to include
+      non-sensitive "extra-specs" information in order to provide more
+      data for automated systems to select a volume type.
+
+    * The default policy configuration has been extensively rewritten.
+
+    * Many backend storage drivers have added features and fixed bugs.
