@@ -1438,10 +1438,10 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - | **DEPRECATED**
-       | List, update or show hosts for a project
-     - | (NOTE: new policies split GETs and PUT)
-       | ``GET  /os-hosts``
+   * - | List, update or show hosts for a project
+       | (NOTE: will be deprecated in Yoga and new policies introduced
+       | for GETs and PUT)
+     - | ``GET  /os-hosts``
        | ``PUT  /os-hosts/{host_name}``
        | ``GET  /os-hosts/{host_id}``
      - volume_extension:hosts
@@ -1453,42 +1453,6 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-   * - | **NEW**
-       | List hosts
-     - ``GET  /os-hosts``
-     - volume_extension:hosts:get_all
-     - (new policy)
-     - no
-     - no
-     - no
-     - no
-     - yes
-     - n/a
-     - n/a
-   * - | **NEW**
-       | Show detail about a host
-     - ``GET  /os-hosts/{host_id}``
-     - volume_extension:hosts:get
-     - (new policy)
-     - no
-     - no
-     - no
-     - no
-     - yes
-     - n/a
-     - n/a
-   * - | **NEW**
-       | Update a host
-     - ``PUT  /os-hosts/{host_name}``
-     - volume_extension:hosts:update
-     - (new policy)
-     - no
-     - no
-     - no
-     - no
-     - yes
-     - n/a
-     - n/a
    * - Show limits with used limit attributes
      - ``GET  /limits``
      - limits_extension:used_limits
