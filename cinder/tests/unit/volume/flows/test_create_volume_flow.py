@@ -1255,11 +1255,67 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             exception=err)
 
 
+@ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
 class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
 
     def setUp(self):
         super(CreateVolumeFlowManagerGlanceCinderBackendCase, self).setUp()
         self.ctxt = context.get_admin_context()
+
+    # data for test__extract_cinder_ids
+    #   legacy glance cinder URI:    cinder://<volume-id>
+    #   new-style glance cinder URI: cinder://<glance-store>/<volume_id>
+    LEGACY_VOL2 = 'cinder://%s' % fakes.VOLUME2_ID
+    NEW_VOL3 = 'cinder://glance-store-name/%s' % fakes.VOLUME3_ID
+    # these *may* be illegal names in glance, but check anyway
+    NEW_VOL4 = 'cinder://glance/store/name/%s' % fakes.VOLUME4_ID
+    NEW_VOL5 = 'cinder://glance:store:name/%s' % fakes.VOLUME5_ID
+    NEW_VOL6 = 'cinder://glance:store,name/%s' % fakes.VOLUME6_ID
+    NOT_CINDER1 = 'rbd://%s' % fakes.UUID1
+    NOT_CINDER2 = 'http://%s' % fakes.UUID2
+    NOGOOD3 = 'cinder://glance:store,name/%s/garbage' % fakes.UUID3
+    NOGOOD4 = 'cinder://glance:store,name/%s-garbage' % fakes.UUID4
+    NOGOOD5 = fakes.UUID5
+    NOGOOD6 = 'cinder://store-name/12345678'
+    NOGOOD7 = 'cinder://'
+    NOGOOD8 = 'some-random-crap'
+    NOGOOD9 = None
+
+    TEST_CASE_DATA = (
+        # the format of these is: (input, expected output)
+        ([LEGACY_VOL2], [fakes.VOLUME2_ID]),
+        ([NEW_VOL3], [fakes.VOLUME3_ID]),
+        ([NEW_VOL4], [fakes.VOLUME4_ID]),
+        ([NEW_VOL5], [fakes.VOLUME5_ID]),
+        ([NEW_VOL6], [fakes.VOLUME6_ID]),
+        ([], []),
+        ([''], []),
+        ([NOT_CINDER1], []),
+        ([NOT_CINDER2], []),
+        ([NOGOOD3], []),
+        ([NOGOOD4], []),
+        ([NOGOOD5], []),
+        ([NOGOOD6], []),
+        ([NOGOOD7], []),
+        ([NOGOOD8], []),
+        ([NOGOOD9], []),
+        ([NOT_CINDER1, NOGOOD4], []),
+        # mix of URIs should only get the cinder IDs
+        ([LEGACY_VOL2, NOT_CINDER1, NEW_VOL3, NOT_CINDER2],
+         [fakes.VOLUME2_ID, fakes.VOLUME3_ID]),
+        # a bad cinder URI early in the list shouldn't prevent us from
+        # processing a good one later in the list
+        ([NOGOOD6, NEW_VOL3, NOGOOD7, LEGACY_VOL2],
+         [fakes.VOLUME3_ID, fakes.VOLUME2_ID]),
+    )
+
+    @ddt.data(*TEST_CASE_DATA)
+    @ddt.unpack
+    def test__extract_cinder_ids(self, url_list, id_list):
+        """Test utility function that gets IDs from Glance location URIs"""
+        klass = create_volume_manager.CreateVolumeFromSpecTask
+        actual = klass._extract_cinder_ids(url_list)
+        self.assertEqual(id_list, actual)
 
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
@@ -1322,6 +1378,10 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
             self.assertFalse(fake_driver.create_cloned_volume.called)
         mock_cleanup_cg.assert_called_once_with(volume)
 
+    LEGACY_URI = 'cinder://%s' % fakes.VOLUME_ID
+    MULTISTORE_URI = 'cinder://fake-store/%s' % fakes.VOLUME_ID
+
+    @ddt.data(LEGACY_URI, MULTISTORE_URI)
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_cleanup_cg_in_volume')
@@ -1330,7 +1390,8 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
                 'CreateVolumeFromSpecTask.'
                 '_handle_bootable_volume_glance_meta')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
-    def test_create_from_image_volume_ignore_size(self, mock_qemu_info,
+    def test_create_from_image_volume_ignore_size(self, location_uri,
+                                                  mock_qemu_info,
                                                   handle_bootable,
                                                   mock_fetch_img,
                                                   mock_cleanup_cg,
@@ -1357,7 +1418,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         # will fail because of free space being too low.
         image_info.virtual_size = '1073741824000000000000'
         mock_qemu_info.return_value = image_info
-        url = 'cinder://%s' % image_volume['id']
+        url = location_uri
         image_location = None
         if location:
             image_location = (url, [{'url': url, 'metadata': {}}])
