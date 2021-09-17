@@ -1004,16 +1004,35 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         with RBDVolumeProxy(self, volume_name, pool) as vol:
             vol.flatten()
 
+    def _get_stripe_unit(self, ioctx, volume_name):
+        """Return the correct stripe unit for a cloned volume.
+
+        A cloned volume must be created with a stripe unit at least as large
+        as the source volume.  We compute the desired stripe width from
+        rbd_store_chunk_size and compare that to the incoming source volume's
+        stripe width, selecting the larger to avoid error.
+        """
+        default_stripe_unit = \
+            self.configuration.rbd_store_chunk_size * units.Mi
+
+        image = self.rbd.Image(ioctx, volume_name)
+        try:
+            image_stripe_unit = image.stripe_unit()
+        finally:
+            image.close()
+
+        return max(image_stripe_unit, default_stripe_unit)
+
     def _clone(self, volume, src_pool, src_image, src_snap):
         LOG.debug('cloning %(pool)s/%(img)s@%(snap)s to %(dst)s',
                   dict(pool=src_pool, img=src_image, snap=src_snap,
                        dst=volume.name))
 
-        chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
-        order = int(math.log(chunk_size, 2))
         vol_name = utils.convert_str(volume.name)
 
         with RADOSClient(self, src_pool) as src_client:
+            stripe_unit = self._get_stripe_unit(src_client.ioctx, src_image)
+            order = int(math.log(stripe_unit, 2))
             with RADOSClient(self) as dest_client:
                 self.RBDProxy().clone(src_client.ioctx,
                                       utils.convert_str(src_image),
@@ -1022,7 +1041,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                                       vol_name,
                                       features=src_client.features,
                                       order=order)
-
             try:
                 volume_update = self._setup_volume(volume)
             except Exception:
