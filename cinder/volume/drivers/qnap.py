@@ -88,6 +88,9 @@ class QnapISCSIDriver(san.SanISCSIDriver):
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "QNAP_CI"
 
+    # Remove if third party CI requirements are met
+    SUPPORTED = False
+
     VERSION = '1.2.005'
 
     TIME_INTERVAL = 3
