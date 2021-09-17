@@ -212,13 +212,14 @@ class PowerMaxFCTest(test.TestCase):
                 return_value=(self.data.target_wwns_multi, [])):
             targets, target_map = self.driver._build_initiator_target_map(
                 self.data.test_volume, self.data.connector,
-                device_info=self.data.iscsi_device_info)
+                device_info=self.data.fc_device_info)
             self.assertEqual(1, len(target_map.get(init_a)))
             self.assertEqual(1, len(target_map.get(init_b)))
             self.assertTrue(
                 len(target_map.get(init_a)) < len(self.data.target_wwns_multi))
             self.assertTrue(
                 len(target_map.get(init_b)) < len(self.data.target_wwns_multi))
+            self.assertEqual(self.data.wwpn1, targets[0])
 
     def test_build_initiator_target_map_load_balanced_exception(self):
         ref_target_map = {'123456789012345': self.data.target_wwns_multi,
