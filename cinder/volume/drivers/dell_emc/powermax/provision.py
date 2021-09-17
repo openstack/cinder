@@ -663,7 +663,8 @@ class PowerMaxProvision(object):
                 snap_id_list.sort(reverse=True)
             for snap_id in snap_id_list:
                 self.rest.delete_storagegroup_snap(
-                    array, source_group_name, snap_name, snap_id)
+                    array, source_group_name, snap_name, snap_id,
+                    force=True)
         else:
             LOG.debug("Unable to get snap ids for: %(srcGroup)s.",
                       {'srcGroup': source_group_name})

@@ -14,6 +14,7 @@
 #    under the License.
 
 from unittest import mock
+from unittest.mock import call
 
 from cinder import exception
 from cinder.tests.unit import test
@@ -496,6 +497,23 @@ class PowerMaxProvisionTest(test.TestCase):
             self.provision.delete_group_replica(
                 array, snap_name, source_group_name)
             mock_del.assert_not_called()
+
+    @mock.patch.object(rest.PowerMaxRest,
+                       'get_storage_group_snap_id_list',
+                       return_value=[tpd.PowerMaxData.snap_id])
+    @mock.patch.object(rest.PowerMaxRest,
+                       'delete_storagegroup_snap')
+    def test_delete_group_replica_exception_call_args(
+            self, mck_del_ss, mck_snap_list):
+        array = self.data.array
+        snap_name = self.data.group_snapshot_name
+        source_group_name = self.data.storagegroup_name_source
+        self.provision.delete_group_replica(
+            array, snap_name, source_group_name)
+
+        expected = [call('000197800123', 'Grp_source_sg',
+                         'Grp_snapshot', 118749976833, force=True)]
+        self.assertEqual(expected, mck_del_ss.call_args_list)
 
     def test_link_and_break_replica(self):
         array = self.data.array
