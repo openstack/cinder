@@ -325,6 +325,23 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
         # In this case construct the lock without the host property
         # so that all the fake connectors to an SVC are serialized
         host = connector['host'] if 'host' in connector else ""
+        attachment_count = 0
+        if hasattr(volume, 'multiattach') and volume.multiattach:
+            try:
+                attachment_list = volume.volume_attachment
+                for attachment in attachment_list:
+                    if (attachment.attach_status == "attached" and
+                       attachment.attached_host == host):
+                        attachment_count += 1
+            except AttributeError:
+                pass
+            if attachment_count > 1:
+                LOG.debug("Volume %(volume)s is attached to multiple "
+                          "instances on host %(host_name)s, "
+                          "skip terminate volume connection",
+                          {'volume': volume.name,
+                           'host_name': volume.host.split('@')[0]})
+                return
 
         @coordination.synchronized('storwize-host-{system_id}-{host}')
         def _do_terminate_connection_locked(system_id, host):
