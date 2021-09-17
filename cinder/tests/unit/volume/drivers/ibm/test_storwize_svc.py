@@ -2096,7 +2096,7 @@ port_speed!N/A
         if 'cluster' not in kwargs:
             return self._errors['CMMVC5707E']
         aux_cluster = kwargs['cluster'].strip('\'\"')
-        if aux_cluster != aux_sys['name']:
+        if aux_cluster != aux_sys['id']:
             return self._errors['CMMVC5754E']
 
         if (self._volumes_list[master_vol]['capacity'] !=
@@ -2438,8 +2438,8 @@ port_speed!N/A
         if 'cluster' not in kwargs:
             return self._errors['CMMVC5707E']
         aux_cluster = kwargs['cluster'].strip('\'\"')
-        if (aux_cluster != aux_sys['name'] and
-                aux_cluster != master_sys['name']):
+        if (aux_cluster != aux_sys['id'] and
+                aux_cluster != master_sys['id']):
             return self._errors['CMMVC5754E']
 
         rccg_info = {}

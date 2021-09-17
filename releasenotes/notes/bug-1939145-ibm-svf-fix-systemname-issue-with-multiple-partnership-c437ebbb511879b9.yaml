@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver
+    `Bug #1939145 <https://bugs.launchpad.net/cinder/+bug/1939145>`_:
+    Updating create_relationship and create_rccg calls with the
+    system_id in the place of system_name to fix the issues while
+    creating a mirror volume or creating a consistency group.
