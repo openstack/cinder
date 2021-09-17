@@ -19,7 +19,6 @@ import tempfile
 from unittest import mock
 from xml.dom.minidom import Document
 
-from oslo_config import cfg
 from oslo_utils.secretutils import md5
 import requests
 
@@ -29,7 +28,6 @@ from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.veritas_access import veritas_iscsi
 
-CONF = cfg.CONF
 FAKE_BACKEND = 'fake_backend'
 
 

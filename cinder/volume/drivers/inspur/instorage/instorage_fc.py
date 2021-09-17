@@ -17,7 +17,6 @@
 FC volume driver for Inspur InStorage family storage systems.
 """
 
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 
@@ -31,8 +30,6 @@ from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
-
-CONF = cfg.CONF
 
 
 @interface.volumedriver

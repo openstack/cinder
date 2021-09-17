@@ -15,14 +15,11 @@ from unittest import mock
 from keystoneauth1.identity.generic import password
 from keystoneauth1 import loading as ks_loading
 from keystoneauth1 import service_token
-from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
 from cinder import service_auth
 from cinder.tests.unit import test
-
-CONF = cfg.CONF
 
 
 class ServiceAuthTestCase(test.TestCase):

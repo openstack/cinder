@@ -17,16 +17,12 @@
 
 from unittest import mock
 
-from oslo_config import cfg
 from sqlalchemy.orm import exc
 
 from cinder import db
 from cinder import exception
 from cinder.tests.unit import test_db_api
 from cinder.tests.unit import utils
-
-
-CONF = cfg.CONF
 
 
 class ClusterTestCase(test_db_api.BaseTest):

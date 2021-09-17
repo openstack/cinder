@@ -15,15 +15,12 @@
 
 from unittest import mock
 
-from oslo_config import cfg
 from oslo_utils import timeutils
 
 from cinder import exception as cinder_exception
 from cinder.tests.unit import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import linstordrv as drv
-
-CONF = cfg.CONF
 
 CINDER_UNKNOWN = 'unknown'
 DISKLESS = 'DISKLESS'

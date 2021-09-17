@@ -14,14 +14,11 @@
 #    under the License.
 import json
 
-from oslo_config import cfg
 import requests
 import six
 
 from cinder.volume.drivers.dell_emc.powerflex import driver
 from cinder.volume.drivers.dell_emc.powerflex import rest_client
-
-CONF = cfg.CONF
 
 
 class PowerFlexDriver(driver.PowerFlexDriver):

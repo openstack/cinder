@@ -26,7 +26,6 @@ Limitations:
 import random
 import threading
 
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 import six
@@ -40,8 +39,6 @@ from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
-
-CONF = cfg.CONF
 
 
 @interface.volumedriver
