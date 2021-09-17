@@ -368,7 +368,8 @@ class KumoScaleBaseVolumeDriver(driver.BaseVD):
             'vol_uuid': volume_uuid,
             'alias': volume_name,
             'writable': ks_volume.writable,
-            'volume_replicas': volume_replicas
+            'volume_replicas': volume_replicas,
+            'replica_count': len(ks_volume_replicas)
         }
 
         if result.status != 'Success':

@@ -183,7 +183,8 @@ class KioxiaVolumeTestCase(test.TestCase):
             'vol_uuid': testvol['id'],
             'alias': testvol['name'],
             'writable': True,
-            'volume_replicas': [expected_replica]
+            'volume_replicas': [expected_replica],
+            'replica_count': 2
         }
         expected_result = {
             'driver_volume_type': 'nvmeof',
