@@ -289,19 +289,23 @@ SYSTEM_OR_DOMAIN_OR_PROJECT_ADMIN = 'rule:system_or_domain_or_project_admin'
 SYSTEM_ADMIN = _SYSTEM_ADMIN
 
 
+YOGA_REMOVAL = 'DEPRECATED: This rule will be removed in the Yoga release.'
+PADDING = ' ' * (70 - len(YOGA_REMOVAL))
 # legacy rules to be removed in Yoga
 legacy_rule_defaults = [
     policy.RuleDefault('admin_or_owner',
                        'is_admin:True or (role:admin and '
                        'is_admin_project:True) or project_id:%(project_id)s',
-                       description="Default rule for most non-Admin APIs."),
+                       description=(f'{YOGA_REMOVAL}{PADDING}'
+                                    'Default rule for most non-Admin APIs.')),
     # currently used only by cinder.policies.default_types
     policy.RuleDefault('system_or_domain_or_project_admin',
                        '(role:admin and system_scope:all) or '
                        '(role:admin and domain_id:%(domain_id)s) or '
                        '(role:admin and project_id:%(project_id)s)',
-                       description="Default rule for admins of cloud, domain "
-                                   "or a project."),
+                       description=(f'{YOGA_REMOVAL}{PADDING}'
+                                    "Default rule for admins of cloud, domain "
+                                    "or a project.")),
 ]
 
 
