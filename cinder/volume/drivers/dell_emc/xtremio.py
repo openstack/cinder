@@ -32,6 +32,7 @@ Supports XtremIO version 2.4 and up.
   1.0.10 - option to clean unused IGs
   1.0.11 - add support for multiattach
   1.0.12 - add support for ports filtering
+  1.0.13 - add support for iSCSI IPv6
 """
 
 import json
@@ -41,6 +42,7 @@ import string
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import netutils
 from oslo_utils import strutils
 from oslo_utils import units
 import requests
@@ -427,7 +429,7 @@ class XtremIOClient42(XtremIOClient4):
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.12'
+    VERSION = '1.0.13'
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "DellEMC_XtremIO_CI"
@@ -1207,11 +1209,12 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(data=msg)
         portal = RANDOM.choice(allowed_portals)
         portal_addr = ('%(ip)s:%(port)d' %
-                       {'ip': portal['ip-addr'],
+                       {'ip': netutils.escape_ipv6(portal['ip-addr']),
                         'port': portal['ip-port']})
 
-        tg_portals = ['%(ip)s:%(port)d' % {'ip': p['ip-addr'],
-                                           'port': p['ip-port']}
+        tg_portals = ['%(ip)s:%(port)d' %
+                      {'ip': netutils.escape_ipv6(p['ip-addr']),
+                       'port': p['ip-port']}
                       for p in allowed_portals]
         properties = {'target_discovered': False,
                       'target_iqn': portal['port-address'],
