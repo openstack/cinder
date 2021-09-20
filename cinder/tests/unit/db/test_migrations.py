@@ -88,6 +88,13 @@ class MigrationsWalk(
                 revision = revision_script.revision
                 self._migrate_up(revision)
 
+    def test_db_version_alembic(self):
+        migration.db_sync()
+        head = alembic_script.ScriptDirectory.from_config(
+            self.config,
+        ).get_current_head()
+        self.assertEqual(head, migration.db_version())
+
 
 class TestMigrationsWalkSQLite(
     MigrationsWalk,
