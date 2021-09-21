@@ -61,6 +61,7 @@ from cinder.volume import volume_utils
 CONF = config.CONF
 
 _DB_CACHE = None
+DB_SCHEMA = None
 SESSION_CONFIGURED = False
 
 
@@ -70,32 +71,41 @@ class TestingException(Exception):
 
 class Database(fixtures.Fixture):
 
-    def __init__(self, db_api, db_migrate, sql_connection):
+    def __init__(self):
+        super().__init__()
+
         # NOTE(lhx_): oslo_db.enginefacade is configured in tests the same
         # way as it's done for any other services that uses the db
         global SESSION_CONFIGURED
         if not SESSION_CONFIGURED:
             sqla_api.configure(CONF)
             SESSION_CONFIGURED = True
-        self.sql_connection = sql_connection
 
         # Suppress logging for test runs
         migrate_logger = logging.getLogger('migrate')
         migrate_logger.setLevel(logging.WARNING)
 
-        self.engine = db_api.get_engine()
-        self.engine.dispose()
-        conn = self.engine.connect()
-        db_migrate.db_sync()
-        self._DB = "".join(line for line in conn.connection.iterdump())
-        self.engine.dispose()
-
     def setUp(self):
-        super(Database, self).setUp()
+        super().setUp()
+        engine = sqla_api.get_engine()
+        engine.dispose()
+        self._cache_schema()
+        conn = engine.connect()
+        conn.connection.executescript(DB_SCHEMA)
+        self.addCleanup(self.cleanup)
 
-        conn = self.engine.connect()
-        conn.connection.executescript(self._DB)
-        self.addCleanup(self.engine.dispose)
+    def _cache_schema(self):
+        global DB_SCHEMA
+        if not DB_SCHEMA:
+            engine = sqla_api.get_engine()
+            conn = engine.connect()
+            migration.db_sync()
+            DB_SCHEMA = "".join(line for line in conn.connection.iterdump())
+            engine.dispose()
+
+    def cleanup(self):
+        engine = sqla_api.get_engine()
+        engine.dispose()
 
 
 class TestCase(testtools.TestCase):
@@ -231,11 +241,7 @@ class TestCase(testtools.TestCase):
         CONF.set_default('connection', 'sqlite://', 'database')
         CONF.set_default('sqlite_synchronous', False, 'database')
 
-        global _DB_CACHE
-        if not _DB_CACHE:
-            _DB_CACHE = Database(sqla_api, migration,
-                                 sql_connection=CONF.database.connection)
-        self.useFixture(_DB_CACHE)
+        self.useFixture(Database())
 
         # NOTE(blk-u): WarningsFixture must be after the Database fixture
         # because sqlalchemy-migrate messes with the warnings filters.
