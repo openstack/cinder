@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-03-24 05:08+0000\n"
+"POT-Creation-Date: 2021-09-20 18:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3963,16 +3963,6 @@ msgstr ""
 "Das GPFS-Dateisystem %(fs)s ist nicht auf dem erforderlichen Releasestand. "
 "Aktueller Stand ist %(cur)s, er muss aber mindestens %(min)s sein."
 
-msgid ""
-"The above error may show that the database has not been created.\n"
-"Please create a database using 'cinder-manage db sync' before running this "
-"command."
-msgstr ""
-"Der oben genannte Fehler gibt möglicherweise an, dass die Datenbank nicht "
-"erstellt wurde.\n"
-"Erstellen Sie eine Datenbank mithilfe von 'cinder-manage db sync', bevor Sie "
-"diesen Befehl ausführen."
-
 msgid "The copy should be primary or secondary"
 msgstr "Die Kopie muss primär oder sekundär sein."
 
@@ -4307,23 +4297,6 @@ msgstr "System-ID kann nicht bestimmt werden."
 
 msgid "Unable to determine system name."
 msgstr "Systemname kann nicht bestimmt werden."
-
-#, python-format
-msgid ""
-"Unable to do manage snapshot operations with Purity REST API version "
-"%(api_version)s, requires %(required_versions)s."
-msgstr ""
-"Es können keine Operationen zum Verwalten von Schattenkopien mit Purity-REST-"
-"API-Version %(api_version)s ausgeführt werden, erfordert "
-"%(required_versions)s."
-
-#, python-format
-msgid ""
-"Unable to do replication with Purity REST API version %(api_version)s, "
-"requires one of %(required_versions)s."
-msgstr ""
-"Replikation mit Purity-REST-API-Version %(api_version)s nicht möglich. "
-"Erfordert eine der folgenden Versionen:  %(required_versions)s."
 
 #, python-format
 msgid "Unable to establish the partnership with the Storwize cluster %s."
