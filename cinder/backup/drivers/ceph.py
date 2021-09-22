@@ -48,6 +48,7 @@ import os
 import re
 import subprocess
 import tempfile
+import textwrap
 import time
 from typing import Dict, List, Optional, Tuple
 
@@ -62,6 +63,8 @@ from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _
 from cinder import interface
+from cinder.message import api as message_api
+from cinder.message import message_field
 from cinder import objects
 from cinder import utils
 import cinder.volume.drivers.rbd as rbd_driver
@@ -95,6 +98,19 @@ service_opts = [
     cfg.BoolOpt('backup_ceph_image_journals', default=False,
                 help='If True, apply JOURNALING and EXCLUSIVE_LOCK feature '
                      'bits to the backup RBD objects to allow mirroring'),
+    cfg.IntOpt('backup_ceph_max_snapshots', default=0,
+               help=textwrap.dedent("""\
+                    Number of the most recent snapshots to keep.
+
+                    0 indicates to keep an unlimited number of snapshots.
+
+                    Configuring this option can save disk space by only keeping
+                    a limited number of snapshots on the source volume storage.
+                    However, if a user deletes all incremental backups which
+                    still have snapshots on the source storage, the next
+                    incremental backup will automatically become a full backup
+                    as no common snapshot exists anymore.
+                """)),
     cfg.BoolOpt('restore_discard_excess_bytes', default=True,
                 help='If True, always discard excess bytes when restoring '
                      'volumes i.e. pad with zeroes.')
@@ -199,6 +215,8 @@ class CephBackupDriver(driver.BackupDriver):
         self._ceph_backup_user = CONF.backup_ceph_user
         self._ceph_backup_pool = CONF.backup_ceph_pool
         self._ceph_backup_conf = CONF.backup_ceph_conf
+
+        self.message_api = message_api.API()
 
     @staticmethod
     def get_driver_options() -> list:
@@ -808,24 +826,62 @@ class CephBackupDriver(driver.BackupDriver):
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = eventlet.tpool.Proxy(volume_file.rbd_image)
         volume_id = backup.volume_id
-        base_name = None
+        base_name = self._get_backup_base_name(volume_id, backup=backup)
+        snaps_to_keep = CONF.backup_ceph_max_snapshots
 
         # If backup.parent_id is None performs full RBD backup
         if backup.parent_id is None:
-            base_name = self._get_backup_base_name(volume_id, backup=backup)
             from_snap, image_created = self._full_rbd_backup(backup.container,
                                                              base_name,
                                                              length)
         # Otherwise performs incremental rbd backup
         else:
-            # Find the base name from the parent backup's service_metadata
-            base_name = self._get_backup_base_name(volume_id, backup=backup)
-            rbd_img = source_rbd_image
-            from_snap, image_created = self._incremental_rbd_backup(backup,
-                                                                    base_name,
-                                                                    length,
-                                                                    rbd_img,
-                                                                    volume_id)
+            # Check if there is at least one snapshot to base an incremental
+            # backup on. If not, we cannot perform an incremental backup and
+            # fall back to full backup.
+            no_source_snaps = snaps_to_keep > 0 and \
+                self._get_backup_snap_name(
+                    source_rbd_image,
+                    base_name,
+                    backup.parent_id) is None
+
+            # If true, force full backup
+            if no_source_snaps:
+                # Unset parent so we get a new backup base name
+                backup.parent = None
+                # The backup will be a full one, so it has no parent ID.
+                # This will mark the backup as a full backup in the database.
+                backup.parent_id = None
+                backup.save()
+
+                base_name = self.\
+                    _get_backup_base_name(volume_id, backup=backup)
+
+                LOG.info("Incremental backup was requested, but there are no "
+                         "snapshots present to use as base, "
+                         "forcing full backup.")
+                self.message_api.create(
+                    context=self.context,
+                    action=message_field.Action.BACKUP_CREATE,
+                    resource_uuid=volume_id,
+                    detail=message_field.Detail.
+                    INCREMENTAL_BACKUP_FORCES_FULL_BACKUP,
+                    level="WARNING"
+                )
+
+                from_snap, image_created = self._full_rbd_backup(
+                    backup.container,
+                    base_name,
+                    length)
+            else:
+                # Incremental backup
+                rbd_img = source_rbd_image
+                from_snap, image_created = \
+                    self._incremental_rbd_backup(backup,
+                                                 base_name,
+                                                 length,
+                                                 rbd_img,
+                                                 volume_id)
 
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
                   "volume %(volume)s.",
@@ -856,6 +912,13 @@ class CephBackupDriver(driver.BackupDriver):
             LOG.debug("Differential backup transfer completed in %.4fs",
                       (time.time() - before))
 
+            # only keep last n snapshots and delete older ones
+            if snaps_to_keep > 0:
+                self._remove_last_snapshots(source_rbd_image, snaps_to_keep)
+            else:
+                LOG.debug("Not deleting any snapshots because "
+                          "all should be kept")
+
         except exception.BackupRBDOperationFailed:
             with excutils.save_and_reraise_exception():
                 LOG.debug("Differential backup transfer failed")
@@ -871,6 +934,48 @@ class CephBackupDriver(driver.BackupDriver):
                 source_rbd_image.remove_snap(new_snap)
 
         return {'service_metadata': '{"base": "%s"}' % base_name}
+
+    def _remove_last_snapshots(self, source_rbd_image, snaps_to_keep: int):
+        # only keep last n snapshots and delete older ones for the source
+        # image provided
+        snap_list = []
+
+        try:
+            snap_list = self.get_backup_snaps(source_rbd_image)
+        except Exception as e:
+            LOG.debug(
+                "Failed to get snapshot list for %s: %s", source_rbd_image, e
+            )
+
+        remaining_snaps = len(snap_list)
+        LOG.debug("Snapshot list: %s", snap_list)
+
+        if remaining_snaps > snaps_to_keep:
+            snaps_to_delete = remaining_snaps - snaps_to_keep
+            LOG.debug(
+                "There are %s snapshots and %s should be kept, "
+                "deleting the oldest %s snapshots",
+                remaining_snaps,
+                snaps_to_keep,
+                snaps_to_delete,
+            )
+
+            for i in range(snaps_to_delete):
+                LOG.debug("Deleting snapshot %s", snap_list[i])
+
+                try:
+                    source_rbd_image.remove_snap(snap_list[i]["name"])
+                except Exception as e:
+                    LOG.debug(
+                        "Failed to delete snapshot %s: %s", snap_list[i], e
+                    )
+        else:
+            LOG.debug(
+                "There are %s snapshots and %s should be kept, "
+                "not deleting any snapshots",
+                remaining_snaps,
+                snaps_to_keep,
+            )
 
     @staticmethod
     def _file_is_rbd(volume_file: linuxrbd.RBDVolumeIOWrapper) -> bool:
