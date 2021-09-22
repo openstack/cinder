@@ -1,0 +1,4 @@
+fixes:
+  - |
+    `Bug #1929223 <https://bugs.launchpad.net/os-brick/+bug/1929223>`_: Fixed
+    HTTPS certificate validation was disabled in PowerFlex connector.
