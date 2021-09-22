@@ -805,7 +805,12 @@ class API(base.Base):
                  resource=volume)
         return detach_results
 
-    def _migrate_by_connector(self, ctxt, volume, connector):
+    def migrate_volume_by_connector(self, ctxt, volume, connector):
+        if not connector:
+            raise exception.InvalidInput("Must provide a valid Connector")
+        return self._migrate_by_connector(ctxt, volume, connector, wait=False)
+
+    def _migrate_by_connector(self, ctxt, volume, connector, wait=True):
         volume_type = {}
         if volume.volume_type_id:
             volume_type = volume_types.get_volume_type(
@@ -828,7 +833,7 @@ class API(base.Base):
         LOG.debug("Invoking migrate_volume to host=%(host).", dest['host'])
         self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
                                           force_host_copy=False,
-                                          wait_for_completion=True)
+                                          wait_for_completion=wait)
         volume.refresh()
 
     def initialize_connection(self, context, volume, connector):
