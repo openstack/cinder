@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    `Bug #1916980 <https://bugs.launchpad.net/cinder/+bug/1916980>`_: Fixed
+    stale volume notification information on volume detach.
+  - |
+    `Bug #1935011 <https://bugs.launchpad.net/cinder/+bug/1935011>`_: Fixed
+    missing detach.start notification when deleting an attachment in reserved
+    state.
