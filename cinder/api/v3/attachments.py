@@ -198,6 +198,12 @@ class AttachmentsController(wsgi.Controller):
         except (exception.NotAuthorized,
                 exception.InvalidVolume):
             raise
+        except exception.ConnectorRejected:
+            # Don't use err_msg or it will raise the 500
+            _msg = _("Volume needs to be migrated before attaching to this "
+                     "instance")
+            LOG.exception(_msg)
+            raise webob.exc.HTTPNotAcceptable(explanation=_msg)
         except exception.CinderException as ex:
             err_msg = _(
                 "Unable to create attachment for volume (%s).") % ex.msg
@@ -252,6 +258,12 @@ class AttachmentsController(wsgi.Controller):
                                                   connector))
         except exception.NotAuthorized:
             raise
+        except exception.ConnectorRejected:
+            # Don't use err_msg or it will raise the 500
+            _msg = _("Volume needs to be migrated before attaching to this "
+                     "instance")
+            LOG.exception(_msg)
+            raise webob.exc.HTTPNotAcceptable(explanation=_msg)
         except exception.CinderException as ex:
             err_msg = (
                 _("Unable to update attachment.(%s).") % ex.msg)

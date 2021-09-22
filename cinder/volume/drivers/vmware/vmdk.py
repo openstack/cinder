@@ -2648,7 +2648,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
 
         false_ret = (False, None)
-        allowed_statuses = ['available', 'reserved', 'in-use']
+        allowed_statuses = ['available', 'reserved', 'in-use', 'maintenance']
         if volume['status'] not in allowed_statuses:
             LOG.debug('Only %s volumes can be migrated using backend '
                       'assisted migration. Falling back to generic migration.',
@@ -2676,7 +2676,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                      {'volume_name': volume.name, 'dest_host': dest_host})
             return (True, None)
 
-        if volume['status'] == 'in-use':
+        if volume['attach_status'] == 'attached':
             if self._vcenter_instance_uuid != vcenter:
                 return self._migrate_attached_cross_vc(context, dest_host,
                                                        volume, backing)

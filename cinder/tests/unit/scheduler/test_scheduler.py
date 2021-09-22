@@ -671,7 +671,7 @@ class SchedulerManagerTestCase(test.TestCase):
         ret = self.manager.find_backend_for_connector(self.context,
                                                       connector, request_spec)
         _mock_find_backend_for_conector.assert_called_once_with(
-            self.context, connector, request_spec)
+            self.context, connector, request_spec, None)
         self.assertEqual(ret, {
             'host': backend_ret.host,
             'cluster_name': backend_ret.cluster_name,
