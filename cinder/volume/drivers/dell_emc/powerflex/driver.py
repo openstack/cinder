@@ -1196,6 +1196,12 @@ class PowerFlexDriver(driver.VolumeDriver):
         connection_properties["scaleIO_volume_id"] = volume.provider_id
         connection_properties["config_group"] = self.configuration.config_group
         connection_properties["failed_over"] = self._is_failed_over
+        connection_properties["verify_certificate"] = (
+            self._get_client().verify_certificate
+        )
+        connection_properties["certificate_path"] = (
+            self._get_client().certificate_path
+        )
         device_info = self.connector.connect_volume(connection_properties)
         return device_info["path"]
 
@@ -1210,6 +1216,12 @@ class PowerFlexDriver(driver.VolumeDriver):
         connection_properties["scaleIO_volume_id"] = volume.provider_id
         connection_properties["config_group"] = self.configuration.config_group
         connection_properties["failed_over"] = self._is_failed_over
+        connection_properties["verify_certificate"] = (
+            self._get_client().verify_certificate
+        )
+        connection_properties["certificate_path"] = (
+            self._get_client().certificate_path
+        )
 
         self.connector.disconnect_volume(connection_properties, volume)
 
