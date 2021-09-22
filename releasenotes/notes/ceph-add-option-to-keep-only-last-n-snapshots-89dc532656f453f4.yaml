@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Ceph driver: Add config option to keep only the last n snapshots per backup
+    to save disk space on the source volume storage. Enabling this option can
+    cause incremental backups to become full backups instead under special
+    circumstances. Please take a look at the Ceph backup driver docs for
+    more information.

@@ -537,6 +537,40 @@ class BackupCephTestCase(test.TestCase):
                                              self.checksum.digest())
 
     @common_mocks
+    def test_backup_snapshot_lifecycle(self):
+        with mock.patch.object(self.service, '_rbd_diff_transfer'), \
+            mock.patch.object(self.service, "get_backup_snaps") \
+                as mock_get_backup_snaps:
+
+            CONF.set_override('backup_ceph_max_snapshots', 1)
+
+            mocked_snaps = [
+                {'name': 'backup.mock.snap.153464362.12'},
+                {'name': 'backup.mock.snap.225341241.90'},
+                {'name': 'backup.mock.snap.399994362.10'}]
+
+            mock_get_backup_snaps.return_value = mocked_snaps
+            self.mock_rbd.RBD.remove_snap = mock.Mock()
+
+            image = self.service.rbd.Image()
+            meta = linuxrbd.RBDImageMetadata(image,
+                                             'pool_foo',
+                                             'user_foo',
+                                             'conf_foo')
+            rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
+            rbdio.seek(0)
+
+            self.service._backup_rbd(self.backup, rbdio,
+                                     self.volume.name, self.volume.size)
+
+            self.assertEqual(2, self.mock_rbd.Image.return_value.
+                             remove_snap.call_count)
+            expected_calls = [mock.call('backup.mock.snap.153464362.12'),
+                              mock.call('backup.mock.snap.225341241.90')]
+            self.mock_rbd.Image.return_value.remove_snap.\
+                assert_has_calls(expected_calls)
+
+    @common_mocks
     def test_backup_volume_from_rbd_set_parent_id(self):
         with mock.patch.object(self.service, '_backup_rbd') as \
                 mock_backup_rbd, mock.patch.object(self.service,
