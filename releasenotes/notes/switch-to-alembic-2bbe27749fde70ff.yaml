@@ -8,9 +8,9 @@ upgrade:
     integer-based versioning scheme, which required placeholder migrations to
     allow for potential migration backports, alembic uses a distributed version
     control-like schema where a migration's ancestor is encoded in the file and
-    branches are possible. The alembic migration files therefore use a
+    branches are possible. The alembic migration files therefore use an
     arbitrary UUID-like naming scheme and the ``cinder-manage db sync`` command
-    now expects such an version when manually specifying the version that should
+    now expects such a version when manually specifying the version that should
     be applied. For example::
 
         $ cinder-manage db sync 921e1a36b076
