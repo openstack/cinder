@@ -1208,8 +1208,6 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                         clone_snap = snap['name']
                         break
 
-                    raise exception.VolumeIsBusy(volume_name=volume_name)
-
                 # Determine if this volume is itself a clone
                 _pool, parent, parent_snap = self._get_clone_info(rbd_image,
                                                                   volume_name,
@@ -1222,13 +1220,23 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                          self.configuration.rados_connection_retries)
             def _try_remove_volume(client, volume_name):
                 if self.configuration.enable_deferred_deletion:
-                    LOG.debug("moving volume %s to trash", volume_name)
                     delay = self.configuration.deferred_deletion_delay
-                    self.RBDProxy().trash_move(client.ioctx,
-                                               volume_name,
-                                               delay)
                 else:
-                    self.RBDProxy().remove(client.ioctx, volume_name)
+                    try:
+                        self.RBDProxy().remove(client.ioctx, volume_name)
+                        return
+                    except (self.rbd.ImageHasSnapshots, self.rbd.ImageBusy):
+                        delay = 0
+                LOG.debug("moving volume %s to trash", volume_name)
+                # When using the RBD v2 clone api, deleting a volume
+                # that has a snapshot in the trash space raises a
+                # busy exception.
+                # In order to solve this, call the trash operation
+                # which should succeed when the volume has
+                # dependencies.
+                self.RBDProxy().trash_move(client.ioctx,
+                                           volume_name,
+                                           delay)
 
             if clone_snap is None:
                 LOG.debug("deleting rbd volume %s", volume_name)
