@@ -88,7 +88,6 @@ service and other
    :maxdepth: 1
 
    Installation Guide <install/index>
-   Upgrade Process <upgrade>
 
 Administrating Cinder
 ~~~~~~~~~~~~~~~~~~~~~

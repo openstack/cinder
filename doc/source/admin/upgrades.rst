@@ -1,3 +1,4 @@
+========
 Upgrades
 ========
 
@@ -11,6 +12,7 @@ Keeping the control plane running during an upgrade is more difficult. This
 document's goal is to provide preliminaries and a detailed procedure of such
 upgrade.
 
+
 Concepts
 --------
 
@@ -18,7 +20,7 @@ Here are the key concepts you need to know before reading the section on the
 upgrade process:
 
 RPC version pinning
-'''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~
 
 Through careful RPC versioning, newer services are able to talk to older
 services (and vice-versa). The versions are autodetected using information
@@ -27,7 +29,7 @@ or ``ServiceTooOld`` exceptions on service start, you're probably having some
 old orphaned records in that table.
 
 Graceful service shutdown
-'''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Many cinder services are python processes listening for messages on an AMQP
 queue. When the operator sends SIGTERM signal to the process, it stops getting
@@ -37,35 +39,51 @@ process starts back up. This gives us a way to shutdown a service using older
 code, and start up a service using newer code with minimal impact.
 
 .. note::
-  Waiting for completion of long-running operations (e.g. slow volume copy
-  operation) may take a while.
+
+   Waiting for completion of long-running operations (e.g. slow volume copy
+   operation) may take a while.
 
 .. note::
-  This was tested with RabbitMQ messaging backend and may vary with other
-  backends.
 
-Online Data Migrations
-''''''''''''''''''''''
+   This was tested with RabbitMQ messaging backend and may vary with other
+   backends.
 
-To make DB schema migrations less painful to execute, since Liberty, all data
-migrations are banned from schema migration scripts. Instead, the migrations
-should be done by background process in a manner that doesn't interrupt running
-services (you can also execute online data migrations with services turned off
-if you're doing a cold upgrade). In Ocata a new ``cinder-manage db
-online_data_migrations`` utility was added for that purpose.  Before upgrading
-Ocata to Pike, you need to run this tool in the background, until it tells you
-no more migrations are needed.  Note that you won't be able to apply Pike's
-schema migrations before completing Ocata's online data migrations.
+Database upgrades
+~~~~~~~~~~~~~~~~~
+
+Cinder has two types of database upgrades in use:
+
+- Schema migrations
+- Data migrations
+
+Schema migrations are defined in ``cinder/db/migrations/versions``. They are
+the routines that transform our database structure, which should be additive
+and able to be applied to a running system before service code has been
+upgraded.
+
+Data migrations are banned from schema migration scripts and are instead
+defined in ``cinder/db/api.py``. They are kept separate to make DB schema
+migrations less painful to execute. Instead, the migrations are executed by a
+background process in a manner that doesn't interrupt running services (you can
+also execute online data migrations with services turned off if you're doing a
+cold upgrade). The ``cinder-manage db online_data_migrations`` utility can be
+used for this purpose. Before upgrading N to N+1, you need to run this tool in
+the background until it tells you no more migrations are needed. Note that you
+won't be able to apply N+1's schema migrations before completing N's online
+data migrations.
+
+For information on developing your own schema migrations as part of a feature
+or bugfix, refer to **TODO**.
 
 API load balancer draining
-''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When upgrading API nodes, you can make your load balancer only send new
 connections to the newer API nodes, allowing for a seamless update of your API
 nodes.
 
 DB prune deleted rows
-'''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~
 
 Currently resources are soft deleted in the database, so users are able to
 track instances in the DB that are created and destroyed in production.
@@ -77,18 +95,19 @@ longer as there is more data to migrate. To make pruning easier there's a
 records older than specified age.
 
 Versioned object backports
-''''''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 RPC pinning ensures new services can talk to the older service's method
 signatures. But many of the parameters are objects that may well be too new for
 the old service to understand. Cinder makes sure to backport an object to a
 version that it is pinned to before sending.
 
+
 Minimal Downtime Upgrade Procedure
 ----------------------------------
 
 Plan your upgrade
-'''''''''''''''''
+~~~~~~~~~~~~~~~~~
 
 * Read and ensure you understand the release notes for the next release.
 
@@ -96,32 +115,33 @@ Plan your upgrade
   database. Hence, in case of upgrade failure, restoring database from backup
   is the only choice.
 
-* Note that there's an assumption that live upgrade can be performed only
-  between subsequent releases. This means that you cannot upgrade Liberty
-  directly into Newton, you need to upgrade to Mitaka first.
-
 * To avoid dependency hell it is advised to have your Cinder services deployed
   separately in containers or Python venvs.
 
-* Note that Cinder is basing version detection on what is reported in the
-  ``services`` table in the DB. Before upgrade make sure you don't have any
-  orphaned old records there, because these can block starting newer services.
-  You can clean them up using ``cinder-manage service remove <binary> <host>``
-  command.
+  .. note::
 
-* Assumed service upgrade order is cinder-scheduler, cinder-volume,
-  cinder-backup and finally cinder-api.
+     Cinder is basing version detection on what is reported in the ``services``
+     table in the DB. Before upgrade make sure you don't have any orphaned old
+     records there, because these can block starting newer services. You can
+     clean them up using ``cinder-manage service remove <binary> <host>``
+     command.
+
+Note that there's an assumption that live upgrade can be performed only between
+subsequent releases. This means that you cannot upgrade N directly to N+2, you
+need to upgrade to N+1 first.
+
+The assumed service upgrade order is ``cinder-scheduler``, ``cinder-volume``,
+``cinder-backup`` and finally ``cinder-api``.
 
 Rolling upgrade process
-'''''''''''''''''''''''
+~~~~~~~~~~~~~~~~~~~~~~~
 
 To reduce downtime, the services can be upgraded in a rolling fashion. It means
 upgrading a few services at a time. To minimise downtime you need to have HA
 Cinder deployment, so at the moment a service is upgraded, you'll keep other
 service instances running.
 
-Before maintenance window
-"""""""""""""""""""""""""
+.. rubric:: Before maintenance window
 
 * First you should execute required DB schema migrations. To achieve that
   without interrupting your existing installation, install new Cinder code in
@@ -133,8 +153,7 @@ Before maintenance window
   DB schema changes are done in a way that both the N and N+1 release can
   perform operations against the same schema.
 
-During maintenance window
-"""""""""""""""""""""""""
+.. rubric:: During maintenance window
 
 1. The first service is cinder-scheduler. It is load-balanced by the message
    queue, so the only thing you need to worry about is to shut it down
@@ -204,9 +223,7 @@ During maintenance window
 
 7. Then you should repeat step 6 for all of the cinder-api services.
 
-
-After maintenance window
-""""""""""""""""""""""""
+.. rubric:: After maintenance window
 
 * Once all services are running the new code, double check in the DB that
   there are no old orphaned records in ``services`` table (Cinder doesn't
