@@ -1,0 +1,25 @@
+---
+issues:
+  - |
+    **NFS-based backend drivers and qcow2 version 2 images**
+
+    Under some circumstances, NFS-based backend drivers will store a volume
+    as a qcow2 image.  Thus cinder allows for the possibility that an operator
+    may choose to manage a storage object in an NFS-based backend that is a
+    qcow2 image.
+
+    Version 3 of the qcow2 format has been the default for qcow2 creation in
+    qemu-img since QEMU-1.7 (December 2013), and operating system vendors are
+    discussing discontinuing (or limiting) support of the version 2 format in
+    upcoming releases.
+
+    Thus, we recommend that operators who want to manage a storage object in
+    an NFS-based storage backend as a cinder volume should not do this with a
+    qcow2 image that is in the version 2 format, but should change it to the
+    qcow2-v3 format first.
+
+    .. note::
+       The format version of a qcow2 can be determined by looking for the
+       ``compat`` field in the output of the ``qemu-img info`` command.
+       A version 2 format image will report ``compat=0.10``, whereas a
+       qcow2 in version 3 format will report ``compat=1.1``.
