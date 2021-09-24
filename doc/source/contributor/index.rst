@@ -62,6 +62,7 @@ Programming HowTos and Tutorials
     api.apache
     rolling.upgrades
     groups
+    database-migrations
 
 .. _managing-development:
 

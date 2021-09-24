@@ -31,13 +31,14 @@ mypy-report
 tools/lintstack.head.py
 tools/pylint_exceptions
 tags
+
 # Files created by Sphinx build
 doc/build
 doc/source/_static/cinder.conf.sample
 doc/source/_static/cinder.policy.yaml.sample
 doc/source/drivers.rst
 
-#Files created for API reference
+# Files created for API reference
 api-ref/build
 
 # Files created by releasenotes build
@@ -45,3 +46,6 @@ releasenotes/build
 contrib/block-box/.db_data
 RELEASENOTES.rst
 releasenotes/notes/reno.cache
+
+# Files created by alembic
+cinder.db

@@ -72,8 +72,8 @@ the background until it tells you no more migrations are needed. Note that you
 won't be able to apply N+1's schema migrations before completing N's online
 data migrations.
 
-For information on developing your own schema migrations as part of a feature
-or bugfix, refer to **TODO**.
+For information on developing your own schema or data migrations as part of a
+feature or bugfix, refer to :doc:`/contributor/database-migrations`.
 
 API load balancer draining
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
