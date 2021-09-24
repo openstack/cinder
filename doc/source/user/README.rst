@@ -13,4 +13,3 @@ administrative actions should go into 'doc/source/admin'.
 The full spec for organization of documentation may be seen in the
 `OS Manuals Migration Spec
 <https://specs.openstack.org/openstack/docs-specs/specs/pike/os-manuals-migration.html>`.
-

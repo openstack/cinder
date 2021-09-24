@@ -8,7 +8,7 @@ Generic volume group support was added in cinder in the Newton release.
 There is support for creating group types and group specs, creating
 groups of volumes, and creating snapshots of groups. Detailed information
 on how to create a group type, a group, and a group snapshot can be found
-in :doc:`block storage admin guide </admin/blockstorage-groups>`.
+in :doc:`block storage admin guide </admin/groups>`.
 
 How is generic volume groups different from consistency groups in cinder?
 The consistency group feature was introduced in cinder in Juno and are
