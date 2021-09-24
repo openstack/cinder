@@ -13849,7 +13849,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
               'create_rccg')) as create_rccg:
             with ((mock.patch.object(
                    storwize_svc_common.StorwizeSVCCommonDriver,
-                   'update_group'))) as update_group:
+                   '_update_replication_grp'))) as update_rep_group:
+                update_rep_group.return_value = (dict(), dict(), dict())
                 # Create group from source group
                 model_update, volumes_model_update = (
                     self.driver.create_group_from_src(self.ctxt,
@@ -13859,8 +13860,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                       src_volumes))
                 create_rccg.assert_called()
                 self.assertEqual(1, create_rccg.call_count)
-                update_group.assert_called()
-                self.assertEqual(1, update_group.call_count)
+                update_rep_group.assert_called()
+                self.assertEqual(1, update_rep_group.call_count)
                 model_update = self.driver.delete_group(
                     self.ctxt, clone_group, [clone_vol1, clone_vol2])
                 self.assertEqual(fields.GroupStatus.DELETED,
@@ -13964,8 +13965,11 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                          model_update['status'],
                          "CG create from src created passed")
 
+        rccg_name = self.driver._get_rccg_name(clone_group)
         for each_vol in volumes_model_update:
             self.assertEqual('available', each_vol['status'])
+            self.assertEqual(rccg_name,
+                             each_vol['metadata']['Consistency Group Name'])
 
         model_update = self.driver.delete_group(self.ctxt, clone_group,
                                                 [clone_vol1, clone_vol2])
@@ -13975,8 +13979,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
               'create_rccg')) as create_rccg:
             with ((mock.patch.object(
                     storwize_svc_common.StorwizeSVCCommonDriver,
-                    'update_group'))) as update_group:
-
+                    '_update_replication_grp'))) as update_rep_group:
+                update_rep_group.return_value = (dict(), dict(), dict())
                 # Create group from source as group snapshot
                 model_update, volumes_model_update = (
                     self.driver.create_group_from_src(self.ctxt,
@@ -13987,8 +13991,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
                                                       None))
                 create_rccg.assert_called()
                 self.assertEqual(1, create_rccg.call_count)
-                update_group.assert_called()
-                self.assertEqual(1, update_group.call_count)
+                update_rep_group.assert_called()
+                self.assertEqual(1, update_rep_group.call_count)
 
                 model_update = (
                     self.driver.delete_group(self.ctxt, clone_group,
