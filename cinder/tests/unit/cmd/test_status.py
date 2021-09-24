@@ -42,11 +42,7 @@ class TestCinderStatus(testtools.TestCase):
         CONF.set_default('connection', 'sqlite://', 'database')
         CONF.set_default('sqlite_synchronous', False, 'database')
 
-        if not test._DB_CACHE:
-            test._DB_CACHE = test.Database(
-                sqla_api, test.migration,
-                sql_connection=CONF.database.connection)
-        self.useFixture(test._DB_CACHE)
+        self.useFixture(test.Database())
         sqla_api._GET_METHODS = {}
         self.addCleanup(CONF.reset)
 
