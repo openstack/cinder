@@ -341,6 +341,7 @@ Family driver:
 - volume_topology
 - peer_pool
 - flashcopy_rate
+- clean_rate
 - cycle_period_seconds
 
 These keys have the same semantics as their counterparts in the

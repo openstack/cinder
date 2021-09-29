@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    IBM Spectrum Virtualize Family driver: Added support for clean_rate
+    parameter. Clean_rate parameter can now be passed as extra-spec in
+    volume-type or fetched from cinder.conf.

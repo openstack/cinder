@@ -123,6 +123,12 @@ storwize_svc_opts = [
                help='Specifies the Storwize FlashCopy copy rate to be used '
                'when creating a full volume copy. The default is rate '
                'is 50, and the valid rates are 1-150.'),
+    cfg.IntOpt('storwize_svc_clean_rate',
+               default=50,
+               min=0, max=150,
+               help='Specifies the Storwize cleaning rate for the mapping. '
+                    'The default rate is 50, and the valid rates are '
+                    '0-150.'),
     cfg.StrOpt('storwize_svc_mirror_pool',
                default=None,
                help='Specifies the name of the pool in which mirrored copy '
@@ -596,7 +602,8 @@ class StorwizeSSH(object):
              '-unit', 'gb', '"%s"' % vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def mkfcmap(self, source, target, full_copy, copy_rate, consistgrp=None):
+    def mkfcmap(self, source, target, full_copy, copy_rate, clean_rate,
+                consistgrp=None):
         ssh_cmd = ['svctask', 'mkfcmap', '-source', '"%s"' % source, '-target',
                    '"%s"' % target]
         if not full_copy:
@@ -606,6 +613,8 @@ class StorwizeSSH(object):
             ssh_cmd.append('-autodelete')
         if consistgrp:
             ssh_cmd.extend(['-consistgrp', consistgrp])
+        if clean_rate is not None:
+            ssh_cmd.extend(['-cleanrate', str(int(clean_rate))])
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
         if 'successfully created' not in out:
             msg = (_('CLI Exception output:\n command: %(cmd)s\n '
@@ -655,9 +664,14 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'stopfcconsistgrp', fc_consist_group]
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def chfcmap(self, fc_map_id, copyrate='50', autodel='on'):
-        ssh_cmd = ['svctask', 'chfcmap', '-copyrate', copyrate,
-                   '-autodelete', autodel, fc_map_id]
+    def chfcmap(self, fc_map_id, copyrate=None, clean_rate=None,
+                autodel='on'):
+        ssh_cmd = ['svctask', 'chfcmap']
+        if clean_rate is not None:
+            ssh_cmd += ['-cleanrate', clean_rate]
+        if copyrate is not None:
+            ssh_cmd += ['-copyrate', copyrate]
+        ssh_cmd += ['-autodelete', autodel, fc_map_id]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def stopfcmap(self, fc_map_id, force=False, split=False):
@@ -1496,6 +1510,7 @@ class StorwizeHelpers(object):
                'replication': False,
                'nofmtdisk': config.storwize_svc_vol_nofmtdisk,
                'flashcopy_rate': config.storwize_svc_flashcopy_rate,
+               'clean_rate': config.storwize_svc_clean_rate,
                'mirror_pool': config.storwize_svc_mirror_pool,
                'volume_topology': None,
                'peer_pool': config.storwize_peer_pool,
@@ -2218,6 +2233,12 @@ class StorwizeHelpers(object):
                      {'cg': cgId})
         return volume_model_updates
 
+    def update_clean_rate(self, volume_name, new_clean_rate):
+        mapping_ids = self._get_vdisk_fc_mappings(volume_name)
+        for map_id in mapping_ids:
+            self.ssh.chfcmap(map_id,
+                             clean_rate=six.text_type(new_clean_rate))
+
     def check_flashcopy_rate(self, flashcopy_rate):
         if not self.code_level:
             sys_info = self.get_system_info()
@@ -2247,13 +2268,14 @@ class StorwizeHelpers(object):
                                  copyrate=six.text_type(new_flashcopy_rate))
 
     def run_flashcopy(self, source, target, timeout, copy_rate,
-                      full_copy=True, restore=False):
+                      clean_rate, full_copy=True, restore=False):
         """Create a FlashCopy mapping from the source to the target."""
         LOG.debug('Enter: run_flashcopy: execute FlashCopy from source '
                   '%(source)s to target %(target)s.',
                   {'source': source, 'target': target})
         self.check_flashcopy_rate(copy_rate)
-        fc_map_id = self.ssh.mkfcmap(source, target, full_copy, copy_rate)
+        fc_map_id = self.ssh.mkfcmap(source, target, full_copy, copy_rate,
+                                     clean_rate)
         self._prepare_fc_map(fc_map_id, timeout, restore)
         self.ssh.startfcmap(fc_map_id, restore)
 
@@ -2293,6 +2315,7 @@ class StorwizeHelpers(object):
         self.check_flashcopy_rate(opts['flashcopy_rate'])
         self.ssh.mkfcmap(source, target, full_copy,
                          opts['flashcopy_rate'],
+                         opts['clean_rate'],
                          consistgrp=consistgrp)
 
         LOG.debug('Leave: create_flashcopy_to_consistgrp: '
@@ -2698,6 +2721,7 @@ class StorwizeHelpers(object):
         try:
             self.run_flashcopy(src, tgt, timeout,
                                opts['flashcopy_rate'],
+                               opts['clean_rate'],
                                full_copy=full_copy)
         except Exception:
             with excutils.save_and_reraise_exception():
@@ -3901,7 +3925,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 hs_opts = self._get_vdisk_params(volume['volume_type_id'],
                                                  volume_metadata=
                                                  volume.get(
-                                                     'volume_matadata'))
+                                                     'volume_metadata'))
                 try:
                     master_helper.convert_hyperswap_volume_to_normal(
                         volume_name, hs_opts['peer_pool'])
@@ -3990,7 +4014,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # Update the QoS IOThrottling value to the volume properties
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
-                                      volume.get('volume_matadata'))
+                                      volume.get('volume_metadata'))
         if opts['qos'] and opts['qos']['IOThrottling_unit']:
             unit = opts['qos']['IOThrottling_unit']
             if storwize_const.IOPS_PER_GB in unit:
@@ -5370,7 +5394,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         all_keys = no_copy_keys + copy_keys
         old_opts = self._get_vdisk_params(volume['volume_type_id'],
                                           volume_metadata=
-                                          volume.get('volume_matadata'))
+                                          volume.get('volume_metadata'))
         new_opts = self._get_vdisk_params(new_type['id'],
                                           volume_type=new_type)
 
@@ -5486,6 +5510,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if new_opts['flashcopy_rate'] != old_opts['flashcopy_rate']:
             self._helpers.update_flashcopy_rate(volume.name,
                                                 new_opts['flashcopy_rate'])
+
+        if new_opts['clean_rate']:
+            # Add the new clean_rate. If the old FC maps has the clean_rate
+            # it will be overwritten.
+            self._helpers.update_clean_rate(volume.name,
+                                            new_opts['clean_rate'])
 
         # Delete replica if needed
         if self._state['code_level'] < (7, 7, 0, 0):
@@ -6212,7 +6242,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._helpers.run_flashcopy(
                 snapshot.name, volume.name,
                 self.configuration.storwize_svc_flashcopy_timeout,
-                opts['flashcopy_rate'], True, True)
+                opts['flashcopy_rate'], opts['clean_rate'], True, True)
             if rep_type:
                 self._helpers.start_relationship(volume.name, primary=None)
         except Exception as err:
