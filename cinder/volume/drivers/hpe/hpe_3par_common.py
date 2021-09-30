@@ -422,20 +422,6 @@ class HPE3PARCommon(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        known_hosts_file = CONF.ssh_hosts_key_file
-        policy = "AutoAddPolicy"
-        if CONF.strict_ssh_host_key_policy:
-            policy = "RejectPolicy"
-        self.client.setSSHOptions(
-            self._client_conf['san_ip'],
-            self._client_conf['san_login'],
-            self._client_conf['san_password'],
-            port=self._client_conf['san_ssh_port'],
-            conn_timeout=self._client_conf['ssh_conn_timeout'],
-            privatekey=self._client_conf['san_private_key'],
-            missing_key_policy=policy,
-            known_hosts_file=known_hosts_file)
-
     def client_logout(self):
         LOG.debug("Disconnect from 3PAR REST and SSH %s", self.uuid)
         self.client.logout()
@@ -451,19 +437,6 @@ class HPE3PARCommon(object):
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
-        known_hosts_file = CONF.ssh_hosts_key_file
-        policy = "AutoAddPolicy"
-        if CONF.strict_ssh_host_key_policy:
-            policy = "RejectPolicy"
-        cl.setSSHOptions(
-            remote_array['san_ip'],
-            remote_array['san_login'],
-            remote_array['san_password'],
-            port=remote_array['san_ssh_port'],
-            conn_timeout=remote_array['ssh_conn_timeout'],
-            privatekey=remote_array['san_private_key'],
-            missing_key_policy=policy,
-            known_hosts_file=known_hosts_file)
         return cl
 
     def _destroy_replication_client(self, client):

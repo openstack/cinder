@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `Bug #1940069 <https://bugs.launchpad.net/cinder/+bug/1940069>`_:
+    Fixed issue of connection rejected by reusing existing session.
+
