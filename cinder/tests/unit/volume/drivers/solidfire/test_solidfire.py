@@ -3730,6 +3730,32 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     @mock.patch.object(solidfire.SolidFireDriver,
                        '_do_intercluster_volume_migration')
+    def test_migrate_volume_retyping_status(
+            self, mock_do_intercluster_volume_migration):
+
+        ctx = context.get_admin_context()
+        type_fields = {'id': fakes.get_fake_uuid()}
+        src_vol_type = fake_volume.fake_volume_type_obj(ctx, **type_fields)
+
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'volume_type': src_vol_type,
+            'host': 'fakeHost@fakeBackend#fakePool',
+            'status': 'retyping'
+        }
+
+        vol = fake_volume.fake_volume_obj(ctx, **vol_fields)
+        vol.volume_type = src_vol_type
+        host = {'host': 'fakeHost@fakeBackend#fakePool'}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = sfv.migrate_volume(ctx, vol, host)
+
+        mock_do_intercluster_volume_migration.assert_not_called()
+        self.assertEqual((True, {}), result)
+
+    @mock.patch.object(solidfire.SolidFireDriver,
+                       '_do_intercluster_volume_migration')
     def test_migrate_volume_same_host_and_backend(
             self, mock_do_intercluster_volume_migration):
 
@@ -4192,3 +4218,40 @@ class SolidFireVolumeTestCase(test.TestCase):
             call('RemoveVolumePair', src_params, '8.0'),
             call('DeleteVolume', src_params),
             call('PurgeDeletedVolume', src_params)])
+
+    @data(True, False)
+    @mock.patch.object(solidfire.SolidFireDriver, '_create_cluster_reference')
+    @mock.patch.object(solidfire.SolidFireDriver, '_set_cluster_pairs')
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
+    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
+    def test_list_volumes_by_name(self, has_endpoint, mock_issue_api_request,
+                                  mock_update_cluster_status,
+                                  mock_set_cluster_pairs,
+                                  mock_create_cluster_reference):
+        fake_sf_volume_name = 'fake-vol-name'
+        vol_fields = {
+            'id': fakes.get_fake_uuid(),
+            'name': fake_sf_volume_name
+        }
+        vol = fake_volume.fake_volume_obj(
+            context.get_admin_context(), **vol_fields)
+
+        fake_endpoint = None
+        volumes_list = [vol]
+
+        if has_endpoint:
+            fake_endpoint = self.fake_primary_cluster["endpoint"]
+            volumes_list = []
+
+        mock_issue_api_request.return_value = {
+            'result': {'volumes': volumes_list}}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        result = (
+            sfv._list_volumes_by_name(fake_sf_volume_name,
+                                      endpoint=fake_endpoint))
+
+        mock_issue_api_request.assert_called_once_with(
+            'ListVolumes', {'volumeName': fake_sf_volume_name},
+            version='8.0', endpoint=fake_endpoint)
+        self.assertEqual(result, volumes_list)
