@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pure Storage driver  `Bug #1945824 <https://bugs.launchpad.net/cinder/+bug/1945824>`_:
+    Fixed missing DB values when creating new consistency group from CG snapshot.

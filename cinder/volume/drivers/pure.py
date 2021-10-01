@@ -544,6 +544,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             repl_status = fields.ReplicationStatus.ENABLED
 
         model_update = {
+            'id': volume.id,
             'provider_id': purity_vol_name,
             'replication_status': repl_status,
         }
@@ -970,8 +971,11 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         The new volumes will be consistent with the snapshot.
         """
+        vol_models = []
         for volume, snapshot in zip(volumes, snapshots):
-            self.create_volume_from_snapshot(volume, snapshot)
+            vol_models.append(self.create_volume_from_snapshot(volume,
+                                                               snapshot))
+        return vol_models
 
     def _create_cg_from_cg(self, group, source_group, volumes, source_vols):
         """Creates a new consistency group from an existing cg.
@@ -979,6 +983,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         The new volumes will be in a consistent state, but this requires
         taking a new temporary group snapshot and cloning from that.
         """
+        vol_models = []
         pgroup_name = self._get_pgroup_name(source_group)
         tmp_suffix = '%s-tmp' % uuid.uuid4()
         tmp_pgsnap_name = '%(pgroup_name)s.%(pgsnap_suffix)s' % {
@@ -1007,19 +1012,21 @@ class PureBaseVolumeDriver(san.SanDriver):
                 )
         finally:
             self._delete_pgsnapshot(tmp_pgsnap_name)
+        return vol_models
 
     @pure_driver_debug_trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
-        self.create_consistencygroup(context, group)
+        model_update = self.create_consistencygroup(context, group)
         if cgsnapshot and snapshots:
-            self._create_cg_from_cgsnap(volumes,
-                                        snapshots)
+            vol_models = self._create_cg_from_cgsnap(volumes,
+                                                     snapshots)
         elif source_cg:
-            self._create_cg_from_cg(group, source_cg, volumes, source_vols)
+            vol_models = self._create_cg_from_cg(group, source_cg,
+                                                 volumes, source_vols)
 
-        return None, None
+        return model_update, vol_models
 
     @pure_driver_debug_trace
     def delete_consistencygroup(self, context, group, volumes):
