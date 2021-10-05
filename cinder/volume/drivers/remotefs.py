@@ -1393,7 +1393,7 @@ class RemoteFSSnapDriverBase(RemoteFSDriver):
                   {'vol': volume.id, 'snap': snapshot.id})
 
         status = snapshot.status
-        acceptable_states = ['available', 'backing-up']
+        acceptable_states = ['available', 'backing-up', 'restoring']
         self._validate_state(status, acceptable_states,
                              obj_description='snapshot',
                              invalid_exc=exception.InvalidSnapshot)
