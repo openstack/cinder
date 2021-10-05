@@ -1367,8 +1367,10 @@ class NfsDriverTestCase(test.TestCase):
 
     @ddt.data([NFS_CONFIG1, QEMU_IMG_INFO_OUT3, 'available'],
               [NFS_CONFIG2, QEMU_IMG_INFO_OUT4, 'backing-up'],
+              [NFS_CONFIG2, QEMU_IMG_INFO_OUT4, 'restoring'],
               [NFS_CONFIG3, QEMU_IMG_INFO_OUT3, 'available'],
-              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4, 'backing-up'])
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4, 'backing-up'],
+              [NFS_CONFIG4, QEMU_IMG_INFO_OUT4, 'restoring'])
     @ddt.unpack
     @mock.patch('cinder.objects.volume.Volume.save')
     def test_create_volume_from_snapshot(self, nfs_conf, qemu_img_info,
@@ -1433,7 +1435,7 @@ class NfsDriverTestCase(test.TestCase):
         mock_find_share.assert_called_once_with(new_volume)
 
     @ddt.data('error', 'creating', 'deleting', 'deleted', 'updating',
-              'error_deleting', 'unmanaging', 'restoring')
+              'error_deleting', 'unmanaging')
     def test_create_volume_from_snapshot_invalid_status(self, snap_status):
         """Expect an error when the snapshot's status is not 'available'."""
         self._set_driver()
