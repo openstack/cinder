@@ -2504,3 +2504,69 @@ class TestImageFormatCheck(test.TestCase):
 
         image_utils.convert_image(src, dest, out_fmt)
         mock_check.assert_called_once_with(src, None, None, None, True)
+
+
+@ddt.ddt
+class TestFilterReservedNamespaces(test.TestCase):
+
+    def setUp(self):
+        super(TestFilterReservedNamespaces, self).setUp()
+        self.mock_object(image_utils, 'LOG', side_effect=image_utils.LOG)
+
+    def test_filter_out_reserved_namespaces_metadata_with_empty_metadata(self):
+        metadata_for_test = None
+        method_return = image_utils.filter_out_reserved_namespaces_metadata(
+            metadata_for_test)
+
+        self.assertEqual({}, method_return)
+
+        image_utils.LOG.debug.assert_has_calls(
+            [mock.call("No metadata to be filtered.")]
+        )
+
+    @ddt.data(  # remove default keys
+        ({"some_key": 13, "other_key": "test",
+          "os_glance_key": "this should be removed",
+          "os_glance_key2": "this should also be removed"},
+         None,
+         []),
+        # remove nothing
+        ({"some_key": 13, "other_key": "test"},
+         None,
+         []),
+        # custom config empty
+        ({"some_key": 13, "other_key": "test",
+          "os_glance_key": "this should be removed",
+          "os_glance_key2": "this should also be removed"},
+         [],
+         []),
+        # custom config
+        ({"some_key": 13, "other_key": "test",
+          "os_glance_key": "this should be removed",
+          "os_glance_key2": "this should also be removed",
+          "custom_key": "this should be removed",
+          "another_custom_key": "this should also be removed"},
+         ['custom_key', 'another_custom_key'],
+         ['custom_key', 'another_custom_key']))
+    @ddt.unpack
+    def test_filter_out_reserved_namespaces_metadata(
+            self, metadata_for_test, config, keys_to_pop):
+        hardcoded_keys = ['os_glance', "img_signature"]
+
+        keys_to_pop = hardcoded_keys + keys_to_pop
+
+        if config:
+            self.override_config('reserved_image_namespaces', config)
+
+        expected_result = {"some_key": 13, "other_key": "test"}
+
+        method_return = image_utils.filter_out_reserved_namespaces_metadata(
+            metadata_for_test)
+
+        self.assertEqual(expected_result, method_return)
+
+        image_utils.LOG.debug.assert_has_calls([
+            mock.call("The metadata set [%s] was filtered using the reserved "
+                      "name spaces [%s], and the result is [%s].",
+                      metadata_for_test, keys_to_pop, expected_result)
+        ])

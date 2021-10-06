@@ -1,0 +1,28 @@
+---
+upgrade:
+  - |
+    We introduced a new config parameter, ``reserved_image_namespaces``,
+    that allows operators to set the image properties to filter out from
+    volume image metadata by namespace when uploading a volume to Glance.
+    These properties, if not filtered out, cause failures when uploading
+    images back to Glance. The error will happen on Glance side when the
+    reserved namespaces are used. This option is also useful when an operator
+    wants to use the Glance property protections feature to make some image
+    properties read-only.
+fixes:
+  - |
+    `Bug #1945500 <https://bugs.launchpad.net/cinder/+bug/1945500>`_: Fixed
+    an error when uploading to Glance a previously downloaded glance image
+    when glance multistore is enabled. Glance reserves image properties
+    in the namespace 'os_glance' for its own use and will not allow
+    images to be created with these properties. Additionally, there are image
+    properties, such as those associated with image signature verification,
+    that are stored in a volume's image metadata, which should not be added
+    to a new image when a volume is being uploaded as an image. Thus Cinder
+    will no longer include any volume image metadata in the namespaces
+    ``os_glance`` and ``img_signature`` when it creates an image in Glance.
+    Furthermore, because the Glance property protections feature allows an
+    operator to configure specific image properties as read-only, this fix
+    adds a configuration option, ``reserved_image_namespaces``, that allows an
+    operator to exclude additional image properties by namespace (the
+    ``os_glance`` and ``img_signature`` namespaces are *always* excluded).

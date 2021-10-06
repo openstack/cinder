@@ -82,6 +82,24 @@ image_opts = [
                 'when an image is converted to raw format as it is written '
                 'to a volume.  If this list is empty, no VMDK images are '
                 'allowed.'),
+    cfg.ListOpt('reserved_image_namespaces',
+                help='List of reserved image namespaces that should be '
+                     'filtered out when uploading a volume as an image back '
+                     'to Glance. When a volume is created from an image, '
+                     'Cinder stores the image properties as volume '
+                     'image metadata, and if the volume is later uploaded as '
+                     'an image, Cinder will add these properties when it '
+                     'creates the image in Glance. This can cause problems '
+                     'for image metadata that are in namespaces that glance '
+                     'reserves for itself, or when properties (such as an '
+                     'image signature) cannot apply to the new image, or when '
+                     'an operator has configured glance property protections '
+                     'to make some image properties read-only. Cinder will '
+                     '*always* filter out image metadata in the namespaces '
+                     '`os_glance` and `img_signature`; this configuration '
+                     'option allows operators to specify *additional* '
+                     'namespaces to be excluded.',
+                default=[]),
 ]
 
 CONF = cfg.CONF
@@ -105,6 +123,8 @@ QEMU_IMG_MIN_FORCE_SHARE_VERSION = [2, 10, 0]
 QEMU_IMG_MIN_CONVERT_LUKS_VERSION = '2.10'
 
 COMPRESSIBLE_IMAGE_FORMATS = ('qcow2',)
+
+GLANCE_RESERVED_NAMESPACES = ["os_glance", "img_signature"]
 
 
 def validate_stores_id(context: context.RequestContext,
@@ -1248,3 +1268,29 @@ class TemporaryImages(object):
         if not self.temporary_images.get(user):
             return None
         return self.temporary_images[user].get(image_id)
+
+
+def filter_out_reserved_namespaces_metadata(
+        metadata: Optional[Dict[str, str]]) -> Dict[str, str]:
+
+    reserved_name_spaces = GLANCE_RESERVED_NAMESPACES.copy()
+    if CONF.reserved_image_namespaces:
+        for image_namespace in CONF.reserved_image_namespaces:
+            if image_namespace not in reserved_name_spaces:
+                reserved_name_spaces.append(image_namespace)
+
+    if not metadata:
+        LOG.debug("No metadata to be filtered.")
+        return {}
+
+    new_metadata = {}
+    for k, v in metadata.items():
+        if any(k.startswith(reserved_name_space)
+               for reserved_name_space in reserved_name_spaces):
+            continue
+        new_metadata[k] = v
+
+    LOG.debug("The metadata set [%s] was filtered using the reserved name "
+              "spaces [%s], and the result is [%s].", metadata,
+              reserved_name_spaces, new_metadata)
+    return new_metadata
