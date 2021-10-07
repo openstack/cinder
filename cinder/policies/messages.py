@@ -48,7 +48,7 @@ messages_policies = [
                 'path': '/messages'
             }
         ],
-        deprecated_rule=deprecated_get_policy,
+        deprecated_rule=deprecated_get_all_policy,
     ),
     policy.DocumentedRuleDefault(
         name=GET_POLICY,
@@ -60,7 +60,7 @@ messages_policies = [
                 'path': '/messages/{message_id}'
             }
         ],
-        deprecated_rule=deprecated_get_all_policy,
+        deprecated_rule=deprecated_get_policy,
     ),
     policy.DocumentedRuleDefault(
         name=DELETE_POLICY,
