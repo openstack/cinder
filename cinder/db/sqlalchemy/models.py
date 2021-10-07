@@ -66,9 +66,13 @@ class Service(BASE, CinderBase):
     """Represents a running service on a host."""
 
     __tablename__ = 'services'
+    __table_args__ = (
+        sa.Index('services_uuid_idx', 'uuid', unique=True),
+        CinderBase.__table_args__,
+    )
 
     id = sa.Column(sa.Integer, primary_key=True)
-    uuid = sa.Column(sa.String(36), nullable=True, index=True)
+    uuid = sa.Column(sa.String(36), nullable=True)
     cluster_name = sa.Column(sa.String(255), nullable=True)
     host = sa.Column(sa.String(255))  # , sa.ForeignKey('hosts.id'))
     binary = sa.Column(sa.String(255))
@@ -233,7 +237,12 @@ class CGSnapshot(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
 
-    consistencygroup_id = sa.Column(sa.String(36), index=True)
+    consistencygroup_id = sa.Column(
+        sa.String(36),
+        sa.ForeignKey('consistencygroups.id'),
+        nullable=False,
+        index=True,
+    )
 
     # TODO(stephenfin): Add nullable=False
     user_id = sa.Column(sa.String(255))
@@ -258,7 +267,13 @@ class GroupSnapshot(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
 
-    group_id = sa.Column(sa.String(36), nullable=False, index=True)
+    group_id = sa.Column(
+        'group_id',
+        sa.String(36),
+        sa.ForeignKey('groups.id'),
+        nullable=False,
+        index=True,
+    )
     user_id = sa.Column(sa.String(255))
     project_id = sa.Column(sa.String(255))
 
@@ -336,8 +351,17 @@ class Volume(BASE, CinderBase):
     source_volid = sa.Column(sa.String(36))
     encryption_key_id = sa.Column(sa.String(36))
 
-    consistencygroup_id = sa.Column(sa.String(36), index=True)
-    group_id = sa.Column(sa.String(36), index=True)
+    consistencygroup_id = sa.Column(
+        sa.String(36),
+        sa.ForeignKey('consistencygroups.id'),
+        index=True,
+    )
+    group_id = sa.Column(
+        'group_id',
+        sa.String(36),
+        sa.ForeignKey('groups.id'),
+        index=True,
+    )
 
     bootable = sa.Column(sa.Boolean, default=False)
     multiattach = sa.Column(sa.Boolean, default=False)
@@ -362,7 +386,11 @@ class Volume(BASE, CinderBase):
         primaryjoin='Volume.group_id == Group.id',
     )
 
-    service_uuid = sa.Column(sa.String(36), index=True)
+    service_uuid = sa.Column(
+        sa.String(36),
+        sa.ForeignKey('services.uuid'),
+        nullable=True,
+    )
     service = relationship(
         Service,
         backref="volumes",
@@ -530,7 +558,6 @@ class VolumeTypeProjects(BASE, CinderBase):
             "volume_type_id",
             "project_id",
             "deleted",
-            name="uniq_volume_type_projects0volume_type_id0project_id0deleted",
         ),
         CinderBase.__table_args__,
     )
@@ -558,12 +585,7 @@ class GroupTypeProjects(BASE, CinderBase):
 
     __tablename__ = "group_type_projects"
     __table_args__ = (
-        schema.UniqueConstraint(
-            "group_type_id",
-            "project_id",
-            "deleted",
-            name="uniq_group_type_projects0group_type_id0project_id0deleted",
-        ),
+        sa.UniqueConstraint('group_type_id', 'project_id', 'deleted'),
         CinderBase.__table_args__,
     )
 
@@ -750,7 +772,8 @@ class Quota(BASE, CinderBase):
 
     id = sa.Column(sa.Integer, primary_key=True)
 
-    project_id = sa.Column(sa.String(255), index=True)
+    # TODO(stephenfin): Add index=True
+    project_id = sa.Column(sa.String(255))
 
     resource = sa.Column(sa.String(255), nullable=False)
     hard_limit = sa.Column(sa.Integer, nullable=True)
@@ -784,6 +807,7 @@ class QuotaUsage(BASE, CinderBase):
     # we do soft deletes and there could be duplicated entries, so we add the
     # race_preventer field.
     __table_args__ = (
+        sa.Index('quota_usage_project_resource_idx', 'project_id', 'resource'),
         sa.UniqueConstraint('project_id', 'resource', 'race_preventer'),
         CinderBase.__table_args__,
     )
@@ -791,7 +815,8 @@ class QuotaUsage(BASE, CinderBase):
     id = sa.Column(sa.Integer, primary_key=True)
 
     project_id = sa.Column(sa.String(255), index=True)
-    resource = sa.Column(sa.String(300), index=True)
+    # TODO(stephenfin): Add index=True
+    resource = sa.Column(sa.String(255))
 
     in_use = sa.Column(sa.Integer, nullable=False)
     reserved = sa.Column(sa.Integer, nullable=False)
@@ -879,9 +904,22 @@ class Snapshot(BASE, CinderBase):
     user_id = sa.Column(sa.String(255))
     project_id = sa.Column(sa.String(255))
 
-    volume_id = sa.Column(sa.String(36), index=True)
-    cgsnapshot_id = sa.Column(sa.String(36), index=True)
-    group_snapshot_id = sa.Column(sa.String(36), index=True)
+    volume_id = sa.Column(
+        sa.String(36),
+        sa.ForeignKey('volumes.id', name='snapshots_volume_id_fkey'),
+        nullable=False,
+        index=True,
+    )
+    cgsnapshot_id = sa.Column(
+        sa.String(36),
+        sa.ForeignKey('cgsnapshots.id'),
+        index=True,
+    )
+    group_snapshot_id = sa.Column(
+        sa.String(36),
+        sa.ForeignKey('group_snapshots.id'),
+        index=True,
+    )
     status = sa.Column(sa.String(255))
     progress = sa.Column(sa.String(255))
     volume_size = sa.Column(sa.Integer)
@@ -1160,7 +1198,12 @@ class Worker(BASE, CinderBase):
     status = sa.Column(sa.String(255), nullable=False)
 
     # Service that is currently processing the operation
-    service_id = sa.Column(sa.Integer, nullable=True, index=True)
+    service_id = sa.Column(
+        sa.Integer,
+        sa.ForeignKey('services.id'),
+        nullable=True,
+        index=True,
+    )
 
     # To prevent claiming and updating races
     race_preventer = sa.Column(sa.Integer, nullable=False, default=0)
