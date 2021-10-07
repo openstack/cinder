@@ -97,7 +97,8 @@ class Service(BASE, CinderBase):
     # failed-over or not-configured
     replication_status = sa.Column(sa.String(36), default="not-capable")
     active_backend_id = sa.Column(sa.String(255))
-    frozen = sa.Column(sa.Boolean, nullable=False, default=False)
+    # TODO(stephenfin): Add nullable=False
+    frozen = sa.Column(sa.Boolean, default=False)
 
     cluster = relationship(
         'Cluster',
@@ -186,8 +187,9 @@ class ConsistencyGroup(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
 
-    user_id = sa.Column(sa.String(255), nullable=False)
-    project_id = sa.Column(sa.String(255), nullable=False)
+    # TODO(stephenfin): Add nullable=False
+    user_id = sa.Column(sa.String(255))
+    project_id = sa.Column(sa.String(255))
 
     cluster_name = sa.Column(sa.String(255), nullable=True)
     host = sa.Column(sa.String(255))
@@ -207,8 +209,9 @@ class Group(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
 
-    user_id = sa.Column(sa.String(255), nullable=False)
-    project_id = sa.Column(sa.String(255), nullable=False)
+    # TODO(stephenfin): Add nullable=False
+    user_id = sa.Column(sa.String(255))
+    project_id = sa.Column(sa.String(255))
 
     cluster_name = sa.Column(sa.String(255))
     host = sa.Column(sa.String(255))
@@ -231,8 +234,10 @@ class CGSnapshot(BASE, CinderBase):
     id = sa.Column(sa.String(36), primary_key=True)
 
     consistencygroup_id = sa.Column(sa.String(36), index=True)
-    user_id = sa.Column(sa.String(255), nullable=False)
-    project_id = sa.Column(sa.String(255), nullable=False)
+
+    # TODO(stephenfin): Add nullable=False
+    user_id = sa.Column(sa.String(255))
+    project_id = sa.Column(sa.String(255))
 
     name = sa.Column(sa.String(255))
     description = sa.Column(sa.String(255))
@@ -327,7 +332,7 @@ class Volume(BASE, CinderBase):
     provider_geometry = sa.Column(sa.String(255))
     provider_id = sa.Column(sa.String(255))
 
-    volume_type_id = sa.Column(sa.String(36))
+    volume_type_id = sa.Column(sa.String(36), nullable=False)
     source_volid = sa.Column(sa.String(36))
     encryption_key_id = sa.Column(sa.String(36))
 
@@ -477,7 +482,7 @@ class GroupType(BASE, CinderBase):
     __tablename__ = "group_types"
 
     id = sa.Column(sa.String(36), primary_key=True)
-    name = sa.Column(sa.String(255))
+    name = sa.Column(sa.String(255), nullable=False)
     description = sa.Column(sa.String(255))
     is_public = sa.Column(sa.Boolean, default=True)
     groups = relationship(
@@ -531,8 +536,9 @@ class VolumeTypeProjects(BASE, CinderBase):
     )
 
     id = sa.Column(sa.Integer, primary_key=True)
+    # TODO(stephenfin): Add nullable=False
     volume_type_id = sa.Column(
-        sa.String, sa.ForeignKey('volume_types.id'), nullable=False
+        sa.String(36), sa.ForeignKey('volume_types.id'),
     )
     project_id = sa.Column(sa.String(255))
     deleted = sa.Column(sa.Integer, default=0)
@@ -562,8 +568,9 @@ class GroupTypeProjects(BASE, CinderBase):
     )
 
     id = sa.Column(sa.Integer, primary_key=True)
+    # TODO(stephenfin): Add nullable=False
     group_type_id = sa.Column(
-        sa.String, sa.ForeignKey('group_types.id'), nullable=False
+        sa.String(36), sa.ForeignKey('group_types.id'),
     )
     project_id = sa.Column(sa.String(255))
 
@@ -631,7 +638,9 @@ class DefaultVolumeTypes(BASE, CinderBase):
     __tablename__ = "default_volume_types"
 
     volume_type_id = sa.Column(
-        sa.String, sa.ForeignKey('volume_types.id'), nullable=False, index=True
+        sa.String(36),
+        sa.ForeignKey('volume_types.id'),
+        index=True,
     )
     project_id = sa.Column(sa.String(255), primary_key=True)
     volume_type = relationship(
@@ -743,7 +752,7 @@ class Quota(BASE, CinderBase):
 
     project_id = sa.Column(sa.String(255), index=True)
 
-    resource = sa.Column(sa.String(255))
+    resource = sa.Column(sa.String(255), nullable=False)
     hard_limit = sa.Column(sa.Integer, nullable=True)
     # TODO: (X release): Remove allocated, belonged to nested quotas
     allocated = sa.Column(sa.Integer, default=0)
@@ -784,8 +793,8 @@ class QuotaUsage(BASE, CinderBase):
     project_id = sa.Column(sa.String(255), index=True)
     resource = sa.Column(sa.String(300), index=True)
 
-    in_use = sa.Column(sa.Integer)
-    reserved = sa.Column(sa.Integer)
+    in_use = sa.Column(sa.Integer, nullable=False)
+    reserved = sa.Column(sa.Integer, nullable=False)
 
     @property
     def total(self):
@@ -827,8 +836,9 @@ class Reservation(BASE, CinderBase):
     project_id = sa.Column(sa.String(255), index=True)
     resource = sa.Column(sa.String(255))
 
-    delta = sa.Column(sa.Integer)
-    expire = sa.Column(sa.DateTime, nullable=False)
+    delta = sa.Column(sa.Integer, nullable=False)
+    # TODO(stephenfin): Add nullable=False
+    expire = sa.Column(sa.DateTime(timezone=False))
 
     usage = relationship(
         "QuotaUsage",
@@ -880,7 +890,7 @@ class Snapshot(BASE, CinderBase):
     display_description = sa.Column(sa.String(255))
 
     encryption_key_id = sa.Column(sa.String(36))
-    volume_type_id = sa.Column(sa.String(36))
+    volume_type_id = sa.Column(sa.String(36), nullable=False)
 
     provider_location = sa.Column(sa.String(255))
     provider_id = sa.Column(sa.String(255))
@@ -944,8 +954,9 @@ class Backup(BASE, CinderBase):
     def name(self):
         return CONF.backup_name_template % self.id
 
-    user_id = sa.Column(sa.String(255), nullable=False)
-    project_id = sa.Column(sa.String(255), nullable=False)
+    # TODO(stephenfin): Add nullable=False
+    user_id = sa.Column(sa.String(255))
+    project_id = sa.Column(sa.String(255))
 
     volume_id = sa.Column(sa.String(36), nullable=False)
     host = sa.Column(sa.String(255))
@@ -1003,12 +1014,27 @@ class Encryption(BASE, CinderBase):
 
     __tablename__ = 'encryption'
 
-    encryption_id = sa.Column(sa.String(36), primary_key=True)
+    # NOTE (smcginnis): nullable=True triggers this to not set a default
+    # value, but since it's a primary key the resulting schema will end up
+    # still being NOT NULL. This is avoiding a case in MySQL where it will
+    # otherwise set this to NOT NULL DEFAULT ''. May be harmless, but
+    # inconsistent with previous schema.
+    encryption_id = sa.Column(
+        sa.String(36),
+        primary_key=True,
+        nullable=True,
+    )
     cipher = sa.Column(sa.String(255))
     key_size = sa.Column(sa.Integer)
     provider = sa.Column(sa.String(255))
     control_location = sa.Column(sa.String(255))
-    volume_type_id = sa.Column(sa.String(36), sa.ForeignKey('volume_types.id'))
+    # NOTE(joel-coffman): The volume_type_id must be unique or else the
+    # referenced volume type becomes ambiguous. That is, specifying the
+    # volume type is not sufficient to identify a particular encryption
+    # scheme unless each volume type is associated with at most one
+    # encryption scheme.
+    # TODO(stephenfin): Make this a foreign key
+    volume_type_id = sa.Column(sa.String(36), nullable=False)
     volume_type = relationship(
         VolumeType,
         backref="encryption",
@@ -1026,7 +1052,10 @@ class Transfer(BASE, CinderBase):
 
     id = sa.Column(sa.String(36), primary_key=True)
     volume_id = sa.Column(
-        sa.String(36), sa.ForeignKey('volumes.id'), index=True
+        sa.String(36),
+        sa.ForeignKey('volumes.id'),
+        nullable=False,
+        index=True,
     )
     display_name = sa.Column(sa.String(255))
     salt = sa.Column(sa.String(255))
@@ -1094,10 +1123,13 @@ class ImageVolumeCacheEntry(BASE, models.ModelBase):
     host = sa.Column(sa.String(255), index=True, nullable=False)
     cluster_name = sa.Column(sa.String(255), nullable=True)
     image_id = sa.Column(sa.String(36), index=True, nullable=False)
-    image_updated_at = sa.Column(sa.DateTime, nullable=False)
+    # TODO(stephenfin): Add nullable=False
+    image_updated_at = sa.Column(sa.DateTime)
     volume_id = sa.Column(sa.String(36), nullable=False)
     size = sa.Column(sa.Integer, nullable=False)
-    last_used = sa.Column(sa.DateTime, default=lambda: timeutils.utcnow())
+    last_used = sa.Column(
+        sa.DateTime, nullable=False, default=lambda: timeutils.utcnow(),
+    )
 
 
 class Worker(BASE, CinderBase):
