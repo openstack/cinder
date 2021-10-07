@@ -1057,6 +1057,9 @@ class PowerMaxUtils(object):
         if vol_head['userDefinedIdentifier'][0:3] == 'OS-':
             return False
 
+        if vol_head.get('numStorageGroups', 0) > 1:
+            return False
+
         return True
 
     @staticmethod

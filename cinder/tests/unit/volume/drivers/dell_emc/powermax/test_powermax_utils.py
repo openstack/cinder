@@ -590,6 +590,11 @@ class PowerMaxUtilsTest(test.TestCase):
             self.assertFalse(
                 self.utils.is_volume_manageable(volume))
 
+    def test_is_volume_manageable_multi_sg(self):
+        for volume in self.data.priv_vol_func_response_multi_sg:
+            self.assertFalse(
+                self.utils.is_volume_manageable(volume))
+
     def test_is_snapshot_manageable(self):
         for volume in self.data.priv_vol_func_response_multi:
             self.assertTrue(
