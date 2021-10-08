@@ -996,6 +996,7 @@ def delete_encryption_key(context: context.RequestContext,
                  "cinder's service context.", encryption_key_id)
         conf = CONF
         ks_loading.register_auth_conf_options(conf, 'keystone_authtoken')
+        ks_loading.load_auth_from_conf_options(conf, 'keystone_authtoken')
         service_context = keystone_password.KeystonePassword(
             password=conf.keystone_authtoken.password,
             auth_url=conf.keystone_authtoken.auth_url,
