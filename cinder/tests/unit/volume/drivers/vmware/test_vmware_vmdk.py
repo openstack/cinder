@@ -2222,6 +2222,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def test_initialize_connection_with_no_instance_and_backing(self):
         self._test_initialize_connection(instance_exists=False)
 
+    def test_initialize_connection_connector_rejected(self):
+        connector = {'ip': '0.0.0.0',
+                     "connection_capabilities": {}}
+        volume = self._create_volume_obj()
+
+        self._driver._vcenter_instance_uuid_cache = "11234"
+
+        self.assertRaises(cinder_exceptions.ConnectorRejected,
+                          self._driver.initialize_connection,
+                          volume, connector)
+
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_terminate_connection(self, vops):
         volume = self._create_volume_obj(status='restoring-backup')
