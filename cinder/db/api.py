@@ -97,6 +97,159 @@ def dispose_engine():
 ###################
 
 
+def resource_exists(context, model, resource_id):
+    return IMPL.resource_exists(context, model, resource_id)
+
+
+def get_model_for_versioned_object(versioned_object):
+    return IMPL.get_model_for_versioned_object(versioned_object)
+
+
+def get_by_id(context, model, id, *args, **kwargs):
+    return IMPL.get_by_id(context, model, id, *args, **kwargs)
+
+
+class Condition(object):
+    """Class for normal condition values for conditional_update."""
+    def __init__(self, value, field=None):
+        self.value = value
+        # Field is optional and can be passed when getting the filter
+        self.field = field
+
+    def get_filter(self, model, field=None):
+        return IMPL.condition_db_filter(
+            model, self._get_field(field), self.value,
+        )
+
+    def _get_field(self, field=None):
+        # We must have a defined field on initialization or when called
+        field = field or self.field
+        if not field:
+            raise ValueError(_('Condition has no field.'))
+        return field
+
+
+class Not(Condition):
+    """Class for negated condition values for conditional_update.
+
+    By default NULL values will be treated like Python treats None instead of
+    how SQL treats it.
+
+    So for example when values are (1, 2) it will evaluate to True when we have
+    value 3 or NULL, instead of only with 3 like SQL does.
+    """
+    def __init__(self, value, field=None, auto_none=True):
+        super(Not, self).__init__(value, field)
+        self.auto_none = auto_none
+
+    def get_filter(self, model, field=None):
+        # If implementation has a specific method use it
+        if hasattr(IMPL, 'condition_not_db_filter'):
+            return IMPL.condition_not_db_filter(model, self._get_field(field),
+                                                self.value, self.auto_none)
+
+        # Otherwise non negated object must adming ~ operator for not
+        return ~super(Not, self).get_filter(model, field)
+
+
+class Case(object):
+    """Class for conditional value selection for conditional_update."""
+    def __init__(self, whens, value=None, else_=None):
+        self.whens = whens
+        self.value = value
+        self.else_ = else_
+
+
+def is_orm_value(obj):
+    """Check if object is an ORM field."""
+    return IMPL.is_orm_value(obj)
+
+
+def conditional_update(
+    context,
+    model,
+    values,
+    expected_values,
+    filters=(),
+    include_deleted='no',
+    project_only=False,
+    order=None,
+):
+    """Compare-and-swap conditional update.
+
+    Update will only occur in the DB if conditions are met.
+
+    We have 4 different condition types we can use in expected_values:
+
+    - Equality:  {'status': 'available'}
+    - Inequality: {'status': vol_obj.Not('deleting')}
+    - In range: {'status': ['available', 'error']
+    - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
+
+    Method accepts additional filters, which are basically anything that can be
+    passed to a sqlalchemy query's filter method, for example:
+
+    .. code-block:: python
+
+        [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
+
+    We can select values based on conditions using Case objects in the 'values'
+    argument. For example:
+
+    .. code-block:: python
+
+        has_snapshot_filter = sql.exists().where(
+            models.Snapshot.volume_id == models.Volume.id
+        )
+        case_values = db.Case(
+            [(has_snapshot_filter, 'has-snapshot')],
+            else_='no-snapshot'
+        )
+        db.conditional_update(
+            context,
+            models.Volume,
+            {'status': case_values},
+            {'status': 'available'},
+        )
+
+    And we can use DB fields for example to store previous status in the
+    corresponding field even though we don't know which value is in the db from
+    those we allowed:
+
+    .. code-block:: python
+
+        db.conditional_update(
+            context,
+            models.Volume,
+            {'status': 'deleting', 'previous_status': models.Volume.status},
+            {'status': ('available', 'error')},
+        )
+
+    :param values: Dictionary of key-values to update in the DB.
+    :param expected_values: Dictionary of conditions that must be met for the
+        update to be executed.
+    :param filters: Iterable with additional filters.
+    :param include_deleted: Should the update include deleted items, this is
+        equivalent to read_deleted.
+    :param project_only: Should the query be limited to context's project.
+    :param order: Specific order of fields in which to update the values
+    :returns: Boolean indicating whether db rows were updated.
+    """
+    return IMPL.conditional_update(
+        context,
+        model,
+        values,
+        expected_values,
+        filters,
+        include_deleted,
+        project_only,
+        order,
+    )
+
+
+###################
+
+
 def service_destroy(context, service_id):
     """Destroy the service or raise if it does not exist."""
     return IMPL.service_destroy(context, service_id)
@@ -1785,39 +1938,6 @@ def worker_destroy(context, **filters):
 ###################
 
 
-def resource_exists(context, model, resource_id):
-    return IMPL.resource_exists(context, model, resource_id)
-
-
-def get_model_for_versioned_object(versioned_object):
-    return IMPL.get_model_for_versioned_object(versioned_object)
-
-
-def get_by_id(context, model, id, *args, **kwargs):
-    return IMPL.get_by_id(context, model, id, *args, **kwargs)
-
-
-class Condition(object):
-    """Class for normal condition values for conditional_update."""
-    def __init__(self, value, field=None):
-        self.value = value
-        # Field is optional and can be passed when getting the filter
-        self.field = field
-
-    def get_filter(self, model, field=None):
-        return IMPL.condition_db_filter(model, self._get_field(field),
-                                        self.value)
-
-    def _get_field(self, field=None):
-        # We must have a defined field on initialization or when called
-        field = field or self.field
-        if not field:
-            raise ValueError(_('Condition has no field.'))
-        return field
-
-###################
-
-
 def attachment_specs_exist(context):
     """Check if there are attachment specs left."""
     return IMPL.attachment_specs_exist(context)
@@ -1847,99 +1967,6 @@ def attachment_specs_update_or_create(context,
 
 
 ###################
-
-
-class Not(Condition):
-    """Class for negated condition values for conditional_update.
-
-    By default NULL values will be treated like Python treats None instead of
-    how SQL treats it.
-
-    So for example when values are (1, 2) it will evaluate to True when we have
-    value 3 or NULL, instead of only with 3 like SQL does.
-    """
-    def __init__(self, value, field=None, auto_none=True):
-        super(Not, self).__init__(value, field)
-        self.auto_none = auto_none
-
-    def get_filter(self, model, field=None):
-        # If implementation has a specific method use it
-        if hasattr(IMPL, 'condition_not_db_filter'):
-            return IMPL.condition_not_db_filter(model, self._get_field(field),
-                                                self.value, self.auto_none)
-
-        # Otherwise non negated object must adming ~ operator for not
-        return ~super(Not, self).get_filter(model, field)
-
-
-class Case(object):
-    """Class for conditional value selection for conditional_update."""
-    def __init__(self, whens, value=None, else_=None):
-        self.whens = whens
-        self.value = value
-        self.else_ = else_
-
-
-def is_orm_value(obj):
-    """Check if object is an ORM field."""
-    return IMPL.is_orm_value(obj)
-
-
-def conditional_update(context, model, values, expected_values, filters=(),
-                       include_deleted='no', project_only=False, order=None):
-    """Compare-and-swap conditional update.
-
-    Update will only occur in the DB if conditions are met.
-
-    We have 4 different condition types we can use in expected_values:
-     - Equality:  {'status': 'available'}
-     - Inequality: {'status': vol_obj.Not('deleting')}
-     - In range: {'status': ['available', 'error']
-     - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
-
-    Method accepts additional filters, which are basically anything that can be
-    passed to a sqlalchemy query's filter method, for example:
-
-    .. code-block:: python
-
-     [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
-
-    We can select values based on conditions using Case objects in the 'values'
-    argument. For example:
-
-    .. code-block:: python
-
-     has_snapshot_filter = sql.exists().where(
-         models.Snapshot.volume_id == models.Volume.id)
-     case_values = db.Case([(has_snapshot_filter, 'has-snapshot')],
-                           else_='no-snapshot')
-     db.conditional_update(context, models.Volume, {'status': case_values},
-                           {'status': 'available'})
-
-    And we can use DB fields for example to store previous status in the
-    corresponding field even though we don't know which value is in the db from
-    those we allowed:
-
-    .. code-block:: python
-
-     db.conditional_update(context, models.Volume,
-                           {'status': 'deleting',
-                            'previous_status': models.Volume.status},
-                           {'status': ('available', 'error')})
-
-    :param values: Dictionary of key-values to update in the DB.
-    :param expected_values: Dictionary of conditions that must be met for the
-                            update to be executed.
-    :param filters: Iterable with additional filters.
-    :param include_deleted: Should the update include deleted items, this is
-                            equivalent to read_deleted.
-    :param project_only: Should the query be limited to context's project.
-    :param order: Specific order of fields in which to update the values
-    :returns: Boolean indicating whether db rows were updated.
-    """
-    return IMPL.conditional_update(context, model, values, expected_values,
-                                   filters, include_deleted, project_only,
-                                   order)
 
 
 # TODO: (Y Release) remove method and this comment
