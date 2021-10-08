@@ -25,15 +25,12 @@ interface. Currently, many of these objects are sqlalchemy objects that
 implement a dictionary interface. However, a future goal is to have all of
 these objects be simple dictionaries.
 
-
 **Related Flags**
 
 :connection:  string specifying the sqlalchemy connection to use, like:
-              `sqlite:///var/lib/cinder/cinder.sqlite`.
-
+    `sqlite:///var/lib/cinder/cinder.sqlite`.
 :enable_new_services:  when adding a new service to the database, is it in the
-                       pool of available hardware (Default: True)
-
+    pool of available hardware (Default: True)
 """
 
 from oslo_config import cfg
@@ -97,18 +94,6 @@ def dispose_engine():
 ###################
 
 
-def resource_exists(context, model, resource_id):
-    return IMPL.resource_exists(context, model, resource_id)
-
-
-def get_model_for_versioned_object(versioned_object):
-    return IMPL.get_model_for_versioned_object(versioned_object)
-
-
-def get_by_id(context, model, id, *args, **kwargs):
-    return IMPL.get_by_id(context, model, id, *args, **kwargs)
-
-
 class Condition(object):
     """Class for normal condition values for conditional_update."""
     def __init__(self, value, field=None):
@@ -160,6 +145,24 @@ class Case(object):
         self.else_ = else_
 
 
+###################
+
+
+def resource_exists(context, model, resource_id):
+    return IMPL.resource_exists(context, model, resource_id)
+
+
+def get_model_for_versioned_object(versioned_object):
+    return IMPL.get_model_for_versioned_object(versioned_object)
+
+
+def get_by_id(context, model, id, *args, **kwargs):
+    return IMPL.get_by_id(context, model, id, *args, **kwargs)
+
+
+###################
+
+
 def is_orm_value(obj):
     """Check if object is an ORM field."""
     return IMPL.is_orm_value(obj)
@@ -170,7 +173,7 @@ def conditional_update(
     model,
     values,
     expected_values,
-    filters=(),
+    filters=None,
     include_deleted='no',
     project_only=False,
     order=None,
@@ -363,20 +366,20 @@ def cluster_create(context, values):
     return IMPL.cluster_create(context, values)
 
 
-def cluster_update(context, id, values):
+def cluster_update(context, cluster_id, values):
     """Set the given properties on an cluster and update it.
 
     Raises ClusterNotFound if cluster does not exist.
     """
-    return IMPL.cluster_update(context, id, values)
+    return IMPL.cluster_update(context, cluster_id, values)
 
 
-def cluster_destroy(context, id):
+def cluster_destroy(context, cluster_id):
     """Destroy the cluster or raise if it does not exist or has hosts.
 
     :raise ClusterNotFound: If cluster doesn't exist.
     """
-    return IMPL.cluster_destroy(context, id)
+    return IMPL.cluster_destroy(context, cluster_id)
 
 
 ###############
@@ -387,11 +390,25 @@ def volume_attach(context, values):
     return IMPL.volume_attach(context, values)
 
 
-def volume_attached(context, volume_id, instance_id, host_name, mountpoint,
-                    attach_mode='rw', mark_attached=True):
+def volume_attached(
+    context,
+    attachment_id,
+    instance_uuid,
+    host_name,
+    mountpoint,
+    attach_mode='rw',
+    mark_attached=True,
+):
     """Ensure that a volume is set as attached."""
-    return IMPL.volume_attached(context, volume_id, instance_id, host_name,
-                                mountpoint, attach_mode, mark_attached)
+    return IMPL.volume_attached(
+        context,
+        attachment_id,
+        instance_uuid,
+        host_name,
+        mountpoint,
+        attach_mode,
+        mark_attached,
+    )
 
 
 def volume_create(context, values):
@@ -623,9 +640,9 @@ def snapshot_get_all_by_host(context, host, filters=None):
     return IMPL.snapshot_get_all_by_host(context, host, filters)
 
 
-def snapshot_get_all_for_cgsnapshot(context, project_id):
+def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
     """Get all snapshots belonging to a cgsnapshot."""
-    return IMPL.snapshot_get_all_for_cgsnapshot(context, project_id)
+    return IMPL.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
 
 
 def snapshot_get_all_for_group_snapshot(context, group_snapshot_id):
@@ -833,9 +850,9 @@ def volume_type_qos_specs_get(context, type_id):
     return IMPL.volume_type_qos_specs_get(context, type_id)
 
 
-def volume_type_destroy(context, id):
+def volume_type_destroy(context, type_id):
     """Delete a volume type."""
-    return IMPL.volume_type_destroy(context, id)
+    return IMPL.volume_type_destroy(context, type_id)
 
 
 def volume_get_all_active_by_window(context, begin, end=None, project_id=None):
@@ -951,9 +968,9 @@ def group_types_get_by_name_or_id(context, group_type_list):
     return IMPL.group_types_get_by_name_or_id(context, group_type_list)
 
 
-def group_type_destroy(context, id):
+def group_type_destroy(context, type_id):
     """Delete a group type."""
-    return IMPL.group_type_destroy(context, id)
+    return IMPL.group_type_destroy(context, type_id)
 
 
 def group_type_access_get_all(context, type_id):
@@ -989,17 +1006,17 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
     return IMPL.volume_type_extra_specs_delete(context, volume_type_id, key)
 
 
-def volume_type_extra_specs_update_or_create(context,
-                                             volume_type_id,
-                                             extra_specs):
+def volume_type_extra_specs_update_or_create(
+    context, volume_type_id, extra_specs,
+):
     """Create or update volume type extra specs.
 
     This adds or modifies the key/value pairs specified in the extra specs dict
     argument.
     """
-    return IMPL.volume_type_extra_specs_update_or_create(context,
-                                                         volume_type_id,
-                                                         extra_specs)
+    return IMPL.volume_type_extra_specs_update_or_create(
+        context, volume_type_id, extra_specs,
+    )
 
 
 ###################
@@ -1039,14 +1056,13 @@ def volume_type_encryption_delete(context, volume_type_id):
     return IMPL.volume_type_encryption_delete(context, volume_type_id)
 
 
-def volume_type_encryption_create(context, volume_type_id, encryption_specs):
+def volume_type_encryption_create(context, volume_type_id, values):
     return IMPL.volume_type_encryption_create(context, volume_type_id,
-                                              encryption_specs)
+                                              values)
 
 
-def volume_type_encryption_update(context, volume_type_id, encryption_specs):
-    return IMPL.volume_type_encryption_update(context, volume_type_id,
-                                              encryption_specs)
+def volume_type_encryption_update(context, volume_type_id, values):
+    return IMPL.volume_type_encryption_update(context, volume_type_id, values)
 
 
 def volume_type_encryption_volume_get(context, volume_type_id):
@@ -1065,9 +1081,9 @@ def qos_specs_create(context, values):
     return IMPL.qos_specs_create(context, values)
 
 
-def qos_specs_get(context, qos_specs_id):
+def qos_specs_get(context, qos_specs_id, inactive=False):
     """Get all specification for a given qos_specs."""
-    return IMPL.qos_specs_get(context, qos_specs_id)
+    return IMPL.qos_specs_get(context, qos_specs_id, inactive)
 
 
 def qos_specs_get_all(context, filters=None, marker=None, limit=None,
@@ -1078,9 +1094,9 @@ def qos_specs_get_all(context, filters=None, marker=None, limit=None,
                                   sort_keys=sort_keys, sort_dirs=sort_dirs)
 
 
-def qos_specs_get_by_name(context, name):
+def qos_specs_get_by_name(context, name, inactive=False):
     """Get all specification for a given qos_specs."""
-    return IMPL.qos_specs_get_by_name(context, name)
+    return IMPL.qos_specs_get_by_name(context, name, inactive)
 
 
 def qos_specs_associations_get(context, qos_specs_id):
@@ -1113,13 +1129,13 @@ def qos_specs_item_delete(context, qos_specs_id, key):
     return IMPL.qos_specs_item_delete(context, qos_specs_id, key)
 
 
-def qos_specs_update(context, qos_specs_id, specs):
+def qos_specs_update(context, qos_specs_id, values):
     """Update qos specs.
 
     This adds or modifies the key/value pairs specified in the
     specs dict argument for a given qos_specs.
     """
-    return IMPL.qos_specs_update(context, qos_specs_id, specs)
+    return IMPL.qos_specs_update(context, qos_specs_id, values)
 
 
 ###################
@@ -1268,9 +1284,9 @@ def quota_class_update(context, class_name, resource, limit):
     return IMPL.quota_class_update(context, class_name, resource, limit)
 
 
-def quota_class_update_resource(context, resource, new_resource):
+def quota_class_update_resource(context, old_res, new_res):
     """Update resource name in quota_class."""
-    return IMPL.quota_class_update_resource(context, resource, new_resource)
+    return IMPL.quota_class_update_resource(context, old_res, new_res)
 
 
 def quota_class_destroy(context, class_name, resource):
@@ -1580,9 +1596,19 @@ def group_get_all(context, filters=None, marker=None, limit=None,
                               sort_dirs=sort_dirs)
 
 
-def group_create(context, values, group_snapshot_id=None, group_id=None):
+def group_create(
+    context,
+    values,
+    group_snapshot_id=None,
+    source_group_id=None,
+):
     """Create a group from the values dictionary."""
-    return IMPL.group_create(context, values, group_snapshot_id, group_id)
+    return IMPL.group_create(
+        context,
+        values,
+        group_snapshot_id,
+        source_group_id,
+    )
 
 
 def group_get_all_by_project(context, project_id, filters=None,
