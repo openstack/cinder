@@ -11160,7 +11160,10 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.retype(self.ctxt, volume,
                            new_type, diff, host)
 
-    def test_storwize_svc_retype_global_mirror_volume_to_thin(self):
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_volume_io_group')
+    def test_storwize_svc_retype_global_mirror_volume_to_thin(self,
+                                                              get_vol_io_grp):
         self.driver.do_setup(self.ctxt)
         loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
                ':openstack')
@@ -11169,6 +11172,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         host = {'host': 'openstack@svc#openstack',
                 'capabilities': cap}
         ctxt = context.get_admin_context()
+
+        get_vol_io_grp.return_value = 0
 
         type_name = 'rep_global_none'
         spec = {'replication_enabled': '<is> True',
@@ -11201,6 +11206,7 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
         self.driver.retype(self.ctxt, vol1, vol_type2, diff, host)
         copies = self.driver._helpers.lsvdiskcopy(vol1.name)
         self.assertEqual(2, len(copies))
+        get_vol_io_grp.assert_called_once_with(vol1.name)
         self.driver.delete_volume(vol1)
 
     def test_storwize_svc_retype_global_mirror_volume_to_none(self):
