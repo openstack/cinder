@@ -24,30 +24,26 @@ Official PowerFlex documentation
 
 To find the PowerFlex documentation:
 
-#. Go to the `PowerFlex product documentation page <https://support.emc.com/products/33925_ScaleIO/Documentation/?source=promotion>`_.
+#. Go to the `PowerFlex product documentation page <https://docs.delltechnologies.com/>`_.
 
-#. From the left-side panel, select the relevant PowerFlex version.
+#. On the page, search for the relevant PowerFlex version.
 
-Supported PowerFlex, VxFlex OS and ScaleIO Versions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Supported PowerFlex or VxFlex OS Versions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Dell EMC PowerFlex Block Storage driver has been tested against the
-following versions of ScaleIO, VxFlex OS and PowerFlex and found to be
+following versions of VxFlex OS and PowerFlex and found to be
 compatible:
-
-* ScaleIO 2.0.x
-
-* ScaleIO 2.5.x
-
-* VxFlex OS 2.6.x
 
 * VxFlex OS 3.0.x
 
 * PowerFlex 3.5.x
 
+* PowerFlex 3.6.0
+
 Please consult the :ref:`powerflex_docs`
 to determine supported operating systems for each version
-of PowerFlex, VxFlex OS or ScaleIO.
+of PowerFlex or VxFlex OS.
 
 Deployment prerequisites
 ~~~~~~~~~~~~~~~~~~~~~~~~
