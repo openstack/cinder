@@ -1,0 +1,3 @@
+---
+devstack_base_dir: /opt/stack
+tempest_work_dir: "{{ devstack_base_dir }}/tempest"
