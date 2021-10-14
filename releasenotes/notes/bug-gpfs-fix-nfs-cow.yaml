@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `Bug #1947134 <https://bugs.launchpad.net/cinder/+bug/1947134>`_: Fixed
+    the initialization of GPFS NFS driver when gpfs_images_share_mode
+    is set to copy_on_write by correcting _same_filesystem functionality.
+  - |
+    `Bug #1947123 <https://bugs.launchpad.net/cinder/+bug/1947123>`_: Fixed
+    the volume creation issue in GPFS NFS driver when gpfs_images_share_mode
+    is set to copy_on_write.
