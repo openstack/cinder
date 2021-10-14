@@ -134,11 +134,6 @@ def _different(difference_tuple):
         return False
 
 
-def _same_filesystem(path1, path2):
-    """Return true if the two paths are in the same GPFS file system."""
-    return os.lstat(path1).st_dev == os.lstat(path2).st_dev
-
-
 def _sizestr(size_in_g):
     """Convert the specified size into a string value."""
     return '%sG' % size_in_g
@@ -203,6 +198,19 @@ class GPFSDriver(driver.CloneableImageVD,
             LOG.error('GPFS is not active.  Detailed output: %s.', out)
             raise exception.VolumeBackendAPIException(
                 data=_('GPFS is not running, state: %s.') % gpfs_state)
+
+    def _same_filesystem(self, path1, path2):
+        """Return true if the two paths are in the same GPFS file system."""
+        try:
+            (out, err) = self.gpfs_execute('stat', '-f', '-c', '"%i"',
+                                           path1, path2)
+            lines = out.splitlines()
+            return lines[0] == lines[1]
+        except processutils.ProcessExecutionError as exc:
+            LOG.error('Failed to issue stat command on path '
+                      '%(path1)s and path %(path2)s, error: %(error)s',
+                      {'path1': path1, 'path2': path2, 'error': exc.stderr})
+            raise exception.VolumeBackendAPIException(data=exc.stderr)
 
     def _get_filesystem_from_path(self, path):
         """Return filesystem for specified path."""
@@ -435,8 +443,8 @@ class GPFSDriver(driver.CloneableImageVD,
             raise exception.VolumeBackendAPIException(data=msg)
 
         if(self.configuration.gpfs_images_share_mode == 'copy_on_write' and
-           not _same_filesystem(self.configuration.gpfs_mount_point_base,
-                                self.configuration.gpfs_images_dir)):
+           not self._same_filesystem(self.configuration.gpfs_mount_point_base,
+                                     self.configuration.gpfs_images_dir)):
             msg = (_('gpfs_images_share_mode is set to copy_on_write, but '
                      '%(vol)s and %(img)s belong to different file '
                      'systems.') %
@@ -907,13 +915,13 @@ class GPFSDriver(driver.CloneableImageVD,
                       {'img': image_id, 'reas': reason})
             return (None, False)
 
-        vol_path = self.local_path(volume)
-
         data = image_utils.qemu_img_info(image_path)
 
         # if image format is already raw either clone it or
         # copy it depending on config file settings
+        # GPFS command (mmclone) needs to run on GPFS node on GPFS path
         if data.file_format == 'raw':
+            vol_path = self._get_volume_path(volume)
             if (self.configuration.gpfs_images_share_mode ==
                     'copy_on_write'):
                 LOG.debug('Clone image to vol %s using mmclone.',
@@ -929,7 +937,9 @@ class GPFSDriver(driver.CloneableImageVD,
                 shutil.copyfile(image_path, vol_path)
 
         # if image is not raw convert it to raw into vol_path destination
+        # Image conversion can be run locally on GPFS mount path
         else:
+            vol_path = self.local_path(volume)
             LOG.debug('Clone image to vol %s using qemu convert.',
                       volume['id'])
             image_utils.convert_image(image_path, vol_path, 'raw')
@@ -1587,7 +1597,7 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
 
     def local_path(self, volume):
         """Returns the local path for the specified volume."""
-        remotefs_share = volume['provider_location']
+        remotefs_share = self._find_share(volume)
         base_local_path = self._get_mount_point_for_share(remotefs_share)
 
         # Check if the volume is part of a consistency group and return

@@ -154,6 +154,25 @@ class GPFSDriverTestCase(test.TestCase):
                           self.driver._check_gpfs_state)
 
     @mock.patch('cinder.utils.execute')
+    def test_same_filesystem_ok(self, mock_exec):
+        # returns filesystem id in hex
+        mock_exec.return_value = ('ef0009600000002\nef0009600000002\n', '')
+        self.assertTrue(self.driver._same_filesystem('/path1', '/path2'))
+
+    @mock.patch('cinder.utils.execute')
+    def test_same_filesystem_not_ok(self, mock_exec):
+        # returns filesystem id in hex
+        mock_exec.return_value = ('ef0009600000002\n000000000000007\n', '')
+        self.assertFalse(self.driver._same_filesystem('/path1', '/path2'))
+
+    @mock.patch('cinder.utils.execute')
+    def test_same_filesystem_failed(self, mock_exec):
+        mock_exec.side_effect = processutils.ProcessExecutionError(
+            stdout='test', stderr='test')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._same_filesystem, '', '')
+
+    @mock.patch('cinder.utils.execute')
     def test_get_fs_from_path_ok(self, mock_exec):
         mock_exec.return_value = ('Filesystem           1K-blocks      '
                                   'Used Available Use%% Mounted on\n'
@@ -559,12 +578,12 @@ class GPFSDriverTestCase(test.TestCase):
                              conf.SHARED_CONF_GROUP)
 
         # fail configuration.gpfs_images_share_mode == 'copy_on_write' and not
-        # _same_filesystem(configuration.gpfs_mount_point_base,
+        # self._same_filesystem(configuration.gpfs_mount_point_base,
         # configuration.gpfs_images_dir)
         self.override_config('gpfs_images_share_mode', 'copy_on_write',
                              conf.SHARED_CONF_GROUP)
-        with mock.patch('cinder.volume.drivers.ibm.gpfs._same_filesystem',
-                        return_value=False):
+        with mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                        '_same_filesystem', return_value=False):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.check_for_setup_error)
 
@@ -1281,21 +1300,22 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_is_gpfs_parent_file')
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                '_get_volume_path')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_cloneable')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_verify_gpfs_path_state')
     def test_clone_image_format_raw_copy(self,
                                          mock_verify_gpfs_path_state,
                                          mock_is_cloneable,
-                                         mock_local_path,
+                                         mock_get_volume_path,
                                          mock_is_gpfs_parent_file,
                                          mock_qemu_img_info,
                                          mock_copyfile,
                                          mock_set_rw_permission,
                                          mock_resize_volume_file):
         mock_is_cloneable.return_value = (True, 'test', self.images_dir)
-        mock_local_path.return_value = self.volumes_path
+        mock_get_volume_path.return_value = self.volumes_path
         mock_qemu_img_info.return_value = self._fake_qemu_raw_image_info('')
         volume = self._fake_volume()
         org_value = self.driver.configuration.gpfs_images_share_mode
@@ -2255,7 +2275,11 @@ class GPFSNFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.volume_utils.is_group_a_cg_snapshot_type')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSNFSDriver.'
                 '_get_mount_point_for_share')
-    def test_local_path(self, mock_mount_point,
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSNFSDriver.'
+                '_find_share')
+    def test_local_path(self,
+                        mock_find_share,
+                        mock_mount_point,
                         mock_group_cg_snapshot_type,
                         mock_group):
         mock_mount_point.return_value = self.TEST_MNT_POINT_BASE
@@ -2263,7 +2287,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         volume = self._fake_volume()
         group = self._fake_group()
         mock_group.return_value = group
-        volume['provider_location'] = self.TEST_MNT_POINT_BASE
+        mock_find_share.return_value = self.TEST_VOLUME_PATH
         local_volume_path_in_cg = os.path.join(self.TEST_MNT_POINT_BASE,
                                                'consisgroup-' +
                                                fake.CONSISTENCY_GROUP_ID,
