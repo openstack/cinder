@@ -107,7 +107,7 @@ Install and configure components
 
    .. code-block:: console
 
-     # apt install cinder-volume
+     # apt install cinder-volume tgt
 
    .. end
 
