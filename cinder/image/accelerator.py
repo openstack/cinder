@@ -39,11 +39,11 @@ class AccelBase(object, metaclass=abc.ABCMeta):
         return
 
     @abc.abstractmethod
-    def compress_img(self, run_as_root):
+    def compress_img(self, src, dest, run_as_root):
         return
 
     @abc.abstractmethod
-    def decompress_img(self, run_as_root):
+    def decompress_img(self, src, dest, run_as_root):
         return
 
 
