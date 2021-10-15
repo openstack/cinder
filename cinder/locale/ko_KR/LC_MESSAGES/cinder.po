@@ -13,16 +13,17 @@
 # Sungwook Choi <csucom@gmail.com>, 2018. #zanata
 # chohanjoo <vjswl132@gmail.com>, 2020. #zanata
 # Gyuseok Jung <epdlemflaj@gmail.com>, 2021. #zanata
+# Jinseok Kim <wlstjr112@naver.com>, 2021. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-09-20 18:50+0000\n"
+"POT-Creation-Date: 2021-10-14 17:26+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2021-02-21 03:26+0000\n"
-"Last-Translator: Gyuseok Jung <epdlemflaj@gmail.com>\n"
+"PO-Revision-Date: 2021-10-12 02:25+0000\n"
+"Last-Translator: Jinseok Kim <wlstjr112@naver.com>\n"
 "Language: ko_KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -109,6 +110,10 @@ msgstr ""
 #, python-format
 msgid "%(name)s '%(value)s' not found"
 msgstr "%(name)s '%(value)s' 값을 찾지 못함"
+
+#, python-format
+msgid "%(name)s cannot be all spaces."
+msgstr "%(name)s은 모두 공백일  수 없습니다."
 
 #, python-format
 msgid ""
@@ -676,6 +681,10 @@ msgid "Cannot update encryption specs. Volume type in use."
 msgstr "암호화 스펙을 업데이트할 수 없습니다. 볼륨 유형이 사용 중입니다."
 
 #, python-format
+msgid "Cannot update group_type %(id)s"
+msgstr "group_type %(id)s를 업데이트할 수 없습니다."
+
+#, python-format
 msgid "Cannot update volume_type %(id)s"
 msgstr "volume_type %(id)s을(를) 업데이트할 수 없음"
 
@@ -1002,6 +1011,10 @@ msgstr ""
 "%(res)s 자원에 대한 기본 할당량은 기본 할당량 플래그 quota_%(res)s에 의해 설"
 "정됩니다. 이제 이 플래그는 더 이상 사용되지 않습니다. 기본 할당량에 기본 할당"
 "량 클래스를 사용하십시오."
+
+#, python-format
+msgid "Default type for project %(project_id)s not found."
+msgstr "프로젝트 %(project_id)s의 기본 타입을 찾을 수 없습니다."
 
 msgid "Default volume type can not be found."
 msgstr "기본 볼륨 유형을 찾을 수 없습니다."
@@ -2312,6 +2325,10 @@ msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr "Google Cloud Storage oauth2 실패: %(reason)s"
 
 #, python-format
+msgid "Group %(group_id)s replication error: %(reason)s."
+msgstr "그룹 %(group_id)s의 복제 오류: %(reason)s"
+
+#, python-format
 msgid "Group Type %(id)s already exists."
 msgstr "%(id)s 그룹 유형이 이미 존재합니다."
 
@@ -2877,6 +2894,9 @@ msgstr "호환 불가능한 버전으로 인해 메타데이터 복원에 실패
 msgid "Metadata restore failed due to incompatible version."
 msgstr "호환 불가능한 버전으로 인해 메타데이터 복원 실패"
 
+msgid "Metadata should be a dict."
+msgstr "메타데이터는 딕셔너리여야 합니다."
+
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
 "available."
@@ -3217,6 +3237,10 @@ msgstr "Cinder 내 프로그래밍 오류: %(reason)s"
 msgid "Project ID"
 msgstr "프로젝트 ID"
 
+#, python-format
+msgid "Project with id %s not found."
+msgstr "ID가 %s인 프로젝트를 찾을 수 없습니다."
+
 msgid "Protection Group not ready."
 msgstr "보호 그룹이 준비되지 않았습니다."
 
@@ -3324,6 +3348,9 @@ msgid ""
 msgstr ""
 "볼륨 ID: %(id)s의 마이그레이션을 거부하고 있습니다. 소스 및 대상이 같은 볼륨 "
 "그룹이므로 구성을 확인하십시오. %(name)s."
+
+msgid "Rekey not supported."
+msgstr "키 재입력이 지원되지 않습니다."
 
 msgid "Remote pool cannot be found."
 msgstr "원격 풀을 찾을 수 없습니다."
@@ -3681,6 +3708,14 @@ msgstr "스토리지 풀이 구성되지 않았습니다."
 #, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "스토리지 프로파일: %(storage_profile)s을(를) 찾을 수 없습니다."
+
+#, python-format
+msgid "Store %(store_id)s is read-only in glance."
+msgstr "%(store_id)s저장소는 glance에서 읽기 전용입니다."
+
+#, python-format
+msgid "Store %(store_id)s not enabled in glance."
+msgstr "%(store_id)s저장소를 glance에서 사용할 수 없습니다."
 
 msgid "Switch over pair error."
 msgstr "쌍 전환 오류."
@@ -4365,6 +4400,10 @@ msgstr "볼륨 %(deviceID)s을(를) 찾을 수 없습니다. "
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
 msgstr "볼륨 %(name)s을(를) VNX에 작성했지만 %(state)s 상태입니다."
+
+#, python-format
+msgid "Volume %(name)s was not deactivated in time."
+msgstr "볼륨 %(name)s이 제 시간 내에 비활성화되지 않았습니다."
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
@@ -5527,6 +5566,9 @@ msgstr "source-name은 비어 있지 않아야 합니다."
 
 msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
 msgstr "source-name 형식은 'vmdk_path@vm_inventory_path'이어야 합니다."
+
+msgid "specs must be a dictionary."
+msgstr "스펙은 딕셔너리여야합니다."
 
 #, python-format
 msgid "status must be %s and"
