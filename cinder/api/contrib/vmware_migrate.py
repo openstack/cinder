@@ -36,7 +36,7 @@ class VMWareVolumeExtensionsController(admin_actions.VolumeAdminController):
     @wsgi.response(http_client.ACCEPTED)
     @wsgi.action('os-migrate_volume_by_connector')
     @validation.schema(vmware_actions.migrate_volume_by_connector)
-    def _migrate_volume(self, req, id, body):
+    def _migrate_volume_by_connector(self, req, id, body):
         """Migrate a volume based on connector.
 
         This is an SAP VMWare extension that requires
