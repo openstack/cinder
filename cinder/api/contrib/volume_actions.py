@@ -165,6 +165,10 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidInput as err:
             raise webob.exc.HTTPBadRequest(
                 explanation=err.msg)
+        except exception.ConnectorRejected:
+            msg = _("Volume needs to be migrated before attaching to this "
+                    "instance")
+            raise webob.exc.HTTPNotAcceptable(explanation=msg)
         except exception.VolumeBackendAPIException:
             msg = _("Unable to fetch connection information from backend.")
             raise webob.exc.HTTPInternalServerError(explanation=msg)
