@@ -675,8 +675,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                 mock.patch.object(volume_rpcapi.VolumeAPI,
                                   'attach_volume') as mock_attach_volume,\
                 mock.patch.object(volume_rpcapi.VolumeAPI,
-                                  'update_migrated_volume'),\
-                mock.patch.object(self.volume.driver, 'attach_volume'):
+                                  'update_migrated_volume'):
             mock_attach_volume.side_effect = self.fake_attach_volume
             old_volume_host = old_volume.host
             new_volume_host = new_volume.host

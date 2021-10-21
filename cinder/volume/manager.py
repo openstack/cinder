@@ -1424,11 +1424,6 @@ class VolumeManager(manager.CleanableManager,
                      {'volume_id': volume_id, 'instance': instance_uuid,
                       'mount': mountpoint, 'host': host_name_sanitized},
                      resource=volume)
-            self.driver.attach_volume(context,
-                                      volume,
-                                      instance_uuid,
-                                      host_name_sanitized,
-                                      mountpoint)
         except Exception as excep:
             with excutils.save_and_reraise_exception():
                 self.message_api.create(
@@ -1507,7 +1502,6 @@ class VolumeManager(manager.CleanableManager,
                      {'volume_id': volume_id,
                       'instance': attachment.get('instance_uuid')},
                      resource=volume)
-            self.driver.detach_volume(context, volume, attachment)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_attachment_update(
@@ -4851,11 +4845,6 @@ class VolumeManager(manager.CleanableManager,
 
         try:
             volume_utils.require_driver_initialized(self.driver)
-            self.driver.attach_volume(context,
-                                      vref,
-                                      attachment_ref.instance_uuid,
-                                      connector.get('host', ''),
-                                      connector.get('mountpoint', 'na'))
         except Exception as err:
             self.message_api.create(
                 context, message_field.Action.UPDATE_ATTACHMENT,
@@ -4947,7 +4936,6 @@ class VolumeManager(manager.CleanableManager,
             LOG.debug('Deleting attachment %(attachment_id)s.',
                       {'attachment_id': attachment.id},
                       resource=vref)
-            self.driver.detach_volume(context, vref, attachment)
             if has_shared_connection is not None and not has_shared_connection:
                 self.driver.remove_export(context.elevated(), vref)
         except Exception:

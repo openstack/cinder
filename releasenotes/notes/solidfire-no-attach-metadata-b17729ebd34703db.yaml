@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    SolidFire driver: Driver no longer stores attach timestamp and instance as
+    metadata on the storage array.  Any metadata remaining in the array must be
+    considered outdated and incorrect.

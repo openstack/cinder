@@ -200,17 +200,6 @@ class VolumeDriverCore(base.CinderInterface):
         volume has already been attached.
         """
 
-    def attach_volume(self, context, volume, instance_uuid, host_name,
-                      mountpoint):
-        """Lets the driver know Nova has attached the volume to an instance.
-
-        :param context: Security/policy info for the request.
-        :param volume: Volume being attached.
-        :param instance_uuid: ID of the instance being attached to.
-        :param host_name: The host name.
-        :param mountpoint: Device mount point on the instance.
-        """
-
     def terminate_connection(self, volume, connector):
         """Remove access to a volume.
 
@@ -221,14 +210,6 @@ class VolumeDriverCore(base.CinderInterface):
         :param connector: The Dictionary containing information about the
                           connection. This is optional when doing a
                           force-detach and can be None.
-        """
-
-    def detach_volume(self, context, volume, attachment=None):
-        """Detach volume from an instance.
-
-        :param context: Security/policy info for the request.
-        :param volume: Volume being detached.
-        :param attachment: (Optional) Attachment information.
         """
 
     def clone_image(self, volume, image_location, image_id, image_metadata,
