@@ -982,19 +982,7 @@ class VolumeManager(manager.CleanableManager,
         # and should not modify it when deleted.  These temporary volumes are
         # created for volume migration between backends and for backups (from
         # in-use volume or snapshot).
-        # TODO: (Y release) replace until the if do_quota (including comments)
-        #       with: do_quota = volume.use_quota
-        # The status 'deleting' is not included, because it only applies to
-        # the source volume to be deleted after a migration. No quota
-        # needs to be handled for it.
-        is_migrating = volume.migration_status not in (None, 'error',
-                                                       'success')
-        # Get admin_metadata (needs admin context) to detect temporary volume.
-        with volume.obj_as_admin():
-            do_quota = not (volume.use_quota is False or is_migrating or
-                            volume.admin_metadata.get('temporary') == 'True')
-
-        if do_quota:
+        if volume.use_quota:
             notification = 'unmanage.' if unmanage_only else 'delete.'
             self._notify_about_volume_usage(context, volume,
                                             notification + 'start')
@@ -1043,7 +1031,7 @@ class VolumeManager(manager.CleanableManager,
 
         # If deleting source/destination volume in a migration or a temp
         # volume for backup, we should skip quotas.
-        if do_quota:
+        if volume.use_quota:
             # Get reservations
             try:
                 reservations = None
@@ -1064,7 +1052,7 @@ class VolumeManager(manager.CleanableManager,
 
         # If deleting source/destination volume in a migration or a temp
         # volume for backup, we should skip quotas.
-        if do_quota:
+        if volume.use_quota:
             self._notify_about_volume_usage(context, volume,
                                             notification + 'end')
             # Commit the reservations

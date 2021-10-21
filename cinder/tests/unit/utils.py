@@ -29,6 +29,7 @@ import oslo_versionedobjects
 from cinder.common import constants
 from cinder import context
 from cinder import db
+from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
@@ -40,6 +41,12 @@ CONF = cfg.CONF
 
 def get_test_admin_context():
     return context.get_admin_context()
+
+
+def is_db_dialect(dialect_name):
+    db_engine = sqlalchemy_api.get_engine()
+    dialect = db_engine.url.get_dialect()
+    return dialect_name == dialect.name
 
 
 def obj_attr_is_set(obj_class):

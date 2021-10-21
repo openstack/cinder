@@ -1978,17 +1978,6 @@ def attachment_specs_update_or_create(context,
 ###################
 
 
-# TODO: (Y Release) remove method and this comment
-def volume_use_quota_online_data_migration(context, max_count):
-    return IMPL.volume_use_quota_online_data_migration(context, max_count)
-
-
-# TODO: (Y Release) remove method and this comment
-def snapshot_use_quota_online_data_migration(context, max_count):
-    return IMPL.snapshot_use_quota_online_data_migration(context, max_count)
-
-
-# TODO: (Z Release) remove method and this comment
-# TODO: (Y Release) uncomment method
-# def remove_temporary_admin_metadata_data_migration(context, max_count):
-#     IMPL.remove_temporary_admin_metadata_data_migration(context, max_count)
+# TODO: (D Release) remove method and this comment
+def remove_temporary_admin_metadata_data_migration(context, max_count):
+    IMPL.remove_temporary_admin_metadata_data_migration(context, max_count)

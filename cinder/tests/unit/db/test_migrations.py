@@ -187,6 +187,10 @@ class MigrationsWalk(
         # Increasing resource column max length to 300 is acceptable, since
         # it's a backward compatible change.
         'b8660621f1b9',
+        # Making use_quota non-nullable is acceptable since on the last release
+        # we added an online migration to set the value, but we also provide
+        # a default on the OVO, the ORM, and the DB engine.
+        '9ab1b092a404',
     ]
     FORBIDDEN_METHODS = ('alembic.operations.Operations.alter_column',
                          'alembic.operations.Operations.drop_column',
@@ -305,6 +309,13 @@ class MigrationsWalk(
             self.assertIn('resource', table.c)
             self.assertIsInstance(table.c.resource.type, self.VARCHAR_TYPE)
             self.assertEqual(300, table.c.resource.type.length)
+
+    def _check_9ab1b092a404(self, connection):
+        """Test use_quota is non-nullable."""
+        volumes = db_utils.get_table(connection, 'volumes')
+        self.assertFalse(volumes.c.use_quota.nullable)
+        snapshots = db_utils.get_table(connection, 'snapshots')
+        self.assertFalse(snapshots.c.use_quota.nullable)
 
 
 class TestMigrationsWalkSQLite(
