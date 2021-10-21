@@ -112,8 +112,34 @@ class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
         return models.BASE.metadata
 
     def filter_metadata_diff(self, diff):
-        # Overriding the parent method to decide on certain attributes
-        # that maybe present in the DB but not in the models.py
+        """Filter out allowed differences between DB ORM model and actual DB
+
+        We want to keep the DB ORM (models.py) and DB tables in sync, so the
+        test_models_sync test checks for discrepancies between them.
+
+        Due to the rolling upgrades feature there are cases where we will have
+        the model and DB out of sync for 1 release, as we stop using it in the
+        ORM first and then remove it from the DB in the next, so we use this
+        method to allow such discrepancies.  We must add a TODO item on the
+        filtering code with the release the filtering must be removed.
+
+        The diff parameter is a list of diff directives, which can be a tuple
+        or a list of tuples:
+        https://alembic.sqlalchemy.org/en/latest/api/autogenerate.html#getting-diffs
+        """
+        # TODO: (D Release) Remove this method and its usage
+        def ignore_leftover_nested_quota(element):
+            operation = element[0]
+            if operation == 'remove_column':
+                table, column = element[2], element[3].name
+                return (table, column) in (('quotas', 'allocated'),
+                                           ('reservations', 'allocated_id'))
+            if operation == 'remove_index':
+                return element[1].name == 'ix_reservations_allocated_id'
+            if operation == 'remove_fk':
+                return (element[1].table.name == 'reservations'
+                        and element[1].column_keys == ['allocated_id'])
+            return False
 
         def include_element(element):
             """Determine whether diff element should be excluded."""
@@ -134,9 +160,31 @@ class CinderModelsMigrationsSync(test_migrations.ModelsMigrationsSync):
                     ('encryption', 'control_location'),
                 }
 
+            if ignore_leftover_nested_quota(element):
+                return False
+
             return True
 
-        return [element for element in diff if include_element(element[0])]
+        def filter_elements(diff_directive):
+            """Return only the elements that should not be ignored.
+
+            It may return None or [] when all elements from the directive have
+            been filtered out.
+            """
+            if isinstance(diff_directive, list):
+                return [element for element in diff_directive
+                        if include_element(element)]
+
+            if include_element(diff_directive):
+                return diff_directive
+            return None
+
+        result = []
+        for diff_directive in diff:
+            remaining = filter_elements(diff_directive)
+            if remaining:
+                result.append(remaining)
+        return result
 
 
 class TestModelsSyncSQLite(
@@ -191,6 +239,10 @@ class MigrationsWalk(
         # we added an online migration to set the value, but we also provide
         # a default on the OVO, the ORM, and the DB engine.
         '9ab1b092a404',
+        # Removing allocated_id and allocated columns is acceptable now since
+        # we stopped using them in the code on the previous release.
+        # TODO: (D Release) Uncomment next line
+        # 'afd7494d43b7',
     ]
     FORBIDDEN_METHODS = ('alembic.operations.Operations.alter_column',
                          'alembic.operations.Operations.drop_column',
@@ -316,6 +368,56 @@ class MigrationsWalk(
         self.assertFalse(volumes.c.use_quota.nullable)
         snapshots = db_utils.get_table(connection, 'snapshots')
         self.assertFalse(snapshots.c.use_quota.nullable)
+
+    # TODO: (D Release) Uncomment method _check_afd7494d43b7 and create a
+    # migration with hash afd7494d43b7 using the following command:
+    #   $ tox -e venv -- alembic -c cinder/db/alembic.ini revision \
+    #     --rev-id afd7494d43b7  -m 'drop quota leftovers'
+    # Then replace the upgrade method in file
+    # cinder/db/migrations/versions/afd7494d43b7_drop_quota_leftovers.py with
+    # the uncommented upgrade method below, removing the unused sqlalchemy
+    # import and adding "from oslo_db.sqlalchemy import utils as db_utils"
+    #
+    # def _check_afd7494d43b7(self, connection):
+    #     """Test drop allocated related columns."""
+    #     reservations = db_utils.get_table(connection, 'reservations')
+    #     self.assertNotIn('allocated_id', reservations.c)
+    #     quotas = db_utils.get_table(connection, 'quotas')
+    #     self.assertNotIn('allocated', quotas.c)
+    #
+    # def upgrade():
+    #     connection = op.get_bind()
+    #     # SQLite doesn't support dropping columns, so we use a workaround
+    #     if connection.engine.name == 'sqlite':
+    #         with op.batch_alter_table('reservations') as batch_op:
+    #             batch_op.drop_index(op.f('ix_reservations_allocated_id'))
+    #             batch_op.drop_column('allocated_id')
+    #         with op.batch_alter_table('quotas') as batch_op:
+    #             batch_op.drop_column('allocated')
+    #
+    #     else:
+    #         # The foreign key is unnamed and Cinder doesn't set a naming
+    #         # convention, so the name was decided by the DB engine on
+    #         #  creation, and each engine uses a different convention, so we
+    #         # find out the name.
+    #         fk_name = db_utils.get_foreign_key_constraint_name(
+    #             connection, 'reservations', 'allocated_id')
+    #         op.drop_constraint(fk_name, 'reservations', type_='foreignkey')
+    #
+    #         # Find out the name of the index as well
+    #         indexes_names = db_utils.get_indexes(connection, 'reservations')
+    #         index_name = [idx['name']
+    #                       for idx in indexes_names
+    #                       if idx['column_names'] == ['allocated_id']]
+    #         # There HAS to be an index, but just to be safe...
+    #         if index_name:
+    #             # Use op.f to indicate that the index name already has the
+    #             # naming convention applied to it.
+    #             op.drop_index(op.f(index_name[0]), table_name='reservations')
+    #
+    #         op.drop_column('reservations', 'allocated_id')
+    #         op.drop_column('quotas', 'allocated')
+    #
 
 
 class TestMigrationsWalkSQLite(
