@@ -3116,14 +3116,18 @@ class PowerMaxRest(object):
                           job, extra_specs)
 
     def delete_storagegroup_snap(self, array, source_group,
-                                 snap_name, snap_id):
+                                 snap_name, snap_id, force=False):
         """Delete a snapVx snapshot of a storage group.
 
         :param array: the array serial number
         :param source_group: the source group name
         :param snap_name: the name of the snapshot
         :param snap_id: the unique snap id of the SnapVX
+        :param force: optional force flag
         """
+        force_flag = "true" if force else "false"
+
+        query_params = {'force': force_flag} if force else None
         postfix_uri = "/snapid/%s" % snap_id if self.is_snap_id else (
             "/generation/%s" % snap_id)
 
@@ -3133,7 +3137,8 @@ class PowerMaxRest(object):
                             'postfix_uri': postfix_uri})
 
         self.delete_resource(
-            array, REPLICATION, 'storagegroup', resource_name=resource_name)
+            array, REPLICATION, 'storagegroup', resource_name=resource_name,
+            params=query_params)
 
     def get_storage_group_snap_id_list(
             self, array, source_group, snap_name):
