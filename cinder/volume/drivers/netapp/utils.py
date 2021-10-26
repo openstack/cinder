@@ -542,6 +542,8 @@ def get_export_host_junction_path(share):
 
 
 def qos_min_feature_name(is_nfs, node_name):
+    if node_name is None:
+        node_name = ''
     if is_nfs:
         return 'QOS_MIN_NFS_' + node_name
     else:
