@@ -92,10 +92,10 @@ Dropping a column not referenced in SQLAlchemy code
 ...................................................
 
 When we want to remove a column that wasn't present in any SQLAlchemy model or
-it was in the model, but model was not referenced in any SQLAlchemy API
-function (this basically means that N-1 wasn't depending on the presence of
-that column in the DB), then the situation is simple. We should be able to
-safely drop the column in N release.
+it was in the model, but model was not referenced anywhere in our code (this
+basically means that N-1 wasn't depending on the presence of that column in the
+DB), then the situation is simple. We should be able to safely drop the column
+in N release.
 
 Removal of unnecessary column
 .............................
