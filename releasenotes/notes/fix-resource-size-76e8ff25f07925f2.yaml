@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1948962 <https://bugs.launchpad.net/cinder/+bug/1948962>`_: Fixed
+    operations that failed on volume types with 255 characters names (e.g. set
+    quota limits or volume migrate).

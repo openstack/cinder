@@ -269,7 +269,7 @@ quota_class_set = {
     'type': 'object',
     'format': 'quota_class_set',
     'patternProperties': {
-        '^[a-zA-Z0-9-_:. ]{1,255}$': {
+        '^[a-zA-Z0-9-_:. ]{1,300}$': {
             'type': ['integer', 'string'],
             'pattern': '^[0-9]*$', 'minimum': -1, 'minLength': 1,
             'maximum': constants.DB_MAX_INT

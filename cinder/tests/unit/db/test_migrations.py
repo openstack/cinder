@@ -183,12 +183,18 @@ class MigrationsWalk(
         'c92a3e68beed',
         # Migration 89aa6f9639f9 doesn't fail because it's for a SQLAlquemy
         # internal table, and we only check Cinder's tables.
+
+        # Increasing resource column max length to 300 is acceptable, since
+        # it's a backward compatible change.
+        'b8660621f1b9',
     ]
     FORBIDDEN_METHODS = ('alembic.operations.Operations.alter_column',
                          'alembic.operations.Operations.drop_column',
                          'alembic.operations.Operations.drop_table',
                          'alembic.operations.BatchOperations.alter_column',
                          'alembic.operations.BatchOperations.drop_column')
+
+    VARCHAR_TYPE = sqlalchemy.types.VARCHAR
 
     def setUp(self):
         super().setUp()
@@ -283,6 +289,22 @@ class MigrationsWalk(
         # the table only existed on legacy deployments: there's no way to check
         # for its removal without creating it first, which is dumb
         pass
+
+    def _pre_upgrade_b8660621f1b9(self, connection):
+        """Test resource columns were limited to 255 chars before."""
+        for table_name in ('quotas', 'quota_classes', 'reservations'):
+            table = db_utils.get_table(connection, table_name)
+            self.assertIn('resource', table.c)
+            self.assertIsInstance(table.c.resource.type, self.VARCHAR_TYPE)
+            self.assertEqual(255, table.c.resource.type.length)
+
+    def _check_b8660621f1b9(self, connection):
+        """Test resource columns can be up to 300 chars."""
+        for table_name in ('quotas', 'quota_classes', 'reservations'):
+            table = db_utils.get_table(connection, table_name)
+            self.assertIn('resource', table.c)
+            self.assertIsInstance(table.c.resource.type, self.VARCHAR_TYPE)
+            self.assertEqual(300, table.c.resource.type.length)
 
 
 class TestMigrationsWalkSQLite(
