@@ -21,6 +21,7 @@ import inspect
 import os
 import re
 import sys
+from typing import Callable
 import uuid
 
 import decorator
@@ -55,7 +56,7 @@ class Coordinator(object):
         meaningful prefix.
     """
 
-    def __init__(self, agent_id=None, prefix=''):
+    def __init__(self, agent_id: str = None, prefix: str = ''):
         self.coordinator = None
         self.agent_id = agent_id or str(uuid.uuid4())
         self.started = False
@@ -71,7 +72,7 @@ class Coordinator(object):
             return os.path.abspath(os.path.join(path, self.prefix))
         return None
 
-    def start(self):
+    def start(self) -> None:
         if self.started:
             return
 
@@ -80,18 +81,20 @@ class Coordinator(object):
         # NOTE(bluex): Tooz expects member_id as a byte string.
         member_id = (self.prefix + self.agent_id).encode('ascii')
         self.coordinator = coordination.get_coordinator(backend_url, member_id)
+        assert self.coordinator is not None
         self.coordinator.start(start_heart=True)
         self._file_path = self._get_file_path(backend_url)
         self.started = True
 
-    def stop(self):
+    def stop(self) -> None:
         """Disconnect from coordination backend and stop heartbeat."""
         if self.started:
-            self.coordinator.stop()
+            if self.coordinator is not None:
+                self.coordinator.stop()
             self.coordinator = None
             self.started = False
 
-    def get_lock(self, name):
+    def get_lock(self, name: str):
         """Return a Tooz backend lock.
 
         :param str name: The lock name that is used to identify it
@@ -126,7 +129,9 @@ def synchronized_remove(glob_name, coordinator=COORDINATOR):
     coordinator.remove_lock(glob_name)
 
 
-def synchronized(lock_name, blocking=True, coordinator=COORDINATOR):
+def synchronized(lock_name: str,
+                 blocking: bool = True,
+                 coordinator: Coordinator = COORDINATOR) -> Callable:
     """Synchronization decorator.
 
     :param str lock_name: Lock name.
@@ -169,7 +174,7 @@ def synchronized(lock_name, blocking=True, coordinator=COORDINATOR):
     """
 
     @decorator.decorator
-    def _synchronized(f, *a, **k):
+    def _synchronized(f, *a, **k) -> Callable:
         call_args = inspect.getcallargs(f, *a, **k)
         call_args['f_name'] = f.__name__
         lock = coordinator.get_lock(lock_name.format(**call_args))
