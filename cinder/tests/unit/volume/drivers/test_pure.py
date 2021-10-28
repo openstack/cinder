@@ -150,11 +150,13 @@ FC_PORTS = [{"name": name,
              "iqn": None,
              "portal": None,
              "wwn": wwn,
+             "nqn": None,
              } for name, wwn in zip(FC_PORT_NAMES, FC_WWNS)]
 AC_FC_PORTS = [{"name": name,
                 "iqn": None,
                 "portal": None,
                 "wwn": wwn,
+                "nqn": None,
                 } for name, wwn in zip(FC_PORT_NAMES, AC_FC_WWNS)]
 NON_ISCSI_PORT = {
     "name": "ct0.fc1",
