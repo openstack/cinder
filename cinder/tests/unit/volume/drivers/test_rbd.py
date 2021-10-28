@@ -734,6 +734,7 @@ class RBDTestCase(test.TestCase):
             self.driver.rbd.Image.return_value.unprotect_snap.called)
         self.assertEqual(
             1, self.driver.rbd.RBD.return_value.remove.call_count)
+        self.driver.rbd.RBD.return_value.trash_move.assert_not_called()
 
     @common_mocks
     def test_deferred_deletion(self):
@@ -763,6 +764,7 @@ class RBDTestCase(test.TestCase):
                     drv.rbd.Image.return_value.unprotect_snap.called)
                 self.assertEqual(
                     1, drv.rbd.RBD.return_value.trash_move.call_count)
+                self.driver.rbd.RBD.return_value.remove.assert_not_called()
 
     @common_mocks
     def test_deferred_deletion_periodic_task(self):
