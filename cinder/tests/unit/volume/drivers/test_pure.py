@@ -1679,7 +1679,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_cgsnapshot = mock.Mock()
         mock_snapshots = [mock.Mock() for i in range(5)]
         mock_volumes = [mock.Mock() for i in range(5)]
-        result = self.driver.create_consistencygroup_from_src(
+        self.driver.create_consistencygroup_from_src(
             mock_context,
             mock_group,
             mock_volumes,
@@ -1688,7 +1688,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             source_cg=None,
             source_vols=None
         )
-        self.assertEqual((None, None), result)
         mock_create_cg.assert_called_with(mock_context, mock_group)
         expected_calls = [mock.call(vol, snap)
                           for vol, snap in zip(mock_volumes, mock_snapshots)]
@@ -1715,14 +1714,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         mock_source_cg = mock.MagicMock()
         mock_volumes = [mock.MagicMock() for i in range(num_volumes)]
         mock_source_vols = [mock.MagicMock() for i in range(num_volumes)]
-        result = self.driver.create_consistencygroup_from_src(
+        self.driver.create_consistencygroup_from_src(
             mock_context,
             mock_group,
             mock_volumes,
             source_cg=mock_source_cg,
             source_vols=mock_source_vols
         )
-        self.assertEqual((None, None), result)
         mock_create_cg.assert_called_with(mock_context, mock_group)
         self.assertTrue(self.array.create_pgroup_snapshot.called)
         self.assertTrue(self.array.destroy_pgroup.called)
