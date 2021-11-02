@@ -5190,7 +5190,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     msg = _('Unable to retype: the thin-provisioned or '
                             'compressed vol can not be migrated from a dr pool'
                             ' or to a dr pool.')
-                raise exception.VolumeDriverException(message=msg)
+                    raise exception.VolumeDriverException(message=msg)
             if not old_opts['mirror_pool'] and new_opts['mirror_pool']:
                 need_check_dr_pool_param = True
 

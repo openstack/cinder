@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver
+    `Bug #1949061 <https://bugs.launchpad.net/cinder/+bug/1949061>`_:
+    Fixed retype issue of mirror-volume to mirror-volume-type
+    with different mirror pool

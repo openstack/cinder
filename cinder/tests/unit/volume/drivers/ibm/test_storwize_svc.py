@@ -7306,6 +7306,38 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         self.driver.delete_volume(vol1)
 
+    @ddt.data(({'mirror_pool': 'openstack1'}, {'mirror_pool': 'openstack2'}))
+    @ddt.unpack
+    def test_storwize_retype_from_mirror_to_different_mirror(self,
+                                                             old_opts,
+                                                             new_opts):
+        self.driver.do_setup(self.ctxt)
+        host = {'host': 'openstack@svc#openstack'}
+        ctxt = context.get_admin_context()
+
+        vol_type1 = self._create_volume_type(old_opts, 'old')
+        vol_type2 = self._create_volume_type(new_opts, 'new')
+        diff, _equal = volume_types.volume_types_diff(ctxt, vol_type1.id,
+                                                      vol_type2.id)
+        vol1 = self._generate_vol_info(vol_type1)
+        self.driver.create_volume(vol1)
+
+        self._assert_vol_exists(vol1.name, True)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(len(copies), 2)
+        copies = self.driver._helpers.get_vdisk_copies(vol1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack1')
+
+        self.driver.retype(self.ctxt, vol1, vol_type2, diff, host)
+        copies = self.driver._helpers.lsvdiskcopy(vol1.name)
+        self.assertEqual(len(copies), 2)
+        copies = self.driver._helpers.get_vdisk_copies(vol1.name)
+        self.assertEqual(copies['primary']['mdisk_grp_name'], 'openstack')
+        self.assertEqual(copies['secondary']['mdisk_grp_name'], 'openstack2')
+
+        self.driver.delete_volume(vol1)
+
     @ddt.data(({}, {'mirror_pool': 'openstack1'}),
               ({'mirror_pool': ''}, {'mirror_pool': 'openstack1'}),
               ({'mirror_pool': 'openstack1'}, {}),
