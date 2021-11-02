@@ -2851,7 +2851,7 @@ class RBDTestCase(test.TestCase):
                 'secret,id=luks_sec,format=raw,file=/passfile',
                 '-o', 'key-secret=luks_sec', '/imgfile', '12288M')
             mock_exec.assert_any_call(
-                'rbd', 'import', '--pool', 'rbd', '--order', 22,
+                'rbd', 'import', '--dest-pool', 'rbd', '--order', 22,
                 '/imgfile', self.volume_c.name)
 
     @mock.patch('cinder.objects.Volume.get_by_id')

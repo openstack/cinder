@@ -958,7 +958,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             order = int(math.log(chunk_size, 2))
 
             cmd = ['rbd', 'import',
-                   '--pool', self.configuration.rbd_pool,
+                   '--dest-pool', self.configuration.rbd_pool,
                    '--order', order,
                    tmp_image.name, volume.name]
             cmd.extend(self._ceph_args())
