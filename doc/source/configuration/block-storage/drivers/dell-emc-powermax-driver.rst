@@ -13,28 +13,36 @@ PowerMax storage management software. They use the Requests HTTP library to
 communicate with a Unisphere for PowerMax instance, using a RESTAPI interface
 in the backend to perform PowerMax and VMAX storage operations.
 
+.. _VMAX-Hybrid:
+
+.. note::
+
+   DEPRECATION NOTICE: The VMAX Hybrid series will not be supported from the
+   ``Z`` release of OpenStack. Also, any All Flash array
+   running HyperMaxOS 5977 will no longer be supported from the ``Z``
+   release onwards.
+
+
 .. note::
 
    While ``PowerMax`` will be used throughout this document, it will be used
    to collectively categorize the following supported arrays, PowerMax 2000,
-   8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX Hybrid. Please note
-   there will be extended support of the VMAX Hybrid series until further
-   notice.
+   8000, VMAX All Flash 250F, 450F, 850F and 950F and VMAX-Hybrid_.
 
 
 System requirements and licensing
 =================================
 
-The Dell EMC PowerMax Cinder driver supports the VMAX-3 hybrid series, VMAX
-All-Flash series and the PowerMax arrays.
+The Dell EMC PowerMax Cinder driver supports the VMAX-Hybrid_ series,
+VMAX All-Flash series and the PowerMax arrays.
 
-The array operating system software, Solutions Enabler 9.2.1 series, and
-Unisphere for PowerMax 9.2.1 series are required to run Dell EMC PowerMax
+The array operating system software, Solutions Enabler 9.2.2 series, and
+Unisphere for PowerMax 9.2.2 series are required to run Dell EMC PowerMax
 Cinder driver for the Wallaby release. Please refer to support-matrix-table_
 for the support matrix of previous OpenStack versions.
 
 Download Solutions Enabler and Unisphere from the Dell EMC's support web site
-(login is required). See the `Dell EMC Solutions Enabler 9.2.1 Installation
+(login is required). See the `Dell EMC Solutions Enabler 9.2.2 Installation
 and Configuration Guide` and `Dell EMC Unisphere for PowerMax Installation
 Guide` at the `Dell EMC Support`_ site.
 
@@ -53,6 +61,8 @@ Guide` at the `Dell EMC Support`_ site.
    +-----------+------------------------+-------------+
    | OpenStack | Unisphere for PowerMax | PowerMax OS |
    +===========+========================+=============+
+   | Xena      | 9.2.2                  | 5978.711    |
+   +-----------+------------------------+-------------+
    | Wallaby   | 9.2.1                  | 5978.711    |
    +-----------+------------------------+-------------+
    | Victoria  | 9.2.x                  | 5978.669    |
@@ -67,9 +77,9 @@ Guide` at the `Dell EMC Support`_ site.
 .. note::
 
    A Hybrid array can only run HyperMax OS 5977, and is still supported until
-   further notice. Some functionality will not be available in older versions
-   of the OS.  If in any doubt, please contact your local PowerMax
-   representative.
+   the ``Z`` release of OpenStack. Some functionality will not be available
+   in older versions of the OS.  If in any doubt, please contact your local
+   PowerMax representative.
 
 .. note::
 
@@ -103,7 +113,7 @@ or the F package plus the SRDF a la carte add on is required.
 Hybrid
 ~~~~~~
 
-There are five Dell EMC Software Suites sold with the VMAX Hybrid arrays:
+There are five Dell EMC Software Suites sold with the VMAX-Hybrid_ arrays:
 
 - Base Suite
 - Advanced Suite
@@ -314,7 +324,7 @@ contains ``child`` storage groups for each configured
 SRP/slo/workload/compression-enabled or disabled/replication-enabled or
 disabled combination.
 
-PowerMax, VMAX All Flash and Hybrid
+PowerMax, VMAX All Flash and VMAX-Hybrid_
 
 Parent storage group:
 
@@ -606,15 +616,15 @@ associated with any service level).
 
 .. note::
 
-   PowerMax and Hybrid support ``Diamond``, ``Platinum``, ``Gold``, ``Silver``,
-   ``Bronze``, ``Optimized``, and ``None`` service levels. VMAX All Flash
-   running HyperMax OS (5977) supports ``Diamond`` and ``None``. Hybrid and All
-   Flash support ``DSS_REP``, ``DSS``, ``OLTP_REP``, ``OLTP``, and ``None``
-   workloads, the latter up until ucode 5977. Please refer to Stein PowerMax
-   online documentation if you wish to use ``workload``. There is no support
-   for workloads in PowerMax OS (5978) or greater. These will be silently
-   ignored if set for VMAX All-Flash arrays which have been upgraded to
-   PowerMax OS (5988).
+   PowerMax and VMAX-Hybrid_ support  ``Diamond``, ``Platinum``, ``Gold``,
+   ``Silver``, ``Bronze``, ``Optimized``, and ``None`` service
+   levels. VMAX All Flash running HyperMax OS (5977) supports ``Diamond``
+   and ``None``. VMAX-Hybrid_ and All Flash support ``DSS_REP``, ``DSS``,
+   ``OLTP_REP``, ``OLTP``, and ``None`` workloads, the latter up until
+   ucode 5977. Please refer to Stein PowerMax online documentation if you
+   wish to use ``workload``. There is no support for workloads in PowerMax
+   OS (5978) or greater. These will be silently ignored if set for VMAX
+   All-Flash arrays which have been upgraded to PowerMax OS (5988).
 
 
 7. Interval and retries
@@ -1296,8 +1306,9 @@ Use case 2 - Retype from compression disabled to compression enabled
    that storage group.
 
 .. note::
-   If extra spec ``storagetype:disablecompression`` is set on a Hybrid, it is
-   ignored because compression is not an available feature on a VMAX3 Hybrid.
+   If extra spec ``storagetype:disablecompression`` is set on a VMAX-Hybrid_,
+   it is ignored because compression is not an available feature on a
+   VMAX-Hybrid_.
 
 
 12. Oversubscription support
@@ -1765,8 +1776,8 @@ Assumptions, restrictions and prerequisites
 
 - ODE in the context of this document refers to extending a volume where it
   is in-use, that is, attached to an instance.
-- The ``allow_extend`` is only applicable on Hybrid arrays or All Flash arrays
-  with HyperMax OS. If included elsewhere, it is ignored.
+- The ``allow_extend`` is only applicable on VMAX-Hybrid_ arrays or All Flash
+  arrays with HyperMax OS. If included elsewhere, it is ignored.
 - Where one array is a lower uCode than the other, the environment is limited
   to functionality of that of the lowest uCode level, i.e. if R1 is 5978.444
   and R2 is 5978.221, expanding a metro volume is not supported, both R1 and
@@ -2105,18 +2116,19 @@ Configure a single replication target
    * ``sync_retries`` How many times to retry RDF sync checks during Cinder
      PowerMax SRDF operations. Default is 200 retries.
 
-   * ``allow_extend`` Only applicable to Hybrid arrays or All Flash arrays
-     running HyperMax OS (5977). It is a flag for allowing the extension of
-     replicated volumes. To extend a volume in an SRDF relationship, this
-     relationship must first be broken, the R1 device extended, and a new
-     device pair established. If not explicitly set, this flag defaults to
-     ``False``.
+   * ``allow_extend`` Only applicable to VMAX-Hybrid_ arrays or All Flash
+     arrays running HyperMax OS (5977). It is a flag for
+     allowing the extension of replicated volumes. To extend a volume in
+     an SRDF relationship, this relationship must first be broken, the R1
+     device extended, and a new device pair established. If not explicitly set,
+     this flag defaults to ``False``.
 
      .. note::
+
         As the SRDF link must be severed, due caution should be exercised when
         performing this operation. If absolutely necessary, only one source and
         target pair should be extended at a time (only only applicable to
-        Hybrid arrays or All Flash arrays with HyperMax OS).
+        VMAX-Hybrid_ arrays or All Flash arrays with HyperMax OS).
 
 
 #. Create a ``replication-enabled`` volume type. Once the
@@ -2135,9 +2147,9 @@ Configure a single replication target
       group on the target array with the same service level and workload
       combination as the primary. However, if this combination is unavailable
       on the target (for example, in a situation where the source array is a
-      Hybrid, the target array is an All Flash, and an All Flash incompatible
-      service level like Bronze is configured), no service level will be
-      applied.
+      VMAX-Hybrid_, the target array is an All Flash, and an All
+      Flash incompatible service level like Bronze is configured), no service
+      level will be applied.
 
 Configure multiple replication targets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2302,7 +2314,7 @@ Most features are supported, except for the following:
     to the user specific size.
   * Alternatively, ensure that the ``allow_extend`` option in the
     ``replication_device parameter`` is set to ``True``. This is only
-    applicable to Hybrid arrays or All Flash array with HyperMax OS.
+    applicable to VMAX-Hybrid_ arrays or All Flash array with HyperMax OS.
 
 
 Failover host
