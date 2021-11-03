@@ -17,6 +17,7 @@
 
 
 from oslo_log import log as logging
+from oslo_utils import strutils
 from six.moves import http_client
 
 from cinder.api.contrib import admin_actions
@@ -51,9 +52,12 @@ class VMWareVolumeExtensionsController(admin_actions.VolumeAdminController):
         self.authorize(context, 'migrate_volume', target_obj=volume)
         params = body['os-migrate_volume_by_connector']
         connector = params.get('connector', {})
+        lock_volume = strutils.bool_from_string(
+            params.get('lock_volume', False),
+            strict=True)
 
         self.volume_api.migrate_volume_by_connector(
-            context, volume, connector)
+            context, volume, connector, lock_volume)
 
 
 class Vmware_migrate(extensions.ExtensionDescriptor):

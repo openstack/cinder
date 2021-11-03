@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.api.validation import parameter_types
+
 
 migrate_volume_by_connector = {
     'type': 'object',
@@ -21,6 +23,7 @@ migrate_volume_by_connector = {
             'type': 'object',
             'properties': {
                 'connector': {'type': ['string', 'object', 'null']},
+                'lock_volume': parameter_types.boolean,
             },
             'additionalProperties': False,
         },
