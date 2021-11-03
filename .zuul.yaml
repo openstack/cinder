@@ -108,8 +108,6 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-pg-full:
             irrelevant-files: *gate-irrelevant-files
-        - tempest-full-py3-opensuse15:
-            irrelevant-files: *gate-irrelevant-files
 
 - job:
     # Security testing for known issues
