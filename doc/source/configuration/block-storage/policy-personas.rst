@@ -41,10 +41,10 @@ talking past each other.)
 The Cinder Personas
 -------------------
 
-This is easiest to explain if we introduce the five "personas" Cinder
-recognizes.  In the list below, a "system" refers to the deployed system (that
-is, Cinder and all its services), and a "project" refers to a container or
-namespace for resources.
+This is easiest to explain if we introduce the three "personas" Cinder
+recognizes in the Xena release.  In the list below, a "system" refers to the
+deployed system (that is, Cinder and all its services), and a "project" refers
+to a container or namespace for resources.
 
 * In order to consume resources, a user must be assigned to a project by
   being given a role (for example, 'member') in that project.  That's done
@@ -54,7 +54,7 @@ namespace for resources.
   <https://docs.openstack.org/keystone/latest/admin/service-api-protection.html>`_
   in the Keystone documentation for more information.
 
-.. list-table:: The Five Personas
+.. list-table:: The Cinder Personas in Xena
    :header-rows: 1
 
    * - who
@@ -65,16 +65,6 @@ namespace for resources.
        delete resources within a project)
    * - project-member
      - A normal user in a project.
-   * - project-admin
-     - All the normal stuff plus some minor administrative abilities
-       in a particular project, for example, able to set the default
-       volume type for a project.  (The administrative abilities are
-       "minor" in the sense that they have no impact on the Cinder system,
-       they only allow the project-admin to make system-safe changes
-       isolated to that project.)
-   * - system-reader
-     - Has read only access to the API; like the project-reader, but
-       can read any project recognized by cinder.
    * - system-admin
      - Has the highest level of authorization on the system and can
        perform any action in Cinder.  In most deployments, only the
@@ -83,9 +73,14 @@ namespace for resources.
        *everything*, both with respect to the Cinder system and all
        individual projects.
 
+       *Note that if you assign the 'admin' role to a user, that user can
+       affect the entire Cinder system, not just the project that person
+       is a member of.*  Please keep this in mind as you assign roles to
+       users in the Identity service.
+
 .. note::
    The Keystone project provides the ability to describe additional personas,
-   but Cinder does not currently recognize them.  In particular:
+   but Cinder does not recognize them in Xena.  In particular:
 
    * Cinder does not recognize the ``domain`` scope at all.  So even if you
      successfully request a "domain-scoped" token from the Identity service,
@@ -93,9 +88,12 @@ namespace for resources.
      "project-scoped" token for the particular project in your domain
      that you want to act upon.
    * Cinder does not recognize a "system-member" persona, that is,
-     a user with the ``member`` role on a ``system``.  The default Cinder
-     policy configuration treats such a user as identical to the
-     *system-reader* persona described above.
+     a user with the ``member`` role on a ``system``.  Likewise, cinder
+     does not recognize a "system-reader" persona, that is, a user with
+     the ``reader`` role on a ``system``.
+
+     Further, while the Cinder "system-admin" persona is implemented in
+     Xena, it is not implemented by using scope.
 
    More information about roles and scope is available in the `Keystone
    Administrator Guides
@@ -156,28 +154,13 @@ Note that you *cannot* create a project-admin persona on your own
 simply by assigning the ``admin`` role to a user.  Such assignment
 results in that user becoming a system-admin.
 
-In the Yoga release, we plan to implement the full set of Cinder
-personas:
-
-.. list-table:: The 5 Yoga Personas
-   :header-rows: 1
-
-   * - who
-     - Keystone technical info
-   * - project-reader
-     - ``reader`` role on a ``project``, resulting in project-scope
-   * - project-member
-     - ``member`` role on a ``project``, resulting in project-scope
-   * - project-admin
-     - ``admin`` role on a ``project``, resulting in project-scope
-   * - system-reader
-     - ``reader`` role on a ``system``, resulting in system-scope
-   * - system-admin
-     - ``admin`` role on a ``system``, resulting in system-scope
-
-Note that although the underlying technical information changes for
-the system-admin, the range of actions performable by that persona
-does not change.
+In the Yoga release, we plan to implement more Cinder personas that the default
+policy configuration will recognize.  During the development of this OpenStack
+wide effort, however, some complexities were discoverd that have affected
+exactly what this set of personas and their capabilities will be.  Please
+consult the Yoga version of this document (or the 'latest' version, if at the
+time you are reading this, Yoga is still under development) for more
+information as it becomes available.
 
 .. _cinder-permissions-matrix:
 
@@ -201,8 +184,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -213,8 +194,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Update attachment
@@ -224,8 +203,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Delete attachment
@@ -234,8 +211,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -247,8 +222,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Allow multiattach of bootable volumes
@@ -259,8 +232,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -274,8 +245,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -283,8 +252,6 @@ matrix is validated by human beings.
      - ``GET  /messages``
      - message:get_all
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -299,16 +266,12 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Delete message
      - ``DELETE  /messages/{message_id}``
      - message:delete
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -322,8 +285,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -332,8 +293,6 @@ matrix is validated by human beings.
        | ``GET  /clusters/detail``
      - clusters:get_all
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -345,8 +304,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -354,8 +311,6 @@ matrix is validated by human beings.
      - ``PUT  /clusters/{cluster_id}``
      - clusters:update
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -371,8 +326,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -380,8 +333,6 @@ matrix is validated by human beings.
      - ``POST  /workers/cleanup``
      - workers:cleanup
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -397,8 +348,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -407,8 +356,6 @@ matrix is validated by human beings.
        | ``GET  /snapshots/detail``
      - volume:get_all_snapshots
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -424,16 +371,12 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Create snapshot
      - ``POST  /snapshots``
      - volume:create_snapshot
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -446,16 +389,12 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Update snapshot
      - ``PUT  /snapshots/{snapshot_id}``
      - volume:update_snapshot
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -466,16 +405,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Reset status of a snapshot.
      - ``POST  /snapshots/{snapshot_id}/action`` (os-reset_status)
      - volume_extension:snapshot_admin_actions:reset_status
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -488,16 +423,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Force delete a snapshot
      - ``POST  /snapshots/{snapshot_id}/action`` (os-force_delete)
      - volume_extension:snapshot_admin_actions:force_delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -510,8 +441,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -521,8 +450,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -530,8 +457,6 @@ matrix is validated by human beings.
      - ``POST  /snapshots/{snapshot_id}/action`` (os-unmanage)
      - snapshot_extension:snapshot_unmanage
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -547,8 +472,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -562,8 +485,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Update snapshot's metadata or one specified metadata with a given key
      - | ``PUT  /snapshots/{snapshot_id}/metadata``
        | ``PUT  /snapshots/{snapshot_id}/metadata/{key}``
@@ -571,8 +492,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -582,8 +501,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -600,8 +517,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -610,8 +525,6 @@ matrix is validated by human beings.
        | ``GET  /backups/detail``
      - backup:get_all
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -627,8 +540,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -639,16 +550,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Show backup
      - ``GET  /backups/{backup_id}``
      - backup:get
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -662,8 +569,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Delete backup
@@ -672,8 +577,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -684,16 +587,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Import backup
      -  ``POST  /backups/{backup_id}/import_record``
      - backup:backup-import
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -705,8 +604,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -716,8 +613,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -725,8 +620,6 @@ matrix is validated by human beings.
      - ``POST  /backups/{backup_id}/action`` (os-force_delete)
      - volume_extension:backup_admin_actions:force_delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -742,8 +635,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -752,8 +643,6 @@ matrix is validated by human beings.
        | ``GET  /groups/detail``
      - group:get_all
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -768,16 +657,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Show group
      - ``GET  /groups/{group_id}``
      - group:get
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -790,8 +675,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Include project attributes in the list groups, show group responses
@@ -802,8 +685,6 @@ matrix is validated by human beings.
        | The ability to make these API calls is governed by other policies.
      - group:group_project_attribute
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -819,8 +700,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -834,8 +713,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -844,8 +721,6 @@ matrix is validated by human beings.
      - ``POST /group_types/``
      - group:group_types:create
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -858,8 +733,6 @@ matrix is validated by human beings.
      - (new policy)
      - no
      - no
-     - no
-     - no
      - yes
      - n/a
      - n/a
@@ -868,8 +741,6 @@ matrix is validated by human beings.
      - ``DELETE /group_types/{group_type_id}``
      - group:group_types:delete
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -883,8 +754,6 @@ matrix is validated by human beings.
        | These calls are not governed by a policy.
      - group:access_group_types_specs
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -902,8 +771,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -912,8 +779,6 @@ matrix is validated by human beings.
      - ``POST /group_types/{group_type_id}/group_specs``
      - group:group_types_specs:create
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -926,8 +791,6 @@ matrix is validated by human beings.
      - (new policy)
      - no
      - no
-     - no
-     - no
      - yes
      - n/a
      - n/a
@@ -936,8 +799,6 @@ matrix is validated by human beings.
      - ``GET /group_types/{group_type_id}/group_specs/{g_spec_id}``
      - group:group_types_specs:get
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -950,8 +811,6 @@ matrix is validated by human beings.
      - (new policy)
      - no
      - no
-     - no
-     - no
      - yes
      - n/a
      - n/a
@@ -960,8 +819,6 @@ matrix is validated by human beings.
      - ``DELETE /group_types/{group_type_id}/group_specs/{g_spec_id}``
      - group:group_types_specs:delete
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -977,8 +834,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -992,16 +847,12 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Create group snapshot
      - ``POST  /group_snapshots``
      - group:create_group_snapshot
      - empty
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1014,16 +865,12 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Delete group snapshot
      - ``DELETE  /group_snapshots/{group_snapshot_id}``
      - group:delete_group_snapshot
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1036,8 +883,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Reset status of group snapshot
@@ -1045,8 +890,6 @@ matrix is validated by human beings.
        | ``POST  /group_snapshots/{group_snapshot_id}/action`` (reset_status)
      - group:reset_group_snapshot_status
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1063,8 +906,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1078,8 +919,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1090,8 +929,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Reset status of group
@@ -1099,8 +936,6 @@ matrix is validated by human beings.
        | ``POST  /groups/{group_id}/action`` (reset_status)
      - group:reset_status
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1114,8 +949,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Disable replication
@@ -1125,8 +958,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1138,8 +969,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - List failover replication
@@ -1149,8 +978,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1164,8 +991,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1174,8 +999,6 @@ matrix is validated by human beings.
        | ``GET  /qos-specs/{qos_id}/associations``
      - volume_extension:qos_specs_manage:get_all
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1187,8 +1010,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1196,8 +1017,6 @@ matrix is validated by human beings.
      - ``POST  /qos-specs``
      - volume_extension:qos_specs_manage:create
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1214,8 +1033,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1224,8 +1041,6 @@ matrix is validated by human beings.
        | ``PUT  /qos-specs/{qos_id}/delete_keys``
      - volume_extension:qos_specs_manage:delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1241,8 +1056,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1255,8 +1068,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1267,8 +1078,6 @@ matrix is validated by human beings.
      - (new policy)
      - no
      - no
-     - no
-     - no
      - yes
      - n/a
      - n/a
@@ -1277,8 +1086,6 @@ matrix is validated by human beings.
      - ``PUT  /os-quota-class-sets/{project_id}``
      - volume_extension:quota_classes:update
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -1295,14 +1102,10 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Update project quota
      - ``PUT  /os-quota-sets/{project_id}``
      - volume_extension:quotas:update
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1312,8 +1115,6 @@ matrix is validated by human beings.
      - ``DELETE  /os-quota-sets/{project_id}``
      - volume_extension:quotas:delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1329,8 +1130,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1338,8 +1137,6 @@ matrix is validated by human beings.
      - ``GET  /capabilities/{host_name}``
      - volume_extension:capabilities
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1355,8 +1152,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1364,8 +1159,6 @@ matrix is validated by human beings.
      - ``GET  /os-services``
      - volume_extension:services:index
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1385,8 +1178,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1397,8 +1188,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1407,8 +1196,6 @@ matrix is validated by human beings.
      - ``PUT  /os-services/thaw``
      - volume:thaw_host
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1422,8 +1209,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1431,8 +1216,6 @@ matrix is validated by human beings.
      - ``GET  /scheduler-stats/get_pools``
      - scheduler_extension:scheduler_stats:get_pools
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1448,8 +1231,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1462,15 +1243,11 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - List (in detail) of volumes which are available to manage
      - | ``GET  /manageable_volumes``
        | ``GET  /manageable_volumes/detail``
      - volume_extension:list_manageable
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1482,8 +1259,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1491,8 +1266,6 @@ matrix is validated by human beings.
      - ``POST  /volumes/{volume_id}/action`` (os-unmanage)
      - volume_extension:volume_unmanage
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1508,8 +1281,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1523,8 +1294,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1533,8 +1302,6 @@ matrix is validated by human beings.
      - ``POST  /types``
      - volume_extension:type_create
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -1547,8 +1314,6 @@ matrix is validated by human beings.
      - (new policy)
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1557,8 +1322,6 @@ matrix is validated by human beings.
      - ``DELETE  /types/{type_id}``
      - volume_extension:type_delete
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -1573,14 +1336,10 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - List volume types
      - ``GET  /types``
      - volume_extension:type_get_all
      - empty
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -1597,16 +1356,12 @@ matrix is validated by human beings.
      -
      -
      -
-     -
-     -
      - no
      - yes
    * - Create volume type encryption
      - ``POST  /types/{type_id}/encryption``
      - volume_extension:volume_type_encryption:create
      - rule:volume_extension:volume_type_encryption
-     - no
-     - no
      - no
      - no
      - yes
@@ -1619,8 +1374,6 @@ matrix is validated by human beings.
      - rule:volume_extension:volume_type_encryption
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1630,8 +1383,6 @@ matrix is validated by human beings.
      - rule:volume_extension:volume_type_encryption
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1639,8 +1390,6 @@ matrix is validated by human beings.
      - ``DELETE  /types/{type_id}/encryption/{encryption_id}``
      - volume_extension:volume_type_encryption:delete
      - rule:volume_extension:volume_type_encryption
-     - no
-     - no
      - no
      - no
      - yes
@@ -1658,8 +1407,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - List or show volume type with access type qos specs id attribute
      - | Adds ``qos_specs_id`` to the following responses:
        | ``GET  /types/{type_id}``
@@ -1667,8 +1414,6 @@ matrix is validated by human beings.
        | The ability to make these API calls is governed by other policies.
      - volume_extension:access_types_qos_specs_id
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1687,8 +1432,6 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-     - no
-     - yes
    * - | **NEW**
        | List private volume type access detail, that is, list the projects
          that have access to this type
@@ -1696,8 +1439,6 @@ matrix is validated by human beings.
      - ``GET  /types/{type_id}/os-volume-type-access``
      - volume_extension:volume_type_access:get_all_for_type
      - (new policy)
-     - no
-     - no
      - no
      - no
      - yes
@@ -1709,8 +1450,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1718,8 +1457,6 @@ matrix is validated by human beings.
      - ``POST  /types/{type_id}/action`` (removeProjectAccess)
      - volume_extension:volume_type_access:removeProjectAccess
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1735,8 +1472,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1746,8 +1481,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1759,8 +1492,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Revert a volume to a snapshot
@@ -1771,16 +1502,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Reset status of a volume
      - ``POST  /volumes/{volume_id}/action`` (os-reset_status)
      - volume_extension:volume_admin_actions:reset_status
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1793,8 +1520,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Update a volume's readonly flag
@@ -1804,16 +1529,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Force delete a volume
      - ``POST  /volumes/{volume_id}/action`` (os-force_delete)
      - volume_extension:volume_admin_actions:force_delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1823,8 +1544,6 @@ matrix is validated by human beings.
      - ``POST  /volumes/{volume_id}/action`` (os-volume_upload_image)
      - volume_extension:volume_actions:upload_public
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1837,16 +1556,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Force detach a volume.
      - ``POST  /volumes/{volume_id}/action`` (os-force_detach)
      - volume_extension:volume_admin_actions:force_detach
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1858,8 +1573,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -1867,8 +1580,6 @@ matrix is validated by human beings.
      - ``POST  /volumes/{volume_id}/action`` (os-migrate_volume_completion)
      - volume_extension:volume_admin_actions:migrate_volume_completion
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -1881,8 +1592,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Terminate volume attachment
@@ -1891,8 +1600,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1903,8 +1610,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Mark volume as reserved
@@ -1913,8 +1618,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1925,8 +1628,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Begin detach volumes
@@ -1935,8 +1636,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1947,8 +1646,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Clear attachment metadata
@@ -1957,8 +1654,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -1972,8 +1667,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -1989,8 +1682,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Create a volume transfer
      - | ``POST  /os-volume-transfer``
        | ``POST  /volume-transfers``
@@ -1998,8 +1689,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2013,8 +1702,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Accept a volume transfer
      - | ``POST  /os-volume-transfer/{transfer_id}/accept``
        | ``POST  /volume-transfers/{transfer_id}/accept``
@@ -2022,8 +1709,6 @@ matrix is validated by human beings.
      - empty
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2034,8 +1719,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2049,8 +1732,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -2065,16 +1746,12 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Create volume metadata
      - ``POST  /volumes/{volume_id}/metadata``
      - volume:create_volume_metadata
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2086,8 +1763,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Delete volume's specified metadata with a given key
@@ -2096,8 +1771,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2117,8 +1790,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - | **NEW**
@@ -2134,8 +1805,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - | **NEW**
        | Set image metadata for a volume
      - | Microversion 3.4
@@ -2144,8 +1813,6 @@ matrix is validated by human beings.
      - (new policy)
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2158,8 +1825,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Update volume admin metadata.
@@ -2169,8 +1834,6 @@ matrix is validated by human beings.
        | The ability to make these API calls is governed by other policies.
      - volume:update_volume_admin_metadata
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2186,8 +1849,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -2200,14 +1861,10 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Create type extra specs
      - ``POST  /types/{type_id}/extra_specs``
      - volume_extension:types_extra_specs:create
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2222,14 +1879,10 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Update type extra specs
      - ``PUT  /types/{type_id}/extra_specs/{extra_spec_key}``
      - volume_extension:types_extra_specs:update
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2239,8 +1892,6 @@ matrix is validated by human beings.
      - ``DELETE  /types/{type_id}/extra_specs/{extra_spec_key}``
      - volume_extension:types_extra_specs:delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2258,8 +1909,6 @@ matrix is validated by human beings.
      - rule:admin_api
      - no
      - no
-     - no
-     - no
      - yes
      - no
      - yes
@@ -2273,8 +1922,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -2285,8 +1932,6 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Create volume from image
@@ -2296,16 +1941,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Show volume
      - ``GET  /volumes/{volume_id}``
      - volume:get
      - rule:admin_or_owner
-     - yes
-     - yes
      - yes
      - yes
      - yes
@@ -2322,8 +1963,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Update volume or update a volume's bootable status
      - | ``PUT  /volumes``
        | ``POST  /volumes/{volume_id}/action`` (os-set_bootable)
@@ -2331,8 +1970,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2343,16 +1980,12 @@ matrix is validated by human beings.
      - no
      - yes
      - yes
-     - no
-     - yes
      - yes
      - yes
    * - Force Delete a volume (Microversion 3.23)
      - ``DELETE  /volumes/{volume_id}?force=true``
      - volume:force_delete
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2365,8 +1998,6 @@ matrix is validated by human beings.
        | The ability to make these API calls is governed by other policies.
      - volume_extension:volume_host_attribute
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2384,8 +2015,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - List or show volume with migration status attribute
      - | Adds ``os-vol-mig-status-attr:migstat`` to the following responses:
        | ``GET  /volumes/{volume_id}``
@@ -2393,8 +2022,6 @@ matrix is validated by human beings.
        | The ability to make these API calls is governed by other policies.
      - volume_extension:volume_mig_status_attribute
      - rule:admin_api
-     - no
-     - no
      - no
      - no
      - yes
@@ -2410,8 +2037,6 @@ matrix is validated by human beings.
      - yes
      - yes
      - yes
-     - yes
-     - yes
    * - Create multiattach capable volume
      - | Indirectly affects the success of these API calls:
        | ``POST  /volumes``
@@ -2421,8 +2046,6 @@ matrix is validated by human beings.
      - rule:admin_or_owner
      - no
      - yes
-     - yes
-     - no
      - yes
      - yes
      - yes
@@ -2436,8 +2059,6 @@ matrix is validated by human beings.
      - (old rule)
      - project-reader
      - project-member
-     - project-admin
-     - system-reader
      - system-admin
      - (old "owner")
      - (old "admin")
@@ -2446,8 +2067,6 @@ matrix is validated by human beings.
      - volume_extension:default_set_or_update
      - rule:system_or_domain_or_project_admin
      - no
-     - no
-     - yes
      - no
      - yes
      - no
@@ -2464,14 +2083,10 @@ matrix is validated by human beings.
      - yes
      - no
      - yes
-     - no
-     - yes
    * - Get all default types
      - ``GET  /default-types/``
      - volume_extension:default_get_all
      - role:admin and system_scope:all
-     - no
-     - no
      - no
      - no
      - yes
@@ -2482,8 +2097,6 @@ matrix is validated by human beings.
      - volume_extension:default_unset
      - rule:system_or_domain_or_project_admin
      - no
-     - no
-     - yes
      - no
      - yes
      - no
