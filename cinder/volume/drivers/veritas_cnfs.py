@@ -42,7 +42,7 @@ class VeritasCNFSDriver(nfs.NfsDriver):
                   need to support.
           1.0.2 - cinder.interface.volumedriver decorator.
                   Mitaka/Newton/Okata Release
-          1.0.3 - Seperate create_cloned_volume() and
+          1.0.3 - Separate create_cloned_volume() and
                   create_volume_from_snapshot () functionality.
                   Pike Release
 
