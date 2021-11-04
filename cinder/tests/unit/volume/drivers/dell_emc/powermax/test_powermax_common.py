@@ -2333,9 +2333,12 @@ class PowerMaxCommonTest(test.TestCase):
                           self.common.manage_existing_snapshot,
                           snapshot, existing_ref)
 
+    @mock.patch.object(common.PowerMaxCommon, '_get_gen_with_uuid',
+                       return_value=(None, None))
     @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap',
                        return_value=False)
-    def test_manage_snapshot_fail_vol_not_snap_src(self, mock_snap):
+    def test_manage_snapshot_fail_vol_not_snap_src(
+            self, mock_snap, mock_uuid):
         snapshot = self.data.test_snapshot_manage
         existing_ref = {u'source-name': u'test_snap'}
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -2343,8 +2346,10 @@ class PowerMaxCommonTest(test.TestCase):
                           snapshot, existing_ref)
 
     @mock.patch.object(utils.PowerMaxUtils, 'modify_snapshot_prefix',
-                       side_effect=exception.VolumeBackendAPIException)
-    def test_manage_snapshot_fail_add_prefix(self, mock_mod):
+                       return_value=None)
+    @mock.patch.object(rest.PowerMaxRest, 'get_volume_snap',
+                       return_value=tpd.PowerMaxData.priv_snap_response)
+    def test_manage_snapshot_fail_add_prefix(self, mock_snap, mock_mod):
         snapshot = self.data.test_snapshot_manage
         existing_ref = {u'source-name': u'test_snap'}
         self.assertRaises(exception.VolumeBackendAPIException,

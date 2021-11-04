@@ -1138,3 +1138,51 @@ class PowerMaxUtils(object):
                 datadict.update({tuple[1]: datadict.get(tuple[0])})
                 del datadict[tuple[0]]
         return datadict
+
+    @staticmethod
+    def convert_to_string(in_value):
+        """Convert to string if value is an int
+
+        :param in_value: the input (most likely a str or int)
+        :returns: str
+        """
+        return in_value if isinstance(in_value, str) else str(in_value)
+
+    def verify_snap_using_gen(self, snap_vx, gen):
+        """Check if snap has the correct generation number
+
+        This also allows for the generation to be brought
+        back as an int without Python treating 0 as a False
+        :param snap_vx: the snapVX object
+        :param gen: the generation number
+        :returns: snap_vx or None
+        """
+        snap_gen = snap_vx.get('generation')
+        snap_gen = self.convert_to_string(snap_gen)
+        if snap_gen and snap_gen.isdigit():
+            if int(snap_gen) == int(gen):
+                return snap_vx
+        return None
+
+    @staticmethod
+    def check_uuid_regex(volume_id):
+        """Check the uuid regex
+
+        :param volume_id: the unique volume identifier
+        :returns: bool
+        """
+        uuid_regex = (re.compile(
+            r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',
+            re.I))
+        return uuid_regex.search(volume_id)
+
+    @staticmethod
+    def get_array_from_host(volume):
+        """Get the array from the host string
+
+        :param volume: volume object
+        :returns: array -- str
+        """
+        host = volume.host
+        host_list = host.split('+')
+        return host_list[-1]
