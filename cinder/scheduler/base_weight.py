@@ -18,6 +18,7 @@ Pluggable Weighing support
 """
 
 import abc
+from typing import Iterable, List, Optional  # noqa: H301
 
 from oslo_log import log as logging
 
@@ -27,7 +28,9 @@ from cinder.scheduler import base_handler
 LOG = logging.getLogger(__name__)
 
 
-def normalize(weight_list, minval=None, maxval=None):
+def normalize(weight_list: List[float],
+              minval: float = None,
+              maxval: float = None) -> Iterable[float]:
     """Normalize the values in a list between 0 and 1.0.
 
     The normalization is made regarding the lower and upper values present in
@@ -58,11 +61,11 @@ def normalize(weight_list, minval=None, maxval=None):
 
 class WeighedObject(object):
     """Object with weight information."""
-    def __init__(self, obj, weight):
+    def __init__(self, obj, weight: float):
         self.obj = obj
         self.weight = weight
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<WeighedObject '%s': %s>" % (self.obj, self.weight)
 
 
@@ -75,10 +78,10 @@ class BaseWeigher(object, metaclass=abc.ABCMeta):
     from the calculated weights.
     """
 
-    minval = None
-    maxval = None
+    minval: Optional[float] = None
+    maxval: Optional[float] = None
 
-    def weight_multiplier(self):
+    def weight_multiplier(self) -> float:
         """How weighted this weigher should be.
 
         Override this method in a subclass, so that the returned value is
@@ -88,10 +91,12 @@ class BaseWeigher(object, metaclass=abc.ABCMeta):
         return 1.0
 
     @abc.abstractmethod
-    def _weigh_object(self, obj, weight_properties):
+    def _weigh_object(self, obj, weight_properties: dict) -> float:
         """Override in a subclass to specify a weight for a specific object."""
 
-    def weigh_objects(self, weighed_obj_list, weight_properties):
+    def weigh_objects(self,
+                      weighed_obj_list: List[WeighedObject],
+                      weight_properties: dict) -> List[float]:
         """Weigh multiple objects.
 
         Override in a subclass if you need access to all objects in order
@@ -123,8 +128,10 @@ class BaseWeigher(object, metaclass=abc.ABCMeta):
 class BaseWeightHandler(base_handler.BaseHandler):
     object_class = WeighedObject
 
-    def get_weighed_objects(self, weigher_classes, obj_list,
-                            weighing_properties):
+    def get_weighed_objects(self,
+                            weigher_classes: list,
+                            obj_list: List[WeighedObject],
+                            weighing_properties: dict) -> List[WeighedObject]:
         """Return a sorted (descending), normalized list of WeighedObjects."""
 
         if not obj_list:

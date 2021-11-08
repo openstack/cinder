@@ -81,7 +81,7 @@ class SchedulerOptions(object):
         """Get current UTC. Broken out for testing."""
         return timeutils.utcnow()
 
-    def get_configuration(self, filename=None):
+    def get_configuration(self, filename=None) -> dict:
         """Check the json file for changes and load it if needed."""
         if not filename:
             filename = CONF.scheduler_json_config_location

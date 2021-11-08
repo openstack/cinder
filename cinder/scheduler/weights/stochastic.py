@@ -55,7 +55,7 @@ class StochasticHostWeightHandler(base_weight.BaseWeightHandler):
 
         # First compute the total weight of all the objects and the upper
         # bound for each object to "win" the lottery.
-        total_weight = 0
+        total_weight = 0.0
         table = []
         for weighed_obj in weighed_objs:
             total_weight += weighed_obj.weight

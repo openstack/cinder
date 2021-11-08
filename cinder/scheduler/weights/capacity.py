@@ -55,7 +55,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
     negative number and the weighing has the opposite effect of the default.
 
     """
-    def weight_multiplier(self):
+    def weight_multiplier(self) -> float:
         """Override the weight multiplier."""
         return CONF.capacity_weight_multiplier
 
@@ -75,12 +75,14 @@ class CapacityWeigher(weights.BaseHostWeigher):
         tmp_weights = super(CapacityWeigher, self).weigh_objects(
             weighed_obj_list, weight_properties)
 
+        assert self.maxval is not None
         if math.isinf(self.maxval):
             # NOTE(jecarey): if all weights were infinite then parent
             # method returns 0 for all of the weights.  Thus self.minval
             # cannot be infinite at this point
             copy_weights = [w for w in tmp_weights if not math.isinf(w)]
             self.maxval = max(copy_weights)
+            assert self.minval is not None
             offset = (self.maxval - self.minval) * OFFSET_MULT
             self.maxval += OFFSET_MIN if offset == 0.0 else offset
             tmp_weights = [self.maxval if math.isinf(w) else w
@@ -88,7 +90,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
 
         return tmp_weights
 
-    def _weigh_object(self, host_state, weight_properties):
+    def _weigh_object(self, host_state, weight_properties) -> float:
         """Higher weights win.  We want spreading to be the default."""
         free_space = host_state.free_capacity_gb
         total_space = host_state.total_capacity_gb
@@ -135,7 +137,7 @@ class AllocatedCapacityWeigher(weights.BaseHostWeigher):
     positive number and the weighing has the opposite effect of the default.
     """
 
-    def weight_multiplier(self):
+    def weight_multiplier(self) -> float:
         """Override the weight multiplier."""
         return CONF.allocated_capacity_weight_multiplier
 

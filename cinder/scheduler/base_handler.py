@@ -31,7 +31,7 @@ class BaseHandler(object):
         self.modifier_class_type = modifier_class_type
         self.extension_manager = extension.ExtensionManager(modifier_namespace)
 
-    def _is_correct_class(self, cls):
+    def _is_correct_class(self, cls) -> bool:
         """Return whether an object is a class of the correct type.
 
         (or is not prefixed with an underscore)
@@ -40,7 +40,7 @@ class BaseHandler(object):
                 not cls.__name__.startswith('_') and
                 issubclass(cls, self.modifier_class_type))
 
-    def get_all_classes(self):
+    def get_all_classes(self) -> list:
         # We use a set, as some classes may have an entrypoint of their own,
         # and also be returned by a function such as 'all_filters' for example
         return [ext.plugin for ext in self.extension_manager if
