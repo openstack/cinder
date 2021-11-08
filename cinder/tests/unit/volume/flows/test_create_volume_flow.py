@@ -1255,7 +1255,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
             exception=err)
 
 
-@ddt.ddt(testNameFormat=ddt.TestNameFormat.INDEX_ONLY)
+@ddt.ddt
 class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
 
     def setUp(self):
