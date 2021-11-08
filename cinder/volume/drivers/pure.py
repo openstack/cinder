@@ -2823,7 +2823,17 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     def _get_array_wwns(array):
         """Return list of wwns from the array"""
         ports = array.list_ports()
-        return [port["wwn"] for port in ports if port["wwn"]]
+        try:
+            valid_ports = [
+                port["wwn"]
+                for port in ports
+                if port["wwn"] and not port["nqn"]
+            ]
+        except KeyError:  # Older array code versions will not return nqn
+            valid_ports = [
+                port["wwn"] for port in ports if port["wwn"]
+            ]
+        return valid_ports
 
     @pure_driver_debug_trace
     def initialize_connection(self, volume, connector):

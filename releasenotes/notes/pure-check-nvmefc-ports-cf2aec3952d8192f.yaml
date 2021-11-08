@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pure Storage Driver: Add internal check to allow for FlashArray with
+    joint FC and NVMe-FC support
