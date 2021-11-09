@@ -412,9 +412,9 @@ class CinderPersistentObject(object):
                                 mean in some cases that we have to reload the
                                 object from the database.
         :param order: Specific order of fields in which to update the values
-        :returns: number of db rows that were updated, which can be used as a
-                  boolean, since it will be 0 if we couldn't update the DB and
-                  1 if we could, because we are using unique index id.
+        :returns: Boolean indicating whether db rows were updated.
+                  It will be False if we couldn't update the DB and
+                  True if we could.
         """
         if 'id' not in self.fields:
             msg = (_('VersionedObject %s does not support conditional update.')
