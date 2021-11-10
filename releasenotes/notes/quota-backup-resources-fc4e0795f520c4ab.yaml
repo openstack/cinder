@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1952420 <https://bugs.launchpad.net/cinder/+bug/1952420>`_: Fixed
+    quota warnings about ``backups`` and ``backup_gigabytes`` when creating
+    backups.
