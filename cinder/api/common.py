@@ -394,10 +394,10 @@ def get_enabled_resource_filters(resource=None):
         return {}
 
 
-def get_time_comparsion_operators():
-    """Get list of time comparsion operators.
+def get_time_comparison_operators():
+    """Get list of time comparison operators.
 
-    This method returns list which contains the allowed comparsion operators.
+    This method returns list which contains the allowed comparison operators.
     """
     return ["gt", "gte", "eq", "neq", "lt", "lte"]
 
