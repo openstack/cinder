@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Pure Storage driver adds volume metadata describing the backend
+    array name (``array_name``) and volume name (``array_volume_name``).
+    This allows easier identification and location of a cinder volume
+    when multiple clusters are using the same backend arrays, or when
+    the cinder scheduler has multiplae backends to choose from.

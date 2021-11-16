@@ -431,10 +431,22 @@ class PureBaseVolumeDriver(san.SanDriver):
         for vol in volumes:
             if not vol.provider_id:
                 vol.provider_id = self._get_vol_name(vol)
-                vol_updates.append({
-                    'id': vol.id,
-                    'provider_id': self._generate_purity_vol_name(vol),
-                })
+                vol_name = self._generate_purity_vol_name(vol)
+                if vol.metadata:
+                    vol_updates.append({
+                        'id': vol.id,
+                        'provider_id': vol_name,
+                        'metadata': {**vol.metadata,
+                                     'array_volume_name': vol_name,
+                                     'array_name': self._array.array_name},
+                    })
+                else:
+                    vol_updates.append({
+                        'id': vol.id,
+                        'provider_id': vol_name,
+                        'metadata': {'array_volume_name': vol_name,
+                                     'array_name': self._array.array_name},
+                    })
         return vol_updates, None
 
     @pure_driver_debug_trace
@@ -529,11 +541,23 @@ class PureBaseVolumeDriver(san.SanDriver):
         if self._is_vol_in_pod(purity_vol_name) or async_enabled:
             repl_status = fields.ReplicationStatus.ENABLED
 
-        model_update = {
-            'id': volume.id,
-            'provider_id': purity_vol_name,
-            'replication_status': repl_status,
-        }
+        if not volume.metadata:
+            model_update = {
+                'id': volume.id,
+                'provider_id': purity_vol_name,
+                'replication_status': repl_status,
+                'metadata': {'array_volume_name': purity_vol_name,
+                             'array_name': self._array.array_name}
+            }
+        else:
+            model_update = {
+                'id': volume.id,
+                'provider_id': purity_vol_name,
+                'replication_status': repl_status,
+                'metadata': {**volume.metadata,
+                             'array_volume_name': purity_vol_name,
+                             'array_name': self._array.array_name}
+            }
         return model_update
 
     def _enable_async_replication_if_needed(self, array, volume):
@@ -740,7 +764,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                 except purestorage.PureError as err:
                     # Swallow any exception, just warn and continue
                     LOG.warning("Disconnect on secondary array failed with"
-                                " message: %(msg)s", {"msg": err.text})
+                                " message: %(msg)s", {"msg": err.reason})
         # Now disconnect from the current array
         self._disconnect(self._get_current_array(), volume,
                          connector, remove_remote_hosts=False,
@@ -1318,6 +1342,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         return {
             'provider_id': new_vol_name,
             'replication_status': repl_status,
+            'metadata': {'array_volume_name': new_vol_name,
+                         'array_name': current_array.array_name},
         }
 
     @pure_driver_debug_trace
@@ -2855,7 +2881,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 except purestorage.PureError as err:
                     # Swallow any exception, just warn and continue
                     LOG.warning("Disconnect on sendondary array failed with"
-                                " message: %(msg)s", {"msg": err.text})
+                                " message: %(msg)s", {"msg": err.reason})
 
         # Now disconnect from the current array, removing any left over
         # remote hosts that we maybe couldn't reach.
