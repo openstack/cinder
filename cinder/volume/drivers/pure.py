@@ -137,11 +137,6 @@ EXTRA_SPECS_REPL_TYPE = "replication_type"
 MAX_VOL_LENGTH = 63
 MAX_SNAP_LENGTH = 96
 UNMANAGED_SUFFIX = '-unmanaged'
-QOS_REQUIRED_API_VERSION = '1.17'
-SYNC_REPLICATION_REQUIRED_API_VERSION = '1.13'
-ASYNC_REPLICATION_REQUIRED_API_VERSION = '1.3'
-MANAGE_SNAP_REQUIRED_API_VERSION = '1.4'
-PERSONALITY_REQUIRED_API_VERSION = '1.14'
 
 REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL = 5  # 5 seconds
 REPL_SETTINGS_PROPAGATE_MAX_RETRIES = 36  # 36 * 5 = 180 seconds
@@ -279,24 +274,6 @@ class PureBaseVolumeDriver(san.SanDriver):
                     ssl_cert_path=ssl_cert_path
                 )
 
-                api_versions = target_array._list_available_rest_versions()
-
-                if repl_type == REPLICATION_TYPE_ASYNC:
-                    req_api_version = ASYNC_REPLICATION_REQUIRED_API_VERSION
-                elif repl_type == REPLICATION_TYPE_SYNC:
-                    req_api_version = SYNC_REPLICATION_REQUIRED_API_VERSION
-                else:
-                    msg = _('Invalid replication type specified:') % repl_type
-                    raise PureDriverException(reason=msg)
-
-                if req_api_version not in api_versions:
-                    msg = _('Unable to do replication with Purity REST '
-                            'API version, requires minimum of '
-                            '%(required_version)s.') % {
-                        'required_version': req_api_version
-                    }
-                    raise PureDriverException(reason=msg)
-
                 target_array_info = target_array.get()
                 target_array.array_name = target_array_info["array_name"]
                 target_array.array_id = target_array_info["id"]
@@ -378,6 +355,13 @@ class PureBaseVolumeDriver(san.SanDriver):
         )
 
         array_info = self._array.get()
+        if version.LooseVersion(array_info["version"]) < version.LooseVersion(
+            '5.3.0'
+        ):
+            msg = _("FlashArray Purity version less than 5.3.0 unsupported."
+                    " Please upgrade your backend to a supported version.")
+            raise PureDriverException(msg)
+
         self._array.array_name = array_info["array_name"]
         self._array.array_id = array_info["id"]
         self._array.replication_type = None
@@ -484,11 +468,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         ctxt = context.get_admin_context()
         type_id = volume.get('volume_type_id')
         current_array = self._get_current_array()
-        rest_versions = current_array._list_available_rest_versions()
         if type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
-            if QOS_REQUIRED_API_VERSION in rest_versions:
-                qos = self._get_qos_settings(volume_type)
+            qos = self._get_qos_settings(volume_type)
         if qos is not None:
             self.create_with_qos(current_array, vol_name, vol_size, qos)
         else:
@@ -509,11 +491,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
         ctxt = context.get_admin_context()
         type_id = volume.get('volume_type_id')
-        rest_versions = current_array._list_available_rest_versions()
         if type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
-            if QOS_REQUIRED_API_VERSION in rest_versions:
-                qos = self._get_qos_settings(volume_type)
+            qos = self._get_qos_settings(volume_type)
 
         current_array.copy_volume(snap_name, vol_name)
         self._extend_if_needed(current_array,
@@ -606,16 +586,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Disconnect all hosts and delete the volume"""
         vol_name = self._get_vol_name(volume)
         current_array = self._get_current_array()
-        rest_versions = current_array._list_available_rest_versions()
         try:
             # Do a pass over remaining connections on the current array, if
             # we can try and remove any remote connections too.
-            if SYNC_REPLICATION_REQUIRED_API_VERSION in rest_versions:
-                hosts = current_array.list_volume_private_connections(
-                    vol_name, remote=True)
-            else:
-                hosts = current_array.list_volume_private_connections(
-                    vol_name)
+            hosts = current_array.list_volume_private_connections(
+                vol_name, remote=True)
             for host_info in hosts:
                 host_name = host_info["host"]
                 self._disconnect_host(current_array, host_name, vol_name)
@@ -710,18 +685,13 @@ class PureBaseVolumeDriver(san.SanDriver):
         Returns True if it was the hosts last connection.
         """
         vol_name = self._get_vol_name(volume)
-        rest_versions = array._list_available_rest_versions()
         if connector is None:
             # If no connector was provided it is a force-detach, remove all
             # host connections for the volume
             LOG.warning("Removing ALL host connections for volume %s",
                         vol_name)
-            if SYNC_REPLICATION_REQUIRED_API_VERSION in rest_versions:
-                # Remote connections are only allowed in newer API versions
-                connections = array.list_volume_private_connections(
-                    vol_name, remote=True)
-            else:
-                connections = array.list_volume_private_connections(vol_name)
+            connections = array.list_volume_private_connections(
+                vol_name, remote=True)
 
             for connection in connections:
                 self._disconnect_host(array, connection['host'], vol_name)
@@ -1332,15 +1302,13 @@ class PureBaseVolumeDriver(san.SanDriver):
         # Check if the volume_type has QoS settings and if so
         # apply them to the newly managed volume
         qos = None
-        rest_versions = current_array._list_available_rest_versions()
-        if QOS_REQUIRED_API_VERSION in rest_versions:
-            qos = self._get_qos_settings(volume.volume_type)
-            if qos is not None:
-                self.set_qos(current_array, new_vol_name, qos)
-            else:
-                current_array.set_volume(new_vol_name,
-                                         iops_limit='',
-                                         bandwidth_limit='')
+        qos = self._get_qos_settings(volume.volume_type)
+        if qos is not None:
+            self.set_qos(current_array, new_vol_name, qos)
+        else:
+            current_array.set_volume(new_vol_name,
+                                     iops_limit='',
+                                     bandwidth_limit='')
         volume.provider_id = new_vol_name
         async_enabled = self._enable_async_replication_if_needed(current_array,
                                                                  volume)
@@ -1400,24 +1368,12 @@ class PureBaseVolumeDriver(san.SanDriver):
                  {"ref_name": vol_name, "new_name": unmanaged_vol_name})
         self._rename_volume_object(vol_name, unmanaged_vol_name)
 
-    def _verify_manage_snap_api_requirements(self):
-        current_array = self._get_current_array()
-        rest_versions = current_array._list_available_rest_versions()
-        if MANAGE_SNAP_REQUIRED_API_VERSION not in rest_versions:
-            msg = _('Unable to do manage snapshot operations with Purity REST '
-                    'API version, requires '
-                    '%(required_version)s.') % {
-                'required_version': MANAGE_SNAP_REQUIRED_API_VERSION
-            }
-            raise PureDriverException(reason=msg)
-
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings an existing backend storage object under Cinder management.
 
         We expect a snapshot name in the existing_ref that matches one in
         Purity.
         """
-        self._verify_manage_snap_api_requirements()
         self._validate_manage_existing_ref(existing_ref, is_snap=True)
         ref_snap_name = existing_ref['name']
         new_snap_name = self._get_snap_name(snapshot)
@@ -1435,7 +1391,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         We expect a snapshot name in the existing_ref that matches one in
         Purity.
         """
-        self._verify_manage_snap_api_requirements()
         snap_info = self._validate_manage_existing_ref(existing_ref,
                                                        is_snap=True)
         size = self._round_bytes_to_gib(snap_info['size'])
@@ -1449,7 +1404,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         We expect a snapshot name in the existing_ref that matches one in
         Purity.
         """
-        self._verify_manage_snap_api_requirements()
         snap_name = self._get_snap_name(snapshot)
         if len(snap_name + UNMANAGED_SUFFIX) > MAX_SNAP_LENGTH:
             unmanaged_snap_name = snap_name[:-len(UNMANAGED_SUFFIX)] + \
@@ -1573,28 +1527,13 @@ class PureBaseVolumeDriver(san.SanDriver):
                         verify_https=None, ssl_cert_path=None,
                         request_kwargs=None):
 
-        if (version.LooseVersion(purestorage.VERSION) <
-                version.LooseVersion('1.17.0')):
-            if request_kwargs is not None:
-                LOG.warning("Unable to specify request_kwargs='%s' on "
-                            "purestorage.FlashArray using 'purestorage' "
-                            "python module <1.17.0. Current version: %s",
-                            request_kwargs,
-                            purestorage.VERSION)
-            array = purestorage.FlashArray(san_ip,
-                                           api_token=api_token,
-                                           rest_version=rest_version,
-                                           verify_https=verify_https,
-                                           ssl_cert=ssl_cert_path,
-                                           user_agent=self._user_agent)
-        else:
-            array = purestorage.FlashArray(san_ip,
-                                           api_token=api_token,
-                                           rest_version=rest_version,
-                                           verify_https=verify_https,
-                                           ssl_cert=ssl_cert_path,
-                                           user_agent=self._user_agent,
-                                           request_kwargs=request_kwargs)
+        array = purestorage.FlashArray(san_ip,
+                                       api_token=api_token,
+                                       rest_version=rest_version,
+                                       verify_https=verify_https,
+                                       ssl_cert=ssl_cert_path,
+                                       user_agent=self._user_agent,
+                                       request_kwargs=request_kwargs)
         array_info = array.get()
         array.array_name = array_info["array_name"]
         array.array_id = array_info["id"]
@@ -1928,16 +1867,14 @@ class PureBaseVolumeDriver(san.SanDriver):
         # make sure the volume gets the correct new QoS settings.
         # This could mean removing existing QoS settings.
         current_array = self._get_current_array()
-        rest_versions = current_array._list_available_rest_versions()
-        if QOS_REQUIRED_API_VERSION in rest_versions:
-            qos = self._get_qos_settings(new_type)
-            vol_name = self._generate_purity_vol_name(volume)
-            if qos is not None:
-                self.set_qos(current_array, vol_name, qos)
-            else:
-                current_array.set_volume(vol_name,
-                                         iops_limit='',
-                                         bandwidth_limit='')
+        qos = self._get_qos_settings(new_type)
+        vol_name = self._generate_purity_vol_name(volume)
+        if qos is not None:
+            self.set_qos(current_array, vol_name, qos)
+        else:
+            current_array.set_volume(vol_name,
+                                     iops_limit='',
+                                     bandwidth_limit='')
 
         return True, model_update
 
@@ -2077,23 +2014,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._swap_replication_state(current_array, secondary_array)
 
         return secondary_array.backend_id, model_updates, []
-
-    @pure_driver_debug_trace
-    def get_check_personality(self, array):
-        personality = self.configuration.safe_get('pure_host_personality')
-        rest_versions = array._list_available_rest_versions()
-        if personality:
-            if PERSONALITY_REQUIRED_API_VERSION not in rest_versions:
-                # Continuing here would mean creating a host not according
-                # to specificiations, possibly leading to unexpected
-                # behavior later on.
-                msg = _('Unable to set host personality with Purity REST '
-                        'API version, requires '
-                        '%(required_version)s.') % {
-                    'required_version': PERSONALITY_REQUIRED_API_VERSION
-                }
-                raise PureDriverException(reason=msg)
-        return personality
 
     @pure_driver_debug_trace
     def set_personality(self, array, host_name, personality):
@@ -2446,28 +2366,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         return secondary_array
 
     def _async_failover_host(self, volumes, secondary_array, pg_snap):
-        # NOTE(patrickeast): This currently requires a call with REST API 1.3.
-        # If we need to, create a temporary FlashArray for this operation.
-        api_version = secondary_array.get_rest_version()
-        LOG.debug("Current REST API for array id %(id)s is %(api_version)s",
-                  {"id": secondary_array.array_id, "api_version": api_version})
-        if api_version != '1.3':
-            # Try to copy the flasharray as close as we can..
-            if hasattr(secondary_array, '_request_kwargs'):
-                target_array = self._get_flasharray(
-                    secondary_array._target,
-                    api_token=secondary_array._api_token,
-                    rest_version='1.3',
-                    request_kwargs=secondary_array._request_kwargs,
-                )
-            else:
-                target_array = self._get_flasharray(
-                    secondary_array._target,
-                    api_token=secondary_array._api_token,
-                    rest_version='1.3',
-                )
-        else:
-            target_array = secondary_array
+        # Try to copy the flasharray as close as we can.
+        target_array = self._get_flasharray(
+            secondary_array._target,
+            api_token=secondary_array._api_token,
+            request_kwargs=secondary_array._request_kwargs,
+        )
 
         volume_snaps = target_array.get_volume(pg_snap['name'],
                                                snap=True,
@@ -2579,11 +2483,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
     def _get_host(self, array, connector, remote=False):
         """Return dict describing existing Purity host object or None."""
-        rest_versions = array._list_available_rest_versions()
-        if remote and SYNC_REPLICATION_REQUIRED_API_VERSION in rest_versions:
-            hosts = array.list_hosts(remote=True)
-        else:
-            hosts = array.list_hosts()
+        hosts = array.list_hosts(remote=remote)
         matching_hosts = []
         for host in hosts:
             if connector["initiator"] in host["iqn"]:
@@ -2746,7 +2646,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                         reason=_("Unable to re-use host with unknown CHAP "
                                  "credentials configured."))
         else:
-            personality = self.get_check_personality(array)
+            personality = self.configuration.safe_get('pure_host_personality')
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with IQN:"
                      " %(iqn)s.", {"host_name": host_name, "iqn": iqn})
@@ -2806,11 +2706,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
     def _get_host(self, array, connector, remote=False):
         """Return dict describing existing Purity host object or None."""
-        rest_versions = array._list_available_rest_versions()
-        if remote and SYNC_REPLICATION_REQUIRED_API_VERSION in rest_versions:
-            hosts = array.list_hosts(remote=True)
-        else:
-            hosts = array.list_hosts()
+        hosts = array.list_hosts(remote=remote)
         matching_hosts = []
         for host in hosts:
             for wwn in connector["wwpns"]:
@@ -2821,18 +2717,18 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
     @staticmethod
     def _get_array_wwns(array):
-        """Return list of wwns from the array"""
+        """Return list of wwns from the array
+
+        Ensure that only true scsi FC ports are selected
+        and not any that are enabled for NVMe-based FC with
+        an associated NQN.
+        """
         ports = array.list_ports()
-        try:
-            valid_ports = [
-                port["wwn"]
-                for port in ports
-                if port["wwn"] and not port["nqn"]
-            ]
-        except KeyError:  # Older array code versions will not return nqn
-            valid_ports = [
-                port["wwn"] for port in ports if port["wwn"]
-            ]
+        valid_ports = [
+            port["wwn"]
+            for port in ports
+            if port["wwn"] and not port["nqn"]
+        ]
         return valid_ports
 
     @pure_driver_debug_trace
@@ -2888,7 +2784,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             LOG.info("Re-using existing purity host %(host_name)r",
                      {"host_name": host_name})
         else:
-            personality = self.get_check_personality(array)
+            personality = self.configuration.safe_get('pure_host_personality')
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info("Creating host object %(host_name)r with WWN:"
                      " %(wwn)s.", {"host_name": host_name, "wwn": wwns})

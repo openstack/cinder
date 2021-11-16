@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    Pure Storage: Minimum supported FlashArray Purity//FA is changed to 5.3.0.
+    All FlashArray backends must be at at least this minimum version or the
+    driver will not initialize.
+fixes:
+  - |
+    Pure Storage: Remove all API version checks in driver as the new minimum
+    FlashArray Purity//FA version supports all previously version-gated
+    features and functionality support.
+other:
+  - |
+    Pure Storage: FlashArray minimum Purity//FA version is increased to 5.3.0.
+    All FlashArray backends must be at at least this minimum version or the
+    driver will not initialize.
