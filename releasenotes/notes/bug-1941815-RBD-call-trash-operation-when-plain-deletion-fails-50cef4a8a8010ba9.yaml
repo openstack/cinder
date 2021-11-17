@@ -1,0 +1,24 @@
+---
+fixes:
+  - |
+    RBD driver `bug #1941815
+    <https://bugs.launchpad.net/cinder/+bug/1941815>`_: Fixed
+    deleting volumes with snapshots/volumes in the ceph trash space.
+
+upgrade:
+  - |
+    **RBD driver: Enable Ceph V2 Clone API and Ceph Trash auto purge**
+
+    In light of the fix for RBD driver `bug #1941815
+    <https://bugs.launchpad.net/cinder/+bug/1941815>`_, we want to
+    bring the following information to your attention.
+
+    Using the v2 clone format for cloned volumes allows volumes with
+    dependent images to be moved to the trash - where they remain
+    until purged - and allow the RBD driver to postpone the deletion
+    until the volume has no dependent images. Configuring the trash
+    purge is recommended to avoid wasting space with these trashed
+    volumes. Since the Ceph Octopus release, the trash can be
+    configured to automatically purge on a defined schedule.
+    See the ``rbd trash purge schedule`` commands in the `rbd manpage
+    <https://docs.ceph.com/en/octopus/man/8/rbd/>`_.
