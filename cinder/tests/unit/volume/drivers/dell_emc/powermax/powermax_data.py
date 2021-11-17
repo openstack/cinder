@@ -475,6 +475,11 @@ class PowerMaxData(object):
     extra_specs_tags = deepcopy(extra_specs)
     extra_specs_tags.update({utils.STORAGE_GROUP_TAGS: sg_tags})
 
+    extra_specs_qos = deepcopy(extra_specs)
+    qos_dict = {
+        'total_iops_sec': '4000',
+        'DistributionType': 'Always'}
+    extra_specs_qos['qos'] = qos_dict
     rep_extra_specs_mgmt = deepcopy(rep_extra_specs)
     rep_extra_specs_mgmt['srp'] = srp
     rep_extra_specs_mgmt['mgmt_sg_name'] = rdf_managed_async_grp

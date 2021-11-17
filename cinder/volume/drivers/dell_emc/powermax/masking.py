@@ -461,14 +461,13 @@ class PowerMaxMasking(object):
                       'volume_name': masking_view_dict[utils.VOL_NAME]})
             LOG.error(msg)
 
-        # If qos exists, update storage group to reflect qos parameters
-        if 'qos' in extra_specs:
-            self.rest.update_storagegroup_qos(
-                serial_number, storagegroup_name, extra_specs)
-
-        # If storagetype:storagegrouptags exist update storage group
-        # to add tags
         if not parent:
+            # If qos exists, update storage group to reflect qos parameters
+            if 'qos' in extra_specs:
+                self.rest.update_storagegroup_qos(
+                    serial_number, storagegroup_name, extra_specs)
+            # If storagetype:storagegrouptags exist update storage group
+            # to add tags
             self._add_tags_to_storage_group(
                 serial_number, storagegroup, extra_specs)
 
