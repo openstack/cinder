@@ -614,7 +614,7 @@ class NetAppBlockStorageLibrary(object):
 
         ontap_version = self.zapi_client.get_ontap_version(cached=True)
 
-        if ontap_version >= '9.5':
+        if ontap_version >= (9, 5, 0):
             self.zapi_client.do_direct_resize(path, new_size_bytes)
         else:
             lun_geometry = self.zapi_client.get_lun_geometry(path)

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    NetApp ONTAP driver `bug #1955057
+    <https://bugs.launchpad.net/cinder/+bug/1955057>`_: Fixed
+    the function get_ontap_version on Cinder NetApp driver, now it returns a
+    tuple of integers instead of a string.
