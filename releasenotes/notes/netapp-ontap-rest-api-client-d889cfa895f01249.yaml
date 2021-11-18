@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    NetApp drivers: NFS, iSCSI and FCP drivers have now the option to request
+    ONTAP operations through REST API. The new option `netapp_use_legacy_client`
+    switch between the old ZAPI client approach and new REST client. It is
+    default to `True`, meaning that the drivers will keep working as before
+    using ZAPI operations. If desired, this option can be set to `False` connecting
+    with new REST client that performs REST API operations if it is available,
+    otherwise falls back to ZAPI.

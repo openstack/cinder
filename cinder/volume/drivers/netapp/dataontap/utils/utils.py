@@ -26,6 +26,7 @@ from cinder.i18n import _
 from cinder.volume import configuration
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
+from cinder.volume.drivers.netapp.dataontap.client import client_cmode_rest
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume import volume_utils
 
@@ -65,15 +66,28 @@ def get_client_for_backend(backend_name, vserver_name=None):
     """Get a cDOT API client for a specific backend."""
 
     config = get_backend_configuration(backend_name)
-    client = client_cmode.Client(
-        transport_type=config.netapp_transport_type,
-        username=config.netapp_login,
-        password=config.netapp_password,
-        hostname=config.netapp_server_hostname,
-        port=config.netapp_server_port,
-        vserver=vserver_name or config.netapp_vserver,
-        trace=volume_utils.TRACE_API,
-        api_trace_pattern=config.netapp_api_trace_pattern)
+    if config.netapp_use_legacy_client:
+        client = client_cmode.Client(
+            transport_type=config.netapp_transport_type,
+            username=config.netapp_login,
+            password=config.netapp_password,
+            hostname=config.netapp_server_hostname,
+            port=config.netapp_server_port,
+            vserver=vserver_name or config.netapp_vserver,
+            trace=volume_utils.TRACE_API,
+            api_trace_pattern=config.netapp_api_trace_pattern)
+    else:
+        client = client_cmode_rest.RestClient(
+            transport_type=config.netapp_transport_type,
+            ssl_cert_path=config.netapp_ssl_cert_path,
+            username=config.netapp_login,
+            password=config.netapp_password,
+            hostname=config.netapp_server_hostname,
+            port=config.netapp_server_port,
+            vserver=vserver_name or config.netapp_vserver,
+            trace=volume_utils.TRACE_API,
+            api_trace_pattern=config.netapp_api_trace_pattern,
+            async_rest_timeout=config.netapp_async_rest_timeout)
 
     return client
 

@@ -4097,7 +4097,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             'aggregate': 'fake_aggr1',
             'compression_enabled': False,
             'dedupe_enabled': True,
-            'language': 'en_US',
+            'language': 'c.utf_8',
             'size': 1,
             'snapshot_policy': 'default',
             'snapshot_reserve': '5',
