@@ -2086,3 +2086,12 @@ class PowerMaxUtils(object):
             service_level = str()
 
         return array_id, srp, service_level, workload
+
+    @staticmethod
+    def convert_to_string(in_value):
+        """Convert to string if value is an int
+
+        :param in_value: the input (most likely a str or int)
+        :returns: str
+        """
+        return in_value if isinstance(in_value, str) else str(in_value)
