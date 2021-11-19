@@ -419,8 +419,9 @@ operator, in a `Create a volume`_ request.  If you wish to create a volume of
 *Note to operators:* The ``__DEFAULT__`` volume type was introduced in
 the Train release as a placeholder to prevent the creation of untyped
 volumes.  Under the proper conditions, it may be removed from your
-deployment.  Consult the `Train series release notes
-<https://docs.openstack.org/releasenotes/cinder/train.html#other-notes>`_
+deployment.  Consult the Default Volume Types section in
+`Cinder Administration Guide
+<https://docs.openstack.org/cinder/latest/admin/index.html>`_
 for details.
 
 Response codes
