@@ -107,7 +107,7 @@ class VolumeController(volumes_v2.VolumeController):
             if time_comparison_filter in filters:
                 time_filter_dict = {}
                 comparison_units = filters[time_comparison_filter].split(',')
-                operators = common.get_time_comparsion_operators()
+                operators = common.get_time_comparison_operators()
                 for comparison_unit in comparison_units:
                     try:
                         operator_and_time = comparison_unit.split(":")
