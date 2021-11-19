@@ -836,10 +836,13 @@ class RBDTestCase(test.TestCase):
                 2, drv.rbd.RBD.return_value.trash_move.call_count)
 
     @common_mocks
-    def delete_volume_not_found(self):
+    def test_delete_volume_not_found_at_open(self):
         self.mock_rbd.Image.side_effect = self.mock_rbd.ImageNotFound
         self.assertIsNone(self.driver.delete_volume(self.volume_a))
-        self.mock_rbd.Image.assert_called_once_with()
+        with mock.patch.object(driver, 'RADOSClient') as client:
+            client = self.mock_client.return_value.__enter__.return_value
+            self.mock_rbd.Image.assert_called_once_with(client.ioctx,
+                                                        self.volume_a.name)
         # Make sure the exception was raised
         self.assertEqual([self.mock_rbd.ImageNotFound], RAISED_EXCEPTIONS)
 
