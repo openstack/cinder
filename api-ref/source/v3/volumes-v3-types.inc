@@ -306,7 +306,12 @@ Show default volume type
 
 .. rest_method::  GET /v3/{project_id}/types/default
 
-Shows details for the default volume type if configured.
+Shows details for the default volume type, that is, the volume type that
+will be used in the `Create a volume`_ request if you do not specify one.
+This could be one of the following:
+
+- Your project's default volume type *(since microversion 3.62)*
+- The installation's default volume type as configured by the operator
 
 Response codes
 --------------
@@ -314,6 +319,28 @@ Response codes
 .. rest_status_code:: success ../status.yaml
 
    - 200
+
+.. rest_status_code:: error ../status.yaml
+
+   - 404
+   - 500
+
+Error conditions
+----------------
+
+It is only possible to receive a 404 (Not Found) response in pre-Train
+versions of the Block Storage service, as a configured default volume
+type has been required since the Train release.
+
+If you receive a 500 (Internal Error Response), then the default volume
+type has not been configured correctly by the operator.  Please contact
+your cloud provider.
+
+* When the default volume type is misconfigured, requests to
+  `Create a volume`_ that do not include a volume type will
+  fail.
+* The workaround is to include a volume type in your request.  You
+  can `List all volume types`_ to determine a volume type to use.
 
 Request
 -------
@@ -350,6 +377,11 @@ Delete a volume type
 
 Deletes a volume type.
 
+*Note to operators:* Since the Train release, untyped volumes are
+not allowed, and a configured default volume type is required in each
+deployment.  An attempt to delete the configured default volume type
+will fail.
+
 Response codes
 --------------
 
@@ -373,6 +405,23 @@ List all volume types
 .. rest_method::  GET /v3/{project_id}/types
 
 Lists volume types.
+
+To determine which of these is the default type that will be used if you
+do not specify one in the `Create a volume`_ request, use the
+`Show default volume type`_ request.
+
+*Note to users:* There may be a volume type named ``__DEFAULT__`` in the
+list.  Try not to use this volume type, unless necessary or instructed by the
+operator, in a `Create a volume`_ request.  If you wish to create a volume of
+*your* default volume type, simply omit the ``volume_type`` parameter in your
+`Create a volume`_ request.
+
+*Note to operators:* The ``__DEFAULT__`` volume type was introduced in
+the Train release as a placeholder to prevent the creation of untyped
+volumes.  Under the proper conditions, it may be removed from your
+deployment.  Consult the `Train series release notes
+<https://docs.openstack.org/releasenotes/cinder/train.html#other-notes>`_
+for details.
 
 Response codes
 --------------

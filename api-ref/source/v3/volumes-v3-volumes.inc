@@ -165,6 +165,14 @@ To create a bootable volume, include the UUID of the image from
 which you want to create the volume in the ``imageRef`` attribute
 in the request body.
 
+Since the Train release, every volume must have a volume type.  It
+is **optional** to specify a volume type as part of your `Create a
+volume` request.  If you do not specify one, a default volume type
+will be supplied for you.  This type may vary according to what
+project you are in and how the operator has configured the Block
+Storage service.  Use the `Show default volume type`_ request to
+determine your effective default volume type.
+
 Preconditions
 
 - You must have enough volume storage quota remaining to create a
