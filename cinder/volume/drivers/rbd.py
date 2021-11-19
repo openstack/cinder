@@ -389,7 +389,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                     # so that the periodic purge retries on the next iteration
                     # and leaves ERRORs in the logs in case the deletion fails
                     # repeatedly.
-                    if e.errno == errno.EPERM:
+                    # pylint: disable=E1101
+                    if (e is OSError) and (e.errno == errno.EPERM):
                         LOG.debug("%s has not expired yet on backend '%s'",
                                   vol.get('name'),
                                   self._backend_name)
