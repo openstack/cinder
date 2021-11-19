@@ -45,6 +45,42 @@ If the following applies to the patch, a release note is required:
 
   * REST API changes
 
+
+Reviewing release note content
+------------------------------
+
+Release notes are user facing.  We expect operators to read them (and other
+people interested in seeing what's in a new release may read them, too).
+This makes a release note different from a commit message, which is aimed
+at other developers.
+
+Keep this in mind as you review a release note.  Also, since it's user
+facing, something you would think of as a nit in a code comment (for
+example, bad punctuation or a misspelled word) is not really a nit in a
+release note--it's something that needs to be corrected.  This also applies
+to the format of the release note, which should follow the standards set
+out later in this document.
+
+In summary, don't feel bad about giving a -1 for a nit in a release note.  We
+don't want to have to go back and fix typos later, especially for a bugfix
+that's likely to be backported, which would require squashing the typo fix into
+the backport patch (which is something that's easy to forget).  Thus we really
+want to get release notes right the first time.
+
+Fixing a release note
+---------------------
+
+Of course, even with careful writing and reviewing, a mistake can slip
+through that isn't noticed until after a release.  If that happens, the
+patch to correct a release note must be proposed *directly to the stable branch
+in which the release note was introduced*.  (Yes, this is completely different
+from how we handle bugs.)
+
+This is because of how reno scans release notes and determines what release
+they go with.  See `Updating Stable Branch Release Notes
+<https://docs.openstack.org/reno/latest/user/usage.html#updating-stable-branch-release-notes>`_
+in the `reno User Guide` for more information.
+
 Bugs
 ----
 
