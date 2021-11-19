@@ -894,7 +894,7 @@ class FJFCDriverTestCase(test.TestCase):
         self.mock_object(ssh_utils, 'SSHPool', mock.Mock())
         self.mock_object(eternus_dx_cli.FJDXCLI, '_exec_cli_with_eternus',
                          self.fake_exec_cli_with_eternus)
-        # Set iscsi driver to self.driver.
+        # Set fc driver to self.driver.
         driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
         self.driver = driver
 
