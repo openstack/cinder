@@ -199,9 +199,9 @@ class VolumeCapabilitiesTestCase(base.BaseVolumeTestCase):
             self.assertTrue(mock_loads.called)
             volume_stats = manager.last_capabilities
             self.assertEqual(fake_capabilities['key1'],
-                             volume_stats['key1'])
+                             volume_stats["pools"][0]['key1'])
             self.assertEqual(fake_capabilities['key2'],
-                             volume_stats['key2'])
+                             volume_stats["pools"][0]['key2'])
 
     def test_extra_capabilities_fail(self):
         with mock.patch.object(jsonutils, 'loads') as mock_loads:
