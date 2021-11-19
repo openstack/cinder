@@ -155,12 +155,12 @@ class CapacityFilter(filters.BaseBackendFilter):
                 # of reserved space) which we can over-subscribe.
                 adjusted_free_virtual = (
                     free * backend_state.max_over_subscription_ratio)
+                msg_args = {"available": adjusted_free_virtual,
+                            "size": requested_size,
+                            "grouping": grouping,
+                            "grouping_name": backend_state.backend_id}
                 res = adjusted_free_virtual >= requested_size
                 if not res:
-                    msg_args = {"available": adjusted_free_virtual,
-                                "size": requested_size,
-                                "grouping": grouping,
-                                "grouping_name": backend_state.backend_id}
                     LOG.warning("Insufficient free virtual space "
                                 "(%(available)sGB) to accommodate thin "
                                 "provisioned %(size)sGB volume on %(grouping)s"
