@@ -110,31 +110,46 @@ Between Milestone-2 and Milestone-3
    MAX_VERSION.
 
 #. The week before Milestone-3, propose releases for unreleased changes
-   in os-brick. Include branch request for stable/$series creation.
+   in os-brick. (The release team may have already proposed an auto-
+   generated patch 1-2 weeks earlier; make sure you -1 it if there are
+   still changes that need to land in os-brick before release.)  Include
+   branch request for stable/$series creation.  Example patch:
+   https://review.opendev.org/c/openstack/releases/+/804670
 
 Milestone-3
 ===========
 
 #. Propose releases for unreleased changes in python-cinderclient and
-   python-brick-cinderclient-ext. Watch for releases proposed by the
-   release team. Include branch request for stable/$series creation.
+   python-brick-cinderclient-ext. These will be the official cycle
+   releases for these deliverables.  Watch for a release patch proposed
+   by the release team; it may need to be updated to include all the
+   appropriate changes. Include branch request for stable/$series creation.
+   Example patches:
+   | https://review.opendev.org/c/openstack/releases/+/806583
+   | https://review.opendev.org/c/openstack/releases/+/807167
 
 #. Set Review-Priority -1 for any feature work not complete in time for
    inclusion in this cycle. Remind contributors that FFE will need to be
    requested to still allow it in this cycle.
 
-#. Prepare "prelude" release notes as
-   summaries of the content of the release so that those are merged
-   before their first release candidate.
-
 #. Complete the responses to community-wide goals if not already done.
 
-#. Start assembling cycle-highlights for the team.
+#. Add cycle-highlights in the releases deliverable file.  The deadline for
+   this has been moved up (since wallaby) to the Friday of M-3 week.  (There
+   should be an entry on the cycle release schedule, and a reminder email with
+   subject "[PTLs][release] xxx Cycle Highlights" to the ML.)
+
+   The Foundation people use the info to start preparing press releases for the
+   cycle coordinated release, so it's good to have key features mentioned.  (If
+   something has an FFE and you're not sure if it will land, you can always
+   update the cycle-highlights later and shoot an email to whoever sent out the
+   reminder so they know to look for it.)
+
+   Example patch:
+   https://review.opendev.org/c/openstack/releases/+/807398
 
 Between Milestone-3 and RC1
 ===========================
-
-#. Add cycle-highlights in the releases deliverable file.
 
 #. Make sure the maximum microversion is up-to-date in the version history
    file ``cinder/api/openstack/rest_api_version_history.rst``
@@ -144,6 +159,10 @@ Between Milestone-3 and RC1
      <release-name>)" to the last (highest) entry.
    * This file is pulled into the api-ref by the documentation build
      process.
+
+#. Prepare "prelude" release notes as
+   summaries of the content of the release so that those are merged
+   before their first release candidate.
 
 #. Check the "Driver Removal History" section (bottom) of
    ``doc/source/reference/support-matrix.rst`` to make sure any drivers
@@ -158,7 +177,8 @@ RC1 week
 #. Propose RC1 release for cinder or watch for proposal from the release team.
    Include ``stable/$series`` branching request with the release.
 
-#. Finalize any cycle-highlights for the release cycle.
+#. Update any cycle-highlights for the release cycle if there was something
+   you weren't sure about at M-3.
 
 #. Remind contributors that ``master`` is now the next cycle but focus should
    be on wrapping up the current cycle.
@@ -167,6 +187,19 @@ RC1 week
 
 Between RC1 and Final
 =====================
+
+#. The release team has started adding a 'release-notes' field to the
+   deliverables' yaml files.  You can watch for the patch and vote on it if you
+   see it.  Example patch:
+   https://review.opendev.org/c/openstack/releases/+/810236
+
+#. Related to the previous point: at this time in the cycle, the release
+   notes for all the cinder cycle deliverables (cinder, os-brick,
+   python-cinderclient, and python-brick-cinderclient-ext) should
+   have been published automatically at
+   https://docs.openstack.org/releasenotes/.  Sometimes the promotion job
+   fails, though, so it's good to check that the release notes for the
+   current cycle are actually there.
 
 #. Propose additional RC releases as needed.
 
@@ -182,8 +215,12 @@ Between RC1 and Final
 
 #. Make sure final RC request is done one week before the final release date.
 
-#. Watch for the final release proposal from the release team to review and +1
-   so team approval is included in the metadata that goes onto the signed tag.
+#. | Watch for the final release proposal from the release team to review and
+     +1 so team approval is included in the metadata that goes onto the signed
+     tag.
+     Example patch: https://review.opendev.org/c/openstack/releases/+/785754
+   | Here's what it looks like when people forget to check for this patch:
+     https://review.opendev.org/c/openstack/releases/+/812251
 
 Final Release
 =============
