@@ -813,7 +813,9 @@ class CommonAdapter(object):
             is_compressed=vol_params.is_compressed)
         src_id = src_snap.get_id()
         try:
-            conn_props = volume_utils.brick_get_connector_properties()
+            conn_props = volume_utils.brick_get_connector_properties(
+                self.config.use_multipath_for_image_xfer,
+                self.config.enforce_multipath_for_image_xfer)
 
             with self._connect_resource(dest_lun, conn_props,
                                         vol_params.volume_id) as dest_info, \

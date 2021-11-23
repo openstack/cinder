@@ -729,7 +729,7 @@ class BackupTestCase(BaseBackupTest):
         mock_attach_device.assert_called_once_with(self.ctxt, vol,
                                                    properties, False)
         mock_get_backup_device.assert_called_once_with(self.ctxt, backup, vol)
-        mock_get_conn.assert_called_once_with()
+        mock_get_conn.assert_called_once_with(False, enforce_multipath=False)
         mock_detach_device.assert_called_once_with(self.ctxt, attach_info,
                                                    vol, properties, False,
                                                    force=True,
@@ -977,7 +977,7 @@ class BackupTestCase(BaseBackupTest):
         mock_initialize_connection_snapshot.assert_called_once_with(
             self.ctxt, snap, properties)
         mock_get_backup_device.assert_called_once_with(self.ctxt, backup, vol)
-        mock_get_conn.assert_called_once_with()
+        mock_get_conn.assert_called_once_with(False, enforce_multipath=False)
         mock_terminate_connection_snapshot.assert_called_once_with(
             self.ctxt, snap, properties, force=True)
         mock_remove_export_snapshot.assert_called_once_with(
@@ -1282,7 +1282,7 @@ class BackupTestCase(BaseBackupTest):
 
         mock_open.assert_called_once_with('/dev/null', exp_open_mode)
         mock_temporary_chown.assert_called_once_with('/dev/null')
-        mock_get_conn.assert_called_once_with()
+        mock_get_conn.assert_called_once_with(False, enforce_multipath=False)
         vol.status = 'available'
         vol.obj_reset_changes()
         mock_secure_enabled.assert_called_once_with(self.ctxt, vol)

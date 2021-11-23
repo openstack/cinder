@@ -456,7 +456,8 @@ class BackupManager(manager.SchedulerDependentManager):
         previous_status = volume.get('previous_status', None)
 
         backup_service = self.service(context)
-        properties = volume_utils.brick_get_connector_properties()
+        properties = volume_utils.brick_get_connector_properties(
+            CONF.use_multipath_for_image_xfer, enforce_multipath=False)
 
         updates = {}
         try:
@@ -724,7 +725,8 @@ class BackupManager(manager.SchedulerDependentManager):
         orig_key_id = volume.encryption_key_id
         backup_service = self.service(context)
 
-        properties = volume_utils.brick_get_connector_properties()
+        properties = volume_utils.brick_get_connector_properties(
+            CONF.use_multipath_for_image_xfer, enforce_multipath=False)
         secure_enabled = (
             self.volume_rpcapi.secure_file_operations_enabled(context,
                                                               volume))

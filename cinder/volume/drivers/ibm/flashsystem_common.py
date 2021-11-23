@@ -219,7 +219,9 @@ class FlashSystemDriver(san.SanDriver,
         LOG.debug('enter: _copy_vdisk_data: %(src)s -> %(dest)s.',
                   {'src': src_vdisk_name, 'dest': dest_vdisk_name})
 
-        connector = volume_utils.brick_get_connector_properties()
+        connector = volume_utils.brick_get_connector_properties(
+            self.configuration.use_multipath_for_image_xfer,
+            self.configuration.enforce_multipath_for_image_xfer)
         (src_map, src_lun_id) = self._is_vdisk_map(
             src_vdisk_name, connector)
         (dest_map, dest_lun_id) = self._is_vdisk_map(
