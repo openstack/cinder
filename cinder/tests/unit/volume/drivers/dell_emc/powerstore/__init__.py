@@ -67,6 +67,11 @@ class TestPowerStoreDriver(test.TestCase):
             configuration=self.configuration
         )
         self.fc_driver.do_setup({})
+        self._override_shared_conf("powerstore_nvme", override=True)
+        self.nvme_driver = driver.PowerStoreDriver(
+            configuration=self.configuration
+        )
+        self.nvme_driver.do_setup({})
 
     def _override_shared_conf(self, *args, **kwargs):
         return self.override_config(*args,

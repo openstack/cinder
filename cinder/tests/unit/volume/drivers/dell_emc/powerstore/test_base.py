@@ -31,6 +31,14 @@ class TestBase(powerstore.TestPowerStoreDriver):
                           self.driver.check_for_setup_error)
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version")
+    def test_configuration_nvme_not_supported(self, mock_version):
+        mock_version.return_value = "2.0.0.0"
+        self.nvme_driver.do_setup({})
+        self.assertRaises(exception.InvalidInput,
+                          self.nvme_driver.check_for_setup_error)
+
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_metrics")
@@ -57,8 +65,12 @@ class TestBase(powerstore.TestPowerStoreDriver):
         self.assertIn("Failed to query PowerStore metrics", error.msg)
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    def test_configuration_with_replication(self, mock_chap):
+    def test_configuration_with_replication(self,
+                                            mock_chap,
+                                            mock_version):
         replication_device = [
             {
                 "backend_id": "repl_1",
@@ -67,6 +79,7 @@ class TestBase(powerstore.TestPowerStoreDriver):
                 "san_password": "test_2"
             }
         ]
+        mock_version.return_value = "3.0.0.0"
         self._override_shared_conf("replication_device",
                                    override=replication_device)
         self.driver.do_setup({})
@@ -92,8 +105,12 @@ class TestBase(powerstore.TestPowerStoreDriver):
                       "replication device.", error.msg)
 
     @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
+                "PowerStoreClient.get_array_version")
+    @mock.patch("cinder.volume.drivers.dell_emc.powerstore.client."
                 "PowerStoreClient.get_chap_config")
-    def test_configuration_with_replication_failed_over(self, mock_chap):
+    def test_configuration_with_replication_failed_over(self,
+                                                        mock_chap,
+                                                        mock_version):
         replication_device = [
             {
                 "backend_id": "repl_1",
@@ -102,6 +119,7 @@ class TestBase(powerstore.TestPowerStoreDriver):
                 "san_password": "test_2"
             }
         ]
+        mock_version.return_value = "3.0.0.0"
         self._override_shared_conf("replication_device",
                                    override=replication_device)
         self.driver.do_setup({})

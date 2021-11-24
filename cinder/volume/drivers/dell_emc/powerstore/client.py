@@ -25,6 +25,7 @@ import requests
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils as cinder_utils
+from cinder.volume.drivers.dell_emc.powerstore import utils
 
 
 LOG = logging.getLogger(__name__)
@@ -386,14 +387,40 @@ class PowerStoreClient(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return response
 
-    def get_ip_pool_address(self):
+    def get_subsystem_nqn(self):
         r, response = self._send_get_request(
-            "/ip_pool_address",
+            "/cluster",
             params={
+                "select": "nvm_subsystem_nqn"
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore NVMe subsystem NQN.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        try:
+            nqn = response[0].get("nvm_subsystem_nqn")
+            return nqn
+        except IndexError:
+            msg = _("PowerStore NVMe subsystem NQN is not found.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_ip_pool_address(self, protocol):
+        params = {}
+        if protocol == utils.PROTOCOL_ISCSI:
+            params = {
                 "purposes": "cs.{Storage_Iscsi_Target}",
                 "select": "address,ip_port(target_iqn)"
-
             }
+        elif protocol == utils.PROTOCOL_NVME:
+            params = {
+                "purposes": "cs.{Storage_NVMe_TCP_Port}",
+                "select": "address"
+            }
+        r, response = self._send_get_request(
+            "/ip_pool_address",
+            params=params
         )
         if r.status_code not in self.ok_codes:
             msg = _("Failed to query PowerStore IP pool addresses.")
@@ -743,3 +770,32 @@ class PowerStoreClient(object):
                    % volume_id)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def get_array_version(self):
+        r, response = self._send_get_request(
+            "/software_installed",
+            params={
+                "select": "release_version",
+                "is_cluster": "eq.True"
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = _("Failed to query PowerStore array version.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return response[0].get("release_version")
+
+    def get_volume_nguid(self, volume_id):
+        r, response = self._send_get_request(
+            "/volume/%s" % volume_id,
+            params={
+                "select": "nguid",
+            }
+        )
+        if r.status_code not in self.ok_codes:
+            msg = (_("Failed to query PowerStore volume with id %s.")
+                   % volume_id)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        nguid = response["nguid"].split('.')[1]
+        return nguid

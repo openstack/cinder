@@ -49,6 +49,33 @@ Add the following content into ``/etc/cinder/cinder.conf``:
   # PowerStore allowed ports
   powerstore_ports = <Allowed ports> # Ex. 58:cc:f0:98:49:22:07:02,58:cc:f0:98:49:23:07:02
 
+Driver configuration to use NVMe-OF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+NVMe-OF support was added in PowerStore starting from version 2.1.
+
+.. note:: Currently the driver supports only NVMe over TCP.
+
+To configure NVMe-OF driver add the following
+content into ``/etc/cinder/cinder.conf``:
+
+.. code-block:: ini
+
+  [DEFAULT]
+  enabled_backends = powerstore
+
+  [powerstore]
+  # PowerStore REST IP
+  san_ip = <San IP>
+  # PowerStore REST username and password
+  san_login = <San username>
+  san_password = <San Password>
+  # Volume driver name
+  volume_driver = cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver
+  # Backend name
+  volume_backend_name = <Backend name>
+  powerstore_nvme = True
+
 Driver options
 ~~~~~~~~~~~~~~
 

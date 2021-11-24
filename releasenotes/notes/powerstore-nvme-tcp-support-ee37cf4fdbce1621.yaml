@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Dell PowerStore driver: Added NVMe-TCP support.
