@@ -24,7 +24,7 @@
               - ^contrib/block-box.*$
               - ^doc/.*$
               - ^releasenotes/.*$
-        - openstack-tox-functional-py38:
+        - openstack-tox-functional-py39:
             irrelevant-files: *functional-irrelevant-files
         - cinder-rally-task:
             voting: false
