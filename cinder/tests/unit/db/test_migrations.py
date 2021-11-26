@@ -216,6 +216,17 @@ class MigrationsWalk(
         # But it's nullable
         self.assertTrue(table.c.shared_targets.nullable)
 
+    def _check_daa98075b90d(self, connection):
+        """Test resources have indexes."""
+        for table in ('groups', 'group_snapshots', 'volumes', 'snapshots',
+                      'backups'):
+            db_utils.index_exists(connection,
+                                  table,
+                                  f'{table}_deleted_project_id_idx')
+
+        db_utils.index_exists(connection,
+                              'volumes', 'volumes_deleted_host_idx')
+
 
 class TestMigrationsWalkSQLite(
     MigrationsWalk,

@@ -187,9 +187,8 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
             datetime.datetime(1, 4, 1, 1, 1, 1),
             project_id=fake.PROJECT_ID)
         self.assertEqual(3, len(volumes))
-        self.assertEqual(fake.VOLUME2_ID, volumes[0].id)
-        self.assertEqual(fake.VOLUME3_ID, volumes[1].id)
-        self.assertEqual(fake.VOLUME4_ID, volumes[2].id)
+        self.assertEqual({fake.VOLUME2_ID, fake.VOLUME3_ID, fake.VOLUME4_ID},
+                         {v.id for v in volumes})
 
     def test_snapshot_get_all_active_by_window(self):
         # Find all all snapshots valid within a timeframe window.
@@ -229,12 +228,11 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
             datetime.datetime(1, 3, 1, 1, 1, 1),
             datetime.datetime(1, 4, 1, 1, 1, 1)).objects
         self.assertEqual(3, len(snapshots))
-        self.assertEqual(snap2.id, snapshots[0].id)
-        self.assertEqual(fake.VOLUME_ID, snapshots[0].volume_id)
-        self.assertEqual(snap3.id, snapshots[1].id)
-        self.assertEqual(fake.VOLUME_ID, snapshots[1].volume_id)
-        self.assertEqual(snap4.id, snapshots[2].id)
-        self.assertEqual(fake.VOLUME_ID, snapshots[2].volume_id)
+
+        self.assertEqual({snap2.id, snap3.id, snap4.id},
+                         {s.id for s in snapshots})
+        self.assertEqual({fake.VOLUME_ID},
+                         {s.volume_id for s in snapshots})
 
     def test_backup_get_all_active_by_window(self):
         # Find all backups valid within a timeframe window.
@@ -266,6 +264,5 @@ class GetActiveByWindowTestCase(base.BaseVolumeTestCase):
             project_id=fake.PROJECT_ID
         )
         self.assertEqual(3, len(backups))
-        self.assertEqual(fake.BACKUP2_ID, backups[0].id)
-        self.assertEqual(fake.BACKUP3_ID, backups[1].id)
-        self.assertEqual(fake.BACKUP4_ID, backups[2].id)
+        self.assertEqual({fake.BACKUP2_ID, fake.BACKUP3_ID, fake.BACKUP4_ID},
+                         {b.id for b in backups})

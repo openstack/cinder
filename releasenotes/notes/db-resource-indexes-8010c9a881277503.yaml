@@ -1,0 +1,24 @@
+---
+upgrade:
+  - |
+    The ``cinder-manage db sync`` command for this verison of cinder will add
+    additional database indexes.  Depending on database size and complexity,
+    this will take time to complete for every single index to be created. On
+    MySQL or MariaDB, these indexes will only be created if an index does not
+    already exist with the same name:
+
+    * ``groups_deleted_project_id_idx``
+    * ``group_snapshots_deleted_project_id_idx``
+    * ``volumes_deleted_project_id_idx``
+    * ``volumes_deleted_host_idx``
+    * ``snapshots_deleted_project_id_idx``
+    * ``backups_deleted_project_id_idx``
+
+    An example of the SQL commands to generate these indexes can be found
+    in the `specific troubleshooting guide
+    <htts://docs.openstack.org/cinder/latest/admin/ts-db-cpu-spikes.html>`_.
+fixes:
+  - |
+    `Bug #1952443 <https://bugs.launchpad.net/cinder/+bug/1952443>`_: Improve
+    performance for creating volume from image, listing volumes, snapshots,
+    backups, groups, and group_snapshots.

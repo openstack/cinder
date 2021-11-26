@@ -18,3 +18,4 @@ Storage installation.
    ts-no-emulator-x86-64.rst
    ts-non-existent-host.rst
    ts-non-existent-vlun.rst
+   ts-db-cpu-spikes.rst
