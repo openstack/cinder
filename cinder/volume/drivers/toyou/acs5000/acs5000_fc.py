@@ -139,9 +139,9 @@ class Acs5000FCDriver(acs5000_common.Acs5000CommonDriver):
             target_wwpns = self._get_connected_wwpns()
             if len(target_wwpns) == 0:
                 target_wwpns = []
-                LOG.warn('terminate_connection: Did not find '
-                         'available fc wwpns when volume %s '
-                         'delete lun map.', volume.id)
+                LOG.warning('terminate_connection: Did not find '
+                            'available fc wwpns when volume %s '
+                            'delete lun map.', volume.id)
 
         initiator_target = {}
         for i_wwpn in initiator_wwpns:
@@ -155,9 +155,9 @@ class Acs5000FCDriver(acs5000_common.Acs5000CommonDriver):
                                      self.protocol,
                                      initiator_wwpns)
         else:
-            LOG.warn('volume %s has been mapped to multi VMs, and these VMs '
-                     'belong to the same host. The mapping cancellation '
-                     'request is aborted.', volume.id)
+            LOG.warning('volume %s has been mapped to multi VMs, and these '
+                        'VMs belong to the same host. The mapping '
+                        'cancellation request is aborted.', volume.id)
         zone_utils.remove_fc_zone(properties)
         LOG.debug('leave: terminate_connection: volume '
                   '%(vol)s with connector %(conn)s',

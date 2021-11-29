@@ -677,10 +677,10 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             try:
                 dest_client.destroy_lun(lun_path)
             except Exception:
-                LOG.warn('Error cleaning up LUN %s in destination volume. '
-                         'Verify if destination volume still exists in pool '
-                         '%s and delete it manually to avoid unused '
-                         'resources.', lun_path, dest_pool)
+                LOG.warning('Error cleaning up LUN %s in destination volume. '
+                            'Verify if destination volume still exists in '
+                            'pool %s and delete it manually to avoid unused '
+                            'resources.', lun_path, dest_pool)
 
     def _copy_lun(self, volume, src_ontap_volume, src_vserver,
                   dest_ontap_volume, dest_vserver, dest_lun_name=None,
@@ -803,7 +803,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
                            'performing operations with this volume. Check the '
                            'migration status on the storage side and set '
                            'volume status manually if migration succeeded.'))
-            LOG.warn(error_msg, volume.id)
+            LOG.warning(error_msg, volume.id)
             updates['status'] = fields.VolumeStatus.MAINTENANCE
         except na_utils.NetAppDriverException as e:
             error_msg = (_('Failed to migrate volume %(vol)s from pool '

@@ -642,10 +642,10 @@ class Acs5000CommonDriver(san.SanDriver,
                                                    'wanted': wanted_name})
         is_existed = self._cmd.get_volume(wanted_name)
         if len(is_existed) == 1:
-            LOG.warn('volume name %(wanted)s is existed, The two volumes '
-                     '%(wanted)s and %(new)s may be on the same system.',
-                     {'new': existing_name,
-                      'wanted': wanted_name})
+            LOG.warning('volume name %(wanted)s is existed, The two volumes '
+                        '%(wanted)s and %(new)s may be on the same system.',
+                        {'new': existing_name,
+                         'wanted': wanted_name})
             return {'_name_id': new_volume['_name_id'] or new_volume['id']}
         else:
             self._cmd.set_volume_property(existing_name,
@@ -730,10 +730,10 @@ class Acs5000CommonDriver(san.SanDriver,
         size = int(vol_backend.get('size_mb', 0))
         size_gb = int(math.ceil(size / 1024))
         if (size_gb * 1024) > size:
-            LOG.warn('Volume %(vol)s capacity is %(mb)s MB, '
-                     'extend to %(gb)s GB.', {'vol': ref['source-name'],
-                                              'mb': size,
-                                              'gb': size_gb})
+            LOG.warning('Volume %(vol)s capacity is %(mb)s MB, '
+                        'extend to %(gb)s GB.', {'vol': ref['source-name'],
+                                                 'mb': size,
+                                                 'gb': size_gb})
             self._cmd.extend_volume(ref['source-name'], size_gb)
         return size_gb
 

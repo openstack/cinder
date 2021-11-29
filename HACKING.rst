@@ -24,6 +24,7 @@ Cinder Specific Commandments
   sequence of key-value pairs.
 - [C337] Ensure the standard library mock modules is used and not the third
   party mock library that was needed for Python 2 support.
+- [C338] Log.warn is deprecated. Enforce use of LOG.warning.
 
 General
 -------

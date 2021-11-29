@@ -386,3 +386,16 @@ def no_third_party_mock(logical_line):
         msg = ('C337: Unit tests should use the standard library "mock" '
                'module, not the third party mock lib.')
         yield(0, msg)
+
+
+@core.flake8ext
+def no_log_warn(logical_line):
+    """Disallow 'LOG.warn('
+
+    Use LOG.warning() instead of Deprecated LOG.warn().
+    https://docs.python.org/3/library/logging.html#logging.warning
+    """
+
+    msg = ("C338: LOG.warn is deprecated, please use LOG.warning!")
+    if "LOG.warn(" in logical_line:
+        yield (0, msg)

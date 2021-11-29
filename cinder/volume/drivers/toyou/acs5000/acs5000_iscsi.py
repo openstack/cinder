@@ -115,9 +115,9 @@ class Acs5000ISCSIDriver(acs5000_common.Acs5000CommonDriver):
                                      self.protocol,
                                      initiator)
         else:
-            LOG.warn('volume %s has been mapped to multi VMs, and these VMs '
-                     'belong to the same host. The mapping cancellation '
-                     'request is aborted.', volume.id)
+            LOG.warning('volume %s has been mapped to multi VMs, and these '
+                        'VMs belong to the same host. The mapping '
+                        'cancellation request is aborted.', volume.id)
         LOG.debug('leave: terminate_connection: volume '
                   '%(vol)s with connector %(conn)s',
                   {'vol': volume.id, 'conn': connector})

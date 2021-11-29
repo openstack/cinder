@@ -209,6 +209,18 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(1, len(list(checks.no_mutable_default_args(
             "def foo (bar={}):"))))
 
+    def test_no_log_warn(self):
+        code = """
+                  LOG.warn("LOG.warn is deprecated")
+               """
+        errors = [(1, 0, 'C338')]
+        self._assert_has_errors(code, checks.no_log_warn,
+                                expected_errors=errors)
+        code = """
+                  LOG.warning("LOG.warn is deprecated")
+               """
+        self._assert_has_no_errors(code, checks.no_log_warn)
+
     def test_check_datetime_now(self):
         self.assertEqual(1, len(list(checks.check_datetime_now(
             "datetime.now", False))))
