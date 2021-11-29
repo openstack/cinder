@@ -496,6 +496,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 }
 
         result, datastores = self._collect_backend_stats()
+        connection_capabilities = self._get_connection_capabilities()
         if self.configuration.vmware_datastores_as_pools:
             pools = []
             for ds_name in datastores:
@@ -517,8 +518,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'location_info': location_info,
                         'backend_state': pool_state,
                         'storage_profile': datastore["storage_profile"],
-                        'connection_capabilities': (
-                            self._get_connection_capabilities(),)
+                        'connection_capabilities': connection_capabilities,
                         }
                 pools.append(pool)
             data['pools'] = pools
@@ -549,7 +549,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             'thin_provisioning_support': True,
             'thick_provisioning_support': True,
             'max_over_subscription_ratio': max_over_subscription_ratio,
-            'connection_capabilities': self._get_connection_capabilities(),
+            'connection_capabilities': connection_capabilities,
         }
         data.update(data_no_pools)
 
