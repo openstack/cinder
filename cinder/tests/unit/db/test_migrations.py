@@ -46,17 +46,22 @@ class MigrationsWalk(
         self.config = migration._find_alembic_conf()
         self.init_version = migration.ALEMBIC_INIT_VERSION
 
-    def _migrate_up(self, revision):
-        if revision == self.init_version:  # no tests for the initial revision
-            return
+    def _migrate_up(self, revision, connection):
+        check_method = getattr(self, f'_check_{revision}', None)
+        if revision != self.init_version:  # no tests for the initial revision
+            self.assertIsNotNone(
+                check_method,
+                f"API DB Migration {revision} doesn't have a test; add one"
+            )
 
-        self.assertIsNotNone(
-            getattr(self, '_check_%s' % revision, None),
-            (
-                'API DB Migration %s does not have a test; you must add one'
-            ) % revision,
-        )
+        pre_upgrade = getattr(self, f'_pre_upgrade_{revision}', None)
+        if pre_upgrade:
+            pre_upgrade(connection)
+
         alembic_api.upgrade(self.config, revision)
+
+        if check_method:
+            check_method(connection)
 
     def test_single_base_revision(self):
         """Ensure we only have a single base revision.
@@ -84,9 +89,11 @@ class MigrationsWalk(
         with self.engine.begin() as connection:
             self.config.attributes['connection'] = connection
             script = alembic_script.ScriptDirectory.from_config(self.config)
-            for revision_script in script.walk_revisions():
-                revision = revision_script.revision
-                self._migrate_up(revision)
+            revisions = list(script.walk_revisions())
+            # Need revisions from older to newer so the walk works as intended
+            revisions.reverse()
+            for revision_script in revisions:
+                self._migrate_up(revision_script.revision, connection)
 
     def test_db_version_alembic(self):
         migration.db_sync()
