@@ -497,3 +497,10 @@ def get_group_type_params(group):
         opt = get_volume_type_params(volume_type)
         opts.append(opt)
     return opts
+
+
+def is_support_clone_pair(client):
+    array_info = client.get_array_info()
+    version_info = array_info['PRODUCTVERSION']
+    if version_info >= constants.SUPPORT_CLONE_PAIR_VERSION:
+        return True

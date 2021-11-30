@@ -48,6 +48,12 @@ class RestClient(object):
         self.url = None
         self.device_id = None
 
+        if hasattr(requests, 'packages'):
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecureRequestWarning)
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecurePlatformWarning)
+
     def init_http_head(self):
         self.url = None
         self.session = requests.Session()
@@ -1561,7 +1567,7 @@ class RestClient(object):
     def extend_lun(self, lun_id, new_volume_size):
         url = "/lun/expand"
         data = {"TYPE": 11, "ID": lun_id,
-                "CAPACITY": new_volume_size}
+                "CAPACITY": int(new_volume_size)}
         result = self.call(url, data, 'PUT')
 
         msg = _('Extend volume error.')
@@ -2416,3 +2422,38 @@ class RestClient(object):
 
         msg = _('Update luns of qos %s error.') % qos_id
         self._assert_rest_result(result, msg)
+
+    def create_clone_pair(self, source_id, target_id, clone_speed):
+        url = "/clonepair/relation"
+        data = {"copyRate": clone_speed,
+                "sourceID": source_id,
+                "targetID": target_id,
+                "isNeedSynchronize": "0"}
+        result = self.call(url, data, "POST")
+        self._assert_rest_result(result, 'Create ClonePair error, source_id '
+                                         'is %s.' % source_id)
+        return result['data']['ID']
+
+    def get_clone_pair_info(self, pair_id):
+        url = "/clonepair/%s" % pair_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, 'Get ClonePair %s error.' % pair_id)
+        return result.get('data', {})
+
+    def sync_clone_pair(self, pair_id):
+        url = "/clonepair/synchronize"
+        data = {"ID": pair_id, "copyAction": 0}
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(result, 'Sync ClonePair error, pair is %s.'
+                                 % pair_id)
+
+    def delete_clone_pair(self, pair_id, delete_dst_lun=False):
+        data = {"ID": pair_id,
+                "isDeleteDstLun": delete_dst_lun}
+        url = "/clonepair/%s" % pair_id
+        result = self.call(url, data, "DELETE")
+        if result['error']['code'] == constants.CLONE_PAIR_NOT_EXIST:
+            LOG.warning('ClonePair %s to delete not exist.', pair_id)
+            return
+        self._assert_rest_result(result, 'Delete ClonePair %s error.'
+                                 % pair_id)

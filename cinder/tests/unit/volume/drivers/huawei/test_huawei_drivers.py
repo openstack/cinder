@@ -2087,6 +2087,61 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate/portgroup?TYPE=245&ASSOC'
                              'IATEOBJTYPE=257&ASSOCIATEOBJID=1114113/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
+FAKE_CLONEPAIR_PAIRID_GET_RESPONSE = """
+{
+    "data":{
+        "name": "fake_clonepair_name",
+        "copyStatus": "0",
+        "syncStatus": "2"
+    },
+    "error": {
+        "code": 0,
+        "description": "0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/clonepair/fake_clonepair_id/GET'] = (
+    FAKE_CLONEPAIR_PAIRID_GET_RESPONSE)
+
+FAKE_CLONEPAIR_PAIRID_DELETE_RESPONSE = """
+{
+    "data":{
+        "name": "fake_clonepair_name"
+    },
+    "error": {
+        "code": 0,
+        "description": "0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/clonepair/fake_clonepair_id/DELETE'] = (
+    FAKE_CLONEPAIR_PAIRID_DELETE_RESPONSE)
+
+FAKE_CLONEPAIR_RELATION_RESPONSE = """
+{
+    "data":{
+        "ID": "fake_clonepair_id"
+    },
+    "error": {
+        "code": 0,
+        "description": ""
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/clonepair/relation/POST'] = (
+    FAKE_CLONEPAIR_RELATION_RESPONSE)
+
+FAKE_CLONEPAIR_SYNCHRONIZE_RESPONSE = """
+{
+    "data":{},
+    "error": {
+        "code": 0,
+        "description": ""
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/clonepair/synchronize/PUT'] = (
+    FAKE_CLONEPAIR_SYNCHRONIZE_RESPONSE)
 
 REPLICA_BACKEND_ID = 'huawei-replica-1'
 
@@ -2235,6 +2290,7 @@ class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
         self.active_backend_id = None
         self.replica = None
         self.support_func = None
+        self.is_dorado_v6 = False
 
     def do_setup(self):
         self.metro_flag = True
@@ -2262,6 +2318,7 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
         self.active_backend_id = None
         self.replica = None
         self.support_func = None
+        self.is_dorado_v6 = False
 
     def do_setup(self):
         self.metro_flag = True
@@ -2839,12 +2896,18 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
     def test_delete_snapshot_success(self):
         self.driver.delete_snapshot(self.snapshot)
 
-    def test_create_volume_from_snapsuccess(self):
+    @ddt.data(True, False)
+    def test_create_volume_from_snapsuccess(self, is_dorado_v6):
         self.mock_object(
             huawei_utils,
             'get_volume_params',
             return_value={'replication_enabled': True})
         self.mock_object(replication.ReplicaCommonDriver, 'sync')
+        self.mock_object(self.driver.client, 'get_snapshot_info_by_name',
+                         return_value=
+                         {'ID': ID, 'RUNNINGSTATUS': constants.STATUS_ACTIVE})
+        self.configuration.lun_copy_speed = 2
+        self.driver.is_dorado_v6 = is_dorado_v6
         model_update = self.driver.create_volume_from_snapshot(self.volume,
                                                                self.snapshot)
         expect_value = {"huawei_lun_id": "1",
@@ -4619,7 +4682,13 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def test_delete_snapshot_success(self):
         self.driver.delete_snapshot(self.snapshot)
 
-    def test_create_volume_from_snapsuccess(self):
+    @ddt.data(True, False)
+    def test_create_volume_from_snapsuccess(self, is_dorado_v6):
+        self.configuration.lun_copy_speed = 2
+        self.driver.is_dorado_v6 = is_dorado_v6
+        self.mock_object(self.driver.client, 'get_snapshot_info_by_name',
+                         return_value=
+                         {'ID': ID, 'RUNNINGSTATUS': constants.STATUS_ACTIVE})
         lun_info = self.driver.create_volume_from_snapshot(self.volume,
                                                            self.snapshot)
         expect_value = {"huawei_lun_id": "1",
@@ -5353,10 +5422,10 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
 
     @ddt.data(
         ([fake_snapshot.fake_snapshot_obj(
-            None, provider_location=SNAP_PROVIDER_LOCATION, id=ID)],
-         [], False),
+            None, provider_location=SNAP_PROVIDER_LOCATION, id=ID,
+            volume_size=1)], [], False),
         ([], [fake_volume.fake_volume_obj(
-            None, provider_location=PROVIDER_LOCATION, id=ID)], True),
+            None, provider_location=PROVIDER_LOCATION, id=ID, size=1)], True),
     )
     @ddt.unpack
     def test_create_group_from_src(self, snapshots, source_vols, tmp_snap):
@@ -5372,7 +5441,8 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
             self.driver, '_delete_group_snapshot',
             wraps=self.driver._delete_group_snapshot)
         self.mock_object(self.driver.client, 'get_snapshot_info_by_name',
-                         return_value={'ID': ID})
+                         return_value=
+                         {'ID': ID, 'RUNNINGSTATUS': constants.STATUS_ACTIVE})
 
         model_update, volumes_model_update = self.driver.create_group_from_src(
             None, self.group, [self.volume], snapshots=snapshots,
