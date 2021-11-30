@@ -72,6 +72,7 @@ class HuaweiConf(object):
             self._lun_read_cache_policy,
             self._lun_write_cache_policy,
             self._storage_pools,
+            self._get_local_minimum_fc_initiator,
         )
 
         for f in attr_funcs:
@@ -417,3 +418,22 @@ class HuaweiConf(object):
         else:
             speed = text.strip()
         setattr(self.conf, 'lun_copy_speed', int(speed))
+
+    def _get_local_minimum_fc_initiator(self, xml_root):
+        text = xml_root.findtext('FC/MinOnlineFCInitiator')
+        minimum_fc_initiator = constants.DEFAULT_MINIMUM_FC_INITIATOR_ONLINE
+
+        if not text:
+            LOG.info("MinOnlineFCInitiator not set, using default.")
+            setattr(self.conf, 'min_fc_ini_online', minimum_fc_initiator)
+            return
+
+        text = text.strip()
+        if not text.isdigit():
+            msg = (_("Invalid FC MinOnlineFCInitiator '%s', "
+                     "MinOnlineFCInitiator must be a digit.") % text)
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        minimum_fc_initiator = int(text)
+        setattr(self.conf, 'min_fc_ini_online', minimum_fc_initiator)

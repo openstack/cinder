@@ -2184,6 +2184,7 @@ class FakeHuaweiConf(huawei_conf.HuaweiConf):
         setattr(self.conf, 'metro_san_user', 'admin')
         setattr(self.conf, 'metro_san_password', 'Admin@storage1')
         setattr(self.conf, 'metro_domain_name', 'hypermetro_test')
+        setattr(self.conf, 'min_fc_ini_online', 0)
 
         iscsi_info = {
             'default_target_ips': '192.0.2.2',
