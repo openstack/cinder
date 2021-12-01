@@ -94,7 +94,7 @@ Configuring the array
       driver_use_ssl = true
 
       [pool-b]
-      pvme_backend_name = B
+      pvme_pool_name = B
       volume_backend_name = pvme-array
       volume_driver = cinder.volume.drivers.dell_emc.powervault.iscsi.PVMEISCSIDriver
       san_ip = 10.1.2.3,10.1.2.4
@@ -108,7 +108,7 @@ Configuring the array
    .. code-block:: ini
 
       [pool-a]
-      pvme_backend_name = A
+      pvme_pool_name = A
       volume_backend_name = pvme-array
       volume_driver = cinder.volume.drivers.dell_emc.powervault.fc.PVMEFCDriver
       san_ip = 10.1.2.3,10.1.2.4
@@ -117,7 +117,7 @@ Configuring the array
       driver_use_ssl = true
 
       [pool-b]
-      pvme_backend_name = B
+      pvme_pool_name = B
       volume_backend_name = pvme-array
       volume_driver = cinder.volume.drivers.dell_emc.powervault.fc.PVMEFCDriver
       san_ip = 10.1.2.3,10.1.2.4
