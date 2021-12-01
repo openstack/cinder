@@ -57,6 +57,7 @@ from cinder.objects.volume_type import VolumeType
 from cinder import utils
 from cinder.volume import configuration
 from cinder.volume import driver
+from cinder.volume import qos_specs
 from cinder.volume import volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -139,6 +140,58 @@ CONF.register_opts(RBD_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 EXTRA_SPECS_MULTIATTACH = "multiattach"
+
+QOS_KEY_MAP = {
+    'total_iops_sec': {
+        'ceph_key': 'rbd_qos_iops_limit',
+        'default': 0
+    },
+    'read_iops_sec': {
+        'ceph_key': 'rbd_qos_read_iops_limit',
+        'default': 0
+    },
+    'write_iops_sec': {
+        'ceph_key': 'rbd_qos_write_iops_limit',
+        'default': 0
+    },
+    'total_bytes_sec': {
+        'ceph_key': 'rbd_qos_bps_limit',
+        'default': 0
+    },
+    'read_bytes_sec': {
+        'ceph_key': 'rbd_qos_read_bps_limit',
+        'default': 0
+    },
+    'write_bytes_sec': {
+        'ceph_key': 'rbd_qos_write_bps_limit',
+        'default': 0
+    },
+    'total_iops_sec_max': {
+        'ceph_key': 'rbd_qos_bps_burst',
+        'default': 0
+    },
+    'read_iops_sec_max': {
+        'ceph_key': 'rbd_qos_read_iops_burst',
+        'default': 0
+    },
+    'write_iops_sec_max': {
+        'ceph_key': 'rbd_qos_write_iops_burst',
+        'default': 0
+    },
+    'total_bytes_sec_max': {
+        'ceph_key': 'rbd_qos_bps_burst',
+        'default': 0
+    },
+    'read_bytes_sec_max': {
+        'ceph_key': 'rbd_qos_read_bps_burst',
+        'default': 0
+    },
+    'write_bytes_sec_max': {
+        'ceph_key': 'rbd_qos_write_bps_burst',
+        'default': 0
+    }}
+
+CEPH_QOS_SUPPORTED_VERSION = 15
 
 
 # RBD
@@ -230,9 +283,19 @@ class RADOSClient(object):
 class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                 driver.ManageableVD, driver.ManageableSnapshotsVD,
                 driver.BaseVD):
-    """Implements RADOS block device (RBD) volume commands."""
+    """Implements RADOS block device (RBD) volume commands.
 
-    VERSION = '1.2.0'
+
+    Version history:
+
+    .. code-block:: none
+
+        1.3.0 - Added QoS Support
+
+
+    """
+
+    VERSION = '1.3.0'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Cinder_Jenkins"
@@ -554,6 +617,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         ioctx.close()
         client.shutdown()
 
+    def _supports_qos(self):
+        return self.RBDProxy().version()[1] >= CEPH_QOS_SUPPORTED_VERSION
+
     @staticmethod
     def _get_backup_snaps(rbd_image) -> list:
         """Get list of any backup snapshots that exist on this volume.
@@ -688,7 +754,8 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             'max_over_subscription_ratio': (
                 self.configuration.safe_get('max_over_subscription_ratio')),
             'location_info': location_info,
-            'backend_state': 'down'
+            'backend_state': 'down',
+            'qos_support': self._supports_qos(),
         }
 
         backend_name = self.configuration.safe_get('volume_backend_name')
@@ -927,6 +994,19 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             LOG.debug('Unable to retrieve extra specs info')
             return False
 
+    def _qos_specs_from_volume_type(self, volume_type):
+        if not volume_type:
+            return None
+
+        qos_specs_id = volume_type.get('qos_specs_id')
+        if qos_specs_id is not None:
+            ctxt = context.get_admin_context()
+            vol_qos_specs = qos_specs.get_qos_specs(ctxt, qos_specs_id)
+            LOG.debug('qos_specs: %s', qos_specs)
+            if vol_qos_specs['consumer'] in ('back-end', 'both'):
+                return vol_qos_specs['specs']
+        return None
+
     def _setup_volume(
             self,
             volume: Volume,
@@ -940,6 +1020,16 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             had_replication = False
             had_multiattach = False
             volume_type = volume.volume_type
+
+        specs = self._qos_specs_from_volume_type(volume_type)
+
+        if specs:
+            if self._supports_qos():
+                self.update_rbd_image_qos(volume, specs)
+            else:
+                LOG.warning("Backend QOS policies for ceph not "
+                            "supported prior to librbd version %s",
+                            CEPH_QOS_SUPPORTED_VERSION)
 
         want_replication = self._is_replicated_type(volume_type)
         want_multiattach = self._is_multiattach_type(volume_type)
@@ -1446,7 +1536,47 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
                new_type: VolumeType,
                diff: Union[dict[str, dict[str, str]], dict[str, dict], None],
                host: Optional[dict[str, str]]) -> tuple[bool, dict]:
-        """Retype from one volume type to another on the same backend."""
+        """Retype from one volume type to another on the same backend.
+
+        Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
+        whether there is any difference, and 'diff' is a dictionary with the
+        following format:
+
+        .. code-block:: default
+
+            {
+                'encryption': {},
+                'extra_specs': {},
+                'qos_specs': {'consumer': (u'front-end', u'back-end'),
+                              u'total_bytes_sec': (None, u'2048000'),
+                              u'total_iops_sec': (u'200', None)
+                              {...}}
+            }
+        """
+        # NOTE(rogeryu): If `diff` contains `qos_specs`, `qos_spec` must have
+        # the `consumer` parameter, whether or not there is a difference.]
+        # Remove qos keys present in RBD image that are no longer in cinder qos
+        # spec, new keys are added in _setup_volume.
+        if diff and diff.get('qos_specs') and self._supports_qos():
+            specs = diff.get('qos_specs', {})
+            if (specs.get('consumer')
+               and specs['consumer'][1] == 'front-end'
+               and specs['consumer'][0] != 'front-end'):
+                del_qos_keys = [key for key in specs.keys()
+                                if key in QOS_KEY_MAP.keys()]
+            else:
+                del_qos_keys = []
+                existing_config = self.get_rbd_image_qos(volume)
+                for k, v in QOS_KEY_MAP.items():
+                    qos_val = specs.get(k, None)
+                    vol_val = int(existing_config.get(v['ceph_key']))
+                    if not qos_val:
+                        if vol_val != v['default']:
+                            del_qos_keys.append(k)
+                        continue
+                    if qos_val[1] is None and vol_val != v['default']:
+                        del_qos_keys.append(k)
+            self.delete_rbd_image_qos_keys(volume, del_qos_keys)
         return True, self._setup_volume(volume, new_type)
 
     @staticmethod
@@ -2292,3 +2422,62 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
 
         volume = objects.Volume.get_by_id(context, backup.volume_id)
         return (volume, False)
+
+    @utils.retry(exception.VolumeBackendAPIException)
+    def get_rbd_image_qos(self, volume):
+        try:
+            with RBDVolumeProxy(self, volume.name) as rbd_image:
+                current = {k['name']: k['value']
+                           for k in rbd_image.config_list()}
+                return current
+        except Exception as e:
+            msg = (_("Failed to get qos specs for rbd image "
+                     "%(rbd_image_name)s, due to "
+                     "%(error)s.")
+                   % {'rbd_image_name': volume.name,
+                      'error': e})
+            raise exception.VolumeBackendAPIException(
+                data=msg)
+
+    @utils.retry(exception.VolumeBackendAPIException)
+    def update_rbd_image_qos(self, volume, qos_specs):
+        try:
+            with RBDVolumeProxy(self, volume.name) as rbd_image:
+                for qos_key, qos_val in qos_specs.items():
+                    if qos_key in QOS_KEY_MAP:
+                        rbd_image.config_set(QOS_KEY_MAP[qos_key]['ceph_key'],
+                                             str(qos_val))
+                        LOG.debug('qos_specs: %(qos_key)s successfully set to'
+                                  ' %(qos_value)s', {'qos_key': qos_key,
+                                                     'qos_value': qos_val})
+                    else:
+                        LOG.warning('qos_specs: the requested qos key'
+                                    '%(qos_key)s does not exist',
+                                    {'qos_key': qos_key,
+                                     'qos_value': qos_val})
+        except Exception as e:
+            msg = (_('Failed to set qos spec %(qos_key)s '
+                     'for rbd image %(rbd_image_name)s, '
+                     'due to %(error)s.')
+                   % {'qos_key': qos_key,
+                      'rbd_image_name': volume.name,
+                      'error': e})
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    @utils.retry(exception.VolumeBackendAPIException)
+    def delete_rbd_image_qos_keys(self, volume, qos_keys):
+        try:
+            with RBDVolumeProxy(self, volume.name) as rbd_image:
+                for key in qos_keys:
+                    rbd_image.config_remove(QOS_KEY_MAP[key]['ceph_key'])
+                    LOG.debug('qos_specs: %(qos_key)s was '
+                              'successfully unset',
+                              {'qos_key': key})
+        except Exception as e:
+            msg = (_("Failed to delete qos keys %(qos_key)s "
+                     "for rbd image %(rbd_image_name)s, "
+                     "due to %(error)s.")
+                   % {'qos_key': key,
+                      'rbd_image_name': volume.name,
+                      'error': e})
+            raise exception.VolumeBackendAPIException(data=msg)

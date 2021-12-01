@@ -44,8 +44,8 @@ from cinder.tests.unit import utils
 from cinder.tests.unit.volume import test_driver
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
+from cinder.volume import qos_specs
 from cinder.volume import volume_utils
-
 
 # This is used to collect raised exceptions so that tests may check what was
 # raised.
@@ -265,6 +265,11 @@ class RBDTestCase(test.TestCase):
                           'size': 128,
                           'host': 'host@fakebackend#fakepool'}
                })
+
+        self.qos_policy_a = {"total_iops_sec": "100",
+                             "total_bytes_sec": "1024"}
+        self.qos_policy_b = {"read_iops_sec": "500",
+                             "write_iops_sec": "200"}
 
     @ddt.data({'cluster_name': None, 'pool_name': 'rbd'},
               {'cluster_name': 'volumes', 'pool_name': None})
@@ -497,10 +502,16 @@ class RBDTestCase(test.TestCase):
             image.update_features.assert_has_calls(calls, any_order=False)
 
     @common_mocks
+    @mock.patch.object(driver.RBDDriver, '_qos_specs_from_volume_type')
+    @mock.patch.object(driver.RBDDriver, '_supports_qos')
     @mock.patch.object(driver.RBDDriver, '_enable_replication')
-    def test_create_volume(self, mock_enable_repl):
+    def test_create_volume(self, mock_enable_repl, mock_qos_vers,
+                           mock_get_qos_specs):
         client = self.mock_client.return_value
         client.__enter__.return_value = client
+
+        mock_qos_vers.return_value = True
+        mock_get_qos_specs.return_value = None
 
         res = self.driver.create_volume(self.volume_a)
 
@@ -516,6 +527,7 @@ class RBDTestCase(test.TestCase):
         client.__enter__.assert_called_once_with()
         client.__exit__.assert_called_once_with(None, None, None)
         mock_enable_repl.assert_not_called()
+        mock_qos_vers.assert_not_called()
 
     @common_mocks
     @mock.patch.object(driver.RBDDriver, '_enable_replication')
@@ -543,6 +555,39 @@ class RBDTestCase(test.TestCase):
         self.mock_rbd.RBD.return_value.create.assert_called_once_with(
             client.ioctx, self.volume_a.name, self.volume_a.size * units.Gi,
             order, old_format=False, features=client.features)
+
+        client.__enter__.assert_called_once_with()
+        client.__exit__.assert_called_once_with(None, None, None)
+
+    @common_mocks
+    @mock.patch.object(driver.RBDDriver, '_supports_qos')
+    @mock.patch.object(driver.RBDDriver, 'update_rbd_image_qos')
+    def test_create_volume_with_qos(self, mock_update_qos, mock_qos_supported):
+
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, "qos-iops-bws", self.qos_policy_a)
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            qos_specs_id = qos.id)
+
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+
+        mock_qos_supported.return_value = True
+        res = self.driver.create_volume(self.volume_a)
+        self.assertEqual({}, res)
+
+        chunk_size = self.cfg.rbd_store_chunk_size * units.Mi
+        order = int(math.log(chunk_size, 2))
+        args = [client.ioctx, str(self.volume_a.name),
+                self.volume_a.size * units.Gi, order]
+        kwargs = {'old_format': False,
+                  'features': client.features}
+        self.mock_rbd.RBD.return_value.create.assert_called_once_with(
+            *args, **kwargs)
+
+        mock_update_qos.assert_called_once_with(self.volume_a, qos.specs)
 
         client.__enter__.assert_called_once_with()
         client.__exit__.assert_called_once_with(None, None, None)
@@ -1690,13 +1735,16 @@ class RBDTestCase(test.TestCase):
 
     @ddt.data(True, False)
     @common_mocks
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver._supports_qos')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_usage_info')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_pool_stats')
     def test_update_volume_stats(self, replication_enabled, stats_mock,
-                                 usage_mock):
+                                 usage_mock, mock_qos_supported):
         stats_mock.return_value = (mock.sentinel.free_capacity_gb,
                                    mock.sentinel.total_capacity_gb)
         usage_mock.return_value = mock.sentinel.provisioned_capacity_gb
+
+        mock_qos_supported.return_value = True
 
         expected_fsid = 'abc'
         expected_location_info = ('nondefault:%s:%s:%s:rbd' %
@@ -1716,7 +1764,8 @@ class RBDTestCase(test.TestCase):
             max_over_subscription_ratio=1.0,
             multiattach=True,
             location_info=expected_location_info,
-            backend_state='up')
+            backend_state='up',
+            qos_support=True)
 
         if replication_enabled:
             targets = [{'backend_id': 'secondary-backend'},
@@ -1735,13 +1784,20 @@ class RBDTestCase(test.TestCase):
             mock_get_fsid.return_value = expected_fsid
             actual = self.driver.get_volume_stats(True)
             self.assertDictEqual(expected, actual)
+            mock_qos_supported.assert_called_once_with()
 
     @common_mocks
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver._supports_qos')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_usage_info')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_pool_stats')
-    def test_update_volume_stats_exclusive_pool(self, stats_mock, usage_mock):
+    def test_update_volume_stats_exclusive_pool(self, stats_mock, usage_mock,
+                                                mock_qos_supported):
         stats_mock.return_value = (mock.sentinel.free_capacity_gb,
                                    mock.sentinel.total_capacity_gb)
+
+        # Set the version to unsupported, leading to the qos_support parameter
+        # in the actual output differing to the one set below in expected.
+        mock_qos_supported.return_value = False
 
         expected_fsid = 'abc'
         expected_location_info = ('nondefault:%s:%s:%s:rbd' %
@@ -1760,7 +1816,8 @@ class RBDTestCase(test.TestCase):
             max_over_subscription_ratio=1.0,
             multiattach=True,
             location_info=expected_location_info,
-            backend_state='up')
+            backend_state='up',
+            qos_support=False)
 
         my_safe_get = MockDriverConfig(rbd_exclusive_cinder_pool=True)
         self.mock_object(self.driver.configuration, 'safe_get',
@@ -1772,14 +1829,19 @@ class RBDTestCase(test.TestCase):
 
         self.assertDictEqual(expected, actual)
         usage_mock.assert_not_called()
+        mock_qos_supported.assert_called_once_with()
 
     @common_mocks
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver._supports_qos')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_usage_info')
     @mock.patch('cinder.volume.drivers.rbd.RBDDriver._get_pool_stats')
-    def test_update_volume_stats_error(self, stats_mock, usage_mock):
+    def test_update_volume_stats_error(self, stats_mock, usage_mock,
+                                       mock_qos_supported):
         my_safe_get = MockDriverConfig(rbd_exclusive_cinder_pool=False)
         self.mock_object(self.driver.configuration, 'safe_get',
                          my_safe_get)
+
+        mock_qos_supported.return_value = True
 
         expected_fsid = 'abc'
         expected_location_info = ('nondefault:%s:%s:%s:rbd' %
@@ -1797,7 +1859,8 @@ class RBDTestCase(test.TestCase):
                         max_over_subscription_ratio=1.0,
                         thin_provisioning_support=True,
                         location_info=expected_location_info,
-                        backend_state='down')
+                        backend_state='down',
+                        qos_support=True)
 
         with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
             mock_get_fsid.return_value = expected_fsid
@@ -2211,15 +2274,18 @@ class RBDTestCase(test.TestCase):
             self.driver.extend_volume(self.volume_a, fake_size)
             mock_resize.assert_called_once_with(self.volume_a, size=size)
 
+    @mock.patch.object(driver.RBDDriver, '_qos_specs_from_volume_type')
+    @mock.patch.object(driver.RBDDriver, '_supports_qos')
     @ddt.data(False, True)
     @common_mocks
-    def test_retype(self, enabled):
+    def test_retype(self, enabled, mock_qos_vers, mock_get_qos_specs):
         """Test retyping a non replicated volume.
 
         We will test on a system that doesn't have replication enabled and on
         one that hast it enabled.
         """
         self.driver._is_replication_enabled = enabled
+        mock_qos_vers.return_value = False
         if enabled:
             expect = {'replication_status': fields.ReplicationStatus.DISABLED}
         else:
@@ -2266,11 +2332,14 @@ class RBDTestCase(test.TestCase):
               {'old_replicated': True, 'new_replicated': True})
     @ddt.unpack
     @common_mocks
+    @mock.patch.object(driver.RBDDriver, '_qos_specs_from_volume_type')
+    @mock.patch.object(driver.RBDDriver, '_supports_qos')
     @mock.patch.object(driver.RBDDriver, '_disable_replication',
                        return_value={'replication': 'disabled'})
     @mock.patch.object(driver.RBDDriver, '_enable_replication',
                        return_value={'replication': 'enabled'})
-    def test_retype_replicated(self, mock_disable, mock_enable, old_replicated,
+    def test_retype_replicated(self, mock_disable, mock_enable, mock_qos_vers,
+                               mock_get_qos_specs, old_replicated,
                                new_replicated):
         """Test retyping a non replicated volume.
 
@@ -2284,6 +2353,9 @@ class RBDTestCase(test.TestCase):
             extra_specs={'replication_enabled': '<is> True'})
 
         self.volume_a.volume_type = replicated_type if old_replicated else None
+
+        mock_qos_vers.return_value = False
+        mock_get_qos_specs.return_value = False
 
         if new_replicated:
             new_type = replicated_type
@@ -2304,6 +2376,162 @@ class RBDTestCase(test.TestCase):
         res = self.driver.retype(self.context, self.volume_a, new_type, None,
                                  None)
         self.assertEqual((True, update), res)
+
+    @common_mocks
+    @mock.patch.object(driver.RBDDriver, 'delete_rbd_image_qos_keys')
+    @mock.patch.object(driver.RBDDriver, 'get_rbd_image_qos')
+    @mock.patch.object(driver.RBDDriver, '_supports_qos')
+    @mock.patch.object(driver.RBDDriver, 'update_rbd_image_qos')
+    def test_retype_qos(self, mock_update_qos, mock_qos_supported,
+                        mock_get_vol_qos, mock_del_vol_qos):
+
+        ctxt = context.get_admin_context()
+        qos_a = qos_specs.create(ctxt, "qos-vers-a", self.qos_policy_a)
+        qos_b = qos_specs.create(ctxt, "qos-vers-b", self.qos_policy_b)
+
+        # The vol_config dictionary containes supported as well as currently
+        # unsupported values (CNA). The latter will be marked accordingly to
+        # indicate the current support status.
+        vol_config = {
+            "rbd_qos_bps_burst": "0",
+            "rbd_qos_bps_burst_seconds": "1",  # CNA
+            "rbd_qos_bps_limit": "1024",
+            "rbd_qos_iops_burst": "0",
+            "rbd_qos_iops_burst_seconds": "1",  # CNA
+            "rbd_qos_iops_limit": "100",
+            "rbd_qos_read_bps_burst": "0",
+            "rbd_qos_read_bps_burst_seconds": "1",  # CNA
+            "rbd_qos_read_bps_limit": "0",
+            "rbd_qos_read_iops_burst": "0",
+            "rbd_qos_read_iops_burst_seconds": "1",  # CNA
+            "rbd_qos_read_iops_limit": "0",
+            "rbd_qos_schedule_tick_min": "50",  # CNA
+            "rbd_qos_write_bps_burst": "0",
+            "rbd_qos_write_bps_burst_seconds": "1",  # CNA
+            "rbd_qos_write_bps_limit": "0",
+            "rbd_qos_write_iops_burst": "0",
+            "rbd_qos_write_iops_burst_seconds": "1",  # CNA
+            "rbd_qos_write_iops_limit": "0",
+        }
+
+        mock_get_vol_qos.return_value = vol_config
+
+        diff = {'encryption': {},
+                'extra_specs': {},
+                'qos_specs': {'consumer': (u'front-end', u'back-end'),
+                              'created_at': (123, 456),
+                              u'total_bytes_sec': (u'1024', None),
+                              u'total_iops_sec': (u'200', None)}}
+
+        delete_qos = ['total_iops_sec', 'total_bytes_sec']
+
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            qos_specs_id = qos_a.id)
+
+        new_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE2_ID,
+            qos_specs_id = qos_b.id)
+
+        mock_qos_supported.return_value = True
+
+        res = self.driver.retype(ctxt, self.volume_a, new_type, diff,
+                                 None)
+        self.assertEqual((True, {}), res)
+
+        assert delete_qos == [key for key in delete_qos
+                              if key in driver.QOS_KEY_MAP]
+        mock_update_qos.assert_called_once_with(self.volume_a, qos_b.specs)
+        mock_del_vol_qos.assert_called_once_with(self.volume_a, delete_qos)
+
+    @common_mocks
+    @mock.patch('cinder.volume.drivers.rbd.RBDDriver.RBDProxy')
+    def test__supports_qos(self, rbdproxy_mock):
+        rbdproxy_ver = 20
+        rbdproxy_mock.return_value.version.return_value = (0, rbdproxy_ver)
+
+        self.assertTrue(self.driver._supports_qos())
+
+    @common_mocks
+    def test__qos_specs_from_volume_type(self):
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, "qos-vers-a", self.qos_policy_a)
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            qos_specs_id = qos.id)
+
+        self.assertEqual(
+            {'total_iops_sec': '100', 'total_bytes_sec': '1024'},
+            self.driver._qos_specs_from_volume_type(self.volume_a.volume_type))
+
+    @common_mocks
+    def test_get_rbd_image_qos(self):
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, "qos-vers-a", self.qos_policy_a)
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            qos_specs_id = qos.id)
+
+        rbd_image_conf = []
+        for qos_key, qos_val in (
+                self.volume_a.volume_type.qos_specs.specs.items()):
+            rbd_image_conf.append(
+                {'name': driver.QOS_KEY_MAP[qos_key]['ceph_key'],
+                 'value': int(qos_val)})
+
+        rbd_image = self.mock_proxy.return_value.__enter__.return_value
+        rbd_image.config_list.return_value = rbd_image_conf
+
+        self.assertEqual(
+            {'rbd_qos_bps_limit': 1024, 'rbd_qos_iops_limit': 100},
+            self.driver.get_rbd_image_qos(self.volume_a))
+
+    @common_mocks
+    def test_update_rbd_image_qos(self):
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, "qos-vers-a", self.qos_policy_a)
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            qos_specs_id = qos.id)
+
+        rbd_image = self.mock_proxy.return_value.__enter__.return_value
+
+        updated_specs = {"total_iops_sec": '50'}
+        rbd_image.config_set.return_value = qos_specs.update(ctxt,
+                                                             qos.id,
+                                                             updated_specs)
+
+        self.driver.update_rbd_image_qos(self.volume_a, updated_specs)
+        self.assertEqual(
+            {'total_bytes_sec': '1024', 'total_iops_sec': '50'},
+            self.volume_a.volume_type.qos_specs.specs)
+
+    @common_mocks
+    def test_delete_rbd_image_qos_key(self):
+        ctxt = context.get_admin_context()
+        qos = qos_specs.create(ctxt, 'qos-vers-a', self.qos_policy_a)
+        self.volume_a.volume_type = fake_volume.fake_volume_type_obj(
+            ctxt,
+            id=fake.VOLUME_TYPE_ID,
+            qos_specs_id = qos.id)
+
+        rbd_image = self.mock_proxy.return_value.__enter__.return_value
+
+        keys = ['total_iops_sec']
+        rbd_image.config_remove.return_value = qos_specs.delete_keys(ctxt,
+                                                                     qos.id,
+                                                                     keys)
+
+        self.driver.delete_rbd_image_qos_keys(self.volume_a, keys)
+
+        self.assertEqual(
+            {'total_bytes_sec': '1024'},
+            self.volume_a.volume_type.qos_specs.specs)
 
     @common_mocks
     def test_update_migrated_volume(self):

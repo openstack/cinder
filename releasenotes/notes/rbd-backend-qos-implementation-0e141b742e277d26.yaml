@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    RBD driver: Added QoS support.
