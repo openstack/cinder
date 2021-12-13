@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Lightbits LightOS driver: new Cinder driver for Lightbits(TM)
+    LightOS(R). Lightbits Labs (http://www.lightbitslabs.com) LightOS
+    is software-defined, cloud native, high-performance, clustered
+    scale-out and redundant NVMe/TCP storage that performs like local
+    NVMe flash.
