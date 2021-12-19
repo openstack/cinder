@@ -1,3 +1,4 @@
+cinder/backup/api.py
 cinder/backup/manager.py
 cinder/common/constants.py
 cinder/context.py
@@ -8,6 +9,7 @@ cinder/image/glance.py
 cinder/image/image_utils.py
 cinder/exception.py
 cinder/manager.py
+cinder/objects/backup.py
 cinder/scheduler/base_handler.py
 cinder/scheduler/base_weight.py
 cinder/scheduler/evaluator/evaluator.py

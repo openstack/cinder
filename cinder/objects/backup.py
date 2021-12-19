@@ -17,6 +17,7 @@ from oslo_serialization import base64
 from oslo_serialization import jsonutils
 from oslo_versionedobjects import fields
 
+from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -103,15 +104,17 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         return CONF.backup_name_template % self.id
 
     @property
-    def is_incremental(self):
+    def is_incremental(self) -> bool:
         return bool(self.parent_id)
 
     @property
-    def has_dependent_backups(self):
+    def has_dependent_backups(self) -> bool:
         return bool(self.num_dependent_backups)
 
     @classmethod
-    def _from_db_object(cls, context, backup, db_backup, expected_attrs=None):
+    def _from_db_object(cls,
+                        context: context.RequestContext,
+                        backup, db_backup, expected_attrs=None) -> 'Backup':
         if expected_attrs is None:
             expected_attrs = []
         for name, field in backup.fields.items():
@@ -159,7 +162,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
         return changes
 
-    def create(self):
+    def create(self) -> None:
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason='already created')
@@ -168,7 +171,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         db_backup = db.backup_create(self._context, updates)
         self._from_db_object(self._context, self, db_backup)
 
-    def save(self):
+    def save(self) -> None:
         updates = self.cinder_obj_get_changes()
         if updates:
             if 'metadata' in updates:
@@ -181,14 +184,14 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes()
 
-    def destroy(self):
+    def destroy(self) -> None:
         with self.obj_as_admin():
             updated_values = db.backup_destroy(self._context, self.id)
         self.update(updated_values)
         self.obj_reset_changes(updated_values.keys())
 
     @staticmethod
-    def decode_record(backup_url):
+    def decode_record(backup_url) -> dict:
         """Deserialize backup metadata from string into a dictionary.
 
         :raises InvalidInput:
@@ -201,7 +204,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
             msg = _("Can't parse backup record.")
         raise exception.InvalidInput(reason=msg)
 
-    def encode_record(self, **kwargs):
+    def encode_record(self, **kwargs) -> str:
         """Serialize backup object, with optional extra info, into a string."""
         # We don't want to export extra fields and we want to force lazy
         # loading, so we can't use dict(self) or self.obj_to_primitive
@@ -223,8 +226,10 @@ class BackupList(base.ObjectListBase, base.CinderObject):
     }
 
     @classmethod
-    def get_all(cls, context, filters=None, marker=None, limit=None,
-                offset=None, sort_keys=None, sort_dirs=None):
+    def get_all(cls,
+                context: context.RequestContext,
+                filters=None, marker=None, limit=None,
+                offset=None, sort_keys=None, sort_dirs=None) -> 'BackupList':
         backups = db.backup_get_all(context, filters, marker, limit, offset,
                                     sort_keys, sort_dirs)
         expected_attrs = Backup._get_expected_attrs(context)
@@ -232,7 +237,9 @@ class BackupList(base.ObjectListBase, base.CinderObject):
                                   backups, expected_attrs=expected_attrs)
 
     @classmethod
-    def get_all_by_host(cls, context, host):
+    def get_all_by_host(cls,
+                        context: context.RequestContext,
+                        host: str) -> 'BackupList':
         backups = db.backup_get_all_by_host(context, host)
         expected_attrs = Backup._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Backup,
@@ -251,7 +258,11 @@ class BackupList(base.ObjectListBase, base.CinderObject):
 
     @classmethod
     def get_all_by_volume(
-            cls, context, volume_id, vol_project_id, filters=None):
+            cls,
+            context: context.RequestContext,
+            volume_id: str,
+            vol_project_id: str,
+            filters=None) -> 'BackupList':
         backups = db.backup_get_all_by_volume(
             context, volume_id, vol_project_id, filters)
         expected_attrs = Backup._get_expected_attrs(context)
