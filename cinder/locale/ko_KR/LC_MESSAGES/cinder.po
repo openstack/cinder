@@ -13,17 +13,18 @@
 # Sungwook Choi <csucom@gmail.com>, 2018. #zanata
 # chohanjoo <vjswl132@gmail.com>, 2020. #zanata
 # Gyuseok Jung <epdlemflaj@gmail.com>, 2021. #zanata
+# HYUNGBAI PARK <openstack.make@gmail.com>, 2021. #zanata
 # Jinseok Kim <wlstjr112@naver.com>, 2021. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: cinder VERSION\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2021-10-14 17:26+0000\n"
+"POT-Creation-Date: 2021-12-19 23:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2021-10-12 02:25+0000\n"
-"Last-Translator: Jinseok Kim <wlstjr112@naver.com>\n"
+"PO-Revision-Date: 2021-11-15 05:16+0000\n"
+"Last-Translator: HYUNGBAI PARK <openstack.make@gmail.com>\n"
 "Language: ko_KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -4695,6 +4696,10 @@ msgstr "%(type_id)s 유형에 대한 볼륨 유형 암호화가 이미 존재합
 #, python-format
 msgid "Volume type encryption for type %(type_id)s does not exist."
 msgstr "유형 %(type_id)s의 볼륨 유형 암호화가 존재하지 않습니다."
+
+#, python-format
+msgid "Volume type is only supported in these availability zones: %(az)s"
+msgstr "이 가용성 구역에서만 볼륨 종류가 지원됩니다: %(az)s"
 
 msgid "Volume type name can not be empty."
 msgstr "볼륨 유형 이름은 빈 상태로 둘 수 없습니다."
