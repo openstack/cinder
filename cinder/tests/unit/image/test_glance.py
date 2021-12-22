@@ -252,6 +252,36 @@ class TestGlanceImageService(test.TestCase):
         actual = self.service.show(self.context, image_id)
         self.assertDictEqual(expected, actual)
 
+    def test_create_without_is_public(self):
+        """Test Creating images without is_public.
+
+        Ensure we can create an image without is_public attribute.
+        """
+        fixture = {'name': 'test image',
+                   'protected': False}
+        image_id = self.service.create(self.context, fixture)['id']
+
+        expected = {
+            'id': image_id,
+            'name': 'test image',
+            'protected': False,
+            'size': None,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+            'deleted': None,
+            'status': None,
+            'properties': {},
+            'owner': None,
+            'visibility': None,
+        }
+        actual = self.service.show(self.context, image_id)
+        self.assertDictEqual(expected, actual)
+
     def test_show_shared_image_membership_success(self):
         """Test Create Shared Image Membership Success
 
@@ -614,12 +644,91 @@ class TestGlanceImageService(test.TestCase):
         }
         self.assertEqual(expected, image_meta)
 
+    def test_show_passes_when_is_admin_in_the_context(self):
+        fixture = self._make_fixture(name='image2')
+        image_id = self.service.create(self.context, fixture)['id']
+        self.context.auth_token = False
+        self.context.is_admin = True
+
+        image_meta = self.service.show(self.context, image_id)
+        expected = {
+            'id': image_id,
+            'name': 'image2',
+            'protected': None,
+            'size': None,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+            'deleted': None,
+            'status': None,
+            'properties': {'properties': {}},
+            'owner': None,
+            'visibility': None
+        }
+        self.assertEqual(expected, image_meta)
+
+    def test_show_passes_when_is_public_in_visibility_param(self):
+        fixture = self._make_fixture(name='image3')
+        fixture['visibility'] = 'public'
+        image_id = self.service.create(self.context, fixture)['id']
+        self.context.auth_token = False
+        self.context.is_admin = False
+
+        image_meta = self.service.show(self.context, image_id)
+        expected = {
+            'id': image_id,
+            'name': 'image3',
+            'protected': None,
+            'size': None,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'created_at': self.NOW_DATETIME,
+            'updated_at': self.NOW_DATETIME,
+            'deleted': None,
+            'status': None,
+            'properties': {'properties': {}},
+            'owner': None,
+            'visibility': 'public'
+        }
+        self.assertEqual(expected, image_meta)
+
     def test_show_raises_when_no_authtoken_in_the_context(self):
         fixture = self._make_fixture(name='image1',
                                      is_public=False,
                                      protected=False)
         image_id = self.service.create(self.context, fixture)['id']
         self.context.auth_token = False
+        self.assertRaises(exception.ImageNotFound,
+                          self.service.show,
+                          self.context,
+                          image_id)
+
+    def test_show_raises_when_no_is_admin_in_the_context(self):
+        fixture = self._make_fixture(name='image2',
+                                     is_public=False,
+                                     protected=False)
+        image_id = self.service.create(self.context, fixture)['id']
+        self.context.auth_token = False
+        self.context.is_admin = False
+        self.assertRaises(exception.ImageNotFound,
+                          self.service.show,
+                          self.context,
+                          image_id)
+
+    def test_show_raises_when_is_private_in_visibility_param(self):
+        fixture = self._make_fixture(name='image3',
+                                     protected=False)
+        fixture['visibility'] = 'private'
+        image_id = self.service.create(self.context, fixture)['id']
+        self.context.auth_token = False
+        self.context.is_admin = False
         self.assertRaises(exception.ImageNotFound,
                           self.service.show,
                           self.context,
@@ -1099,8 +1208,8 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.flags(auth_strategy='keystone')
         self.flags(glance_request_timeout=None)
 
-        class MyGlanceStubClient(object):
-            def __init__(inst, version, *args, **kwargs):
+        class MyGlanceStubClient(test.TestCase):
+            def __init__(self, version, *args, **kwargs):
                 self.assertEqual('2', version)
                 self.assertEqual("http://fake_host:9292", args[0])
                 self.assertNotIn('timeout', kwargs)
@@ -1135,8 +1244,8 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.flags(glance_certfile='/opt/stack/data/cert.pem')
         self.flags(glance_keyfile='/opt/stack/data/key.pem')
 
-        class MyGlanceStubClient(object):
-            def __init__(inst, version, *args, **kwargs):
+        class MyGlanceStubClient(test.TestCase):
+            def __init__(self, version, *args, **kwargs):
                 self.assertEqual('2', version)
                 self.assertEqual("https://fake_host:9292", args[0])
                 self.assertNotIn('timeout', kwargs)
@@ -1167,8 +1276,8 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.flags(
             glance_ca_certificates_file='/opt/stack/data/ca-bundle.pem')
 
-        class MyGlanceStubClient(object):
-            def __init__(inst, version, *args, **kwargs):
+        class MyGlanceStubClient(test.TestCase):
+            def __init__(self, version, *args, **kwargs):
                 self.assertEqual('2', version)
                 self.assertEqual('https://fake_host:9292', args[0])
                 self.assertEqual(60, kwargs['timeout'])
@@ -1188,8 +1297,8 @@ class TestGlanceImageServiceClient(test.TestCase):
         self.flags(auth_strategy='noauth')
         self.flags(glance_request_timeout=None)
 
-        class MyGlanceStubClient(object):
-            def __init__(inst, version, *args, **kwargs):
+        class MyGlanceStubClient(test.TestCase):
+            def __init__(self, version, *args, **kwargs):
                 self.assertEqual('2', version)
                 self.assertEqual("http://fake_host:9292", args[0])
                 self.assertNotIn('timeout', kwargs)

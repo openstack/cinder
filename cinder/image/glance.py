@@ -518,7 +518,11 @@ class GlanceImageService(object):
         if hasattr(context, 'auth_token') and context.auth_token:
             return True
 
-        if image.is_public or context.is_admin:
+        if context.is_admin:
+            return True
+
+        if (getattr(image, 'is_public', False) or
+                getattr(image, 'visibility', 'private') == 'public'):
             return True
 
         properties = image.properties
