@@ -291,6 +291,7 @@
     parent: openstack-tox
     vars:
       tox_envlist: mypy
+      tox_inline_comments: false
 
 - job:
     name: cinder-for-glance-optimized
