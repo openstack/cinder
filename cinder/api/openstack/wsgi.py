@@ -240,7 +240,10 @@ class Request(webob.Request):
                     content_type = possible_type
 
             if not content_type:
-                content_type = self.accept.best_match(SUPPORTED_CONTENT_TYPES)
+                best_matches = self.accept.acceptable_offers(
+                    SUPPORTED_CONTENT_TYPES)
+                if best_matches:
+                    content_type = best_matches[0][0]
 
             self.environ['cinder.best_content_type'] = (content_type or
                                                         'application/json')
@@ -272,7 +275,16 @@ class Request(webob.Request):
         if not self.accept_language:
             return None
         all_languages = i18n.get_available_languages()
-        return self.accept_language.best_match(all_languages)
+        # NOTE: To decide the default behavior, 'default' is preferred over
+        # 'default_tag' because that is return as it is when no match. This is
+        # also little tricky that 'default' value cannot be None. At least one
+        # of default_tag or default must be supplied as an argument to the
+        # method, to define the defaulting behavior.  So passing a sentinal
+        # value to return None from this function.
+        best_match = self.accept_language.lookup(all_languages, default='fake')
+        if best_match == 'fake':
+            return None
+        return best_match
 
     def set_api_version_request(self, url):
         """Set API version request based on the request header information."""
