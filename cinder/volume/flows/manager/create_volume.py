@@ -41,7 +41,6 @@ from cinder.image import image_utils
 from cinder.message import api as message_api
 from cinder.message import message_field
 from cinder import objects
-from cinder.objects import consistencygroup
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume.flows import common
@@ -1189,14 +1188,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                       "Volume driver %s not initialized", driver_name)
             raise exception.DriverNotInitialized()
 
-        # NOTE(xyang): Populate consistencygroup_id and consistencygroup
-        # fields before passing to the driver. This is to support backward
-        # compatibility of consistencygroup.
-        if volume.group_id:
-            volume.consistencygroup_id = volume.group_id
-            cg = consistencygroup.ConsistencyGroup()
-            cg.from_group(volume.group)
-            volume.consistencygroup = cg
+        # For backward compatibilty
+        volume.populate_consistencygroup()
 
         create_type = volume_spec.pop('type', None)
         LOG.info("Volume %(volume_id)s: being created as %(create_type)s "
