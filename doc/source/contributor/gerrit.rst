@@ -134,7 +134,7 @@ CI job runs may result in false negatives for a considerable number of causes:
 
 - Network failures.
 - Not enough resources on the job runner.
-- Storage timeouts caused by the array running nigthly maintenance jobs.
+- Storage timeouts caused by the array running nightly maintenance jobs.
 - External service failure: pypi, package repositories, etc.
 - Non cinder components spurious bugs.
 
