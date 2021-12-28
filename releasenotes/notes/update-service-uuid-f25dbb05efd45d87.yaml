@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Added a new cinder-manage command to handle the situation where database
+    purges would not complete due to the volumes table holding references to
+    deleted services. The new command makes sure that all volumes have a
+    reference only to the correct service_uuid, which will allow old service
+    records to be purged from the database.
+
+    Command: ``cinder-manage volume update_service``
+  - |
+    When Cinder creates a new cinder-volume service, it now also immediately
+    updates the service_uuid for all volumes associated with that
+    cinder-volume host. In some cases, this was preventing the database purge
+    operation from completing successfully.
