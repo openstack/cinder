@@ -166,6 +166,15 @@ Delete a volume without first checking that the volume is available.
 Updates the host name of all volumes currently associated with a specified
 host.
 
+``cinder-manage volume update_service``
+
+When upgrading cinder, new service entries are created in the database as the
+existing cinder-volume host(s) are upgraded. In some cases, rows in the
+volumes table keep references to the old service, which can prevent the old
+services from being deleted when the database is purged. This command makes
+sure that all volumes have updated service references for all volumes on all
+cinder-volume hosts.
+
 Cinder Host
 ~~~~~~~~~~~
 
