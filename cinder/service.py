@@ -42,6 +42,7 @@ profiler_opts = importutils.try_import('osprofiler.opts')
 from cinder.common import constants
 from cinder import context
 from cinder import coordination
+from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -366,6 +367,9 @@ class Service(service.Service):
         # If we have updated the service_ref with replication data from
         # the cluster it will be saved.
         service_ref.save()
+        # Update all volumes that are associated with an old service with
+        # the new service uuid
+        db.volume_update_all_by_service(context)
 
     def __getattr__(self, key: str):
         manager = self.__dict__.get('manager', None)

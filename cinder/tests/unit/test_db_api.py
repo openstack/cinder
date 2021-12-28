@@ -911,6 +911,42 @@ class DBAPIVolumeTestCase(BaseTest):
                                           filters={'foo': 'bar'})
         self.assertEqual([], vols)
 
+    def test_volume_update_all_by_service(self):
+        volume_service_uuid = '918f24b6-c4c9-48e6-86c6-6871e91f4779'
+        alt_vol_service_uuid = '4b3356a0-31e1-4cec-af1c-07e1e0d7dcf0'
+        service_uuid_1 = 'c7b169f8-8da6-4330-b462-0467069371e2'
+        service_uuid_2 = '38d41b71-2f4e-4d3e-8206-d51ace608bca'
+        host = 'fake_host'
+        alt_host = 'alt_fake_host'
+        binary = 'cinder-volume'
+        # Create 3 volumes with host 'fake_host'
+        for i in range(3):
+            db.volume_create(self.ctxt, {
+                'service_uuid': volume_service_uuid,
+                'host': host,
+                'volume_type_id': fake.VOLUME_TYPE_ID})
+        # Create 2 volumes with host 'alt_fake_host'
+        for i in range(2):
+            db.volume_create(self.ctxt, {
+                'service_uuid': alt_vol_service_uuid,
+                'host': alt_host,
+                'volume_type_id': fake.VOLUME_TYPE_ID})
+        # Create service entry for 'fake_host'
+        utils.create_service(
+            self.ctxt,
+            {'uuid': service_uuid_1, 'host': host, 'binary': binary})
+        # Create service entry for 'alt_fake_host'
+        utils.create_service(
+            self.ctxt,
+            {'uuid': service_uuid_2, 'host': alt_host, 'binary': binary})
+        db.volume_update_all_by_service(self.ctxt)
+        volumes = db.volume_get_all(self.ctxt)
+        for volume in volumes:
+            if volume.host == host:
+                self.assertEqual(service_uuid_1, volume.service_uuid)
+            elif volume.host == alt_host:
+                self.assertEqual(service_uuid_2, volume.service_uuid)
+
     def test_volume_get_all_by_project(self):
         volumes = []
         for i in range(3):
