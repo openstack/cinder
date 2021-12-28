@@ -636,6 +636,16 @@ class VolumeCommands(object):
             db.volume_update(ctxt, v['id'],
                              {'host': newhost})
 
+    def update_service(self):
+        """Modify the service uuid associated with a volume.
+
+        In certain upgrade cases, we create new cinder services and delete the
+        records of old ones, however, the volumes created with old service
+        still contain the service uuid of the old services.
+        """
+        ctxt = context.get_admin_context()
+        db.volume_update_all_by_service(ctxt)
+
 
 class ConfigCommands(object):
     """Class for exposing the flags defined by flag_file(s)."""
