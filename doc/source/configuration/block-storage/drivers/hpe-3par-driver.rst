@@ -378,15 +378,15 @@ OpenStack software.
       san_password=3parpass
 
       # FIBRE CHANNEL DRIVER
-      # Note: For Primera, only FC driver is supported as of now.
       # (uncomment the next line to enable the FC driver)
       #volume_driver=cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver
 
       # iSCSI DRIVER
       # If you enable the iSCSI driver, you must also set values
       # for hpe3par_iscsi_ips or iscsi_ip_address in this file.
-      # Note: Primera currently requires the FC driver. If you
-      # configure iSCSI with Primera, the driver will fail to start.
+      # Note: The iSCSI driver is supported with 3PAR (all versions)
+      # and Primera (version 4.2 or higher). If you configure iSCSI
+      # with Primera 4.0 or 4.1, the driver will fail to start.
       # (uncomment the next line to enable the iSCSI driver)
       #volume_driver=cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver
 
