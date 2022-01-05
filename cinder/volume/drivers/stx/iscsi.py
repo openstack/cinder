@@ -206,5 +206,27 @@ class STXISCSIDriver(cinder.volume.driver.ISCSIDriver):
     def manage_existing_get_size(self, volume, existing_ref):
         return self.common.manage_existing_get_size(volume, existing_ref)
 
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        return self.common.manage_existing_snapshot(snapshot, existing_ref)
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        return self.common.manage_existing_snapshot_get_size(snapshot,
+                                                             existing_ref)
+
     def unmanage(self, volume):
         pass
+
+    def unmanage_snapshot(self, snapshot):
+        pass
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        return self.common.get_manageable_volumes(cinder_volumes,
+                                                  marker, limit, offset,
+                                                  sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit,
+                                 offset, sort_keys, sort_dirs):
+        return self.common.get_manageable_snapshots(cinder_snapshots,
+                                                    marker, limit, offset,
+                                                    sort_keys, sort_dirs)

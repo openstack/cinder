@@ -110,6 +110,109 @@ response_ports = '''<RESPONSE>
                  <PROPERTY name="status">Up</PROPERTY></OBJECT>
                  </RESPONSE>'''
 
+# mccli -x array show-volumes | egrep \
+# '(RESPONSE|OBJECT|volume-name|volume-type|serial-number|wwn| \
+#   storage-pool-name|size-numeric|volume-parent)'
+response_vols = '''
+<RESPONSE VERSION="L100" REQUEST="show volumes">
+  <OBJECT basetype="volumes" name="volume" oid="1" format="rows">
+    <PROPERTY name="storage-pool-name" type="string">A</PROPERTY>
+    <PROPERTY name="volume-name" type="string">bar</PROPERTY>
+    <PROPERTY name="size-numeric" type="uint64">2097152</PROPERTY>
+    <PROPERTY name="total-size-numeric" type="uint64">2097152</PROPERTY>
+    <PROPERTY name="allocated-size-numeric" type="uint64">0</PROPERTY>
+    <PROPERTY name="serial-number" key="true"
+              type="string">00c0ff53a30500000323416101000000</PROPERTY>
+    <PROPERTY name="read-ahead-size-numeric" type="uint32">-1</PROPERTY>
+    <PROPERTY name="volume-type" type="string">base</PROPERTY>
+    <PROPERTY name="volume-type-numeric" type="uint32">15</PROPERTY>
+    <PROPERTY name="volume-parent" type="string"></PROPERTY>
+    <PROPERTY name="wwn"
+              type="string">600C0FF00053A3050323416101000000</PROPERTY>
+  </OBJECT>
+  <OBJECT basetype="volumes" name="volume" oid="2" format="rows">
+    <PROPERTY name="storage-pool-name" type="string">A</PROPERTY>
+    <PROPERTY name="volume-name" type="string">foo</PROPERTY>
+    <PROPERTY name="size-numeric" type="uint64">8388608</PROPERTY>
+    <PROPERTY name="total-size-numeric" type="uint64">8388608</PROPERTY>
+    <PROPERTY name="allocated-size-numeric" type="uint64">0</PROPERTY>
+    <PROPERTY name="serial-number" key="true"
+              type="string">00c0ff53a3050000df513e6101000000</PROPERTY>
+    <PROPERTY name="read-ahead-size-numeric" type="uint32">-1</PROPERTY>
+    <PROPERTY name="volume-type" type="string">base</PROPERTY>
+    <PROPERTY name="volume-type-numeric" type="uint32">15</PROPERTY>
+    <PROPERTY name="volume-parent" type="string"></PROPERTY>
+    <PROPERTY name="wwn"
+              type="string">600C0FF00053A305DF513E6101000000</PROPERTY>
+  </OBJECT>
+  <OBJECT basetype="volumes" name="volume" oid="5" format="rows">
+    <PROPERTY name="storage-pool-name" type="string">A</PROPERTY>
+    <PROPERTY name="volume-name" type="string">snap</PROPERTY>
+    <PROPERTY name="size-numeric" type="uint64">2097152</PROPERTY>
+    <PROPERTY name="total-size-numeric" type="uint64">2097152</PROPERTY>
+    <PROPERTY name="allocated-size-numeric" type="uint64">0</PROPERTY>
+    <PROPERTY name="serial-number" key="true"
+              type="string">00c0ff53a3050000fbc5416101000000</PROPERTY>
+    <PROPERTY name="read-ahead-size-numeric" type="uint32">-1</PROPERTY>
+    <PROPERTY name="volume-type" type="string">snapshot</PROPERTY>
+    <PROPERTY name="volume-type-numeric" type="uint32">13</PROPERTY>
+    <PROPERTY name="volume-parent"
+              type="string">00c0ff53a30500000323416101000000</PROPERTY>
+    <PROPERTY name="wwn"
+              type="string">600C0FF00053A305FBC5416101000000</PROPERTY>
+  </OBJECT>
+  <OBJECT basetype="volumes" name="volume" oid="6" format="rows">
+    <PROPERTY name="storage-pool-name" type="string">A</PROPERTY>
+    <PROPERTY name="volume-name" type="string">vqoINx4UbS-Cno3gDq1V</PROPERTY>
+    <PROPERTY name="size-numeric" type="uint64">2097152</PROPERTY>
+    <PROPERTY name="total-size-numeric" type="uint64">2097152</PROPERTY>
+    <PROPERTY name="allocated-size-numeric" type="uint64">0</PROPERTY>
+    <PROPERTY name="serial-number" key="true"
+              type="string">00c0ff53a305000024c6416101000000</PROPERTY>
+    <PROPERTY name="read-ahead-size-numeric" type="uint32">-1</PROPERTY>
+    <PROPERTY name="volume-type" type="string">base</PROPERTY>
+    <PROPERTY name="volume-type-numeric" type="uint32">15</PROPERTY>
+    <PROPERTY name="volume-parent" type="string"></PROPERTY>
+    <PROPERTY name="wwn"
+              type="string">600C0FF00053A30524C6416101000000</PROPERTY>
+  </OBJECT>
+  <OBJECT basetype="status" name="status" oid="7">
+  </OBJECT>
+</RESPONSE>
+'''
+
+response_maps = '''
+<RESPONSE VERSION="L100" REQUEST="show maps">
+  <OBJECT basetype="volume-view" name="volume-view" oid="1" format="labeled">
+    <PROPERTY name="volume-serial" key="true"
+              type="string">00c0ff53a30500000323416101000000</PROPERTY>
+    <PROPERTY name="volume-name" type="string">bar</PROPERTY>
+  </OBJECT>
+</RESPONSE>
+'''
+
+# The two XML samples above will produce the following result from
+# get_manageable_volumes():
+#
+# [{'cinder_id': None,
+#   'extra_info': None,
+#   'reason_not_safe': 'volume in use',
+#   'reference': {'source-name': 'bar'},
+#   'safe_to_manage': False,
+#   'size': 1},
+#  {'cinder_id': 'aa820dc7-851b-4be0-a7a3-7803ab555495',
+#   'extra_info': None,
+#   'reason_not_safe': 'already managed',
+#   'reference': {'source-name': 'vqoINx4UbS-Cno3gDq1V'},
+#   'safe_to_manage': False,
+#   'size': 1},
+#  {'cinder_id': None,
+#   'extra_info': None,
+#   'reason_not_safe': None,
+#   'reference': {'source-name': 'foo'},
+#   'safe_to_manage': True,
+#   'size': 4}]
+
 response_ports_linear = response_ports % {'ip': 'primary-ip-address'}
 response_ports_virtual = response_ports % {'ip': 'ip-address'}
 
@@ -352,6 +455,16 @@ class FakeConfiguration1(object):
 class FakeConfiguration2(FakeConfiguration1):
     seagate_iscsi_ips = ['10.0.0.11']
     use_chap_auth = None
+
+
+class fake(dict):
+    def __init__(self, *args, **kwargs):
+        for d in args:
+            self.update(d)
+        self.update(kwargs)
+
+    def __getattr__(self, attr):
+        return self[attr]
 
 
 class TestFCSeagateCommon(test.TestCase):
@@ -612,9 +725,8 @@ class TestFCSeagateCommon(test.TestCase):
                                          {'capabilities': {}})
         self.assertEqual((False, None), ret)
 
-    @mock.patch.object(STXCommon, '_get_vol_name')
     @mock.patch.object(STXClient, 'modify_volume_name')
-    def test_manage_existing(self, mock_modify, mock_volume):
+    def test_manage_existing(self, mock_modify):
         existing_ref = {'source-name': 'xxxx'}
         mock_modify.side_effect = [stx_exception.RequestError, None]
         self.assertRaises(exception.Invalid, self.common.manage_existing,
@@ -631,6 +743,82 @@ class TestFCSeagateCommon(test.TestCase):
                           None, existing_ref)
         ret = self.common.manage_existing_get_size(None, existing_ref)
         self.assertEqual(1, ret)
+
+    @mock.patch.object(STXClient, 'modify_volume_name')
+    @mock.patch.object(STXClient, '_request')
+    def test_manage_existing_snapshot(self, mock_response, mock_modify):
+        fake_snap = fake(test_snap)
+        mock_response.side_effect = [etree.XML(response_maps),
+                                     etree.XML(response_vols)]
+        snap_ref = {'source-name': 'snap'}
+        ret = self.common.manage_existing_snapshot(fake_snap, snap_ref)
+        self.assertIsNone(ret)
+        newname = self.common._get_snap_name(test_snap['id'])
+        mock_modify.assert_called_with('snap', newname)
+
+    @mock.patch.object(STXClient, 'get_volume_size')
+    def test_manage_existing_snapshot_get_size(self, mock_volume):
+        existing_ref = {'source-name': 'xxxx'}
+        mock_volume.side_effect = [stx_exception.RequestError, 1]
+        self.assertRaises(exception.Invalid,
+                          self.common.manage_existing_get_size,
+                          None, existing_ref)
+        ret = self.common.manage_existing_snapshot_get_size(None, existing_ref)
+        self.assertEqual(1, ret)
+
+    @mock.patch.object(STXClient, '_request')
+    def test_get_manageable_volumes(self, mock_response):
+        mock_response.side_effect = [etree.XML(response_maps),
+                                     etree.XML(response_vols)]
+        cinder_volumes = [fake(id='aa820dc7-851b-4be0-a7a3-7803ab555495')]
+        marker = None
+        limit = 1000
+        offset = 0
+        sort_keys = ['size']
+        sort_dirs = ['asc']
+        ret = self.common.get_manageable_volumes(cinder_volumes,
+                                                 marker, limit, offset,
+                                                 sort_keys, sort_dirs)
+        # We expect to get back 3 volumes: one manageable,
+        # one already managed by Cinder, and one mapped (hence unmanageable)
+        self.assertEqual(len(ret), 3)
+        reasons_not_seen = {'volume in use', 'already managed'}
+        manageable_vols = 0
+        for vol in ret:
+            if vol['reason_not_safe']:
+                reasons_not_seen.discard(vol['reason_not_safe'])
+            self.assertGreaterEqual(len(vol['reference']['source-name']), 3)
+            if vol['safe_to_manage']:
+                manageable_vols += 1
+                self.assertIsNone(vol.get('cinder-id'))
+            else:
+                self.assertIsNotNone(vol['reason_not_safe'])
+
+        self.assertEqual(0, len(reasons_not_seen))
+        self.assertEqual(1, manageable_vols)
+
+    @mock.patch.object(STXClient, '_request')
+    def test_get_manageable_snapshots(self, mock_response):
+        mock_response.side_effect = [etree.XML(response_maps),
+                                     etree.XML(response_vols)]
+        cinder_volumes = [fake(id='aa820dc7-851b-4be0-a7a3-7803ab555495')]
+        marker = None
+        limit = 1000
+        offset = 0
+        sort_keys = ['size']
+        sort_dirs = ['asc']
+        ret = self.common.get_manageable_snapshots(cinder_volumes,
+                                                   marker, limit, offset,
+                                                   sort_keys, sort_dirs)
+        self.assertEqual(ret, [{
+            'cinder_id': None,
+            'extra_info': None,
+            'reason_not_safe': None,
+            'reference': {'source-name': 'snap'},
+            'safe_to_manage': True,
+            'size': 1,
+            'source_reference': {'source-name': 'bar'}
+        }])
 
 
 class TestISCSISeagateCommon(TestFCSeagateCommon):
