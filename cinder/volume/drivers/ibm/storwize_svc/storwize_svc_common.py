@@ -5890,7 +5890,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             try:
                 tgt_sys = self._aux_backend_helpers.get_system_info()
                 self._helpers.create_rccg(
-                    rccg_name, tgt_sys.get('system_name'))
+                    rccg_name, tgt_sys.get('system_id'))
                 model_update.update({'replication_status':
                                     fields.ReplicationStatus.ENABLED})
             except exception.VolumeBackendAPIException as err:
@@ -6069,7 +6069,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             try:
                 tgt_sys = self._aux_backend_helpers.get_system_info()
                 self._helpers.create_rccg(rccg_name,
-                                          tgt_sys.get('system_name'))
+                                          tgt_sys.get('system_id'))
                 model_update.update({'replication_status':
                                     fields.ReplicationStatus.ENABLED})
             except exception.VolumeBackendAPIException as err:

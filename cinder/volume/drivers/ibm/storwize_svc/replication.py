@@ -111,7 +111,7 @@ class StorwizeSVCReplicationGlobalMirror(StorwizeSVCReplication):
 
             system_info = self.target_helpers.get_system_info()
             self.driver._helpers.create_relationship(
-                vref['name'], target_vol_name, system_info.get('system_name'),
+                vref['name'], target_vol_name, system_info.get('system_id'),
                 self.asyncmirror)
         except Exception as e:
             msg = (_("Unable to set up mirror mode replication for %(vol)s. "
@@ -234,7 +234,7 @@ class StorwizeSVCReplicationGMCV(StorwizeSVCReplicationGlobalMirror):
                 vref['volume_type_id'])
             cycle_period_seconds = src_change_opts.get('cycle_period_seconds')
             self.driver._helpers.create_relationship(
-                vref['name'], target_vol_name, system_info.get('system_name'),
+                vref['name'], target_vol_name, system_info.get('system_id'),
                 self.asyncmirror, True, source_change_vol_name,
                 cycle_period_seconds)
             # Set target change volume
