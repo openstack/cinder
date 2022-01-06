@@ -689,8 +689,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         snapshot_id = snapshot_info['ID']
         if snapshot_info.get("RUNNINGSTATUS") != constants.STATUS_ACTIVE:
-            msg = _("Failed to create volume from snapshot duw to"
-                    "snapshot %s is not activate.") % snapshot_id
+            msg = _("Failed to create volume from snapshot due to "
+                    "snapshot %s not being active.") % snapshot_id
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         expect_size = int(int(volume.size) * constants.CAPACITY_UNIT)
