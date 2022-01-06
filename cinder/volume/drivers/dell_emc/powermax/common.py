@@ -2183,7 +2183,7 @@ class PowerMaxCommon(object):
         :param storagegroup_name: the storage group name -- string
         :param volume_size: the volume size -- string
         :param extra_specs: extra specifications -- dict
-        :return: volume_dict -- dict
+        :returns: volume_dict -- dict
         :raises: VolumeBackendAPIException:
         """
         existing_devices = self.rest.get_volumes_in_storage_group(
@@ -3088,8 +3088,21 @@ class PowerMaxCommon(object):
         rep_model_update, rep_driver_data = dict(), dict()
         rep_extra_specs = dict()
         extra_specs = self._initial_setup(volume)
-        array, device_id = self.utils.get_array_and_device_id(
-            volume, external_ref)
+
+        try:
+            array, device_id = self.utils.get_array_and_device_id(
+                volume, external_ref)
+        except exception.VolumeBackendAPIException:
+            array, device_id = self._manage_volume_with_uuid(
+                external_ref, volume)
+
+        if not device_id:
+            exception_message = _(
+                "Unable to get the device id to manage volume into OpenStack.")
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
+
         volume_id = volume.id
 
         # Check if the existing volume is valid for cinder management
@@ -3170,6 +3183,31 @@ class PowerMaxCommon(object):
             volume, rep_info_dict, device_id, extra_specs)
 
         return model_update
+
+    def _manage_volume_with_uuid(self, external_ref, volume):
+        """Manage volume using the uuid
+
+        :param external_ref: the external reference
+        :param volume: the volume object
+        :raises: VolumeBackendAPIException
+        :returns: array, device_id -- str, str
+        """
+        LOG.debug("External_ref: %(er)s", {'er': external_ref})
+        uuid_vol = external_ref.get('source-name', None)
+        if not uuid_vol:
+            uuid_vol = external_ref.get('source-id', None)
+        if uuid_vol:
+            uuid_vol = uuid_vol.replace('OS-', '').replace('volume-', '')
+        if uuid_vol and self.utils.check_uuid_regex(uuid_vol):
+            array = self.utils.get_array_from_host(volume)
+            device_id = self.rest.find_volume_device_id(array, uuid_vol)
+            return array, device_id
+        else:
+            exception_message = _(
+                "Unable to verify the uuid of volume.")
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
     def _protect_storage_group(
             self, array, device_id, volume, volume_name, rep_extra_specs):
@@ -3300,8 +3338,19 @@ class PowerMaxCommon(object):
         """
         LOG.debug("Volume in manage_existing_get_size: %(volume)s.",
                   {'volume': volume})
-        array, device_id = self.utils.get_array_and_device_id(
-            volume, external_ref)
+        try:
+            array, device_id = self.utils.get_array_and_device_id(
+                volume, external_ref)
+        except exception.VolumeBackendAPIException:
+            array, device_id = self._manage_volume_with_uuid(
+                external_ref, volume)
+
+        if not device_id:
+            exception_message = _(
+                "Unable to get the device id to manage volume into OpenStack.")
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         # Ensure the volume exists on the array
         volume_details = self.rest.get_volume(array, device_id)
         if not volume_details:
@@ -3398,10 +3447,18 @@ class PowerMaxCommon(object):
         :raises: VolumeBackendAPIException
         :returns: model update
         """
+        persist_metadata = True
         volume = snapshot.volume
         extra_specs = self._initial_setup(volume)
         array = extra_specs[utils.ARRAY]
         device_id = self._find_device_on_array(volume, extra_specs)
+        if not device_id:
+            exception_message = (
+                (_("Cannot find device for volume %(name)s.") % {
+                    'name': volume.id}))
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
 
         try:
             snap_name = existing_ref['source-name']
@@ -3429,7 +3486,20 @@ class PowerMaxCommon(object):
             LOG.error(exception_message)
             raise exception.VolumeBackendAPIException(
                 message=exception_message)
-        snap_id = self.rest.get_snap_id(array, device_id, snap_name)
+        try:
+            snap_id = self.rest.get_snap_id(array, device_id, snap_name)
+        except exception.VolumeBackendAPIException:
+            snap_id, snap_name = self._get_snap_id_with_uuid(
+                array, device_id, snap_name)
+            persist_metadata = False
+
+        if not snap_id:
+            exception_message = (
+                (_("Cannot find snap_id of snapshot %(snap_name)s.") % {
+                    'snap_name': snap_name}))
+            LOG.error(exception_message)
+            raise exception.VolumeBackendAPIException(
+                message=exception_message)
         snap_backend_name = self.utils.modify_snapshot_prefix(
             snap_name, manage=True)
 
@@ -3453,8 +3523,9 @@ class PowerMaxCommon(object):
             'provider_location': six.text_type(prov_loc)}
         snapshot_metadata = self.get_snapshot_metadata(
             array, device_id, snap_backend_name)
-        model_update = self.update_metadata(
-            model_update, snapshot.metadata, snapshot_metadata)
+        if persist_metadata:
+            model_update = self.update_metadata(
+                model_update, snapshot.metadata, snapshot_metadata)
 
         LOG.info("Managing SnapVX Snapshot %(snap_name)s of source "
                  "volume %(device_id)s, OpenStack Snapshot display name: "
@@ -3466,6 +3537,25 @@ class PowerMaxCommon(object):
             volume, extra_specs, 'manageSnapshot', snapshot_metadata)
 
         return model_update
+
+    def _get_snap_id_with_uuid(self, array, device_id, snap_name):
+        """Get the snap_id using the uuid as input
+
+        :param array: the serial number of the array
+        :param device_id: the device id of the volume
+        :param snap_name: the snap_name containing the uuid
+        :returns: snap_id, snap_name -- str, str
+        """
+        snap_id = None
+        snap_uuid = snap_name.replace('_snapshot-', '')
+        element_name = self.utils.get_volume_element_name(snap_uuid)
+        snap_name = self.utils.truncate_string(element_name, 19)
+        snap_name = snap_name.replace('OS-', '')
+        snap_list = self.rest.get_volume_snaps(
+            array, device_id, snap_name)
+        if len(snap_list) == 1:
+            snap_id = snap_list[0].get('snap_id')
+        return snap_id, snap_name
 
     def manage_existing_snapshot_get_size(self, snapshot):
         """Return the size of the source volume for manage-existing-snapshot.
@@ -6897,7 +6987,7 @@ class PowerMaxCommon(object):
         :param array: remote array
         :param volumes: rdf volumes
         :param rdfg: rdf group
-        :return: devices have partitioned states
+        :returns: devices have partitioned states
         """
         is_partitioned = False
         for volume in volumes:
