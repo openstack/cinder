@@ -348,16 +348,16 @@ class BackendState(object):
         # come up with better representation of HostState.
         grouping = 'cluster' if self.cluster_name else 'host'
         grouping_name = self.backend_id
-        return ("%(grouping)s '%(grouping_name)s':"
+        return ("%(grouping)s '%(grouping_name)s': "
                 "free_capacity_gb: %(free_capacity_gb)s, "
-                "total_capacity_gb: %(total_capacity_gb)s,"
+                "total_capacity_gb: %(total_capacity_gb)s, "
                 "allocated_capacity_gb: %(allocated_capacity_gb)s, "
-                "max_over_subscription_ratio: %(mosr)s,"
+                "max_over_subscription_ratio: %(mosr)s, "
                 "reserved_percentage: %(reserved_percentage)s, "
-                "provisioned_capacity_gb: %(provisioned_capacity_gb)s,"
+                "provisioned_capacity_gb: %(provisioned_capacity_gb)s, "
                 "thin_provisioning_support: %(thin_provisioning_support)s, "
-                "thick_provisioning_support: %(thick)s,"
-                "pools: %(pools)s,"
+                "thick_provisioning_support: %(thick)s, "
+                "pools: %(pools)s, "
                 "updated at: %(updated)s" %
                 {'grouping': grouping, 'grouping_name': grouping_name,
                  'free_capacity_gb': self.free_capacity_gb,
