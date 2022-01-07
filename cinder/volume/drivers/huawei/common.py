@@ -71,7 +71,7 @@ huawei_opts = [
 CONF = cfg.CONF
 CONF.register_opts(huawei_opts, group=configuration.SHARED_CONF_GROUP)
 
-snap_attrs = ('id', 'volume_id', 'volume', 'provider_location')
+snap_attrs = ('id', 'volume_id', 'volume', 'provider_location', 'volume_size')
 Snapshot = collections.namedtuple('Snapshot', snap_attrs)
 vol_attrs = ('id', 'lun_type', 'provider_location', 'metadata')
 Volume = collections.namedtuple('Volume', vol_attrs)
@@ -96,6 +96,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         self.support_func = None
         self.metro_flag = False
         self.replica = None
+        self.is_dorado_v6 = False
 
     @staticmethod
     def get_driver_options():
@@ -144,6 +145,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         self.client = rest_client.RestClient(self.configuration,
                                              **client_conf)
         self.client.login()
+        self.is_dorado_v6 = huawei_utils.is_support_clone_pair(self.client)
 
         # init remote client
         metro_san_address = self.configuration.safe_get("metro_san_address")
@@ -225,8 +227,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return volume_type
 
-    def _get_lun_params(self, volume, opts):
+    def _get_lun_params(self, volume, opts, src_size=None):
         pool_name = volume_utils.extract_host(volume.host, level='pool')
+
         params = {
             'TYPE': '11',
             'NAME': huawei_utils.encode_name(volume.id),
@@ -234,7 +237,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'PARENTID': self.client.get_pool_id(pool_name),
             'DESCRIPTION': volume.name,
             'ALLOCTYPE': opts.get('LUNType', self.configuration.lun_type),
-            'CAPACITY': int(volume.size) * constants.CAPACITY_UNIT,
+            'CAPACITY': int(int(src_size) * constants.CAPACITY_UNIT if src_size
+                            else int(volume.size) * constants.CAPACITY_UNIT),
             'READCACHEPOLICY': self.configuration.lun_read_cache_policy,
             'WRITECACHEPOLICY': self.configuration.lun_write_cache_policy,
         }
@@ -261,12 +265,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return lun_info, model_update
 
-    def _create_base_type_volume(self, opts, volume):
+    def _create_base_type_volume(self, opts, volume, src_size=None):
         """Create volume and add some base type.
 
         Base type is the service type which doesn't conflict with the other.
         """
-        lun_params = self._get_lun_params(volume, opts)
+        if self.is_dorado_v6:
+            lun_params = self._get_lun_params(volume, opts, src_size)
+        else:
+            lun_params = self._get_lun_params(volume, opts)
         lun_info, model_update = self._create_volume(lun_params)
         lun_id = lun_info['ID']
 
@@ -623,30 +630,10 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return moved, {}
 
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Create a volume from a snapshot.
-
-        We use LUNcopy to copy a new volume from snapshot.
-        The time needed increases as volume size does.
-        """
-        opts = huawei_utils.get_volume_params(volume)
-        if opts.get('hypermetro') and opts.get('replication_enabled'):
-            msg = _("Hypermetro and Replication can not be "
-                    "used in the same volume_type.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        snapshot_info = huawei_utils.get_snapshot_info(self.client, snapshot)
-        if not snapshot_info:
-            msg = _('create_volume_from_snapshot: Snapshot %(name)s '
-                    'does not exist.') % {'name': snapshot.id}
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        snapshot_id = snapshot_info['ID']
-
-        lun_params, lun_info, model_update = self._create_base_type_volume(
-            opts, volume)
+    def _create_volume_wait_ready(self, opts, volume, snapshot_id,
+                                  src_size=None):
+        lun_params, lun_info, model_update = \
+            self._create_base_type_volume(opts, volume, src_size)
 
         tgt_lun_id = lun_info['ID']
         luncopy_name = huawei_utils.encode_name(volume.id)
@@ -670,12 +657,86 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         huawei_utils.wait_for_condition(_volume_ready,
                                         wait_interval,
                                         wait_interval * 10)
+        return lun_params, lun_info, model_update
 
-        self._copy_volume(volume, luncopy_name,
-                          snapshot_id, tgt_lun_id)
+    def _create_clone_pair(self, source_id, target_id, clone_speed):
+        clone_pair_id = self.client.create_clone_pair(
+            source_id, target_id, clone_speed)
 
-        # NOTE(jlc): Actually, we just only support replication here right
-        # now, not hypermetro.
+        def _pair_sync_completed():
+            clone_pair_info = self.client.get_clone_pair_info(clone_pair_id)
+            if clone_pair_info['copyStatus'] != constants.CLONE_STATUS_HEALTH:
+                msg = _("ClonePair %s is abnormal.") % clone_pair_id
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return (clone_pair_info['syncStatus'] in
+                    constants.CLONE_STATUS_COMPLETE)
+
+        self.client.sync_clone_pair(clone_pair_id)
+        huawei_utils.wait_for_condition(
+            _pair_sync_completed, self.configuration.lun_copy_wait_interval,
+            self.configuration.lun_timeout)
+        self.client.delete_clone_pair(clone_pair_id)
+
+    def _create_volume_from_snapshot(self, volume, snapshot, opts,
+                                     clone_pair_flag=None):
+        snapshot_info = huawei_utils.get_snapshot_info(self.client, snapshot)
+        if not snapshot_info:
+            msg = _('create_volume_from_snapshot: Snapshot %(name)s '
+                    'does not exist.') % {'name': snapshot.id}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        snapshot_id = snapshot_info['ID']
+        if snapshot_info.get("RUNNINGSTATUS") != constants.STATUS_ACTIVE:
+            msg = _("Failed to create volume from snapshot duw to"
+                    "snapshot %s is not activate.") % snapshot_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        expect_size = int(int(volume.size) * constants.CAPACITY_UNIT)
+        lun_params, lun_info, model_update = \
+            self._create_volume_wait_ready(opts, volume, snapshot_id,
+                                           src_size=snapshot.volume_size)
+        tgt_lun_id = lun_info['ID']
+        luncopy_name = huawei_utils.encode_name(volume.id)
+
+        if clone_pair_flag:
+            clone_speed = self.configuration.lun_copy_speed
+            self._create_clone_pair(snapshot_id, tgt_lun_id, clone_speed)
+        else:
+            self._copy_volume(volume, luncopy_name,
+                              snapshot_id, tgt_lun_id)
+        try:
+            if int(lun_info['CAPACITY']) < expect_size:
+                self.client.extend_lun(lun_info["ID"], expect_size)
+                lun_info = self.client.get_lun_info(lun_info["ID"])
+                lun_params.update({"CAPACITY": expect_size})
+        except Exception as err:
+            LOG.exception('Extend lun %(lun_id)s error. Reason is %(err)s',
+                          {"lun_id": lun_info['ID'], "err": err})
+            self._delete_lun_with_check(lun_info['ID'])
+            raise
+
+        return lun_params, lun_info, model_update
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Create a volume from a snapshot.
+
+        We use LUNcopy to copy a new volume from snapshot.
+        The time needed increases as volume size does.
+        For Dorado V6 we use clone_pair
+        """
+        opts = huawei_utils.get_volume_params(volume)
+        if opts.get('hypermetro') and opts.get('replication_enabled'):
+            msg = _("Hypermetro and Replication can not be "
+                    "used in the same volume_type.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        lun_params, lun_info, model_update = \
+            self._create_volume_from_snapshot(volume, snapshot, opts,
+                                              self.is_dorado_v6)
+
         model_update = self._add_extend_type_to_volume(opts, lun_params,
                                                        lun_info, model_update)
         model_update['provider_location'] = huawei_utils.to_string(
@@ -692,6 +753,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         snapshot = Snapshot(id=uuid.uuid4().__str__(),
                             volume_id=src_vref.id,
                             volume=src_vref,
+                            volume_size=src_vref.size,
                             provider_location=None)
 
         # Create snapshot.
@@ -1556,7 +1618,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     'provider_location': src_vol.provider_location,
                 }
                 snapshot_kwargs = {'id': six.text_type(uuid.uuid4()),
-                                   'volume': objects.Volume(**vol_kwargs)}
+                                   'volume': objects.Volume(**vol_kwargs),
+                                   'volume_size': src_vol.size}
                 snapshot = objects.Snapshot(**snapshot_kwargs)
                 snapshots.append(snapshot)
 
