@@ -27,6 +27,10 @@ from oslo_utils import importutils
 from oslo_utils import units
 import requests
 import urllib3
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 from cinder import coordination
 from cinder import exception
@@ -999,11 +1003,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         lightos_targets = {}
         for target in self.cluster.targets.values():
             properties = dict()
-            data_address, _ = target['nvmeEndpoint'].split(':')
-            properties['target_portal'] = data_address
+            ep = urlparse('//' + target['nvmeEndpoint'])
+            properties['target_portal'] = ep.hostname
             properties['target_port'] = 8009  # spec specified discovery port
             properties['transport_type'] = 'tcp'
-            lightos_targets[data_address] = properties
+            lightos_targets[ep.hostname] = properties
 
         server_properties = {}
         server_properties['lightos_nodes'] = lightos_targets
