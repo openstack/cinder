@@ -33,12 +33,15 @@ import paramiko
 from cinder import context
 import cinder.db
 from cinder import exception
+from cinder.objects import volume_attachment
 from cinder import ssh_utils
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as testutils
 from cinder import utils as cinder_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.toyou.acs5000 import acs5000_common
+from cinder.volume.drivers.toyou.acs5000 import acs5000_fc
 from cinder.volume.drivers.toyou.acs5000 import acs5000_iscsi
 
 POOLS_NAME = ['pool01', 'pool02']
@@ -91,38 +94,66 @@ class CommandSimulator(object):
                            'disk-array-000f12345:dev0.ctr2',
              'WWNN': '200008CA45D33768',
              'status': 'online'}]
-        self._ip_list = {
-            '0': [{
-                'ctrl_idx': 0,
-                'id': 0,
-                'name': 'lan1',
-                'ip': '10.23.45.67',
-                'mask': '255.255.255.0',
-                'gw': ''
-            }, {
-                'ctrl_idx': 0,
-                'id': 1,
-                'name': 'lan2',
-                'ip': '10.23.45.68',
-                'mask': '255.255.255.0',
-                'gw': ''
-            }],
-            '1': [{
-                'ctrl_idx': 1,
-                'id': 0,
-                'name': 'lan1',
-                'ip': '10.23.45.69',
-                'mask': '255.255.255.0',
-                'gw': ''
-            }, {
-                'ctrl_idx': 1,
-                'id': 1,
-                'name': 'lan2',
-                'ip': '10.23.45.70',
-                'mask': '255.255.255.0',
-                'gw': ''
-            }]
-        }
+        self._iscsi_list = [
+            {'ctrl_idx': 0,
+             'id': 0,
+             'name': 'lan1',
+             'ip': '10.23.45.67',
+             'mask': '255.255.255.0',
+             'gw': '',
+             'link': '1 Gb/s'},
+            {'ctrl_idx': 0,
+             'id': 1,
+             'name': 'lan2',
+             'ip': '10.23.45.68',
+             'mask': '255.255.255.0',
+             'gw': '',
+             'link': '1 Gb/s'},
+            {'ctrl_idx': 0,
+             'id': 2,
+             'name': 'lan3',
+             'ip': '10.23.45.69',
+             'mask': '255.255.255.0',
+             'gw': '',
+             'link': '1 Gb/s'},
+            {'ctrl_idx': 1,
+             'id': 0,
+             'name': 'lan1',
+             'ip': '10.23.45.70',
+             'mask': '255.255.255.0',
+             'gw': '',
+             'link': '1 Gb/s'},
+            {'ctrl_idx': 1,
+             'id': 1,
+             'name': 'lan2',
+             'ip': '10.23.45.71',
+             'mask': '255.255.255.0',
+             'gw': '',
+             'link': 'Down'},
+            {'ctrl_idx': 1,
+             'id': 2,
+             'name': 'lan3',
+             'ip': '10.23.45.72',
+             'mask': '255.255.255.0',
+             'gw': '',
+             'link': 'Down'}]
+        self._fc_list = [
+            {'ctrl_idx': 0,
+             'WWPN': str(random.randint(0, 9999999999999999)).zfill(16),
+             'link': 'Up'},
+            {'ctrl_idx': 0,
+             'wwpn': str(random.randint(0, 9999999999999999)).zfill(16),
+             'link': 'Up'},
+            {'ctrl_idx': 0,
+             'link': 'Up'},
+            {'ctrl_idx': 1,
+             'WWPN': str(random.randint(0, 9999999999999999)).zfill(16),
+             'link': 'Up'},
+            {'ctrl_idx': 1,
+             'link': 'Up'},
+            {'ctrl_idx': 1,
+             'wwpn': str(random.randint(0, 9999999999999999)).zfill(16),
+             'link': 'Down'}]
         self._system_info = {'version': '3.1.2.345678',
                              'vendor': 'TOYOU',
                              'system_name': 'Disk-Array',
@@ -153,33 +184,27 @@ class CommandSimulator(object):
                                        'already exists on the system.'),
             'volume_extend_min': (321, 'A volume capacity shall not be'
                                        ' less than the current size'),
-            'lun_not_exist': (401, 'The volume does not exist  '
+            'volume_extend_size_equal': (322, 'A volume capacity shall not '
+                                              'be equal to than the '
+                                              'current size'),
+            'lun_not_exist': (401, 'The volume does not exist '
                                    'on the system.'),
             'not_available_lun': (402, 'The system have no available lun.'),
+            'host_empty': (403, 'The host is empty.'),
             'snap_over_system': (503, 'The system snapshots maximum quantity '
                                       'has been reached.'),
             'snap_over_volume': (504, 'A volume snapshots maximum quantity '
                                       'has been reached.'),
             'snap_not_exist': (505, 'The snapshot does not exist '
-                                    'on the system.')
+                                    'on the system.'),
+            'snap_not_latest': (506, 'The snapshot is not the latest one.'),
+            'snapshot_not_belong_volume': (507, 'The snapshot does not '
+                                                'belong to the volume.'),
+            'snap_name_existed': (508, 'A snapshot with same name '
+                                       'already exists on the system.')
         }
         self._command_function = {
-            'sshGetSystem': 'get_system',
-            'sshGetIpConnect': 'get_ip_connect',
-            'sshGetPoolInfo': 'get_pool_info',
-            'sshGetVolume': 'get_volume',
-            'sshGetCtrInfo': 'ls_ctr_info',
-            'sshCreateVolume': 'create_volume',
-            'sshDeleteVolume': 'delete_volume',
-            'sshCinderExtendVolume': 'extend_volume',
-            'sshMkLocalClone': 'create_clone',
-            'sshMkStartLocalClone': 'start_clone',
-            'sshRemoveLocalClone': 'delete_clone',
-            'sshMapVoltoHost': 'create_lun_map',
-            'sshDeleteLunMap': 'delete_lun_map',
-            'sshCreateSnapshot': 'create_snapshot',
-            'sshDeleteSnapshot': 'delete_snapshot',
-            'sshSetVolumeProperty': 'set_volume_property',
+            'set_volume': 'set_volume_property',
             'error_ssh': 'error_ssh'
         }
         self._volume_type = {
@@ -242,12 +267,12 @@ class CommandSimulator(object):
         self._volumes_list[vol_name]['r'] = ''
 
     def execute_command(self, cmd_list, check_exit_code=True):
-        command = cmd_list[2]
+        command = cmd_list[1]
         if command in self._command_function:
             command = self._command_function[command]
         func = getattr(self, '_sim_' + command)
         kwargs = {}
-        for i in range(3, len(cmd_list)):
+        for i in range(2, len(cmd_list)):
             if cmd_list[i].startswith('--'):
                 key = cmd_list[i][2:]
                 value = ''
@@ -276,11 +301,14 @@ class CommandSimulator(object):
     def _sim_get_system(self, **kwargs):
         return self._json_return(self._system_info)
 
-    def _sim_get_ip_connect(self, **kwargs):
-        return self._json_return(self._ip_list)
+    def _sim_ls_iscsi(self, **kwargs):
+        return self._json_return(self._iscsi_list)
 
-    def _sim_get_pool_info(self, **kwargs):
-        pool_name = kwargs['poolName'].strip('\'\"')
+    def _sim_ls_fc(self, **kwargs):
+        return self._json_return(self._fc_list)
+
+    def _sim_get_pool(self, **kwargs):
+        pool_name = kwargs['pool'].strip('\'\"')
         if pool_name in self._all_pools_name['acs5000_volpool_name']:
             vol_len = 0
             for vol in self._volumes_list.values():
@@ -294,27 +322,34 @@ class CommandSimulator(object):
             pool_data['total_volumes'] = str(vol_len)
             return self._json_return(pool_data)
         else:
-            return self._json_return()
+            return self._json_return({})
 
     def _sim_get_volume(self, **kwargs):
         rows = []
-        if isinstance(kwargs['name'], list):
-            volume_name = kwargs['name']
-        else:
-            volume_name = [kwargs['name']]
+        if 'volume' not in kwargs:
+            volume_name = []
+        elif isinstance(kwargs['volume'], list):
+            volume_name = kwargs['volume']
+        elif isinstance(kwargs['volume'], str):
+            volume_name = [kwargs['volume']]
         for vol_name in volume_name:
             if vol_name in self._volumes_list.keys():
                 rows.append(self._volumes_list[vol_name])
 
         return self._json_return(rows)
 
-    def _sim_ls_ctr_info(self, **kwargs):
+    def _sim_ls_controller(self, **kwargs):
         return self._json_return(self._controllers_list)
 
     def _sim_create_volume(self, **kwargs):
-        volume_name = kwargs['volumename']
-        pool_name = kwargs['cinderPool']
-        size = kwargs['volumesize']
+        volume_name = kwargs['volume']
+        pool_name = kwargs['pool']
+        size = kwargs['size']
+        type = kwargs['type']
+        if pool_name not in self._pools_list:
+            return self._json_return(
+                msg=self._error['pool_not_exist'][1],
+                key=self._error['pool_not_exist'][0])
         if volume_name in self._volumes_list:
             return self._json_return(
                 msg=self._error['volume_name_exist'][1],
@@ -334,7 +369,7 @@ class CommandSimulator(object):
                 key=self._error['volume_limit_pool'][0])
         avail_size = (int(self._pools_list[pool_name]['free_capacity'])
                       / units.Gi)
-        if int(size) > avail_size:
+        if float(size) > avail_size:
             return self._json_return(
                 msg=self._error['pool_exceeds_size'][1],
                 key=self._error['pool_exceeds_size'][0])
@@ -342,6 +377,7 @@ class CommandSimulator(object):
         volume_info['id'] = self._create_id(self._volumes_list)
         volume_info['name'] = volume_name
         volume_info['size_gb'] = size
+        volume_info['size_mb'] = str(int(float(size) * 1024))
         volume_info['status'] = 'Online'
         volume_info['health'] = 'Optimal'
         volume_info['r'] = ''
@@ -349,7 +385,6 @@ class CommandSimulator(object):
         volume_info['has_clone'] = 0
         volume_info['clone'] = 'N/A'
         volume_info['clone_snap'] = 'N/A'
-        type = kwargs['type']
         if type not in ('0', '10'):
             type = '0'
         volume_info['type'] = self._volume_type[type]
@@ -357,26 +392,30 @@ class CommandSimulator(object):
         return self._json_return()
 
     def _sim_delete_volume(self, **kwargs):
-        vol_name = kwargs['cinderVolume']
+        vol_name = kwargs['volume']
         if vol_name in self._volumes_list:
             del self._volumes_list[vol_name]
         return self._json_return()
 
     def _sim_extend_volume(self, **kwargs):
-        vol_name = kwargs['cinderVolume']
-        size = int(kwargs['extendsize'])
+        vol_name = kwargs['volume']
+        size = int(kwargs['size'])
         if vol_name not in self._volumes_list:
             return self._json_return(
                 msg=self._error['volume_not_exist'][1],
                 key=self._error['volume_not_exist'][0])
         volume = self._volumes_list[vol_name]
-        curr_size = int(volume['size_gb'])
+        curr_size = int(volume['size_mb']) / 1024
         pool = self._pools_list[volume['poolname']]
         avail_size = int(pool['free_capacity']) / units.Gi
         if curr_size > size:
             return self._json_return(
                 msg=self._error['volume_extend_min'][1],
                 key=self._error['volume_extend_min'][0])
+        elif curr_size == size:
+            return self._json_return(
+                msg=self._error['volume_extend_size_equal'][1],
+                key=self._error['volume_extend_size_equal'][0])
         elif (size - curr_size) > avail_size:
             return self._json_return(
                 msg=self._error['pool_exceeds_size'][1],
@@ -385,8 +424,8 @@ class CommandSimulator(object):
         return self._json_return()
 
     def _sim_create_clone(self, **kwargs):
-        src_name = kwargs['cinderVolume']
-        tgt_name = kwargs['cloneVolume']
+        src_name = kwargs['volume']
+        tgt_name = kwargs['clone']
         src_exist = False
         tgt_exist = False
         for vol in self._volumes_list.values():
@@ -418,7 +457,7 @@ class CommandSimulator(object):
         return self._json_return()
 
     def _sim_start_clone(self, **kwargs):
-        vol_name = kwargs['cinderVolume']
+        vol_name = kwargs['volume']
         snapshot = kwargs['snapshot']
         if len(snapshot) > 0:
             snap_found = False
@@ -441,7 +480,7 @@ class CommandSimulator(object):
         return self._json_return()
 
     def _sim_delete_clone(self, **kwargs):
-        vol_name = kwargs['name']
+        vol_name = kwargs['volume']
         snapshot = kwargs['snapshot']
         if vol_name not in self._volumes_list:
             return self._json_return(
@@ -461,14 +500,22 @@ class CommandSimulator(object):
         return self._json_return()
 
     def _sim_create_lun_map(self, **kwargs):
-        volume_name = kwargs['cinderVolume']
-        protocol = kwargs['protocol']
-        hosts = kwargs['host']
+        volume_name = kwargs.get('volume', None)
+        protocol = kwargs.get('protocol', None)
+        hosts = kwargs.get('host', None)
+        if volume_name is None or protocol is None or hosts is None:
+            return self._json_return(
+                msg=self._error['unknown'][1],
+                key=self._error['unknown'][0])
         if volume_name not in self._volumes_list:
             return self._json_return(
                 msg=self._error['volume_not_exist'][1],
                 key=self._error['volume_not_exist'][0])
         if isinstance(hosts, str):
+            if hosts == '':
+                return self._json_return(
+                    msg=self._error['host_empty'][1],
+                    key=self._error['host_empty'][0])
             hosts = [hosts]
         volume = self._volumes_list[volume_name]
         available_luns = LUN_NUMS_AVAILABLE
@@ -483,7 +530,7 @@ class CommandSimulator(object):
                     available_luns = [lun for lun in available_luns
                                       if lun != lun_row['lun']]
         if hosts and existed_lun > -1:
-            return self._json_return({'info': existed_lun})
+            return self._json_return({'lun': existed_lun})
         lun_info = {}
         lun_info['vd_id'] = volume['id']
         lun_info['vd_name'] = volume['name']
@@ -500,25 +547,33 @@ class CommandSimulator(object):
             lun_info['id'] = self._create_id(self._lun_maps_list)
             lun_info['host'] = host
             self._lun_maps_list.append(copy.deepcopy(lun_info))
-        ret = {'lun': [],
-               'iscsi_name': [],
-               'portal': []}
-        for ctr, ips in self._ip_list.items():
-            for ip in ips:
+        ret = {}
+        if protocol == 'FC':
+            ret = {'lun': lun_info['lun']}
+        elif protocol == 'iSCSI':
+            ret = {'lun': [],
+                   'iscsi_name': [],
+                   'portal': []}
+            for iscsi in self._iscsi_list:
+                if iscsi['link'] == 'Down':
+                    continue
                 ret['lun'].append(lun_info['lun'])
-                ret['portal'].append('%s:3260' % ip['ip'])
+                ret['portal'].append('%s:3260' % iscsi['ip'])
                 for control in self._controllers_list:
-                    if ctr == control['id']:
+                    if iscsi['ctrl_idx'] == int(control['id']):
                         ret['iscsi_name'].append(control['iscsi_name'])
                         break
         return self._json_return(ret)
 
     def _sim_delete_lun_map(self, **kwargs):
         map_exist = False
-        volume_name = kwargs['cinderVolume']
+        volume_name = kwargs['volume']
         protocol = kwargs['protocol']
-        hosts = kwargs['cinderHost']
-        if isinstance(hosts, str):
+        hosts = kwargs['host']
+        all_host = False
+        if hosts == '-1':
+            all_host = True
+        elif isinstance(hosts, str):
             hosts = [hosts]
         if volume_name not in self._volumes_list:
             return self._json_return(
@@ -530,7 +585,7 @@ class CommandSimulator(object):
         for row in lun_maps_list:
             if (row['vd_id'] == volume['id']
                     and row['protocol'] == protocol
-                    and row['host'] in hosts):
+                    and (all_host or row['host'] in hosts)):
                 map_exist = True
             else:
                 map_exist = False
@@ -560,6 +615,10 @@ class CommandSimulator(object):
                 volume_snap_count += 1
                 if int(snap['tag']) > tag:
                     tag = int(snap['tag'])
+            if snap['name'] == snapshot_name:
+                return self._json_return(
+                    msg=self._error['snap_name_existed'][1],
+                    key=self._error['snap_name_existed'][0])
         if volume_snap_count >= SNAPSHOTS_A_VOLUME:
             return self._json_return(
                 msg=self._error['snap_over_volume'][1],
@@ -593,6 +652,37 @@ class CommandSimulator(object):
             return self._json_return(
                 msg=self._error['snap_not_exist'][1],
                 key=self._error['snap_not_exist'][0])
+        return self._json_return()
+
+    def _sim_rollback_snapshot(self, **kwargs):
+        volume_name = kwargs['volume']
+        snapshot_name = kwargs['snapshot']
+        if volume_name and volume_name not in self._volumes_list:
+            return self._json_return(
+                msg=self._error['volume_not_exist'][1],
+                key=self._error['volume_not_exist'][0])
+        snapshot = []
+        for snap in self._snapshots_list:
+            if snap['name'] == snapshot_name:
+                snapshot = snap
+                break
+        if not snapshot:
+            return self._json_return(
+                msg=self._error['snap_not_exist'][1],
+                key=self._error['snap_not_exist'][0])
+        if volume_name and volume_name != snapshot['vd_name']:
+            return self._json_return(
+                msg=self._error['snapshot_not_belong_volume'][1],
+                key=self._error['snapshot_not_belong_volume'][0])
+        elif not volume_name:
+            volume_name = snapshot['vd_name']
+        for snap in self._snapshots_list:
+            if (snap['vd_name'] == volume_name
+                    and snapshot_name != snap['name']
+                    and snap['tag'] > snapshot['tag']):
+                return self._json_return(
+                    msg=self._error['snap_not_latest'][1],
+                    key=self._error['snap_not_latest'][0])
         return self._json_return()
 
     def _sim_set_volume_property(self, **kwargs):
@@ -654,6 +744,20 @@ class Acs5000ISCSIFakeDriver(acs5000_iscsi.Acs5000ISCSIDriver):
         return ret
 
 
+class Acs5000FCFakeDriver(acs5000_fc.Acs5000FCDriver):
+    def __init__(self, *args, **kwargs):
+        super(Acs5000FCFakeDriver, self).__init__(*args, **kwargs)
+
+    def set_fake_storage(self, fake):
+        self.fake_storage = fake
+
+    def _run_ssh(self, cmd_list, check_exit_code=True):
+        cinder_utils.check_ssh_injection(cmd_list)
+        ret = self.fake_storage.execute_command(cmd_list, check_exit_code)
+
+        return ret
+
+
 class Acs5000ISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -664,6 +768,7 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         self.configuration.san_login = 'cliuser'
         self.configuration.san_password = 'clipassword'
         self.configuration.acs5000_volpool_name = ['pool01']
+        self.configuration.acs5000_multiattach = True
         self.iscsi_driver = Acs5000ISCSIFakeDriver(
             configuration=self.configuration)
         initiator = 'test.iqn.%s' % str(random.randint(10000, 99999))
@@ -727,10 +832,11 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         volume = self._create_volume()
         result = self.iscsi_driver.initialize_connection(volume,
                                                          self._connector)
-        ip_connect = self.sim._ip_list
+        ip_connect = self.sim._iscsi_list
         ip_count = 0
-        for ips in ip_connect.values():
-            ip_count += len(ips)
+        for iscsi in ip_connect:
+            if iscsi['link'] != 'Down':
+                ip_count += 1
         self.assertEqual('iscsi', result['driver_volume_type'])
         self.assertEqual(ip_count,
                          len(result['data']['target_iqns']))
@@ -751,7 +857,7 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
                           vol, self._connector)
         self.db.volume_destroy(self.ctxt, vol['id'])
 
-    def test_initialize_connection_failure(self):
+    def test_initialize_connection_available_lun(self):
         volume_list = []
         for i in LUN_NUMS_AVAILABLE:
             vol = self._create_volume()
@@ -768,6 +874,15 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
             self.iscsi_driver.terminate_connection(
                 v, self._connector)
             self._delete_volume(v)
+
+    def test_initialize_connection_exception(self):
+        vol = self._create_volume()
+        connector = self._connector
+        connector['initiator'] = ''
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.iscsi_driver.initialize_connection,
+                          vol, connector)
+        self._delete_volume(vol)
 
     def test_initialize_connection_multi_host(self):
         connector = self._connector
@@ -790,6 +905,16 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         self._assert_lun_exists(volume['id'], False)
         self._delete_volume(volume)
 
+    def test_initialize_connection_protocol(self):
+        volume = self._create_volume()
+        protocol = self.iscsi_driver.protocol
+        self.iscsi_driver.protocol = 'error_protocol'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.iscsi_driver.initialize_connection,
+                          volume, self._connector)
+        self.iscsi_driver.protocol = protocol
+        self._delete_volume(volume)
+
     def test_terminate_connection(self):
         volume = self._create_volume()
         self.iscsi_driver.initialize_connection(volume,
@@ -797,6 +922,208 @@ class Acs5000ISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.terminate_connection(volume,
                                                self._connector)
         self._assert_lun_exists(volume['id'], False)
+        self._delete_volume(volume)
+
+    def test_terminate_connection_multi_attached(self):
+        vol = self._create_volume()
+        connector = self._connector
+        connector['uuid'] = fake.UUID1
+        self.iscsi_driver.initialize_connection(vol, connector)
+        self._assert_lun_exists(vol.id, True)
+        attachment1 = volume_attachment.VolumeAttachment()
+        attachment2 = volume_attachment.VolumeAttachment()
+        attachment1.connector = connector
+        attachment2.connector = connector
+        vol.volume_attachment.objects.append(attachment1)
+        vol.volume_attachment.objects.append(attachment2)
+        self.iscsi_driver.terminate_connection(vol, connector)
+        self._assert_lun_exists(vol.id, True)
+        vol.volume_attachment.objects = [attachment1]
+        self.iscsi_driver.terminate_connection(vol, connector)
+        self._assert_lun_exists(vol.id, False)
+        self.iscsi_driver.initialize_connection(vol, connector)
+        self._assert_lun_exists(vol.id, True)
+        self.iscsi_driver.terminate_connection(vol, None)
+        self._assert_lun_exists(vol.id, False)
+        self._delete_volume(vol)
+
+
+class Acs5000FCDriverTestCase(test.TestCase):
+    @mock.patch.object(time, 'sleep')
+    def setUp(self, mock_sleep):
+        super(Acs5000FCDriverTestCase, self).setUp()
+        self.configuration = mock.Mock(conf.Configuration)
+        self.configuration.san_is_local = False
+        self.configuration.san_ip = '23.44.56.78'
+        self.configuration.san_login = 'cliuser'
+        self.configuration.san_password = 'clipassword'
+        self.configuration.acs5000_volpool_name = ['pool01']
+        self.configuration.acs5000_multiattach = True
+        self.fc_driver = Acs5000FCFakeDriver(
+            configuration=self.configuration)
+        wwpns = [
+            str(random.randint(0, 9999999999999999)).zfill(16),
+            str(random.randint(0, 9999999999999999)).zfill(16)]
+        initiator = 'test.iqn.%s' % str(random.randint(10000, 99999))
+        self._connector = {'ip': '1.234.56.78',
+                           'host': 'stack',
+                           'wwpns': wwpns,
+                           'initiator': initiator}
+        self.sim = CommandSimulator(POOLS_NAME)
+        self.fc_driver.set_fake_storage(self.sim)
+        self.ctxt = context.get_admin_context()
+
+        self.db = cinder.db
+        self.fc_driver.db = self.db
+        self.fc_driver.get_driver_options()
+        self.fc_driver.do_setup(None)
+        self.fc_driver.check_for_setup_error()
+
+    def _create_volume(self, **kwargs):
+        prop = {'host': 'stack@ty1#%s' % POOLS_NAME[0],
+                'size': 1,
+                'volume_type_id': self.vt['id']}
+        for p in prop.keys():
+            if p not in kwargs:
+                kwargs[p] = prop[p]
+        vol = testutils.create_volume(self.ctxt, **kwargs)
+        self.fc_driver.create_volume(vol)
+        return vol
+
+    def _delete_volume(self, volume):
+        self.fc_driver.delete_volume(volume)
+        self.db.volume_destroy(self.ctxt, volume['id'])
+
+    def _assert_lun_exists(self, vol_id, exists):
+        lun_maps = self.sim._lun_maps_list
+        is_lun_defined = False
+        luns = []
+        volume_name = VOLUME_PRE + vol_id[-12:]
+        for lun in lun_maps:
+            if volume_name == lun['vd_name']:
+                luns.append(lun)
+        if len(luns):
+            is_lun_defined = True
+        self.assertEqual(exists, is_lun_defined)
+        return luns
+
+    def test_validate_connector(self):
+        conn_neither = {'host': 'host'}
+        conn_iscsi = {'host': 'host', 'initiator': 'iqn.123'}
+        conn_fc = {'host': 'host', 'wwpns': 'fff123'}
+        conn_both = {'host': 'host', 'initiator': 'iqn.123', 'wwpns': 'fff123'}
+
+        self.fc_driver.validate_connector(conn_fc)
+        self.fc_driver.validate_connector(conn_both)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.fc_driver.validate_connector, conn_iscsi)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.fc_driver.validate_connector, conn_neither)
+
+    def test_initialize_connection(self):
+        volume = self._create_volume()
+        result = self.fc_driver.initialize_connection(volume,
+                                                      self._connector)
+        fc_list = self.sim._fc_list
+        up_wwpns = []
+        for port in fc_list:
+            if port['link'] == 'Up':
+                if 'WWPN' in port:
+                    up_wwpns.append(port['WWPN'])
+                elif 'wwpn' in port:
+                    up_wwpns.append(port['wwpn'])
+        self.assertEqual('fibre_channel', result['driver_volume_type'])
+        self.assertEqual(up_wwpns.sort(), result['data']['target_wwn'].sort())
+        self.assertEqual(volume['id'], result['data']['volume_id'])
+        self.assertIsNotNone(result['data']['target_lun'])
+        self._delete_volume(volume)
+
+    def test_initialize_connection_not_found(self):
+        prop = {'host': 'stack@ty1#%s' % POOLS_NAME[0],
+                'size': 1,
+                'volume_type_id': self.vt['id']}
+        vol = testutils.create_volume(self.ctxt, **prop)
+        self.assertRaises(exception.VolumeNotFound,
+                          self.fc_driver.initialize_connection,
+                          vol, self._connector)
+        self.db.volume_destroy(self.ctxt, vol['id'])
+
+    def test_initialize_connection_failure(self):
+        volume_list = []
+        for i in LUN_NUMS_AVAILABLE:
+            vol = self._create_volume()
+            self.fc_driver.initialize_connection(
+                vol, self._connector)
+            volume_list.append(vol)
+
+        vol = self._create_volume()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.fc_driver.initialize_connection,
+                          vol, self._connector)
+        self._delete_volume(vol)
+        for v in volume_list:
+            self.fc_driver.terminate_connection(
+                v, self._connector)
+            self._delete_volume(v)
+
+    def test_initialize_connection_exception(self):
+        vol = self._create_volume()
+        connector = self._connector
+        self.fc_driver.protocol = 'error_protocol'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.fc_driver.initialize_connection,
+                          vol, connector)
+        self.fc_driver.protocol = acs5000_fc.Acs5000FCDriver.PROTOCOL
+        fc_list = self.sim._fc_list
+        self.sim._fc_list = []
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.fc_driver.initialize_connection,
+                          vol, connector)
+        # _check_multi_attached then delete_lun_map
+        connector['uuid'] = fake.UUID1
+        attachment1 = volume_attachment.VolumeAttachment()
+        attachment2 = volume_attachment.VolumeAttachment()
+        attachment1.connector = connector
+        attachment2.connector = connector
+        vol.volume_attachment.objects.append(attachment1)
+        vol.volume_attachment.objects.append(attachment2)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.fc_driver.initialize_connection,
+                          vol, connector)
+        self.sim._fc_list = fc_list
+        self._delete_volume(vol)
+
+    def test_terminate_connection(self):
+        volume = self._create_volume()
+        self.fc_driver.initialize_connection(volume,
+                                             self._connector)
+        self.fc_driver.terminate_connection(volume,
+                                            self._connector)
+        self._assert_lun_exists(volume['id'], False)
+        self._delete_volume(volume)
+
+    def test_terminate_connection_warn(self):
+        volume = self._create_volume()
+        connector = self._connector
+        connector['uuid'] = fake.UUID1
+        self.fc_driver.initialize_connection(volume, connector)
+        self.fc_driver.terminate_connection(volume, None)
+        self._assert_lun_exists(volume.id, False)
+        self.fc_driver.initialize_connection(volume, connector)
+        attachment1 = volume_attachment.VolumeAttachment()
+        attachment2 = volume_attachment.VolumeAttachment()
+        attachment1.connector = connector
+        attachment2.connector = connector
+        volume.volume_attachment.objects.append(attachment1)
+        volume.volume_attachment.objects.append(attachment2)
+        self.fc_driver.terminate_connection(volume, connector)
+        self._assert_lun_exists(volume.id, True)
+        fc_list = self.sim._fc_list
+        self.sim._fc_list = []
+        volume.volume_attachment.objects = [attachment1]
+        self.fc_driver.terminate_connection(volume, connector)
+        self.sim._fc_list = fc_list
+        self._assert_lun_exists(volume.id, False)
         self._delete_volume(volume)
 
 
@@ -808,21 +1135,25 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self.configuration = mock.Mock(conf.Configuration)
         self.configuration.san_is_local = False
         self.configuration.san_ip = '23.44.56.78'
+        self.configuration.san_ssh_port = '22'
         self.configuration.san_login = 'cliuser'
         self.configuration.san_password = 'clipassword'
         self.configuration.acs5000_volpool_name = POOLS_NAME
         self.configuration.acs5000_copy_interval = 0.01
+        self.configuration.acs5000_multiattach = True
         self.configuration.reserved_percentage = 0
-        self._driver = Acs5000ISCSIFakeDriver(
-            configuration=self.configuration)
         options = acs5000_iscsi.Acs5000ISCSIDriver.get_driver_options()
         config = conf.Configuration(options, conf.SHARED_CONF_GROUP)
+        self._driver = Acs5000ISCSIFakeDriver(
+            configuration=self.configuration)
         self.override_config('san_ip', '23.44.56.78', conf.SHARED_CONF_GROUP)
+        self.override_config('san_ssh_port', '22', conf.SHARED_CONF_GROUP)
         self.override_config('san_login', 'cliuser', conf.SHARED_CONF_GROUP)
         self.override_config('san_password', 'clipassword',
                              conf.SHARED_CONF_GROUP)
         self.override_config('acs5000_volpool_name', POOLS_NAME,
                              conf.SHARED_CONF_GROUP)
+        self._driver.configuration.safe_get = self._safe_get
         self._iscsi_driver = acs5000_iscsi.Acs5000ISCSIDriver(
             configuration=config)
         initiator = 'test.iqn.%s' % str(random.randint(10000, 99999))
@@ -838,6 +1169,12 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self._driver.db = self.db
         self._driver.do_setup(None)
         self._driver.check_for_setup_error()
+
+    def _safe_get(self, key):
+        try:
+            return getattr(self._driver.configuration, key)
+        except AttributeError:
+            return None
 
     def _assert_vol_exists(self, name, exists):
         volume = self._driver._cmd.get_volume(VOLUME_PRE + name[-12:])
@@ -897,23 +1234,23 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver._build_pool_stats,
                           'error_pool')
-        ssh_cmd = ['cinder', 'storage', 'error_ssh', '--error', 'json_error']
+        ssh_cmd = ['error_ssh', '--error', 'json_error']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver._cmd.run_ssh_info, ssh_cmd)
-        ssh_cmd = ['cinder', 'storage', 'error_ssh', '--error', 'dict_error']
+        ssh_cmd = ['error_ssh', '--error', 'dict_error']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver._cmd.run_ssh_info, ssh_cmd)
-        ssh_cmd = ['cinder', 'storage', 'error_ssh', '--error', 'keys_error']
+        ssh_cmd = ['error_ssh', '--error', 'keys_error']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver._cmd.run_ssh_info, ssh_cmd)
-        ssh_cmd = ['cinder', 'storage', 'error_ssh', '--error', 'key_false']
+        ssh_cmd = ['error_ssh', '--error', 'key_false']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver._cmd.run_ssh_info, ssh_cmd)
 
     @mock.patch.object(ssh_utils, 'SSHPool')
     @mock.patch.object(processutils, 'ssh_execute')
     def test_run_ssh_with_ip(self, mock_ssh_execute, mock_ssh_pool):
-        ssh_cmd = ['cinder', 'storage', 'run_ssh']
+        ssh_cmd = ['run_ssh']
         self._iscsi_driver._run_ssh(ssh_cmd)
         mock_ssh_pool.assert_called_once_with(
             self._iscsi_driver.configuration.san_ip,
@@ -942,7 +1279,7 @@ class Acs5000CommonDriverTestCase(test.TestCase):
                                         mock.MagicMock()]
         self.override_config('acs5000_volpool_name', None,
                              self._iscsi_driver.configuration.config_group)
-        ssh_cmd = ['cinder', 'storage', 'run_ssh']
+        ssh_cmd = ['run_ssh']
         self.assertRaises(processutils.ProcessExecutionError,
                           self._iscsi_driver._run_ssh, ssh_cmd)
 
@@ -950,7 +1287,15 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         system_info = self.sim._system_info
         self.assertEqual(system_info['vendor'], self._driver._state['vendor'])
         self.assertIn('iSCSI', self._driver._state['enabled_protocols'])
-        self.assertEqual(2, len(self._driver._state['storage_nodes']))
+        self.assertEqual(2, len(self._driver._state['controller']))
+        iscsi_list = self.sim._iscsi_list
+        self.sim._iscsi_list = []
+        self._driver._state['enabled_protocols'] = set()
+        self._driver.do_setup(None)
+        self.assertEqual(set(), self._driver._state['enabled_protocols'])
+        self.sim._iscsi_list = iscsi_list
+        self._driver.do_setup(None)
+        self.assertEqual({'iSCSI'}, self._driver._state['enabled_protocols'])
 
     def test_do_setup_no_pools(self):
         self._driver.pools = ['pool_error']
@@ -1015,6 +1360,19 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         for v in volume_list:
             self._delete_volume(v)
 
+    def test_create_volume_pool_not_existed(self):
+        prop = {
+            'host': 'stack@ty2#no_pool',
+            'driver': False
+        }
+        self._driver.get_volume_stats()
+        vol = self._create_volume(**prop)
+        self._assert_vol_exists(vol['id'], False)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._driver.create_volume,
+                          vol)
+        self._delete_volume(vol, False)
+
     def test_delete_volume(self):
         vol = self._create_volume()
         self._assert_vol_exists(vol['id'], True)
@@ -1064,6 +1422,16 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         for vol in vol_list:
             self._delete_volume(vol)
 
+    def test_create_snapshot_name_existed(self):
+        vol = self._create_volume()
+        snap = self._create_snapshot(vol['id'])
+        self._assert_vol_exists(vol['id'], True)
+        self._assert_snap_exists(snap['id'], True)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._driver.create_snapshot, snap)
+        self._delete_snapshot(snap)
+        self._delete_volume(vol)
+
     def test_delete_snapshot(self):
         vol = self._create_volume()
         self._assert_vol_exists(vol['id'], True)
@@ -1083,6 +1451,18 @@ class Acs5000CommonDriverTestCase(test.TestCase):
                           snap)
         self._delete_snapshot(snap, False)
         self._delete_volume(vol)
+
+    def test_delete_snapshot_volume_not_found(self):
+        vol = self._create_volume()
+        snap = self._create_snapshot(vol['id'])
+        self._delete_volume(vol)
+        self._assert_vol_exists(vol['id'], False)
+        self._assert_snap_exists(snap['id'], True)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._driver.delete_snapshot, snap)
+        self._driver.create_volume(vol)
+        self._delete_snapshot(snap)
+        self._driver.delete_volume(vol)
 
     def test_create_volume_from_snapshot(self):
         prop = {'size': 2}
@@ -1257,6 +1637,15 @@ class Acs5000CommonDriverTestCase(test.TestCase):
                           volume, '200')
         self._delete_volume(volume)
 
+    def test_extend_volume_size_equal(self):
+        volume = self._create_volume(size=10)
+        vol_info = self._assert_vol_exists(volume['id'], True)
+        self.assertEqual('10', vol_info[0]['size_gb'])
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._driver.extend_volume,
+                          volume, '10')
+        self._delete_volume(volume)
+
     def test_migrate_volume_same_pool(self):
         host = 'stack@ty1#%s' % POOLS_NAME[0]
         volume = self._create_volume(host=host)
@@ -1319,6 +1708,20 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self.assertEqual([], ret)
         ret = self._driver._cmd.get_volume('test_volume')
         self.assertEqual([], ret)
+        vol1 = self._create_volume()
+        vol2 = self._create_volume()
+        vol1_name = VOLUME_PRE + vol1['id'][-12:]
+        vol2_name = VOLUME_PRE + vol2['id'][-12:]
+        ret = self._driver._cmd.get_volume([vol1_name, vol2_name])
+        self.assertEqual(2, len(ret))
+        vol_name = []
+        for vol in ret:
+            vol_name.append(vol['name'])
+        self.assertEqual(sorted([vol1_name, vol2_name]), sorted(vol_name))
+        ret = self._driver._cmd.get_volume({'test_key': 'test_value'})
+        self.assertEqual([], ret)
+        self._delete_volume(vol1)
+        self._delete_volume(vol2)
 
     def test_check_for_setup_error_failure(self):
         self._driver._state['system_name'] = None
@@ -1329,7 +1732,7 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self._driver.check_for_setup_error)
         self._driver.do_setup(None)
-        self._driver._state['storage_nodes'] = []
+        self._driver._state['controller'] = []
         self.assertRaises(exception.VolumeDriverException,
                           self._driver.check_for_setup_error)
         self._driver.do_setup(None)
@@ -1337,10 +1740,16 @@ class Acs5000CommonDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self._driver.check_for_setup_error)
         self._driver.do_setup(None)
+        password = self._driver.configuration.san_password
         self._driver.configuration.san_password = None
         self.assertRaises(exception.InvalidInput,
                           self._driver.check_for_setup_error)
-        self._driver.do_setup(None)
+        self._driver.configuration.san_password = password
+        san_ip = self._driver.configuration.san_ip
+        self._driver.configuration.san_ip = None
+        self.assertRaises(exception.InvalidInput,
+                          self._driver.check_for_setup_error)
+        self._driver.configuration.san_ip = san_ip
 
     def test_build_pool_stats_no_pool(self):
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1358,3 +1767,166 @@ class Acs5000CommonDriverTestCase(test.TestCase):
                           self._driver._cmd.set_volume_property,
                           volume_name, {})
         self._delete_volume(volume)
+
+    def test_snapshot_revert_use_temp_snapshot(self):
+        ret = self._driver.snapshot_revert_use_temp_snapshot()
+        self.assertFalse(ret)
+
+    def test_revert_to_snapshot(self):
+        volume = self._create_volume()
+        snapshot = self._create_snapshot(volume.id)
+        self._driver.revert_to_snapshot(self.ctxt, volume, snapshot)
+        self._delete_snapshot(snapshot)
+        self._delete_volume(volume)
+
+    def test_revert_to_snapshot_volume_not_found(self):
+        volume = self._create_volume(driver=False)
+        snapshot = self._create_snapshot(volume.id, driver=False)
+        self.assertRaises(exception.VolumeNotFound,
+                          self._driver.revert_to_snapshot,
+                          self.ctxt, volume, snapshot)
+        self._delete_snapshot(snapshot, driver=False)
+        self._delete_volume(volume, driver=False)
+
+    def test_revert_to_snapshot_snapshot_not_found(self):
+        volume = self._create_volume()
+        snapshot = self._create_snapshot(volume.id, driver=False)
+        self.assertRaises(exception.SnapshotNotFound,
+                          self._driver.revert_to_snapshot,
+                          self.ctxt, volume, snapshot)
+        self._delete_snapshot(snapshot, driver=False)
+        self._delete_volume(volume)
+
+    def test_revert_to_snapshot_not_latest_one(self):
+        volume = self._create_volume()
+        snapshot1 = self._create_snapshot(volume.id)
+        snapshot2 = self._create_snapshot(volume.id)
+        self.assertRaises(exception.InvalidSnapshot,
+                          self._driver.revert_to_snapshot,
+                          self.ctxt, volume, snapshot1)
+        self._delete_snapshot(snapshot2)
+        self._delete_snapshot(snapshot1)
+        self._delete_volume(volume)
+
+    def test_revert_to_snapshot_not_belong(self):
+        volume1 = self._create_volume()
+        volume2 = self._create_volume()
+        snapshot = self._create_snapshot(volume2.id)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self._driver.revert_to_snapshot,
+                          self.ctxt, volume1, snapshot)
+        self._delete_snapshot(snapshot)
+        self._delete_volume(volume1)
+        self._delete_volume(volume2)
+
+    def test_convert_name(self):
+        name = self._driver._convert_name('')
+        self.assertEqual(len(acs5000_common.VOLUME_PREFIX) + 12,
+                         len(name))
+        name = self._driver._convert_name('test_name')
+        self.assertEqual(len(acs5000_common.VOLUME_PREFIX) + 12,
+                         len(name))
+        name = self._driver._convert_name(fake.UUID1)
+        self.assertEqual(len(acs5000_common.VOLUME_PREFIX) + 12,
+                         len(name))
+
+    def test_check_multi_attached(self):
+        connector = self._connector
+        volume = self._create_volume(driver=False)
+        connector['uuid'] = fake.UUID1
+        attachment1 = volume_attachment.VolumeAttachment()
+        attachment2 = volume_attachment.VolumeAttachment()
+        volume.volume_attachment.objects.append(attachment1)
+        volume.volume_attachment.objects.append(attachment2)
+        count = self._driver._check_multi_attached(volume, connector)
+        self.assertEqual(0, count)
+        attachment1.connector = connector
+        attachment2.connector = connector
+        volume.volume_attachment.objects.append(attachment1)
+        volume.volume_attachment.objects.append(attachment2)
+        count = self._driver._check_multi_attached(volume, connector)
+        self.assertEqual(4, count)
+        self._delete_volume(volume, driver=False)
+
+    def test_update_migrated_volume(self):
+        old_vol = self._create_volume(driver=False)
+        self._assert_vol_exists(old_vol.id, False)
+        new_vol = self._create_volume()
+        self._assert_vol_exists(new_vol.id, True)
+        ret = self._driver.update_migrated_volume(
+            self.ctxt, old_vol, new_vol, None)
+        self.assertEqual({'_name_id': None}, ret)
+        self._assert_vol_exists(old_vol.id, True)
+        self._assert_vol_exists(new_vol.id, False)
+        self._delete_volume(old_vol)
+        self._delete_volume(new_vol, False)
+
+    def test_update_migrated_volume_existed(self):
+        old_vol = self._create_volume()
+        self._assert_vol_exists(old_vol.id, True)
+        new_vol = self._create_volume()
+        self._assert_vol_exists(new_vol.id, True)
+        ret = self._driver.update_migrated_volume(
+            self.ctxt, old_vol, new_vol, None)
+        self.assertEqual({'_name_id': new_vol.id}, ret)
+        self._delete_volume(old_vol)
+        self._delete_volume(new_vol)
+
+    def test_manage_existing(self):
+        volume_name = fake.UUID1
+        self._driver._cmd.create_volume(volume_name, '1', POOLS_NAME[0])
+        volume = self._driver._cmd.get_volume(volume_name)
+        self.assertEqual(1, len(volume))
+        self.assertEqual(volume_name, volume[0]['name'])
+        new_volume = self._create_volume(driver=False)
+        self._assert_vol_exists(new_volume.id, False)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver.manage_existing,
+                          new_volume, {})
+        self._driver.manage_existing(new_volume,
+                                     {'source-name': volume_name})
+        self._assert_vol_exists(new_volume.id, True)
+        self._delete_volume(new_volume)
+
+    def test_manage_existing_get_size(self):
+        volume_name = fake.UUID1
+        self._driver._cmd.create_volume(volume_name, '1', POOLS_NAME[0])
+        vol = self._create_volume(size=1, driver=False)
+        self._assert_vol_exists(vol.id, False)
+        ret = self._driver.manage_existing_get_size(
+            vol, {'source-name': volume_name})
+        self.assertEqual(1, ret)
+        self._driver._cmd.delete_volume(volume_name)
+        self._delete_volume(vol, False)
+
+    def test_manage_existing_get_size_extend(self):
+        volume_name = fake.UUID1
+        size_str = '1.2'
+        size_gb = 2
+        self._driver._cmd.create_volume(volume_name, size_str, POOLS_NAME[0])
+        volume = self._driver._cmd.get_volume(volume_name)
+        self.assertEqual(1, len(volume))
+        self.assertEqual(volume_name, volume[0]['name'])
+        vol = self._create_volume(driver=False)
+        self._assert_vol_exists(vol.id, False)
+        ret = self._driver.manage_existing_get_size(
+            vol, {'source-name': volume_name})
+        self.assertEqual(size_gb, ret)
+        self._driver._cmd.delete_volume(volume_name)
+        self._delete_volume(vol, driver=False)
+
+    def test_manage_get_volume(self):
+        vol = self._create_volume()
+        vol_backend = self._assert_vol_exists(vol.id, True)
+        vol_name = vol_backend[0]['name']
+        ret = self._driver._manage_get_volume({'source-name': vol_name})
+        self.assertEqual(vol_backend[0], ret)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver._manage_get_volume, {})
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver._manage_get_volume,
+                          {'source-name': 'error_volume'})
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self._driver._manage_get_volume,
+                          {'source-name': vol_name}, 'error_pool')
+        self._delete_volume(vol)

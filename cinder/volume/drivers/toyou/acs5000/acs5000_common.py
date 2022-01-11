@@ -19,6 +19,7 @@ It will be called by iSCSI driver
 """
 
 import json
+import math
 import random
 
 from eventlet import greenthread
@@ -53,7 +54,12 @@ acs5000c_opts = [
         min=3,
         max=100,
         help='When volume copy task is going on,refresh volume '
-             'status interval')
+             'status interval'),
+    cfg.BoolOpt(
+        'acs5000_multiattach',
+        default=False,
+        help='Enable to allow volumes attaching to multiple '
+             'hosts with no limit.'),
 ]
 CONF = cfg.CONF
 CONF.register_opts(acs5000c_opts)
@@ -78,6 +84,7 @@ class Command(object):
 
     def run_ssh_info(self, ssh_cmd, key=False):
         """Run an SSH command and return parsed output."""
+        ssh_cmd.insert(0, 'cinder')
         out, err = self._run_ssh(ssh_cmd)
         if len(err):
             msg = (_('Execute command %(cmd)s failed, '
@@ -134,35 +141,43 @@ class Command(object):
             return info['arr']
 
     def get_system(self):
-        ssh_cmd = ['cinder', 'Storage', 'sshGetSystem']
+        ssh_cmd = ['get_system']
         return self.run_ssh_info(ssh_cmd)
 
-    def get_ip_connect(self):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshGetIpConnect']
-        return self.run_ssh_info(ssh_cmd)
+    def ls_iscsi(self):
+        ssh_cmd = ['ls_iscsi']
+        ports = self.run_ssh_info(ssh_cmd)
+        up_ports = []
+        for port in ports:
+            if 'link' in port and port['link'] != 'Down':
+                up_ports.append(up_ports)
+        return up_ports
 
-    def get_pool_info(self, pool):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshGetPoolInfo',
-                   '--poolName',
+    def ls_fc(self):
+        ssh_cmd = ['ls_fc']
+        ports = self.run_ssh_info(ssh_cmd)
+        up_ports = []
+        for port in ports:
+            if 'link' in port and port['link'] == 'Up':
+                up_ports.append(port)
+        return up_ports
+
+    def get_pool(self, pool):
+        ssh_cmd = ['get_pool',
+                   '--pool',
                    pool]
         return self.run_ssh_info(ssh_cmd)
 
     def get_volume(self, volume):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshGetVolume']
+        ssh_cmd = ['get_volume']
         if not volume:
             return []
         elif isinstance(volume, str):
-            ssh_cmd.append('--name')
+            ssh_cmd.append('--volume')
             ssh_cmd.append(volume)
         elif isinstance(volume, list):
             for vol in volume:
-                ssh_cmd.append('--name')
+                ssh_cmd.append('--volume')
                 ssh_cmd.append(vol)
         result = self.run_ssh_info(ssh_cmd)
         if not result:
@@ -170,83 +185,63 @@ class Command(object):
         else:
             return result
 
-    def ls_ctr_info(self):
-        ssh_cmd = ['cinder', 'Storage', 'sshGetCtrInfo']
+    def ls_controller(self):
+        ssh_cmd = ['ls_controller']
         ctrs = self.run_ssh_info(ssh_cmd)
         nodes = {}
         for node_data in ctrs:
             nodes[node_data['id']] = {
-                'id': node_data['id'],
+                'id': int(node_data['id']),
                 'name': node_data['name'],
-                'iscsi_name': node_data['iscsi_name'],
-                'WWNN': node_data['WWNN'],
-                'WWPN': [],
-                'status': node_data['status'],
-                'ipv4': [],
-                'ipv6': [],
-                'enabled_protocols': []
+                'status': node_data['status']
             }
         return nodes
 
     def create_volume(self, name, size, pool_name, type='0'):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshCreateVolume',
-                   '--volumesize',
+        ssh_cmd = ['create_volume',
+                   '--size',
                    size,
-                   '--volumename',
+                   '--volume',
                    name,
-                   '--cinderPool',
+                   '--pool',
                    pool_name,
                    '--type',
                    type]
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def delete_volume(self, volume):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshDeleteVolume',
-                   '--cinderVolume',
+        ssh_cmd = ['delete_volume',
+                   '--volume',
                    volume]
         return self.run_ssh_info(ssh_cmd)
 
     def extend_volume(self, volume, size):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshCinderExtendVolume',
-                   '--cinderVolume',
+        ssh_cmd = ['extend_volume',
+                   '--volume',
                    volume,
-                   '--extendunit',
-                   'gb',
-                   '--extendsize',
+                   '--size',
                    str(size)]
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def create_clone(self, volume_name, clone_name):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshMkLocalClone',
-                   '--cinderVolume',
+        ssh_cmd = ['create_clone',
+                   '--volume',
                    volume_name,
-                   '--cloneVolume',
+                   '--clone',
                    clone_name]
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def start_clone(self, volume_name, snapshot=''):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshMkStartLocalClone',
-                   '--cinderVolume',
+        ssh_cmd = ['start_clone',
+                   '--volume',
                    volume_name,
                    '--snapshot',
                    snapshot]
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def delete_clone(self, volume_name, snapshot=''):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshRemoveLocalClone',
-                   '--name',
+        ssh_cmd = ['delete_clone',
+                   '--volume',
                    volume_name,
                    '--snapshot',
                    snapshot]
@@ -255,10 +250,8 @@ class Command(object):
     def create_lun_map(self, volume_name, protocol, host):
         """Map volume to host."""
         LOG.debug('enter: create_lun_map volume %s.', volume_name)
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshMapVoltoHost',
-                   '--cinderVolume',
+        ssh_cmd = ['create_lun_map',
+                   '--volume',
                    volume_name,
                    '--protocol',
                    protocol]
@@ -272,26 +265,22 @@ class Command(object):
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def delete_lun_map(self, volume_name, protocol, host):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshDeleteLunMap',
-                   '--cinderVolume',
+        ssh_cmd = ['delete_lun_map',
+                   '--volume',
                    volume_name,
                    '--protocol',
                    protocol]
         if isinstance(host, list):
             for ht in host:
-                ssh_cmd.append('--cinderHost')
+                ssh_cmd.append('--host')
                 ssh_cmd.append(ht)
         else:
-            ssh_cmd.append('--cinderHost')
+            ssh_cmd.append('--host')
             ssh_cmd.append(str(host))
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def create_snapshot(self, volume_name, snapshot_name):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshCreateSnapshot',
+        ssh_cmd = ['create_snapshot',
                    '--volume',
                    volume_name,
                    '--snapshot',
@@ -299,19 +288,23 @@ class Command(object):
         return self.run_ssh_info(ssh_cmd, key=True)
 
     def delete_snapshot(self, volume_name, snapshot_name):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshDeleteSnapshot',
+        ssh_cmd = ['delete_snapshot',
                    '--volume',
                    volume_name,
                    '--snapshot',
                    snapshot_name]
         return self.run_ssh_info(ssh_cmd, key=True)
 
+    def rollback_snapshot(self, snapshot_name, volume_name=''):
+        ssh_cmd = ['rollback_snapshot',
+                   '--snapshot',
+                   snapshot_name,
+                   '--volume',
+                   volume_name]
+        return self.run_ssh_info(ssh_cmd, key=True)
+
     def set_volume_property(self, name, setting):
-        ssh_cmd = ['cinder',
-                   'Storage',
-                   'sshSetVolumeProperty',
+        ssh_cmd = ['set_volume',
                    '--volume',
                    name]
         for key, value in setting.items():
@@ -340,7 +333,7 @@ class Acs5000CommonDriver(san.SanDriver,
         self.pools = self.configuration.acs5000_volpool_name
         self._cmd = Command(self._run_ssh)
         self.protocol = None
-        self._state = {'storage_nodes': {},
+        self._state = {'controller': {},
                        'enabled_protocols': set(),
                        'system_name': None,
                        'system_id': None,
@@ -361,26 +354,52 @@ class Acs5000CommonDriver(san.SanDriver,
 
         self._state.update(self._cmd.get_system())
 
-        self._state['storage_nodes'] = self._cmd.ls_ctr_info()
-        ports = self._cmd.get_ip_connect()
+        self._state['controller'] = self._cmd.ls_controller()
+        if self.protocol == 'FC':
+            ports = self._cmd.ls_fc()
+        else:
+            ports = self._cmd.ls_iscsi()
         if len(ports) > 0:
-            self._state['enabled_protocols'].add('iSCSI')
-            for node in self._state['storage_nodes'].values():
-                if node['id'] in ports.keys():
-                    node['enabled_protocols'].append('iSCSI')
-                    for port in ports[node['id']]:
-                        node['ipv4'].append(port['ip'])
-        return
+            self._state['enabled_protocols'].add(self.protocol)
 
     def _validate_pools_exist(self):
         LOG.debug('_validate_pools_exist. '
                   'pools: %s', ' '.join(self.pools))
         for pool in self.pools:
-            pool_data = self._cmd.get_pool_info(pool)
+            pool_data = self._cmd.get_pool(pool)
             if not pool_data:
                 msg = _('Failed getting details for pool %s.') % pool
                 raise exception.InvalidInput(reason=msg)
         return True
+
+    @staticmethod
+    def _convert_name(name):
+        if len(name) >= 12:
+            suffix = name[-12:]
+        elif len(name) > 0:
+            suffix = str(name).zfill(12)
+        else:
+            suffix = str(random.randint(0, 999999)).zfill(12)
+        return VOLUME_PREFIX + suffix
+
+    @staticmethod
+    def _check_multi_attached(volume, connector):
+        # In the case of multi-attach, these VMs belong to the same host.
+        # The mapping action only happens once.
+        # If the only mapping relationship is cancelled,
+        # volume on other VMs cannot be read or written.
+        if not connector or 'uuid' not in connector:
+            return 0
+        attached_count = 0
+        uuid = connector['uuid']
+        for ref in volume.volume_attachment:
+            ref_connector = {}
+            if 'connector' in ref and ref.connector:
+                # ref.connector may be None
+                ref_connector = ref.connector
+            if 'uuid' in ref_connector and uuid == ref_connector['uuid']:
+                attached_count += 1
+        return attached_count
 
     @volume_utils.trace_method
     def check_for_setup_error(self):
@@ -391,8 +410,8 @@ class Acs5000CommonDriver(san.SanDriver,
         if self._state['system_id'] is None:
             exception_msg = _('Unable to determine system id.')
             raise exception.VolumeBackendAPIException(data=exception_msg)
-        if len(self._state['storage_nodes']) != 2:
-            msg = _('do_setup: No configured nodes.')
+        if len(self._state['controller']) != 2:
+            msg = _('do_setup: The dual controller status is incorrect.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
         if self.protocol not in self._state['enabled_protocols']:
@@ -468,7 +487,7 @@ class Acs5000CommonDriver(san.SanDriver,
 
     def create_volume(self, volume):
         LOG.debug('create_volume, volume %s.', volume['id'])
-        volume_name = VOLUME_PREFIX + volume['id'][-12:]
+        volume_name = self._convert_name(volume.name)
         pool_name = volume_utils.extract_host(volume['host'], 'pool')
         ret = self._cmd.create_volume(
             volume_name,
@@ -492,16 +511,22 @@ class Acs5000CommonDriver(san.SanDriver,
         elif ret['key'] == 308:
             raise exception.VolumeLimitExceeded(allowed=4096,
                                                 name=volume_name)
-        model_update = None
-        return model_update
+        elif ret['key'] != 0:
+            msg = (_('Failed to create_volume %(vol)s on pool %(pool)s, '
+                     'code=%(ret)s, error=%(msg)s.') % {'vol': volume_name,
+                                                        'pool': pool_name,
+                                                        'ret': ret['key'],
+                                                        'msg': ret['msg']})
+            raise exception.VolumeBackendAPIException(data=msg)
+        return None
 
     def delete_volume(self, volume):
-        volume_name = VOLUME_PREFIX + volume['id'][-12:]
+        volume_name = self._convert_name(volume.name)
         self._cmd.delete_volume(volume_name)
 
     def create_snapshot(self, snapshot):
-        volume_name = VOLUME_PREFIX + snapshot['volume_name'][-12:]
-        snapshot_name = VOLUME_PREFIX + snapshot['name'][-12:]
+        volume_name = self._convert_name(snapshot.volume_name)
+        snapshot_name = self._convert_name(snapshot.name)
         ret = self._cmd.create_snapshot(volume_name, snapshot_name)
         if ret['key'] == 303:
             raise exception.VolumeNotFound(volume_id=volume_name)
@@ -509,18 +534,32 @@ class Acs5000CommonDriver(san.SanDriver,
             raise exception.SnapshotLimitExceeded(allowed=4096)
         elif ret['key'] == 504:
             raise exception.SnapshotLimitExceeded(allowed=64)
+        elif ret['key'] != 0:
+            msg = (_('Failed to create_snapshot %(snap)s on volume %(vol)s '
+                     'code=%(ret)s, error=%(msg)s.') % {'vol': volume_name,
+                                                        'snap': snapshot_name,
+                                                        'ret': ret['key'],
+                                                        'msg': ret['msg']})
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def delete_snapshot(self, snapshot):
-        volume_name = VOLUME_PREFIX + snapshot['volume_name'][-12:]
-        snapshot_name = VOLUME_PREFIX + snapshot['name'][-12:]
+        volume_name = self._convert_name(snapshot.volume_name)
+        snapshot_name = self._convert_name(snapshot.name)
         ret = self._cmd.delete_snapshot(volume_name, snapshot_name)
         if ret['key'] == 505:
             raise exception.SnapshotNotFound(snapshot_id=snapshot['id'])
+        elif ret['key'] != 0:
+            msg = (_('Failed to delete_snapshot %(snap)s on volume %(vol)s '
+                     'code=%(ret)s, error=%(msg)s.') % {'vol': volume_name,
+                                                        'snap': snapshot_name,
+                                                        'ret': ret['key'],
+                                                        'msg': ret['msg']})
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        snapshot_name = VOLUME_PREFIX + snapshot['name'][-12:]
-        volume_name = VOLUME_PREFIX + volume['id'][-12:]
-        source_volume = VOLUME_PREFIX + snapshot['volume_name'][-12:]
+        snapshot_name = self._convert_name(snapshot.name)
+        volume_name = self._convert_name(volume.name)
+        source_volume = self._convert_name(snapshot.volume_name)
         pool = volume_utils.extract_host(volume['host'], 'pool')
         self._cmd.create_volume(volume_name,
                                 str(volume['size']),
@@ -530,9 +569,32 @@ class Acs5000CommonDriver(san.SanDriver,
                                'create_volume_from_snapshot',
                                snapshot_name)
 
+    def snapshot_revert_use_temp_snapshot(self):
+        return False
+
+    @volume_utils.trace
+    def revert_to_snapshot(self, context, volume, snapshot):
+        volume_name = self._convert_name(volume.name)
+        snapshot_name = self._convert_name(snapshot.name)
+        ret = self._cmd.rollback_snapshot(snapshot_name, volume_name)
+        if ret['key'] == 303:
+            raise exception.VolumeNotFound(volume_id=volume_name)
+        elif ret['key'] == 505:
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
+        elif ret['key'] == 506:
+            msg = (_('Snapshot %s is not the latest one.') % snapshot_name)
+            raise exception.InvalidSnapshot(reason=msg)
+        elif ret['key'] != 0:
+            msg = (_('Failed to revert volume %(vol)s to snapshot %(snap)s, '
+                     'code=%(ret)s, error=%(msg)s.') % {'vol': volume_name,
+                                                        'snap': snapshot_name,
+                                                        'ret': ret['key'],
+                                                        'msg': ret['msg']})
+            raise exception.VolumeBackendAPIException(data=msg)
+
     def create_cloned_volume(self, tgt_volume, src_volume):
-        clone_name = VOLUME_PREFIX + tgt_volume['id'][-12:]
-        volume_name = VOLUME_PREFIX + src_volume['id'][-12:]
+        clone_name = self._convert_name(tgt_volume.name)
+        volume_name = self._convert_name(src_volume.name)
         tgt_pool = volume_utils.extract_host(tgt_volume['host'], 'pool')
         try:
             self._cmd.create_volume(clone_name, str(
@@ -545,7 +607,7 @@ class Acs5000CommonDriver(san.SanDriver,
                 data='create_cloned_volume failed.')
 
     def extend_volume(self, volume, new_size):
-        volume_name = VOLUME_PREFIX + volume['id'][-12:]
+        volume_name = self._convert_name(volume.name)
         ret = self._cmd.extend_volume(volume_name, int(new_size))
         if ret['key'] == 303:
             raise exception.VolumeNotFound(volume_id=volume_name)
@@ -562,6 +624,33 @@ class Acs5000CommonDriver(san.SanDriver,
                     break
             raise exception.VolumeSizeExceedsLimit(size=int(new_size),
                                                    limit=allow_size)
+        elif ret['key'] != 0:
+            msg = (_('Failed to extend_volume %(vol)s to size %(size)s, '
+                     'code=%(ret)s, error=%(msg)s.') % {'vol': volume_name,
+                                                        'size': new_size,
+                                                        'ret': ret['key'],
+                                                        'msg': ret['msg']})
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Only for host copy."""
+        existing_name = self._convert_name(new_volume.name)
+        wanted_name = self._convert_name(volume.name)
+        LOG.debug('enter: update_migrated_volume: rename of %(new)s '
+                  'to original name %(wanted)s.', {'new': existing_name,
+                                                   'wanted': wanted_name})
+        is_existed = self._cmd.get_volume(wanted_name)
+        if len(is_existed) == 1:
+            LOG.warn('volume name %(wanted)s is existed, The two volumes '
+                     '%(wanted)s and %(new)s may be on the same system.',
+                     {'new': existing_name,
+                      'wanted': wanted_name})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+        else:
+            self._cmd.set_volume_property(existing_name,
+                                          {'new_name': wanted_name})
+            return {'_name_id': None}
 
     def migrate_volume(self, ctxt, volume, host):
         LOG.debug('enter: migrate_volume id %(id)s, host %(host)s',
@@ -581,7 +670,7 @@ class Acs5000CommonDriver(san.SanDriver,
         LOG.info('The target host belongs to the same storage system '
                  'as the current but to a different pool. '
                  'The same storage system will clone volume into the new pool')
-        volume_name = VOLUME_PREFIX + volume['id'][-12:]
+        volume_name = self._convert_name(volume.name)
         tmp_name = VOLUME_PREFIX + 'tmp'
         tmp_name += str(random.randint(0, 999999)).zfill(8)
         self._cmd.create_volume(tmp_name,
@@ -595,6 +684,58 @@ class Acs5000CommonDriver(san.SanDriver,
                                       {'type': '"RAID Volume"',
                                        'new_name': volume_name})
         return (True, None)
+
+    def _manage_get_volume(self, ref, pool_name=None):
+        if 'source-name' in ref:
+            manage_source = ref['source-name']
+            volumes = self._cmd.get_volume(manage_source)
+        else:
+            reason = _('Reference must contain source-name element '
+                       'and only support source-name.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+
+        if not volumes:
+            reason = (_('No volume by ref %s.')
+                      % manage_source)
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+        volume = volumes[0]
+        if pool_name and pool_name != volume['poolname']:
+            reason = (_('Volume %(volume)s does not belong to pool name '
+                        '%(pool)s.') % {'volume': manage_source,
+                                        'pool': pool_name})
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+        return volume
+
+    @volume_utils.trace_method
+    def manage_existing(self, volume, ref):
+        """Manages an existing volume."""
+        volume_name = ref.get('source-name')
+        if not volume_name:
+            reason = _('Reference must contain source-name element '
+                       'and only support source-name.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+        new_name = self._convert_name(volume.name)
+        self._cmd.set_volume_property(volume_name, {'type': '2',
+                                                    'new_name': new_name})
+
+    @volume_utils.trace_method
+    def manage_existing_get_size(self, volume, ref):
+        """Return size of an existing volume for manage_existing."""
+        pool_name = volume_utils.extract_host(volume['host'], 'pool')
+        vol_backend = self._manage_get_volume(ref, pool_name)
+        size = int(vol_backend.get('size_mb', 0))
+        size_gb = int(math.ceil(size / 1024))
+        if (size_gb * 1024) > size:
+            LOG.warn('Volume %(vol)s capacity is %(mb)s MB, '
+                     'extend to %(gb)s GB.', {'vol': ref['source-name'],
+                                              'mb': size,
+                                              'gb': size_gb})
+            self._cmd.extend_volume(ref['source-name'], size_gb)
+        return size_gb
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -628,15 +769,20 @@ class Acs5000CommonDriver(san.SanDriver,
         """Build pool status"""
         pool_stats = {}
         try:
-            pool_data = self._cmd.get_pool_info(pool)
+            pool_data = self._cmd.get_pool(pool)
             if pool_data:
-                total_capacity_gb = float(pool_data['capacity']) / units.Gi
-                free_capacity_gb = float(pool_data['free_capacity']) / units.Gi
+                total_capacity_gb = float(
+                    pool_data['capacity']) / units.Gi
+                free_capacity_gb = float(
+                    pool_data['free_capacity']) / units.Gi
                 allocated_capacity_gb = float(
                     pool_data['used_capacity']) / units.Gi
                 total_volumes = None
                 if 'total_volumes' in pool_data.keys():
                     total_volumes = int(pool_data['total_volumes'])
+                thin_provisioning = False
+                if 'thin' in pool_data and pool_data['thin'] == 'Enabled':
+                    thin_provisioning = True
                 pool_stats = {
                     'pool_name': pool_data['name'],
                     'total_capacity_gb': total_capacity_gb,
@@ -647,8 +793,8 @@ class Acs5000CommonDriver(san.SanDriver,
                         self.configuration.reserved_percentage,
                     'QoS_support': False,
                     'consistencygroup_support': False,
-                    'multiattach': False,
-                    'easytier_support': False,
+                    'multiattach': self.configuration.acs5000_multiattach,
+                    'thin_provisioning_support': thin_provisioning,
                     'total_volumes': total_volumes,
                     'system_id': self._state['system_id']}
             else:
