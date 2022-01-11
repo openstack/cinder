@@ -1286,34 +1286,38 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
         volume_name = utils.convert_str(snapshot.volume_name)
         snap_name = utils.convert_str(snapshot.name)
 
-        with RBDVolumeProxy(self, volume_name) as volume:
-            try:
-                volume.unprotect_snap(snap_name)
-            except self.rbd.InvalidArgument:
-                LOG.info(
-                    "InvalidArgument: Unable to unprotect snapshot %s.",
-                    snap_name)
-            except self.rbd.ImageNotFound:
-                LOG.info(
-                    "ImageNotFound: Unable to unprotect snapshot %s.",
-                    snap_name)
-            except self.rbd.ImageBusy:
-                children_list = self._get_children_info(volume, snap_name)
+        try:
+            with RBDVolumeProxy(self, volume_name) as volume:
+                try:
+                    volume.unprotect_snap(snap_name)
+                except self.rbd.InvalidArgument:
+                    LOG.info(
+                        "InvalidArgument: Unable to unprotect snapshot %s.",
+                        snap_name)
+                except self.rbd.ImageNotFound:
+                    LOG.info("Snapshot %s does not exist in backend.",
+                             snap_name)
+                    return
+                except self.rbd.ImageBusy:
+                    children_list = self._get_children_info(volume, snap_name)
 
-                if children_list:
-                    for (pool, image) in children_list:
-                        LOG.info('Image %(pool)s/%(image)s is dependent '
-                                 'on the snapshot %(snap)s.',
-                                 {'pool': pool,
-                                  'image': image,
-                                  'snap': snap_name})
+                    if children_list:
+                        for (pool, image) in children_list:
+                            LOG.info('Image %(pool)s/%(image)s is dependent '
+                                     'on the snapshot %(snap)s.',
+                                     {'pool': pool,
+                                      'image': image,
+                                      'snap': snap_name})
 
-                raise exception.SnapshotIsBusy(snapshot_name=snap_name)
-            try:
-                volume.remove_snap(snap_name)
-            except self.rbd.ImageNotFound:
-                LOG.info("Snapshot %s does not exist in backend.",
-                         snap_name)
+                    raise exception.SnapshotIsBusy(snapshot_name=snap_name)
+
+                try:
+                    volume.remove_snap(snap_name)
+                except self.rbd.ImageNotFound:
+                    LOG.info("Snapshot %s does not exist in backend.",
+                             snap_name)
+        except self.rbd.ImageNotFound:
+            LOG.warning("Volume %s does not exist in backend.", volume_name)
 
     def snapshot_revert_use_temp_snapshot(self):
         """Disable the use of a temporary snapshot on revert."""
