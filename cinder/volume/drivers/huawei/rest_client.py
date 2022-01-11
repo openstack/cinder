@@ -2453,7 +2453,7 @@ class RestClient(object):
         url = "/clonepair/%s" % pair_id
         result = self.call(url, data, "DELETE")
         if result['error']['code'] == constants.CLONE_PAIR_NOT_EXIST:
-            LOG.warning('ClonePair %s to delete not exist.', pair_id)
+            LOG.warning('ClonePair %s to delete does not exist.', pair_id)
             return
         self._assert_rest_result(result, 'Delete ClonePair %s error.'
                                  % pair_id)
