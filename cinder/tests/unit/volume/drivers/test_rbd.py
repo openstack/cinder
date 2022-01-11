@@ -84,6 +84,10 @@ class MockImageHasSnapshotsException(MockException):
     """Used as mock for rbd.ImageHasSnapshots."""
 
 
+class MockInvalidArgument(MockException):
+    """Used as mock for rbd.InvalidArgument."""
+
+
 class KeyObject(object):
     def get_encoded(arg):
         return "asdf".encode('utf-8')
@@ -113,7 +117,7 @@ def common_mocks(f):
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
             inst.mock_rbd.ImageExists = MockImageExistsException
             inst.mock_rbd.ImageHasSnapshots = MockImageHasSnapshotsException
-            inst.mock_rbd.InvalidArgument = MockImageNotFoundException
+            inst.mock_rbd.InvalidArgument = MockInvalidArgument
             inst.mock_rbd.PermissionError = MockPermissionError
 
             inst.driver.rbd = inst.mock_rbd
@@ -1195,7 +1199,7 @@ class RBDTestCase(test.TestCase):
 
         self.driver.delete_snapshot(self.snapshot)
 
-        proxy.remove_snap.assert_called_with(self.snapshot.name)
+        proxy.remove_snap.assert_not_called()
         proxy.unprotect_snap.assert_called_with(self.snapshot.name)
 
     @common_mocks
@@ -1253,6 +1257,18 @@ class RBDTestCase(test.TestCase):
                 self.assertTrue(mock_log.info.called)
                 self.assertTrue(proxy.unprotect_snap.called)
                 self.assertFalse(proxy.remove_snap.called)
+
+    @common_mocks
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_delete_snapshot_volume_not_found(self, volume_get_by_id):
+        volume_get_by_id.return_value = self.volume_a
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.side_effect = self.mock_rbd.ImageNotFound
+
+        self.driver.delete_snapshot(self.snapshot)
+
+        proxy.remove_snap.assert_not_called()
+        proxy.unprotect_snap.assert_not_called()
 
     @common_mocks
     def test_snapshot_revert_use_temp_snapshot(self):

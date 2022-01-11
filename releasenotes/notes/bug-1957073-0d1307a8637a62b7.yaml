@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    RBD Driver `bug #1957073
+    <https://bugs.launchpad.net/cinder/+bug/1957073>`_: Snapshot delete now
+    succeeds and skips updating the source volume image if the image
+    does not exist in the backend.
