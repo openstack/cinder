@@ -52,7 +52,6 @@ from cinder.policies import snapshot_metadata as s_meta_policy
 from cinder.policies import snapshots as snapshot_policy
 from cinder.policies import volume_actions as vol_action_policy
 from cinder.policies import volume_metadata as vol_meta_policy
-from cinder.policies import volume_transfer as vol_transfer_policy
 from cinder.policies import volumes as vol_policy
 from cinder import quota
 from cinder import quota_utils
@@ -833,8 +832,6 @@ class API(base.Base):
 
     def accept_transfer(self, context, volume, new_user, new_project,
                         no_snapshots=False):
-        context.authorize(vol_transfer_policy.ACCEPT_POLICY,
-                          target_obj=volume)
         if volume['status'] == 'maintenance':
             LOG.info('Unable to accept transfer for volume, '
                      'because it is in maintenance.', resource=volume)

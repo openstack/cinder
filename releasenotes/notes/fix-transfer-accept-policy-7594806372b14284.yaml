@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1950474 <https://bugs.launchpad.net/cinder/+bug/1950474>`_: Fixed
+    policy authorization for transfer accept API. Previously, if an operator
+    had overridden the default transfer accept policy to something project
+    specific in policy.yaml file, it would break the transfer accept API
+    which is fixed in this release.
