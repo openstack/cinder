@@ -18,10 +18,12 @@ import http.client as httpstatus
 import json
 import random
 import time
+from typing import Dict
 
-from os_brick import initiator
+# from os_brick import initiator
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import importutils
 from oslo_utils import units
 import requests
 import urllib3
@@ -33,6 +35,7 @@ from cinder import interface
 from cinder import utils
 from cinder.volume import configuration as config
 from cinder.volume import driver
+from cinder.volume.drivers.lightos import constants
 
 
 LOG = logging.getLogger(__name__)
@@ -345,15 +348,29 @@ class LightOSVolumeDriver(driver.VolumeDriver):
     def __init__(self, *args, **kwargs):
         super(LightOSVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(lightos_opts)
-        self.connector = initiator.connector.InitiatorConnector.factory(
-            initiator.LIGHTOS,
+        # connector implements NVMe/TCP initiator functionality.
+        if not self.configuration.__dict__.get("initiator_connector", None):
+            self.configuration.initiator_connector = \
+                "os_brick.initiator.connector.InitiatorConnector"
+        if not self.configuration.__dict__.get("lightos_client", None):
+            self.configuration.lightos_client = \
+                "cinder.volume.drivers.lightos.lightos.LightOSConnection"
+
+        initiator_connector = importutils.import_class(
+            self.configuration.initiator_connector)
+        self.connector = initiator_connector.factory(
+            constants.LIGHTOS,
             root_helper=utils.get_root_helper(),
             message_queue=None,
-            device_scan_attempts=self.configuration.
-            num_volume_device_scan_tries)
-        # give 3 API servers a chance + some change
-        self.logical_op_timeout = self.configuration. \
-            lightos_api_service_timeout * 3 + 10
+            device_scan_attempts=
+            self.configuration.num_volume_device_scan_tries)
+
+        lightos_client_ctor = importutils.import_class(
+            self.configuration.lightos_client)
+        self.cluster = lightos_client_ctor(self.configuration)
+
+        self.logical_op_timeout = \
+            self.configuration.lightos_api_service_timeout * 3 + 10
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
@@ -813,7 +830,6 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         raise exception.VolumeBackendAPIException(message=msg)
 
     def do_setup(self, context):
-        self.cluster = LightOSConnection(self.configuration)
 
         hosts = [host.strip()
                  for host in self.configuration.
