@@ -91,18 +91,35 @@ class LightOSConnection(object):
     def __init__(self, conf):
         self.conf = conf
         self.access_key = None
-        self.apiservers = dict()
+        self.apiservers = self._init_api_servers()
+        self._cur_api_server_idx = random.randint(0, len(self.apiservers) - 1)
         self.targets = dict()
         self.lightos_cluster_uuid = None
         self.subsystemNQN = None
         self._stats = {'total_capacity_gb': 0, 'free_capacity_gb': 0}
-        self._cur_api_server_idx = 0
         # a single API call must have been answered in this time if the API
         # service/network were up
         self.api_timeout = self.conf.lightos_api_service_timeout
 
     def get_driver_options():
         return lightos_opts
+
+    def _init_api_servers(self) -> Dict[int, Dict]:
+        if not self.conf.lightos_api_address or \
+                len(self.conf.lightos_api_address) == 0:
+            raise exception.InvalidParameterValue(
+                message="must provide lightos_api_address")
+
+        hosts = [host.strip()
+                 for host in self.conf.lightos_api_address.split(',')]
+        # Need to verify if hosts is real IP lists or not
+        # And verify that port is in range
+        apiservers: Dict[int, Dict] = {}
+        for server_idx, api_address in enumerate(hosts):
+            apiservers[server_idx] = dict(
+                api_address=api_address,
+                api_port=(str(self.conf.lightos_api_port)))
+        return apiservers
 
     def _generate_lightos_cmd(self, cmd, **kwargs):
         """Generate command to be sent to LightOS API service"""
@@ -784,9 +801,12 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             LOG.warn(
                 'LIGHTOS: did not find a discovery client, continuing anyway')
 
-    def get_cluster_info(self, context):
+    def get_cluster_info(self):
         status_code, cluster_info = self.cluster.send_cmd(
             cmd='get_cluster_info', timeout=self.logical_op_timeout)
+        if status_code == httpstatus.UNAUTHORIZED:
+            msg = f'LIGHTOS: failed to connect to cluster. code: {status_code}'
+            raise exception.InvalidAuthKey(message=msg)
         if status_code != httpstatus.OK:
             msg = 'LIGHTOS: Could not connect to LightOS cluster'
             raise exception.VolumeBackendAPIException(message=msg)
@@ -831,20 +851,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
     def do_setup(self, context):
 
-        hosts = [host.strip()
-                 for host in self.configuration.
-                 lightos_api_address.split(',')]
-        # Need to verify if hosts is real IP lists or not
-        # And verify that port is in range
-        for server_idx, api_address in enumerate(hosts):
-            self.cluster.apiservers[server_idx] = dict()
-            self.cluster.apiservers[server_idx]['api_address'] = api_address
-            self.cluster.apiservers[server_idx]['api_port'] = (
-                str(self.configuration.lightos_api_port))
-
-        # start from a random API server
-        self.cluster._cur_api_server_idx = random.randint(0, len(hosts) - 1)
-        self.get_cluster_info(context)
+        self.get_cluster_info()
         nodes_info = self.wait_for_lightos_cluster()
 
         self.cluster.targets = dict()
