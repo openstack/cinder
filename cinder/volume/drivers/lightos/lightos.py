@@ -636,7 +636,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 lightos_name=lightos_name,
                 src_snapshot_lightos_name=src_snapshot_lightos_name)
 
-        if status_code == httpstatus.OK:
+        # when we get here, we definitely tried to create it in the past
+        if status_code in (httpstatus.OK, httpstatus.CREATED):
             lightos_uuid = resp['UUID']
             vol_state = self._wait_for_volume_available(
                 project_name,
