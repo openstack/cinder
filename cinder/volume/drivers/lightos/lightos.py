@@ -464,14 +464,14 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         if vol_uuid:
             return self.cluster.send_cmd(
                 cmd='get_volume',
-                project_name=project_name,
                 timeout=timeout,
+                project_name=project_name,
                 volume_uuid=vol_uuid)
 
         return self.cluster.send_cmd(
             cmd='get_volume_by_name',
-            project_name=project_name,
             timeout=timeout,
+            project_name=project_name,
             volume_name=vol_name)
 
     def _lightos_volname(self, volume):
@@ -527,18 +527,22 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         # while creating lightos volume we can stop on any terminal status
         # possible states: Unknown, Creating, Available, Deleting, Deleted,
         # Failed, Updating
-        states_to_wait_for = (
-            'Available',
-            'Deleting',
-            'Deleted',
-            'Failed',
-            'UNKNOWN')
-        return self._wait_for_volume_state(
-            project_name,
-            timeout=timeout,
-            states=states_to_wait_for,
-            vol_uuid=vol_uuid,
-            vol_name=vol_name)
+        states = ('Available', 'Deleting', 'Deleted', 'Failed', 'UNKNOWN')
+
+        stop = time.time() + timeout
+        while time.time() <= stop:
+            (status_code,
+             resp) = self._get_lightos_volume(project_name,
+                                              timeout=self.logical_op_timeout,
+                                              vol_uuid=vol_uuid,
+                                              vol_name=vol_name)
+            state = resp.get('state', 'UNKNOWN') if \
+                status_code == httpstatus.OK and resp else 'UNKNOWN'
+            if state in states and status_code != httpstatus.NOT_FOUND:
+                break
+            time.sleep(1)
+
+        return state
 
     def _get_volume_specs(self, volume):
         compression = 'True' if self.configuration. \
@@ -666,35 +670,6 @@ class LightOSVolumeDriver(driver.VolumeDriver):
               (lightos_uuid, status_code, vol_state)
         raise exception.VolumeBackendAPIException(message=msg)
 
-    def _wait_for_volume_state(
-            self,
-            project_name,
-            timeout,
-            states,
-            vol_uuid=None,
-            vol_name=None):
-        """Wait until the volume hits a state in states or timeout"""
-        assert vol_uuid or vol_name, 'LightOS volume UUID or name must \
-        be specified'
-        state = 'UNKNOWN'
-
-        stop = time.time() + timeout
-        while time.time() <= stop:
-            (status_code,
-             resp) = self._get_lightos_volume(project_name,
-                                              timeout=self.logical_op_timeout,
-                                              vol_uuid=vol_uuid,
-                                              vol_name=vol_name)
-            state = resp.get(
-                'state',
-                'UNKNOWN') if status_code == httpstatus.OK \
-                and resp else 'UNKNOWN'
-            if state in states and status_code != httpstatus.NOT_FOUND:
-                break
-            time.sleep(1)
-
-        return state
-
     def _wait_for_snapshot_state(
             self,
             project_name,
@@ -729,9 +704,24 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
     def _wait_for_volume_deleted(self, project_name, timeout, vol_uuid):
         """Wait until the volume has been deleted."""
-        return self._wait_for_volume_state(
-            project_name, timeout, states=(
-                'Deleted', 'Deleting', 'UNKNOWN'), vol_uuid=vol_uuid)
+        assert vol_uuid, 'LightOS volume UUID must be specified'
+        states = ('Deleted', 'Deleting', 'UNKNOWN')
+
+        stop = time.time() + timeout
+        while time.time() <= stop:
+            (status_code,
+             resp) = self._get_lightos_volume(project_name,
+                                              timeout=self.logical_op_timeout,
+                                              vol_uuid=vol_uuid)
+            if status_code == httpstatus.NOT_FOUND:
+                return 'Deleted'
+            state = resp.get('state', 'UNKNOWN') if \
+                status_code == httpstatus.OK and resp else 'UNKNOWN'
+            if state in states:
+                break
+            time.sleep(1)
+
+        return state
 
     def _delete_lightos_volume(self, project_name, lightos_uuid):
         end = time.time() + self.logical_op_timeout
