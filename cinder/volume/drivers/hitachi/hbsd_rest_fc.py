@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -126,8 +126,15 @@ class HBSDRESTFC(rest.HBSDREST):
 
     def set_target_mode(self, port, gid):
         """Configure the host group to meet the environment."""
-        body = {'hostMode': 'LINUX/IRIX',
-                'hostModeOptions': [_FC_HMO_DISABLE_IO]}
+        body = {'hostMode': 'LINUX/IRIX'}
+        if self.conf.hitachi_rest_disable_io_wait:
+            body['hostModeOptions'] = [_FC_HMO_DISABLE_IO]
+        if self.conf.hitachi_host_mode_options:
+            if 'hostModeOptions' not in body:
+                body['hostModeOptions'] = []
+            for opt in self.conf.hitachi_host_mode_options:
+                if int(opt) not in body['hostModeOptions']:
+                    body['hostModeOptions'].append(int(opt))
         self.client.modify_host_grp(port, gid, body, ignore_all_errors=True)
 
     def _get_hwwns_in_hostgroup(self, port, gid, wwpns):
