@@ -156,6 +156,13 @@ class ShardFilter(filters.BaseBackendFilter):
             LOG.debug('Ignoring snapshot.')
             return True
 
+        if spec.get('operation') == 'find_backend_for_connector':
+            # We don't care about shards here, as we want to move a volume to
+            # an instance sitting in a specific vCenter. Shards are only used
+            # if we don't know where the volume is needed.
+            LOG.debug('Ignoring find_backend_for_connector scheduling.')
+            return True
+
         # allow an override of the automatic shard-detection like nova does for
         # its compute-hosts
         scheduler_hints = filter_properties.get('scheduler_hints') or {}

@@ -161,3 +161,33 @@ class ShardFilterTestCase(BackendFiltersTestCase):
         caps1 = {'vcenter-shard': 'vc-a-1'}
         host1 = fakes.FakeBackendState('host1', {'capabilities': caps1})
         self.assertTrue(self.filt_cls.backend_passes(host1, self.props))
+
+    def test_noop_for_find_backend_by_connector_with_hint(self):
+        """Check if we pass any backend
+
+        If the operation we're scheduling for is find_backend_for_connector,
+        we do not look at the shards but pass through every backend, because
+        this tries to move a volume towards where a server is during attach and
+        we always want that to succeed. Shards are supposed to help decision
+        making when we don't know where the volume will be attached.
+        """
+        caps = {'vcenter-shard': 'vc-a-0'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.props['scheduler_hints'] = {'vcenter-shard': 'vc-a-1'}
+        self.props['request_spec']['operation'] = 'find_backend_for_connector'
+        self.assertTrue(self.filt_cls.backend_passes(host, self.props))
+
+    def test_noop_for_find_backend_by_connector_without_hint(self):
+        """Check if we pass any backend
+
+        If the operation we're scheduling for is find_backend_for_connector,
+        we do not look at the shards but pass through every backend, because
+        this tries to move a volume towards where a server is during attach and
+        we always want that to succeed. Shards are supposed to help decision
+        making when we don't know where the volume will be attached.
+        """
+        self.filt_cls._PROJECT_SHARD_CACHE['baz'] = ['vc-a-1']
+        caps = {'vcenter-shard': 'vc-a-0'}
+        host = fakes.FakeBackendState('host1', {'capabilities': caps})
+        self.props['request_spec']['operation'] = 'find_backend_for_connector'
+        self.assertTrue(self.filt_cls.backend_passes(host, self.props))
