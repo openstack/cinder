@@ -863,6 +863,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 finished = self._extend_volume(volume, size)
                 if finished:
                     break
+            except exception.VolumeNotFound as e:
+                raise e
             except Exception as e:
                 # bail out if the time out elapsed...
                 if time.time() >= end:
