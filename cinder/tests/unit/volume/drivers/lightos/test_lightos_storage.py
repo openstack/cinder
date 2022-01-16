@@ -13,7 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
+import hashlib
 import http.client as httpstatus
+import json
 from typing import Dict
 from typing import List
 from typing import Tuple
@@ -34,9 +37,12 @@ from cinder.volume.drivers.lightos import lightos
 
 FAKE_LIGHTOS_CLUSTER_NODES: Dict[str, List] = {
     "nodes": [
-        {"UUID": "926e6df8-73e1-11ec-a624-000000000001"},
-        {"UUID": "926e6df8-73e1-11ec-a624-000000000002"},
-        {"UUID": "926e6df8-73e1-11ec-a624-000000000003"}
+        {"UUID": "926e6df8-73e1-11ec-a624-000000000001",
+         "nvmeEndpoint": "192.168.75.10:4420"},
+        {"UUID": "926e6df8-73e1-11ec-a624-000000000002",
+         "nvmeEndpoint": "192.168.75.11:4420"},
+        {"UUID": "926e6df8-73e1-11ec-a624-000000000003",
+         "nvmeEndpoint": "192.168.75.12:4420"}
     ]
 }
 
@@ -46,16 +52,41 @@ FAKE_LIGHTOS_CLUSTER_INFO: Dict[str, str] = {
     "f4a89ce0-9fc2-4900-bfa3-00ad27995e7b"
 }
 
+FAKE_CLIENT_HOSTNQN = "hostnqn1"
 
-class InitiatorConnectorMock(object):
 
+class InitiatorConnectorFactoryMocker:
     @staticmethod
     def factory(protocol, root_helper, driver=None,
                 use_multipath=False,
                 device_scan_attempts=constants.DEVICE_SCAN_ATTEMPTS_DEFAULT,
                 arch=None,
                 *args, **kwargs):
-        return None
+        return InitialConnectorMock()
+
+
+class InitialConnectorMock:
+    hostnqn = FAKE_CLIENT_HOSTNQN
+    found_discovery_client = True
+
+    def get_hostnqn(self):
+        return self.__class__.hostnqn
+
+    def find_dsc(self):
+        return self.__class__.found_discovery_client
+
+
+def get_connector_properties():
+    connector = InitialConnectorMock()
+    return dict(hostnqn=connector.get_hostnqn(),
+                found_dsc=connector.find_dsc())
+
+
+def get_vol_etag(volume):
+    v = deepcopy(volume)
+    v.pop("ETag", None)
+    dump = json.dumps(v, sort_keys=True).encode('utf-8')
+    return hashlib.md5(dump).hexdigest()
 
 
 class DBMock(object):
@@ -111,10 +142,16 @@ class DBMock(object):
         error_code, volume = self.get_volume_by_uuid(project_name, volume_uuid)
         if error_code != httpstatus.OK:
             return error_code, None
+        etag = kwargs.get("etag", None)
+        if etag:
+            vol_etag = volume.get("ETag", None)
+            if etag != vol_etag:
+                return httpstatus.BAD_REQUEST, None
         if kwargs.get("size", None):
             volume["size"] = kwargs["size"]
         if kwargs.get("acl", None):
-            volume["acl"] = kwargs["acl"]
+            volume["acl"] = {'values': kwargs.get('acl')}
+        volume["ETag"] = get_vol_etag(volume)
         return httpstatus.OK, volume
 
     def get_volume_by_name(self, project_name,
@@ -142,6 +179,10 @@ class DBMock(object):
             if vol["UUID"] == volume_uuid:
                 proj_vols.remove(vol)
         return httpstatus.OK, vol
+
+    def update_volume(self, **kwargs):
+        assert("project_name" in kwargs and kwargs["project_name"]), \
+            "project_name must be provided"
 
     def create_snapshot(self, snapshot) -> Tuple[int, Dict]:
         assert snapshot["project_name"] and snapshot["name"], \
@@ -220,10 +261,9 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         # for some reason this value is not initialized by the driver parent
         # configs
         configuration.volume_name_template = 'volume-%s'
-
         configuration.initiator_connector = \
             "cinder.tests.unit.volume.drivers.lightos." \
-            "test_lightos_storage.InitiatorConnectorMock"
+            "test_lightos_storage.InitiatorConnectorFactoryMocker"
 
         self.driver = lightos.LightOSVolumeDriver(configuration=configuration)
 
@@ -252,9 +292,10 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
                     "n_replicas": kwargs["n_replicas"],
                     "compression": kwargs["compression"],
                     "src_snapshot_name": kwargs["src_snapshot_name"],
-                    "acl": kwargs["acl"],
+                    "acl": {'values': kwargs.get('acl')},
                     "state": "Available",
                 }
+                volume["ETag"] = get_vol_etag(volume)
                 code, new_vol = self.db.create_volume(volume)
                 return (code, new_vol)
             elif cmd == "delete_volume":
@@ -287,6 +328,9 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
             elif cmd == "get_snapshot_by_name":
                 return self.db.get_snapshot_by_name(kwargs["project_name"],
                                                     kwargs["snapshot_name"])
+            elif cmd == "update_volume":
+                return self.db.update_volume_by_uuid(**kwargs)
+
             else:
                 raise RuntimeError(
                     f"'{cmd}' is not implemented. kwargs: {kwargs}")
@@ -413,10 +457,125 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         db.volume_destroy(self.ctxt, volume.id)
 
     def test_initialize_connection(self):
-        pass
+        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        connection_props = \
+            self.driver.initialize_connection(volume,
+                                              get_connector_properties())
+        self.assertIn('driver_volume_type', connection_props)
+        self.assertEqual('lightos', connection_props['driver_volume_type'])
+        self.assertEqual(FAKE_CLIENT_HOSTNQN,
+                         connection_props['data']['hostnqn'])
+        self.assertEqual(FAKE_LIGHTOS_CLUSTER_INFO['subsystemNQN'],
+                         connection_props['data']['nqn'])
+        self.assertEqual(
+            self.db.data['projects']['default']['volumes'][0]['UUID'],
+            connection_props['data']['uuid'])
 
-    def test_terminate_connection(self):
-        pass
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
 
-    def test_get_volume_stats(self):
-        pass
+    def test_initialize_connection_no_hostnqn_should_fail(self):
+        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.initialize_connection, volume,
+                          get_connector_properties())
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_initialize_connection_no_dsc_should_fail(self):
+        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = False
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.initialize_connection, volume,
+                          get_connector_properties())
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_terminate_connection_with_hostnqn(self):
+        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        self.driver.terminate_connection(volume, get_connector_properties())
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_terminate_connection_with_empty_hostnqn_should_fail(self):
+        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.terminate_connection, volume,
+                          get_connector_properties())
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_force_terminate_connection_with_empty_hostnqn(self):
+        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.driver.create_volume(volume)
+        self.driver.terminate_connection(volume, get_connector_properties(),
+                                         force=True)
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+
+    def test_check_for_setup_error(self):
+        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        self.driver.check_for_setup_error()
+
+    def test_check_for_setup_error_no_subsysnqn_should_fail(self):
+        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        self.driver.cluster.subsystemNQN = ""
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.check_for_setup_error)
+
+    def test_check_for_setup_error_no_hostnqn_should_fail(self):
+        InitialConnectorMock.hostnqn = ""
+        InitialConnectorMock.found_discovery_client = True
+        self.driver.do_setup(None)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.check_for_setup_error)
+
+    def test_check_for_setup_error_no_dsc_should_succeed(self):
+        InitialConnectorMock.hostnqn = "hostnqn1"
+        InitialConnectorMock.found_discovery_client = False
+        self.driver.do_setup(None)
+        self.driver.check_for_setup_error()
