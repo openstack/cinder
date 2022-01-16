@@ -671,33 +671,51 @@ class LightOSVolumeDriver(driver.VolumeDriver):
               (lightos_uuid, status_code, vol_state)
         raise exception.VolumeBackendAPIException(message=msg)
 
-    def _wait_for_snapshot_state(
-            self,
-            project_name,
-            states,
-            timeout=None,
-            snapshot_uuid=None,
-            snapshot_name=None):
-        """Wait until the snapshot hits a state in states or timeout"""
+    def _wait_for_snapshot_available(self, project_name,
+                                     timeout,
+                                     snapshot_uuid=None,
+                                     snapshot_name=None):
+        """Wait until the snapshot is available."""
         assert snapshot_uuid or snapshot_name, \
-            'LightOS Snapshot UUID or name must be specified'
-        state = 'UNKNOWN'
-
-        timeout = timeout or self.logical_op_timeout
+            'LightOS snapshot UUID or name must be supplied'
+        # we can stop on any terminal status
+        # possible states: Unknown, Creating, Available, Deleting, Deleted,
+        # Failed, Updating
+        states = ('Available', 'Deleting', 'Deleted', 'Failed', 'UNKNOWN')
 
         stop = time.time() + timeout
         while time.time() <= stop:
             (status_code,
-             resp) = self._get_lightos_snapshot(project_name=project_name,
-                                                timeout=self.
-                                                logical_op_timeout,
+             resp) = self._get_lightos_snapshot(project_name,
+                                                timeout=
+                                                self.logical_op_timeout,
                                                 snapshot_uuid=snapshot_uuid,
                                                 snapshot_name=snapshot_name)
-            state = resp.get(
-                'state',
-                'UNKNOWN') if status_code == httpstatus.OK \
-                and resp else 'UNKNOWN'
+            state = resp.get('state', 'UNKNOWN') if \
+                status_code == httpstatus.OK and resp else 'UNKNOWN'
             if state in states and status_code != httpstatus.NOT_FOUND:
+                break
+            time.sleep(1)
+
+        return state
+
+    def _wait_for_snapshot_deleted(self, project_name, timeout, snapshot_uuid):
+        """Wait until the snapshot has been deleted."""
+        assert snapshot_uuid, 'LightOS snapshot UUID must be specified'
+        states = ('Deleted', 'Deleting', 'UNKNOWN')
+
+        stop = time.time() + timeout
+        while time.time() <= stop:
+            (status_code,
+             resp) = self._get_lightos_snapshot(project_name,
+                                                timeout=
+                                                self.logical_op_timeout,
+                                                snapshot_uuid=snapshot_uuid)
+            if status_code == httpstatus.NOT_FOUND:
+                return 'Deleted'
+            state = resp.get('state', 'UNKNOWN') if \
+                status_code == httpstatus.OK and resp else 'UNKNOWN'
+            if state in states:
                 break
             time.sleep(1)
 
@@ -1230,21 +1248,14 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                        response)
                 raise exception.VolumeBackendAPIException(message=msg)
 
-        states_to_wait_for = (
-            'Available',
-            'Deleting',
-            'Deleted',
-            'Failed',
-            'UNKNOWN')
-        state = self._wait_for_snapshot_state(
-            project_name,
-            states=states_to_wait_for,
-            snapshot_name=snapshot_name)
+        state = self._wait_for_snapshot_available(project_name,
+                                                  timeout=
+                                                  self.logical_op_timeout,
+                                                  snapshot_name=snapshot_name)
 
         if state == 'Available':
             LOG.debug(
-                'Successfully created LightOS snapshot %s',
-                snapshot_name)
+                'Successfully created LightOS snapshot %s', snapshot_name)
             return
 
         LOG.error(
@@ -1305,11 +1316,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                                                  logical_op_timeout,
                                                  snapshot_uuid=snapshot_uuid)
         if status_code == httpstatus.OK:
-            accepted_states = ('Deleted', 'Deleting', 'UNKNOWN')
-            state = self._wait_for_snapshot_state(project_name,
-                                                  states=accepted_states,
-                                                  snapshot_uuid=snapshot_uuid)
-            if state in accepted_states:
+            state = self._wait_for_snapshot_deleted(
+                project_name,
+                timeout=self.logical_op_timeout,
+                snapshot_uuid=snapshot_uuid)
+            if state in ('Deleted', 'Deleting', 'UNKNOWN'):
                 LOG.debug(
                     "Successfully detected that snapshot %s was deleted.",
                     snapshot_name)
@@ -1318,12 +1329,13 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 LOG.warn("Snapshot %s was not deleted. It is in state %s.",
                          snapshot_name, state)
                 return False
-
-        LOG.warn(
-            "Request to delete snapshot %s was rejected with status code %s.",
-            snapshot_name,
-            status_code)
-        return False
+        else:
+            LOG.warn(
+                "Request to delete snapshot %s"
+                " was rejected with status code %s.",
+                snapshot_name,
+                status_code)
+            return False
 
     def initialize_connection(self, volume, connector):
         hostnqn = connector.get('hostnqn')
