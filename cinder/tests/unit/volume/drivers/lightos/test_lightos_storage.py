@@ -56,6 +56,8 @@ VOLUME_BACKEND_NAME = "lightos_backend"
 RESERVED_PERCENTAGE = 30
 DEVICE_SCAN_ATTEMPTS_DEFAULT = 5
 LIGHTOS_API_SERVICE_TIMEOUT = 30
+VOLUME_BACKEND_NAME = "lightos_backend"
+RESERVED_PERCENTAGE = 30
 
 
 class InitiatorConnectorFactoryMocker:
@@ -670,3 +672,41 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
 
         db.volume_destroy(self.ctxt, volume.id)
         db.volume_destroy(self.ctxt, clone.id)
+
+    def test_get_volume_stats(self):
+        """Test that lightos_client succeed."""
+        self.driver.do_setup(None)
+        volumes_data = self.driver.get_volume_stats(refresh=False)
+        assert len(volumes_data) == 0, "Expected empty config"
+
+        volumes_data = self.driver.get_volume_stats(refresh=True)
+        assert volumes_data['vendor_name'] == 'LightOS Storage', \
+            "Expected 'LightOS Storage', received %s" % \
+            volumes_data['vendor_name']
+        assert volumes_data['volume_backend_name'] == VOLUME_BACKEND_NAME, \
+            "Expected %s, received %s" % \
+            (VOLUME_BACKEND_NAME, volumes_data['volume_backend_name'])
+        assert volumes_data['driver_version'] == self.driver.VERSION, \
+            "Expected %s, received %s" % \
+            (self.driver.VERSION, volumes_data['driver_version'])
+        assert volumes_data['storage_protocol'] == "lightos", \
+            "Expected 'lightos', received %s" % \
+            volumes_data['storage_protocol']
+        assert volumes_data['reserved_percentage'] == RESERVED_PERCENTAGE, \
+            "Expected %d, received %s" % \
+            (RESERVED_PERCENTAGE, volumes_data['reserved_percentage'])
+        assert volumes_data['QoS_support'] is False, \
+            "Expected False, received %s" % volumes_data['QoS_support']
+        assert volumes_data['online_extend_support'] is True, \
+            "Expected True, received %s" % \
+            volumes_data['online_extend_support']
+        assert volumes_data['thin_provisioning_support'] is True, \
+            "Expected True, received %s" % \
+            volumes_data['thin_provisioning_support']
+        assert volumes_data['compression'] is False, \
+            "Expected False, received %s" % volumes_data['compression']
+        assert volumes_data['multiattach'] is True, \
+            "Expected True, received %s" % volumes_data['multiattach']
+        assert volumes_data['free_capacity_gb'] == 'infinite', \
+            "Expected 'infinite', received %s" % \
+            volumes_data['free_capacity_gb']
