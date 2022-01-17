@@ -297,11 +297,12 @@ class HPE3PARCommon(object):
                  enabled. bug #1834660
         4.0.14 - Added Peer Persistence feature
         4.0.15 - Support duplicated FQDN in network. Bug #1834695
+        4.0.16 - In multi host env, fix multi-detach operation. Bug #1958122
 
 
     """
 
-    VERSION = "4.0.15"
+    VERSION = "4.0.16"
 
     stats = {}
 
@@ -3225,18 +3226,60 @@ class HPE3PARCommon(object):
             attachment_list = volume.volume_attachment
             LOG.debug("Volume attachment list: %(atl)s",
                       {'atl': attachment_list})
+
             try:
                 attachment_list = attachment_list.objects
             except AttributeError:
                 pass
 
             if attachment_list is not None and len(attachment_list) > 1:
-                LOG.info("Volume %(volume)s is attached to multiple "
-                         "instances on host %(host_name)s, "
-                         "skip terminate volume connection",
-                         {'volume': volume.name,
-                          'host_name': volume.host.split('@')[0]})
-                return
+                # There are two possibilities: the instances can reside:
+                # [1] either on same host.
+                # [2] or on different hosts.
+                #
+                # case [1]:
+                # In such case, behaviour is same as earlier i.e vlun is
+                # not deleted now i.e skip remainder of terminate volume
+                # connection.
+                #
+                # case [2]:
+                # In such case, vlun of that host on 3par array should
+                # be deleted now. Otherwise, it remains as stale entry on
+                # 3par array; which later leads to error during volume
+                # deletion.
+
+                same_host = False
+                num_hosts = len(attachment_list)
+                all_hostnames = []
+                all_hostnames.append(hostname)
+
+                count = 0
+                for i in range(num_hosts):
+                    hostname_i = str(attachment_list[i].attached_host)
+                    if hostname == hostname_i:
+                        # current host
+                        count = count + 1
+                        if count > 1:
+                            # volume attached to multiple instances on
+                            # current host
+                            same_host = True
+                    else:
+                        # different host
+                        all_hostnames.append(hostname_i)
+
+                if same_host:
+                    LOG.info("Volume %(volume)s is attached to multiple "
+                             "instances on same host %(host_name)s, "
+                             "skip terminate volume connection",
+                             {'volume': volume.name,
+                              'host_name': volume.host.split('@')[0]})
+                    return
+                else:
+                    hostnames = ",".join(all_hostnames)
+                    LOG.info("Volume %(volume)s is attached to instances "
+                             "on multiple hosts %(hostnames)s. Proceed with "
+                             "deletion of vlun on this host.",
+                             {'volume': volume.name, 'hostnames': hostnames})
 
         # does 3par know this host by a different name?
         hosts = None

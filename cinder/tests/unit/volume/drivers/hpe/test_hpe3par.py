@@ -10959,13 +10959,13 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
     def test_migrate_volume_attached(self):
         self.migrate_volume_attached()
 
-    def test_terminate_connection_multiattach(self):
+    def test_terminate_connection_multiattach_same_host(self):
         ctx = context.get_admin_context()
         mock_client = self.setup_driver()
         att_1 = fake_volume.volume_attachment_ovo(
-            ctx, id=uuidutils.generate_uuid())
+            ctx, id=uuidutils.generate_uuid(), attached_host='same_host')
         att_2 = fake_volume.volume_attachment_ovo(
-            ctx, id=uuidutils.generate_uuid())
+            ctx, id=uuidutils.generate_uuid(), attached_host='same_host')
         volume = fake_volume.fake_volume_obj(
             ctx, multiattach=True, host=self.FAKE_CINDER_HOST)
         volume.volume_attachment.objects = [att_1, att_2]
@@ -10974,13 +10974,74 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver):
             mock_create_client.return_value = mock_client
             self.driver.terminate_connection(volume, self.connector)
 
-            # When volume is having mulitple instances attached, there
+            # When volume is attached to mulitple instances on same host, there
             # should be no call to delete the VLUN(s) or the host. We
             # can assert these methods were not called to make sure the
             # proper code execution is followed.
 
             self.assertEqual(0, mock_client.deleteVLUN.call_count)
             self.assertEqual(0, mock_client.deleteHost.call_count)
+
+    def test_terminate_connection_multiattach_different_host(self):
+        ctx = context.get_admin_context()
+        att_1 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid(), attached_host='host_one')
+        att_2 = fake_volume.volume_attachment_ovo(
+            ctx, id=uuidutils.generate_uuid(), attached_host='host_two')
+        volume = fake_volume.fake_volume_obj(
+            ctx, multiattach=True, host=self.FAKE_CINDER_HOST)
+        volume.volume_attachment.objects = [att_1, att_2]
+
+        vol_name = 'osv-HlF355XlSg.xcORfS0afag'
+
+        # When volume is attached to instances on different hosts,
+        # VLUN(s) of that host should be deleted. We can assert
+        # appropriate methods were called.
+
+        mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        mock_client.getHostVLUNs.return_value = [
+            {'active': False,
+             'volumeName': vol_name,
+             'lun': None, 'type': 0}]
+
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.terminate_connection(
+                volume,
+                self.connector,
+                force=True)
+
+            expected = [
+                mock.call.queryHost(iqns=[self.connector['initiator']]),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.deleteVLUN(
+                    vol_name,
+                    None,
+                    hostname=self.FAKE_HOST),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.modifyHost(
+                    'fakehost',
+                    {'pathOperation': 2,
+                     'iSCSINames': ['iqn.1993-08.org.debian:01:222']}),
+                mock.call.removeVolumeMetaData(vol_name, CHAP_USER_KEY),
+                mock.call.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
 
     @ddt.data('volume', 'volume_name_id')
     def test_terminate_connection(self, volume_attr):
