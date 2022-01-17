@@ -962,10 +962,10 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         # currently we remove this stats call.
         # cluster_stats = self.get_cluster_stats()
 
-        data = {"vendor_name": 'LightOS Storage',
-                "volume_backend_name": backend_name or self.__class__.__name__,
-                "driver_version": self.VERSION,
-                "storage_protocol": storage_protocol,
+        data = {'vendor_name': 'LightOS Storage',
+                'volume_backend_name': backend_name or self.__class__.__name__,
+                'driver_version': self.VERSION,
+                'storage_protocol': storage_protocol,
                 'reserved_percentage': self.configuration.reserved_percentage,
                 'QoS_support': False,
                 'online_extend_support': True,
