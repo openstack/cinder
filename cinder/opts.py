@@ -133,6 +133,7 @@ from cinder.volume.drivers.kioxia import kumoscale as \
     cinder_volume_drivers_kioxia_kumoscale
 from cinder.volume.drivers.lenovo import lenovo_common as \
     cinder_volume_drivers_lenovo_lenovocommon
+from cinder.volume.drivers import lightos as cinder_volume_drivers_lightos
 from cinder.volume.drivers import linstordrv as \
     cinder_volume_drivers_linstordrv
 from cinder.volume.drivers import lvm as cinder_volume_drivers_lvm
@@ -350,6 +351,7 @@ def list_opts():
                 kaminario_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.common_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.iscsi_opts,
+                cinder_volume_drivers_lightos.lightos_opts,
                 cinder_volume_drivers_linstordrv.linstor_opts,
                 cinder_volume_drivers_lvm.volume_opts,
                 cinder_volume_drivers_macrosan_driver.config.macrosan_opts,
