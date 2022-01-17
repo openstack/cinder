@@ -43,7 +43,7 @@ description:
     driver_ssl_cert_path = /etc/cinder/jdss.crt
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-0
-    jovian_block_size = 128K
+    jovian_block_size = 64K
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
@@ -80,7 +80,7 @@ description:
      - Pool-0
      - Pool name that is going to be used. Must be created in [2]
    * - ``jovian_block_size``
-     - 128K
+     - 64K
      - Block size for newly created volumes
    * - ``san_api_port``
      - 82
@@ -134,7 +134,7 @@ For instance if you want to add ``Pool-1`` located on the same host as
     driver_ssl_cert_verify = False
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-0
-    jovian_block_size = 128K
+    jovian_block_size = 64K
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
@@ -150,7 +150,7 @@ For instance if you want to add ``Pool-1`` located on the same host as
     driver_ssl_cert_verify = False
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-1
-    jovian_block_size = 128K
+    jovian_block_size = 64K
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
@@ -183,7 +183,7 @@ and 192.168.31.100 the configuration file will look like:
     driver_ssl_cert_verify = False
     iscsi_target_prefix = iqn.2016-04.com.open-e.cinder:
     jovian_pool = Pool-0
-    jovian_block_size = 128K
+    jovian_block_size = 64K
     san_api_port = 82
     target_port = 3260
     volume_driver = cinder.volume.drivers.open_e.iscsi.JovianISCSIDriver
