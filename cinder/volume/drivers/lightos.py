@@ -910,11 +910,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                     'Failed to get LightOS volume status: %s data: %s',
                     status,
                     str(data))
-                raise exception.VolumeNotFound(volume_id=volume)
+                raise exception.VolumeNotFound(volume_id=volume.id)
             lightos_uuid = data['UUID']
             etag = data.get('ETag', '')
         except Exception as e:
-            raise exception.VolumeNotFound(raised_exception=e)
+            raise e
 
         try:
             code, message = self.cluster.send_cmd(

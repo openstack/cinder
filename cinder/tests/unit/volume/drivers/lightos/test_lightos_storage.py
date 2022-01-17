@@ -472,6 +472,18 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 
+    def test_extend_volume_should_fail_if_volume_does_not_exist(self):
+        self.driver.do_setup(None)
+
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+
+        self.assertRaises(exception.VolumeNotFound,
+                          self.driver.extend_volume, volume, 6)
+        db.volume_destroy(self.ctxt, volume.id)
+
     def test_create_snapshot(self):
         self.driver.do_setup(None)
 
