@@ -25,8 +25,6 @@ from typing import Tuple
 from unittest import mock
 import uuid
 
-import fixtures
-
 from cinder import context
 from cinder import db
 from cinder import exception
