@@ -957,6 +957,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
 
         backend_name = self.configuration.safe_get('volume_backend_name')
         res_percentage = self.configuration.safe_get('reserved_percentage')
+        compression = self.configuration.safe_get(
+            'lightos_default_compression_enabled')
         storage_protocol = 'lightos'
         # as a tenant we dont have access to cluster stats
         # in the future we might expose this per project via get_project API
@@ -971,7 +973,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 'QoS_support': False,
                 'online_extend_support': True,
                 'thin_provisioning_support': True,
-                'compression': True,
+                'compression': compression,
                 'multiattach': True}
         # data['total_capacity_gb'] =
         # self.byte_to_gb(cluster_stats['effectivePhysicalStorage'])
