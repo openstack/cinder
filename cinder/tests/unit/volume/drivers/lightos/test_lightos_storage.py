@@ -399,6 +399,53 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
 
+    def test_create_volume_in_failed_state(self):
+        """Verify scenario of created volume in failed state:
+
+        Driver is expected to issue a deletion command and raise exception
+        """
+        def send_cmd_mock(cmd, **kwargs):
+            if cmd == "create_volume":
+                project_name = kwargs["project_name"]
+                volume = {
+                    "project_name": project_name,
+                    "name": kwargs["name"],
+                    "size": kwargs["size"],
+                    "n_replicas": kwargs["n_replicas"],
+                    "compression": kwargs["compression"],
+                    "src_snapshot_name": kwargs["src_snapshot_name"],
+                    "acl": {'values': kwargs.get('acl')},
+                    "state": "Failed",
+                }
+                volume["ETag"] = get_vol_etag(volume)
+                code, new_vol = self.db.create_volume(volume)
+                return (code, new_vol)
+            elif cmd == "delete_volume":
+                return self.db.delete_volume(kwargs["project_name"],
+                                             kwargs["volume_uuid"])
+            elif cmd == "get_volume":
+                return self.db.get_volume_by_uuid(kwargs["project_name"],
+                                                  kwargs["volume_uuid"])
+            elif cmd == "get_volume_by_name":
+                return self.db.get_volume_by_name(kwargs["project_name"],
+                                                  kwargs["volume_name"])
+            else:
+                raise RuntimeError(
+                    f"'{cmd}' is not implemented. kwargs: {kwargs}")
+
+        self.driver.do_setup(None)
+        self.driver.cluster.send_cmd = send_cmd_mock
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume, volume)
+        proj = self.db.data["projects"][lightos.LIGHTOS_DEFAULT_PROJECT_NAME]
+        actual_volumes = proj["volumes"]
+        self.assertEqual(0, len(actual_volumes))
+        db.volume_destroy(self.ctxt, volume.id)
+
     def test_delete_volume_fail_if_not_created(self):
         """Test that lightos_client fail creating an already exists volume."""
         self.driver.do_setup(None)
@@ -453,6 +500,22 @@ class LightOSStorageVolumeDriverTest(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         self.driver.delete_volume(volume)
         db.volume_destroy(self.ctxt, volume.id)
+
+    def test_create_volume_from_snapshot(self):
+        self.driver.do_setup(None)
+        vol_type = test_utils.create_volume_type(self.ctxt, self,
+                                                 name='my_vol_type')
+        volume = test_utils.create_volume(self.ctxt, size=4,
+                                          volume_type_id=vol_type.id)
+        snapshot = test_utils.create_snapshot(self.ctxt, volume_id=volume.id)
+        self.driver.create_volume_from_snapshot(volume, snapshot)
+        proj = self.db.data["projects"][lightos.LIGHTOS_DEFAULT_PROJECT_NAME]
+        actual_volumes = proj["volumes"]
+        self.assertEqual(1, len(actual_volumes))
+        self.driver.delete_snapshot(snapshot)
+        self.driver.delete_volume(volume)
+        db.volume_destroy(self.ctxt, volume.id)
+        db.snapshot_destroy(self.ctxt, snapshot.id)
 
     def test_initialize_connection(self):
         InitialConnectorMock.hostnqn = "hostnqn1"
