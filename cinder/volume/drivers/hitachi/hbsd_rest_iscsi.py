@@ -91,14 +91,14 @@ class HBSDRESTISCSI(rest.HBSDREST):
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create an iSCSI target on the specified port."""
         target_name = '%(prefix)s-%(ip)s' % {
-            'prefix': utils.DRIVER_PREFIX,
+            'prefix': self.driver_info['driver_prefix'],
             'ip': connector['ip'],
         }
         body = {'portId': port, 'hostGroupName': target_name}
         if hba_ids:
             body['iscsiName'] = '%(id)s%(suffix)s' % {
                 'id': hba_ids,
-                'suffix': utils.TARGET_IQN_SUFFIX,
+                'suffix': self.driver_info['target_iqn_suffix'],
             }
         try:
             gid = self.client.add_host_grp(body, no_log=True)
@@ -184,7 +184,7 @@ class HBSDRESTISCSI(rest.HBSDREST):
             targets['info'][port] = False
             if 'ip' in connector:
                 target_name = '%(prefix)s-%(ip)s' % {
-                    'prefix': utils.DRIVER_PREFIX,
+                    'prefix': self.driver_info['driver_prefix'],
                     'ip': connector['ip'],
                 }
                 if self._set_target_info_by_name(
@@ -215,7 +215,7 @@ class HBSDRESTISCSI(rest.HBSDREST):
                 if not iqn:
                     msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
                                            resource='Target IQN')
-                    raise utils.HBSDError(msg)
+                    self.raise_error(msg)
                 targets['iqns'][target] = iqn
                 LOG.debug(
                     'Found target iqn of host group. (port: %(port)s, '

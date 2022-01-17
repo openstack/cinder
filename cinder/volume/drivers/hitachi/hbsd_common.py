@@ -22,11 +22,10 @@ from oslo_utils import excutils
 
 from cinder import coordination
 from cinder import exception
+from cinder.i18n import _
 from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
-
-VERSION = '2.2.0'
 
 _STR_VOLUME = 'volume'
 _STR_SNAPSHOT = 'snapshot'
@@ -106,11 +105,6 @@ COMMON_VOLUME_OPTS = [
              'a copy pair deletion or data restoration.'),
 ]
 
-_REQUIRED_COMMON_OPTS = [
-    'hitachi_storage_id',
-    'hitachi_pool',
-]
-
 CONF = cfg.CONF
 CONF.register_opts(COMMON_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 
@@ -155,6 +149,10 @@ class HBSDCommon():
             'wwns': {},
             'portals': {},
         }
+        self._required_common_opts = [
+            self.driver_info['param_prefix'] + '_storage_id',
+            self.driver_info['param_prefix'] + '_pool',
+        ]
 
     def create_ldev(self, size):
         """Create an LDEV and return its LDEV number."""
@@ -189,7 +187,7 @@ class HBSDCommon():
         ldev_info = self.get_ldev_info(['status', 'attributes'], pvol)
         if ldev_info['status'] != 'NML':
             msg = utils.output_log(MSG.INVALID_LDEV_STATUS_FOR_COPY, ldev=pvol)
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         svol = self.create_ldev(size)
         try:
             self.create_pair_on_storage(pvol, svol, is_snapshot)
@@ -197,7 +195,7 @@ class HBSDCommon():
             with excutils.save_and_reraise_exception():
                 try:
                     self.delete_ldev(svol)
-                except utils.HBSDError:
+                except exception.VolumeDriverException:
                     utils.output_log(MSG.DELETE_LDEV_FAILED, ldev=svol)
         return svol
 
@@ -209,7 +207,7 @@ class HBSDCommon():
         if ldev is None:
             msg = utils.output_log(
                 MSG.INVALID_LDEV_FOR_VOLUME_COPY, type=src_type, id=src['id'])
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
 
         size = volume['size']
         new_ldev = self._copy_on_storage(ldev, size)
@@ -243,7 +241,7 @@ class HBSDCommon():
         if pair_info['pvol'] == ldev:
             utils.output_log(
                 MSG.UNABLE_TO_DELETE_PAIR, pvol=pair_info['pvol'])
-            raise utils.HBSDBusy()
+            self.raise_busy()
         else:
             self.delete_pair_based_on_svol(
                 pair_info['pvol'], pair_info['svol_info'][0])
@@ -284,8 +282,11 @@ class HBSDCommon():
             return
         try:
             self.delete_ldev(ldev)
-        except utils.HBSDBusy:
-            raise exception.VolumeIsBusy(volume_name=volume['name'])
+        except exception.VolumeDriverException as ex:
+            if ex.msg == utils.BUSY_MESSAGE:
+                raise exception.VolumeIsBusy(volume_name=volume['name'])
+            else:
+                raise ex
 
     def create_snapshot(self, snapshot):
         """Create a snapshot from a volume and return its properties."""
@@ -295,7 +296,7 @@ class HBSDCommon():
             msg = utils.output_log(
                 MSG.INVALID_LDEV_FOR_VOLUME_COPY,
                 type='volume', id=src_vref['id'])
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         size = snapshot['volume_size']
         new_ldev = self._copy_on_storage(ldev, size, True)
         return {
@@ -312,8 +313,11 @@ class HBSDCommon():
             return
         try:
             self.delete_ldev(ldev)
-        except utils.HBSDBusy:
-            raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
+        except exception.VolumeDriverException as ex:
+            if ex.msg == utils.BUSY_MESSAGE:
+                raise exception.SnapshotIsBusy(snapshot_name=snapshot['name'])
+            else:
+                raise ex
 
     def get_pool_info(self):
         """Return the total and free capacity of the storage pool."""
@@ -326,8 +330,8 @@ class HBSDCommon():
                         self.driver_info['volume_backend_name'])
         data = {
             'volume_backend_name': backend_name,
-            'vendor_name': 'Hitachi',
-            'driver_version': VERSION,
+            'vendor_name': self.driver_info['vendor_name'],
+            'driver_version': self.driver_info['version'],
             'storage_protocol': self.storage_info['protocol'],
             'pools': [],
         }
@@ -344,7 +348,7 @@ class HBSDCommon():
         try:
             (total_capacity, free_capacity,
              provisioned_capacity) = self.get_pool_info()
-        except utils.HBSDError:
+        except exception.VolumeDriverException:
             single_pool.update(dict(
                 provisioned_capacity_gb=0,
                 backend_state='down'))
@@ -387,11 +391,11 @@ class HBSDCommon():
         if ldev is None:
             msg = utils.output_log(MSG.INVALID_LDEV_FOR_EXTENSION,
                                    volume_id=volume['id'])
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         if self.check_pair_svol(ldev):
             msg = utils.output_log(MSG.INVALID_VOLUME_TYPE_FOR_EXTEND,
                                    volume_id=volume['id'])
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         self.delete_pair(ldev)
         self.extend_ldev(ldev, volume['size'], new_size)
 
@@ -448,8 +452,11 @@ class HBSDCommon():
             raise exception.VolumeIsBusy(volume_name=volume['name'])
         try:
             self.delete_pair(ldev)
-        except utils.HBSDBusy:
-            raise exception.VolumeIsBusy(volume_name=volume['name'])
+        except exception.VolumeDriverException as ex:
+            if ex.msg == utils.BUSY_MESSAGE:
+                raise exception.VolumeIsBusy(volume_name=volume['name'])
+            else:
+                raise ex
 
     def _range2list(self, param):
         """Analyze a 'xxx-xxx' string and return a list of two integers."""
@@ -457,7 +464,7 @@ class HBSDCommon():
                   self.conf.safe_get(param).split('-')]
         if len(values) != 2 or None in values or values[0] > values[1]:
             msg = utils.output_log(MSG.INVALID_PARAMETER, param=param)
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         return values
 
     def check_param_iscsi(self):
@@ -466,38 +473,37 @@ class HBSDCommon():
             if not self.conf.chap_username:
                 msg = utils.output_log(MSG.INVALID_PARAMETER,
                                        param='chap_username')
-                raise utils.HBSDError(msg)
+                self.raise_error(msg)
             if not self.conf.chap_password:
                 msg = utils.output_log(MSG.INVALID_PARAMETER,
                                        param='chap_password')
-                raise utils.HBSDError(msg)
+                self.raise_error(msg)
 
     def check_param(self):
         """Check parameter values and consistency among them."""
         utils.check_opt_value(self.conf, _INHERITED_VOLUME_OPTS)
-        utils.check_opts(self.conf, COMMON_VOLUME_OPTS)
-        utils.check_opts(self.conf, self.driver_info['volume_opts'])
+        self.check_opts(self.conf, COMMON_VOLUME_OPTS)
         if self.conf.hitachi_ldev_range:
             self.storage_info['ldev_range'] = self._range2list(
-                'hitachi_ldev_range')
+                self.driver_info['param_prefix'] + '_ldev_range')
         if (not self.conf.hitachi_target_ports and
                 not self.conf.hitachi_compute_target_ports):
             msg = utils.output_log(
                 MSG.INVALID_PARAMETER,
                 param='hitachi_target_ports or '
                 'hitachi_compute_target_ports')
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         if (self.conf.hitachi_group_delete and
                 not self.conf.hitachi_group_create):
             msg = utils.output_log(
                 MSG.INVALID_PARAMETER,
                 param='hitachi_group_delete or '
                 'hitachi_group_create')
-            raise utils.HBSDError(msg)
-        for opt in _REQUIRED_COMMON_OPTS:
+            self.raise_error(msg)
+        for opt in self._required_common_opts:
             if not self.conf.safe_get(opt):
                 msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt)
-                raise utils.HBSDError(msg)
+                self.raise_error(msg)
         if self.storage_info['protocol'] == 'iSCSI':
             self.check_param_iscsi()
 
@@ -535,7 +541,7 @@ class HBSDCommon():
             return connector[self.driver_info['hba_id']]
         msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
                                resource=self.driver_info['hba_id_type'])
-        raise utils.HBSDError(msg)
+        self.raise_error(msg)
 
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create a host group or an iSCSI target on the specified port."""
@@ -579,7 +585,7 @@ class HBSDCommon():
 
             try:
                 self._create_target(targets, port, connector, hba_ids)
-            except utils.HBSDError:
+            except exception.VolumeDriverException:
                 utils.output_log(
                     self.driver_info['msg_id']['target'], port=port)
 
@@ -604,7 +610,7 @@ class HBSDCommon():
                     self.conf.hitachi_group_create):
                 self.create_mapping_targets(targets, connector)
 
-            utils.require_target_existed(targets)
+            self.require_target_existed(targets)
 
     def do_setup(self, context):
         """Prepare for the startup of the driver."""
@@ -627,12 +633,12 @@ class HBSDCommon():
                 not self.storage_info['controller_ports']):
             msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
                                    resource="Target ports")
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         if (self.conf.hitachi_compute_target_ports and
                 not self.storage_info['compute_ports']):
             msg = utils.output_log(MSG.RESOURCE_NOT_FOUND,
                                    resource="Compute target ports")
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
         utils.output_log(MSG.SET_CONFIG_VALUE, object='target port list',
                          value=self.storage_info['controller_ports'])
         utils.output_log(MSG.SET_CONFIG_VALUE,
@@ -694,8 +700,9 @@ class HBSDCommon():
 
     # A synchronization to prevent conflicts between host group creation
     # and deletion.
-    @coordination.synchronized('hbsd-host-{self.conf.hitachi_storage_id}-'
-                               '{connector[host]}')
+    @coordination.synchronized(
+        '{self.driver_info[driver_file_prefix]}-host-'
+        '{self.conf.hitachi_storage_id}-{connector[host]}')
     def initialize_connection(self, volume, connector):
         """Initialize connection between the server and the volume."""
         targets = {
@@ -709,7 +716,7 @@ class HBSDCommon():
         if ldev is None:
             msg = utils.output_log(MSG.INVALID_LDEV_FOR_CONNECTION,
                                    volume_id=volume['id'])
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
 
         target_lun = self.attach_ldev(volume, ldev, connector, targets)
 
@@ -758,7 +765,8 @@ class HBSDCommon():
         # A synchronization to prevent conflicts between host group creation
         # and deletion.
         @coordination.synchronized(
-            'hbsd-host-%(storage_id)s-%(host)s' % {
+            '%(prefix)s-host-%(storage_id)s-%(host)s' % {
+                'prefix': self.driver_info['driver_file_prefix'],
                 'storage_id': self.conf.hitachi_storage_id,
                 'host': connector.get('host'),
             }
@@ -819,3 +827,34 @@ class HBSDCommon():
 
     def delete_group_snapshot(self, group_snapshot, snapshots):
         raise NotImplementedError()
+
+    def check_opts(self, conf, opts):
+        """Check if the specified configuration is valid."""
+        names = []
+        for opt in opts:
+            if opt.required and not conf.safe_get(opt.name):
+                msg = utils.output_log(MSG.INVALID_PARAMETER, param=opt.name)
+                self.raise_error(msg)
+            names.append(opt.name)
+        utils.check_opt_value(conf, names)
+
+    def require_target_existed(self, targets):
+        """Check if the target list includes one or more members."""
+        if not targets['list']:
+            msg = utils.output_log(MSG.NO_CONNECTED_TARGET)
+            self.raise_error(msg)
+
+    def raise_error(self, msg):
+        """Raise a VolumeDriverException by driver error message."""
+        message = _(
+            '%(prefix)s error occurred. %(msg)s' % {
+                'prefix': self.driver_info['driver_prefix'],
+                'msg': msg,
+            }
+        )
+        raise exception.VolumeDriverException(message)
+
+    def raise_busy(self):
+        """Raise a VolumeDriverException by driver busy message."""
+        message = _(utils.BUSY_MESSAGE)
+        raise exception.VolumeDriverException(message)

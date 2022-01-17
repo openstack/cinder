@@ -29,6 +29,8 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.connection import HTTPConnection
 from requests.packages.urllib3.poolmanager import PoolManager
 
+from cinder import exception
+from cinder.i18n import _
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
 
@@ -217,7 +219,7 @@ class ResponseData(dict):
 class RestApiClient():
 
     def __init__(self, ip_addr, ip_port, storage_device_id,
-                 user_id, user_pass, tcp_keepalive=False,
+                 user_id, user_pass, driver_prefix, tcp_keepalive=False,
                  verify=False, connect_timeout=_DEFAULT_CONNECT_TIMEOUT):
         """Initialize instance variables."""
         self.ip_addr = ip_addr
@@ -244,6 +246,7 @@ class RestApiClient():
         }
         self.headers = {"content-type": "application/json",
                         "accept": "application/json"}
+        self.driver_prefix = driver_prefix
 
     class Session(requests.auth.AuthBase):
 
@@ -312,7 +315,13 @@ class RestApiClient():
                     MSG.REST_SERVER_CONNECT_FAILED,
                     exception=type(e), message=e,
                     method=method, url=url, params=params, body=body)
-                raise utils.HBSDError(msg)
+                message = _(
+                    '%(prefix)s error occurred. %(msg)s' % {
+                        'prefix': self.driver_prefix,
+                        'msg': msg,
+                    }
+                )
+                raise exception.VolumeDriverException(message)
 
             response = ResponseData(rsp)
             if (response['status_code'] == httpclient.INTERNAL_SERVER_ERROR and
@@ -348,7 +357,14 @@ class RestApiClient():
                                        params=params, body=body,
                                        **response.get_errobj())
                 if kwargs['do_raise']:
-                    raise utils.HBSDError(msg, errobj=errobj)
+                    message = _(
+                        '%(prefix)s error occurred. %(msg)s' % {
+                            'prefix': self.driver_prefix,
+                            'msg': msg,
+                        }
+                    )
+                    raise exception.VolumeDriverException(
+                        message, errobj=errobj)
                 return False, rsp_body, errobj
             else:
                 LOG.debug("The resource group to which the operation object ",
@@ -402,7 +418,14 @@ class RestApiClient():
                                        method=method, url=url,
                                        params=params, body=body)
             if kwargs['do_raise']:
-                raise utils.HBSDError(msg, errobj=errobj)
+                message = _(
+                    '%(prefix)s error occurred. %(msg)s' % {
+                        'prefix': self.driver_prefix,
+                        'msg': msg,
+                    }
+                )
+                raise exception.VolumeDriverException(
+                    message, errobj=errobj)
             return False, rsp_body, errobj
 
         if errobj:
@@ -425,7 +448,14 @@ class RestApiClient():
                                        method=method, url=url,
                                        params=params, body=body)
             if kwargs['do_raise']:
-                raise utils.HBSDError(msg, errobj=errobj)
+                message = _(
+                    '%(prefix)s error occurred. %(msg)s' % {
+                        'prefix': self.driver_prefix,
+                        'msg': msg,
+                    }
+                )
+                raise exception.VolumeDriverException(
+                    message, errobj=errobj)
         return retry, rsp_body, errobj
 
     def set_my_session(self, session):
@@ -469,7 +499,7 @@ class RestApiClient():
             if session is not None:
                 self.get_session(session.id, no_retry=True, no_log=True)
                 has_session = True
-        except utils.HBSDError as ex:
+        except exception.VolumeDriverException as ex:
             LOG.debug('Failed to get session info: %s', ex)
         return has_session
 

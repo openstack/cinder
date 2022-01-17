@@ -95,10 +95,10 @@ from cinder.volume.drivers.fusionstorage import dsware as \
     cinder_volume_drivers_fusionstorage_dsware
 from cinder.volume.drivers.hitachi import hbsd_common as \
     cinder_volume_drivers_hitachi_hbsdcommon
-from cinder.volume.drivers.hitachi import hbsd_fc as \
-    cinder_volume_drivers_hitachi_hbsdfc
 from cinder.volume.drivers.hitachi import hbsd_rest as \
     cinder_volume_drivers_hitachi_hbsdrest
+from cinder.volume.drivers.hitachi import hbsd_rest_fc as \
+    cinder_volume_drivers_hitachi_hbsdrestfc
 from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.huawei import common as \
@@ -328,8 +328,8 @@ def list_opts():
                 cinder_volume_drivers_fujitsu_eternus_dx_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_hitachi_hbsdcommon.COMMON_VOLUME_OPTS,
-                cinder_volume_drivers_hitachi_hbsdfc.FC_VOLUME_OPTS,
                 cinder_volume_drivers_hitachi_hbsdrest.REST_VOLUME_OPTS,
+                cinder_volume_drivers_hitachi_hbsdrestfc.FC_VOLUME_OPTS,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_huawei_common.huawei_opts,
                 cinder_volume_drivers_ibm_flashsystemcommon.flashsystem_opts,
