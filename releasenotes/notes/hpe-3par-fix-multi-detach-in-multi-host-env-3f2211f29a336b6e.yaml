@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    HPE 3PAR driver `Bug #1958122 <https://bugs.launchpad.net/cinder/+bug/1958122>`_:
+    Fixed issue of multi-detach operation in multi host environment.
+
