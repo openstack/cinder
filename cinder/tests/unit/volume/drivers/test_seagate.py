@@ -358,8 +358,8 @@ class TestSeagateClient(test.TestCase):
 
     @mock.patch.object(STXClient, '_request')
     def test_backend_stats(self, mock_request):
-        stats = {'free_capacity_gb': 1979,
-                 'total_capacity_gb': 1979}
+        stats = {'free_capacity_gb': 1843,
+                 'total_capacity_gb': 1843}
         linear = etree.XML(response_stats_linear)
         virtual = etree.XML(response_stats_virtual)
         mock_request.side_effect = [linear, virtual]

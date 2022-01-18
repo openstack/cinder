@@ -338,7 +338,7 @@ class STXClient(object):
             return False
 
     def _get_size(self, size):
-        return int(math.ceil(float(size) * 512 / (units.G)))
+        return int(math.ceil(float(size) * 512 / (units.Gi)))
 
     def backend_stats(self, backend_name, backend_type):
         stats = {'free_capacity_gb': 0,
