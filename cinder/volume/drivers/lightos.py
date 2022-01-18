@@ -61,12 +61,6 @@ lightos_opts = [
                     ' the LightOS cluster.'
                     ' Keep this parameter clear if the cluster is installed'
                     ' with multi-tenancy disabled.'),
-    cfg.StrOpt('lightos_snapshotname_prefix',
-               default='openstack_',
-               help='This prefix is used for constructing LightOS'
-                    ' snapshot names.'
-                    ' Changing this parameter will render all'
-                    ' previously defined LightOS snapshots inaccessible.'),
     cfg.IntOpt('lightos_default_num_replicas',
                min=1,
                max=3,
@@ -86,6 +80,7 @@ CONF = cfg.CONF
 CONF.register_opts(lightos_opts, group=config.SHARED_CONF_GROUP)
 BLOCK_SIZE = 8
 LIGHTOS = "LIGHTOS"
+INTERM_SNAPSHOT_PREFIX = "for_clone_"
 
 
 class LightOSConnection(object):
@@ -482,9 +477,8 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         return CONF.snapshot_name_template % snapshot_id
 
     def _interm_snapshotname(self, snapshot):
-        prefix = "for_clone_"
         id = snapshot['id']
-        return '%s%s' % (prefix, id)
+        return '%s%s' % (INTERM_SNAPSHOT_PREFIX, id)
 
     def _get_lightos_snapshot(
             self,
