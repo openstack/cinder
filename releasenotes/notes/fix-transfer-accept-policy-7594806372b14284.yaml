@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1950474 <https://bugs.launchpad.net/cinder/+bug/1950474>`_: Fixed
+    policy authorization for transfer accept API. Previously, setting
+    ``enforce_new_defaults=True`` in oslo_policy section would break the
+    transfer accept API which is fixed in this release.
