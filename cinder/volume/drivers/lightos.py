@@ -1318,16 +1318,14 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                     "Successfully detected that snapshot %s was deleted.",
                     snapshot_name)
                 return True
-            else:
-                LOG.warn("Snapshot %s was not deleted. It is in state %s.",
-                         snapshot_name, state)
-                return False
-        else:
-            LOG.warn(
-                "Request to delete snapshot %s"
-                " was rejected with status code %s.",
-                snapshot_name,
-                status_code)
+            LOG.warn("Snapshot %s was not deleted. It is in state %s.",
+                        snapshot_name, state)
+            return False
+        LOG.warn(
+            "Request to delete snapshot %s"
+            " was rejected with status code %s.",
+            snapshot_name,
+            status_code)
         return False
 
     def initialize_connection(self, volume, connector):
