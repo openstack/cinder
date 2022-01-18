@@ -296,10 +296,9 @@ class VolumeManager(manager.CleanableManager,
 
         if self.configuration.suppress_requests_ssl_warnings:
             LOG.warning("Suppressing requests library SSL Warnings")
-            requests.packages.urllib3.disable_warnings(
-                requests.packages.urllib3.exceptions.InsecureRequestWarning)
-            requests.packages.urllib3.disable_warnings(
-                requests.packages.urllib3.exceptions.InsecurePlatformWarning)
+            rpu = requests.packages.urllib3  # type: ignore
+            rpu.disable_warnings(rpu.exceptions.InsecureRequestWarning)
+            rpu.disable_warnings(rpu.exceptions.InsecurePlatformWarning)
 
         self.key_manager = key_manager.API(CONF)
         self.driver = importutils.import_object(
