@@ -765,7 +765,10 @@ class LightOSVolumeDriver(driver.VolumeDriver):
     def delete_volume(self, volume):
         """Delete volume."""
         project_name = self._get_lightos_project_name(volume)
-        lightos_uuid = self._get_lightos_uuid(project_name, volume)
+        try:
+            lightos_uuid = self._get_lightos_uuid(project_name, volume)
+        except exception.VolumeNotFound:
+            return True
 
         if not self._delete_lightos_volume(project_name, lightos_uuid):
             msg = 'Failed to delete LightOS volume with UUID \
