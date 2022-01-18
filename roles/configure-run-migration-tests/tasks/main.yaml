@@ -1,0 +1,33 @@
+---
+- name: Reconfigure tempest.conf
+  ini_file:
+    path: "{{ migration_tempest_conf }}"
+    section: volume
+    option: backend_names
+    value: "{{ migration_source_backend }},{{ migration_destination_backend }}"
+  become: true
+  become_user: tempest
+
+- set_fact:
+    tempest_run_result: {}
+
+- name: Run migration ({{ migration_source_backend }} -> {{ migration_destination_backend }})
+  include_role:
+    name: run-tempest
+    apply:
+      # ignore the errors for this run, otherwise the other migration tests
+      # won't be executed
+      ignore_errors: yes
+  vars:
+    tempest_test_regex: "{{ migration_test_regex }}"
+    tox_envlist: all
+
+- set_fact:
+    _migration_result_item:
+        source: "{{ migration_source_backend }}"
+        destination: "{{ migration_destination_backend }}"
+        result: "{{ tempest_run_result.get('rc', 1) }}"
+
+- name: Update the migration test results
+  set_fact:
+    migration_test_results: "{{ migration_test_results + [ _migration_result_item ] }}"

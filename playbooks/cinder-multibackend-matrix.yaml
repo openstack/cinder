@@ -1,0 +1,35 @@
+# Playbook originally inspired by
+# https://opendev.org/openstack/tempest/src/tag/23.0.0/playbooks/devstack-tempest.yaml
+
+# Changes that run through devstack-tempest are likely to have an impact on
+# the devstack part of the job, so we keep devstack in the main play to
+# avoid zuul retrying on legitimate failures.
+- hosts: all
+  roles:
+    - orchestrate-devstack
+
+# We run tests only on one node, regardless how many nodes are in the system
+- hosts: tempest
+  vars:
+    migration_backends:
+      - lvm
+      - ceph
+      - nfs
+    migration_test_results: []
+    migration_tempest_conf: "/opt/stack/tempest/etc/tempest.conf"
+  tasks:
+    - include_role:
+        name: setup-tempest-run-dir
+    - include_role:
+        name: setup-tempest-data-dir
+    - include_role:
+        name: acl-devstack-files
+    - include_role:
+        name: configure-run-migration-tests
+      vars:
+        migration_source_backend: "{{ item[0] }}"
+        migration_destination_backend: "{{ item[1] }}"
+      loop: "{{ migration_backends|product(migration_backends)|list }}"
+      when: item[0] != item[1]
+    - include_role:
+        name: save-cinder-migration-results
