@@ -119,6 +119,8 @@ class LightOSConnection(object):
 
         # Dictionary of applicable LightOS commands in the following format:
         # 'command': (method, API_URL, {optional parameters})
+        # This is constructed on the fly to include the caller-supplied kwargs
+        # Can be optimized by only constructing the specific command the user provided in cmd
 
         # API V2 common commands
         lightos_commands = {
