@@ -44,8 +44,9 @@ LIGHTOS_DEFAULT_PROJECT_NAME = "default"
 urllib3.disable_warnings()
 
 lightos_opts = [
-    cfg.StrOpt('lightos_api_address',
+    cfg.ListOpt('lightos_api_address',
                default=None,
+               item_type=cfg.types.IPAddress(),
                help='The IP addresses of the LightOS API servers separated'
                ' by commas without spaces'),
     cfg.PortOpt('lightos_api_port',
@@ -105,20 +106,11 @@ class LightOSConnection(object):
         return lightos_opts
 
     def _init_api_servers(self) -> Dict[int, Dict]:
-        if not self.conf.lightos_api_address or \
-                len(self.conf.lightos_api_address) == 0:
-            raise exception.InvalidParameterValue(
-                message="must provide lightos_api_address")
-
-        hosts = [host.strip()
-                 for host in self.conf.lightos_api_address.split(',')]
-        # Need to verify if hosts is real IP lists or not
         # And verify that port is in range
         apiservers: Dict[int, Dict] = {}
-        for server_idx, api_address in enumerate(hosts):
-            apiservers[server_idx] = dict(
-                api_address=api_address,
-                api_port=(str(self.conf.lightos_api_port)))
+        hosts = self.conf.lightos_api_address
+        port = str(self.conf.lightos_api_port)
+        apiservers = [dict(api_address=addr, api_port=port) for addr in hosts]
         return apiservers
 
     def _generate_lightos_cmd(self, cmd, **kwargs):
