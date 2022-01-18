@@ -1104,6 +1104,35 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                 'ETag',
                 ''))
 
+    def __remove_all_volume_acls(
+            self,
+            project_name,
+            lightos_volname):
+        status, data = self._get_lightos_volume(project_name,
+                                                self.logical_op_timeout,
+                                                vol_name=lightos_volname)
+        if not data:
+            LOG.error(
+                'Could not get data for LightOS volume %s project %s',
+                lightos_volname,
+                project_name)
+            return False
+
+        lightos_uuid = data.get('UUID')
+        if not lightos_uuid:
+            LOG.warn('Got LightOS volume without UUID?! data: %s', data)
+            return False
+
+        acl = ['ALLOW_NONE']
+
+        return self.set_volume_acl(
+            project_name,
+            lightos_uuid,
+            acl,
+            etag=data.get(
+                'ETag',
+                ''))
+
     def remove_volume_acl(self, project_name, volume, acl_to_remove):
         lightos_volname = self._lightos_volname(volume)
         LOG.debug('remove_volume_acl volume %s project %s acl %s',
@@ -1113,6 +1142,15 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             project_name,
             lightos_volname,
             acl_to_remove)
+
+    def remove_all_volume_acls(self, project_name, volume):
+        lightos_volname = self._lightos_volname(volume)
+        LOG.debug('remove_all_volume_acls volume %s project %s',
+                  volume, project_name)
+        return self.update_volume_acl(
+            self.__remove_all_volume_acls,
+            project_name,
+            lightos_volname)
 
     def update_volume_acl(self, func, project_name, lightos_volname, acl):
         # loop because lightos api is async
@@ -1374,11 +1412,12 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                     'Terminating connection with extreme prejudice for \
                     volume %s',
                     volume)
+                self.remove_all_volume_acls(project_name, volume)
                 return
-
-            msg = 'Connector (%s) did not return a hostnqn, aborting' % (
-                connector,)
-            raise exception.VolumeBackendAPIException(message=msg)
+            else:
+                msg = 'Connector (%s) did not return a hostnqn, aborting' % (
+                    connector,)
+                raise exception.VolumeBackendAPIException(message=msg)
 
         lightos_volname = self._lightos_volname(volume)
         project_name = self._get_lightos_project_name(volume)
