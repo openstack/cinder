@@ -16,34 +16,31 @@
 
 import enum
 import logging as base_logging
-import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
-from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
 
-_DRIVER_DIR = 'cinder.volume.drivers.hitachi'
-
-_DRIVERS = {
-    'REST': {
-        'FC': 'hbsd_rest_fc.HBSDRESTFC',
-        'iSCSI': 'hbsd_rest_iscsi.HBSDRESTISCSI',
-    },
-}
-
+VERSION = '2.2.1'
+CI_WIKI_NAME = 'Hitachi_VSP_CI'
+PARAM_PREFIX = 'hitachi'
+VENDOR_NAME = 'Hitachi'
 DRIVER_PREFIX = 'HBSD'
+DRIVER_FILE_PREFIX = 'hbsd'
 TARGET_PREFIX = 'HBSD-'
+HDP_VOL_ATTR = 'HDP'
+HDT_VOL_ATTR = 'HDT'
+NVOL_LDEV_TYPE = 'DP-VOL'
 TARGET_IQN_SUFFIX = '.hbsd-target'
+PAIR_ATTR = 'HTI'
+
 GIGABYTE_PER_BLOCK_SIZE = units.Gi / 512
 
 NORMAL_LDEV_TYPE = 'Normal'
-NVOL_LDEV_TYPE = 'DP-VOL'
 
 INFO_SUFFIX = 'I'
 WARNING_SUFFIX = 'W'
@@ -51,13 +48,7 @@ ERROR_SUFFIX = 'E'
 
 PORT_ID_LENGTH = 5
 
-
-class HBSDError(exception.VolumeDriverException):
-    message = _("HBSD error occurred. %(message)s")
-
-
-class HBSDBusy(HBSDError):
-    message = _("Device or resource is busy.")
+BUSY_MESSAGE = "Device or resource is busy."
 
 
 @enum.unique
@@ -464,18 +455,6 @@ def timed_out(start_time, timeout):
     return timeutils.is_older_than(start_time, timeout)
 
 
-def import_object(conf, driver_info, db):
-    """Import a class and return an instance of it."""
-    os.environ['LANG'] = 'C'
-    cli = _DRIVERS.get('REST')
-    return importutils.import_object(
-        '%(dir)s.%(proto)s' % {
-            'dir': _DRIVER_DIR,
-            'proto': cli[driver_info['proto']],
-        },
-        conf, driver_info, db)
-
-
 def check_opt_value(conf, names):
     """Check if the parameter names and values are valid."""
     for name in names:
@@ -484,24 +463,6 @@ def check_opt_value(conf, names):
         except (cfg.NoSuchOptError, cfg.ConfigFileValueError):
             with excutils.save_and_reraise_exception():
                 output_log(MSG.INVALID_PARAMETER, param=name)
-
-
-def check_opts(conf, opts):
-    """Check if the specified configuration is valid."""
-    names = []
-    for opt in opts:
-        if opt.required and not conf.safe_get(opt.name):
-            msg = output_log(MSG.INVALID_PARAMETER, param=opt.name)
-            raise HBSDError(msg)
-        names.append(opt.name)
-    check_opt_value(conf, names)
-
-
-def require_target_existed(targets):
-    """Check if the target list includes one or more members."""
-    if not targets['list']:
-        msg = output_log(MSG.NO_CONNECTED_TARGET)
-        raise HBSDError(msg)
 
 
 def build_initiator_target_map(connector, target_wwns, lookup_service):

@@ -23,6 +23,7 @@ from requests import models
 
 from cinder import context as cinder_context
 from cinder.db.sqlalchemy import api as sqlalchemy_api
+from cinder import exception
 from cinder.objects import group_snapshot as obj_group_snap
 from cinder.objects import snapshot as obj_snap
 from cinder.tests.unit import fake_group
@@ -36,7 +37,6 @@ from cinder.volume.drivers.hitachi import hbsd_common
 from cinder.volume.drivers.hitachi import hbsd_fc
 from cinder.volume.drivers.hitachi import hbsd_rest
 from cinder.volume.drivers.hitachi import hbsd_rest_api
-from cinder.volume.drivers.hitachi import hbsd_utils
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
 from cinder.zonemanager import utils as fczm_utils
@@ -617,7 +617,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
         request.return_value = FakeResponse(
             500, ERROR_RESULT,
             headers={'Content-Type': 'json'})
-        self.assertRaises(hbsd_utils.HBSDError,
+        self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_volume,
                           fake_volume.fake_volume_obj(self.ctxt))
         self.assertGreater(request.call_count, 1)
@@ -651,7 +651,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
                                FakeResponse(200, GET_LDEV_RESULT_PAIR),
                                FakeResponse(200, GET_LDEV_RESULT_PAIR),
                                FakeResponse(200, GET_LDEV_RESULT_PAIR)]
-        self.assertRaises(hbsd_utils.HBSDError,
+        self.assertRaises(exception.VolumeDriverException,
                           self.driver.delete_volume,
                           TEST_VOLUME[0])
         self.assertGreater(request.call_count, 2)
@@ -741,7 +741,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
     def test_initialize_connection(self, request, add_fc_zone):
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -757,7 +757,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_initialize_connection_already_mapped(self, request, add_fc_zone):
         """Normal case: ldev have already mapped."""
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [
             FakeResponse(200, GET_HOST_WWNS_RESULT),
@@ -776,7 +776,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_initialize_connection_shared_target(self, request, add_fc_zone):
         """Normal case: A target shared with other systems."""
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, NOTFOUND_RESULT),
                                FakeResponse(200, NOTFOUND_RESULT),
@@ -794,7 +794,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(fczm_utils, "remove_fc_zone")
     @mock.patch.object(requests.Session, "request")
     def test_terminate_connection(self, request, remove_fc_zone):
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT_MAPPED),
@@ -809,7 +809,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_terminate_connection_not_connector(self, request, remove_fc_zone):
         """Normal case: Connector is None."""
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, GET_LDEV_RESULT_MAPPED),
                                FakeResponse(200, GET_HOST_GROUP_RESULT),
@@ -827,7 +827,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(requests.Session, "request")
     def test_terminate_connection_not_lun(self, request, remove_fc_zone):
         """Normal case: Lun already not exist."""
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT)]
@@ -838,7 +838,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(fczm_utils, "add_fc_zone")
     @mock.patch.object(requests.Session, "request")
     def test_initialize_connection_snapshot(self, request, add_fc_zone):
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(202, COMPLETED_SUCCEEDED_RESULT)]
@@ -853,7 +853,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     @mock.patch.object(fczm_utils, "remove_fc_zone")
     @mock.patch.object(requests.Session, "request")
     def test_terminate_connection_snapshot(self, request, remove_fc_zone):
-        self.configuration.hitachi_zoning_request = True
+        self.driver.common.conf.hitachi_zoning_request = True
         self.driver.common._lookup_service = FakeLookupService()
         request.side_effect = [FakeResponse(200, GET_HOST_WWNS_RESULT),
                                FakeResponse(200, GET_LDEV_RESULT_MAPPED),
@@ -1020,7 +1020,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
 
     def test_create_group_from_src_volume_error(self):
         self.assertRaises(
-            hbsd_utils.HBSDError, self.driver.create_group_from_src,
+            exception.VolumeDriverException, self.driver.create_group_from_src,
             self.ctxt, TEST_GROUP[1], [TEST_VOLUME[1]],
             source_group=TEST_GROUP[0], source_vols=[TEST_VOLUME[3]]
         )
@@ -1036,7 +1036,7 @@ class HBSDRESTFCDriverTest(test.TestCase):
     def test_update_group_error(self, is_group_a_cg_snapshot_type):
         is_group_a_cg_snapshot_type.return_value = True
         self.assertRaises(
-            hbsd_utils.HBSDError, self.driver.update_group,
+            exception.VolumeDriverException, self.driver.update_group,
             self.ctxt, TEST_GROUP[0], add_volumes=[TEST_VOLUME[3]],
             remove_volumes=[TEST_VOLUME[0]]
         )

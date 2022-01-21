@@ -14,16 +14,31 @@
 #
 """REST interface fibre channel module for Hitachi HBSD Driver."""
 
+from oslo_config import cfg
 from oslo_log import log as logging
 
+from cinder import exception
+from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_rest as rest
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.zonemanager import utils as fczm_utils
+
+FC_VOLUME_OPTS = [
+    cfg.BoolOpt(
+        'hitachi_zoning_request',
+        default=False,
+        help='If True, the driver will configure FC zoning between the server '
+             'and the storage system provided that FC zoning manager is '
+             'enabled.'),
+]
 
 _FC_HMO_DISABLE_IO = 91
 
 LOG = logging.getLogger(__name__)
 MSG = utils.HBSDMsg
+
+CONF = cfg.CONF
+CONF.register_opts(FC_VOLUME_OPTS, group=configuration.SHARED_CONF_GROUP)
 
 
 class HBSDRESTFC(rest.HBSDREST):
@@ -89,11 +104,16 @@ class HBSDRESTFC(rest.HBSDREST):
         utils.output_log(MSG.SET_CONFIG_VALUE, object='port-wwn list',
                          value=self.storage_info['wwns'])
 
+    def check_param(self):
+        """Check parameter values and consistency among them."""
+        super(HBSDRESTFC, self).check_param()
+        self.check_opts(self.conf, FC_VOLUME_OPTS)
+
     def create_target_to_storage(self, port, connector, hba_ids):
         """Create a host group on the specified port."""
         wwpns = self.get_hba_ids_from_connector(connector)
         target_name = '%(prefix)s-%(wwpns)s' % {
-            'prefix': utils.DRIVER_PREFIX,
+            'prefix': self.driver_info['driver_prefix'],
             'wwpns': min(wwpns),
         }
         try:
@@ -116,13 +136,13 @@ class HBSDRESTFC(rest.HBSDREST):
             try:
                 self.client.add_hba_wwn(port, gid, wwn, no_log=True)
                 registered_wwns.append(wwn)
-            except utils.HBSDError:
+            except exception.VolumeDriverException:
                 utils.output_log(MSG.ADD_HBA_WWN_FAILED, port=port, gid=gid,
                                  wwn=wwn)
         if not registered_wwns:
             msg = utils.output_log(MSG.NO_HBA_WWN_ADDED_TO_HOST_GRP, port=port,
                                    gid=gid)
-            raise utils.HBSDError(msg)
+            self.raise_error(msg)
 
     def set_target_mode(self, port, gid):
         """Configure the host group to meet the environment."""
@@ -193,14 +213,14 @@ class HBSDRESTFC(rest.HBSDREST):
         wwpns = self.get_hba_ids_from_connector(connector)
         target_names = [
             '%(prefix)s-%(wwpns)s' % {
-                'prefix': utils.DRIVER_PREFIX,
+                'prefix': self.driver_info['driver_prefix'],
                 'wwpns': min(wwpns),
             }
         ]
         if 'ip' in connector:
             target_names.append(
                 '%(prefix)s-%(ip)s' % {
-                    'prefix': utils.DRIVER_PREFIX,
+                    'prefix': self.driver_info['driver_prefix'],
                     'ip': connector['ip'],
                 }
             )
