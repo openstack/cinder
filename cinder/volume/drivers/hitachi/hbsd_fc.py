@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -66,6 +66,7 @@ class HBSDFCDriver(driver.FibreChannelDriver):
         2.0.0 - Major redesign of the driver. This version requires the REST
                 API for communication with the storage backend.
         2.1.0 - Add Cinder generic volume groups.
+        2.2.0 - Add maintenance parameters.
 
     """
 

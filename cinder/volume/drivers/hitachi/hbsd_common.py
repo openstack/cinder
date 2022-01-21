@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -26,7 +26,7 @@ from cinder.volume import configuration
 from cinder.volume.drivers.hitachi import hbsd_utils as utils
 from cinder.volume import volume_utils
 
-VERSION = '2.1.0'
+VERSION = '2.2.0'
 
 _STR_VOLUME = 'volume'
 _STR_SNAPSHOT = 'snapshot'
@@ -85,6 +85,25 @@ COMMON_VOLUME_OPTS = [
         default=False,
         help='If True, the driver will delete host groups or iSCSI targets on '
              'storage ports as needed.'),
+    cfg.IntOpt(
+        'hitachi_copy_speed',
+        default=3,
+        min=1, max=15,
+        help='Copy speed of storage system. 1 or 2 indicates '
+             'low speed, 3 indicates middle speed, and a value between 4 and '
+             '15 indicates high speed.'),
+    cfg.IntOpt(
+        'hitachi_copy_check_interval',
+        default=3,
+        min=1, max=600,
+        help='Interval in seconds to check copying status during a volume '
+             'copy.'),
+    cfg.IntOpt(
+        'hitachi_async_copy_check_interval',
+        default=10,
+        min=1, max=600,
+        help='Interval in seconds to check asynchronous copying status during '
+             'a copy pair deletion or data restoration.'),
 ]
 
 _REQUIRED_COMMON_OPTS = [

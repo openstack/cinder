@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -119,8 +119,13 @@ class HBSDRESTISCSI(rest.HBSDREST):
     def set_target_mode(self, port, gid):
         """Configure the iSCSI target to meet the environment."""
         body = {'hostMode': 'LINUX/IRIX',
-                'hostModeOptions': [_ISCSI_HMO_REPORT_FULL_PORTAL,
-                                    _ISCSI_HMO_DISABLE_IO]}
+                'hostModeOptions': [_ISCSI_HMO_REPORT_FULL_PORTAL]}
+        if self.conf.hitachi_rest_disable_io_wait:
+            body['hostModeOptions'].append(_ISCSI_HMO_DISABLE_IO)
+        if self.conf.hitachi_host_mode_options:
+            for opt in self.conf.hitachi_host_mode_options:
+                if int(opt) not in body['hostModeOptions']:
+                    body['hostModeOptions'].append(int(opt))
         self.client.modify_host_grp(port, gid, body)
 
     def _is_host_iqn_registered_in_target(self, port, gid, host_iqn):

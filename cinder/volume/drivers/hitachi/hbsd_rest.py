@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -34,8 +34,10 @@ from cinder.volume import volume_utils
 
 _LU_PATH_DEFINED = ('B958', '015A')
 NORMAL_STS = 'NML'
-_LUN_MAX_WAITTIME = 50
+_LUN_TIMEOUT = 50
 _LUN_RETRY_INTERVAL = 1
+_RESTORE_TIMEOUT = 24 * 60 * 60
+_STATE_TRANSITION_TIMEOUT = 15 * 60
 PAIR_ATTR = 'HTI'
 _SNAP_MODE = 'A'
 _CLONE_MODE = 'C'
@@ -94,6 +96,12 @@ _MAX_PAIR_COUNT_IN_CTG_EXCEEDED_ADD_SNAPSHOT = ('2E13', '9900')
 
 REST_VOLUME_OPTS = [
     cfg.BoolOpt(
+        'hitachi_rest_disable_io_wait',
+        default=True,
+        help='It may take some time to detach volume after I/O. '
+             'This option will allow detaching volume to complete '
+             'immediately.'),
+    cfg.BoolOpt(
         'hitachi_rest_tcp_keepalive',
         default=True,
         help='Enables or disables use of REST API tcp keepalive'),
@@ -101,6 +109,84 @@ REST_VOLUME_OPTS = [
         'hitachi_discard_zero_page',
         default=True,
         help='Enable or disable zero page reclamation in a DP-VOL.'),
+    cfg.IntOpt(
+        'hitachi_lun_timeout',
+        default=_LUN_TIMEOUT,
+        help='Maximum wait time in seconds for adding a LUN to complete.'),
+    cfg.IntOpt(
+        'hitachi_lun_retry_interval',
+        default=_LUN_RETRY_INTERVAL,
+        help='Retry interval in seconds for REST API adding a LUN.'),
+    cfg.IntOpt(
+        'hitachi_restore_timeout',
+        default=_RESTORE_TIMEOUT,
+        help='Maximum wait time in seconds for the restore operation to '
+             'complete.'),
+    cfg.IntOpt(
+        'hitachi_state_transition_timeout',
+        default=_STATE_TRANSITION_TIMEOUT,
+        help='Maximum wait time in seconds for a volume transition to '
+             'complete.'),
+    cfg.IntOpt(
+        'hitachi_lock_timeout',
+        default=rest_api._LOCK_TIMEOUT,
+        help='Maximum wait time in seconds for a storage unlocked.'),
+    cfg.IntOpt(
+        'hitachi_rest_timeout',
+        default=rest_api._REST_TIMEOUT,
+        help='Maximum wait time in seconds for REST API execution to '
+             'complete.'),
+    cfg.IntOpt(
+        'hitachi_extend_timeout',
+        default=rest_api._EXTEND_TIMEOUT,
+        help='Maximum wait time in seconds for a volume extention to '
+             'complete.'),
+    cfg.IntOpt(
+        'hitachi_exec_retry_interval',
+        default=rest_api._EXEC_RETRY_INTERVAL,
+        help='Retry interval in seconds for REST API execution.'),
+    cfg.IntOpt(
+        'hitachi_rest_connect_timeout',
+        default=rest_api._DEFAULT_CONNECT_TIMEOUT,
+        help='Maximum wait time in seconds for REST API connection to '
+             'complete.'),
+    cfg.IntOpt(
+        'hitachi_rest_job_api_response_timeout',
+        default=rest_api._JOB_API_RESPONSE_TIMEOUT,
+        help='Maximum wait time in seconds for a response from REST API.'),
+    cfg.IntOpt(
+        'hitachi_rest_get_api_response_timeout',
+        default=rest_api._GET_API_RESPONSE_TIMEOUT,
+        help='Maximum wait time in seconds for a response against GET method '
+             'of REST API.'),
+    cfg.IntOpt(
+        'hitachi_rest_server_busy_timeout',
+        default=rest_api._REST_SERVER_BUSY_TIMEOUT,
+        help='Maximum wait time in seconds when REST API returned busy.'),
+    cfg.IntOpt(
+        'hitachi_rest_keep_session_loop_interval',
+        default=rest_api._KEEP_SESSION_LOOP_INTERVAL,
+        help='Loop interval in seconds for keeping REST API session.'),
+    cfg.IntOpt(
+        'hitachi_rest_another_ldev_mapped_retry_timeout',
+        default=rest_api._ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT,
+        help='Retry time in seconds when new LUN allocation request fails.'),
+    cfg.IntOpt(
+        'hitachi_rest_tcp_keepidle',
+        default=rest_api._TCP_KEEPIDLE,
+        help='Wait time in seconds for sending a first TCP keepalive packet.'),
+    cfg.IntOpt(
+        'hitachi_rest_tcp_keepintvl',
+        default=rest_api._TCP_KEEPINTVL,
+        help='Interval of transmissions in seconds for TCP keepalive packet.'),
+    cfg.IntOpt(
+        'hitachi_rest_tcp_keepcnt',
+        default=rest_api._TCP_KEEPCNT,
+        help='Maximum number of transmissions for TCP keepalive packet.'),
+    cfg.ListOpt(
+        'hitachi_host_mode_options',
+        default=[],
+        help='host mode option for host group or iSCSI target'),
 ]
 
 _REQUIRED_REST_OPTS = [
@@ -159,6 +245,8 @@ class HBSDREST(common.HBSDCommon):
         self.conf.append_config_values(san.san_opts)
 
         self.client = None
+
+        self.init_timer_values()
 
     def setup_client(self):
         """Initialize RestApiClient."""
@@ -233,9 +321,11 @@ class HBSDREST(common.HBSDCommon):
             return _STATUS_TABLE.get(result_p[0]['status'], UNKN)
         return _STATUS_TABLE.get(result_s[0]['status'], UNKN)
 
-    def _wait_copy_pair_status(self, ldev, status, interval=3,
-                               timeout=utils.DEFAULT_PROCESS_WAITTIME):
+    def _wait_copy_pair_status(self, ldev, status, **kwargs):
         """Wait until the S-VOL status changes to the specified status."""
+        interval = kwargs.pop(
+            'interval', self.conf.hitachi_copy_check_interval)
+        timeout = kwargs.pop('timeout', _STATE_TRANSITION_TIMEOUT)
 
         def _wait_for_copy_pair_status(
                 start_time, ldev, status, timeout):
@@ -296,13 +386,19 @@ class HBSDREST(common.HBSDCommon):
             'svol': svol % _SNAP_HASH_SIZE,
         }
         try:
+            if self.conf.hitachi_copy_speed <= 2:
+                pace = 'slower'
+            elif self.conf.hitachi_copy_speed == 3:
+                pace = 'medium'
+            else:
+                pace = 'faster'
             body = {"snapshotGroupName": snapshot_name,
                     "snapshotPoolId": self.storage_info['snap_pool_id'],
                     "pvolLdevId": pvol,
                     "svolLdevId": svol,
                     "isClone": True,
                     "clonesAutomation": True,
-                    "copySpeed": 'medium',
+                    "copySpeed": pace,
                     "isDataReductionForceCopy": True}
             self.client.add_snapshot(body)
         except utils.HBSDError as ex:
@@ -339,8 +435,10 @@ class HBSDREST(common.HBSDCommon):
             d[key] = result.get(key)
         return d
 
-    def _wait_copy_pair_deleting(self, ldev):
+    def _wait_copy_pair_deleting(self, ldev, **kwargs):
         """Wait until the LDEV is no longer in a copy pair."""
+        interval = kwargs.pop(
+            'interval', self.conf.hitachi_async_copy_check_interval)
 
         def _wait_for_copy_pair_smpl(start_time, ldev):
             """Raise True if the LDEV is no longer in a copy pair."""
@@ -349,12 +447,12 @@ class HBSDREST(common.HBSDCommon):
                     PAIR_ATTR not in ldev_info['attributes']):
                 raise loopingcall.LoopingCallDone()
             if utils.timed_out(
-                    start_time, utils.DEFAULT_PROCESS_WAITTIME):
+                    start_time, _STATE_TRANSITION_TIMEOUT):
                 raise loopingcall.LoopingCallDone(False)
 
         loop = loopingcall.FixedIntervalLoopingCall(
             _wait_for_copy_pair_smpl, timeutils.utcnow(), ldev)
-        if not loop.start(interval=10).wait():
+        if not loop.start(interval=interval).wait():
             msg = utils.output_log(
                 MSG.PAIR_STATUS_WAIT_TIMEOUT, svol=ldev)
             raise utils.HBSDError(msg)
@@ -418,7 +516,7 @@ class HBSDREST(common.HBSDCommon):
             port, gid, ldev, lun=lun,
             ignore_error=ignore_error,
             interval=_LUN_RETRY_INTERVAL,
-            timeout=_LUN_MAX_WAITTIME)
+            timeout=_LUN_TIMEOUT)
         err_code = utils.safe_get_err_code(errobj)
         if lun is None:
             if err_code == _LU_PATH_DEFINED:
@@ -500,7 +598,7 @@ class HBSDREST(common.HBSDCommon):
         interval = _LUN_RETRY_INTERVAL
         ignore_return_code = [EX_ENOOBJ]
         ignore_message_id = [rest_api.MSGID_SPECIFIED_OBJECT_DOES_NOT_EXIST]
-        timeout = utils.DEFAULT_PROCESS_WAITTIME
+        timeout = _STATE_TRANSITION_TIMEOUT
         for target in targets['list']:
             port = target['portId']
             gid = target['hostGroupNumber']
@@ -771,8 +869,6 @@ class HBSDREST(common.HBSDCommon):
 
     def restore_ldev(self, pvol, svol):
         """Restore a pair of the specified LDEV."""
-        timeout = utils.MAX_PROCESS_WAITTIME
-
         params_s = {"svolLdevId": svol}
         result = self.client.get_snapshots(params_s)
         mun = result[0]['muNumber']
@@ -780,7 +876,8 @@ class HBSDREST(common.HBSDCommon):
         self.client.restore_snapshot(pvol, mun, body)
 
         self._wait_copy_pair_status(
-            svol, PSUS, timeout=timeout, interval=10)
+            svol, PSUS, timeout=_RESTORE_TIMEOUT,
+            interval=self.conf.hitachi_async_copy_check_interval)
 
     def has_snap_pair(self, pvol, svol):
         """Check if the volume have the pair of the snapshot."""
@@ -1068,3 +1165,30 @@ class HBSDREST(common.HBSDCommon):
             return self._create_cgsnapshot(context, group_snapshot, snapshots)
         else:
             return self._create_non_cgsnapshot(group_snapshot, snapshots)
+
+    def init_timer_values(self):
+        global _LUN_TIMEOUT, _LUN_RETRY_INTERVAL
+        global _RESTORE_TIMEOUT, _STATE_TRANSITION_TIMEOUT
+        _LUN_TIMEOUT = self.conf.hitachi_lun_timeout
+        _LUN_RETRY_INTERVAL = self.conf.hitachi_lun_retry_interval
+        _RESTORE_TIMEOUT = self.conf.hitachi_restore_timeout
+        _STATE_TRANSITION_TIMEOUT = self.conf.hitachi_state_transition_timeout
+        rest_api._LOCK_TIMEOUT = self.conf.hitachi_lock_timeout
+        rest_api._REST_TIMEOUT = self.conf.hitachi_rest_timeout
+        rest_api._EXTEND_TIMEOUT = self.conf.hitachi_extend_timeout
+        rest_api._EXEC_RETRY_INTERVAL = self.conf.hitachi_exec_retry_interval
+        rest_api._DEFAULT_CONNECT_TIMEOUT = (
+            self.conf.hitachi_rest_connect_timeout)
+        rest_api._JOB_API_RESPONSE_TIMEOUT = (
+            self.conf.hitachi_rest_job_api_response_timeout)
+        rest_api._GET_API_RESPONSE_TIMEOUT = (
+            self.conf.hitachi_rest_get_api_response_timeout)
+        rest_api._REST_SERVER_BUSY_TIMEOUT = (
+            self.conf.hitachi_rest_server_busy_timeout)
+        rest_api._KEEP_SESSION_LOOP_INTERVAL = (
+            self.conf.hitachi_rest_keep_session_loop_interval)
+        rest_api._ANOTHER_LDEV_MAPPED_RETRY_TIMEOUT = (
+            self.conf.hitachi_rest_another_ldev_mapped_retry_timeout)
+        rest_api._TCP_KEEPIDLE = self.conf.hitachi_rest_tcp_keepidle
+        rest_api._TCP_KEEPINTVL = self.conf.hitachi_rest_tcp_keepintvl
+        rest_api._TCP_KEEPCNT = self.conf.hitachi_rest_tcp_keepcnt

@@ -1,4 +1,4 @@
-# Copyright (C) 2020, Hitachi, Ltd.
+# Copyright (C) 2020, 2021, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -41,9 +41,6 @@ DRIVER_PREFIX = 'HBSD'
 TARGET_PREFIX = 'HBSD-'
 TARGET_IQN_SUFFIX = '.hbsd-target'
 GIGABYTE_PER_BLOCK_SIZE = units.Gi / 512
-
-MAX_PROCESS_WAITTIME = 24 * 60 * 60
-DEFAULT_PROCESS_WAITTIME = 15 * 60
 
 NORMAL_LDEV_TYPE = 'Normal'
 NVOL_LDEV_TYPE = 'DP-VOL'
