@@ -819,7 +819,10 @@ class CephBackupDriver(driver.BackupDriver):
         image.
         """
         volume_id = backup.volume_id
-        backup_name = self._get_backup_base_name(volume_id, backup=backup)
+        if backup.snapshot_id:
+            backup_name = self._get_backup_base_name(volume_id)
+        else:
+            backup_name = self._get_backup_base_name(volume_id, backup=backup)
 
         with eventlet.tpool.Proxy(rbd_driver.RADOSClient(self,
                                   backup.container)) as client:
