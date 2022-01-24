@@ -651,28 +651,70 @@ class PowerMaxMasking(object):
         LOG.debug("The initiator name(s) are: %(initiatorNames)s.",
                   {'initiatorNames': initiator_names})
 
-        found_init_group = self._find_initiator_group(
+        found_init_group_name = self._find_initiator_group(
             serial_number, initiator_names)
 
         # If you cannot find an initiator group that matches the connector
         # info, create a new initiator group.
-        if found_init_group is None:
-            found_init_group = self._create_initiator_group(
-                serial_number, init_group_name, initiator_names, extra_specs)
-            LOG.info("Created new initiator group name: %(init_group_name)s.",
-                     {'init_group_name': init_group_name})
+        if found_init_group_name is None:
+            # Check if the initiator group exists even if the initiators
+            # not found. This will happen if there is no entry for them
+            # in the login table
+            initiator_group = self.rest.get_initiator_group(
+                serial_number, initiator_group=init_group_name)
+            if not initiator_group:
+                found_init_group_name = self._create_initiator_group(
+                    serial_number, init_group_name, initiator_names,
+                    extra_specs)
+                LOG.info("Created new initiator group name: "
+                         "%(init_group_name)s.",
+                         {'init_group_name': init_group_name})
+            else:
+                initiator_list = initiator_group.get(
+                    'initiator', list()) if initiator_group else list()
+                if initiator_list:
+                    if set(initiator_list) == set(initiator_names):
+                        LOG.debug(
+                            "Found initiator group %(ign)s, but could not "
+                            "find initiator_names %(ins)s in the login "
+                            "table. The contained initiator(s) are the "
+                            "same as those supplied by OpenStack, therefore "
+                            "reusing %(ign)s.",
+                            {'ign': init_group_name,
+                             'ins': initiator_names})
+                    else:
+                        msg = ("Found initiator group %(ign)s, but could not "
+                               "find initiator_names %(ins)s in the login "
+                               "table. The contained initiators %(ins_host)s "
+                               "do match up with those in the connector "
+                               "object. Delete initiator group %(ign)s and "
+                               "retry." % {'ign': init_group_name,
+                                           'ins': initiator_names,
+                                           'ins_host': initiator_list})
+                        LOG.error(msg)
+                        return None, msg
+                else:
+                    msg = ("Found initiator group %(ign)s, but could not "
+                           "find initiator_names %(ins)s in the login "
+                           "table. There are no initiators in %(ign)s. "
+                           "Delete initiator group %(ign)s and retry."
+                           % {'ign': init_group_name, 'ins': initiator_names})
+                    LOG.error(msg)
+                    return None, msg
+
+                found_init_group_name = initiator_group.get('hostId')
         else:
             LOG.info("Using existing initiator group name: "
                      "%(init_group_name)s.",
-                     {'init_group_name': found_init_group})
+                     {'init_group_name': found_init_group_name})
 
-        if found_init_group is None:
+        if found_init_group_name is None:
             msg = ("Cannot get or create initiator group: "
                    "%(init_group_name)s. "
                    % {'init_group_name': init_group_name})
             LOG.error(msg)
 
-        return found_init_group, msg
+        return found_init_group_name, msg
 
     def _check_existing_initiator_group(
             self, serial_number, maskingview_name, masking_view_dict,

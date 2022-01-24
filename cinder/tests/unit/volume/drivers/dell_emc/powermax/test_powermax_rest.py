@@ -1012,7 +1012,7 @@ class PowerMaxRestTest(test.TestCase):
     def test_get_initiator_group(self):
         array = self.data.array
         ig_name = self.data.initiatorgroup_name_f
-        ref_ig = self.data.inititiatorgroup[0]
+        ref_ig = self.data.initiator_group_fc
         response_ig = self.rest.get_initiator_group(array, ig_name)
         self.assertEqual(ref_ig, response_ig)
 

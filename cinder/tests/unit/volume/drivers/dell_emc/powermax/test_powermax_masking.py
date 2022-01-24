@@ -400,26 +400,82 @@ class PowerMaxMaskingTest(test.TestCase):
         self.assertEqual(2, mock_get_pg.call_count)
 
     @mock.patch.object(
+        rest.PowerMaxRest, 'get_initiator_group',
+        side_effect=[None, tpd.PowerMaxData.initiator_group_iscsi])
+    @mock.patch.object(
         masking.PowerMaxMasking, '_find_initiator_group',
         side_effect=[tpd.PowerMaxData.initiatorgroup_name_i, None, None])
     @mock.patch.object(
         masking.PowerMaxMasking, '_create_initiator_group',
         side_effect=([tpd.PowerMaxData.initiatorgroup_name_i, None]))
-    def test_get_or_create_initiator_group(self, mock_create_ig, mock_find_ig):
+    def test_get_or_create_initiator_group(
+            self, mock_create_ig, mock_find_ig, mock_get_ig):
         self.driver.masking._get_or_create_initiator_group(
             self.data.array, self.data.initiatorgroup_name_i,
             self.data.connector, self.extra_specs)
+        mock_create_ig.assert_not_called()
+        found_init_group_name, msg = (
+            self.driver.masking._get_or_create_initiator_group(
+                self.data.array, self.data.initiatorgroup_name_i,
+                self.data.connector, self.extra_specs))
+        self.assertIsNone(msg)
+        found_init_group_name, msg = (
+            self.driver.masking._get_or_create_initiator_group(
+                self.data.array, self.data.initiatorgroup_name_i,
+                self.data.connector, self.extra_specs))
+        self.assertIsNone(msg)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_initiator_group',
+        return_value=tpd.PowerMaxData.initiator_group_iscsi)
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_find_initiator_group',
+        return_value=None)
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_create_initiator_group')
+    def test_get_or_create_initiator_group_not_logged_in(
+            self, mock_create_ig, mock_find_ig, mock_get_ig):
+        found_init_group, msg = (
+            self.driver.masking._get_or_create_initiator_group(
+                self.data.array, self.data.initiatorgroup_name_i,
+                self.data.connector, self.extra_specs))
+        mock_create_ig.assert_not_called()
+        self.assertIsNone(msg)
+
+    @mock.patch.object(
+        rest.PowerMaxRest, 'get_initiator_group',
+        side_effect=[tpd.PowerMaxData.initiator_group_fc,
+                     tpd.PowerMaxData.initiator_group_empty])
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_find_initiator_group',
+        return_value=None)
+    @mock.patch.object(
+        masking.PowerMaxMasking, '_create_initiator_group')
+    def test_get_or_create_initiator_group_not_logged_in_errors(
+            self, mock_create_ig, mock_find_ig, mock_get_ig):
+        found_init_group, msg = (
+            self.driver.masking._get_or_create_initiator_group(
+                self.data.array, self.data.initiatorgroup_name_i,
+                self.data.connector, self.extra_specs))
+        expected_msg = (
+            "Found initiator group OS-HostX-I-IG, but could not find "
+            "initiator_names ['iqn.1993-08.org.debian:01:222'] in "
+            "the login table. The contained initiators ['123456789012345'] "
+            "do match up with those in the connector object. Delete initiator "
+            "group OS-HostX-I-IG and retry.")
+        self.assertEqual(expected_msg, msg)
         mock_create_ig.assert_not_called()
         found_init_group, msg = (
             self.driver.masking._get_or_create_initiator_group(
                 self.data.array, self.data.initiatorgroup_name_i,
                 self.data.connector, self.extra_specs))
-        self.assertIsNone(msg)
-        found_init_group, msg = (
-            self.driver.masking._get_or_create_initiator_group(
-                self.data.array, self.data.initiatorgroup_name_i,
-                self.data.connector, self.extra_specs))
-        self.assertIsNotNone(msg)
+        expected_msg = (
+            "Found initiator group OS-HostX-I-IG, but could not find "
+            "initiator_names ['iqn.1993-08.org.debian:01:222'] in the login "
+            "table. There are no initiators in OS-HostX-I-IG. Delete "
+            "initiator group OS-HostX-I-IG and retry.")
+        self.assertEqual(expected_msg, msg)
+        mock_create_ig.assert_not_called()
 
     def test_check_existing_initiator_group(self):
         with mock.patch.object(
