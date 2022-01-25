@@ -739,7 +739,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
             fakes.PROVISIONING_OPTS['size'],
             volume_type='dp', **expected_prov_opts)
         mock_volume_state.assert_called_with(
-            flexvol_name=self.dest_flexvol_name)
+            name=self.dest_flexvol_name)
         mock_dedupe_enabled.assert_not_called()
         mock_compression_enabled.assert_not_called()
 
@@ -803,7 +803,7 @@ class NetAppCDOTDataMotionMixinTestCase(test.TestCase):
                 fakes.PROVISIONING_OPTS['size'],
                 volume_type='dp', **expected_prov_opts)
             mock_volume_state.assert_called_once_with(
-                flexvol_name=self.dest_flexvol_name)
+                name=self.dest_flexvol_name)
             mock_dedupe_enabled.assert_called_once_with(
                 self.dest_flexvol_name)
             mock_compression_enabled.assert_called_once_with(

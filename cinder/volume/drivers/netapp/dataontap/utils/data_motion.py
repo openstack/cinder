@@ -507,7 +507,7 @@ class DataMotionMixin(object):
 
             def _wait_volume_is_online():
                 volume_state = dest_client.get_volume_state(
-                    flexvol_name=dest_flexvol_name)
+                    name=dest_flexvol_name)
                 if volume_state and volume_state == 'online':
                     raise loopingcall.LoopingCallDone()
 
