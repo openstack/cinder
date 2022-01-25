@@ -860,7 +860,7 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        LOG.debug("Invoking migrate_volume to host=%(host).", dest['host'])
+        LOG.debug("Invoking migrate_volume to host=%s", dest['host'])
         self.volume_rpcapi.migrate_volume(ctxt, volume, backend,
                                           force_host_copy=False,
                                           wait_for_completion=False)
