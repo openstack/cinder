@@ -585,8 +585,8 @@ class VolumeManager(manager.CleanableManager,
 
             try:
                 for volume in volumes:
-                    # available volume should also be counted into allocated
-                    if volume['status'] in ['in-use', 'available']:
+                    # Account for volumes that have been provisioned already.
+                    if volume['host']:
                         # calculate allocated capacity for driver
                         self._count_allocated_capacity(ctxt, volume)
 
