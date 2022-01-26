@@ -105,24 +105,48 @@ class TestObjectVersions(test.TestCase):
         # db model and object match.
         def _check_table_matched(db_model, cls):
             for column in db_model.__table__.columns:
+                # Ignore columns that aren't reflected by the model
+                if column.name not in cls.fields:
+                    continue
 
                 # NOTE(jdg): Model and Object don't match intentionally here
-                if (column.name in cls.fields and
-                        (column.name == 'uuid' and name == 'Service')):
+                if name == 'Service' and column.name == 'uuid':
                     continue
 
                 # NOTE(xyang): Skip the comparison of the colume name
                 # group_type_id in table Group because group_type_id
                 # is in the object Group but it is stored in a different
                 # table in the database, not in the Group table.
-                if (column.name in cls.fields and
-                        (column.name != 'group_type_id' and name != 'Group')):
-                    self.assertEqual(
-                        column.nullable,
-                        cls.fields[column.name].nullable,
-                        'Column %(c)s in table %(t)s not match.'
-                        % {'c': column.name,
-                           't': name})
+                if name == 'Group' and column.name == 'group_type_id':
+                    continue
+
+                # TODO(stephenfin): Model and Object don't match here, but it
+                # wasn't intentional
+                if (name, column.name) in {
+                    ('Backup', 'project_id'),
+                    ('Backup', 'user_id'),
+                    ('BackupImport', 'project_id'),
+                    ('BackupImport', 'user_id'),
+                    ('CGSnapshot', 'project_id'),
+                    ('CGSnapshot', 'user_id'),
+                    ('ConsistencyGroup', 'project_id'),
+                    ('ConsistencyGroup', 'user_id'),
+                    ('Group', 'user_id'),
+                    ('Group', 'project_id'),
+                    ('GroupType', 'name'),
+                    ('Service', 'frozen'),
+                    ('Snapshot', 'volume_type_id'),
+                    ('Volume', 'volume_type_id'),
+                }:
+                    continue
+
+                self.assertEqual(
+                    column.nullable,
+                    cls.fields[column.name].nullable,
+                    'Column %(c)s in table %(t)s not match.' % {
+                        'c': column.name, 't': name,
+                    },
+                )
 
         classes = base.CinderObjectRegistry.obj_classes()
         for name, cls in classes.items():
