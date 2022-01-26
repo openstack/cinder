@@ -81,6 +81,9 @@
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
+            required-projects:
+            - name: opendev.org/openstack/openstacksdk
+              override-branch: stable/xena
             irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
@@ -95,6 +98,9 @@
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
         - openstacksdk-functional-devstack:
+            required-projects:
+            - name: opendev.org/openstack/openstacksdk
+              override-branch: stable/xena
             irrelevant-files: *gate-irrelevant-files
     experimental:
       jobs:
