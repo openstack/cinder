@@ -67,6 +67,11 @@
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
             irrelevant-files: *gate-irrelevant-files
+        - openstacksdk-functional-devstack:
+            required-projects:
+            - name: opendev.org/openstack/openstacksdk
+              override-branch: stable/victoria
+            irrelevant-files: *gate-irrelevant-files
     gate:
       jobs:
         - cinder-grenade-mn-sub-volbak:
@@ -78,6 +83,11 @@
         - grenade:
             irrelevant-files: *gate-irrelevant-files
         - tempest-ipv6-only:
+            irrelevant-files: *gate-irrelevant-files
+        - openstacksdk-functional-devstack:
+            required-projects:
+            - name: opendev.org/openstack/openstacksdk
+              override-branch: stable/victoria
             irrelevant-files: *gate-irrelevant-files
     experimental:
       jobs:
