@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added backend FC and iSCSI drivers for NEC V series Storage.

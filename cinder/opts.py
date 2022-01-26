@@ -138,6 +138,8 @@ from cinder.volume.drivers import linstordrv as \
 from cinder.volume.drivers import lvm as cinder_volume_drivers_lvm
 from cinder.volume.drivers.macrosan import driver as \
     cinder_volume_drivers_macrosan_driver
+from cinder.volume.drivers.nec.v import nec_v_rest as \
+    cinder_volume_drivers_nec_v_necvrest
 from cinder.volume.drivers.netapp import options as \
     cinder_volume_drivers_netapp_options
 from cinder.volume.drivers.nexenta import options as \
@@ -353,6 +355,9 @@ def list_opts():
                 cinder_volume_drivers_linstordrv.linstor_opts,
                 cinder_volume_drivers_lvm.volume_opts,
                 cinder_volume_drivers_macrosan_driver.config.macrosan_opts,
+                cinder_volume_drivers_nec_v_necvrest.COMMON_VOLUME_OPTS,
+                cinder_volume_drivers_nec_v_necvrest.REST_VOLUME_OPTS,
+                cinder_volume_drivers_nec_v_necvrest.FC_VOLUME_OPTS,
                 cinder_volume_drivers_netapp_options.netapp_proxy_opts,
                 cinder_volume_drivers_netapp_options.netapp_connection_opts,
                 cinder_volume_drivers_netapp_options.netapp_transport_opts,
