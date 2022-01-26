@@ -878,15 +878,17 @@ def upgrade():
             'volume_type_id',
             sa.String(36),
             sa.ForeignKey('volume_types.id'),
-            index=True),
+            index=True,
+        ),
         sa.Column(
             'project_id',
             sa.String(length=255),
             primary_key=True,
-            nullable=False),
+            nullable=False,
+        ),
         sa.Column('deleted', sa.Boolean(create_constraint=True, name=None)),
         mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_charset='utf8',
     )
 
     if connection.engine.name == "mysql":
