@@ -507,9 +507,13 @@ Preconditions
 
 - Volume status must be ``available``, ``in-use``, ``error``,
   ``error_restoring``, ``error_extending``, ``error_managing``,
-  and must not be migrating, attached, belong to a group or have snapshots.
+  and must not be ``migrating``, ``attached``, ``awaiting-transfer``,
+  belong to a group, have snapshots or be disassociated from
+  snapshots after volume transfer.
 
-- You cannot already have a snapshot of the volume.
+- The ``cascade`` option can be passed in the request if you want 
+  all snapshots of this volume to be deleted automatically,
+  which should allow the volume deletion to succeed.
 
 - You cannot delete a volume that is in a migration.
 
