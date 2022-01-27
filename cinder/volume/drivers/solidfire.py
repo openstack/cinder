@@ -1455,39 +1455,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         for vag in sorted_targets[:limit]:
             self._remove_vag(vag['volumeAccessGroupID'])
 
-    @locked_image_id_operation
-    def clone_image(self, context,
-                    volume, image_location,
-                    image_meta, image_service):
-        """Clone an existing image volume."""
-        public = False
-        # NOTE(jdg): Glance V2 moved from is_public to visibility
-        # so we check both, as we don't necessarily know or want
-        # to care which we're using.  Will need to look at
-        # future handling of things like shared and community
-        # but for now, it's owner or public and that's it
-        visibility = image_meta.get('visibility', None)
-        if visibility and visibility == 'public':
-            public = True
-        elif image_meta.get('is_public', False):
-            public = True
-        else:
-            if image_meta['owner'] == volume['project_id']:
-                public = True
-        if not public:
-            LOG.warning("Requested image is not "
-                        "accessible by current Tenant.")
-            return None, False
-        # If we don't have the image-volume to clone from return failure
-        # cinder driver will then create source for clone first
-        try:
-            (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
-                                                             volume)
-        except exception.VolumeNotFound:
-            return None, False
-
-        return model, True
-
     # extended_size > 0 when we are extending a volume
     def _retrieve_qos_setting(self, volume, extended_size=0):
         qos = {}
