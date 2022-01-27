@@ -15,7 +15,6 @@
 #    under the License.
 
 from copy import deepcopy
-import datetime
 import re
 from unittest import mock
 from unittest.mock import call
@@ -37,7 +36,6 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_group_snapshot
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test
 from cinder.tests.unit import utils as test_utils
 from cinder.volume import configuration as conf
@@ -85,8 +83,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_account_prefix = 'cinder'
         self.configuration.reserved_percentage = 25
         self.configuration.target_helper = None
-        self.configuration.sf_template_account_name = 'openstack-vtemplate'
-        self.configuration.sf_allow_template_caching = False
         self.configuration.sf_svip = None
         self.configuration.sf_volume_prefix = 'UUID-'
         self.configuration.sf_enable_vag = False
@@ -105,13 +101,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
-        self.mock_stats_data =\
-            {'result':
-                {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
-                                     'usedSpace': 1073741824,
-                                     'compressionPercent': 100,
-                                     'deDuplicationPercent': 100,
-                                     'thinProvisioningPercent': 100}}}
         vol_updates = {'project_id': 'testprjid',
                        'name': 'testvol',
                        'size': 1,
@@ -123,15 +112,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                            {'uuid': '262b9ce2-a71a-4fbe-830c-c20c5596caea'}}
         ctx = context.get_admin_context()
         self.mock_volume = fake_volume.fake_volume_obj(ctx, **vol_updates)
-
-        self.fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
-                                'updated_at': datetime.datetime(2013, 9,
-                                                                28, 15,
-                                                                27, 36,
-                                                                325355),
-                                'is_public': True,
-                                'owner': 'testprjid'}
-        self.fake_image_service = fake_image.FakeImageService()
 
         self.vol = test_utils.create_volume(
             self.ctxt, volume_id='b831c4d1-d1f0-11e1-9b23-0800200c9a66')
@@ -1852,18 +1832,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                              sf_vol_object['attributes']['migration_uuid'])
             self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                              sf_vol_object['name'])
-
-    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    def test_clone_image_not_configured(self, _mock_issue_api_request):
-        _mock_issue_api_request.side_effect = self.fake_issue_api_request
-
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.assertEqual((None, False),
-                         sfv.clone_image(self.ctxt,
-                                         self.mock_volume,
-                                         'fake',
-                                         self.fake_image_meta,
-                                         'fake'))
 
     def test_init_volume_mappings(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
