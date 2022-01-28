@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1937084 <https://bugs.launchpad.net/cinder/+bug/1937084>`_: Fixed
+    race condition between delete attachment and delete volume that can leave
+    deleted volumes stuck as attached to instances.
