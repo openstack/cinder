@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug #1970768 <https://bugs.launchpad.net/cinder/+bug/1970768>`_: Fixed
+    status of temporary volumes when creating backups and reverting to a
+    snapshot, preventing accidental manual deletion of those resources.
