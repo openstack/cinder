@@ -989,9 +989,9 @@ class BackupTestCase(BaseBackupTest):
                                                   'fake_provider_id'}
 
         temp_vol = volume_manager.driver._create_temp_cloned_volume(
-            self.ctxt, vol)
+            self.ctxt, vol, status=fields.VolumeStatus.BACKING_UP)
 
-        self.assertEqual('available', temp_vol['status'])
+        self.assertEqual(fields.VolumeStatus.BACKING_UP, temp_vol['status'])
         self.assertEqual('fake_provider_id', temp_vol['provider_id'])
 
     @mock.patch.object(fake_driver.FakeLoggingVolumeDriver,
@@ -1008,9 +1008,9 @@ class BackupTestCase(BaseBackupTest):
                                                   'fake_provider_id'}
 
         temp_vol = volume_manager.driver._create_temp_volume_from_snapshot(
-            self.ctxt, vol, snap)
+            self.ctxt, vol, snap, status=fields.VolumeStatus.BACKING_UP)
 
-        self.assertEqual('available', temp_vol['status'])
+        self.assertEqual(fields.VolumeStatus.BACKING_UP, temp_vol['status'])
         self.assertEqual('fake_provider_id', temp_vol['provider_id'])
 
     @mock.patch('cinder.volume.volume_utils.notify_about_backup_usage')

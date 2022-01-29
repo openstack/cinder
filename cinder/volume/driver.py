@@ -1229,7 +1229,8 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         # then clean up the temp volume.
         if snapshot:
             temp_vol_ref = self._create_temp_volume_from_snapshot(
-                context, volume, snapshot)
+                context, volume, snapshot,
+                status=fields.VolumeStatus.BACKING_UP)
             backup.temp_volume_id = temp_vol_ref.id
             backup.save()
             device_to_backup = temp_vol_ref
@@ -1242,7 +1243,7 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             previous_status = volume.get('previous_status')
             if previous_status == "in-use":
                 temp_vol_ref = self._create_temp_cloned_volume(
-                    context, volume)
+                    context, volume, status=fields.VolumeStatus.BACKING_UP)
                 backup.temp_volume_id = temp_vol_ref.id
                 backup.save()
                 device_to_backup = temp_vol_ref
@@ -1341,7 +1342,8 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         temp_vol_ref.create()
         return temp_vol_ref
 
-    def _create_temp_cloned_volume(self, context, volume):
+    def _create_temp_cloned_volume(self, context, volume,
+                                   status=fields.VolumeStatus.AVAILABLE):
         temp_vol_ref = self._create_temp_volume(context, volume)
         try:
             model_update = self.create_cloned_volume(temp_vol_ref, volume)
@@ -1351,12 +1353,13 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             with excutils.save_and_reraise_exception():
                 temp_vol_ref.destroy()
 
-        temp_vol_ref.status = 'available'
+        temp_vol_ref.status = status
         temp_vol_ref.save()
         return temp_vol_ref
 
-    def _create_temp_volume_from_snapshot(self, context, volume, snapshot,
-                                          volume_options=None):
+    def _create_temp_volume_from_snapshot(
+            self, context, volume, snapshot, volume_options=None,
+            status=fields.VolumeStatus.AVAILABLE):
         temp_vol_ref = self._create_temp_volume(context, volume,
                                                 volume_options=volume_options)
         try:
@@ -1368,7 +1371,7 @@ class BaseVD(object, metaclass=abc.ABCMeta):
             with excutils.save_and_reraise_exception():
                 temp_vol_ref.destroy()
 
-        temp_vol_ref.status = 'available'
+        temp_vol_ref.status = status
         temp_vol_ref.save()
         return temp_vol_ref
 

@@ -209,8 +209,8 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
             vol = tests_utils.create_volume(self.context,
                                             status='backing-up')
             cloned_vol = self.volume.driver._create_temp_cloned_volume(
-                self.context, vol)
-            self.assertEqual('available', cloned_vol.status)
+                self.context, vol, status=fields.VolumeStatus.BACKING_UP)
+            self.assertEqual(fields.VolumeStatus.BACKING_UP, cloned_vol.status)
 
     def test_get_backup_device_available(self):
         vol = tests_utils.create_volume(self.context)
@@ -232,8 +232,9 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
                                         status='backing-up',
                                         previous_status='in-use')
         admin_meta = {'temporary': 'True'}
-        temp_vol = tests_utils.create_volume(self.context,
-                                             admin_metadata=admin_meta)
+        temp_vol = tests_utils.create_volume(
+            self.context, status=fields.VolumeStatus.BACKING_UP,
+            admin_metadata=admin_meta)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
         backup_obj = tests_utils.create_backup(self.context,
@@ -249,6 +250,8 @@ class GenericVolumeDriverTestCase(BaseDriverTestCase):
             self.assertFalse(is_snapshot)
             backup_obj.refresh()
             self.assertEqual(temp_vol.id, backup_obj.temp_volume_id)
+            mock_create_temp.assert_called_once_with(
+                self.context, vol, status=fields.VolumeStatus.BACKING_UP)
 
     def test_create_temp_volume_from_snapshot(self):
         volume_dict = {'id': fake.SNAPSHOT_ID,
