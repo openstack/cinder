@@ -2247,8 +2247,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                     'delete_volume') as mock_driver_delete, \
                 mock.patch.object(
                     self.volume, '_copy_volume_data') as mock_copy:
-            temp_volume = tests_utils.create_volume(self.context,
-                                                    status='available')
+            temp_volume = tests_utils.create_volume(
+                self.context, status=fields.VolumeStatus.IN_USE)
             mock_copy.side_effect = [exception.VolumeDriverException('error')]
             mock_temp.return_value = temp_volume
 
