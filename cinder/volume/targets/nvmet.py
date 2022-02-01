@@ -62,7 +62,7 @@ class NVMET(nvmeof.NVMeOF):
                 target_port,
                 nvmet_port_id,
                 subsystem_name,
-                ns_id, volume_id, volume_path)
+                ns_id, volume_id, volume_path, transport_type)
             if newly_added_subsystem is None:
                 LOG.error('Failed to add subsystem: %s', subsystem_name)
                 raise NVMETTargetAddError(subsystem=subsystem_name)
@@ -93,7 +93,7 @@ class NVMET(nvmeof.NVMeOF):
 
     def _add_nvmf_subsystem(self, nvmf_subsystems, target_ip, target_port,
                             nvmet_port_id, nvmet_subsystem_name, nvmet_ns_id,
-                            volume_id, volume_path):
+                            volume_id, volume_path, transport_type):
 
         subsystem_name = self._get_target_info(nvmet_subsystem_name, volume_id)
         # Create JSON sections for the new subsystem to be created
@@ -104,7 +104,7 @@ class NVMET(nvmeof.NVMeOF):
                 "traddr": target_ip,
                 "treq": "not specified",
                 "trsvcid": target_port,
-                "trtype": "rdma"
+                "trtype": transport_type,
             },
             "portid": nvmet_port_id,
             "referrals": [],

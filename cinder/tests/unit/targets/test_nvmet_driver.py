@@ -12,6 +12,7 @@
 
 from unittest import mock
 
+import ddt
 from oslo_utils import timeutils
 
 from cinder import context
@@ -20,12 +21,15 @@ from cinder import utils
 from cinder.volume.targets import nvmet
 
 
+@ddt.ddt
 class TestNVMETDriver(tf.TargetDriverFixture):
 
     def setUp(self):
         super(TestNVMETDriver, self).setUp()
+        self.initialize('nvmet_rdma', 'rdma')
 
-        self.configuration.target_protocol = 'nvmet_rdma'
+    def initialize(self, target_protocol, transport_type):
+        self.configuration.target_protocol = target_protocol
         self.target = nvmet.NVMET(root_helper=utils.get_root_helper(),
                                   configuration=self.configuration)
 
@@ -34,7 +38,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
         self.nvmet_subsystem_name = self.configuration.target_prefix
         self.nvmet_ns_id = self.configuration.nvmet_ns_id
         self.nvmet_port_id = self.configuration.nvmet_port_id
-        self.nvme_transport_type = 'rdma'
+        self.nvme_transport_type = transport_type
 
         self.fake_volume_id = 'c446b9a2-c968-4260-b95f-a18a7b41c004'
         self.testvol_path = (
@@ -56,12 +60,16 @@ class TestNVMETDriver(tf.TargetDriverFixture):
              'created_at': timeutils.utcnow(),
              'host': 'fake_host@lvm#lvm'})
 
+    @ddt.data(('nvmet_rdma', 'rdma'), ('nvmet_tcp', 'tcp'))
+    @ddt.unpack
     @mock.patch.object(nvmet.NVMET, '_get_nvmf_subsystem')
     @mock.patch.object(nvmet.NVMET, '_get_available_nvmf_subsystems')
     @mock.patch.object(nvmet.NVMET, '_add_nvmf_subsystem')
-    def test_create_export(self, mock_add_nvmf_subsystem,
+    def test_create_export(self, target_protocol, transport_type,
+                           mock_add_nvmf_subsystem,
                            mock_get_available_nvmf_subsystems,
                            mock_get_nvmf_subsystem):
+        self.initialize(target_protocol, transport_type)
 
         mock_testvol = self.testvol
         mock_testvol_path = self.testvol_path
@@ -75,7 +83,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
                  "portid": 1,
                  "addr":
                  {"treq": "not specified",
-                          "trtype": "rdma",
+                          "trtype": self.nvme_transport_type,
                           "adrfam": "ipv4",
                           "trsvcid": self.target_port,
                           "traddr":
@@ -126,7 +134,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
                  "portid": 1,
                  "addr":
                  {"treq": "not specified",
-                          "trtype": "rdma",
+                          "trtype": self.nvme_transport_type,
                           "adrfam": "ipv4",
                           "trsvcid": self.target_port,
                           "traddr":
@@ -180,7 +188,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
                  "portid": self.nvmet_port_id,
                  "addr":
                  {"treq": "not specified",
-                  "trtype": "rdma",
+                  "trtype": self.nvme_transport_type,
                   "adrfam": "ipv4",
                   "trsvcid": self.target_port,
                   "traddr": self.target_ip}}
@@ -249,7 +257,7 @@ class TestNVMETDriver(tf.TargetDriverFixture):
                  "portid": self.nvmet_port_id,
                  "addr":
                  {"treq": "not specified",
-                  "trtype": "rdma",
+                  "trtype": self.nvme_transport_type,
                   "adrfam": "ipv4",
                   "trsvcid": self.target_port,
                   "traddr": self.target_ip}}

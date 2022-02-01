@@ -34,6 +34,7 @@ class NVMeOF(driver.Target):
     protocol = 'nvmeof'
     target_protocol_map = {
         'nvmet_rdma': 'rdma',
+        'nvmet_tcp': 'tcp',
     }
 
     def __init__(self, *args, **kwargs):

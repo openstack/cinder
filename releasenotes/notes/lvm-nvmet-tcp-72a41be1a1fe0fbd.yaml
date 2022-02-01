@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    LVM driver: Added support for the NVMe TCP transport protocol.
+    Configuration option is ``target_protocol = nvmet_tcp`` when using
+    ``nvmet`` as the ``target_helper``.

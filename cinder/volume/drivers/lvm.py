@@ -124,7 +124,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             'target_port',
             'iscsi_write_cache', 'iscsi_target_flags',  # TGT
             'iet_conf', 'iscsi_iotype',  # IET
-            'nvmet_port_id',  # NVMET
+            'nvmet_port_id', 'nvmet_ns_id',  # NVMET
             'scst_target_iqn_name', 'scst_target_driver',  # SCST
             'spdk_rpc_ip', 'spdk_rpc_port', 'spdk_rpc_username',   # SPDKNVMF
             'spdk_rpc_password', 'spdk_max_queue_depth',  # SPDKNVMF
