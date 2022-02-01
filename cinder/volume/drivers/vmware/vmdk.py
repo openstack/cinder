@@ -698,7 +698,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 volumeops.BACKING_UUID_KEY: volume['id']}
 
     @volume_utils.trace
-    def _create_backing(self, volume, host=None, create_params=None):
+    def _create_backing(self, volume, host=None, create_params=None,
+                        cinder_host=None):
         """Create volume backing under the given host.
 
         If host is unspecified, any suitable host is selected.
@@ -707,13 +708,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param host: Reference of the host
         :param create_params: Dictionary specifying optional parameters for
                               backing VM creation
+        :param cinder_host: String of the format host@backend_name#pool.
         :return: Reference to the created backing
         """
+        create_params = create_params or {}
 
         (host_ref, resource_pool, folder,
-            summary) = self._select_ds_for_volume(volume, host)
-
-        create_params = create_params or {}
+            summary) = self._select_ds_for_volume(volume, host,
+                                                  create_params=create_params,
+                                                  cinder_host=cinder_host)
 
         # check if a storage profile needs to be associated with the backing VM
         profile_id = self._get_storage_profile_id(volume)
