@@ -57,7 +57,8 @@ class VmdkDriverRemoteApiTest(test.RPCAPITestCase):
                            server=self._fake_host,
                            host=self._fake_host,
                            volume=self._fake_volume,
-                           create_params=None
+                           create_params=None,
+                           cinder_host=self._fake_host,
                            )
 
 
@@ -120,4 +121,4 @@ class VmdkDriverRemoteServiceTest(test.TestCase):
     def test_create_backing(self):
         self._service.create_backing(self._ctxt, self._fake_volume)
         self._driver._create_backing.assert_called_once_with(
-            self._fake_volume, create_params=None)
+            self._fake_volume, create_params=None, cinder_host=None)

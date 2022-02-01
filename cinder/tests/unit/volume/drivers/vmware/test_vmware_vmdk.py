@@ -2974,7 +2974,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         ret = self._driver._create_backing(volume, host, create_params)
 
         self.assertEqual(backing, ret)
-        select_ds_for_volume.assert_called_once_with(volume, host)
+        select_ds_for_volume.assert_called_once_with(
+            volume,
+            host,
+            cinder_host=None,
+            create_params=create_params)
         get_storage_profile_id.assert_called_once_with(volume)
 
         exp_extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id'],
