@@ -30,6 +30,8 @@
      - (Boolean) Allow tenants to specify QoS on create.
    * - ``storwize_svc_flashcopy_rate`` = ``50``
      - (Integer) Specifies the Spectrum Virtualize Family FlashCopy copy rate to be used when creating a full volume copy. The default is rate is 50, and the valid rates are 1-100.
+   * - ``storwize_svc_clean_rate`` = ``50``
+     - (Integer) Specifies the Storwize cleaning rate for the mapping. The default rate is 50, and the valid rates are 0-150.
    * - ``storwize_svc_flashcopy_timeout`` = ``120``
      - (Integer) Maximum number of seconds to wait for FlashCopy to be prepared.
    * - ``storwize_svc_iscsi_chap_enabled`` = ``True``

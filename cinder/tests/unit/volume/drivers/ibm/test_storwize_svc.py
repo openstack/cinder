@@ -4588,6 +4588,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                SVC_POOLS,
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
+                               'storwize_svc_clean_rate': 50,
                                'storwize_svc_allow_tenant_qos': True}
             config = conf.Configuration(storwize_svc_common.storwize_svc_opts,
                                         conf.SHARED_CONF_GROUP)
@@ -5128,6 +5129,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'stretched_cluster': None,
                'nofmtdisk': False,
                'flashcopy_rate': 49,
+               'clean_rate': 50,
                'mirror_pool': None,
                'volume_topology': None,
                'peer_pool': None,
@@ -5184,22 +5186,30 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self._assert_vol_exists(snap1['name'], False)
         self._reset_flags()
 
-        # Test falshcopy_rate > 100 on 7.2.0.0
+        # Test flashcopy_rate > 100 on 7.2.0.0
         self._set_flag('storwize_svc_flashcopy_rate', 149)
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_snapshot, snap1)
         self._assert_vol_exists(snap1['name'], False)
         self._reset_flags()
 
-        # Test falshcopy_rate out of range
+        # Test clean_rate < 150 on 7.2.0.0
+        self._set_flag('storwize_svc_clean_rate', 100)
+        vol2 = self._create_volume()
+        snap2 = self._generate_snap_info(vol2.id)
+        self.driver.create_snapshot(snap2)
+        self._assert_vol_exists(snap2['name'], True)
+        self._reset_flags()
+
+        # Test flashcopy_rate out of range
         spec = {'flashcopy_rate': 151}
         type_ref = volume_types.create(self.ctxt, "fccopy_rate", spec)
-        vol2 = self._generate_vol_info(type_ref)
-        self.driver.create_volume(vol2)
-        snap2 = self._generate_snap_info(vol2.id)
+        vol3 = self._generate_vol_info(type_ref)
+        self.driver.create_volume(vol3)
+        snap3 = self._generate_snap_info(vol3.id)
         self.assertRaises(exception.InvalidInput,
-                          self.driver.create_snapshot, snap2)
-        self._assert_vol_exists(snap2['name'], False)
+                          self.driver.create_snapshot, snap3)
+        self._assert_vol_exists(snap3['name'], False)
 
         # Test prestartfcmap failing
         with mock.patch.object(
@@ -5243,6 +5253,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         vol3 = testutils.create_volume(
             self.ctxt,
             volume_type_id=self.vt['id'])
+        vol4 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
 
         # Try to clone where source size = target size
         vol1['size'] = vol2['size']
@@ -5268,7 +5281,20 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                     self.assertEqual('49', fcmap['copyrate'])
         self._assert_vol_exists(vol3['name'], True)
 
+        # Try to clone and check if clean_rate is set to default
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.create_cloned_volume(vol4, vol1)
+        if self.USESIM:
+            # Validate copyrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['target'] == vol1['name']:
+                    self.assertEqual('50', fcmap['cleanrate'])
+        self._assert_vol_exists(vol4['name'], True)
+
         # Delete in the 'opposite' order to make sure it works
+        self.driver.delete_volume(vol4)
+        self._assert_vol_exists(vol4['name'], False)
         self.driver.delete_volume(vol3)
         self._assert_vol_exists(vol3['name'], False)
         self.driver.delete_volume(vol2)
@@ -5326,6 +5352,51 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.create_cloned_volume(volume4, volume)
         attributes = self.driver._helpers.get_vdisk_attributes(volume4['name'])
         self.assertEqual('1', attributes['IO_group_id'])
+
+    def test_storwize_svc_retype_only_change_clean_rate(self):
+        self.driver.do_setup(None)
+        loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
+               ':openstack')
+        cap = {'location_info': loc, 'extent_size': '128'}
+        self.driver._stats = {'location_info': loc}
+        host = {'host': 'openstack@svc#openstack', 'capabilities': cap}
+        ctxt = context.get_admin_context()
+
+        key_specs_old = {'clean_rate': 50}
+        key_specs_new = {'clean_rate': 100}
+        old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
+        new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
+        host = {'host': 'openstack@svc#openstack'}
+        diff, _equal = volume_types.volume_types_diff(ctxt, old_type_ref['id'],
+                                                      new_type_ref['id'])
+
+        old_type = objects.VolumeType.get_by_id(ctxt,
+                                                old_type_ref['id'])
+        volume = self._generate_vol_info(old_type)
+        volume['host'] = host['host']
+        new_type = objects.VolumeType.get_by_id(ctxt,
+                                                new_type_ref['id'])
+
+        self.driver.create_volume(volume)
+        volume2 = testutils.create_volume(
+            self.ctxt,
+            volume_type_id=self.vt['id'])
+        self.driver.retype(ctxt, volume, new_type, diff, host)
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.create_cloned_volume(volume2, volume)
+        if self.USESIM:
+            # Validate cleanrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['target'] == volume['name']:
+                    self.assertEqual('100', fcmap['cleanrate'])
+        self._assert_vol_exists(volume2['name'], True)
+
+        # Delete the volumes
+        self.driver.delete_volume(volume2)
+        self._assert_vol_exists(volume2['name'], False)
+        self.driver.delete_volume(volume)
+        self._assert_vol_exists(volume['name'], False)
 
     def test_storwize_svc_create_volume_from_snapshot(self):
         vol1 = self._create_volume()
@@ -6869,7 +6940,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         config = self.driver.configuration
         pool = "openstack2"
         if empty_qos:
-            opts = {'rsize': 2, 'iogrp': 0, 'qos': None, 'flashcopy_rate': 50}
+            opts = {'rsize': 2, 'iogrp': 0, 'qos': None, 'flashcopy_rate': 50,
+                    'clean_rate': 50}
             self.driver._helpers.create_flashcopy_to_consistgrp(
                 source, target, consistgrp, config,
                 opts, full_copy=False, pool=pool)
@@ -6878,7 +6950,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         qos = {'IOThrottling': fake_iothrottling_value,
                'IOThrottling_unit': fake_iothrottling_unit}
-        opts = {'rsize': 2, 'iogrp': 0, 'qos': qos, 'flashcopy_rate': 50}
+        opts = {'rsize': 2, 'iogrp': 0, 'qos': qos, 'flashcopy_rate': 50,
+                'clean_rate': 50}
         self.driver._helpers.create_flashcopy_to_consistgrp(source,
                                                             target, consistgrp,
                                                             config, opts,
@@ -7769,7 +7842,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.driver.revert_to_snapshot(self.ctxt, vol2, snap2)
             mkfcmap.assert_called_once_with(snap2.name, vol2.name, True,
                                             self.driver.configuration.
-                                            storwize_svc_flashcopy_rate)
+                                            storwize_svc_flashcopy_rate,
+                                            self.driver.configuration.
+                                            storwize_svc_clean_rate)
             prepare_fc_map.assert_called_once_with(
                 '1', self.driver.configuration.storwize_svc_flashcopy_timeout,
                 True)
@@ -10167,6 +10242,18 @@ class StorwizeHelpersTestCase(test.TestCase):
                               self.storwize_svc_common.check_flashcopy_rate,
                               flashcopy_rate)
 
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'chfcmap')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       '_get_vdisk_fc_mappings')
+    def test_storwize_update_clean_rate(self,
+                                        chfcmap,
+                                        get_vdisk_fc_mappings):
+        get_vdisk_fc_mappings.return_value = ['4']
+        vol = 'test_vol'
+        new_clean_rate = 50
+        self.storwize_svc_common.update_clean_rate(vol, new_clean_rate)
+        chfcmap.assert_called()
+
     @ddt.data(({'mirror_pool': 'openstack2',
                 'volume_topology': None,
                 'peer_pool': None}, True, 1),
@@ -11533,7 +11620,8 @@ class StorwizeSVCReplicationTestCase(test.TestCase):
             self.driver.revert_to_snapshot(self.ctxt, vol1, snap1)
             mkfcmap.assert_called_once_with(
                 snap1.name, vol1.name, True,
-                self.driver.configuration.storwize_svc_flashcopy_rate)
+                self.driver.configuration.storwize_svc_flashcopy_rate,
+                self.driver.configuration.storwize_svc_clean_rate)
             prepare_fc_map.assert_called_once_with(
                 '1', self.driver.configuration.storwize_svc_flashcopy_timeout,
                 True)
