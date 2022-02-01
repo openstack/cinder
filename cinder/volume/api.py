@@ -822,8 +822,9 @@ class API(base.Base):
                                             cluster_name=dest['cluster_name'],
                                             capabilities=dest['capabilities'])
 
+        states = ('available', 'reserved', 'in-use')
         # Build required conditions for conditional update
-        expected = {'status': ('available', 'reserved'),
+        expected = {'status': states,
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'replication_status': (
                         None,
@@ -846,7 +847,7 @@ class API(base.Base):
         # on this volume, e.g. attach, detach, retype, migrate, etc.
         if lock_volume:
             updates['status'] = db.Case(
-                [(volume.model.status.in_(('available', 'reserved')),
+                [(volume.model.status.in_(states),
                   'maintenance')],
                 else_=volume.model.status)
 

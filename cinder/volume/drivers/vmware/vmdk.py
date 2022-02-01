@@ -2924,7 +2924,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                      {'volume_name': volume.name, 'dest_host': dest_host})
             return (True, None)
 
-        if volume['status'] == 'in-use':
+        if volume['attach_status'] == 'attached':
             if self._vcenter_instance_uuid != vcenter:
                 return self._migrate_attached_cross_vc(context, dest_host,
                                                        volume, backing)
