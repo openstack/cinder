@@ -2528,11 +2528,16 @@ class API(base.Base):
                                                   volume_ref,
                                                   instance_uuid)
         if connector:
-            connection_info = (
-                self.volume_rpcapi.attachment_update(ctxt,
-                                                     volume_ref,
-                                                     connector,
-                                                     attachment_ref.id))
+            try:
+                connection_info = (
+                    self.volume_rpcapi.attachment_update(ctxt,
+                                                         volume_ref,
+                                                         connector,
+                                                         attachment_ref.id))
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    self.attachment_delete(ctxt, attachment_ref)
+
         attachment_ref.connection_info = connection_info
 
         # Use of admin_metadata for RO settings is deprecated
