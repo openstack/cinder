@@ -1,9 +1,14 @@
-=============================
-IBM FlashSystem volume driver
-=============================
+==============================
+IBM FlashSystem 840/900 driver
+==============================
 
 The volume driver for FlashSystem provides OpenStack Block Storage hosts
 with access to IBM FlashSystems.
+
+This driver is to be used with IBM FlashSystem 840/900 systems only.
+For any other FlashSystem storage systems (including 5xxx, 7xxx, and 9xxx
+platforms) see the :doc:`IBM Spectrum Virtualize family volume driver
+documentation <ibm-storwize-svc-driver>`.
 
 Supported operations
 ~~~~~~~~~~~~~~~~~~~~
