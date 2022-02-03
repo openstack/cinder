@@ -154,22 +154,6 @@ interaction with this group will be mostly through code reviews, because
 only members of cinder-core can approve a code change to be merged into the
 code repository.
 
-.. note::
-   Although your contribution will require reviews by members of
-   cinder-core, these aren't the only people whose reviews matter.
-   Anyone with a gerrit account can post reviews, so you can ask
-   other developers you know to review your code ... and you can
-   review theirs.  (A good way to learn your way around the codebase
-   is to review other people's patches.)
-
-   If you're thinking, "I'm new at this, how can I possibly provide
-   a helpful review?", take a look at `How to Review Changes the
-   OpenStack Way
-   <https://docs.openstack.org/project-team-guide/review-the-openstack-way.html>`_.
-
-   There are also some Cinder project specific reviewing guidelines
-   in the :ref:`reviewing-cinder` section of the Cinder Contributor Guide.
-
 You can learn more about the role of core reviewers in the OpenStack
 governance documentation:
 https://docs.openstack.org/contributors/common/governance.html#core-reviewer
@@ -266,10 +250,29 @@ the Launchpad space for the affected deliverable:
 Getting Your Patch Merged
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Before your patch can be merged, it must be *reviewed* and *approved*.
+
 The Cinder project policy is that a patch must have two +2s before it can
 be merged.  (Exceptions are documentation changes, which require only a
 single +2, and specs, for which the PTL may require more than two +2s,
-depending on the complexity of the proposal.)
+depending on the complexity of the proposal.)  Only members of the
+cinder-core team can vote +2 (or -2) on a patch, or approve it.
+
+.. note::
+   Although your contribution will require reviews by members of
+   cinder-core, these aren't the only people whose reviews matter.
+   Anyone with a gerrit account can post reviews, so you can ask
+   other developers you know to review your code ... and you can
+   review theirs.  (A good way to learn your way around the codebase
+   is to review other people's patches.)
+
+   If you're thinking, "I'm new at this, how can I possibly provide
+   a helpful review?", take a look at `How to Review Changes the
+   OpenStack Way
+   <https://docs.openstack.org/project-team-guide/review-the-openstack-way.html>`_.
+
+   There are also some Cinder project specific reviewing guidelines
+   in the :ref:`reviewing-cinder` section of the Cinder Contributor Guide.
 
 Patches lacking unit tests are unlikely to be approved.  Check out the
 :ref:`testing-cinder` section of the Cinder Contributors Guide for a
@@ -281,12 +284,37 @@ bug should have a release note.  You can find more information about
 how to write a release note in the :ref:`release-notes` section of the
 Cinder Contributors Guide.
 
-Keep in mind that the best way to make sure your patches are reviewed in
-a timely manner is to review other people's patches.  We're engaged in a
-cooperative enterprise here.
+  Keep in mind that the best way to make sure your patches are reviewed in
+  a timely manner is to review other people's patches.  We're engaged in a
+  cooperative enterprise here.
+
+If your patch has a -1 from Zuul, you should fix it right away, because
+people are unlikely to review a patch that is failing the CI system.
+
+* If it's a pep8 issue, the job leaves sufficient information for you to fix
+  the problems yourself.
+* If you are failing unit or functional tests, you should look at the
+  failures carefully.  These tests guard against regressions, so if
+  your patch causing failures, you need to figure out exactly what is
+  going on.
+* The unit, functional, and pep8 tests can all be run locally before you
+  submit your patch for review.  By doing so, you can help conserve gate
+  resources.
+
+How long it may take for your review to get attention will depend on the
+current project priorities.  For example, the feature freeze is at the
+third milestone of each development cycle, so feature patches have the
+highest priority just before M-3.  Likewise, once the new driver freeze
+is in effect, new driver patches are unlikely to receive timely reviews
+until after the stable branch has been cut (this happens three weeks before
+release).  Similarly, os-brick patches have review priority before the
+nonclient library release deadline, and cinderclient patches have priority
+before the client library release each cycle.  These dates are clearly
+noted on the release schedule for the current release, which you can find
+from https://releases.openstack.org/
 
 You can see who's been doing what with Cinder recently in Stackalytics:
-https://www.stackalytics.com/report/activity?module=cinder-group
+https://www.stackalytics.io/report/activity?module=cinder-group
 
 Project Team Lead Duties
 ~~~~~~~~~~~~~~~~~~~~~~~~
