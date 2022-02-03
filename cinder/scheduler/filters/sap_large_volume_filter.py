@@ -29,10 +29,21 @@ class SAPLargeVolumeFilter(filters.BaseBackendFilter):
 
     def backend_passes(self, backend_state, filter_properties):
         host = backend_state.host
-        req_spec = filter_properties.get('request_spec')
-        volume_size = req_spec["volume"]["size"]
 
-        if 'vvol' in host.lower() and volume_size > 2000:
+        # if the request is against a non vvol host, we pass.
+        if 'vvol' not in host.lower():
+            return True
+
+        if filter_properties.get('new_size'):
+            requested_size = int(filter_properties.get('new_size'))
+        else:
+            requested_size = int(filter_properties.get('size'))
+
+        # requested_size is 0 means that it's a manage request.
+        if requested_size == 0:
+            return True
+
+        if requested_size > 2000:
             LOG.info("Cannot allow volumes larger than 2000 GiB on vVol.")
             return False
         else:
