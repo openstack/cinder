@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    `Bug #1960019 <https://bugs.launchpad.net/cinder/+bug/1960019>`_: Fixed
+    value of the x-openstack-request-id header when Cinder is using noauth.
+  - |
+    `Bug #1960020 <https://bugs.launchpad.net/cinder/+bug/1960020>`_: Fixed
+    duplicated request-id values in logs for different requests, happens only
+    on request to / to get available api versions.
+  - |
+    `Bug #1960021 <https://bugs.launchpad.net/cinder/+bug/1960021>`_: Fixed
+    missing request id headers in requests to / to get available api versions.
+  - |
+    `Bug #1960329 <https://bugs.launchpad.net/cinder/+bug/1960329>`_: Fixed
+    wrong request ID on middleware filters.

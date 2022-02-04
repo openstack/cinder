@@ -22,7 +22,6 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_middleware import request_id
 from oslo_serialization import jsonutils
 import webob.dec
 import webob.exc
@@ -60,6 +59,36 @@ def pipeline_factory(loader, global_conf, **local_conf):
     return app
 
 
+def _set_request_context(req, **kwargs):
+    """Sets request context based on parameters and request."""
+    remote_address = getattr(req, 'remote_address', '127.0.0.1')
+
+    service_catalog = None
+    if req.headers.get('X_SERVICE_CATALOG') is not None:
+        try:
+            catalog_header = req.headers.get('X_SERVICE_CATALOG')
+            service_catalog = jsonutils.loads(catalog_header)
+        except ValueError:
+            raise webob.exc.HTTPInternalServerError(
+                explanation=_('Invalid service catalog json.'))
+
+    if CONF.use_forwarded_for:
+        remote_address = req.headers.get('X-Forwarded-For', remote_address)
+
+    kwargs.setdefault('remote_address', remote_address)
+    kwargs.setdefault('service_catalog', service_catalog)
+
+    # Preserve the timestamp set by the RequestId middleware
+    kwargs['timestamp'] = getattr(req.environ.get('cinder.context'),
+                                  'timestamp',
+                                  None)
+
+    # request ID and global ID are present in the environment req.environ
+    ctx = context.RequestContext.from_environ(req.environ, **kwargs)
+    req.environ['cinder.context'] = ctx
+    return ctx
+
+
 class InjectContext(base_wsgi.Middleware):
     """Add a 'cinder.context' to WSGI environ."""
 
@@ -75,53 +104,25 @@ class InjectContext(base_wsgi.Middleware):
 
 class CinderKeystoneContext(base_wsgi.Middleware):
     """Make a request context from keystone headers."""
+    ENV_OVERWRITES = {
+        'X_PROJECT_DOMAIN_ID': 'project_domain_id',
+        'X_PROJECT_DOMAIN_NAME': 'project_domain_name',
+        'X_USER_DOMAIN_ID': 'user_domain_id',
+        'X_USER_DOMAIN_NAME': 'user_domain_name',
+    }
 
     @webob.dec.wsgify(RequestClass=base_wsgi.Request)
     def __call__(self, req):
-
-        # NOTE(jamielennox): from_environ handles these in newer versions
-        project_name = req.headers.get('X_TENANT_NAME')
-        req_id = req.environ.get(request_id.ENV_REQUEST_ID)
-
-        # Build a context, including the auth_token...
-        remote_address = req.remote_addr
-
-        service_catalog = None
-        if req.headers.get('X_SERVICE_CATALOG') is not None:
-            try:
-                catalog_header = req.headers.get('X_SERVICE_CATALOG')
-                service_catalog = jsonutils.loads(catalog_header)
-            except ValueError:
-                raise webob.exc.HTTPInternalServerError(
-                    explanation=_('Invalid service catalog json.'))
-
-        if CONF.use_forwarded_for:
-            remote_address = req.headers.get('X-Forwarded-For', remote_address)
-
-        ctx = context.RequestContext.from_environ(
-            req.environ,
-            request_id=req_id,
-            remote_address=remote_address,
-            project_name=project_name,
-            service_catalog=service_catalog)
+        params = {'project_name': req.headers.get('X_TENANT_NAME')}
+        for env_name, param_name in self.ENV_OVERWRITES.items():
+            if req.environ.get(env_name):
+                params[param_name] = req.environ[env_name]
+        ctx = _set_request_context(req, **params)
 
         if ctx.user_id is None:
             LOG.debug("Neither X_USER_ID nor X_USER found in request")
             return webob.exc.HTTPUnauthorized()
 
-        if req.environ.get('X_PROJECT_DOMAIN_ID'):
-            ctx.project_domain_id = req.environ['X_PROJECT_DOMAIN_ID']
-
-        if req.environ.get('X_PROJECT_DOMAIN_NAME'):
-            ctx.project_domain_name = req.environ['X_PROJECT_DOMAIN_NAME']
-
-        if req.environ.get('X_USER_DOMAIN_ID'):
-            ctx.user_domain_id = req.environ['X_USER_DOMAIN_ID']
-
-        if req.environ.get('X_USER_DOMAIN_NAME'):
-            ctx.user_domain_name = req.environ['X_USER_DOMAIN_NAME']
-
-        req.environ['cinder.context'] = ctx
         return self.application
 
 
@@ -149,15 +150,8 @@ class NoAuthMiddlewareBase(base_wsgi.Middleware):
         token = req.headers['X-Auth-Token']
         user_id, _sep, project_id = token.partition(':')
         project_id = project_id or user_id
-        remote_address = getattr(req, 'remote_address', '127.0.0.1')
-        if CONF.use_forwarded_for:
-            remote_address = req.headers.get('X-Forwarded-For', remote_address)
-        ctx = context.RequestContext(user_id,
-                                     project_id,
-                                     is_admin=True,
-                                     remote_address=remote_address)
-
-        req.environ['cinder.context'] = ctx
+        _set_request_context(req, user_id=user_id, project_id=project_id,
+                             is_admin=True)
         return self.application
 
 
