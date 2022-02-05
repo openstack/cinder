@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Bug #1886543 <https://bugs.launchpad.net/cinder/+bug/1886543>`_:
+    On retypes requiring a migration, try to use the driver assisted mechanism
+    when moving from one backend to another when we know it's safe from the
+    volume type perspective.
