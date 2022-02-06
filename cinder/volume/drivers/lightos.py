@@ -814,7 +814,9 @@ class LightOSVolumeDriver(driver.VolumeDriver):
                    ' LightOS cluster subsysnqn')
             raise exception.VolumeBackendAPIException(message=msg)
 
-        hostnqn = self.connector.get_hostnqn()
+        hostnqn = (
+            self.connector.get_connector_properties(
+                utils.get_root_helper())['nqn'])
         if not hostnqn:
             msg = ("LIGHTOS: Cinder driver requires a local hostnqn for"
                    " image_to/from_volume operations")
@@ -1009,7 +1011,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         server_properties['lightos_nodes'] = lightos_targets
         server_properties['uuid'] = (
             self._get_lightos_uuid(project_name, volume))
-        server_properties['nqn'] = self.cluster.subsystemNQN
+        server_properties['subsysnqn'] = self.cluster.subsystemNQN
 
         return server_properties
 
@@ -1386,7 +1388,7 @@ class LightOSVolumeDriver(driver.VolumeDriver):
         return False
 
     def initialize_connection(self, volume, connector):
-        hostnqn = connector.get('hostnqn')
+        hostnqn = connector.get('nqn')
         found_dsc = connector.get('found_dsc')
         LOG.debug(
             'initialize_connection: connector hostnqn is %s found_dsc %s',
@@ -1412,12 +1414,11 @@ class LightOSVolumeDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(message=_(msg))
 
         props = self._get_connection_properties(project_name, volume)
-        props['hostnqn'] = hostnqn
         return {'driver_volume_type': ('lightos'), 'data': props}
 
     def terminate_connection(self, volume, connector, **kwargs):
         force = 'force' in kwargs
-        hostnqn = connector.get('hostnqn') if connector else None
+        hostnqn = connector.get('nqn') if connector else None
         LOG.debug(
             'terminate_connection: force %s kwargs %s hostnqn %s',
             force,
