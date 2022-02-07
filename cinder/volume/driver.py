@@ -646,15 +646,6 @@ class BaseVD(object, metaclass=abc.ABCMeta):
 
         return self._stats
 
-    def get_prefixed_property(self, property):
-        """Return prefixed property name
-
-        :returns: a prefixed property name string or None
-        """
-
-        if property and self.capabilities.get('vendor_prefix'):
-            return self.capabilities.get('vendor_prefix') + ':' + property
-
     def _set_property(self, properties, entry, title, description,
                       type, **kwargs):
         prop = dict(title=title, description=description, type=type)
@@ -1187,11 +1178,6 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         # this method.
         return True
 
-    def snapshot_remote_attachable(self):
-        # TODO(lixiaoy1): the method will be deleted later when remote
-        # attach snapshot is implemented.
-        return False
-
     def get_backup_device(self, context, backup):
         """Get a backup device from an existing volume.
 
@@ -1721,10 +1707,6 @@ class BaseVD(object, metaclass=abc.ABCMeta):
         # Check if method is being implemented/overwritten by the driver
         method_name = cls.REPLICATION_FEATURE_CHECKERS[feature]
         return not cls._is_base_method(method_name)
-
-    def get_replication_updates(self, context):
-        """Old replication update method, deprecate."""
-        raise NotImplementedError()
 
     def create_group(self, context, group):
         """Creates a group.
@@ -2762,22 +2744,6 @@ class ISCSIDriver(VolumeDriver):
         LOG.debug("iscsiadm %(command)s: stdout=%(out)s stderr=%(err)s",
                   {'command': iscsi_command, 'out': out, 'err': err})
         return (out, err)
-
-    def _run_iscsiadm_bare(self, iscsi_command, **kwargs):
-        check_exit_code = kwargs.pop('check_exit_code', 0)
-        (out, err) = self._execute('iscsiadm',
-                                   *iscsi_command,
-                                   run_as_root=True,
-                                   check_exit_code=check_exit_code)
-        LOG.debug("iscsiadm %(command)s: stdout=%(out)s stderr=%(err)s",
-                  {'command': iscsi_command, 'out': out, 'err': err})
-        return (out, err)
-
-    def _iscsiadm_update(self, iscsi_properties, property_key, property_value,
-                         **kwargs):
-        iscsi_command = ('--op', 'update', '-n', property_key,
-                         '-v', property_value)
-        return self._run_iscsiadm(iscsi_properties, iscsi_command, **kwargs)
 
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.

@@ -1315,15 +1315,6 @@ class API(base.Base):
                  resource=volume)
         return db_meta
 
-    def get_volume_admin_metadata(self,
-                                  context: context.RequestContext,
-                                  volume: objects.Volume) -> dict:
-        """Get all administration metadata associated with a volume."""
-        rv = self.db.volume_admin_metadata_get(context, volume['id'])
-        LOG.info("Get volume admin metadata completed successfully.",
-                 resource=volume)
-        return dict(rv)
-
     def update_volume_admin_metadata(self,
                                      context: context.RequestContext,
                                      volume: objects.Volume,
@@ -2544,18 +2535,4 @@ class HostAPI(base.Base):
 
     def set_host_enabled(self, context, host, enabled):
         """Sets the specified host's ability to accept new volumes."""
-        raise NotImplementedError()
-
-    def get_host_uptime(self, context, host):
-        """Returns the result of calling "uptime" on the target host."""
-        raise NotImplementedError()
-
-    def host_power_action(self, context, host, action):
-        raise NotImplementedError()
-
-    def set_host_maintenance(self, context, host, mode):
-        """Start/Stop host maintenance window.
-
-        On start, it triggers volume evacuation.
-        """
         raise NotImplementedError()

@@ -44,7 +44,6 @@ class FilterScheduler(driver.Scheduler):
     """Scheduler that can be used for filtering and weighing."""
     def __init__(self, *args, **kwargs):
         super(FilterScheduler, self).__init__(*args, **kwargs)
-        self.cost_function_cache = None
         self.options = scheduler_options.SchedulerOptions()
         self.max_attempts = self._max_attempts()
 
