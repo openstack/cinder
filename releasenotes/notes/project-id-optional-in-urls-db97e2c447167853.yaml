@@ -1,0 +1,25 @@
+---
+features:
+  - |
+    Inclusion of a project_id in API URLs is now optional. The `Block Storage
+    API V3 <https://docs.openstack.org/api-ref/block-storage/v3>`_ reference
+    guide continues to show URLs with a project_id because the legacy behavior
+    continues to be supported.
+
+    A new API microversion V3.67 is introduced to inform clients when
+    inclusion of a project_id in API URLs is optional. The V3.67 microversion
+    is only used as an indicator that the API accepts a URL without a
+    project_id, and this applies to all requests regardless of the
+    microversion in the request. For example, an API node serving V3.67 or
+    greater will accept a URL without a project_id even if the request asks
+    for V3.0. Likewise, it will accept a URL containing a project_id even if
+    the request asks for V3.67.
+upgrade:
+  - |
+    Upgrades are not affected by the new functionality whereby a project_id
+    is no longer required in API URLs. The legacy behavior in which a
+    project_id is included in the URL continues to be supported.
+
+    Detection of whether a URL includes a project_id is based on the value of
+    a new ``project_id_regex`` option.  The default value matches UUIDs
+    created by keystone.

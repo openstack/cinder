@@ -412,7 +412,7 @@ class VolumeApiTest(test.TestCase):
         snapshot_id = fake.SNAPSHOT_ID
         ex = self._expected_vol_from_controller(snapshot_id=snapshot_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.headers = mv.get_mv_header(mv.SUPPORT_NOVA_IMAGE)
         req.api_version_request = mv.get_api_version(mv.SUPPORT_NOVA_IMAGE)
         res_dict = self.controller.create(req, body=body)
@@ -736,7 +736,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(snapshot_id=snapshot_id,
                                         group_id=fake.GROUP_ID)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.api_version_request = mv.get_api_version(max_ver)
         res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller(
@@ -771,7 +771,7 @@ class VolumeApiTest(test.TestCase):
         volume_type_get.side_effect = v2_fakes.fake_volume_type_get
 
         backup_id = fake.BACKUP_ID
-        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.api_version_request = mv.get_api_version(max_ver)
         if max_ver == mv.VOLUME_CREATE_FROM_BACKUP:
             vol = self._vol_in_request_body(backup_id=backup_id)

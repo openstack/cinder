@@ -10,6 +10,7 @@ use = call:cinder.api:root_app_factory
 [composite:openstack_volume_api_v3]
 use = call:cinder.api.middleware.auth:pipeline_factory
 noauth = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth apiv3
+noauth_include_project_id = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler noauth_include_project_id apiv3
 keystone = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
 keystone_nolimit = cors http_proxy_to_wsgi request_id faultwrap sizelimit osprofiler authtoken keystonecontext apiv3
 
@@ -31,6 +32,9 @@ paste.filter_factory = osprofiler.web:WsgiMiddleware.factory
 
 [filter:noauth]
 paste.filter_factory = cinder.api.middleware.auth:NoAuthMiddleware.factory
+
+[filter:noauth_include_project_id]
+paste.filter_factory = cinder.api.middleware.auth:NoAuthMiddlewareIncludeProjectID.factory
 
 [filter:sizelimit]
 paste.filter_factory = oslo_middleware.sizelimit:RequestBodySizeLimiter.factory

@@ -4,6 +4,25 @@
 Block Storage API V3 (CURRENT)
 ==============================
 
+.. note::
+   The URL for most API methods includes a {project_id} placeholder that
+   represents the caller's project ID. As of V3.67, the project_id is optional
+   in the URL, and the following are equivalent:
+
+      * GET /v3/{project_id}/volumes
+      * GET /v3/volumes
+
+   In both instances, the actual project_id used by the API method is the one
+   in the caller's keystone context. For that reason, including a project_id
+   in the URL is redundant.
+
+   The V3.67 microversion is only used as an indicator that the API accepts a
+   URL without a project_id, and this applies to all requests regardless of
+   the microversion in the request. For example, an API node serving V3.67 or
+   greater will accept a URL without a project_id even if the request asks for
+   V3.0. Likewise, it will accept a URL containing a project_id even if the
+   request asks for V3.67.
+
 .. rest_expand_all::
 
 .. First thing we want to see is the version discovery document.

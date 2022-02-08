@@ -469,7 +469,7 @@ class MessageApiTest(test.TestCase):
         self.create_message_for_tests()
 
         # first request of this test
-        url = '/v3/fake/messages?limit=2'
+        url = '/v3/%s/messages?limit=2' % fake_constants.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'
@@ -489,8 +489,8 @@ class MessageApiTest(test.TestCase):
         # Second request in this test
         # Test for second page using marker (res['messages][0]['id'])
         # values fetched in first request with limit 2 in this test
-        url = '/v3/fake/messages?limit=1&marker=%s' % (
-            res['messages'][0]['id'])
+        url = '/v3/%s/messages?limit=1&marker=%s' % (
+            fake_constants.PROJECT_ID, res['messages'][0]['id'])
         req = fakes.HTTPRequest.blank(url)
         req.method = 'GET'
         req.content_type = 'application/json'

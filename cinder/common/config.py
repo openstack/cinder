@@ -147,9 +147,12 @@ auth_opts = [
     cfg.StrOpt('auth_strategy',
                default='keystone',
                choices=[('noauth', 'Do not perform authentication'),
+                        ('noauth_include_project_id',
+                         'Do not perform authentication, and include a'
+                         ' project_id in API URLs'),
                         ('keystone', 'Authenticate using keystone')],
-               help='The strategy to use for auth. Supports noauth or '
-                    'keystone.'),
+               help='The strategy to use for auth. Supports noauth,'
+                    ' noauth_include_project_id or keystone.'),
 ]
 
 backup_opts = [

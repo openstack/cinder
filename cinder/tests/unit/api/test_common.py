@@ -25,6 +25,8 @@ import webob
 import webob.exc
 
 from cinder.api import common
+from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import test
 
 
@@ -357,6 +359,45 @@ class TestCollectionLinks(test.TestCase):
         """
         self._validate_next_link(item_count, osapi_max_limit, limit,
                                  should_link_exist)
+
+    @ddt.data(
+        {
+            # The project_id in the context matches the one in the v3 URL.
+            'project_id': fake_constants.PROJECT_ID,
+            'url': '/v3/%s/something' % fake_constants.PROJECT_ID,
+            'expected': fake_constants.PROJECT_ID,
+        },
+        {
+            # The project_id in the context does NOT match the one in the URL.
+            'project_id': fake_constants.PROJECT2_ID,
+            'url': '/v3/%s/something' % fake_constants.PROJECT_ID,
+            'expected': '',
+        },
+        {
+            # The context does not include a project_id (it's system scoped).
+            'project_id': None,
+            'url': '/v3/%s/something' % fake_constants.PROJECT_ID,
+            'expected': '',
+        },
+        {
+            # The v3 URL does not contain a project ID.
+            'project_id': fake_constants.PROJECT_ID,
+            'url': '/v3/something',
+            'expected': '',
+        },
+        {
+            # The URL doesn't specify v3.
+            'project_id': fake_constants.PROJECT_ID,
+            'url': '/vX/%s/something' % fake_constants.PROJECT_ID,
+            'expected': '',
+        },
+    )
+    @ddt.unpack
+    def test_project_id_in_url(self, project_id, url, expected):
+        req = fakes.HTTPRequest.blank(url)
+        req.environ['cinder.context'].project_id = project_id
+        actual = common.ViewBuilder()._get_project_id_in_url(req)
+        self.assertEqual(expected, actual)
 
 
 @ddt.ddt

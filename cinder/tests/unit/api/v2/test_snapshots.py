@@ -102,7 +102,7 @@ class SnapshotApiTest(test.TestCase):
         }
 
         body = dict(snapshot=snapshot)
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         resp_dict = self.controller.create(req, body=body)
 
         self.assertIn('snapshot', resp_dict)
@@ -123,7 +123,7 @@ class SnapshotApiTest(test.TestCase):
         }
 
         body = dict(snapshot=snapshot)
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         resp_dict = self.controller.create(req, body=body)
 
         self.assertIn('snapshot', resp_dict)
@@ -144,7 +144,7 @@ class SnapshotApiTest(test.TestCase):
             "description": snapshot_description
         }
         body = dict(snapshot=snapshot)
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         resp_dict = self.controller.create(req, body=body)
 
         self.assertIn('snapshot', resp_dict)
@@ -169,7 +169,7 @@ class SnapshotApiTest(test.TestCase):
             "description": snapshot_description
         }
         body = dict(snapshot=snapshot)
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         self.assertRaises(exception.InvalidVolume,
                           self.controller.create,
                           req,
@@ -192,7 +192,7 @@ class SnapshotApiTest(test.TestCase):
             "description": snapshot_description
         }
         body = dict(snapshot=snapshot)
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
@@ -210,7 +210,7 @@ class SnapshotApiTest(test.TestCase):
                 "description": snapshot_description
             }
         }
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         self.assertRaises(exception.ValidationError,
                           self.controller.create, req, body=body)
 
@@ -223,7 +223,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_create_with_leading_trailing_spaces(self, body):
         volume = utils.create_volume(self.ctx, volume_type_id=None)
         body['snapshot']['volume_id'] = volume.id
-        req = fakes.HTTPRequest.blank('/v2/snapshots')
+        req = fakes.HTTPRequest.blank('/v3/snapshots')
         resp_dict = self.controller.create(req, body=body)
 
         self.assertEqual(body['snapshot']['display_name'].strip(),
@@ -259,7 +259,7 @@ class SnapshotApiTest(test.TestCase):
             "name": "Updated Test Name",
         }
         body = {"snapshot": updates}
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
         req.environ['cinder.context'] = self.ctx
         res_dict = self.controller.update(req, UUID, body=body)
         expected = {
@@ -307,7 +307,7 @@ class SnapshotApiTest(test.TestCase):
             "description": None,
         }
         body = {"snapshot": updates}
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
         req.environ['cinder.context'] = self.ctx
         res_dict = self.controller.update(req, UUID, body=body)
 
@@ -318,13 +318,13 @@ class SnapshotApiTest(test.TestCase):
 
     def test_snapshot_update_missing_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
         self.assertRaises(exception.ValidationError,
                           self.controller.update, req, UUID, body=body)
 
     def test_snapshot_update_invalid_body(self):
         body = {'name': 'missing top level snapshot key'}
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
         self.assertRaises(exception.ValidationError,
                           self.controller.update, req, UUID, body=body)
 
@@ -334,7 +334,7 @@ class SnapshotApiTest(test.TestCase):
             "name": "Updated Test Name",
         }
         body = {"snapshot": updates}
-        req = fakes.HTTPRequest.blank('/v2/snapshots/not-the-uuid')
+        req = fakes.HTTPRequest.blank('/v3/snapshots/not-the-uuid')
         self.assertRaises(exception.SnapshotNotFound, self.controller.update,
                           req, 'not-the-uuid', body=body)
 
@@ -366,7 +366,7 @@ class SnapshotApiTest(test.TestCase):
             "description": "     test     "
         }
         body = {"snapshot": updates}
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
         req.environ['cinder.context'] = self.ctx
         res_dict = self.controller.update(req, UUID, body=body)
         expected = {
@@ -408,7 +408,7 @@ class SnapshotApiTest(test.TestCase):
         volume_get_by_id.return_value = fake_volume_obj
 
         snapshot_id = UUID
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % snapshot_id)
         req.environ['cinder.context'] = self.ctx
         resp = self.controller.delete(req, snapshot_id)
         self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
@@ -417,7 +417,7 @@ class SnapshotApiTest(test.TestCase):
         self.mock_object(volume.api.API, "delete_snapshot",
                          fake_snapshot_delete)
         snapshot_id = INVALID_UUID
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % snapshot_id)
         self.assertRaises(exception.SnapshotNotFound, self.controller.delete,
                           req, snapshot_id)
 
@@ -439,7 +439,7 @@ class SnapshotApiTest(test.TestCase):
         fake_volume_obj = fake_volume.fake_volume_obj(self.ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % UUID)
         req.environ['cinder.context'] = self.ctx
         resp_dict = self.controller.show(req, UUID)
 
@@ -449,7 +449,7 @@ class SnapshotApiTest(test.TestCase):
 
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
-        req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
+        req = fakes.HTTPRequest.blank('/v3/snapshots/%s' % snapshot_id)
         self.assertRaises(exception.SnapshotNotFound,
                           self.controller.show, req, snapshot_id)
 
@@ -476,7 +476,7 @@ class SnapshotApiTest(test.TestCase):
         snapshots = objects.SnapshotList(objects=[snapshot_obj])
         get_all_snapshots.return_value = snapshots
 
-        req = fakes.HTTPRequest.blank('/v2/snapshots/detail')
+        req = fakes.HTTPRequest.blank('/v3/snapshots/detail')
         resp_dict = self.controller.detail(req)
 
         self.assertIn('snapshots', resp_dict)
@@ -494,7 +494,7 @@ class SnapshotApiTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_limited_to_project(self,
                                                      snapshot_metadata_get):
-        req = fakes.HTTPRequest.blank('/v2/%s/snapshots' % fake.PROJECT_ID,
+        req = fakes.HTTPRequest.blank('/v3/%s/snapshots' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res = self.controller.index(req)
 
@@ -505,7 +505,7 @@ class SnapshotApiTest(test.TestCase):
     def test_list_snapshots_with_limit_and_offset(self,
                                                   snapshot_metadata_get):
         def list_snapshots_with_limit_and_offset(snaps, is_admin):
-            req = fakes.HTTPRequest.blank('/v2/%s/snapshots?limit=1'
+            req = fakes.HTTPRequest.blank('/v3/%s/snapshots?limit=1'
                                           '&offset=1' % fake.PROJECT_ID,
                                           use_admin_context=is_admin)
             res = self.controller.index(req)
@@ -517,7 +517,7 @@ class SnapshotApiTest(test.TestCase):
 
             # Test that we get an empty list with an offset greater than the
             # number of items
-            req = fakes.HTTPRequest.blank('/v2/snapshots?limit=1&offset=3')
+            req = fakes.HTTPRequest.blank('/v3/snapshots?limit=1&offset=3')
             self.assertEqual({'snapshots': []}, self.controller.index(req))
 
         volume, snaps = self._create_db_snapshots(3)
@@ -535,32 +535,32 @@ class SnapshotApiTest(test.TestCase):
         mock_snapshot_get_all.return_value = []
 
         # Negative limit
-        req = fakes.HTTPRequest.blank('/v2/snapshots?limit=-1&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/snapshots?limit=-1&offset=1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
         # Non numeric limit
-        req = fakes.HTTPRequest.blank('/v2/snapshots?limit=a&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/snapshots?limit=a&offset=1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
         # Negative offset
-        req = fakes.HTTPRequest.blank('/v2/snapshots?limit=1&offset=-1')
+        req = fakes.HTTPRequest.blank('/v3/snapshots?limit=1&offset=-1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
         # Non numeric offset
-        req = fakes.HTTPRequest.blank('/v2/snapshots?limit=1&offset=a')
+        req = fakes.HTTPRequest.blank('/v3/snapshots?limit=1&offset=a')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
         # Test that we get an exception HTTPBadRequest(400) with an offset
         # greater than the maximum offset value.
-        url = '/v2/snapshots?limit=1&offset=323245324356534235'
+        url = '/v3/snapshots?limit=1&offset=323245324356534235'
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index, req)
@@ -569,8 +569,8 @@ class SnapshotApiTest(test.TestCase):
                           **kwargs):
         """Check a page of snapshots list."""
         # Since we are accessing v2 api directly we don't need to specify
-        # v2 in the request path, if we did, we'd get /v2/v2 links back
-        request_path = '/v2/%s/snapshots' % project
+        # v2 in the request path, if we did, we'd get /v3/v2 links back
+        request_path = '/v3/%s/snapshots' % project
         expected_path = request_path
 
         # Construct the query if there are kwargs
@@ -679,7 +679,7 @@ class SnapshotApiTest(test.TestCase):
                        v2_fakes.fake_snapshot_get_all)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_all_tenants(self, snapshot_metadata_get):
-        req = fakes.HTTPRequest.blank('/v2/%s/snapshots?all_tenants=1' %
+        req = fakes.HTTPRequest.blank('/v3/%s/snapshots?all_tenants=1' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
         res = self.controller.index(req)
@@ -700,7 +700,7 @@ class SnapshotApiTest(test.TestCase):
 
         snapshot_get_all.side_effect = get_all
 
-        req = fakes.HTTPRequest.blank('/v2/%s/snapshots?all_tenants=1'
+        req = fakes.HTTPRequest.blank('/v3/%s/snapshots?all_tenants=1'
                                       '&project_id=tenant1' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res = self.controller.index(req)
@@ -712,7 +712,7 @@ class SnapshotApiTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_all_tenants_non_admin_gets_all_tenants(self,
                                                     snapshot_metadata_get):
-        req = fakes.HTTPRequest.blank('/v2/%s/snapshots?all_tenants=1' %
+        req = fakes.HTTPRequest.blank('/v3/%s/snapshots?all_tenants=1' %
                                       fake.PROJECT_ID)
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
@@ -724,13 +724,13 @@ class SnapshotApiTest(test.TestCase):
                        v2_fakes.fake_snapshot_get_all)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_non_admin_get_by_project(self, snapshot_metadata_get):
-        req = fakes.HTTPRequest.blank('/v2/%s/snapshots' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/snapshots' % fake.PROJECT_ID)
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
 
     def _create_snapshot_bad_body(self, body):
-        req = fakes.HTTPRequest.blank('/v2/%s/snapshots' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/snapshots' % fake.PROJECT_ID)
         req.method = 'POST'
 
         self.assertRaises(exception.ValidationError,

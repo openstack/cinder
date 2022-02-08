@@ -68,7 +68,8 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get', v3_fakes.fake_message_get)
 
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
+            '/v3/fakeproject/messages/%s' % fakes.FAKE_UUID,
+            version=mv.MESSAGES)
         req.environ['cinder.context'] = self.ctxt
 
         res_dict = self.controller.show(req, fakes.FAKE_UUID)
@@ -142,7 +143,8 @@ class MessageApiTest(test.TestCase):
         self.mock_object(message_api.API, 'get_all',
                          return_value=[v3_fakes.fake_message(fakes.FAKE_UUID)])
         req = fakes.HTTPRequest.blank(
-            '/v3/messages/%s' % fakes.FAKE_UUID, version=mv.MESSAGES)
+            '/v3/fakeproject/messages/%s' % fakes.FAKE_UUID,
+            version=mv.MESSAGES)
         req.environ['cinder.context'] = self.ctxt
 
         res_dict = self.controller.index(req)

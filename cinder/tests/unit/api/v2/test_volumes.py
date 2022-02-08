@@ -93,7 +93,7 @@ class VolumeApiTest(test.TestCase):
 
         vol = self._vol_in_request_body()
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
         ex = self._expected_vol_from_controller()
         self.assertEqual(ex, res_dict)
@@ -112,7 +112,7 @@ class VolumeApiTest(test.TestCase):
 
         vol = self._vol_in_request_body(volume_type="FakeTypeName")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 404 when type name isn't valid
         self.assertRaises(exception.VolumeTypeNotFoundByName,
                           self.controller.create, req, body=body)
@@ -143,7 +143,7 @@ class VolumeApiTest(test.TestCase):
         db.sqlalchemy.api._GET_METHODS = {}
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         res_dict = self.controller.detail(req)
         self.assertTrue(mock_validate.called)
 
@@ -207,11 +207,11 @@ class VolumeApiTest(test.TestCase):
                    'description': description,
                    'id': v2_fakes.DEFAULT_VOL_ID,
                    'links':
-                   [{'href': 'http://localhost/v2/%s/volumes/%s' % (
-                             fake.PROJECT_ID, fake.VOLUME_ID),
+                   [{'href': 'http://localhost/v3/volumes/%s' % (
+                             fake.VOLUME_ID),
                      'rel': 'self'},
-                    {'href': 'http://localhost/%s/volumes/%s' % (
-                             fake.PROJECT_ID, fake.VOLUME_ID),
+                    {'href': 'http://localhost/volumes/%s' % (
+                             fake.VOLUME_ID),
                      'rel': 'bookmark'}],
                    'metadata': metadata,
                    'name': name,
@@ -256,7 +256,7 @@ class VolumeApiTest(test.TestCase):
         snapshot_id = fake.SNAPSHOT_ID
         vol = self._vol_in_request_body(snapshot_id=snapshot_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
 
         ex = self._expected_vol_from_controller(snapshot_id=snapshot_id)
@@ -282,7 +282,7 @@ class VolumeApiTest(test.TestCase):
         snapshot_id = fake.WILL_NOT_BE_FOUND_ID
         vol = self._vol_in_request_body(snapshot_id=snapshot_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 404 when snapshot cannot be found.
         self.assertRaises(exception.SnapshotNotFound, self.controller.create,
                           req, body=body)
@@ -297,7 +297,7 @@ class VolumeApiTest(test.TestCase):
         snapshot_id = value
         vol = self._vol_in_request_body(snapshot_id=snapshot_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 400 when snapshot has not uuid type.
         self.assertRaises(exception.ValidationError, self.controller.create,
                           req, body=body)
@@ -315,7 +315,7 @@ class VolumeApiTest(test.TestCase):
         source_volid = '2f49aa3a-6aae-488d-8b99-a43271605af6'
         vol = self._vol_in_request_body(source_volid=source_volid)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
 
         ex = self._expected_vol_from_controller(source_volid=source_volid)
@@ -344,7 +344,7 @@ class VolumeApiTest(test.TestCase):
         source_volid = fake.VOLUME_ID
         vol = self._vol_in_request_body(source_volid=source_volid)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 404 when source volume cannot be found.
         self.assertRaises(exception.VolumeNotFound, self.controller.create,
                           req, body=body)
@@ -361,7 +361,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body()
         vol.update(updated_uuids)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 400 for resource requested with invalid uuids.
         self.assertRaises(exception.ValidationError, self.controller.create,
                           req, body=body)
@@ -376,7 +376,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(
             consistencygroup_id=consistencygroup_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         # Raise 404 when consistency group is not found.
         self.assertRaises(exception.GroupNotFound,
                           self.controller.create, req, body=body)
@@ -388,7 +388,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_creation_fails_with_bad_size(self):
         vol = self._vol_in_request_body(size="")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
@@ -397,7 +397,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_creation_fails_with_bad_availability_zone(self):
         vol = self._vol_in_request_body(availability_zone="zonen:hostn")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(exception.InvalidAvailabilityZone,
                           self.controller.create,
                           req, body=body)
@@ -415,7 +415,7 @@ class VolumeApiTest(test.TestCase):
             image_ref="c905cedb-7281-47e4-8a62-f26bc5fc4c77")
         ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
         self.assertTrue(mock_validate.called)
@@ -425,7 +425,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref=1234)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
@@ -439,7 +439,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="12345")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
@@ -453,7 +453,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
@@ -472,7 +472,7 @@ class VolumeApiTest(test.TestCase):
             image_id="c905cedb-7281-47e4-8a62-f26bc5fc4c77")
         ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
         self.assertTrue(mock_validate.called)
@@ -482,7 +482,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id=1234)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
                           req,
@@ -496,7 +496,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="12345")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
@@ -510,7 +510,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
@@ -532,7 +532,7 @@ class VolumeApiTest(test.TestCase):
                                         image_ref=test_id)
         ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
         self.assertEqual(ex, res_dict)
 
@@ -547,7 +547,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="nova",
                                         image_ref=test_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.create,
                           req,
@@ -564,7 +564,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(availability_zone="nova",
                                         image_ref=test_id)
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create,
                           req,
@@ -573,7 +573,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_invalid_multiattach(self):
         vol = self._vol_in_request_body(multiattach="InvalidBool")
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
 
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
@@ -596,7 +596,7 @@ class VolumeApiTest(test.TestCase):
 
         ex = self._expected_vol_from_controller(multiattach=True)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
         res_dict = self.controller.create(req, body=body)
 
         self.assertEqual(ex, res_dict)
@@ -609,7 +609,7 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body()
         vol['metadata'] = value
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/volumes')
 
         self.assertRaises(exception.ValidationError,
                           self.controller.create,
@@ -630,7 +630,7 @@ class VolumeApiTest(test.TestCase):
             "description": body['description']
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
         name = updates["name"].strip()
         description = updates["description"].strip()
@@ -655,7 +655,7 @@ class VolumeApiTest(test.TestCase):
             "display_description": "Updated Test Description",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
@@ -682,7 +682,7 @@ class VolumeApiTest(test.TestCase):
             "display_description": "Not Shown Description",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
@@ -705,7 +705,7 @@ class VolumeApiTest(test.TestCase):
             "metadata": {"qos_max_iops": '2000'}
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, fake.VOLUME_ID, body=body)
         expected = self._expected_vol_from_controller(
@@ -743,7 +743,7 @@ class VolumeApiTest(test.TestCase):
             "name": "Updated Test Name",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
         admin_ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req.environ['cinder.context'] = admin_ctx
@@ -780,7 +780,7 @@ class VolumeApiTest(test.TestCase):
             "metadata": value
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
 
         self.assertRaises(exception.ValidationError,
                           self.controller.update,
@@ -788,7 +788,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_update_empty_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertRaises(exception.ValidationError,
                           self.controller.update,
                           req, fake.VOLUME_ID, body=body)
@@ -797,7 +797,7 @@ class VolumeApiTest(test.TestCase):
         body = {
             'name': 'missing top level volume key'
         }
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertRaises(exception.ValidationError,
                           self.controller.update,
                           req, fake.VOLUME_ID, body=body)
@@ -807,7 +807,7 @@ class VolumeApiTest(test.TestCase):
               {'display_name': 'a' * 256},
               {'display_description': 'a' * 256})
     def test_update_exceeds_length_name_description(self, vol):
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         body = {'volume': vol}
         self.assertRaises(exception.InvalidInput,
                           self.controller.update,
@@ -820,7 +820,7 @@ class VolumeApiTest(test.TestCase):
             "name": "Updated Test Name",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertRaises(exception.VolumeNotFound,
                           self.controller.update,
                           req, fake.VOLUME_ID, body=body)
@@ -831,7 +831,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
         expected = {
             'volumes': [
@@ -840,7 +840,7 @@ class VolumeApiTest(test.TestCase):
                     'id': fake.VOLUME_ID,
                     'links': [
                         {
-                            'href': 'http://localhost/v2/%s/volumes/%s' % (
+                            'href': 'http://localhost/v3/%s/volumes/%s' % (
                                     fake.PROJECT_ID, fake.VOLUME_ID),
                             'rel': 'self'
                         },
@@ -863,7 +863,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         res_dict = self.controller.detail(req)
         exp_vol = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
@@ -892,7 +892,7 @@ class VolumeApiTest(test.TestCase):
                                               attachment['id'])
         volume_tmp = db.volume_get(context.get_admin_context(), fake.VOLUME_ID)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         admin_ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.detail(req)
@@ -928,7 +928,7 @@ class VolumeApiTest(test.TestCase):
         db.volume_attachment_get(context.get_admin_context(),
                                  attachment['id'])
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail')
         res_dict = self.controller.detail(req)
         # host_name will always be None for non-admins
         self.assertIsNone(
@@ -958,7 +958,7 @@ class VolumeApiTest(test.TestCase):
                          fake_volume_get_all_by_project)
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?marker=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes?marker=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
@@ -970,9 +970,9 @@ class VolumeApiTest(test.TestCase):
                          v2_fakes.fake_volume_get_all_by_project)
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes'
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes'
                                       '?limit=1&name=foo'
-                                      '&sort=id1:asc')
+                                      '&sort=id1:asc' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
@@ -985,7 +985,7 @@ class VolumeApiTest(test.TestCase):
         links = res_dict['volumes_links']
         self.assertEqual('next', links[0]['rel'])
         href_parts = urllib.parse.urlparse(links[0]['href'])
-        self.assertEqual('/v2/%s/volumes' % fake.PROJECT_ID, href_parts.path)
+        self.assertEqual('/v3/%s/volumes' % fake.PROJECT_ID, href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
         self.assertEqual(str(volumes[0]['id']), params['marker'][0])
         self.assertEqual('1', params['limit'][0])
@@ -993,13 +993,13 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual('id1:asc', params['sort'][0])
 
     def test_volume_index_limit_negative(self):
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
+        req = fakes.HTTPRequest.blank('/v3/volumes?limit=-1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
     def test_volume_index_limit_non_int(self):
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=a')
+        req = fakes.HTTPRequest.blank('/v3/volumes?limit=a')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
@@ -1009,7 +1009,7 @@ class VolumeApiTest(test.TestCase):
                          v2_fakes.fake_volume_get_all_by_project)
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?marker=1&limit=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes?marker=1&limit=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
@@ -1025,25 +1025,25 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_index_limit_offset(self):
         created_volumes = self._create_db_volumes(2)
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=2&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes?limit=2&offset=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
         self.assertEqual(created_volumes[1].id, volumes[0]['id'])
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes?limit=-1&offset=1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=a&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes?limit=a&offset=1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
         # Test that we get an exception HTTPBadRequest(400) with an offset
         # greater than the maximum offset value.
-        url = '/v2/volumes?limit=2&offset=43543564546567575'
+        url = '/v3/volumes?limit=2&offset=43543564546567575'
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
@@ -1066,7 +1066,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?marker=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
@@ -1078,7 +1078,8 @@ class VolumeApiTest(test.TestCase):
                          v2_fakes.fake_volume_get_all_by_project)
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=1')
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/detail?limit=1'
+                                      % fake.PROJECT_ID)
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
@@ -1087,20 +1088,20 @@ class VolumeApiTest(test.TestCase):
         links = res_dict['volumes_links']
         self.assertEqual('next', links[0]['rel'])
         href_parts = urllib.parse.urlparse(links[0]['href'])
-        self.assertEqual('/v2/%s/volumes/detail' % fake.PROJECT_ID,
+        self.assertEqual('/v3/%s/volumes/detail' % fake.PROJECT_ID,
                          href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
         self.assertIn('marker', params)
         self.assertEqual('1', params['limit'][0])
 
     def test_volume_detail_limit_negative(self):
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?limit=-1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
     def test_volume_detail_limit_non_int(self):
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?limit=a')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
@@ -1111,7 +1112,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1&limit=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?marker=1&limit=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
@@ -1119,30 +1120,30 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_detail_limit_offset(self):
         created_volumes = self._create_db_volumes(2)
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?limit=2&offset=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
         self.assertEqual(created_volumes[1].id, volumes[0]['id'])
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1',
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?limit=2&offset=1',
                                       use_admin_context=True)
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
         self.assertEqual(created_volumes[1].id, volumes[0]['id'])
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?limit=-1&offset=1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a&offset=1')
+        req = fakes.HTTPRequest.blank('/v3/volumes/detail?limit=a&offset=1')
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
-        url = '/v2/volumes/detail?limit=2&offset=4536546546546467'
+        url = '/v3/volumes/detail?limit=2&offset=4536546546546467'
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
@@ -1152,7 +1153,7 @@ class VolumeApiTest(test.TestCase):
         def fake_volume_get_all(context, marker, limit, **kwargs):
             return []
         self.mock_object(db, 'volume_get_all', fake_volume_get_all)
-        req = fakes.HTTPRequest.blank('/v2/volumes?limit=0')
+        req = fakes.HTTPRequest.blank('/v3/volumes?limit=0')
         res_dict = self.controller.index(req)
         expected = {'volumes': []}
         self.assertEqual(expected, res_dict)
@@ -1163,7 +1164,7 @@ class VolumeApiTest(test.TestCase):
                     ('volumes/detail', self.controller.detail))
         key, fn = keys_fns[detailed]
 
-        req_string = '/v2/%s?all_tenants=1' % key
+        req_string = '/v3/%s?all_tenants=1' % key
         if limit:
             req_string += '&limit=%s' % limit
         req = fakes.HTTPRequest.blank(req_string, use_admin_context=True)
@@ -1255,7 +1256,7 @@ class VolumeApiTest(test.TestCase):
 
         # all_tenants does not matter for non-admin
         for params in ['', '?all_tenants=1']:
-            req = fakes.HTTPRequest.blank('/v2/volumes%s' % params)
+            req = fakes.HTTPRequest.blank('/v3/volumes%s' % params)
             resp = self.controller.index(req)
             self.assertEqual(1, len(resp['volumes']))
             self.assertEqual('vol1', resp['volumes'][0]['name'])
@@ -1280,7 +1281,7 @@ class VolumeApiTest(test.TestCase):
                          fake_volume_get_all_by_project2)
         self.mock_object(db, 'volume_get_all', fake_volume_get_all2)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes', use_admin_context=True)
+        req = fakes.HTTPRequest.blank('/v3/volumes', use_admin_context=True)
         resp = self.controller.index(req)
         self.assertEqual(1, len(resp['volumes']))
         self.assertEqual('vol2', resp['volumes'][0]['name'])
@@ -1306,7 +1307,7 @@ class VolumeApiTest(test.TestCase):
                          fake_volume_get_all_by_project3)
         self.mock_object(db, 'volume_get_all', fake_volume_get_all3)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes?all_tenants=1',
+        req = fakes.HTTPRequest.blank('/v3/volumes?all_tenants=1',
                                       use_admin_context=True)
         resp = self.controller.index(req)
         self.assertEqual(1, len(resp['volumes']))
@@ -1317,7 +1318,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
@@ -1344,7 +1345,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         expected = self._expected_vol_from_controller(
             availability_zone=v2_fakes.DEFAULT_AZ,
@@ -1356,7 +1357,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(volume_api.API, "get",
                          v2_fakes.fake_volume_get_notfound)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertRaises(exception.VolumeNotFound, self.controller.show,
                           req, 1)
         # Finally test that nothing was cached
@@ -1380,7 +1381,7 @@ class VolumeApiTest(test.TestCase):
         attach_tmp = db.volume_attachment_get(context.get_admin_context(),
                                               attachment['id'])
         volume_tmp = db.volume_get(context.get_admin_context(), fake.VOLUME_ID)
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         admin_ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.show(req, fake.VOLUME_ID)
@@ -1412,7 +1413,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         self.assertTrue(res_dict['volume']['encrypted'])
 
@@ -1421,7 +1422,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         self.assertEqual(False, res_dict['volume']['encrypted'])
 
@@ -1435,14 +1436,14 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
                          v2_fakes.fake_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         self.assertEqual('deleting', res_dict['volume']['status'])
 
     @mock.patch.object(volume_api.API, 'delete', v2_fakes.fake_volume_delete)
     @mock.patch.object(volume_api.API, 'get', v2_fakes.fake_volume_get)
     def test_volume_delete(self):
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         resp = self.controller.delete(req, fake.VOLUME_ID)
         self.assertEqual(HTTPStatus.ACCEPTED, resp.status_int)
 
@@ -1453,7 +1454,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(volume_api.API, "delete", fake_volume_attached)
         self.mock_object(volume_api.API, 'get', v2_fakes.fake_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         exp = self.assertRaises(exception.VolumeAttached,
                                 self.controller.delete,
                                 req, 1)
@@ -1464,7 +1465,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(volume_api.API, "get",
                          v2_fakes.fake_volume_get_notfound)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        req = fakes.HTTPRequest.blank('/v3/volumes/%s' % fake.VOLUME_ID)
         self.assertRaises(exception.VolumeNotFound, self.controller.delete,
                           req, 1)
 
@@ -1472,7 +1473,7 @@ class VolumeApiTest(test.TestCase):
         self.mock_object(db, 'volume_get_all_by_project',
                          v2_fakes.fake_volume_get_all_by_project)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID,
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res = self.controller.index(req)
 
@@ -1484,7 +1485,7 @@ class VolumeApiTest(test.TestCase):
                        v2_fakes.fake_volume_get_all_by_project)
     def test_admin_list_volumes_all_tenants(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/volumes?all_tenants=1' % fake.PROJECT_ID,
+            '/v3/%s/volumes?all_tenants=1' % fake.PROJECT_ID,
             use_admin_context=True)
         res = self.controller.index(req)
         self.assertIn('volumes', res)
@@ -1496,7 +1497,7 @@ class VolumeApiTest(test.TestCase):
     @mock.patch.object(volume_api.API, 'get', v2_fakes.fake_volume_get)
     def test_all_tenants_non_admin_gets_all_tenants(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/volumes?all_tenants=1' % fake.PROJECT_ID)
+            '/v3/%s/volumes?all_tenants=1' % fake.PROJECT_ID)
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
@@ -1505,13 +1506,13 @@ class VolumeApiTest(test.TestCase):
                        v2_fakes.fake_volume_get_all_by_project)
     @mock.patch.object(volume_api.API, 'get', v2_fakes.fake_volume_get)
     def test_non_admin_get_by_project(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
 
     def _create_volume_bad_request(self, body):
-        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
 
         self.assertRaises(exception.ValidationError,

@@ -57,3 +57,5 @@ def set_defaults(conf):
     # This is where we don't authenticate
     conf.set_default('auth_strategy', 'noauth')
     conf.set_default('auth_url', 'fake', 'keystone_authtoken')
+    # we use "fake" and "openstack" as project ID in a number of tests
+    conf.set_default('project_id_regex', r"[0-9a-fopnstk\-]+")

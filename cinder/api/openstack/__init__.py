@@ -18,6 +18,7 @@
 WSGI middleware for OpenStack API controllers.
 """
 
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_service import wsgi as base_wsgi
 import routes
@@ -26,6 +27,16 @@ from cinder.api.openstack import wsgi
 from cinder.i18n import _
 
 
+openstack_api_opts = [
+    cfg.StrOpt('project_id_regex',
+               default=r"[0-9a-f\-]+",
+               help=r'The validation regex for project_ids used in urls. '
+                    r'This defaults to [0-9a-f\\-]+ if not set, '
+                    r'which matches normal uuids created by keystone.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(openstack_api_opts)
 LOG = logging.getLogger(__name__)
 
 
@@ -48,14 +59,42 @@ class APIMapper(routes.Mapper):
 
 class ProjectMapper(APIMapper):
     def resource(self, member_name, collection_name, **kwargs):
+        """Base resource path handler
+
+        This method is compatible with resource paths that include a
+        project_id and those that don't. Including project_id in the URLs
+        was a legacy API requirement; and making API requests against
+        such endpoints won't work for users that don't belong to a
+        particular project.
+        """
+        # NOTE: project_id parameter is only valid if its hex or hex + dashes
+        # (note, integers are a subset of this). This is required to handle
+        # our overlapping routes issues.
+        project_id_regex = CONF.project_id_regex
+        project_id_token = '{project_id:%s}' % project_id_regex
         if 'parent_resource' not in kwargs:
-            kwargs['path_prefix'] = '{project_id}/'
+            kwargs['path_prefix'] = '%s/' % project_id_token
         else:
             parent_resource = kwargs['parent_resource']
             p_collection = parent_resource['collection_name']
             p_member = parent_resource['member_name']
-            kwargs['path_prefix'] = '{project_id}/%s/:%s_id' % (p_collection,
-                                                                p_member)
+            kwargs['path_prefix'] = '%s/%s/:%s_id' % (project_id_token,
+                                                      p_collection,
+                                                      p_member)
+        routes.Mapper.resource(self,
+                               member_name,
+                               collection_name,
+                               **kwargs)
+
+        # Add additional routes without project_id.
+        if 'parent_resource' not in kwargs:
+            del kwargs['path_prefix']
+        else:
+            parent_resource = kwargs['parent_resource']
+            p_collection = parent_resource['collection_name']
+            p_member = parent_resource['member_name']
+            kwargs['path_prefix'] = '%s/:%s_id' % (p_collection,
+                                                   p_member)
         routes.Mapper.resource(self,
                                member_name,
                                collection_name,
