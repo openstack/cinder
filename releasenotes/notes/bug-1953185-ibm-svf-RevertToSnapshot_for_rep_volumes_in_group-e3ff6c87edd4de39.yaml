@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver
+    `Bug #1953185 <https://bugs.launchpad.net/cinder/+bug/1953185>`_:
+    Fixed revert to snapshot issue for replicated volumes
+    which are a part of group.
