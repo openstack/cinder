@@ -2264,17 +2264,17 @@ class API(base.Base):
         ctxt.authorize(attachment_policy.DELETE_POLICY,
                        target_obj=attachment)
         volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
+
         if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:
-            self.db.volume_detached(ctxt.elevated(), attachment.volume_id,
-                                    attachment.get('id'))
-            self.db.volume_admin_metadata_delete(ctxt.elevated(),
-                                                 attachment.volume_id,
-                                                 'attached_mode')
-            volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
+            volume_utils.notify_about_volume_usage(ctxt, volume,
+                                                   "detach.start")
+            volume.finish_detach(attachment.id)
+            do_notify = True
         else:
             self.volume_rpcapi.attachment_delete(ctxt,
                                                  attachment.id,
                                                  volume)
+            do_notify = False
         status_updates = {'status': 'available',
                           'attach_status': 'detached'}
         remaining_attachments = AO_LIST.get_all_by_volume_id(ctxt, volume.id)
@@ -2309,6 +2309,9 @@ class API(base.Base):
         volume.status = status_updates['status']
         volume.attach_status = status_updates['attach_status']
         volume.save()
+
+        if do_notify:
+            volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
         return remaining_attachments
 
 
