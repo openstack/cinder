@@ -144,6 +144,31 @@ class AttachmentManagerTestCase(test.TestCase):
                           self.context,
                           attachment_ref.id)
 
+    def test_attachment_delete_remove_export_fail(self):
+        """attachment_delete removes attachment on remove_export failure."""
+        self.mock_object(self.manager.driver, 'remove_export',
+                         side_effect=Exception)
+        # Report that the connection is not shared
+        self.mock_object(self.manager, '_connection_terminate',
+                         return_value=False)
+
+        vref = tests_utils.create_volume(self.context, status='in-use',
+                                         attach_status='attached')
+        values = {'volume_id': vref.id, 'volume_host': vref.host,
+                  'attach_status': 'reserved', 'instance_uuid': fake.UUID1}
+        attach = db.volume_attach(self.context, values)
+        # Confirm the volume OVO has the attachment before the deletion
+        vref.refresh()
+        self.assertEqual(1, len(vref.volume_attachment))
+
+        self.manager.attachment_delete(self.context, attach.id, vref)
+
+        # Attachment has been removed from the DB
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get, self.context, attach.id)
+        # Attachment has been removed from the volume OVO attachment list
+        self.assertEqual(0, len(vref.volume_attachment))
+
     def test_attachment_delete_multiple_attachments(self):
         volume_params = {'status': 'available'}
         vref = tests_utils.create_volume(self.context, **volume_params)
