@@ -1193,15 +1193,17 @@ class API(base.Base):
         context.authorize(vol_meta_policy.UPDATE_ADMIN_METADATA_POLICY,
                           target_obj=volume)
         utils.check_metadata_properties(metadata)
-        db_meta = self.db.volume_admin_metadata_update(context, volume.id,
-                                                       metadata, delete, add,
-                                                       update)
+        # Policy could allow non admin users to update admin metadata, but
+        # underlying DB methods require admin privileges, so we elevate the
+        # context.
+        with volume.obj_as_admin():
+            volume.admin_metadata_update(metadata, delete, add, update)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
         LOG.info("Update volume admin metadata completed successfully.",
                  resource=volume)
-        return db_meta
+        return volume.admin_metadata
 
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
