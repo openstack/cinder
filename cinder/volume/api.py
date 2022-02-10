@@ -2264,53 +2264,26 @@ class API(base.Base):
         volume = objects.Volume.get_by_id(ctxt, attachment.volume_id)
 
         if attachment.attach_status == fields.VolumeAttachStatus.RESERVED:
-            volume_utils.notify_about_volume_usage(ctxt, volume,
-                                                   "detach.start")
-            volume.finish_detach(attachment.id)
-            do_notify = True
+            volume_utils.notify_about_volume_usage(ctxt,
+                                                   volume, "detach.start")
         else:
-            self.volume_rpcapi.attachment_delete(ctxt,
-                                                 attachment.id,
-                                                 volume)
-            do_notify = False
-        status_updates = {'status': 'available',
-                          'attach_status': 'detached'}
-        remaining_attachments = AO_LIST.get_all_by_volume_id(ctxt, volume.id)
-        LOG.debug("Remaining volume attachments: %s", remaining_attachments,
-                  resource=volume)
+            # Generate the detach.start notification on the volume service to
+            # include the host doing the operation.
+            self.volume_rpcapi.attachment_delete(ctxt, attachment.id, volume)
 
-        # NOTE(jdg) Try and figure out the > state we have left and set that
-        # attached > attaching > > detaching > reserved
-        pending_status_list = []
-        for attachment in remaining_attachments:
-            pending_status_list.append(attachment.attach_status)
-            LOG.debug("Adding status of: %s to pending status list "
-                      "for volume.", attachment.attach_status,
-                      resource=volume)
+        # Trigger attachments lazy load (missing since volume was loaded in the
+        # attachment without joined tables). With them loaded the finish_detach
+        # call removes the detached one from the list, and the notification and
+        # return have the right attachment list.
+        volume.volume_attachment
+        volume.finish_detach(attachment.id)
 
-        LOG.debug("Pending status list for volume during "
-                  "attachment-delete: %s",
-                  pending_status_list, resource=volume)
-        if 'attached' in pending_status_list:
-            status_updates['status'] = 'in-use'
-            status_updates['attach_status'] = 'attached'
-        elif 'attaching' in pending_status_list:
-            status_updates['status'] = 'attaching'
-            status_updates['attach_status'] = 'attaching'
-        elif 'detaching' in pending_status_list:
-            status_updates['status'] = 'detaching'
-            status_updates['attach_status'] = 'detaching'
-        elif 'reserved' in pending_status_list:
-            status_updates['status'] = 'reserved'
-            status_updates['attach_status'] = 'reserved'
-
-        volume.status = status_updates['status']
-        volume.attach_status = status_updates['attach_status']
-        volume.save()
-
-        if do_notify:
-            volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
-        return remaining_attachments
+        # Do end notification on the API so it comes after finish_detach.
+        # Doing it on the volume service leads to race condition from bug
+        # #1937084, and doing the notification there with the finish here leads
+        # to bug #1916980.
+        volume_utils.notify_about_volume_usage(ctxt, volume, "detach.end")
+        return volume.volume_attachment
 
 
 class HostAPI(base.Base):

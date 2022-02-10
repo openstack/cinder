@@ -65,6 +65,9 @@ from cinder.volume import volume_utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+# Map with cases where attach status differs from volume status
+ATTACH_STATUS_MAP = {'attached': 'in-use', 'detached': 'available'}
+
 
 options.set_defaults(CONF, connection='sqlite:///$state_path/cinder.sqlite')
 
@@ -1704,75 +1707,83 @@ def volume_include_in_cluster(context, cluster, partial_rename=True,
                                partial_rename, filters)
 
 
+def _get_statuses_from_attachments(context, session, volume_id):
+    """Get volume status and attach_status based on existing attachments."""
+    # NOTE: Current implementation ignores attachments on error attaching,
+    # since they will not have been used by any consumer because os-brick's
+    # connect_volume has not been called yet. This leads to cases where a
+    # volume will be in 'available' state yet have attachments.
+
+    # If we sort status of attachments alphabetically, ignoring errors, the
+    # first element will be the attachment status for the volume:
+    #     attached > attaching > detaching > reserved
+    attach_status = session.query(models.VolumeAttachment.attach_status).\
+        filter_by(deleted=False).\
+        filter_by(volume_id=volume_id).\
+        filter(~models.VolumeAttachment.attach_status.startswith('error_')).\
+        order_by(models.VolumeAttachment.attach_status.asc()).\
+        limit(1).\
+        scalar()
+
+    # No volume attachment records means the volume is detached.
+    attach_status = attach_status or 'detached'
+
+    # Check cases where volume status is different from attach status, and
+    # default to the same value if it's not one of those cases.
+    status = ATTACH_STATUS_MAP.get(attach_status, attach_status)
+
+    return (status, attach_status)
+
+
 @require_admin_context
 def volume_detached(context, volume_id, attachment_id):
-    """This updates a volume attachment and marks it as detached.
+    """Delete an attachment and update the volume accordingly.
 
-    This method also ensures that the volume entry is correctly
-    marked as either still attached/in-use or detached/available
-    if this was the last detachment made.
+    After marking the attachment as detached the method will decide the status
+    and attach_status values for the volume based on the current status and the
+    remaining attachments and their status.
 
+    Volume status may be changed to: in-use, attaching, detaching, reserved, or
+    available.
+
+    Volume attach_status will be changed to one of: attached, attaching,
+    detaching, reserved, or detached.
     """
 
     # NOTE(jdg): This is a funky band-aid for the earlier attempts at
     # multiattach, it's a bummer because these things aren't really being used
     # but at the same time we don't want to break them until we work out the
     # new proposal for multi-attach
-    remain_attachment = True
     session = get_session()
     with session.begin():
+        # Only load basic volume info necessary to check various status and use
+        # the volume row as a lock with the for_update.
+        volume = _volume_get(context, volume_id, session=session,
+                             joined_load=False, for_update=True)
+
         try:
             attachment = _attachment_get(context, attachment_id,
                                          session=session)
+            attachment_updates = attachment.delete(session)
         except exception.VolumeAttachmentNotFound:
             attachment_updates = None
-            attachment = None
 
-        if attachment:
-            now = timeutils.utcnow()
-            attachment_updates = {
-                'attach_status': fields.VolumeAttachStatus.DETACHED,
-                'detach_time': now,
-                'deleted': True,
-                'deleted_at': now,
-                'updated_at':
-                literal_column('updated_at'),
-            }
-            attachment.update(attachment_updates)
-            attachment.save(session=session)
-            del attachment_updates['updated_at']
+        status, attach_status = _get_statuses_from_attachments(context,
+                                                               session,
+                                                               volume_id)
 
-        attachment_list = None
-        volume_ref = _volume_get(context, volume_id,
-                                 session=session)
-        volume_updates = {'updated_at': literal_column('updated_at')}
-        if not volume_ref.volume_attachment:
-            # NOTE(jdg): We kept the old arg style allowing session exclusively
-            # for this one call
-            attachment_list = volume_attachment_get_all_by_volume_id(
-                context, volume_id, session=session)
-            remain_attachment = False
-        if attachment_list and len(attachment_list) > 0:
-            remain_attachment = True
+        volume_updates = {'updated_at': volume.updated_at,
+                          'attach_status': attach_status}
 
-        if not remain_attachment:
-            # Hide status update from user if we're performing volume migration
-            # or uploading it to image
-            if ((not volume_ref.migration_status and
-                    not (volume_ref.status == 'uploading')) or
-                    volume_ref.migration_status in ('success', 'error')):
-                volume_updates['status'] = 'available'
+        # Hide volume status update to available on volume migration or upload,
+        # as status is updated later on those flows.
+        if ((attach_status != 'detached')
+            or (not volume.migration_status and volume.status != 'uploading')
+                or volume.migration_status in ('success', 'error')):
+            volume_updates['status'] = status
 
-            volume_updates['attach_status'] = (
-                fields.VolumeAttachStatus.DETACHED)
-        else:
-            # Volume is still attached
-            volume_updates['status'] = 'in-use'
-            volume_updates['attach_status'] = (
-                fields.VolumeAttachStatus.ATTACHED)
-
-        volume_ref.update(volume_updates)
-        volume_ref.save(session=session)
+        volume.update(volume_updates)
+        volume.save(session=session)
         del volume_updates['updated_at']
         return (volume_updates, attachment_updates)
 
@@ -1856,11 +1867,14 @@ def _volume_get_query(context, session=None, project_only=False,
 
 
 @require_context
-def _volume_get(context, volume_id, session=None, joined_load=True):
+def _volume_get(context, volume_id, session=None, joined_load=True,
+                for_update=False):
     result = _volume_get_query(context, session=session, project_only=True,
                                joined_load=joined_load)
     if joined_load:
         result = result.options(joinedload('volume_type.extra_specs'))
+    if for_update:
+        result = result.with_for_update()
     result = result.filter_by(id=volume_id).first()
 
     if not result:

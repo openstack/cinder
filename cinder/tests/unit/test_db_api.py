@@ -571,11 +571,13 @@ class DBAPIVolumeTestCase(BaseTest):
                   'instance_uuid': instance_uuid,
                   'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
+        db.volume_attached(self.ctxt, attachment.id, instance_uuid,
+                           None, '/tmp')
         values2 = {'volume_id': volume.id,
                    'instance_uuid': fake.OBJECT_ID,
                    'attach_status': fields.VolumeAttachStatus.ATTACHING, }
-        db.volume_attach(self.ctxt, values2)
-        db.volume_attached(self.ctxt, attachment.id,
+        attachment2 = db.volume_attach(self.ctxt, values2)
+        db.volume_attached(self.ctxt, attachment2.id,
                            instance_uuid,
                            None, '/tmp')
         volume_updates, attachment_updates = (

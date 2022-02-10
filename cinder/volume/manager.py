@@ -4694,8 +4694,6 @@ class VolumeManager(manager.CleanableManager,
             # Failures on detach_volume and remove_export are not considered
             # failures in terms of detaching the volume.
             pass
-        vref.finish_detach(attachment.id)
-        self._notify_about_volume_usage(context, vref, "detach.end")
 
     # Replication group API (Tiramisu)
     def enable_replication(self, ctxt, group):
