@@ -205,7 +205,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = volume_obj
-        volume_create.return_value = {'id': '123456'}
+        volume_create.return_value = {'id': '123456', 'volume_attachment': []}
 
         task = create_volume.EntryCreateTask()
 
@@ -254,7 +254,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         volume_db = {'bootable': bootable}
         volume_obj = fake_volume.fake_volume_obj(self.ctxt, **volume_db)
         volume_get_by_id.return_value = volume_obj
-        volume_create.return_value = {'id': '123456'}
+        volume_create.return_value = {'id': '123456', 'volume_attachment': []}
         task = create_volume.EntryCreateTask()
 
         result = task.execute(self.ctxt,

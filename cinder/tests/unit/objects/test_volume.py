@@ -430,7 +430,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # finish_volume_migration
         ignore_keys = ('id', 'provider_location', '_name_id',
                        'migration_status', 'display_description', 'status',
-                       'volume_glance_metadata', 'volume_type')
+                       'volume_glance_metadata', 'volume_type',
+                       'volume_attachment')
 
         dest_vol_dict = {k: updated_dest_volume[k] for k in
                          updated_dest_volume.keys() if k not in ignore_keys}
@@ -478,7 +479,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self, volume_attachment_get,
             volume_detached,
             metadata_delete):
-        va_objs = [objects.VolumeAttachment(context=self.context, id=i)
+        va_objs = [objects.VolumeAttachment(context=self.context, id=i,
+                                            volume_id=fake.VOLUME_ID)
                    for i in [fake.OBJECT_ID, fake.OBJECT2_ID, fake.OBJECT3_ID]]
         # As changes are not saved, we need reset it here. Later changes
         # will be checked.
@@ -491,6 +493,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         admin_context = context.get_admin_context()
         volume = fake_volume.fake_volume_obj(
             admin_context,
+            id=fake.VOLUME_ID,
             volume_attachment=va_list,
             volume_admin_metadata=[{'key': 'attached_mode',
                                     'value': 'rw'}])
@@ -522,7 +525,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             admin_context,
             volume_admin_metadata=[{'key': 'attached_mode',
                                     'value': 'rw'}])
-        self.assertFalse(volume.obj_attr_is_set('volume_attachment'))
+        self.assertEqual([], volume.volume_attachment.objects)
         volume_detached.return_value = ({'status': 'in-use'}, None)
         with mock.patch.object(admin_context, 'elevated') as mock_elevated:
             mock_elevated.return_value = admin_context
