@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize Family driver: `Bug #1941694
+    <https://bugs.launchpad.net/cinder/+bug/1941694>`_:
+    Fixed detaching volume from second instance for
+    multi-attach type volumes.

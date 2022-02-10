@@ -32,6 +32,7 @@ import six
 
 from cinder import context
 import cinder.db
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -52,6 +53,7 @@ from cinder.volume import group_types
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 from cinder.volume import volume_utils
+
 
 SVC_POOLS = ['openstack', 'openstack1']
 SVC_SOURCE_CHILD_POOL = 'openstack2'
@@ -3106,6 +3108,7 @@ class StorwizeSVCFcFakeDriver(storwize_svc_fc.StorwizeSVCFCDriver):
         return ret
 
 
+@ddt.ddt
 class StorwizeSVCISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -3230,6 +3233,82 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
 
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+
+    @ddt.data(({'is_multi_attach': True}, 1),
+              ({'is_multi_attach': True}, 2),
+              ({'is_multi_attach': False}, 1))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
+    @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                       '_do_terminate_connection')
+    @mock.patch.object(cinder.db, 'volume_attachment_get_all_by_volume_id')
+    @ddt.unpack
+    def test_storwize_terminate_iscsi_multi_attach(self, vol_spec,
+                                                   no_of_fake_attachments,
+                                                   get_db_vol_attach,
+                                                   do_term_conn, lsvdishosmap,
+                                                   init_host_info):
+        # create a iSCSI volume
+        volume_iscsi = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iscsi = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iscsi['volume_type_id'] = vol_type_iscsi['id']
+        volume_iscsi['multiattach'] = vol_spec['is_multi_attach']
+
+        connector1 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        connector2 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver.initialize_connection(volume_iscsi, connector1)
+        self.iscsi_driver.initialize_connection(volume_iscsi, connector2)
+        init_host_info.assert_called()
+        for conn in [connector1, connector2]:
+            host = self.iscsi_driver._helpers.get_host_from_connector(
+                conn, iscsi=True)
+            self.assertIsNotNone(host)
+        vol_updates = {'id': volume_iscsi['id'], 'size': 1}
+        volume_model = models.Volume(**vol_updates)
+        attachment_updates1 = {'volume': volume_model,
+                               'volume_id': volume_iscsi['id'],
+                               'id': '4dc3bb12-ad75-41b9-ab2c-7609e743e600',
+                               'attach_status': 'attached',
+                               'attached_host': 'storwize-svc-host'
+                               }
+        db_attachment1 = models.VolumeAttachment(**attachment_updates1)
+        attachment_updates2 = {'volume': volume_model,
+                               'volume_id': volume_iscsi['id'],
+                               'id': '5af6aq34-gq56-76v8-ac1c-7212f567f300',
+                               'attach_status': 'attached',
+                               'attached_host': 'storwize-svc-host'
+                               }
+        db_attachment2 = models.VolumeAttachment(**attachment_updates2)
+        if no_of_fake_attachments == 1:
+            get_db_vol_attach.return_value = [db_attachment1]
+        else:
+            get_db_vol_attach.return_value = [db_attachment1, db_attachment2]
+
+        attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
+            self.ctxt, volume_iscsi['id'])
+        volume_iscsi['volume_attachment'] = attachments
+        attachment_list = volume_iscsi['volume_attachment']
+        attachment_count = 0
+        if volume_iscsi['multiattach']:
+            self.iscsi_driver.terminate_connection(volume_iscsi, connector1)
+            try:
+                for attachment in attachment_list:
+                    if (attachment.attach_status == "attached" and
+                       attachment.attached_host == "storwize-svc-host"):
+                        attachment_count += 1
+            except AttributeError:
+                pass
+            if attachment_count > 1:
+                self.assertEqual(0, do_term_conn.call_count)
 
     def test_storwize_get_host_from_connector_with_both_fc_iscsi_host(self):
         volume_iSCSI = self._create_volume()
@@ -3755,6 +3834,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.add_vdisk_copy(volume['name'], 'fake-pool', None)
 
 
+@ddt.ddt
 class StorwizeSVCFcDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -4202,6 +4282,81 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                           self.fc_driver.initialize_connection,
                           volume_fc, connector)
         term_conn.assert_called_once_with(volume_fc, connector)
+
+    @ddt.data(({'is_multi_attach': True}, 1),
+              ({'is_multi_attach': True}, 2),
+              ({'is_multi_attach': False}, 1))
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'initialize_host_info')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsvdiskhostmap')
+    @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
+                       '_do_terminate_connection')
+    @mock.patch.object(cinder.db, 'volume_attachment_get_all_by_volume_id')
+    @ddt.unpack
+    def test_storwize_terminate_conn_fc_multi_attach(self, vol_spec,
+                                                     no_of_fake_attachments,
+                                                     get_db_vol_attach,
+                                                     do_term_conn,
+                                                     lsvdishosmap,
+                                                     init_host_info):
+        # create a FC  volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+        volume_fc['multiattach'] = vol_spec['is_multi_attach']
+        connector1 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+        connector2 = {'host': 'storwize-svc-host',
+                      'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                      'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                      'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection(volume_fc, connector1)
+        self.fc_driver.initialize_connection(volume_fc, connector2)
+        init_host_info.assert_called()
+        for conn in [connector1, connector2]:
+            host = self.fc_driver._helpers.get_host_from_connector(conn)
+            self.assertIsNotNone(host)
+        vol_updates = {'id': volume_fc['id'], 'size': 1}
+        volume_model = models.Volume(**vol_updates)
+        attachment_updates = {'volume': volume_model,
+                              'volume_id': volume_fc['id'],
+                              'id': '4dc3bb12-ad75-41b9-ab2c-7609e743e600',
+                              'attach_status': 'attached',
+                              'attached_host': 'storwize-svc-host'
+                              }
+        db_attachment1 = models.VolumeAttachment(**attachment_updates)
+        attachment_updates2 = {'volume': volume_model,
+                               'volume_id': volume_fc['id'],
+                               'id': '5af6aq34-gq56-76v8-ac1c-7212f567f300',
+                               'attach_status': 'attached',
+                               'attached_host': 'storwize-svc-host'
+                               }
+        db_attachment2 = models.VolumeAttachment(**attachment_updates2)
+        if no_of_fake_attachments == 1:
+            get_db_vol_attach.return_value = [db_attachment1]
+        else:
+            get_db_vol_attach.return_value = [db_attachment1, db_attachment2]
+
+        attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
+            self.ctxt, volume_fc['id'])
+        volume_fc['volume_attachment'] = attachments
+        attachment_list = volume_fc['volume_attachment']
+        attachment_count = 0
+        if volume_fc['multiattach']:
+            self.fc_driver.terminate_connection(volume_fc, connector1)
+            try:
+                for attachment in attachment_list:
+                    if (attachment.attach_status == "attached" and
+                       attachment.attached_host == "storwize-svc-host"):
+                        attachment_count += 1
+            except AttributeError:
+                pass
+            if attachment_count > 1:
+                self.assertEqual(0, do_term_conn.call_count)
 
     def test_storwize_terminate_fc_connection_multi_attach(self):
         # create a FC volume
