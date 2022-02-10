@@ -7,7 +7,7 @@ clusters to use LightOS clustered storage servers. This documentation
 explains how to configure Cinder for use with the Lightbits LightOS
 storage backend system.
 
-Supported operations
+Supported Operations
 ~~~~~~~~~~~~~~~~~~~~
 
 - Create volume
@@ -44,7 +44,7 @@ The Cinder Driver
 
 The Cinder driver integrates with Cinder and performs REST operations
 against the LightOS cluster. To enable the driver, add the following
-to Cinder's configuration file
+to Cinder's configuration file:
 
 .. code-block:: ini
 
@@ -68,7 +68,7 @@ and
   IPs. Multiple nodes should be separated by commas. For example:
   ``lightos_api_address =
   192.168.67.78,192.168.34.56,192.168.12.17``. These IPs are where the
-  driver looks for the LightOS clusters REST API servers.
+  driver looks for the LightOS clusters' REST API servers.
 - ``LIGHTOS_JWT`` is the JWT (JSON Web Token) that is located at the
   LightOS installation controller. You can find the jwt at
   ``~/lightos-default-admin-jwt``.
@@ -77,10 +77,10 @@ and
 - The default compression setting is False (i.e., data is
   uncompressed). The default compression setting can also be
   True. This can also be changed on a per-volume basis.
-- The default time to wait for API service response is 30 seconds per
+- The default time to wait for an API service response is 30 seconds per
   API endpoint.
 
-Creating volumes with non-default compression and number of replicas
+Creating volumes with non-default compression and a number of replicas
 settings can be done through the volume types mechanism. To create a
 new volume type with compression enabled:
 
@@ -109,30 +109,29 @@ Then create a new volume with one of these volume types:
 NVNe/TCP and Asymmetric Namespace Access (ANA)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The LightOS clusters expose their volumes using NVMe/TCP Asynchronous
-Namespace Access (ANA). ANA is a relatively new feature in the
-NVMe/TCP stack in Linux but it is fully supported in Ubuntu
-20.04. Each compute host in the OpenStack cluster needs to be
-ANA-capable to provide OpenStack VMs with LightOS volumes over
-NVMe/TCP. For more information on how to set up the compute nodes to
-use ANA, see the CentOS Linux Cluster Client Software Installation
-section of the Lightbits(TM) LightOS(R) Cluster Installation and
-Initial Configuration Guide.
+The LightOS clusters expose their volumes using NVMe/TCP ANA. 
+ANA is a relatively new feature in the NVMe/TCP stack in Linux 
+but it is fully supported in Ubuntu 20.04. Each compute host 
+in the OpenStack cluster needs to be ANA-capable to provide OpenStack
+VMs with LightOS volumes over NVMe/TCP. For more information on how to 
+set up the compute nodes to use ANA, see the CentOS Linux Cluster Client 
+Software Installation section of the Lightbits(TM) LightOS(R) Cluster 
+Installation and Initial Configuration Guide.
 
 Note
 ~~~~
 
-In the current version, if any of the cluster nodes changes its access
+In the current version, if any of the cluster nodes change their access
 IPs, the Cinder driver's configuration file should be updated with the
 cluster nodes access IPs and restarted. As long as the Cinder driver
 can access at least one cluster access IP it will work, but will be
-susceptible to cluster node failures.
+susceptible to cluster node failures as well.
 
-Driver options
+Driver Options
 ~~~~~~~~~~~~~~
 
-The following table contains the configuration options supported by the
-Lightbits LightOS Cinder driver.
+The following are the configuration options supported by the
+Lightbits LightOS Cinder driver:
 
 .. config-table::
    :config-target: Lightbits LightOS
