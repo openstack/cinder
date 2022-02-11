@@ -234,7 +234,7 @@ def check_metadata_properties(
             raise exception.InvalidVolumeMetadataSize(reason=msg)
 
 
-def last_completed_audit_period(unit: str = None) -> \
+def last_completed_audit_period(unit: Optional[str] = None) -> \
         Tuple[Union[datetime.datetime, datetime.timedelta],
               Union[datetime.datetime, datetime.timedelta]]:
     """This method gives you the most recently *completed* audit period.
@@ -374,7 +374,9 @@ def monkey_patch() -> None:
                         decorator("%s.%s" % (module, key), func))
 
 
-def make_dev_path(dev: str, partition: str = None, base: str = '/dev') -> str:
+def make_dev_path(dev: str,
+                  partition: Optional[str] = None,
+                  base: str = '/dev') -> str:
     """Return a path to a particular device.
 
     >>> make_dev_path('xvdc')
@@ -434,7 +436,8 @@ def robust_file_write(directory: str, filename: str, data: str) -> None:
 
 
 @contextlib.contextmanager
-def temporary_chown(path: str, owner_uid: int = None) -> Iterator[None]:
+def temporary_chown(path: str,
+                    owner_uid: Optional[int] = None) -> Iterator[None]:
     """Temporarily chown a path.
 
     :params owner_uid: UID of temporary owner (defaults to current user)
@@ -493,7 +496,7 @@ def get_file_size(path: str) -> int:
 
 def _get_disk_of_partition(
         devpath: str,
-        st: os.stat_result = None) -> Tuple[str, os.stat_result]:
+        st: Optional[os.stat_result] = None) -> Tuple[str, os.stat_result]:
     """Gets a disk device path and status from partition path.
 
     Returns a disk device path from a partition device path, and stat for
@@ -558,7 +561,7 @@ def get_blkdev_major_minor(path: str,
 
 
 def check_string_length(value: str, name: str, min_length: int = 0,
-                        max_length: int = None,
+                        max_length: Optional[int] = None,
                         allow_all_spaces: bool = True) -> None:
     """Check the length of specified string.
 
@@ -684,7 +687,7 @@ def convert_str(text: Union[str, bytes]) -> str:
 
 
 def build_or_str(elements: Union[None, str, Iterable[str]],
-                 str_format: str = None) -> str:
+                 str_format: Optional[str] = None) -> str:
     """Builds a string of elements joined by 'or'.
 
     Will join strings with the 'or' word and if a str_format is provided it

@@ -72,7 +72,7 @@ LOG = logging.getLogger(__name__)
 
 class ReadOnlyDict(abc.Mapping):
     """A read-only dict."""
-    def __init__(self, source: Union[dict, 'ReadOnlyDict'] = None):
+    def __init__(self, source: Optional[Union[dict, 'ReadOnlyDict']] = None):
         self.data: dict
         if source is not None:
             self.data = dict(source)

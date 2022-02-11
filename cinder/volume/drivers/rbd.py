@@ -159,11 +159,11 @@ class RBDVolumeProxy(object):
     def __init__(self,
                  driver: 'RBDDriver',
                  name: str,
-                 pool: str = None,
-                 snapshot: str = None,
+                 pool: Optional[str] = None,
+                 snapshot: Optional[str] = None,
                  read_only: bool = False,
                  remote: Optional[Dict[str, str]] = None,
-                 timeout: int = None,
+                 timeout: Optional[int] = None,
                  client: 'rados.Rados' = None,
                  ioctx: 'rados.Ioctx' = None):
         self._close_conn = not (client and ioctx)
@@ -205,7 +205,9 @@ class RBDVolumeProxy(object):
 
 class RADOSClient(object):
     """Context manager to simplify error handling for connecting to ceph."""
-    def __init__(self, driver: 'RBDDriver', pool: str = None) -> None:
+    def __init__(self,
+                 driver: 'RBDDriver',
+                 pool: Optional[str] = None) -> None:
         self.driver = driver
         self.cluster, self.ioctx = driver._connect_to_rados(pool)
 
@@ -246,7 +248,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     STORAGE_PROTOCOL = 'ceph'
 
     def __init__(self,
-                 active_backend_id: str = None,
+                 active_backend_id: Optional[str] = None,
                  *args,
                  **kwargs) -> None:
         super(RBDDriver, self).__init__(*args, **kwargs)
@@ -1531,9 +1533,9 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
             result.append(demoted)
         return result
 
-    def _get_failover_target_config(self,
-                                    secondary_id: str = None) -> Tuple[str,
-                                                                       dict]:
+    def _get_failover_target_config(
+            self,
+            secondary_id: Optional[str] = None) -> Tuple[str, dict]:
         if not secondary_id:
             # In auto mode exclude failback and active
             candidates = set(self._target_names).difference(
@@ -1587,7 +1589,7 @@ class RBDDriver(driver.CloneableImageVD, driver.MigrateVD,
     def failover_host(self,
                       context: context.RequestContext,
                       volumes: List[Volume],
-                      secondary_id: str = None,
+                      secondary_id: Optional[str] = None,
                       groups: Optional[List] = None) -> Tuple[str,
                                                               List[Volume],
                                                               List]:

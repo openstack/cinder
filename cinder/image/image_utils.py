@@ -183,10 +183,11 @@ def _get_qemu_convert_luks_cmd(src: str,
                                src_format: Optional[str] = None,
                                out_subformat: Optional[str] = None,
                                cache_mode: Optional[str] = None,
-                               prefix: tuple = None,
+                               prefix: Optional[tuple] = None,
                                cipher_spec: Optional[dict] = None,
                                passphrase_file: Optional[str] = None,
-                               src_passphrase_file: str = None) -> List[str]:
+                               src_passphrase_file: Optional[str] = None) \
+        -> List[str]:
 
     cmd = ['qemu-img', 'convert']
 
@@ -214,14 +215,15 @@ def _get_qemu_convert_luks_cmd(src: str,
 def _get_qemu_convert_cmd(src: str,
                           dest: str,
                           out_format: str,
-                          src_format: str = None,
-                          out_subformat: str = None,
-                          cache_mode: str = None,
-                          prefix: tuple = None,
-                          cipher_spec: dict = None,
-                          passphrase_file: str = None,
+                          src_format: Optional[str] = None,
+                          out_subformat: Optional[str] = None,
+                          cache_mode: Optional[str] = None,
+                          prefix: Optional[tuple] = None,
+                          cipher_spec: Optional[dict] = None,
+                          passphrase_file: Optional[str] = None,
                           compress: bool = False,
-                          src_passphrase_file: str = None) -> List[str]:
+                          src_passphrase_file: Optional[str] = None) \
+        -> List[str]:
 
     if src_passphrase_file is not None:
         if passphrase_file is None:
@@ -314,13 +316,13 @@ def _convert_image(prefix: tuple,
                    source: str,
                    dest: str,
                    out_format: str,
-                   out_subformat: str = None,
-                   src_format: str = None,
+                   out_subformat: Optional[str] = None,
+                   src_format: Optional[str] = None,
                    run_as_root: bool = True,
-                   cipher_spec: dict = None,
-                   passphrase_file: str = None,
+                   cipher_spec: Optional[dict] = None,
+                   passphrase_file: Optional[str] = None,
                    compress: bool = False,
-                   src_passphrase_file: str = None) -> None:
+                   src_passphrase_file: Optional[str] = None) -> None:
     """Convert image to other format.
 
     NOTE: If the qemu-img convert command fails and this function raises an
@@ -421,14 +423,14 @@ def _convert_image(prefix: tuple,
 def convert_image(source: str,
                   dest: str,
                   out_format: str,
-                  out_subformat: str = None,
-                  src_format: str = None,
+                  out_subformat: Optional[str] = None,
+                  src_format: Optional[str] = None,
                   run_as_root: bool = True,
                   throttle=None,
-                  cipher_spec: dict = None,
-                  passphrase_file: str = None,
+                  cipher_spec: Optional[dict] = None,
+                  passphrase_file: Optional[str] = None,
                   compress: bool = False,
-                  src_passphrase_file: str = None) -> None:
+                  src_passphrase_file: Optional[str] = None) -> None:
     if not throttle:
         throttle = throttling.Throttle.get_default()
     with throttle.subcommand(source, dest) as throttle_cmd:
@@ -447,7 +449,7 @@ def convert_image(source: str,
 def resize_image(source: str,
                  size: int,
                  run_as_root: bool = False,
-                 file_format: str = None) -> None:
+                 file_format: Optional[str] = None) -> None:
     """Changes the virtual size of the image."""
     cmd: Tuple[str, ...]
     if file_format:
@@ -805,7 +807,7 @@ def upload_volume(context: context.RequestContext,
                   volume_format: str = 'raw',
                   run_as_root: bool = True,
                   compress: bool = True,
-                  store_id: str = None,
+                  store_id: Optional[str] = None,
                   base_image_ref: Optional[str] = None) -> None:
     # NOTE: You probably want to use volume_utils.upload_volume(),
     # not this function.

@@ -257,7 +257,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             snapshot,
             source_volume,
             group: Optional[dict],
-            volume_type: Dict[str, Any] = None) -> Tuple[List[str], bool]:
+            volume_type: Optional[Dict[str, Any]] = None) -> Tuple[List[str],
+                                                                   bool]:
         """Extracts and returns a validated availability zone list.
 
         This function will extract the availability zone (if not provided) from

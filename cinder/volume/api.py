@@ -219,10 +219,10 @@ class API(base.Base):
                name: Optional[str],
                description: Optional[str],
                snapshot: Optional[objects.Snapshot] = None,
-               image_id: str = None,
+               image_id: Optional[str] = None,
                volume_type: Optional[objects.VolumeType] = None,
                metadata: Optional[dict] = None,
-               availability_zone: str = None,
+               availability_zone: Optional[str] = None,
                source_volume: Optional[objects.Volume] = None,
                scheduler_hints=None,
                source_replica=None,
@@ -1154,7 +1154,7 @@ class API(base.Base):
             name: str,
             description: str,
             cgsnapshot_id: str,
-            group_snapshot_id: str = None) -> Dict[str, Any]:
+            group_snapshot_id: Optional[str] = None) -> Dict[str, Any]:
         options = {'volume_id': volume['id'],
                    'cgsnapshot_id': cgsnapshot_id,
                    'group_snapshot_id': group_snapshot_id,
@@ -1175,7 +1175,7 @@ class API(base.Base):
             volume: objects.Volume,
             name: str,
             description: str,
-            metadata: Dict[str, Any] = None,
+            metadata: Optional[Dict[str, Any]] = None,
             cgsnapshot_id: Optional[str] = None,
             group_snapshot_id: Optional[str] = None,
             allow_in_use: bool = False) -> objects.Snapshot:
@@ -1192,7 +1192,7 @@ class API(base.Base):
             volume: objects.Volume,
             name: str,
             description: str,
-            metadata: Dict[str, Any] = None) -> objects.Snapshot:
+            metadata: Optional[Dict[str, Any]] = None) -> objects.Snapshot:
         result = self._create_snapshot(context, volume, name, description,
                                        True, metadata)
         LOG.info("Snapshot force create request issued successfully.",

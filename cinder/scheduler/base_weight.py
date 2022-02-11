@@ -29,8 +29,8 @@ LOG = logging.getLogger(__name__)
 
 
 def normalize(weight_list: List[float],
-              minval: float = None,
-              maxval: float = None) -> Iterable[float]:
+              minval: Optional[float] = None,
+              maxval: Optional[float] = None) -> Iterable[float]:
     """Normalize the values in a list between 0 and 1.0.
 
     The normalization is made regarding the lower and upper values present in
