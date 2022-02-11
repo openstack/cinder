@@ -1003,6 +1003,38 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body=body)
 
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    def test_copy_volume_to_image_bad_disk_format_for_encrypted_vol(self):
+        id = ENCRYPTED_VOLUME_ID
+        vol = {"container_format": 'bare',
+               "disk_format": 'qcow2',
+               "image_name": 'image_name',
+               "force": True}
+        body = {"os-volume_upload_image": vol}
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action'
+                                      % (fake.PROJECT_ID, id))
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._volume_upload_image,
+                          req,
+                          id,
+                          body=body)
+
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get_obj)
+    def test_copy_volume_to_image_bad_container_format_for_encrypted_vol(self):
+        id = ENCRYPTED_VOLUME_ID
+        vol = {"container_format": 'ovf',
+               "disk_format": 'raw',
+               "image_name": 'image_name',
+               "force": True}
+        body = {"os-volume_upload_image": vol}
+        req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action'
+                                      % (fake.PROJECT_ID, id))
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._volume_upload_image,
+                          req,
+                          id,
+                          body=body)
+
     @mock.patch.object(volume_api.API, "copy_volume_to_image")
     def test_copy_volume_to_image_disk_format_ploop(self,
                                                     mock_copy_to_image):
