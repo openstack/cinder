@@ -509,6 +509,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                         'free_capacity_gb': round(
                             summary.freeSpace / units.Gi),
                         'thin_provisioning_support': True,
+                        'thick_provisioning_support': True,
                         'max_over_subscription_ratio': (
                             max_over_subscription_ratio),
                         'reserved_percentage': reserved_percentage,
