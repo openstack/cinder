@@ -1395,13 +1395,11 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         def fake_get_session():
             return FakeSession()
 
-        def fake_get_quota_usages(context, session, project_id,
-                                  resources=None):
+        def fake_get_quota_usages(context, project_id, resources=None):
             return self.usages.copy()
 
         def fake_quota_usage_create(context, project_id, resource, in_use,
-                                    reserved, until_refresh, session=None,
-                                    save=True):
+                                    reserved, until_refresh):
             quota_usage_ref = self._make_quota_usage(
                 project_id, resource, in_use, reserved, until_refresh,
                 timeutils.utcnow(), timeutils.utcnow())
@@ -1411,7 +1409,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
             return quota_usage_ref
 
         def fake_reservation_create(context, uuid, usage_id, project_id,
-                                    resource, delta, expire, session=None):
+                                    resource, delta, expire):
             reservation_ref = self._make_reservation(
                 uuid, usage_id, project_id, resource, delta, expire,
                 timeutils.utcnow(), timeutils.utcnow())
@@ -1513,7 +1511,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
     def test_quota_reserve_create_usages(self, usages_mock, quota_create_mock,
                                          sync_mock, reserve_mock):
         project_id = 'test_project'
-        context = FakeContext(project_id, 'test_class')
+        ctxt = context.RequestContext('admin', project_id, is_admin=True)
         quotas = collections.OrderedDict([('volumes', 5),
                                           ('gigabytes', 10 * 1024)])
         deltas = collections.OrderedDict([('volumes', 2),
@@ -1532,45 +1530,42 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         reservations = [mock.Mock(), mock.Mock()]
         reserve_mock.side_effect = reservations
 
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
         self.assertEqual([r.uuid for r in reservations], result)
 
         usages_mock.assert_has_calls([
-            mock.call(mock.ANY, mock.ANY, project_id, resources=deltas.keys()),
-            mock.call(mock.ANY, mock.ANY, project_id, resources=deltas.keys())
+            mock.call(mock.ANY, project_id, resources=deltas.keys()),
+            mock.call(mock.ANY, project_id, resources=deltas.keys())
         ])
 
         sync_mock.assert_has_calls([
-            mock.call(mock.ANY, project_id, mock.ANY, self.resources,
-                      'volumes'),
-            mock.call(mock.ANY, project_id, mock.ANY, self.resources,
-                      'gigabytes')])
+            mock.call(mock.ANY, project_id, self.resources, 'volumes'),
+            mock.call(mock.ANY, project_id, self.resources, 'gigabytes'),
+        ])
 
         quota_create_mock.assert_has_calls([
-            mock.call(mock.ANY, project_id, 'volumes', 2, 0, None,
-                      session=mock.ANY),
-            mock.call(mock.ANY, project_id, 'gigabytes', 2 * 1024, 0, None,
-                      session=mock.ANY)
+            mock.call(mock.ANY, project_id, 'volumes', 2, 0, None),
+            mock.call(mock.ANY, project_id, 'gigabytes', 2 * 1024, 0, None)
         ])
 
         reserve_mock.assert_has_calls([
             mock.call(mock.ANY, mock.ANY, vol_usage, project_id, 'volumes',
-                      2, mock.ANY, session=mock.ANY),
+                      2, mock.ANY),
             mock.call(mock.ANY, mock.ANY, gb_usage, project_id, 'gigabytes',
-                      2 * 1024, mock.ANY, session=mock.ANY),
+                      2 * 1024, mock.ANY),
         ])
 
     def test_quota_reserve_negative_in_use(self):
         self.init_usage('test_project', 'volumes', -1, 0, until_refresh=1)
         self.init_usage('test_project', 'gigabytes', -1, 0, until_refresh=1)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5,
                       gigabytes=10 * 1024, )
         deltas = dict(volumes=2,
                       gigabytes=2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 5, 0)
 
         self.assertEqual(set(['volumes', 'gigabytes']), self.sync_called)
@@ -1597,10 +1592,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
     def test_quota_reserve_until_refresh(self):
         self.init_usage('test_project', 'volumes', 3, 0, until_refresh=1)
         self.init_usage('test_project', 'gigabytes', 3, 0, until_refresh=1)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 5, 0)
 
         self.assertEqual(set(['volumes', 'gigabytes']), self.sync_called)
@@ -1630,12 +1625,12 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         self.init_usage('test_project', 'volumes', 3, 0, until_refresh=None)
         self.init_usage('test_project', 'gigabytes', 100, 0,
                         until_refresh=None)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
 
         # Simulate service is now running with until_refresh set to 5
-        sqa_api.quota_reserve(context, self.resources, quotas, deltas,
+        sqa_api.quota_reserve(ctxt, self.resources, quotas, deltas,
                               self.expire, 5, 0)
 
         self.compare_usage(self.usages, [dict(resource='volumes',
@@ -1654,12 +1649,12 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         # Simulate service running with until_refresh enabled and set to 5
         self.init_usage('test_project', 'volumes', 3, 0, until_refresh=5)
         self.init_usage('test_project', 'gigabytes', 100, 0, until_refresh=5)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
 
         # Simulate service is now running with until_refresh disabled
-        sqa_api.quota_reserve(context, self.resources, quotas, deltas,
+        sqa_api.quota_reserve(ctxt, self.resources, quotas, deltas,
                               self.expire, None, 0)
 
         self.compare_usage(self.usages, [dict(resource='volumes',
@@ -1681,10 +1676,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                         created_at=record_created, updated_at=record_created)
         self.init_usage('test_project', 'gigabytes', 3, 0,
                         created_at=record_created, updated_at=record_created)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 0, max_age)
 
         self.assertEqual(set(['volumes', 'gigabytes']), self.sync_called)
@@ -1716,10 +1711,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                         created_at=record_created, updated_at=record_created)
         self.init_usage('test_project', 'gigabytes', 3, 0,
                         created_at=record_created, updated_at=record_created)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 0, max_age)
 
         self.assertEqual(set(), self.sync_called)
@@ -1746,10 +1741,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
     def test_quota_reserve_no_refresh(self):
         self.init_usage('test_project', 'volumes', 3, 0)
         self.init_usage('test_project', 'gigabytes', 3, 0)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
         self.assertEqual(set([]), self.sync_called)
@@ -1776,10 +1771,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
     def test_quota_reserve_unders(self):
         self.init_usage('test_project', 'volumes', 1, 0)
         self.init_usage('test_project', 'gigabytes', 1 * 1024, 0)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=-2, gigabytes=-2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
         self.assertEqual(set([]), self.sync_called)
@@ -1806,12 +1801,12 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
     def test_quota_reserve_overs(self):
         self.init_usage('test_project', 'volumes', 4, 0)
         self.init_usage('test_project', 'gigabytes', 10 * 1024, 0)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
         self.assertRaises(exception.OverQuota,
                           sqa_api.quota_reserve,
-                          context, self.resources, quotas,
+                          ctxt, self.resources, quotas,
                           deltas, self.expire, 0, 0)
 
         self.assertEqual(set([]), self.sync_called)
@@ -1831,10 +1826,10 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
     def test_quota_reserve_reduction(self):
         self.init_usage('test_project', 'volumes', 10, 0)
         self.init_usage('test_project', 'gigabytes', 20 * 1024, 0)
-        context = FakeContext('test_project', 'test_class')
+        ctxt = context.RequestContext('admin', 'test_project', is_admin=True)
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=-2, gigabytes=-2 * 1024, )
-        result = sqa_api.quota_reserve(context, self.resources, quotas,
+        result = sqa_api.quota_reserve(ctxt, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
         self.assertEqual(set([]), self.sync_called)

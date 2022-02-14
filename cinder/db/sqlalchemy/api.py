@@ -293,72 +293,106 @@ def model_query(context, model, *args, **kwargs):
     return query
 
 
-def _sync_volumes(context, project_id, session, volume_type_id=None,
-                  volume_type_name=None):
-    (volumes, _gigs) = _volume_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id, session=session)
+def _sync_volumes(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    volumes, _ = _volume_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id,
+    )
     key = 'volumes'
     if volume_type_name:
         key += '_' + volume_type_name
     return {key: volumes}
 
 
-def _sync_snapshots(context, project_id, session, volume_type_id=None,
-                    volume_type_name=None):
-    (snapshots, _gigs) = _snapshot_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id, session=session)
+def _sync_snapshots(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    snapshots, _ = _snapshot_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id,
+    )
     key = 'snapshots'
     if volume_type_name:
         key += '_' + volume_type_name
     return {key: snapshots}
 
 
-def _sync_backups(context, project_id, session, volume_type_id=None,
-                  volume_type_name=None):
-    (backups, _gigs) = _backup_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id, session=session)
+def _sync_backups(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    backups, _ = _backup_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id,
+    )
     key = 'backups'
     return {key: backups}
 
 
-def _sync_gigabytes(context, project_id, session, volume_type_id=None,
-                    volume_type_name=None):
-    (_junk, vol_gigs) = _volume_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id, session=session)
+def _sync_gigabytes(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    _, vol_gigs = _volume_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id,
+    )
+
     key = 'gigabytes'
     if volume_type_name:
         key += '_' + volume_type_name
+
     if CONF.no_snapshot_gb_quota:
         return {key: vol_gigs}
-    (_junk, snap_gigs) = _snapshot_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id, session=session)
+
+    _, snap_gigs = _snapshot_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id,
+    )
+
     return {key: vol_gigs + snap_gigs}
 
 
-def _sync_consistencygroups(context, project_id, session,
-                            volume_type_id=None,
-                            volume_type_name=None):
-    (_junk, groups) = _consistencygroup_data_get_for_project(
-        context, project_id, session=session)
+def _sync_consistencygroups(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    _, groups = _consistencygroup_data_get_for_project(context, project_id)
     key = 'consistencygroups'
     return {key: groups}
 
 
-def _sync_groups(context, project_id, session,
-                 volume_type_id=None,
-                 volume_type_name=None):
-    (_junk, groups) = _group_data_get_for_project(
-        context, project_id, session=session)
+def _sync_backup_gigabytes(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    key = 'backup_gigabytes'
+    _, backup_gigs = _backup_data_get_for_project(
+        context, project_id, volume_type_id=volume_type_id,
+    )
+    return {key: backup_gigs}
+
+
+def _sync_groups(
+    context,
+    project_id,
+    volume_type_id=None,
+    volume_type_name=None,
+):
+    _, groups = _group_data_get_for_project(context, project_id)
     key = 'groups'
     return {key: groups}
-
-
-def _sync_backup_gigabytes(context, project_id, session, volume_type_id=None,
-                           volume_type_name=None):
-    key = 'backup_gigabytes'
-    (_junk, backup_gigs) = _backup_data_get_for_project(
-        context, project_id, volume_type_id=volume_type_id, session=session)
-    return {key: backup_gigs}
 
 
 QUOTA_SYNC_FUNCTIONS = {
@@ -1317,11 +1351,14 @@ def quota_class_destroy_all_by_name(context, class_name):
 
 
 @require_context
+@main_context_manager.reader
 def quota_usage_get(context, project_id, resource):
-    result = model_query(context, models.QuotaUsage, read_deleted="no").\
-        filter_by(project_id=project_id).\
-        filter_by(resource=resource).\
-        first()
+    result = (
+        model_query(context, models.QuotaUsage, read_deleted="no")
+        .filter_by(project_id=project_id)
+        .filter_by(resource=resource)
+        .first()
+    )
 
     if not result:
         raise exception.QuotaUsageNotFound(project_id=project_id)
@@ -1330,11 +1367,13 @@ def quota_usage_get(context, project_id, resource):
 
 
 @require_context
+@main_context_manager.reader
 def quota_usage_get_all_by_project(context, project_id):
-
-    rows = model_query(context, models.QuotaUsage, read_deleted="no").\
-        filter_by(project_id=project_id).\
-        all()
+    rows = (
+        model_query(context, models.QuotaUsage, read_deleted="no")
+        .filter_by(project_id=project_id)
+        .all()
+    )
 
     result = {'project_id': project_id}
     for row in rows:
@@ -1343,25 +1382,33 @@ def quota_usage_get_all_by_project(context, project_id):
     return result
 
 
-@require_admin_context
-def _quota_usage_create(context, project_id, resource, in_use, reserved,
-                        until_refresh, session=None):
+def _quota_usage_create(
+    context,
+    project_id,
+    resource,
+    in_use,
+    reserved,
+    until_refresh,
+):
     quota_usage_ref = models.QuotaUsage()
     quota_usage_ref.project_id = project_id
     quota_usage_ref.resource = resource
     quota_usage_ref.in_use = in_use
     quota_usage_ref.reserved = reserved
     quota_usage_ref.until_refresh = until_refresh
-    quota_usage_ref.save(session=session)
-
+    quota_usage_ref.save(context.session)
     return quota_usage_ref
 
 
-###################
-
-
-def _reservation_create(context, uuid, usage, project_id, resource, delta,
-                        expire, session=None):
+def _reservation_create(
+    context,
+    uuid,
+    usage,
+    project_id,
+    resource,
+    delta,
+    expire,
+):
     usage_id = usage['id'] if usage else None
     reservation_ref = models.Reservation()
     reservation_ref.uuid = uuid
@@ -1370,11 +1417,8 @@ def _reservation_create(context, uuid, usage, project_id, resource, delta,
     reservation_ref.resource = resource
     reservation_ref.delta = delta
     reservation_ref.expire = expire
-    reservation_ref.save(session=session)
+    reservation_ref.save(context.session)
     return reservation_ref
-
-
-###################
 
 
 # NOTE(johannes): The quota code uses SQL locking to ensure races don't
@@ -1382,47 +1426,41 @@ def _reservation_create(context, uuid, usage, project_id, resource, delta,
 # code always acquires the lock on quota_usages before acquiring the lock
 # on reservations.
 
-def _get_quota_usages(context, session, project_id, resources=None):
+
+def _get_quota_usages(context, project_id, resources=None):
     # Broken out for testability
-    query = model_query(context, models.QuotaUsage,
-                        read_deleted="no",
-                        session=session).filter_by(project_id=project_id)
+    query = model_query(
+        context, models.QuotaUsage, read_deleted="no"
+    ).filter_by(project_id=project_id)
     if resources:
         query = query.filter(models.QuotaUsage.resource.in_(list(resources)))
-    rows = query.order_by(models.QuotaUsage.id.asc()).\
-        with_for_update().all()
+    rows = query.order_by(models.QuotaUsage.id.asc()).with_for_update().all()
 
     return {row.resource: row for row in rows}
 
 
-def _get_quota_usages_by_resource(context, session, resource):
-    rows = model_query(context, models.QuotaUsage,
-                       deleted="no",
-                       session=session).\
-        filter_by(resource=resource).\
-        order_by(models.QuotaUsage.id.asc()).\
-        with_for_update().\
-        all()
+def _get_quota_usages_by_resource(context, resource):
+    rows = (
+        model_query(context, models.QuotaUsage, deleted="no")
+        .filter_by(resource=resource)
+        .order_by(models.QuotaUsage.id.asc())
+        .with_for_update()
+        .all()
+    )
     return rows
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def quota_usage_update_resource(context, old_res, new_res):
-    session = get_session()
-    with session.begin():
-        usages = _get_quota_usages_by_resource(context, session, old_res)
-        for usage in usages:
-            usage.resource = new_res
-            usage.until_refresh = 1
+    usages = _get_quota_usages_by_resource(context, old_res)
+    for usage in usages:
+        usage.resource = new_res
+        usage.until_refresh = 1
 
 
-def _is_duplicate(exc):
-    """Check if an exception is caused by a unique constraint failure."""
-    return isinstance(exc, db_exc.DBDuplicateEntry)
-
-
-def _get_sync_updates(ctxt, project_id, session, resources, resource_name):
+def _get_sync_updates(ctxt, project_id, resources, resource_name):
     """Return usage for a specific resource.
 
     Resources are volumes, gigabytes, backups, snapshots, and also
@@ -1431,28 +1469,40 @@ def _get_sync_updates(ctxt, project_id, session, resources, resource_name):
     # Grab the sync routine
     sync = QUOTA_SYNC_FUNCTIONS[resources[resource_name].sync]
     # VolumeTypeResource includes the id and name of the resource.
-    volume_type_id = getattr(resources[resource_name],
-                             'volume_type_id', None)
-    volume_type_name = getattr(resources[resource_name],
-                               'volume_type_name', None)
-    updates = sync(ctxt, project_id,
-                   volume_type_id=volume_type_id,
-                   volume_type_name=volume_type_name,
-                   session=session)
+    volume_type_id = getattr(resources[resource_name], 'volume_type_id', None)
+    volume_type_name = getattr(
+        resources[resource_name], 'volume_type_name', None
+    )
+    updates = sync(
+        ctxt,
+        project_id,
+        volume_type_id=volume_type_id,
+        volume_type_name=volume_type_name,
+    )
     return updates
 
 
-@require_context
-@oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True,
-                           exception_checker=_is_duplicate)
-def quota_reserve(context, resources, quotas, deltas, expire,
-                  until_refresh, max_age, project_id=None):
-    elevated = context.elevated()
-    session = get_session()
+def _is_duplicate(exc):
+    """Check if an exception is caused by a unique constraint failure."""
+    return isinstance(exc, db_exc.DBDuplicateEntry)
 
-    # We don't use begin as a context manager because there are cases where we
-    # want to finish a transaction and begin a new one.
-    session.begin()
+
+@require_context
+@oslo_db_api.wrap_db_retry(
+    max_retries=5, retry_on_deadlock=True, exception_checker=_is_duplicate
+)
+@main_context_manager.writer
+def quota_reserve(
+    context,
+    resources,
+    quotas,
+    deltas,
+    expire,
+    until_refresh,
+    max_age,
+    project_id=None,
+):
+    elevated = context.elevated()
     try:
         if project_id is None:
             project_id = context.project_id
@@ -1460,8 +1510,9 @@ def quota_reserve(context, resources, quotas, deltas, expire,
         # Loop until we can lock all the resource rows we'll be modifying
         while True:
             # Get the current usages and lock existing rows
-            usages = _get_quota_usages(context, session, project_id,
-                                       resources=deltas.keys())
+            usages = _get_quota_usages(
+                context, project_id, resources=deltas.keys()
+            )
             missing = [res for res in deltas if res not in usages]
             # If we have successfully locked all the rows we can continue.
             # SELECT ... FOR UPDATE used in _get_quota usages cannot lock
@@ -1474,11 +1525,20 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             # assuming there are no used resources as admins may have been
             # using this mechanism to force quota usage refresh.
             for resource in missing:
-                updates = _get_sync_updates(elevated, project_id, session,
-                                            resources, resource)
-                _quota_usage_create(elevated, project_id, resource,
-                                    updates[resource], 0,
-                                    until_refresh or None, session=session)
+                updates = _get_sync_updates(
+                    elevated,
+                    project_id,
+                    resources,
+                    resource,
+                )
+                _quota_usage_create(
+                    elevated,
+                    project_id,
+                    resource,
+                    updates[resource],
+                    0,
+                    until_refresh or None,
+                )
 
             # NOTE: When doing the commit there can be a race condition with
             # other service instances or thread  that are also creating the
@@ -1491,12 +1551,12 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             # be rolled back and the wrap_db_retry decorator will retry.
 
             # Commit new rows to the DB.
-            session.commit()
+            context.session.commit()
 
             # Start a new session before trying to lock all the rows again.  By
             # trying to get all the locks in a loop we can protect us against
             # admins directly deleting DB rows.
-            session.begin()
+            context.session.begin()
 
         # Handle usage refresh
         for resource in deltas.keys():
@@ -1511,15 +1571,26 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                 usages[resource].until_refresh -= 1
                 if usages[resource].until_refresh <= 0:
                     refresh = True
-            elif max_age and usages[resource].updated_at is not None and (
-                (timeutils.utcnow() -
-                    usages[resource].updated_at).total_seconds() >= max_age):
+            elif (
+                max_age
+                and usages[resource].updated_at is not None
+                and (
+                    (
+                        timeutils.utcnow() - usages[resource].updated_at
+                    ).total_seconds()
+                    >= max_age
+                )
+            ):
                 refresh = True
 
             # OK, refresh the usage
             if refresh:
-                updates = _get_sync_updates(elevated, project_id, session,
-                                            resources, resource)
+                updates = _get_sync_updates(
+                    elevated,
+                    project_id,
+                    resources,
+                    resource,
+                )
                 # Updates will always contain a single resource usage matching
                 # the resource variable.
                 usages[resource].in_use = updates[resource]
@@ -1530,13 +1601,17 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             # to a value lower than the current remaining value.
             else:
                 res_until = usages[resource].until_refresh
-                if ((res_until is None and until_refresh) or
-                        ((res_until or 0) > (until_refresh or 0))):
+                if (res_until is None and until_refresh) or (
+                    (res_until or 0) > (until_refresh or 0)
+                ):
                     usages[resource].until_refresh = until_refresh or None
 
         # Check for deltas that would go negative
-        unders = [r for r, delta in deltas.items()
-                  if delta < 0 and delta + usages[r].in_use < 0]
+        unders = [
+            r
+            for r, delta in deltas.items()
+            if delta < 0 and delta + usages[r].in_use < 0
+        ]
 
         # TODO(mc_nair): Should ignore/zero alloc if using non-nested driver
 
@@ -1545,9 +1620,13 @@ def quota_reserve(context, resources, quotas, deltas, expire,
         #            If a project has gone over quota, we want them to
         #            be able to reduce their usage without any
         #            problems.
-        overs = [r for r, delta in deltas.items()
-                 if quotas[r] >= 0 and delta >= 0 and
-                 quotas[r] < delta + usages[r].total]
+        overs = [
+            r
+            for r, delta in deltas.items()
+            if quotas[r] >= 0
+            and delta >= 0
+            and quotas[r] < delta + usages[r].total
+        ]
 
         # NOTE(Vek): The quota check needs to be in the transaction,
         #            but the transaction doesn't fail just because
@@ -1562,8 +1641,14 @@ def quota_reserve(context, resources, quotas, deltas, expire,
             for resource, delta in deltas.items():
                 usage = usages[resource]
                 reservation = _reservation_create(
-                    elevated, str(uuid.uuid4()), usage, project_id, resource,
-                    delta, expire, session=session)
+                    elevated,
+                    str(uuid.uuid4()),
+                    usage,
+                    project_id,
+                    resource,
+                    delta,
+                    expire,
+                )
 
                 reservations.append(reservation.uuid)
 
@@ -1583,43 +1668,48 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     usages[resource].reserved += delta
 
         if unders:
-            LOG.warning("Reservation would make usage less than 0 for the "
-                        "following resources, so on commit they will be "
-                        "limited to prevent going below 0: %s", unders)
+            LOG.warning(
+                "Reservation would make usage less than 0 for the "
+                "following resources, so on commit they will be "
+                "limited to prevent going below 0: %s",
+                unders,
+            )
         if overs:
-            usages = {k: dict(in_use=v.in_use, reserved=v.reserved)
-                      for k, v in usages.items()}
-            raise exception.OverQuota(overs=sorted(overs), quotas=quotas,
-                                      usages=usages)
-        session.commit()
+            usages = {
+                k: dict(in_use=v.in_use, reserved=v.reserved)
+                for k, v in usages.items()
+            }
+            raise exception.OverQuota(
+                overs=sorted(overs), quotas=quotas, usages=usages
+            )
     except Exception:
-        session.rollback()
+        context.session.rollback()
         raise
 
     return reservations
 
 
-def _quota_reservations(session, context, reservations):
+def _quota_reservations(context, reservations):
     """Return the relevant reservations."""
 
     # Get the listed reservations
-    return model_query(context, models.Reservation,
-                       read_deleted="no",
-                       session=session).\
-        filter(models.Reservation.uuid.in_(reservations)).\
-        with_for_update().\
-        all()
+    return (
+        model_query(context, models.Reservation, read_deleted="no")
+        .filter(models.Reservation.uuid.in_(reservations))
+        .with_for_update()
+        .all()
+    )
 
 
-def _get_reservation_resources(session, context, reservation_ids):
+def _get_reservation_resources(context, reservation_ids):
     """Return the relevant resources by reservations."""
 
-    reservations = model_query(context, models.Reservation,
-                               read_deleted="no",
-                               session=session).\
-        options(load_only('resource')).\
-        filter(models.Reservation.uuid.in_(reservation_ids)).\
-        all()
+    reservations = (
+        model_query(context, models.Reservation, read_deleted="no")
+        .options(load_only('resource'))
+        .filter(models.Reservation.uuid.in_(reservation_ids))
+        .all()
+    )
     return {r.resource for r in reservations}
 
 
@@ -1629,71 +1719,73 @@ def _dict_with_usage_id(usages):
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def reservation_commit(context, reservations, project_id=None):
-    session = get_session()
-    with session.begin():
-        # NOTE: There's a potential race condition window with
-        # reservation_expire, since _get_reservation_resources does not lock
-        # the rows, but we won't fix it because:
-        # - Minuscule chance of happening, since quota expiration is usually
-        #   very high
-        # - Solution could create a DB lock on rolling upgrades since we need
-        #   to reverse the order of locking the rows.
-        usages = _get_quota_usages(
-            context, session, project_id,
-            resources=_get_reservation_resources(session, context,
-                                                 reservations))
-        usages = _dict_with_usage_id(usages)
+    # NOTE: There's a potential race condition window with
+    # reservation_expire, since _get_reservation_resources does not lock
+    # the rows, but we won't fix it because:
+    # - Minuscule chance of happening, since quota expiration is usually
+    #   very high
+    # - Solution could create a DB lock on rolling upgrades since we need
+    #   to reverse the order of locking the rows.
+    usages = _get_quota_usages(
+        context,
+        project_id,
+        resources=_get_reservation_resources(context, reservations),
+    )
+    usages = _dict_with_usage_id(usages)
 
-        for reservation in _quota_reservations(session, context, reservations):
-            usage = usages[reservation.usage_id]
-            delta = reservation.delta
-            if delta >= 0:
-                usage.reserved -= min(delta, usage.reserved)
-            # For negative deltas make sure we never go into negative usage
-            elif -delta > usage.in_use:
-                delta = -usage.in_use
+    for reservation in _quota_reservations(context, reservations):
+        usage = usages[reservation.usage_id]
+        delta = reservation.delta
+        if delta >= 0:
+            usage.reserved -= min(delta, usage.reserved)
+        # For negative deltas make sure we never go into negative usage
+        elif -delta > usage.in_use:
+            delta = -usage.in_use
 
-            usage.in_use += delta
+        usage.in_use += delta
 
-            reservation.delete(session=session)
+        reservation.delete(context.session)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def reservation_rollback(context, reservations, project_id=None):
-    session = get_session()
-    with session.begin():
-        # NOTE: There's a potential race condition window with
-        # reservation_expire, since _get_reservation_resources does not lock
-        # the rows, but we won't fix it because:
-        # - Minuscule chance of happening, since quota expiration is usually
-        #   very high
-        # - Solution could create a DB lock on rolling upgrades since we need
-        #   to reverse the order of locking the rows.
-        usages = _get_quota_usages(
-            context, session, project_id,
-            resources=_get_reservation_resources(session, context,
-                                                 reservations))
-        usages = _dict_with_usage_id(usages)
-        for reservation in _quota_reservations(session, context, reservations):
-            usage = usages[reservation.usage_id]
-            if reservation.delta >= 0:
-                usage.reserved -= min(reservation.delta, usage.reserved)
+    # NOTE: There's a potential race condition window with
+    # reservation_expire, since _get_reservation_resources does not lock
+    # the rows, but we won't fix it because:
+    # - Minuscule chance of happening, since quota expiration is usually
+    #   very high
+    # - Solution could create a DB lock on rolling upgrades since we need
+    #   to reverse the order of locking the rows.
+    usages = _get_quota_usages(
+        context,
+        project_id,
+        resources=_get_reservation_resources(context, reservations),
+    )
+    usages = _dict_with_usage_id(usages)
+    for reservation in _quota_reservations(context, reservations):
+        usage = usages[reservation.usage_id]
+        if reservation.delta >= 0:
+            usage.reserved -= min(reservation.delta, usage.reserved)
 
-            reservation.delete(session=session)
+        reservation.delete(context.session)
 
 
-def quota_destroy_by_project(*args, **kwargs):
+@require_context
+def quota_destroy_by_project(context, project_id):
     """Destroy all limit quotas associated with a project.
 
     Leaves usage and reservation quotas intact.
     """
-    quota_destroy_all_by_project(only_quotas=True, *args, **kwargs)
+    quota_destroy_all_by_project(context, project_id, only_quotas=True)
 
 
 @require_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def quota_destroy_all_by_project(context, project_id, only_quotas=False):
     """Destroy all quotas associated with a project.
 
@@ -1704,47 +1796,44 @@ def quota_destroy_all_by_project(context, project_id, only_quotas=False):
     :param project_id: The ID of the project being deleted.
     :param only_quotas: Only delete limit quotas, leave other types intact.
     """
-    session = get_session()
-    with session.begin():
-        model_query(context, models.Quota, session=session,
-                    read_deleted="no").\
-            filter_by(project_id=project_id).\
-            update(models.Quota.delete_values())
+    model_query(context, models.Quota).filter_by(project_id=project_id).update(
+        models.Quota.delete_values()
+    )
 
-        if only_quotas:
-            return
+    if only_quotas:
+        return
 
-        model_query(context, models.QuotaUsage, session=session,
-                    read_deleted="no").\
-            filter_by(project_id=project_id).\
-            update(models.QuotaUsage.delete_values())
+    model_query(context, models.QuotaUsage, read_deleted="no").filter_by(
+        project_id=project_id
+    ).update(models.QuotaUsage.delete_values())
 
-        model_query(context, models.Reservation, session=session,
-                    read_deleted="no").\
-            filter_by(project_id=project_id).\
-            update(models.Reservation.delete_values())
+    model_query(context, models.Reservation, read_deleted="no").filter_by(
+        project_id=project_id
+    ).update(models.Reservation.delete_values())
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def reservation_expire(context):
-    session = get_session()
-    with session.begin():
-        current_time = timeutils.utcnow()
-        results = model_query(context, models.Reservation, session=session,
-                              read_deleted="no").\
-            filter(models.Reservation.expire < current_time).\
-            with_for_update().\
-            all()
+    current_time = timeutils.utcnow()
+    results = (
+        model_query(context, models.Reservation, read_deleted="no")
+        .filter(models.Reservation.expire < current_time)
+        .with_for_update()
+        .all()
+    )
 
-        if results:
-            for reservation in results:
-                if reservation.delta >= 0:
-                    reservation.usage.reserved -= min(
-                        reservation.delta, reservation.usage.reserved)
-                    reservation.usage.save(session=session)
+    if results:
+        for reservation in results:
+            if reservation.delta >= 0:
+                reservation.usage.reserved -= min(
+                    reservation.delta,
+                    reservation.usage.reserved,
+                )
+                reservation.usage.save(context.session)
 
-                reservation.delete(session=session)
+            reservation.delete(context.session)
 
 
 ###################
@@ -1869,6 +1958,7 @@ def volume_data_get_for_host(context, host, count_only=False):
         return (result[0] or 0, result[1] or 0)
 
 
+# TODO: Remove 'session' parameter once all callers are updated
 @require_admin_context
 def _volume_data_get_for_project(context, project_id, volume_type_id=None,
                                  session=None, host=None, skip_internal=True):
@@ -1913,6 +2003,7 @@ def _volume_data_get_for_project(context, project_id, volume_type_id=None,
     return (result[0] or 0, result[1] or 0)
 
 
+# TODO: Remove 'session' parameter once all callers are updated
 @require_admin_context
 def _backup_data_get_for_project(context, project_id, volume_type_id=None,
                                  session=None):
@@ -3590,6 +3681,7 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
     return query.all()
 
 
+# TODO: Remove 'session' parameter once all callers are updated
 @require_context
 def _snapshot_data_get_for_project(context, project_id, volume_type_id=None,
                                    session=None, host=None,
@@ -6060,13 +6152,12 @@ def transfer_accept(context, transfer_id, user_id, project_id,
 
 
 @require_admin_context
-def _consistencygroup_data_get_for_project(context, project_id,
-                                           session=None):
-    query = model_query(context,
-                        func.count(models.ConsistencyGroup.id),
-                        read_deleted="no",
-                        session=session).\
-        filter_by(project_id=project_id)
+def _consistencygroup_data_get_for_project(context, project_id):
+    query = model_query(
+        context,
+        func.count(models.ConsistencyGroup.id),
+        read_deleted="no",
+    ).filter_by(project_id=project_id)
 
     result = query.first()
 
@@ -6374,13 +6465,12 @@ def group_include_in_cluster(context, cluster, partial_rename=True, **filters):
 
 
 @require_admin_context
-def _group_data_get_for_project(context, project_id,
-                                session=None):
-    query = model_query(context,
-                        func.count(models.Group.id),
-                        read_deleted="no",
-                        session=session).\
-        filter_by(project_id=project_id)
+def _group_data_get_for_project(context, project_id):
+    query = model_query(
+        context,
+        func.count(models.Group.id),
+        read_deleted="no",
+    ).filter_by(project_id=project_id)
 
     result = query.first()
 

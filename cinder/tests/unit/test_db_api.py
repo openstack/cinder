@@ -2572,7 +2572,7 @@ class DBAPIReservationTestCase(BaseTest):
         reservations = _quota_reserve(self.ctxt, 'project1')
         expected = ['gigabytes', 'volumes']
         resources = sqlalchemy_api._get_reservation_resources(
-            sqlalchemy_api.get_session(), self.ctxt, reservations)
+            self.ctxt, reservations)
         self.assertEqual(expected, sorted(resources))
 
     def test_reservation_commit(self):
@@ -2714,16 +2714,21 @@ class DBAPIReservationTestCase(BaseTest):
     @mock.patch('time.sleep', mock.Mock())
     def test_quota_reserve_create_usages_race(self):
         """Test we retry when there is a race in creation."""
-        def create(*args, original_create=sqlalchemy_api._quota_usage_create,
-                   **kwargs):
-            # Create the quota usage entry (with values set to 0)
-            session = sqlalchemy_api.get_session()
-            kwargs['session'] = session
-            with session.begin():
-                original_create(*args, **kwargs)
-            # Simulate that there's been a race condition with other create and
-            # that we got the exception
-            raise oslo_db.exception.DBDuplicateEntry
+
+        orig_get_usages = sqlalchemy_api._get_quota_usages
+        counter = 0
+
+        # we want to simulate a duplicate request, so we fake out the first two
+        # attempts to get usages from the database
+        def fake_get_usages(*args, **kwargs):
+            nonlocal counter
+
+            if counter > 2:
+                return orig_get_usages(*args, **kwargs)
+
+            counter += 1
+
+            return []
 
         resources = quota.QUOTAS.resources
         quotas = {'volumes': 5}
@@ -2731,17 +2736,13 @@ class DBAPIReservationTestCase(BaseTest):
         project_id = 'project1'
         expire = timeutils.utcnow() + datetime.timedelta(seconds=3600)
 
-        with mock.patch.object(sqlalchemy_api, '_quota_usage_create',
-                               side_effect=create) as create_mock:
+        with mock.patch.object(
+            sqlalchemy_api,
+            '_get_quota_usages',
+            side_effect=fake_get_usages,
+        ):
             sqlalchemy_api.quota_reserve(self.ctxt, resources, quotas, deltas,
                                          expire, 0, 0, project_id=project_id)
-
-            # The create call only happens once, when the race happens, because
-            # on the second try of the quota_reserve call the entry is already
-            # in the DB.
-            create_mock.assert_called_once_with(mock.ANY, 'project1',
-                                                'volumes', 0, 0, None,
-                                                session=mock.ANY)
 
         # Confirm that regardless of who created the DB entry the values are
         # updated
@@ -2910,20 +2911,15 @@ class DBAPIQuotaTestCase(BaseTest):
 
     def test__get_quota_usages(self):
         _quota_reserve(self.ctxt, 'project1')
-        session = sqlalchemy_api.get_session()
         quota_usage = sqlalchemy_api._get_quota_usages(
-            self.ctxt, session, 'project1')
-
+            self.ctxt, 'project1')
         self.assertEqual(['gigabytes', 'volumes'],
                          sorted(quota_usage.keys()))
 
     def test__get_quota_usages_with_resources(self):
         _quota_reserve(self.ctxt, 'project1')
-        session = sqlalchemy_api.get_session()
-
         quota_usage = sqlalchemy_api._get_quota_usages(
-            self.ctxt, session, 'project1', resources=['volumes'])
-
+            self.ctxt, 'project1', resources=['volumes'])
         self.assertEqual(['volumes'], list(quota_usage.keys()))
 
     @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
@@ -3011,12 +3007,22 @@ class DBAPIQuotaTestCase(BaseTest):
                          self.ctxt, 'p1'))
 
     def test__quota_usage_create(self):
-        session = sqlalchemy_api.get_session()
-        usage = sqlalchemy_api._quota_usage_create(self.ctxt, 'project1',
-                                                   'resource',
-                                                   in_use=10, reserved=0,
-                                                   until_refresh=None,
-                                                   session=session)
+
+        # the actual _quota_usage_create method isn't wrapped in a decorator so
+        # we create a closure to mimic this
+
+        @sqlalchemy_api.main_context_manager.writer
+        def _quota_usage_create(context, *args, **kwargs):
+            return sqlalchemy_api._quota_usage_create(context, *args, **kwargs)
+
+        usage = _quota_usage_create(
+            self.ctxt,
+            'project1',
+            'resource',
+            in_use=10,
+            reserved=0,
+            until_refresh=None,
+        )
         self.assertEqual('project1', usage.project_id)
         self.assertEqual('resource', usage.resource)
         self.assertEqual(10, usage.in_use)
@@ -3024,14 +3030,25 @@ class DBAPIQuotaTestCase(BaseTest):
         self.assertIsNone(usage.until_refresh)
 
     def test__quota_usage_create_duplicate(self):
-        session = sqlalchemy_api.get_session()
-        kwargs = {'project_id': 'project1', 'resource': 'resource',
-                  'in_use': 10, 'reserved': 0, 'until_refresh': None,
-                  'session': session}
-        sqlalchemy_api._quota_usage_create(self.ctxt, **kwargs)
-        self.assertRaises(oslo_db.exception.DBDuplicateEntry,
-                          sqlalchemy_api._quota_usage_create,
-                          self.ctxt, **kwargs)
+        # the actual _quota_usage_create method isn't wrapped in a decorator so
+        # we create a closure to mimic this
+
+        @sqlalchemy_api.main_context_manager.writer
+        def _quota_usage_create(context, *args, **kwargs):
+            return sqlalchemy_api._quota_usage_create(context, *args, **kwargs)
+
+        kwargs = {
+            'project_id': 'project1',
+            'resource': 'resource',
+            'in_use': 10,
+            'reserved': 0,
+            'until_refresh': None,
+        }
+        _quota_usage_create(self.ctxt, **kwargs)
+        self.assertRaises(
+            oslo_db.exception.DBDuplicateEntry,
+            _quota_usage_create,
+            self.ctxt, **kwargs)
 
 
 class DBAPIBackupTestCase(BaseTest):
