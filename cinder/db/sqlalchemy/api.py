@@ -85,14 +85,13 @@ def configure(conf):
                                                           eng, "db")
 
 
-def get_engine(use_slave=False):
-    return main_context_manager._factory.get_legacy_facade().get_engine(
-        use_slave=use_slave)
+def get_engine():
+    return main_context_manager._factory.get_legacy_facade().get_engine()
 
 
-def get_session(use_slave=False, **kwargs):
+def get_session(**kwargs):
     return main_context_manager._factory.get_legacy_facade().get_session(
-        use_slave=use_slave, **kwargs)
+        **kwargs)
 
 
 def dispose_engine():
