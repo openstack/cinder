@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IBM Spectrum Virtualize family driver
+    `Bug #1943682 <https://bugs.launchpad.net/cinder/+bug/1943682>`_:
+    Updating rccg_name property to volume metadata for the resultant
+    volumes of a clone_group from a source_group or a group_snapshot.

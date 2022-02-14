@@ -6111,16 +6111,20 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         for vol in volumes:
             rep_type = self._get_volume_replicated_type(context,
                                                         vol)
+            volume_model = dict()
+            for model in volumes_model:
+                if vol.id == model["id"]:
+                    volume_model = model
+                    break
             if rep_type:
                 replica_obj = self._get_replica_obj(rep_type)
                 replica_obj.volume_replication_setup(context, vol)
-                volumes_model[volumes.index(vol)]['replication_status'] = (
+                volume_model['replication_status'] = (
                     fields.ReplicationStatus.ENABLED)
                 # Updating replication properties for a volume with replication
                 # enabled.
-                volumes_model[volumes.index(vol)] = (
-                    self._update_replication_properties(
-                        context, vol, volumes_model[volumes.index(vol)]))
+                self._update_replication_properties(context, vol,
+                                                    volume_model)
 
             opts = self._get_vdisk_params(vol['volume_type_id'],
                                           volume_metadata=
@@ -6129,9 +6133,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 # Updating QoS properties for a volume
                 self._helpers.add_vdisk_qos(vol['name'], opts['qos'],
                                             vol['size'])
-                volumes_model[volumes.index(vol)] = (
-                    self._qos_model_update(
-                        volumes_model[volumes.index(vol)], vol))
+                self._qos_model_update(volume_model, vol)
 
             if is_hyper_group:
                 self._helpers.ensure_vdisk_no_fc_mappings(vol['name'],
@@ -6146,8 +6148,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         if volume_utils.is_group_a_type(
                 group, "consistent_group_replication_enabled"):
-            self.update_group(context, group, add_volumes=volumes,
-                              remove_volumes=[])
+            model_update, added_vols, removed_vols = (
+                self._update_replication_grp(context, group, volumes, []))
+            if model_update.get('status') != fields.GroupStatus.ERROR:
+                # Updating RCCG property to volume metadata
+                for model in volumes_model:
+                    model['metadata']['Consistency Group Name'] = rccg_name
 
         LOG.debug("Leave: create_group_from_src.")
         return model_update, volumes_model
