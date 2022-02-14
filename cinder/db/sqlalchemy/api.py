@@ -1120,13 +1120,13 @@ def _dict_with_group_specs_if_authorized(context, inst_type_query):
 ###################
 
 
-@require_context
-def _quota_get(context, project_id, resource, session=None):
-    result = model_query(context, models.Quota, session=session,
-                         read_deleted="no").\
-        filter_by(project_id=project_id).\
-        filter_by(resource=resource).\
-        first()
+def _quota_get(context, project_id, resource):
+    result = (
+        model_query(context, models.Quota, read_deleted="no")
+        .filter_by(project_id=project_id)
+        .filter_by(resource=resource)
+        .first()
+    )
 
     if not result:
         raise exception.ProjectQuotaNotFound(project_id=project_id)
@@ -1135,16 +1135,19 @@ def _quota_get(context, project_id, resource, session=None):
 
 
 @require_context
+@main_context_manager.reader
 def quota_get(context, project_id, resource):
     return _quota_get(context, project_id, resource)
 
 
 @require_context
+@main_context_manager.reader
 def quota_get_all_by_project(context, project_id):
-
-    rows = model_query(context, models.Quota, read_deleted="no").\
-        filter_by(project_id=project_id).\
-        all()
+    rows = (
+        model_query(context, models.Quota, read_deleted="no")
+        .filter_by(project_id=project_id)
+        .all()
+    )
 
     result = {'project_id': project_id}
     for row in rows:
@@ -1154,51 +1157,44 @@ def quota_get_all_by_project(context, project_id):
 
 
 @require_context
-def _quota_get_all_by_resource(context, resource, session=None):
-    rows = model_query(context, models.Quota,
-                       session=session,
-                       read_deleted='no').filter_by(
-        resource=resource).all()
-    return rows
-
-
-@require_context
+@main_context_manager.writer
 def quota_create(context, project_id, resource, limit):
     quota_ref = models.Quota()
     quota_ref.project_id = project_id
     quota_ref.resource = resource
     quota_ref.hard_limit = limit
-
-    session = get_session()
-    with session.begin():
-        quota_ref.save(session)
-        return quota_ref
+    quota_ref.save(context.session)
+    return quota_ref
 
 
 @require_context
+@main_context_manager.writer
 def quota_update(context, project_id, resource, limit):
-    session = get_session()
-    with session.begin():
-        quota_ref = _quota_get(context, project_id, resource, session=session)
-        quota_ref.hard_limit = limit
-        return quota_ref
+    quota_ref = _quota_get(context, project_id, resource)
+    quota_ref.hard_limit = limit
+    quota_ref.save(context.session)
+    return quota_ref
 
 
 @require_context
+@main_context_manager.writer
 def quota_update_resource(context, old_res, new_res):
-    session = get_session()
-    with session.begin():
-        quotas = _quota_get_all_by_resource(context, old_res, session=session)
-        for quota in quotas:
-            quota.resource = new_res
+    quotas = (
+        model_query(context, models.Quota, read_deleted='no')
+        .filter_by(resource=old_res)
+        .all()
+    )
+    for quota in quotas:
+        quota.resource = new_res
+        quota.save(context.session)
+        return quota
 
 
 @require_admin_context
+@main_context_manager.writer
 def quota_destroy(context, project_id, resource):
-    session = get_session()
-    with session.begin():
-        quota_ref = _quota_get(context, project_id, resource, session=session)
-        return quota_ref.delete(session=session)
+    quota_ref = _quota_get(context, project_id, resource)
+    return quota_ref.delete(context.session)
 
 
 ###################
