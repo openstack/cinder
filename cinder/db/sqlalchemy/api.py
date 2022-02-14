@@ -1200,13 +1200,13 @@ def quota_destroy(context, project_id, resource):
 ###################
 
 
-@require_context
-def _quota_class_get(context, class_name, resource, session=None):
-    result = model_query(context, models.QuotaClass, session=session,
-                         read_deleted="no").\
-        filter_by(class_name=class_name).\
-        filter_by(resource=resource).\
-        first()
+def _quota_class_get(context, class_name, resource):
+    result = (
+        model_query(context, models.QuotaClass, read_deleted="no")
+        .filter_by(class_name=class_name)
+        .filter_by(resource=resource)
+        .first()
+    )
 
     if not result:
         raise exception.QuotaClassNotFound(class_name=class_name)
@@ -1219,10 +1219,14 @@ def quota_class_get(context, class_name, resource):
     return _quota_class_get(context, class_name, resource)
 
 
+@require_context
+@main_context_manager.reader
 def quota_class_get_defaults(context):
-    rows = model_query(context, models.QuotaClass,
-                       read_deleted="no").\
-        filter_by(class_name=_DEFAULT_QUOTA_NAME).all()
+    rows = (
+        model_query(context, models.QuotaClass, read_deleted="no")
+        .filter_by(class_name=_DEFAULT_QUOTA_NAME)
+        .all()
+    )
 
     result = {'class_name': _DEFAULT_QUOTA_NAME}
     for row in rows:
@@ -1232,11 +1236,13 @@ def quota_class_get_defaults(context):
 
 
 @require_context
+@main_context_manager.reader
 def quota_class_get_all_by_name(context, class_name):
-
-    rows = model_query(context, models.QuotaClass, read_deleted="no").\
-        filter_by(class_name=class_name).\
-        all()
+    rows = (
+        model_query(context, models.QuotaClass, read_deleted="no")
+        .filter_by(class_name=class_name)
+        .all()
+    )
 
     result = {'class_name': class_name}
     for row in rows:
@@ -1246,70 +1252,65 @@ def quota_class_get_all_by_name(context, class_name):
 
 
 @require_context
-def _quota_class_get_all_by_resource(context, resource, session):
-    result = model_query(context, models.QuotaClass,
-                         session=session,
-                         read_deleted="no").\
-        filter_by(resource=resource).\
-        all()
+@main_context_manager.reader
+def _quota_class_get_all_by_resource(context, resource):
+    result = (
+        model_query(context, models.QuotaClass, read_deleted="no")
+        .filter_by(resource=resource)
+        .all()
+    )
 
     return result
 
 
 @handle_db_data_error
 @require_context
+@main_context_manager.writer
 def quota_class_create(context, class_name, resource, limit):
     quota_class_ref = models.QuotaClass()
     quota_class_ref.class_name = class_name
     quota_class_ref.resource = resource
     quota_class_ref.hard_limit = limit
-
-    session = get_session()
-    with session.begin():
-        quota_class_ref.save(session)
-        return quota_class_ref
+    quota_class_ref.save(context.session)
+    return quota_class_ref
 
 
 @require_context
+@main_context_manager.writer
 def quota_class_update(context, class_name, resource, limit):
-    session = get_session()
-    with session.begin():
-        quota_class_ref = _quota_class_get(context, class_name, resource,
-                                           session=session)
-        quota_class_ref.hard_limit = limit
-        return quota_class_ref
+    quota_class_ref = _quota_class_get(context, class_name, resource)
+    quota_class_ref.hard_limit = limit
+    quota_class_ref.save(context.session)
+    return quota_class_ref
 
 
 @require_context
+@main_context_manager.writer
 def quota_class_update_resource(context, old_res, new_res):
-    session = get_session()
-    with session.begin():
-        quota_class_list = _quota_class_get_all_by_resource(
-            context, old_res, session)
-        for quota_class in quota_class_list:
-            quota_class.resource = new_res
+    quota_class_list = _quota_class_get_all_by_resource(context, old_res)
+    for quota_class in quota_class_list:
+        quota_class.resource = new_res
+        quota_class.save(context.session)
 
 
 @require_context
+@main_context_manager.writer
 def quota_class_destroy(context, class_name, resource):
-    session = get_session()
-    with session.begin():
-        quota_class_ref = _quota_class_get(context, class_name, resource,
-                                           session=session)
-        return quota_class_ref.delete(session=session)
+    quota_class_ref = _quota_class_get(context, class_name, resource)
+    return quota_class_ref.delete(context.session)
 
 
 @require_context
+@main_context_manager.writer
 def quota_class_destroy_all_by_name(context, class_name):
-    session = get_session()
-    with session.begin():
-        quota_classes = model_query(context, models.QuotaClass,
-                                    session=session, read_deleted="no").\
-            filter_by(class_name=class_name).\
-            all()
+    quota_classes = (
+        model_query(context, models.QuotaClass, read_deleted="no")
+        .filter_by(class_name=class_name)
+        .all()
+    )
 
-        for quota_class_ref in quota_classes:
-            quota_class_ref.delete(session=session)
+    for quota_class_ref in quota_classes:
+        quota_class_ref.delete(context.session)
 
 
 ###################
