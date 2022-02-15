@@ -3376,14 +3376,14 @@ def volume_has_other_project_snp_filter():
 ####################
 
 
-def _volume_x_metadata_get_query(context, volume_id, model, session=None):
-    return model_query(context, model, session=session, read_deleted="no").\
-        filter_by(volume_id=volume_id)
+def _volume_x_metadata_get_query(context, volume_id, model):
+    return model_query(context, model, read_deleted="no").filter_by(
+        volume_id=volume_id
+    )
 
 
-def _volume_x_metadata_get(context, volume_id, model, session=None):
-    rows = _volume_x_metadata_get_query(context, volume_id, model,
-                                        session=session).all()
+def _volume_x_metadata_get(context, volume_id, model):
+    rows = _volume_x_metadata_get_query(context, volume_id, model).all()
     result = {}
     for row in rows:
         result[row['key']] = row['value']
@@ -3391,12 +3391,12 @@ def _volume_x_metadata_get(context, volume_id, model, session=None):
     return result
 
 
-def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec,
-                                session=None):
-    result = _volume_x_metadata_get_query(context, volume_id,
-                                          model, session=session).\
-        filter_by(key=key).\
-        first()
+def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec):
+    result = (
+        _volume_x_metadata_get_query(context, volume_id, model)
+        .filter_by(key=key)
+        .first()
+    )
 
     if not result:
         if model is models.VolumeGlanceMetadata:
@@ -3406,109 +3406,117 @@ def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec,
     return result
 
 
-def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
-                              session=None, add=True, update=True):
-    session = session or get_session()
+# TODO: We dropped 'subtransactions=True' here. Is that an issue?
+def _volume_x_metadata_update(
+    context, volume_id, metadata, delete, model, add=True, update=True
+):
     metadata = metadata.copy()
 
-    with session.begin(subtransactions=True):
-        # Set existing metadata to deleted if delete argument is True.  This is
-        # committed immediately to the DB
-        if delete:
-            expected_values = {'volume_id': volume_id}
-            # We don't want to delete keys we are going to update
-            if metadata:
-                expected_values['key'] = db.Not(metadata.keys())
-            conditional_update(context, model,
-                               {'deleted': True,
-                                'deleted_at': timeutils.utcnow()},
-                               expected_values)
+    # Set existing metadata to deleted if delete argument is True.  This is
+    # committed immediately to the DB
+    if delete:
+        expected_values = {'volume_id': volume_id}
+        # We don't want to delete keys we are going to update
+        if metadata:
+            expected_values['key'] = db.Not(metadata.keys())
+        conditional_update(
+            context,
+            model,
+            {'deleted': True, 'deleted_at': timeutils.utcnow()},
+            expected_values,
+        )
 
-        # Get existing metadata
-        db_meta = _volume_x_metadata_get_query(context, volume_id, model).all()
-        save = []
-        skip = []
+    # Get existing metadata
+    db_meta = _volume_x_metadata_get_query(context, volume_id, model).all()
+    save = []
+    skip = []
 
-        # We only want to send changed metadata.
-        for row in db_meta:
-            if row.key in metadata:
-                value = metadata.pop(row.key)
-                if row.value != value and update:
-                    # ORM objects will not be saved until we do the bulk save
-                    row.value = value
-                    save.append(row)
-                    continue
-            skip.append(row)
+    # We only want to send changed metadata.
+    for row in db_meta:
+        if row.key in metadata:
+            value = metadata.pop(row.key)
+            if row.value != value and update:
+                # ORM objects will not be saved until we do the bulk save
+                row.value = value
+                save.append(row)
+                continue
+        skip.append(row)
 
-        # We also want to save non-existent metadata
-        if add:
-            save.extend(model(key=key, value=value, volume_id=volume_id)
-                        for key, value in metadata.items())
-        # Do a bulk save
-        if save:
-            session.bulk_save_objects(save, update_changed_only=True)
+    # We also want to save non-existent metadata
+    if add:
+        save.extend(
+            model(key=key, value=value, volume_id=volume_id)
+            for key, value in metadata.items()
+        )
+    # Do a bulk save
+    if save:
+        context.session.bulk_save_objects(save, update_changed_only=True)
 
-        # Construct result dictionary with current metadata
-        save.extend(skip)
-        result = {row['key']: row['value'] for row in save}
+    # Construct result dictionary with current metadata
+    save.extend(skip)
+    result = {row['key']: row['value'] for row in save}
     return result
 
 
-def _volume_user_metadata_get_query(context, volume_id, session=None):
-    return _volume_x_metadata_get_query(context, volume_id,
-                                        models.VolumeMetadata, session=session)
+def _volume_user_metadata_get_query(context, volume_id):
+    return _volume_x_metadata_get_query(
+        context, volume_id, models.VolumeMetadata
+    )
 
 
-def _volume_image_metadata_get_query(context, volume_id, session=None):
-    return _volume_x_metadata_get_query(context, volume_id,
-                                        models.VolumeGlanceMetadata,
-                                        session=session)
-
-
-@require_context
-def _volume_user_metadata_get(context, volume_id, session=None):
-    return _volume_x_metadata_get(context, volume_id,
-                                  models.VolumeMetadata, session=session)
+def _volume_image_metadata_get_query(context, volume_id):
+    return _volume_x_metadata_get_query(
+        context, volume_id, models.VolumeGlanceMetadata
+    )
 
 
 @require_context
-def _volume_user_metadata_get_item(context, volume_id, key, session=None):
-    return _volume_x_metadata_get_item(context, volume_id, key,
-                                       models.VolumeMetadata,
-                                       exception.VolumeMetadataNotFound,
-                                       session=session)
+def _volume_user_metadata_get(context, volume_id):
+    return _volume_x_metadata_get(context, volume_id, models.VolumeMetadata)
 
 
 @require_context
-@require_volume_exists
-def _volume_user_metadata_update(context, volume_id, metadata, delete,
-                                 session=None):
-    return _volume_x_metadata_update(context, volume_id, metadata, delete,
-                                     models.VolumeMetadata,
-                                     session=session)
+def _volume_user_metadata_get_item(context, volume_id, key):
+    return _volume_x_metadata_get_item(
+        context,
+        volume_id,
+        key,
+        models.VolumeMetadata,
+        exception.VolumeMetadataNotFound,
+    )
 
 
 @require_context
 @require_volume_exists
-def _volume_image_metadata_update(context, volume_id, metadata, delete,
-                                  session=None):
-    return _volume_x_metadata_update(context, volume_id, metadata, delete,
-                                     models.VolumeGlanceMetadata,
-                                     session=session)
+def _volume_user_metadata_update(context, volume_id, metadata, delete):
+    return _volume_x_metadata_update(
+        context, volume_id, metadata, delete, models.VolumeMetadata
+    )
+
+
+@require_context
+@require_volume_exists
+def _volume_image_metadata_update(context, volume_id, metadata, delete):
+    return _volume_x_metadata_update(
+        context, volume_id, metadata, delete, models.VolumeGlanceMetadata
+    )
 
 
 @require_context
 def _volume_glance_metadata_key_to_id(context, volume_id, key):
     db_data = volume_glance_metadata_get(context, volume_id)
-    metadata = {meta_entry.key: meta_entry.id
-                for meta_entry in db_data
-                if meta_entry.key == key}
+    metadata = {
+        meta_entry.key: meta_entry.id
+        for meta_entry in db_data
+        if meta_entry.key == key
+    }
     metadata_id = metadata[key]
     return metadata_id
 
 
 @require_context
 @require_volume_exists
+@main_context_manager.reader
 def volume_metadata_get(context, volume_id):
     return _volume_user_metadata_get(context, volume_id)
 
@@ -3516,73 +3524,95 @@ def volume_metadata_get(context, volume_id):
 @require_context
 @require_volume_exists
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def volume_metadata_delete(context, volume_id, key, meta_type):
     if meta_type == common.METADATA_TYPES.user:
-        query = _volume_user_metadata_get_query(context, volume_id).\
-            filter_by(key=key)
+        query = _volume_user_metadata_get_query(context, volume_id).filter_by(
+            key=key
+        )
         entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+        query.update(
+            {
+                'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': entity.updated_at,
+            }
+        )
     elif meta_type == common.METADATA_TYPES.image:
-        metadata_id = _volume_glance_metadata_key_to_id(context,
-                                                        volume_id, key)
-        query = _volume_image_metadata_get_query(context, volume_id).\
-            filter_by(id=metadata_id)
+        metadata_id = _volume_glance_metadata_key_to_id(
+            context, volume_id, key
+        )
+        query = _volume_image_metadata_get_query(context, volume_id).filter_by(
+            id=metadata_id
+        )
         entity = query.column_descriptions[0]['entity']
-        query.update({'deleted': True,
-                      'deleted_at': timeutils.utcnow(),
-                      'updated_at': entity.updated_at})
+        query.update(
+            {
+                'deleted': True,
+                'deleted_at': timeutils.utcnow(),
+                'updated_at': entity.updated_at,
+            }
+        )
     else:
-        raise exception.InvalidMetadataType(metadata_type=meta_type,
-                                            id=volume_id)
+        raise exception.InvalidMetadataType(
+            metadata_type=meta_type, id=volume_id
+        )
 
 
 @require_context
 @handle_db_data_error
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def volume_metadata_update(context, volume_id, metadata, delete, meta_type):
     if meta_type == common.METADATA_TYPES.user:
-        return _volume_user_metadata_update(context,
-                                            volume_id,
-                                            metadata,
-                                            delete)
+        return _volume_user_metadata_update(
+            context, volume_id, metadata, delete
+        )
     elif meta_type == common.METADATA_TYPES.image:
-        return _volume_image_metadata_update(context,
-                                             volume_id,
-                                             metadata,
-                                             delete)
+        return _volume_image_metadata_update(
+            context, volume_id, metadata, delete
+        )
     else:
-        raise exception.InvalidMetadataType(metadata_type=meta_type,
-                                            id=volume_id)
+        raise exception.InvalidMetadataType(
+            metadata_type=meta_type, id=volume_id
+        )
 
 
 ###################
 
 
-def _volume_admin_metadata_get_query(context, volume_id, session=None):
-    return _volume_x_metadata_get_query(context, volume_id,
-                                        models.VolumeAdminMetadata,
-                                        session=session)
+def _volume_admin_metadata_get_query(context, volume_id):
+    return _volume_x_metadata_get_query(
+        context, volume_id, models.VolumeAdminMetadata
+    )
 
 
 @require_admin_context
 @require_volume_exists
-def _volume_admin_metadata_get(context, volume_id, session=None):
-    return _volume_x_metadata_get(context, volume_id,
-                                  models.VolumeAdminMetadata, session=session)
+def _volume_admin_metadata_get(context, volume_id):
+    return _volume_x_metadata_get(
+        context, volume_id, models.VolumeAdminMetadata
+    )
 
 
 @require_admin_context
 @require_volume_exists
-def _volume_admin_metadata_update(context, volume_id, metadata, delete,
-                                  session=None, add=True, update=True):
-    return _volume_x_metadata_update(context, volume_id, metadata, delete,
-                                     models.VolumeAdminMetadata,
-                                     session=session, add=add, update=update)
+def _volume_admin_metadata_update(
+    context, volume_id, metadata, delete, add=True, update=True
+):
+    return _volume_x_metadata_update(
+        context,
+        volume_id,
+        metadata,
+        delete,
+        models.VolumeAdminMetadata,
+        add=add,
+        update=update,
+    )
 
 
 @require_admin_context
+@main_context_manager.reader
 def volume_admin_metadata_get(context, volume_id):
     return _volume_admin_metadata_get(context, volume_id)
 
@@ -3590,21 +3620,30 @@ def volume_admin_metadata_get(context, volume_id):
 @require_admin_context
 @require_volume_exists
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def volume_admin_metadata_delete(context, volume_id, key):
-    query = _volume_admin_metadata_get_query(context, volume_id).\
-        filter_by(key=key)
+    query = _volume_admin_metadata_get_query(context, volume_id).filter_by(
+        key=key
+    )
     entity = query.column_descriptions[0]['entity']
-    query.update({'deleted': True,
-                  'deleted_at': timeutils.utcnow(),
-                  'updated_at': entity.updated_at})
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        }
+    )
 
 
 @require_admin_context
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
-def volume_admin_metadata_update(context, volume_id, metadata, delete,
-                                 add=True, update=True):
-    return _volume_admin_metadata_update(context, volume_id, metadata, delete,
-                                         add=add, update=update)
+@main_context_manager.writer
+def volume_admin_metadata_update(
+    context, volume_id, metadata, delete, add=True, update=True
+):
+    return _volume_admin_metadata_update(
+        context, volume_id, metadata, delete, add=add, update=update
+    )
 
 
 ###################
