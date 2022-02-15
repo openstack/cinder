@@ -4139,15 +4139,15 @@ def get_snapshot_summary(context, project_only, filters=None):
 ####################
 
 
-def _snapshot_metadata_get_query(context, snapshot_id, session=None):
-    return model_query(context, models.SnapshotMetadata,
-                       session=session, read_deleted="no").\
-        filter_by(snapshot_id=snapshot_id)
+def _snapshot_metadata_get_query(context, snapshot_id):
+    return model_query(
+        context, models.SnapshotMetadata, read_deleted="no"
+    ).filter_by(snapshot_id=snapshot_id)
 
 
 @require_context
-def _snapshot_metadata_get(context, snapshot_id, session=None):
-    rows = _snapshot_metadata_get_query(context, snapshot_id, session).all()
+def _snapshot_metadata_get(context, snapshot_id):
+    rows = _snapshot_metadata_get_query(context, snapshot_id).all()
     result = {}
     for row in rows:
         result[row['key']] = row['value']
@@ -4157,6 +4157,7 @@ def _snapshot_metadata_get(context, snapshot_id, session=None):
 
 @require_context
 @require_snapshot_exists
+@main_context_manager.reader
 def snapshot_metadata_get(context, snapshot_id):
     return _snapshot_metadata_get(context, snapshot_id)
 
@@ -4164,26 +4165,33 @@ def snapshot_metadata_get(context, snapshot_id):
 @require_context
 @require_snapshot_exists
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def snapshot_metadata_delete(context, snapshot_id, key):
-    query = _snapshot_metadata_get_query(context, snapshot_id).\
-        filter_by(key=key)
+    query = _snapshot_metadata_get_query(context, snapshot_id).filter_by(
+        key=key
+    )
     entity = query.column_descriptions[0]['entity']
-    query.update({'deleted': True,
-                  'deleted_at': timeutils.utcnow(),
-                  'updated_at': entity.updated_at})
+    query.update(
+        {
+            'deleted': True,
+            'deleted_at': timeutils.utcnow(),
+            'updated_at': entity.updated_at,
+        }
+    )
 
 
 @require_context
-def _snapshot_metadata_get_item(context, snapshot_id, key, session=None):
-    result = _snapshot_metadata_get_query(context,
-                                          snapshot_id,
-                                          session=session).\
-        filter_by(key=key).\
-        first()
+def _snapshot_metadata_get_item(context, snapshot_id, key):
+    result = (
+        _snapshot_metadata_get_query(context, snapshot_id)
+        .filter_by(key=key)
+        .first()
+    )
 
     if not result:
-        raise exception.SnapshotMetadataNotFound(metadata_key=key,
-                                                 snapshot_id=snapshot_id)
+        raise exception.SnapshotMetadataNotFound(
+            metadata_key=key, snapshot_id=snapshot_id
+        )
     return result
 
 
@@ -4191,42 +4199,47 @@ def _snapshot_metadata_get_item(context, snapshot_id, key, session=None):
 @require_snapshot_exists
 @handle_db_data_error
 @oslo_db_api.wrap_db_retry(max_retries=5, retry_on_deadlock=True)
+@main_context_manager.writer
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
-    session = get_session()
-    with session.begin():
-        # Set existing metadata to deleted if delete argument is True
-        if delete:
-            original_metadata = _snapshot_metadata_get(context, snapshot_id,
-                                                       session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _snapshot_metadata_get_item(context,
-                                                           snapshot_id,
-                                                           meta_key, session)
-                    meta_ref.update({'deleted': True,
-                                     'deleted_at': timeutils.utcnow()})
-                    meta_ref.save(session=session)
+    # Set existing metadata to deleted if delete argument is True
+    if delete:
+        original_metadata = _snapshot_metadata_get(context, snapshot_id)
+        for meta_key, meta_value in original_metadata.items():
+            if meta_key not in metadata:
+                meta_ref = _snapshot_metadata_get_item(
+                    context,
+                    snapshot_id,
+                    meta_key,
+                )
+                meta_ref.update(
+                    {
+                        'deleted': True,
+                        'deleted_at': timeutils.utcnow(),
+                    }
+                )
+                meta_ref.save(context.session)
 
-        meta_ref = None
+    meta_ref = None
 
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+    # Now update all existing items with new values, or create new meta
+    # objects
+    for meta_key, meta_value in metadata.items():
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
+        # update the value whether it exists or not
+        item = {"value": meta_value}
 
-            try:
-                meta_ref = _snapshot_metadata_get_item(context, snapshot_id,
-                                                       meta_key, session)
-            except exception.SnapshotMetadataNotFound:
-                meta_ref = models.SnapshotMetadata()
-                item.update({"key": meta_key, "snapshot_id": snapshot_id})
+        try:
+            meta_ref = _snapshot_metadata_get_item(
+                context, snapshot_id, meta_key
+            )
+        except exception.SnapshotMetadataNotFound:
+            meta_ref = models.SnapshotMetadata()
+            item.update({"key": meta_key, "snapshot_id": snapshot_id})
 
-            meta_ref.update(item)
-            meta_ref.save(session=session)
+        meta_ref.update(item)
+        meta_ref.save(context.session)
 
-    return snapshot_metadata_get(context, snapshot_id)
+    return _snapshot_metadata_get(context, snapshot_id)
 
 ###################
 
